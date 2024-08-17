@@ -93,7 +93,7 @@ import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figure
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-import MakieCore: RealVector, RealMatrix, RealArray, FloatType
+import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
@@ -112,6 +112,7 @@ include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
+include("utilities/Plane.jl")
 include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
@@ -302,6 +303,7 @@ export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..)
 export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
+export Plane3f # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes

@@ -12,6 +12,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
+- `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
 """
 function generic_plot_attributes!(attr)
     attr[:transformation] = automatic
@@ -26,6 +27,7 @@ function generic_plot_attributes!(attr)
     attr[:inspector_label] = automatic
     attr[:inspector_clear] = automatic
     attr[:inspector_hover] = automatic
+    attr[:clip_planes] = automatic
     return attr
 end
 
@@ -42,7 +44,9 @@ function generic_plot_attributes(attr)
         space = attr[:space],
         inspector_label = attr[:inspector_label],
         inspector_clear = attr[:inspector_clear],
-        inspector_hover = attr[:inspector_hover]
+        inspector_hover = attr[:inspector_hover],
+        clip_planes =  attr[:clip_planes]
+
     )
 end
 
@@ -73,6 +77,8 @@ function mixin_generic_plot_attributes()
         inspector_clear = automatic
         "Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods."
         inspector_hover = automatic
+        "TODO: docs"
+        clip_planes = automatic
     end
 end
 
@@ -203,16 +209,19 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
-@recipe Image (x::ClosedInterval{<:FloatType}, y::ClosedInterval{<:FloatType}, image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+@recipe Image (
+        x::EndPoints,
+        y::EndPoints,
+        image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
     """
-    Sets a transform for uv coordinates, which controls how the image is mapped to its rectangular area. 
+    Sets a transform for uv coordinates, which controls how the image is mapped to its rectangular area.
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
-    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
     They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
@@ -249,7 +258,9 @@ If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 """
-@recipe Heatmap (x::RealVector, y::RealVector, values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+@recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
+                 y::Union{EndPoints,RealVector, RealMatrix},
+                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -270,9 +281,9 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume (
-        x::ClosedInterval,
-        y::ClosedInterval,
-        z::ClosedInterval,
+        x::EndPoints,
+        y::EndPoints,
+        z::EndPoints,
         volume::AbstractArray{Float32,3}
     ) begin
     "Sets the volume algorithm that is used."
@@ -309,9 +320,9 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
     interpolate = true
     """
-    Sets a transform for uv coordinates, which controls how a texture is mapped to a surface. 
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a surface.
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
-    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
     They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
@@ -410,9 +421,9 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     cycle = [:color => :patchcolor]
     matcap = nothing
     """
-    Sets a transform for uv coordinates, which controls how a texture is mapped to a mesh. 
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a mesh.
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
-    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
     They can also be changed by passing a tuple `(op3, op2, op1)`.
     """
@@ -498,10 +509,10 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     cycle = [:color]
     """
     Sets a transform for uv coordinates, which controls how a texture is mapped to the scattered mesh.
-    Note that the mesh needs to include uv coordinates for this, which is not the case by default 
-    for geometry primitives. You can use `GeometryBasics.uv_normal_mesh(prim)` with, for example `prim = Rect2f(0, 0, 1, 1)`. 
+    Note that the mesh needs to include uv coordinates for this, which is not the case by default
+    for geometry primitives. You can use `GeometryBasics.uv_normal_mesh(prim)` with, for example `prim = Rect2f(0, 0, 1, 1)`.
     The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
-    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most 
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
     generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
     It can also be set per scattered mesh by passing a `Vector` of any of the above and operations
     can be changed by passing a tuple `(op3, op2, op1)`.

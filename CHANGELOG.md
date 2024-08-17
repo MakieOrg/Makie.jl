@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.21.6] - 2024-08-14
+
+- Fix RectangleZoom in WGLMakie [#4127](https://github.com/MakieOrg/Makie.jl/pull/4127)
+- Bring back fastpath for regular heatmaps [#4125](https://github.com/MakieOrg/Makie.jl/pull/4125)
+- Data inspector fixes (mostly for bar plots) [#4087](https://github.com/MakieOrg/Makie.jl/pull/4087)
+- Added "clip_planes" as a new generic plot and scene attribute. Up to 8 world space clip planes can be specified to hide sections of a plot. [#3958](https://github.com/MakieOrg/Makie.jl/pull/3958)
 - Updated handling of `model` matrices with active Float32 rescaling. This should fix issues with Float32-unsafe translations or scalings of plots, as well as rotated plots in Float32-unsafe ranges. [#4026](https://github.com/MakieOrg/Makie.jl/pull/4026)
 - Added `events.tick` to allow linking actions like animations to the renderloop. [#3948](https://github.com/MakieOrg/Makie.jl/pull/3948)
 - Added the `uv_transform` attribute for meshscatter, mesh, surface and image [#1406](https://github.com/MakieOrg/Makie.jl/pull/1406).
@@ -18,7 +24,9 @@
 - Fix label_formatter being called twice in barplot [#4046](https://github.com/MakieOrg/Makie.jl/pull/4046).
 - Fix error with automatic `highclip` or `lowclip` and scalar colors [#4048](https://github.com/MakieOrg/Makie.jl/pull/4048).
 - Correct a bug in the `project` function when projecting using a `Scene`. [#3909](https://github.com/MakieOrg/Makie.jl/pull/3909).
+- Add position for `pie` plot [#4027](https://github.com/MakieOrg/Makie.jl/pull/4027).
 - Correct a method ambiguity in `insert!` which was causing `PlotList` to fail on CairoMakie. [#4038](https://github.com/MakieOrg/Makie.jl/pull/4038)
+- Delaunay triangulations created via `tricontourf`, `triplot`, and `voronoiplot` no longer use any randomisation in the point insertion order so that results are unique. [#4044](https://github.com/MakieOrg/Makie.jl/pull/4044)
 - Improve content scaling support for Wayland and fix incorrect mouse scaling on mac [#4062](https://github.com/MakieOrg/Makie.jl/pull/4062)
 - Fix: `band` ignored its `alpha` argument in CairoMakie
 - Fix `marker=FastPixel()` makersize and markerspace, improve `spy` recipe [#4043](https://github.com/MakieOrg/Makie.jl/pull/4043).
@@ -26,6 +34,7 @@
 - Improve support for embedding GLMakie. [#4073](https://github.com/MakieOrg/Makie.jl/pull/4073)
 - Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
 - Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
+- Fix `absrect()` and `select_rectangle()` [#4110](https://github.com/MakieOrg/Makie.jl/issues/4110).
 
 ## [0.21.5] - 2024-07-07
 
@@ -552,7 +561,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...HEAD
+[0.21.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...v0.21.6
 [0.21.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...v0.21.5
 [0.21.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...v0.21.4
 [0.21.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.2...v0.21.3

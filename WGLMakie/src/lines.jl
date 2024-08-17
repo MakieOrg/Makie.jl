@@ -192,6 +192,30 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         end
     end
 
+    # Handle clip planes
+    uniforms[:num_clip_planes] = map(plot, plot.clip_planes, plot.space) do planes, space
+        return Makie.is_data_space(space) ? length(planes) : 0
+    end
+
+    uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
+        Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+        if length(planes) > 8
+            @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+        end
+
+        clip_planes = Makie.to_clip_space(pv, planes)
+
+        output = Vector{Vec4f}(undef, 8)
+        for i in 1:min(length(planes), 8)
+            output[i] = Makie.gl_plane_format(clip_planes[i])
+        end
+        for i in min(length(planes), 8)+1:8
+            output[i] = Vec4f(0, 0, 0, -1e9)
+        end
+        return output
+    end
+
     attr = Dict(
         :name => string(Makie.plotkey(plot)) * "-" * string(objectid(plot)),
         :visible => plot.visible,
@@ -202,7 +226,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :uniform_updater => uniform_updater(plot, uniforms),
         :attributes => attributes,
         :transparency => plot.transparency,
-        :overdraw => plot.overdraw
+        :overdraw => plot.overdraw,
+        :zvalue => Makie.zvalue2d(plot)
     )
     return attr
 end

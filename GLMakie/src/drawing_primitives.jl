@@ -226,7 +226,7 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
                         :lightposition, :material, :axis_cycler,
                         :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
-                          :calculated_colors, :space, :markerspace, :model, :dim_conversions, :material])
+                        :calculated_colors, :space, :markerspace, :model, :dim_conversions, :material])
 
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
@@ -237,6 +237,8 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         filtered = filter(plot.attributes) do (k, v)
             return !in(k, EXCLUDE_KEYS)
         end
+
+        # Handle update tracking for render on demand
         track_updates = screen.config.render_on_demand
         if track_updates
             for arg in plot.args
@@ -251,6 +253,8 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
                 screen.requires_update = true
             end
         end
+
+        # Pass along attributes
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
@@ -267,6 +271,29 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
         gl_attributes[:space] = plot.space
         gl_attributes[:px_per_unit] = screen.px_per_unit
+
+        # Handle clip planes
+        # OpenGL supports up to 8
+        clip_planes = pop!(gl_attributes, :clip_planes)
+        gl_attributes[:num_clip_planes] = map(plot, clip_planes, gl_attributes[:space]) do planes, space
+            return Makie.is_data_space(space) ? min(8, length(planes)) : 0
+        end
+        gl_attributes[:clip_planes] = map(plot, clip_planes, gl_attributes[:space]) do planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+            return output
+        end
 
         handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
@@ -463,8 +490,27 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
             Vec2f(ppu * origin(viewport))
         end
-
         space = plot.space
+
+        # Handled manually without using OpenGL clipping
+        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+        data[:num_clip_planes] = Observable(0)
+        pop!(data, :clip_planes)
+        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            clip_planes = Makie.to_clip_space(pv, planes)
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(clip_planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+            return output
+        end
+
         if isnothing(to_value(linestyle))
             data[:pattern] = nothing
             data[:fast] = true
@@ -505,6 +551,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
             Vec2f(ppu * origin(viewport))
         end
+
+        # Handled manually without using OpenGL clipping
+        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+        data[:num_clip_planes] = Observable(0)
+
 
         positions = handle_view(plot[1], data)
         positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
@@ -594,11 +645,16 @@ end
 # el32convert doesn't copy for array of Float32
 # But we assume that xy_convert copies when we use it
 xy_convert(x::AbstractArray, n) = copy(x)
-xy_convert(x, n) = [LinRange(extrema(x)..., n + 1);]
+xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
+    t = Makie.transform_func_obs(plot)
+
+    if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
+        # Fast path for regular heatmaps
+        return draw_image(screen, scene, plot)
+    end
     return cached_robj!(screen, scene, plot) do gl_attributes
-        t = Makie.transform_func_obs(plot)
         mat = plot[3]
         space = plot.space # needs to happen before connect_camera! call
         xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
@@ -607,7 +663,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
             # - model matrices with rotation & Float32 precisionissues
             x1d = xy_convert(x, size(mat[], 1))
             y1d = xy_convert(y, size(mat[], 2))
-            
+
             x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
             y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
 
@@ -634,12 +690,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
     return cached_robj!(screen, scene, plot) do gl_attributes
         position = lift(plot, plot[1], plot[2]) do x, y
             xmin, xmax = extrema(x)
             ymin, ymax = extrema(y)
-            rect =  Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+            rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end
         gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
@@ -656,6 +712,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         end
         return draw_mesh(screen, gl_attributes)
     end
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+    return draw_image(screen, scene, plot)
 end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)
@@ -821,6 +881,35 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             )
             return convert(Mat4f, m) * m2
         end
+        gl_attributes[:modelinv] = const_lift(inv, gl_attributes[:model])
+
+        # Handled manually without using OpenGL clipping
+        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+        gl_attributes[:num_clip_planes] = Observable(0)
+        pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes, plot.space) do modelinv, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            @assert modelinv[4, 4] == 1
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(gl_attributes[:model][]) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         Tex(x) = Texture(x; minfilter=interp)
@@ -865,6 +954,34 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             return Mat4f(model *
                 Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
             )
+        end
+
+        # Handled manually without using OpenGL clipping
+        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+        gl_attributes[:num_clip_planes] = Observable(0)
+        pop!(gl_attributes, :clip_planes)
+        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            modelinv = inv(model)
+            @assert modelinv[4, 4] == 1
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
         end
 
         # color attribute adjustments
