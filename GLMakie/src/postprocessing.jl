@@ -59,9 +59,8 @@ function OIT_postprocessor(framebuffer, shader_cache)
             # postprocessor shader:
             #   out = (sum_color.rgb / sum_color.w * (1 - transmittance), tranmittance)
             # blending (here)
-            #   src = ^ = (pre-multiplied color, transmittance)
+            #   src = out = (pre-multiplied color, transmittance)
             #   dst = (pre-multiplied color, transmittance) (from non-OIT draw)
-            # combines to another (pre-multiplied color, transmittance) as:
             #   src.rgb + dst.rgb, src.a * dst.a            
             glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_SRC_ALPHA)
         end,
@@ -160,7 +159,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
 
-    full_render = (screen, settings, projection) -> begin
+    full_render = (screen, ssao, projection) -> begin
         wh = framebuffer_size(to_native(screen))
         glViewport(0, 0, wh[1], wh[2])
 
