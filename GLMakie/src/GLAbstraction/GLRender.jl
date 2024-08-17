@@ -179,6 +179,7 @@ function enabletransparency()
     # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
     # target.a = 0 * source.a + 1 * target.a
     # the latter is required to keep target.a = 1 for the OIT pass
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     return
 end

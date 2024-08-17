@@ -246,7 +246,13 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     data = Dict{Symbol, Any}(
         :color_texture => framebuffer[:color][2]
     )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass = RenderObject(data, shader, () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    end, nothing)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     full_render = (screen, x, y, w, h) -> begin
