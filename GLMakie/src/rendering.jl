@@ -46,16 +46,18 @@ end
 
 
 function render_frame(screen::Screen, glscene::GLScene)
+    # TODO: Not like this
+    if glscene.scene === nothing
+        @warn "Parent scene unavailable"
+        return
+    end
+
     clear = glscene.clear[]::Bool
     renderlist = glscene.renderobjects::Vector{RenderObject}
 
     # if the scene doesn't have a visual impact we skip
     if !glscene.visible[] || (isempty(renderlist) && !clear)
-        return
-    end
-
-    # TODO: Not like this
-    if glscene.scene === nothing
+        @info "Skipped due to visible = $(glscene.visible[]) or empty renderlist $(isempty(renderlist)) && clear = $clear"
         return
     end
 
