@@ -65,9 +65,9 @@ function Base.show(io::IO, glscene::GLScene)
     )
 end
 
-function delete_plot!(glscene::GLScene, plot::AbstractPlot)
-    @info "deleting plot $(objectid(plot))"
-    @assert isempty(plot.plots) "Plot must be atomic"
+function delete_plot!(glscene::GLScene, atomic::AbstractPlot)
+    @info "deleting plot $(objectid(atomic))"
+    @assert isempty(atomic.plots) "Plot must be atomic"
     if haskey(glscene.plot2robj, objectid(atomic))
         @info "deleting atomic $(objectid(atomic))"
         robj = pop!(glscene.plot2robj, objectid(atomic))

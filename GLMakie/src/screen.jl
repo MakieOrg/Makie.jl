@@ -534,10 +534,12 @@ end
 
 function Base.delete!(screen::Screen, scene::Scene)
     delete_scene!(screen, screen.scene_tree, scene)
+    screen.requires_update = true
     return
 end
 
 function destroy!(rob::RenderObject)
+    @info "Destroying rob $(rob.id)"
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
@@ -580,7 +582,13 @@ function Base.empty!(screen::Screen)
         Makie.disconnect_screen(screen.root_scene, screen)
         delete!(screen, screen.root_scene) # this should wipe all scenes and plots
         screen.root_scene = nothing
+    elseif !isempty(screen.scene_tree.scenes)
+        @error "Root scene not defined but scenes are still connected"
+    else
+        @warn "Root scene already undefined"
     end
+
+    @assert isempty(screen.scene_tree) "Scenes did not get deleted from screen"
 
     # @assert isempty(screen.renderlist)
     # @assert isempty(screen.cache2plot)
@@ -849,7 +857,6 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
     screen.stop_renderloop = true
-    screen.close_after_renderloop = c
 
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
@@ -858,6 +865,9 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
         # after done, we can set the task to nothing
         screen.rendertask = nothing
     end
+
+    screen.close_after_renderloop = c
+
     # else, we can't do that much in the rendertask itself
     return
 end
