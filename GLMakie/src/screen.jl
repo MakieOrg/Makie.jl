@@ -533,7 +533,7 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
 end
 
 function Base.delete!(screen::Screen, scene::Scene)
-    delete_scene!(screen.scene_tree, scene)
+    delete_scene!(screen, screen.scene_tree, scene)
     return
 end
 

@@ -191,7 +191,7 @@ function delete_scene!(tree::GLSceneTree, scene::Scene)
     if haskey(tree.scene2index, WeakRef(scene))
         # Delete all child scenes
         for child in scene.children
-            delete_scene!(tree, child)
+            delete_scene!(screen, tree, child)
         end
 
         # Remove scene from map
@@ -211,6 +211,9 @@ function delete_scene!(tree::GLSceneTree, scene::Scene)
                 tree.scene2index[k] -= 1
             end
         end
+
+        # Remove screen from scene to avoid double-deletion
+        filter!(x -> x !== screen, scene.current_screens)
     else
         error("Cannot delete scene from tree - does not exist in tree.")
     end

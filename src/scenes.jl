@@ -410,9 +410,9 @@ function free(scene::Scene)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
     end
-    for screen in copy(scene.current_screens)
-        delete!(screen, scene)
-    end
+    # for screen in copy(scene.current_screens)
+    #     delete!(screen, scene)
+    # end
     empty!(scene.current_screens)
     scene.parent = nothing
     return
