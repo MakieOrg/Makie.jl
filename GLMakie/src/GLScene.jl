@@ -39,6 +39,18 @@ function GLScene(scene::Scene)
     ) 
 end
 
+# A bit dodgy...
+Base.haskey(glscene::GLScene, robj::RenderObject) = haskey(glscene, robj.id)
+Base.haskey(glscene::GLScene, plot::AbstractPlot) = haskey(glscene, objectid(plot))
+Base.haskey(glscene::GLScene, robj_id::UInt32) = haskey(glscene.robj2plot, robj_id)
+Base.haskey(glscene::GLScene, plot_id::UInt64) = haskey(glscene.plot2robj, plot_id)
+
+Base.getindex(glscene::GLScene, robj::RenderObject) = getindex(glscene, robj.id)
+Base.getindex(glscene::GLScene, plot::AbstractPlot) = getindex(glscene, objectid(plot))
+Base.getindex(glscene::GLScene, robj_id::UInt32) = getindex(glscene.robj2plot, robj_id)
+Base.getindex(glscene::GLScene, plot_id::UInt64) = getindex(glscene.plot2robj, plot_id)
+
+
 function Base.show(io::IO, glscene::GLScene)
     println(io, 
         "GLScene(", 
@@ -54,19 +66,23 @@ function Base.show(io::IO, glscene::GLScene)
 end
 
 function delete_plot!(glscene::GLScene, plot::AbstractPlot)
-    for atomic in Makie.collect_atomic_plots(plot)
-        if haskey(glscene.plot2robj, objectid(atomic))
-            robj = pop!(plot2robj, objectid(atomic))
+    @info "deleting plot $(objectid(plot))"
+    @assert isempty(plot.plots) "Plot must be atomic"
+    if haskey(glscene.plot2robj, objectid(atomic))
+        @info "deleting atomic $(objectid(atomic))"
+        robj = pop!(glscene.plot2robj, objectid(atomic))
 
-            filter!(x -> x !== robj, glscene.renderobjects)
-            delete!(glscene.robj2plot, robj.id)
-            delete!(glscene.plot2robj, objectid(atomic))
-            
-            destroy!(robj)
-        else
-            # TODO: Should hard-error?
-            @error "Cannot delete plot which is not part of the glscene. $atomic"
-        end
+        filter!(x -> x !== robj, glscene.renderobjects)
+        delete!(glscene.robj2plot, robj.id)
+        delete!(glscene.plot2robj, objectid(atomic))
+        
+        destroy!(robj)
+
+        return robj.id
+    else
+        # TODO: Should hard-error?
+        @debug("Cannot delete plot which is not part of the glscene. $atomic")
+        return typemax(UInt32)
     end
 end
 
@@ -75,6 +91,7 @@ end
 # TODO: name? should we keep this separate from Screen?
 struct GLSceneTree
     scene2index::Dict{WeakRef, Int}
+    robj2plot::Dict{UInt32, AbstractPlot} # for picking
     
     # flattened scene tree
     # Order:
@@ -91,7 +108,7 @@ struct GLSceneTree
     depth::Vector{Int}
 end
 
-GLSceneTree() = GLSceneTree(Dict{WeakRef, Int}(), GLScene[], Int[])
+GLSceneTree() = GLSceneTree(Dict{WeakRef, Int}(), Dict{UInt32, AbstractPlot}(), GLScene[], Int[])
 
 function gc_cleanup(tree::GLSceneTree)
     # TODO: do we need this? Can this create orphaned child scenes?
@@ -119,6 +136,7 @@ end
 
 Base.haskey(tree::GLSceneTree, scene::Scene) = haskey(tree.scene2index, WeakRef(scene))
 Base.getindex(tree::GLSceneTree, scene::Scene) = tree.scenes[tree.scene2index[WeakRef(scene)]]
+Base.isempty(tree::GLSceneTree) = isempty(tree.scenes)
 
 function Base.show(io::IO, tree::GLSceneTree)
     for i in eachindex(tree.scenes)
@@ -128,7 +146,7 @@ end
 
 function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Nothing, index::Integer)
     # a root scene can only be added if the screen does not already have a root scene
-
+    @info "Inserting root scene $(objectid(scene))"
     if isempty(tree.scenes)
         tree.scene2index[WeakRef(scene)] = 1
         push!(tree.scenes, GLScene(scene))
@@ -141,6 +159,7 @@ function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Nothing, index::
 end
 
 function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Scene, index::Integer)
+    @info "Inserting scene $(objectid(scene))"
     if isempty(tree.scenes) # allow non-root scenes to act as root scenes
         tree.scene2index[WeakRef(scene)] = 1
         push!(tree.scenes, GLScene(scene))
@@ -155,9 +174,9 @@ function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Scene, index::In
     # Figure out where the scene should be inserted
     parent_index = tree.scene2index[WeakRef(parent)]
     insert_index = parent_index
-    @info insert_index
+    # @info insert_index
     while (index > 0) && (insert_index < length(tree.scenes))
-        @info "loop"
+        # @info "loop"
         insert_index += 1
         if tree.depth[insert_index] == tree.depth[parent_index] + 1
             # found a child of parent
@@ -172,13 +191,13 @@ function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Scene, index::In
             break
         end
     end
-    @info insert_index, tree.depth[insert_index], tree.depth[parent_index]
+    # @info insert_index, tree.depth[insert_index], tree.depth[parent_index]
     if index == 1 && insert_index == length(tree.scenes)
         insert_index += 1
     elseif index != 0
         error("Failed to find scene insertion index.")
     end
-    @info insert_index
+    # @info insert_index
     
     tree.scene2index[WeakRef(scene)] = insert_index
     insert!(tree.scenes, insert_index, GLScene(scene))
@@ -187,7 +206,8 @@ function insert_scene!(tree::GLSceneTree, scene::Scene, parent::Scene, index::In
     return
 end
 
-function delete_scene!(tree::GLSceneTree, scene::Scene)
+function delete_scene!(screen, tree::GLSceneTree, scene::Scene)
+    @info "Deleting scene $(objectid(scene))"
     if haskey(tree.scene2index, WeakRef(scene))
         # Delete all child scenes
         for child in scene.children
@@ -215,30 +235,24 @@ function delete_scene!(tree::GLSceneTree, scene::Scene)
         # Remove screen from scene to avoid double-deletion
         filter!(x -> x !== screen, scene.current_screens)
     else
-        error("Cannot delete scene from tree - does not exist in tree.")
+        @debug("Cannot delete scene from tree - does not exist in tree.")
     end
     return
 end
 
-# TODO:
-# How integrate
-
-# function add_renderobject!(tree::GLSceneTree, scene::Scene, robj::RenderObject)
-#     if haskey(tree.scene2index, WeakRef(scene))
-#         glscene = tree.scenes[tree.scene2index[WeakRef(scene)]]
-#         push!(glscene.renderobjects, robj)
-#         glscene.plot2robj[]::Dict{UInt64, RenderObject} # TODO:
-#         glscene.robj2plot[]::Dict{UInt32, Plot} # TODO:
-#     else
-#         error("Cannot insert renderobject if it's parent scene is not part of the rendered scene tree.")
-#     end
-# end
-
 function delete_plot!(tree::GLSceneTree, scene::Scene, plot::AbstractPlot)
+    @debug("Deleting plot $(objectid(plot))")
+
     if haskey(tree, scene)
-        delete_plot!(tree[scene], plot)
+        glscene = tree[scene]
+        for atomic in Makie.collect_atomic_plots(plot)
+            robj_id = delete_plot!(glscene, atomic)
+            if robj_id != typemax(UInt32)
+                delete!(tree.robj2plot, robj_id)
+            end
+        end
     else
-        error("Cannot delete plot if its parent scene is not being shown.")
+        @debug("Cannot delete plot if its parent scene is not being shown.")
     end
     return
 end

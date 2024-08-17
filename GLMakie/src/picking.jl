@@ -43,30 +43,29 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
-    sid = pick_native(screen, xy)
-    if haskey(screen.cache2plot, sid.id)
-        plot = screen.cache2plot[sid.id]
-        return (plot, sid.index)
+function process_pick_id(screen::Screen, sid::SelectionID)
+    robj_id = UInt32(sid.id)
+    if haskey(screen.scene_tree.robj2plot, robj_id)
+        return (screen.scene_tree.robj2plot[robj_id], sid.index)
     else
         return (nothing, 0)
     end
 end
 
+function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
+    return process_pick_id(screen, pick_native(screen, xy))
+end
+
 function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
-    map(pick_native(screen, rect)) do sid
-        if haskey(screen.cache2plot, sid.id)
-            (screen.cache2plot[sid.id], sid.index)
-        else
-            (nothing, sid.index)
-        end
-    end
+    return map(sid -> process_pick_id(screen, sid), pick_native(screen, rect))
 end
 
 
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
+    robj2plot = screen.scene_tree.robj2plot
+
     w, h = size(scene)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
@@ -81,22 +80,20 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
         sid = sids[i, j]
-        if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
+        if (d < min_dist) && (sid.id > 0) && haskey(robj2plot, sid.id)
             min_dist = d
             id = convert(SelectionID{Int}, sid)
         end
     end
 
-    if haskey(screen.cache2plot, id.id)
-        return (screen.cache2plot[id.id], id.index)
-    else
-        return (nothing, 0)
-    end
+    return process_pick_id(screen, id)
 end
 
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
+    robj2plot = screen.scene_tree.robj2plot
+    
     w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
@@ -107,7 +104,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 
     picks = pick_native(screen, Rect2i(x0, y0, dx, dy))
 
-    selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
+    selected = filter(x -> x.id > 0 && haskey(robj2plot, x.id), unique(vec(picks)))
     distances = Float32[range^2 for _ in selected]
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
@@ -124,5 +121,5 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 
     idxs = sortperm(distances)
     permute!(selected, idxs)
-    return map(id -> (screen.cache2plot[id.id], id.index), selected)
+    return map(id -> process_pick_id(screen, id), selected)
 end

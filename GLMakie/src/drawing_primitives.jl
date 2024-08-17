@@ -342,11 +342,15 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         robj = robj_func(gl_attributes)
 
         get!(gl_attributes, :ssao, Observable(false))
+        
         glscene.robj2plot[robj.id] = plot
+        screen.scene_tree.robj2plot[robj.id] = plot
+        
         return robj
     end
     
     push!(glscene.renderobjects, robj)
+    @info "Inserting robj $(robj.id) / atomic $(objectid(plot))"
 
     return robj
 end
@@ -359,8 +363,9 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
-
+        
     else
+        @info "Inserting plot $(objectid(x))"
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
             pollevents(screen, Makie.BackendTick)
