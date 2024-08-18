@@ -400,6 +400,7 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function delete_scene!(scene::Scene)
+    # TODO: un-deprecate this and make this detach the scene from tree/backend?
     @warn "deprecated in favor of empty!(scene)"
     empty!(scene)
     return nothing
@@ -410,9 +411,9 @@ function free(scene::Scene)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
     end
-    # for screen in copy(scene.current_screens)
-    #     delete!(screen, scene)
-    # end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
     empty!(scene.current_screens)
     scene.parent = nothing
     return
@@ -425,11 +426,6 @@ function Base.empty!(scene::Scene; free=false)
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
-    end
-
-    # delete scene in backend
-    for screen in scene.current_screens
-        delete!(screen, scene)
     end
 
     # remove from parent
