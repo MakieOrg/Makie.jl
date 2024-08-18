@@ -51,7 +51,8 @@ end
 function render_frame(screen::Screen, glscene::GLScene)
     # TODO: Not like this
     if glscene.scene === nothing
-        return
+        error("Does this actually happen?")
+        # return
     end
 
     clear = glscene.clear[]::Bool
@@ -65,15 +66,6 @@ function render_frame(screen::Screen, glscene::GLScene)
     nw = to_native(screen)
     fb = screen.framebuffer # required
 
-    # z-sorting
-    function sortby(robj)
-        plot = glscene.robj2plot[robj.id]
-        # TODO, use actual boundingbox
-        return Makie.zvalue2d(plot)
-    end
-    zvals = sortby.(glscene.renderobjects)
-    permute!(glscene.renderobjects, sortperm(zvals))
-
     # Redundant?
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
 
@@ -83,17 +75,6 @@ function render_frame(screen::Screen, glscene::GLScene)
     wh   = round.(Int, screen.px_per_unit[] .* widths(glscene.viewport[]))
     @inbounds glViewport(mini[1], mini[2], wh[1], wh[2])
     @inbounds glScissor(mini[1], mini[2], wh[1], wh[2])
-
-    # TODO: better solution
-    # render buffers are (color, objectid, maybe position, maybe normals)
-    # color, objectid should only be cleared if glscene.clear == true
-    # position, normals are only relevant for SSAO but should be cleared
-    # TODO: make DEPTH clear optional?
-    # TODO: unpadded clears may create edge-artifacts with SSAO, FXAA
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
-    glDrawBuffers(length(fb.render_buffer_ids)-2, fb.render_buffer_ids[2:end])
-    glClearColor(0, 0, 0, 0)
-    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     if glscene.clear[]
         # Draw background color
@@ -116,49 +97,72 @@ function render_frame(screen::Screen, glscene::GLScene)
         glClear(GL_COLOR_BUFFER_BIT)
     end
 
-    # NOTE
-    # The transparent color buffer is reused by SSAO and FXAA. Changing the
-    # render order here may introduce artifacts because of that.
+    # No need to render and run post processors if there are no render objects
+    if !isempty(glscene.renderobjects)
+        # TODO: better solution
+        # render buffers are (color, objectid, maybe position, maybe normals)
+        # color, objectid should only be cleared if glscene.clear == true
+        # position, normals are only relevant for SSAO but should be cleared
+        # TODO: make DEPTH clear optional?
+        # TODO: unpadded clears may create edge-artifacts with SSAO, FXAA
+        glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+        glDrawBuffers(length(fb.render_buffer_ids)-2, fb.render_buffer_ids[3:end])
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
-    # TODO: clear SSAO buffers here?
-    # render with SSAO
-    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids) # activate all render outputs
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    GLAbstraction.render(glscene) do robj
-        return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
+        # z-sorting
+        function sortby(robj)
+            plot = glscene.robj2plot[robj.id]
+            # TODO, use actual boundingbox
+            return Makie.zvalue2d(plot)
+        end
+        zvals = sortby.(glscene.renderobjects)
+        permute!(glscene.renderobjects, sortperm(zvals))
+
+        # NOTE
+        # The transparent color buffer is reused by SSAO and FXAA. Changing the
+        # render order here may introduce artifacts because of that.
+
+        # TODO: clear SSAO buffers here?
+        # render with SSAO
+        glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids) # activate all render outputs
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+        GLAbstraction.render(glscene) do robj
+            return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
+        end
+        # SSAO postprocessor
+        # TODO: when moving postprocessors to Scene the postprocessor should not need any extra inputs
+        screen.postprocessors[1].render(screen, glscene.ssao, glscene.scene.value.camera.projection[])
+
+        # render no SSAO
+        glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]) # color, objectid
+        # render all non ssao
+        GLAbstraction.render(glscene) do robj
+            return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
+        end
+
+        # TRANSPARENT RENDER
+        # clear sums to 0
+        glDrawBuffer(GL_COLOR_ATTACHMENT2) # HDR color (i.e. 16 Bit precision)
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT)
+        # clear alpha product to 1
+        glDrawBuffer(GL_COLOR_ATTACHMENT3) # OIT weight buffer
+        glClearColor(1, 1, 1, 1)
+        glClear(GL_COLOR_BUFFER_BIT)
+        # draw
+        glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3]) # HDR color, objectid, OIT weight
+        # Render only transparent objects
+        GLAbstraction.render(glscene) do robj
+            return Bool(robj[:transparency][])
+        end
+
+        # TRANSPARENT BLEND
+        screen.postprocessors[2].render(screen)
+
+        # FXAA
+        screen.postprocessors[3].render(screen)
     end
-    # SSAO postprocessor
-    # TODO: when moving postprocessors to Scene the postprocessor should not need any extra inputs
-    screen.postprocessors[1].render(screen, glscene.ssao, glscene.scene.value.camera.projection[])
-
-    # render no SSAO
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]) # color, objectid
-    # render all non ssao
-    GLAbstraction.render(glscene) do robj
-        return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
-    end
-
-    # TRANSPARENT RENDER
-    # clear sums to 0
-    glDrawBuffer(GL_COLOR_ATTACHMENT2) # HDR color (i.e. 16 Bit precision)
-    glClearColor(0, 0, 0, 0)
-    glClear(GL_COLOR_BUFFER_BIT)
-    # clear alpha product to 1
-    glDrawBuffer(GL_COLOR_ATTACHMENT3) # OIT weight buffer
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
-    # draw
-    glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3]) # HDR color, objectid, OIT weight
-    # Render only transparent objects
-    GLAbstraction.render(glscene) do robj
-        return Bool(robj[:transparency][])
-    end
-
-    # TRANSPARENT BLEND
-    screen.postprocessors[2].render(screen)
-
-    # FXAA
-    screen.postprocessors[3].render(screen)
 
     # transfer everything to the screen
     # TODO: accumulation buffer would avoid viewport/scissor reset
