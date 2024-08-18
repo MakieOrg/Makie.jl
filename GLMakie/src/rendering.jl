@@ -6,6 +6,8 @@ function render_frame(screen::Screen; resize_buffers=true)
 end
 
 function render_frame(screen::Screen, glscenes::Vector{GLScene}, resize_buffers=true)
+    # WARNING: Prints\Task switches from within render_frame may crash Julia.
+
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
 
@@ -33,10 +35,10 @@ function render_frame(screen::Screen, glscenes::Vector{GLScene}, resize_buffers=
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
+    # TODO: Does this require a lock to avoid changes to the glscenes array?
     # Draw scene by scene
     glEnable(GL_SCISSOR_TEST)
     for (i, glscene) in enumerate(glscenes)
-        @info "Rendering scene $i"
         render_frame(screen, glscene)
     end
     glDisable(GL_SCISSOR_TEST)
@@ -49,7 +51,6 @@ end
 function render_frame(screen::Screen, glscene::GLScene)
     # TODO: Not like this
     if glscene.scene === nothing
-        @warn "Parent scene unavailable"
         return
     end
 
@@ -58,7 +59,6 @@ function render_frame(screen::Screen, glscene::GLScene)
 
     # if the scene doesn't have a visual impact we skip
     if !glscene.visible[] || (isempty(renderlist) && !clear)
-        @info "Skipped due to visible = $(glscene.visible[]) or empty renderlist $(isempty(renderlist)) && clear = $clear"
         return
     end
 
@@ -83,7 +83,6 @@ function render_frame(screen::Screen, glscene::GLScene)
     wh   = round.(Int, screen.px_per_unit[] .* widths(glscene.viewport[]))
     @inbounds glViewport(mini[1], mini[2], wh[1], wh[2])
     @inbounds glScissor(mini[1], mini[2], wh[1], wh[2])
-    @info mini, wh
 
     # TODO: better solution
     # render buffers are (color, objectid, maybe position, maybe normals)
@@ -97,12 +96,10 @@ function render_frame(screen::Screen, glscene::GLScene)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
     if glscene.clear[]
-        @info "clearing"
         # Draw background color
         glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
         c = glscene.backgroundcolor[]::RGBAf
         a = alpha(c)
-        # @info a * red(c), a * green(c), a * blue(c), 1f0 - a
         glClearColor(a * red(c), a * green(c), a * blue(c), 1f0 - a)
         glClear(GL_COLOR_BUFFER_BIT)
 
@@ -113,7 +110,6 @@ function render_frame(screen::Screen, glscene::GLScene)
             glClear(GL_COLOR_BUFFER_BIT)
         end
     else
-        @info "no clear"
         # TODO: maybe SSAO needs this cleared if we run it per scene...?
         glDrawBuffer(fb.render_buffer_ids[1]) # accumulation color buffer
         glClearColor(0, 0, 0, 1)
@@ -177,7 +173,6 @@ function GLAbstraction.render(filter_elem_func, glscene::GLScene)
         for robj in glscene.renderobjects
             filter_elem_func(robj)::Bool || continue
             robj.visible || continue
-            @info "Rendering robj $(robj.id)"
             render(robj)
         end
     catch e
