@@ -414,23 +414,22 @@ function free(scene::Scene)
     for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
+    # remove from parent
+    if !isnothing(scene.parent)
+        filter!(x-> x !== scene, scene.parent.children)
+    end
     empty!(scene.current_screens)
     scene.parent = nothing
     return
 end
 
 function Base.empty!(scene::Scene; free=false)
-    # clear all child scenes
-    foreach(empty!, copy(scene.children))
+    # since we clear our children all of our children need to get fully detached
+    foreach(Makie.free, copy(scene.children))
 
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
-    end
-
-    # remove from parent
-    if !isnothing(scene.parent)
-        filter!(x-> x !== scene, scene.parent.children)
     end
 
     empty!(scene.children)

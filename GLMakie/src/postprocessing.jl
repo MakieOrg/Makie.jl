@@ -30,7 +30,7 @@ end
 
 
 function OIT_postprocessor(framebuffer, shader_cache)
-    @info "Creating OIT postprocessor"
+    @debug "Creating OIT postprocessor"
 
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
@@ -86,7 +86,7 @@ end
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
-    @info "Creating SSAO postprocessor"
+    @debug "Creating SSAO postprocessor"
 
     # Add missing buffers
     if !haskey(framebuffer, :position)
@@ -187,7 +187,7 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
-    @info "Creating FXAA postprocessor"
+    @debug "Creating FXAA postprocessor"
 
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
@@ -266,7 +266,7 @@ to pass in a reference to the framebuffer ID of the screen. If `nothing` is
 used (the default), 0 is used.
 """
 function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
-    @info "Creating to screen postprocessor"
+    @debug "Creating to screen postprocessor"
 
     # draw color buffer
     shader = LazyShader(
@@ -303,7 +303,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
 end
 
 function destroy!(pp::PostProcessor)
-    @info "Destroying postprocessor"
+    @debug "Destroying postprocessor"
     while !isempty(pp.robjs)
         destroy!(pop!(pp.robjs))
     end

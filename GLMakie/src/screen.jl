@@ -539,7 +539,7 @@ function Base.delete!(screen::Screen, scene::Scene)
 end
 
 function destroy!(rob::RenderObject)
-    @info "Destroying rob $(rob.id)"
+    @debug "Destroying rob $(rob.id)"
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
@@ -588,11 +588,12 @@ function Base.empty!(screen::Screen)
         @warn "Root scene already undefined"
     end
 
-    @assert isempty(screen.scene_tree) "Scenes did not get deleted from screen"
+    # @assert isempty(screen.scene_tree) "Scenes did not get deleted from screen"
 
-    # @assert isempty(screen.renderlist)
-    # @assert isempty(screen.cache2plot)
-    # @assert isempty(screen.cache)
+    @assert isempty(screen.scene_tree.scenes) "Scenes did not get cleaned up"
+    @assert isempty(screen.scene_tree.depth) "Scene tree depth did not get cleaned up"
+    @assert isempty(screen.scene_tree.scene2index) "Makie.Scene map did not get cleaned up"
+    @assert isempty(screen.scene_tree.robj2plot) "global robj2plot did not get cleaned up."
 
     # empty!(screen.screen2scene)
     # empty!(screen.screens)
