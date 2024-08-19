@@ -406,6 +406,13 @@ function to_plot_object(ps::PlotSpec)
     return P((ps.args...,), copy(ps.kwargs))
 end
 
+function to_plot_object(ps::PlotSpec, p::PlotList)
+    P = plottype(ps)
+    return P((ps.args...,), merge(Dict(p.attributes), copy(ps.kwargs)))
+end
+
+to_plot_object(ps::PlotSpec, ::Nothing) = to_plot_object(ps)
+
 function find_reusable_plot(plotspec::PlotSpec, reusable_plots::IdDict{PlotSpec,Plot})
     for (spec, plot) in reusable_plots
         if compare_specs(spec, plotspec)
@@ -429,7 +436,7 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
         if isnothing(reused_plot)
             @debug("Creating new plot for spec")
             # Create new plot, store it into our `cached_plots` dictionary
-            plot = plot!(scene, to_plot_object(plotspec))
+            plot = plot!(scene, to_plot_object(plotspec, plotlist))
             if !isnothing(plotlist)
                 push!(plotlist.plots, plot)
             end
