@@ -177,17 +177,20 @@ function screen_relative(scene::Scene, mpos)
 end
 
 """
-    mouseposition(scene::Scene)
+    mouseposition(scene::Scene; invert_transform=true)
 
-Return the current position of the mouse in _data coordinates_ of the
-given object.
+Return the current position of the mouse in _data coordinates_ or _scene
+coordinates_ of the given object. The `invert_transform` argument determines
+whether any transformation on the scene (e.g. through an axis scale) will be
+inverted before returning the position. For data coordinates this should be
+`true`, and for scene coordinates it should be `false`.
 """
-mouseposition(x) = mouseposition(get_scene(x))
+mouseposition(x; invert_transform=true) = mouseposition(get_scene(x); invert_transform)
 
-function mouseposition(scene::Scene = hovered_scene(); apply_transform=true)
+function mouseposition(scene::Scene = hovered_scene(); invert_transform=true)
     pos = to_world(scene, mouseposition_px(scene))
 
-    if apply_transform
+    if invert_transform
         inv_transform = Makie.inverse_transform(scene.transformation.transform_func[])
         return Vec2{Float64}(Makie.apply_transform(inv_transform, pos))
     else
