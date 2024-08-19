@@ -78,6 +78,7 @@ mutable struct Scene <: AbstractScene
 
     "Children of the Scene inherit its transformation."
     children::Vector{Scene}
+    overlay_start::Int
 
     """
     The Screens which the Scene is displayed to.
@@ -105,6 +106,7 @@ mutable struct Scene <: AbstractScene
             plots::Vector{AbstractPlot},
             theme::Attributes,
             children::Vector{Scene},
+            overlay_start::Int,
             current_screens::Vector{MakieScreen},
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
@@ -123,6 +125,7 @@ mutable struct Scene <: AbstractScene
             plots,
             theme,
             children,
+            overlay_start,
             current_screens,
             backgroundcolor,
             visible,
@@ -207,6 +210,7 @@ function Scene(;
         transformation::Transformation = Transformation(transform_func),
         plots::Vector{AbstractPlot} = AbstractPlot[],
         children::Vector{Scene} = Scene[],
+        overlay_start::Int = length(children)+1,
         current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
         visible = Observable(true),
@@ -244,7 +248,7 @@ function Scene(;
     scene = Scene(
         parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights
+        children, overlay_start, current_screens, bg, visible, ssao, _lights
     )
     camera isa Function && camera(scene)
 
@@ -294,6 +298,7 @@ function Scene(
         camera=nothing,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
+        overlay::Bool = false,
         kw...
     )
 
@@ -322,7 +327,11 @@ function Scene(
             error("viewport must be an Observable{Rect2} or a Rect2")
         end
     end
-    push!(parent, child)
+    if overlay
+        push_overlay!(parent, child)
+    else
+        push!(parent, child)
+    end
     child.parent = parent
     return child
 end
@@ -415,8 +424,18 @@ function free(scene::Scene)
         delete!(screen, scene)
     end
     # remove from parent
-    if !isnothing(scene.parent)
-        filter!(x-> x !== scene, scene.parent.children)
+    parent = scene.parent
+    if !isnothing(parent)
+        idx = findfirst(==(scene), parent.children)
+        if idx === nothing
+            @warn "Freed scene not a child of it's parent"
+        else
+            # if we are deletinng a normal scene we need to move the overlay start index
+            if !(parent.overlay_start <= idx <= length(parent.children))
+                parent.overlay_start -= 1
+            end
+            deleteat!(parent.children, idx)
+        end
     end
     empty!(scene.current_screens)
     scene.parent = nothing
@@ -433,6 +452,7 @@ function Base.empty!(scene::Scene; free=false)
     end
 
     empty!(scene.children)
+    scene.overlay_start = 1
     empty!(scene.plots)
     empty!(scene.theme)
     # conditional, since in free we dont want this!
@@ -453,11 +473,22 @@ end
 
 function Base.push!(parent::Scene, child::Scene)
     @assert isempty(child.children) "Adding a scene with children to a parent not yet implemented"
+    insert!(parent.children, parent.overlay_start, child)
+    for screen in parent.current_screens
+        Base.invokelatest(insert!, screen, child, parent, parent.overlay_start)
+    end
+    parent.overlay_start += 1
+    return 
+end
+
+function push_overlay!(parent::Scene, child::Scene)
+    @assert isempty(child.children) "Adding a scene with children to a parent not yet implemented"
     push!(parent.children, child)
     idx = length(parent.children)
     for screen in parent.current_screens
         Base.invokelatest(insert!, screen, child, parent, idx)
     end
+    return 
 end
 
 function Base.push!(plot::Plot, subplot)
