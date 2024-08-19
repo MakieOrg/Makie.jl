@@ -73,7 +73,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
         # Blend transparent onto opaque
-        wh = framebuffer_size(to_native(screen))
+        wh = size(screen.framebuffer)
         glViewport(0, 0, wh[1], wh[2])
         glDrawBuffer(color_id)
         GLAbstraction.render(pass)
@@ -164,7 +164,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     color_id = framebuffer[:color][1]
 
     full_render = (screen, ssao, projection) -> begin
-        wh = framebuffer_size(to_native(screen))
+        wh = size(screen.framebuffer)
         glViewport(0, 0, wh[1], wh[2])
 
         glDrawBuffer(normal_occ_id)  # occlusion buffer
@@ -238,7 +238,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
         # TODO: make scissor explicit?
-        wh = framebuffer_size(to_native(screen))
+        wh = size(screen.framebuffer)
         glViewport(0, 0, wh[1], wh[2])
 
         # FXAA - calculate LUMA
@@ -290,7 +290,7 @@ function compose_postprocessor(framebuffer, shader_cache)
     composition_buffer_id = framebuffer[:composition][1]
     full_render = (screen, x, y, w, h) -> begin
         glDrawBuffer(composition_buffer_id)
-        wh = framebuffer_size(to_native(screen))
+        wh = size(screen.framebuffer)
         glViewport(0, 0, wh[1], wh[2]) # :color buffer is ful screen
         glScissor(x, y, w, h) # but we only care about the active section
         GLAbstraction.render(pass) # copy postprocess
@@ -340,7 +340,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         glBindFramebuffer(GL_FRAMEBUFFER, OUTPUT_FRAMEBUFFER_ID)
         wh = framebuffer_size(to_native(screen))
         glViewport(0, 0, wh[1], wh[2])
-        glScissor(0, 0, wh[1], wh[2])
+        # glScissor(0, 0, wh[1], wh[2])
         
         # clear target
         # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
