@@ -345,7 +345,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         # clear target
         # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
         # TODO: Should this be cleared if we don't own the target?
-        glClearColor(1,0,0,1) # DEBUG color
+        glClearColor(1,1,1,1)
         glClear(GL_COLOR_BUFFER_BIT)
 
         # transfer everything to the screen

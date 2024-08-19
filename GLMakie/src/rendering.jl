@@ -21,7 +21,7 @@ function render_frame(screen::Screen, glscenes::Vector{GLScene}, resize_buffers=
     # Clear global buffers (color composition, objectid)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
     glDrawBuffers(2, [fb[:composition][1], fb[:objectid][1]]) # TODO: avoid alloc?
-    glClearColor(0, 0, 0, 0)
+    glClearColor(0, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     
     # TODO: Does this require a lock to avoid changes to the glscenes array?

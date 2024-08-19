@@ -771,7 +771,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     @inbounds for i in eachindex(screen.framecache)
         c = RGBA{Float32}(screen.framecache[i])
         a = 1 - alpha(c)
-        inv_a = 1 / a
+        inv_a = ifelse(a == 0.0, 1, 1 / a)
         r = clamp(inv_a * red(c), 0.0, 1.0)
         g = clamp(inv_a * green(c), 0.0, 1.0)
         b = clamp(inv_a * blue(c), 0.0, 1.0)
