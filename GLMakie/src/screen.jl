@@ -177,7 +177,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     scene_tree::GLSceneTree
     postprocessors::Vector{PostProcessor}
 
-    framecache::Matrix{RGB{N0f8}}
+    framecache::Matrix{RGBA{N0f8}}
     render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
@@ -284,6 +284,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
         empty_postprocessor(),
         empty_postprocessor(),
         empty_postprocessor(),
+        compose_postprocessor(fb, shader_cache),
         to_screen_postprocessor(fb, shader_cache)
     ]
 
@@ -699,10 +700,18 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     return nothing
 end
 
-function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
+# function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
+#     GLAbstraction.bind(source)
+#     glPixelStorei(GL_PACK_ALIGNMENT, 1)
+#     glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
+#     GLAbstraction.bind(source, 0)
+#     return
+# end
+
+function fast_color_data!(dest::Array{RGBA{N0f8}, 2}, source::Texture{T, 2}) where T
     GLAbstraction.bind(source)
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
-    glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
+    glGetTexImage(source.texturetype, 0, GL_RGBA, GL_UNSIGNED_BYTE, dest)
     GLAbstraction.bind(source, 0)
     return
 end
@@ -740,7 +749,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     ShaderAbstractions.switch_context!(screen.glscreen)
-    ctex = screen.framebuffer.buffers[:color]
+    ctex = screen.framebuffer.buffers[:composition]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)
@@ -757,6 +766,18 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
     end
     fast_color_data!(screen.framecache, ctex)
+
+    # remap (a * rgb, 1-a) format to standard (rgb, a)
+    @inbounds for i in eachindex(screen.framecache)
+        c = RGBA{Float32}(screen.framecache[i])
+        a = 1 - alpha(c)
+        inv_a = 1 / a
+        r = clamp(inv_a * red(c), 0.0, 1.0)
+        g = clamp(inv_a * green(c), 0.0, 1.0)
+        b = clamp(inv_a * blue(c), 0.0, 1.0)
+        screen.framecache[i] = RGBA{N0f8}(r, g, b, a)
+    end
+
     if format == Makie.GLNative
         return screen.framecache
     elseif format == Makie.JuliaNative
@@ -764,20 +785,6 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         return PermutedDimsArray(view(img, :, size(img, 2):-1:1), (2, 1))
     end
 end
-
-# function Base.push!(screen::Screen, scene::Scene, robj)
-#     # filter out gc'ed elements
-#     filter!(screen.screen2scene) do (k, v)
-#         k.value !== nothing
-#     end
-#     screenid = get!(screen.screen2scene, WeakRef(scene)) do
-#         id = length(screen.screens) + 1
-#         push!(screen.screens, (id, scene))
-#         return id
-#     end
-#     push!(screen.renderlist, (0, screenid, robj))
-#     return robj
-# end
 
 Makie.to_native(x::Screen) = x.glscreen
 
@@ -805,6 +812,7 @@ function get_loading_image(resolution)
     return img
 end
 
+# TODO: This is not in the right alpha-format anymore
 function display_loading_image(screen::Screen)
     fb = screen.framebuffer
     fbsize = size(fb)
