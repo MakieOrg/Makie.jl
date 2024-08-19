@@ -382,6 +382,17 @@ end
         @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) ==
             (0.5:8.5, 0.5:8.5, zeros(8, 8))
     end
+    @testset "1 length arrays" begin
+        ranges = [((1, 1), (1, 3)) , ((1, 3), (1, 1)), ((1, 1), (1, 1))]
+        for (x, y) in ranges
+            data = zeros(x[2] - x[1] + 1, y[2] - y[1] + 1)
+            args = [(data,), (x, y, data), (x[1]..x[2], y[1]..y[2], data)]
+            res = ((x[1] - 0.5, x[2] + 0.5), (y[1] - 0.5, y[2] + 0.5), data)
+            for arg in args
+                @test convert_arguments(Heatmap, data) == res
+            end
+        end
+    end
 end
 
 @testset "Triplot" begin
