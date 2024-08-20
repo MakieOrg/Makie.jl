@@ -103,10 +103,13 @@ end
     filename = "$(tempname()).mp4"
     try
         tick_record = Makie.Tick[]
-        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+
+        start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
         dt = 1.0 / 30.0
 
-        for (i, tick) in enumerate(tick_record)
+        for (i, tick) in enumerate(tick_record[start:end])
             @test tick.state == Makie.OneTimeRenderTick
             @test tick.count == i-1
             @test tick.time ≈ dt * (i-1)

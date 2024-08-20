@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
 
 ## [0.21.7] - 2024-08-19
 
