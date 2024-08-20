@@ -4,6 +4,65 @@ struct Axis3Camera <: AbstractCamera end
 ################################################################################
 ## Interactions, TODO: move
 
+mutable struct Axis3Translation
+    speed::Float32
+
+    # maybe restrict direction
+    restrict_to_x::IsPressedType
+    restrict_to_y::IsPressedType
+    restrict_to_z::IsPressedType
+end
+
+function Axis3Translation(;
+        speed::Float32 = 1f0,
+        restrict_to_x = Keyboard.x, restrict_to_y = Keyboard.y, restrict_to_z = Keyboard.z
+    )
+
+    return Axis3Translation(speed, restrict_to_x, restrict_to_y, restrict_to_z)
+end
+
+
+function process_interaction(interaction::Axis3Translation, event::MouseEvent, ax::Axis3)
+    if event.type !== MouseEventTypes.rightdrag
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    ws = widths(tlimits[])
+    
+    scene_area = viewport(ax.scene)[]
+    relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
+
+    if relative_delta == Vec2d(0, 0)
+        return Consume(false)
+    end
+
+    # restrict to direction
+    x_translate = ispressed(ax, interaction.restrict_to_x)
+    y_translate = ispressed(ax, interaction.restrict_to_y)
+    z_translate = ispressed(ax, interaction.restrict_to_z)
+
+    if !(x_translate || y_translate || z_translate) # none restricted -> all active
+        xyz_translate = (true, true, true)
+    else
+        xyz_translate = (x_translate, y_translate, z_translate)
+    end
+
+    # Get u_x (screen right direction) and u_y (screen up direction)
+    u_z = ax.scene.camera.view_direction[]
+    u_y = ax.scene.camera.upvector[]
+    u_x = cross(u_z, u_y)
+
+    translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+
+    # Perform translation
+    tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+
+    return Consume(true)
+end
+
+
 mutable struct Axis3Zoom
     # listens to scroll + optionally
     modifier_key::IsPressedType
@@ -96,7 +155,7 @@ function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axi
     maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
     tlimits[] = Rect3f(mini, maxi - mini)
 
-    # NOTE this might be problematic if if we add scrolling to something like Menu
+    # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)
 end
 
@@ -288,6 +347,7 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :dragrotate, DragRotate())
     register_interaction!(ax, :limitreset, LimitReset())
     register_interaction!(ax, :scrollzoom, Axis3Zoom())
+    register_interaction!(ax, :dragpan, Axis3Translation())
 
     # in case the user set limits already
     notify(ax.limits)
