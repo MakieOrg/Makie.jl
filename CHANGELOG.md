@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added translation, zoom and limit reset interactions to Axis3 [4131](https://github.com/MakieOrg/Makie.jl/pull/4131)
 
 ## [0.21.7] - 2024-08-19
 
