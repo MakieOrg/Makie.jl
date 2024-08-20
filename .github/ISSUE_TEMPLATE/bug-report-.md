@@ -4,7 +4,6 @@ about: Report an error or incorrect behavior
 title: ''
 labels: bug
 assignees: ''
-
 ---
 
 - [ ] what version of Makie are you running? (`]st -m Makie`)
