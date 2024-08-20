@@ -1,4 +1,105 @@
-struct OrthographicCamera <: AbstractCamera end
+struct Axis3Camera <: AbstractCamera end
+
+
+################################################################################
+## Interactions, TODO: move
+
+mutable struct Axis3Zoom
+    # listens to scroll + optionally
+    modifier_key::IsPressedType
+
+    reference_point::Symbol
+    # :center - center of limits
+    # :offset - shoot ray from mouse, get intersection of center plane with ray
+    # :selection - pick plot
+
+    speed::Float32
+
+    # Axis language for this: x/yzoomkey (and/or x/yzoomlock)
+    # maybe restrict dimension
+    restrict_to_x::IsPressedType
+    restrict_to_y::IsPressedType
+    restrict_to_z::IsPressedType
+end
+
+function Axis3Zoom(; 
+        modifier_key = true, reference_point = :center, speed = 0.05f0, 
+        restrict_to_x = Keyboard.x, restrict_to_y = Keyboard.y, restrict_to_z = Keyboard.z
+    )
+    
+    return Axis3Zoom(
+        modifier_key, reference_point, speed,
+        restrict_to_x, restrict_to_y, restrict_to_z
+    )
+end
+
+function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axis3)
+    # use vertical zoom
+    zoom = event.y
+
+    if zoom == 0 || !ispressed(ax, interaction.modifier_key)
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    maxi = maximum(tlimits[])
+    center = 0.5 .* (mini .+ maxi)
+
+    # restrict to direction
+    x_zoom = ispressed(ax, interaction.restrict_to_x)
+    y_zoom = ispressed(ax, interaction.restrict_to_y)
+    z_zoom = ispressed(ax, interaction.restrict_to_z)
+
+    if !(x_zoom || y_zoom || z_zoom) # none restricted -> all active
+        xyz_zoom = (true, true, true)
+    else
+        xyz_zoom = (x_zoom, y_zoom, z_zoom)
+    end
+
+    # Compute target
+    mode = interaction.reference_point
+    target = Point3f(NaN)
+    model = ax.scene.transformation.model[]
+
+    # TODO: this doesn't really work...
+    # if mode == :selection
+    #     _, _, pos = ray_assisted_pick(ax.scene, apply_transform = false)
+    #     @info pos
+    #     if isfinite(pos)
+    #         target = pos
+    #     else
+    #         mode = :offset
+    #     end
+    # end
+
+    if mode == :offset
+        # shoot ray from cursor, find intersection with view plane centered in the Axis3
+        mp = mouseposition_px(ax)
+        ray = ray_from_projectionview(ax.scene, mp) # world space
+
+        world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
+        plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
+
+        target = ray_plane_intersection(plane, ray)
+    elseif mode == :center
+        target = center
+    # elseif mode == :selection && isfinite(target)
+    else
+        error("$(interaction.reference_point) is not a valid reference point for zooming. Should be :center, :selection or :offset.")
+    end
+
+    # Perform zoom
+    zoom_mult = (1f0 + interaction.speed)^zoom
+    target = to_ndim(Point3d, inv(model) * to_ndim(Point4d, target, 1), NaN) # back to limit space
+    mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+    maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+    tlimits[] = Rect3f(mini, maxi - mini)
+
+    # NOTE this might be problematic if if we add scrolling to something like Menu
+    return Consume(true)
+end
+################################################################################
 
 function initialize_block!(ax::Axis3)
 
@@ -16,7 +117,7 @@ function initialize_block!(ax::Axis3)
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
-    cam = OrthographicCamera()
+    cam = Axis3Camera()
     cameracontrols!(scene, cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
         mini = Point3f(model * to_ndim(Point4f, minimum(lims), 1))
@@ -144,20 +245,11 @@ function initialize_block!(ax::Axis3)
         reset_limits!(ax)
     end
 
-    zoom = Observable(1f0)
-    on(scene, events(scene).scroll, priority = 1) do (dx, dy)
-        zoom[] = zoom[] * 1.03f0^Float32(dy)
-    end
-
-    onany(scene, ax.targetlimits, zoom) do lims, zoom_mult
+    on(scene, ax.targetlimits) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
-        ws = widths(lims)
-        mini = minimum(lims)
-        center = mini .+ 0.5 * ws
-        ws = zoom_mult * ws
-        mini = center .- 0.5 * ws
-        ax.finallimits[] = Rect3f(mini, ws)
+        ax.finallimits[] = lims
+        return
     end
 
     function process_event(event)
@@ -174,10 +266,8 @@ function initialize_block!(ax::Axis3)
     on(process_event, scene, ax.scrollevents)
     on(process_event, scene, ax.keysevents)
 
-    register_interaction!(ax,
-        :dragrotate,
-        DragRotate())
-
+    register_interaction!(ax, :dragrotate, DragRotate())
+    register_interaction!(ax, :scrollzoom, Axis3Zoom())
 
     # in case the user set limits already
     notify(ax.limits)

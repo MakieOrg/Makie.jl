@@ -304,3 +304,5 @@ ispressed(e::Events, op::Exclusively, waspressed = nothing) = op.x == union(e.ke
 ispressed(parent, set::Set, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
 ispressed(parent, set::Vector, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
 ispressed(parent, set::Tuple, waspressed = nothing) = all(x -> ispressed(parent, x, waspressed), set)
+
+const IsPressedType = Union{Mouse.Button, Keyboard.Button, Bool, And, Or, Not, Exclusively, Set, Vector, Tuple}

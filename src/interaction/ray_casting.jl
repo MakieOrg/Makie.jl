@@ -207,6 +207,23 @@ function is_point_on_ray(p::Point3{T1}, ray::Ray{T2}) where {T1 <: Real, T2 <: R
 end
 
 
+function ray_plane_intersection(plane::Plane3{T1}, ray::Ray{T2}, epsilon = 1e-6) where {T1 <: Real, T2 <: Real}
+    # --- p ---   plane with normal (assumed normalized)
+    #     ↓   
+    #     :  distance d along plane normal direction
+    #   ↖ :
+    #     r       ray with direction (assumed normalized)
+
+    d = distance(plane, ray.origin) # signed distance
+    cos_angle = dot(-plane.normal, ray.direction)
+
+    if abs(cos_angle) > epsilon
+        return ray.origin + d / cos_angle * ray.direction
+    else
+        return Point3f(NaN)
+    end
+end
+
 ################################################################################
 ### Ray casting (positions from ray-plot intersections)
 ################################################################################
