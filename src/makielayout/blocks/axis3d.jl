@@ -99,6 +99,25 @@ function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axi
     # NOTE this might be problematic if if we add scrolling to something like Menu
     return Consume(true)
 end
+
+
+
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
+
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            else
+                reset_limits!(ax)
+            end
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
+end
+
 ################################################################################
 
 function initialize_block!(ax::Axis3)
@@ -267,6 +286,7 @@ function initialize_block!(ax::Axis3)
     on(process_event, scene, ax.keysevents)
 
     register_interaction!(ax, :dragrotate, DragRotate())
+    register_interaction!(ax, :limitreset, LimitReset())
     register_interaction!(ax, :scrollzoom, Axis3Zoom())
 
     # in case the user set limits already
