@@ -23,20 +23,13 @@ end
 
 
 function process_interaction(interaction::Axis3Translation, event::MouseEvent, ax::Axis3)
-    if event.type !== MouseEventTypes.rightdrag
+    if event.type !== MouseEventTypes.rightdrag || (event.px == event.prev_px)
         return Consume(false)
     end
 
     tlimits = ax.targetlimits
     mini = minimum(tlimits[])
     ws = widths(tlimits[])
-    
-    scene_area = viewport(ax.scene)[]
-    relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
-
-    if relative_delta == Vec2d(0, 0)
-        return Consume(false)
-    end
 
     # restrict to direction
     x_translate = ispressed(ax, interaction.restrict_to_x)
@@ -48,6 +41,11 @@ function process_interaction(interaction::Axis3Translation, event::MouseEvent, a
     else
         xyz_translate = (x_translate, y_translate, z_translate)
     end
+    
+    #=
+    # Faster but less acurate (dependent on aspect ratio)
+    scene_area = viewport(ax.scene)[]
+    relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
 
     # Get u_x (screen right direction) and u_y (screen up direction)
     u_z = ax.scene.camera.view_direction[]
@@ -55,6 +53,18 @@ function process_interaction(interaction::Axis3Translation, event::MouseEvent, a
     u_x = cross(u_z, u_y)
 
     translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+    =#
+
+    # Slower but more accurate
+    model = ax.scene.transformation.model[]
+    world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
+    # make plane_normal perpendicular to the allowed trnaslation directions
+    allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+    plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+    p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
+    p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
+    delta = p1 - p0
+    translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
 
     # Perform translation
     tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
