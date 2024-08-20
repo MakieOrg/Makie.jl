@@ -15,13 +15,10 @@ using DelimitedFiles
 airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
 fig, ax, ds = datashader(airports,
     colormap=[:white, :black],
-    # use type=Axis, so that Makie doesn't need to infer
-    # the axis type, which can be expensive for a large amount of points
-    axis = (; type=Axis),
     # for documentation output we shouldn't calculate the image async,
     # since it won't wait for the render to finish and inline a blank image
     async = false,
-    figure = (; figurepadding=0, size=(360*2, 160*2))
+    figure = (; figure_padding=0, size=(360*2, 160*2))
 )
 Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)
@@ -73,7 +70,7 @@ let
         ax, plot = datashader(fig[r, c], points;
             colormap=cmap,
             async=false,
-            axis=(; type=Axis, title=join(string.(arg), ", ")))
+            axis=(; title=join(string.(arg), ", ")))
         hidedecorations!(ax)
         hidespines!(ax)
     end
