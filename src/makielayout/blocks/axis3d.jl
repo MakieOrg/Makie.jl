@@ -235,10 +235,23 @@ function initialize_block!(ax::Axis3)
     ax.scene = scene
     cam = Axis3Camera()
     cameracontrols!(scene, cam)
-    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
+    scene.theme.clip_planes = map(
+            scene, scene.transformation.model, ax.finallimits,
+            ax.xreversed, ax.yreversed, ax.zreversed
+            ) do model, lims, xrev, yrev, zrev
         mini = Point3f(model * to_ndim(Point4f, minimum(lims), 1))
         maxi = Point3f(model * to_ndim(Point4f, maximum(lims), 1))
-        return planes(Rect3f(mini, maxi .- mini))
+        x = ifelse(xrev, -1f0, 1f0)
+        y = ifelse(yrev, -1f0, 1f0)
+        z = ifelse(zrev, -1f0, 1f0)
+        return [
+            Plane3f(Vec3f( x,  0,  0),  x * mini[1]),
+            Plane3f(Vec3f( 0,  y,  0),  y * mini[2]),
+            Plane3f(Vec3f( 0,  0,  z),  z * mini[3]),
+            Plane3f(Vec3f(-x,  0,  0), -x * maxi[1]),
+            Plane3f(Vec3f( 0, -y,  0), -y * maxi[2]),
+            Plane3f(Vec3f( 0,  0, -z), -z * maxi[3])
+        ]
     end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
