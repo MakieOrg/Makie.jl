@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(::LimitReset, event::MouseEvent, ax::Union{Axis, Axis3})
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -226,6 +226,7 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     return Consume(false)
 end
+
 
 function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     # use vertical zoom
@@ -363,5 +364,124 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
     ax3d.azimuth[] += -dpx[1] * 0.01
     ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
 
+    return Consume(true)
+end
+
+
+function process_interaction(interaction::Axis3Translation, event::MouseEvent, ax::Axis3)
+    if event.type !== MouseEventTypes.rightdrag || (event.px == event.prev_px)
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    ws = widths(tlimits[])
+
+    # restrict to direction
+    x_translate = ispressed(ax, interaction.restrict_to_x)
+    y_translate = ispressed(ax, interaction.restrict_to_y)
+    z_translate = ispressed(ax, interaction.restrict_to_z)
+
+    if !(x_translate || y_translate || z_translate) # none restricted -> all active
+        xyz_translate = (true, true, true)
+    else
+        xyz_translate = (x_translate, y_translate, z_translate)
+    end
+    
+    #=
+    # Faster but less acurate (dependent on aspect ratio)
+    scene_area = viewport(ax.scene)[]
+    relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
+
+    # Get u_x (screen right direction) and u_y (screen up direction)
+    u_z = ax.scene.camera.view_direction[]
+    u_y = ax.scene.camera.upvector[]
+    u_x = cross(u_z, u_y)
+
+    translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+    =#
+
+    # Slower but more accurate
+    model = ax.scene.transformation.model[]
+    world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
+    # make plane_normal perpendicular to the allowed trnaslation directions
+    allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+    plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+    p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
+    p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
+    delta = p1 - p0
+    translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+
+    # Perform translation
+    tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+
+    return Consume(true)
+end
+
+
+function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axis3)
+    # use vertical zoom
+    zoom = event.y
+
+    if zoom == 0 || !ispressed(ax, interaction.modifier_key)
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    maxi = maximum(tlimits[])
+    center = 0.5 .* (mini .+ maxi)
+
+    # restrict to direction
+    x_zoom = ispressed(ax, interaction.restrict_to_x)
+    y_zoom = ispressed(ax, interaction.restrict_to_y)
+    z_zoom = ispressed(ax, interaction.restrict_to_z)
+
+    if !(x_zoom || y_zoom || z_zoom) # none restricted -> all active
+        xyz_zoom = (true, true, true)
+    else
+        xyz_zoom = (x_zoom, y_zoom, z_zoom)
+    end
+
+    # Compute target
+    mode = interaction.mode
+    target = Point3f(NaN)
+    model = ax.scene.transformation.model[]
+
+    # TODO: this doesn't really work...
+    # if mode == :selection
+    #     _, _, pos = ray_assisted_pick(ax.scene, apply_transform = false)
+    #     @info pos
+    #     if isfinite(pos)
+    #         target = pos
+    #     else
+    #         mode = :cursor
+    #     end
+    # end
+
+    if mode == :cursor
+        # shoot ray from cursor, find intersection with view plane centered in the Axis3
+        mp = mouseposition_px(ax)
+        ray = ray_from_projectionview(ax.scene, mp) # world space
+
+        world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
+        plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
+
+        target = ray_plane_intersection(plane, ray)
+    elseif mode == :center
+        target = center
+    # elseif mode == :selection && isfinite(target)
+    else
+        error("$(interaction.mode) is not a valid mode for zooming. Should be :center or :cursor.")
+    end
+
+    # Perform zoom
+    zoom_mult = (1f0 + interaction.speed)^zoom
+    target = to_ndim(Point3d, inv(model) * to_ndim(Point4d, target, 1), NaN) # back to limit space
+    mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+    maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+    tlimits[] = Rect3f(mini, maxi - mini)
+
+    # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)
 end
