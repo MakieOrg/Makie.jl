@@ -477,7 +477,7 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     # Perform zoom
     zoom_mult = (1f0 + interaction.speed)^zoom
-    target = to_ndim(Point3d, inv(model) * to_ndim(Point4d, target, 1), NaN) # back to limit space
+    # target = to_ndim(Point3d, inv(model) * to_ndim(Point4d, target, 1), NaN) # back to limit space
     mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
     maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
     tlimits[] = Rect3f(mini, maxi - mini)
