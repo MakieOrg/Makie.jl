@@ -478,7 +478,7 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     end
 
     # Perform zoom
-    zoom_mult = (1f0 + interaction.speed)^zoom
+    zoom_mult = (1f0 - interaction.speed)^zoom
     mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
     maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
     tlimits[] = Rect3f(mini, maxi - mini)
