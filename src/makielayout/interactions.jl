@@ -449,35 +449,47 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     model = ax.scene.transformation.model[]
 
     # TODO: this doesn't really work...
-    # if mode == :selection
-    #     _, _, pos = ray_assisted_pick(ax.scene, apply_transform = false)
-    #     @info pos
-    #     if isfinite(pos)
-    #         target = pos
-    #     else
-    #         mode = :cursor
-    #     end
-    # end
+    if mode == :selection
+        _, _, pos = ray_assisted_pick(ax.scene, apply_transform = false)
+        @info pos
+        if isfinite(pos)
+            target = pos
+        else
+            mode = :cursor
+        end
+    end
 
     if mode == :cursor
-        # shoot ray from cursor, find intersection with view plane centered in the Axis3
+        # try to find position of plot object under cursor
         mp = mouseposition_px(ax)
         ray = ray_from_projectionview(ax.scene, mp) # world space
+        pos = Point3f(NaN)
+        plot, idx = pick(ax.scene)
+        if plot !== nothing
+            n = findfirst(==(plot), ax.scene.plots)
+            if !isnothing(n) && (n > 9) # user plot
+                pos = position_on_plot(plot, idx, ray, apply_transform = true) 
+                # ^ applying transform also applies model transform so we stay in world space for this
+            end
+        end
 
-        world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
-        plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
-
-        target = ray_plane_intersection(plane, ray)
+        if !isfinite(pos)
+            # fall back on using intersection between view ray and center view plane
+            # (meaning plane parallel to screen, going through center of Axis3 limits)
+            world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
+            plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
+            pos = ray_plane_intersection(plane, ray) # world space
+        end
+        # axis space, i.e. pre ax.scene.transformation.model applies, same as targetlimits space
+        target = to_ndim(Point3f, inv(model) * to_ndim(Point4f, pos, 1), NaN)
     elseif mode == :center
-        target = center
-    # elseif mode == :selection && isfinite(target)
+        target = center # axis space
     else
         error("$(ax.zoommode[]) is not a valid mode for zooming. Should be :center or :cursor.")
     end
 
     # Perform zoom
     zoom_mult = (1f0 + interaction.speed)^zoom
-    # target = to_ndim(Point3d, inv(model) * to_ndim(Point4d, target, 1), NaN) # back to limit space
     mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
     maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
     tlimits[] = Rect3f(mini, maxi - mini)
