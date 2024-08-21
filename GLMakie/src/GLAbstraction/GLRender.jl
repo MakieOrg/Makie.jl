@@ -10,7 +10,7 @@ function setup_clip_planes(robj)
     for i in 0:min(7, N-1)
         glEnable(GL_CLIP_DISTANCE0 + UInt32(i))
     end
-    for i in Max(0, N):7
+    for i in max(0, N):7
         glDisable(GL_CLIP_DISTANCE0 + UInt32(i))
     end
 end
