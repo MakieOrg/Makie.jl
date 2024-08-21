@@ -448,17 +448,6 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     target = Point3f(NaN)
     model = ax.scene.transformation.model[]
 
-    # TODO: this doesn't really work...
-    if mode == :selection
-        _, _, pos = ray_assisted_pick(ax.scene, apply_transform = false)
-        @info pos
-        if isfinite(pos)
-            target = pos
-        else
-            mode = :cursor
-        end
-    end
-
     if mode == :cursor
         # try to find position of plot object under cursor
         mp = mouseposition_px(ax)
