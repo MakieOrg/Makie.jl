@@ -354,7 +354,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 end
 
 
-function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
+function process_interaction(dr::DragRotate, event::MouseEvent, ax3d::Axis3)
     if event.type !== MouseEventTypes.leftdrag
         return Consume(false)
     end
@@ -368,7 +368,7 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
 end
 
 
-function process_interaction(interaction::Axis3Translation, event::MouseEvent, ax::Axis3)
+function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     if event.type !== MouseEventTypes.rightdrag || (event.px == event.prev_px)
         return Consume(false)
     end
@@ -378,9 +378,9 @@ function process_interaction(interaction::Axis3Translation, event::MouseEvent, a
     ws = widths(tlimits[])
 
     # restrict to direction
-    x_translate = ispressed(ax, interaction.restrict_to_x)
-    y_translate = ispressed(ax, interaction.restrict_to_y)
-    z_translate = ispressed(ax, interaction.restrict_to_z)
+    x_translate = !(ax.xtranslationlock[]) && ispressed(ax, ax.xtranslationkey[])
+    y_translate = !(ax.ytranslationlock[]) && ispressed(ax, ax.ytranslationkey[])
+    z_translate = !(ax.ztranslationlock[]) && ispressed(ax, ax.ztranslationkey[])
 
     if !(x_translate || y_translate || z_translate) # none restricted -> all active
         xyz_translate = (true, true, true)
@@ -419,11 +419,11 @@ function process_interaction(interaction::Axis3Translation, event::MouseEvent, a
 end
 
 
-function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axis3)
+function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Axis3)
     # use vertical zoom
     zoom = event.y
 
-    if zoom == 0 || !ispressed(ax, interaction.modifier_key)
+    if zoom == 0
         return Consume(false)
     end
 
@@ -433,9 +433,9 @@ function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axi
     center = 0.5 .* (mini .+ maxi)
 
     # restrict to direction
-    x_zoom = ispressed(ax, interaction.restrict_to_x)
-    y_zoom = ispressed(ax, interaction.restrict_to_y)
-    z_zoom = ispressed(ax, interaction.restrict_to_z)
+    x_zoom = !(ax.xzoomlock[]) && ispressed(ax, ax.xzoomkey[])
+    y_zoom = !(ax.yzoomlock[]) && ispressed(ax, ax.yzoomkey[])
+    z_zoom = !(ax.zzoomlock[]) && ispressed(ax, ax.zzoomkey[])
 
     if !(x_zoom || y_zoom || z_zoom) # none restricted -> all active
         xyz_zoom = (true, true, true)
@@ -444,7 +444,7 @@ function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axi
     end
 
     # Compute target
-    mode = interaction.mode
+    mode = ax.zoommode[]
     target = Point3f(NaN)
     model = ax.scene.transformation.model[]
 
@@ -472,7 +472,7 @@ function process_interaction(interaction::Axis3Zoom, event::ScrollEvent, ax::Axi
         target = center
     # elseif mode == :selection && isfinite(target)
     else
-        error("$(interaction.mode) is not a valid mode for zooming. Should be :center or :cursor.")
+        error("$(ax.zoommode[]) is not a valid mode for zooming. Should be :center or :cursor.")
     end
 
     # Perform zoom

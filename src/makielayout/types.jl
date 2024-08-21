@@ -187,80 +187,6 @@ end
 struct DragRotate
 end
 
-"""
-    Axis3Translation(; kwargs...)
-
-Creates an Axis Interaction for translating an Axis3.
-
-## Kwargs:
-- `speed::Float32 = 1f0` controls the translation speed with 1 being a 1:1 mapping of cursor movement to limits movement.
-- `restrict_to_x::IsPressedType = Keyboard.x` sets an `ispressed` compatible hotkey for restricting translations to the Axis-x direction.
-- `restrict_to_y::IsPressedType = Keyboard.y` sets an `ispressed` compatible hotkey for restricting translations to the Axis-y direction.
-- `restrict_to_z::IsPressedType = Keyboard.z` sets an `ispressed` compatible hotkey for restricting translations to the Axis-z direction.
-
-Directional restrictions can be disabled by setting all to `true` or `false`. 
-Partial restrictions (e.g. only xy translation) can be achieved by setting the
-disabled direction(s) to `false` and the other(s) to `true`.
-"""
-mutable struct Axis3Translation
-    speed::Float32
-
-    # maybe restrict direction
-    restrict_to_x::IsPressedType
-    restrict_to_y::IsPressedType
-    restrict_to_z::IsPressedType
-end
-
-function Axis3Translation(;
-        speed::Float32 = 1f0,
-        restrict_to_x = Keyboard.x, restrict_to_y = Keyboard.y, restrict_to_z = Keyboard.z
-    )
-
-    return Axis3Translation(speed, restrict_to_x, restrict_to_y, restrict_to_z)
-end
-
-"""
-    Axis3Zoom(; kwargs...)
-
-Creates an Axis Interaction for zooming an Axis3 by scrolling.
-
-## Kwargs:
-- `speed::Float32 = 0.05f0` controls the zoom speed.
-- `mode::Symbol = :center` controls whether zoom is centered on the scene (:center) or approximately on the cursor (:cursor)
-- `modifier_key::IsPressedType = true` sets an additional key which needs to be pressed to allow zooming. Setting this to `true` disables the key.
-- `restrict_to_x::IsPressedType = Keyboard.x` sets an `ispressed` compatible hotkey for restricting zoom to the Axis-x direction.
-- `restrict_to_y::IsPressedType = Keyboard.y` sets an `ispressed` compatible hotkey for restricting zoom to the Axis-y direction.
-- `restrict_to_z::IsPressedType = Keyboard.z` sets an `ispressed` compatible hotkey for restricting zoom to the Axis-z direction.
-
-Directional restrictions can be disabled by setting all to `true` or `false`. 
-Partial restrictions (e.g. only xy translation) can be achieved by setting the
-disabled direction(s) to `false` and the other(s) to `true`.
-"""
-mutable struct Axis3Zoom
-    # listens to scroll + optionally
-    modifier_key::IsPressedType
-
-    mode::Symbol
-    speed::Float32
-
-    # Axis language for this: x/yzoomkey (and/or x/yzoomlock)
-    # maybe restrict dimension
-    restrict_to_x::IsPressedType
-    restrict_to_y::IsPressedType
-    restrict_to_z::IsPressedType
-end
-
-function Axis3Zoom(; 
-        modifier_key = true, mode = :center, speed = 0.05f0, 
-        restrict_to_x = Keyboard.x, restrict_to_y = Keyboard.y, restrict_to_z = Keyboard.z
-    )
-    
-    return Axis3Zoom(
-        modifier_key, mode, speed,
-        restrict_to_x, restrict_to_y, restrict_to_z
-    )
-end
-
 struct ScrollEvent
     x::Float32
     y::Float32
@@ -1856,6 +1782,37 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+
+        # Interaction
+        "Locks interactive zooming in the x direction."
+        xzoomlock::Bool = false
+        "Locks interactive zooming in the y direction."
+        yzoomlock::Bool = false
+        "Locks interactive zooming in the z direction."
+        zzoomlock::Bool = false
+        "The key for limiting zooming to the x direction."
+        xzoomkey::IsPressedInputType = Keyboard.x
+        "The key for limiting zooming to the y direction."
+        yzoomkey::IsPressedInputType = Keyboard.y
+        "The key for limiting zooming to the z direction."
+        zzoomkey::IsPressedInputType = Keyboard.z
+        "Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor` for zooming centered approximately where the cursor is."
+        zoommode::Symbol = :center
+
+        "Locks interactive translation in the x direction."
+        xtranslationlock::Bool = false
+        "Locks interactive translation in the y direction."
+        ytranslationlock::Bool = false
+        "Locks interactive translation in the z direction."
+        ztranslationlock::Bool = false
+        "The key for limiting translation to the x direction."
+        xtranslationkey::IsPressedInputType = Keyboard.x
+        "The key for limiting translations to the y direction."
+        ytranslationkey::IsPressedInputType = Keyboard.y
+        "The key for limiting translations to the y direction."
+        ztranslationkey::IsPressedInputType = Keyboard.z
+
+
     end
 end
 

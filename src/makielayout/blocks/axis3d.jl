@@ -180,8 +180,8 @@ function initialize_block!(ax::Axis3)
 
     register_interaction!(ax, :dragrotate, DragRotate())
     register_interaction!(ax, :limitreset, LimitReset())
-    register_interaction!(ax, :scrollzoom, Axis3Zoom())
-    register_interaction!(ax, :dragpan, Axis3Translation())
+    register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
+    register_interaction!(ax, :translation, DragPan(NaN))
 
     # in case the user set limits already
     notify(ax.limits)
