@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
+- Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
 
 ## [0.21.7] - 2024-08-19
 
