@@ -6,6 +6,7 @@
 * The easier a PR is to review, the easier we can merge it:
     * The more tests you add, the easier it is to see that your change works
     * The clearer the problem being solved the easier.
+* Allowing write access on the PR makes things more convenient, since we can make edits to the PR directly and update it if it gets out of sync with `master`.
 -->
 # Description
 
