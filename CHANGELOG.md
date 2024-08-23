@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Apply px per unit in `pick_closest`/`pick_sorted` [#4137]https://github.com/MakieOrg/Makie.jl/pull/4137
+- Apply px per unit in `pick_closest`/`pick_sorted` [#4137](https://github.com/MakieOrg/Makie.jl/pull/4137).
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
 - Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
 
