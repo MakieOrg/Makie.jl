@@ -189,7 +189,7 @@ In GLMakie, the default behavior is different. Because GLMakie doesn't just prod
 Academic journals usually demand that figures you submit adhere to specific physical dimensions.
 How can you render Makie figures at exactly the right sizes?
 
-First, let's look at vector graphics, which are usually desired for documents because they have the best text and line rendering quality at any zoom level. The output unit of vector graphics is always `pt` in CairoMakie. You can convert to points from inches via `1 in == 72 pt` and from centimeters via `1 cm = 28,3465 pt`.
+First, let's look at vector graphics, which are usually desired for documents because they have the best text and line rendering quality at any zoom level. The output unit of vector graphics is always `pt` in CairoMakie. You can convert to points from inches via `1 in == 72 pt` and from centimeters via `1 cm = 28.3465 pt`.
 
 Let's say your desired output size is 5 x 4 inches and you should use a font size of 12 pt. You multiply 5 x 4 by 72 to get 360 x 288 pt. The size you need to set on your `Figure` depends on the `pt_per_unit` value you want to use. When making plots for publications, you should usually just save with `pt_per_unit = 1`. So in our example, we would use `Figure(size = (360, 288))` and for text set `fontsize = 12` to match the 12 pt requirement.
 
