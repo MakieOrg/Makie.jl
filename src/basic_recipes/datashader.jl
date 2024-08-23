@@ -288,8 +288,9 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 """
 @recipe DataShader (points,) begin
     """
-    Can be `AggCount()`, `AggAny()` or `AggMean()`. User-extensible by overloading:
-
+    Can be `AggCount()`, `AggAny()` or `AggMean()`.
+    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accomodate the output of `local_operation`.
+    User-extensible by overloading:
     ```julia
     struct MyAgg{T} <: Makie.AggOp end
     MyAgg() = MyAgg{Float64}()
@@ -299,7 +300,7 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
     ```
     """
-    agg = AggCount()
+    agg = AggCount{Float32}()
     """
     Can be `AggThreads()` or `AggSerial()` for threaded vs. serial aggregation.
     """
