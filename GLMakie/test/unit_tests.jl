@@ -342,7 +342,7 @@ end
     @test points == Set(((N+1)÷2):N)
     # - pick sorted
     xy_px = project_sp(ax.scene, Point2f(x[1], y[1]))
-    picks = pick_sorted(ax.scene, screen, xy_px, 50)
+    picks = GLMakie.Makie.pick_sorted(ax.scene, screen, xy_px, 50)
     points = [i for (p, i) in picks if p == pl]
     @test points == [1, 2, 3]
 
