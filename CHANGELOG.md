@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+- Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
+- Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
+
+## [0.21.7] - 2024-08-19
+
+- Hot fix for 1D heatmap [#4147](https://github.com/MakieOrg/Makie.jl/pull/4147).
+
 ## [0.21.6] - 2024-08-14
 
 - Fix RectangleZoom in WGLMakie [#4127](https://github.com/MakieOrg/Makie.jl/pull/4127)
@@ -561,7 +568,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...HEAD
+[0.21.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...v0.21.7
 [0.21.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...v0.21.6
 [0.21.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...v0.21.5
 [0.21.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.3...v0.21.4
