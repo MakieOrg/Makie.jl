@@ -105,7 +105,7 @@ end
 
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-    isopen(screen) || return (nothing, 0)
+    isopen(screen) || return Tuple{AbstractPlot, Int}[]
     w, h = size(screen.root_scene) # unitless dimensions
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
