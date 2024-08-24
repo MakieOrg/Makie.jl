@@ -81,10 +81,10 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     buff = fb.buffers[:objectid]
-    picks = zeros(SelectionID{UInt32}, dx, dy)
-    glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, picks)
+    sids = zeros(SelectionID{UInt32}, dx, dy)
+    glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sids)
 
-    min_dist = range^2
+    min_dist = (ppu * range)^2
     id = SelectionID{Int}(0, 0)
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
@@ -126,7 +126,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, picks)
 
     selected = filter(x -> x.id > 0 && haskey(screen.cache2plot, x.id), unique(vec(picks)))
-    distances = Float32[range^2 for _ in selected]
+    distances = Float32[floatmax(Float32) for _ in selected]
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         if picks[i, j].id > 0
