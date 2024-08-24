@@ -23258,7 +23258,7 @@ function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
-    let min_dist = Math.pow(px_per_unit * range, 2);
+    let min_dist = 1e30;
     let selection = [
         null,
         0
