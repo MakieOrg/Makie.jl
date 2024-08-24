@@ -3,7 +3,8 @@
 #   unless they apply float32convert themselves (e.g. convert to pixel space)
 
 using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
-    f32_convert_matrix, patch_model, transformationmatrix
+    f32_convert_matrix, patch_model, apply_transform_and_f32_conversion
+using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
 @testset "float32convert" begin
     f32c = Float32Convert()
@@ -20,7 +21,7 @@ using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
         @test f32c.resolution == 1f4 # this may be subject to change
     end
 
-    @testset "Modificaiton" begin
+    @testset "Modification" begin
         # no update necessary
         @test !update_limits!(f32c, Rect(-1, -1, 2, 2))
         @test f32c.scaling[] == unit_scaling
@@ -83,19 +84,250 @@ using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
         # TODO: test the rest
     end
 
-    @testset "model patching" begin
-        @assert f32c.scaling[] != unit_scaling "model patching tests invalid"
-        f32m = f32_convert_matrix(f32c, :data)
+    @testset "patch_model() and apply_transform_and_f32_conversion()" begin
+        let
+            # COV_EXCL_START
+            scene = Scene()
+            p = scatter!(scene, rand(10))
+            # COV_EXCL_STOP
 
-        translation = transformationmatrix(rand(Vec3d), Vec3d(1))
-        @test Mat4f(f32m * translation) ≈ Mat4f(patch_model(f32c.scaling[], translation) * f32m)
+            a, b = patch_model(p)
+            c, d = patch_model(plot, scene.float32convert, p.model)
+            @test a[] == c[]
+            @test b[] == d[]
+        end
 
-        scaling = transformationmatrix(Vec3d(0), rand(Vec3d))
-        @test Mat4f(f32m * scaling) ≈ Mat4f(patch_model(f32c.scaling[], scaling) * f32m)
+        function apply_random_transform!(plot, s, t, rotate = true)
+            v1 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
+            v2 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
+            rot = Makie.rotation_between(v1, v2)
+            trans = t .* (2.0 .* rand(Vec3{Float64}) .- 1.0)
+            scale = s .* (2.0 .* rand(Vec3{Float64}) .- 1.0)
 
-        # This causes the model/rotation matrix to require higher precision
-        # because it mixes the vastly different scaling from float32convert
-        # rotation = transformationmatrix(Vec3d(0), Vec3d(1), qrotation(2 * rand(Vec3d) .- 1, 2pi * rand(Float64)))
-        # @test f32m * rotation ≈ patch_model(f32c.scaling[], rotation) * f32m
+            rotate && Makie.rotate!(plot, rot)
+            Makie.scale!(plot, scale)
+            Makie.translate!(plot, trans)
+            
+            return
+        end
+
+        function is_f32_safe(t)
+            return abs.(t.scale[]) .> 1e4 * eps(Float32) .* abs.(t.translation[])
+        end
+
+        # With no conversion model should not change
+        @testset "no Float32Convert" begin
+            # COV_EXCL_START
+            scene = Scene()
+            scene.float32convert = nothing
+            p = scatter!(scene, rand(10))
+            Makie.update_state_before_display!(scene)
+            # COV_EXCL_STOP
+
+            # safe model
+            apply_random_transform!(p, 10.0, 10.0)
+            f32c, model = patch_model(p)
+            @test f32c[] === nothing
+            @test model[] == Mat4f(p.model[])
+            @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+
+            # unsafe model
+            apply_random_transform!(p, 1e50, 1e50)
+            f32c, model = patch_model(p)
+            @test f32c[] === nothing
+            @test model[] == Mat4f(p.model[])
+            @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+        end
+
+
+        @testset "Safe data, safe model" begin
+            for _ in 1:10
+                # COV_EXCL_START
+                f, a, p = scatter(rand(10))
+                apply_random_transform!(p, 100.0, 100.0)
+                # since we choose a random scale and translation we can get a 
+                # scale that is not Float32 compatible with the translation
+                # (i.e. a abs(scale) ⪅ eps(translation))
+                # this is effectively an explicit Makie.is_float_safe(scale, translation)
+                while !all(is_f32_safe(p.transformation))
+                    apply_random_transform!(p, 100.0, 100.0)
+                end
+                Makie.update_state_before_display!(f)
+                # COV_EXCL_STOP
+
+                # Verify State
+                @test a.scene.float32convert.scaling[] == Makie.LinearScaling(Vec3d(1), Vec3d(0))
+                @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[])
+
+                f32c, model = patch_model(p)
+                @test f32c[] === a.scene.float32convert.scaling[]
+                @test model[] == Mat4f(p.model[])
+                @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+            end
+        end
+
+
+        # Note that we just increase precision from Float32 to Float64 so if 
+        # these values are too large we'll see Float64 precision issues here
+        for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
+            data_info = data_scale == 10.0 ? "safe" : "unsafe"
+            model_info = model_scale == 10.0 ? "safe" : "unsafe"
+            @testset "$data_info data + $model_info rotation-free model" begin
+                for _ in 1:10
+                    # Prepare example
+                    # COV_EXCL_START
+                    f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
+                    apply_random_transform!(p, 10.0, model_scale, false)
+                    if model_scale != 10.0
+                        while any(is_f32_safe(p.transformation))
+                            apply_random_transform!(p, 10.0, model_scale, false)
+                        end
+                    else
+                        while !all(is_f32_safe(p.transformation))
+                            apply_random_transform!(p, 10.0, model_scale, false)
+                        end
+                    end
+                    Makie.update_state_before_display!(f)
+                    # COV_EXCL_STOP
+
+                    # Verify State
+                    r1 = @test a.scene.float32convert.scaling[] != Makie.LinearScaling(Vec3d(1), Vec3d(0))
+                    safe_model = model_scale == 10.0
+                    r2 = @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[]) == safe_model
+
+                    # compute expected f32c convert and transformed data
+                    # (should follow is_rot_free branches)
+                    scale = p.transformation.scale[]
+                    trans = p.transformation.translation[]
+                    input_f32c = a.scene.float32convert.scaling[]
+                    transformed = let
+                        ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                        f32_convert(input_f32c, ps)
+                    end
+                    f32c, model = patch_model(p)
+
+                    if safe_model
+                        r3 = @test f32c[].scale == input_f32c.scale
+                        r4 = @test f32c[].offset ≈ ((input_f32c.scale .- 1) .* trans .+ input_f32c.offset) ./ scale
+                        r5 = @test model[] == Mat4f(p.model[])
+
+                        ps = apply_transform_and_f32_conversion(p, f32c, p.converted[1])[]
+                        ps = [to_ndim(Point3f, model[] * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1), NaN) for p in ps]
+                        r6 = @test ps ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
+                    else
+                        r3 = @test f32c[].scale ≈ scale * input_f32c.scale
+                        r4 = @test f32c[].offset ≈ input_f32c.scale * trans + input_f32c.offset
+                        r5 = @test model[] == Mat4f(I)
+                        r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
+                    end
+
+                    # For debugging
+                    if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5, r6))
+                        println("scale = $scale")
+                        println("translation = $trans")
+                        println("data = $(p.converted[1][])")
+                        println("input_f32c = $(input_f32c)")
+                        println("f32c = $(f32c[])")
+                        println("model = $(p.model[])")
+                        println("transformed = $transformed")
+                    end
+                end
+            end
+        end
+
+
+        # Note that we just increase precision from Float32 to Float64 so if 
+        # these values are too large we'll see Float64 precision issues here
+        for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
+            data_info = data_scale == 10.0 ? "safe" : "unsafe"
+            model_info = model_scale == 10.0 ? "safe" : "unsafe"
+            @testset "$data_info data + $model_info rotation model" begin
+                for _ in 1:10
+                    # Prepare example
+                    # COV_EXCL_START
+                    f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
+                    apply_random_transform!(p, 10.0, model_scale, true)
+                    if model_scale != 10.0
+                        while any(is_f32_safe(p.transformation))
+                            apply_random_transform!(p, 10.0, model_scale, true)
+                        end
+                    else
+                        while !all(is_f32_safe(p.transformation))
+                            apply_random_transform!(p, 10.0, model_scale, true)
+                        end
+                    end
+                    Makie.update_state_before_display!(f)
+                    # COV_EXCL_STOP
+
+                    # Verify State
+                    r1 = @test a.scene.float32convert.scaling[] != Makie.LinearScaling(Vec3d(1), Vec3d(0))
+                    r2 = @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[]) == (model_scale == 10.0)
+
+                    # compute expected f32c convert and transformed data
+                    # (should follow else branches)
+                    scale = p.transformation.scale[]
+                    trans = p.transformation.translation[]
+                    input_f32c = a.scene.float32convert.scaling[]
+                    transformed = let
+                        ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                        f32_convert(input_f32c, ps)
+                    end
+
+                    f32c, model = patch_model(p)
+                    r3 = @test f32c[] == input_f32c
+                    r4 = @test model[] == Mat4f(I)
+                    r5 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+
+                    # For debugging
+                    if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5))
+                        println("scale = $scale")
+                        println("translation = $trans")
+                        println("data = $(p.converted[1][])")
+                        println("input_f32c = $(input_f32c)")
+                        println("f32c = $(f32c[])")
+                        println("model = $(p.model[])")
+                    end
+                end
+            end
+        end
+
+
+        @testset "edge case - unsafe data and model with safe world space" begin
+            for _ in 1:10
+                # Prepare example
+                # COV_EXCL_START
+                scale = rand(Vec2d) .+ 1.0
+                trans = 1e9 .* rand(Vec2d) .- 1
+                f, a, p = scatter([scale .* (rand(Point2d) .+ trans) for _ in 1:10])
+                scale!(p, (1.0 ./ scale)..., 1.0)
+                translate!(p, -trans..., 0.0)
+                Makie.update_state_before_display!(f)
+                # COV_EXCL_STOP
+
+                # Verify State
+                @test a.scene.float32convert.scaling[] == Makie.LinearScaling(Vec3d(1), Vec3d(0))
+                @test !Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[])
+
+                # compute expected f32c convert and transformed data
+                # (should follow else branches)
+                scale = p.transformation.scale[]
+                trans = p.transformation.translation[]
+                input_f32c = a.scene.float32convert.scaling[]
+                expected_f32c =  Makie.LinearScaling(
+                    scale * input_f32c.scale, input_f32c.scale * trans + input_f32c.offset
+                )
+                transformed = let
+                    ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                    f32_convert(input_f32c, ps)
+                end
+
+                f32c, model = patch_model(p)
+                @test f32c[].scale ≈ expected_f32c.scale
+                @test f32c[].offset ≈ expected_f32c.offset
+                @test model[] == Mat4f(I)
+                @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+            end
+        end
     end
+
 end

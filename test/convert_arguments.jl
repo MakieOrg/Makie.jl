@@ -4,9 +4,10 @@ using Makie:
     conversion_trait,
     convert_single_argument,
              PointBased,
-    ClosedInterval
+    EndPoints
 using Logging
 using Makie.SparseArrays
+using GeometryBasics
 
 function apply_conversion(trait, args...)
     return Makie.convert_arguments(trait, args...)
@@ -253,13 +254,15 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 for CT in (CellGrid(), Heatmap)
                     @testset "$CT" begin
-                        @test apply_conversion(CT, m)          isa Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}
+                        @test apply_conversion(CT, m) isa
+                              Tuple{EndPoints{Float32},EndPoints{Float32},Matrix{Float32}}
 
                         @test apply_conversion(CT, xs, ys, m)  isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xs, r, m)   isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, r, ys, +)   isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, i, r, m)    isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, i, m)    isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, i, m) isa
+                              Tuple{EndPoints{T_out},EndPoints{T_out},Matrix{Float32}}
                         @test apply_conversion(CT, r, i, m)    isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
@@ -293,17 +296,17 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 for CT in (ImageLike(), Image)
                     @testset "$CT" begin
-                        @test apply_conversion(CT, img)        isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, Matrix{RGBf}}
-                        @test apply_conversion(CT, m)          isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, i, m)    isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, img)        isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{RGBf}}
+                        @test apply_conversion(CT, m)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, i, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
 
                         # deprecated
                         Logging.disable_logging(Logging.Warn) # skip warnings
-                        @test apply_conversion(CT, xs, ys, m)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, xs, r, m)   isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m)    isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m)    isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, ys, +)   isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, xs, ys, m)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, xs, r, m)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, r, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, r, i, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, r, ys, +)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
                         Logging.disable_logging(Logging.Debug)
                     end
                 end
@@ -313,18 +316,18 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 for CT in (VolumeLike(), Volume)
                     @testset "$CT" begin
                         # TODO: Should these be normalized more?
-                        @test apply_conversion(CT, vol)          isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{Float32,3}}
-                        @test apply_conversion(CT, i, i, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{Float32,3}}
+                        @test apply_conversion(CT, i, i, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
 
                         Logging.disable_logging(Logging.Warn) # skip warnings
-                        @test apply_conversion(CT, xs, ys, zs, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
-                        @test apply_conversion(CT, xs, ys, zs, +)   isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, xs, ys, zs, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, xs, ys, zs, +)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
                         if T_in == Float32
-                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
                         else
-                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{ClosedInterval{T_out}, ClosedInterval{T_out}, ClosedInterval{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
                         end
                         Logging.disable_logging(Logging.Debug)
                     end
@@ -420,9 +423,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 @testset "Spy" begin
                     # TODO: assuming internal processing
                     @test apply_conversion(Spy, sparse) isa
-                          Tuple{ClosedInterval{T_out},ClosedInterval{T_out},SparseArrays.SparseMatrixCSC{eltype(sparse),Int64}}
+                          Tuple{EndPoints{T_out},EndPoints{T_out},SparseArrays.SparseMatrixCSC{eltype(sparse),Int64}}
                     @test apply_conversion(Spy, i, i, sparse) isa
-                          Tuple{ClosedInterval{T_out},ClosedInterval{T_out},
+                          Tuple{EndPoints{T_out},EndPoints{T_out},
                                 SparseArrays.SparseMatrixCSC{eltype(sparse),Int64}}
                 end
 
@@ -462,9 +465,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 # pure 3D plots don't implement Float64 -> Float32 rescaling yet
                 @testset "Voxels" begin
-                    @test apply_conversion(Voxels, vol)                isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, xs, ys, zs, vol)    isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, i, i, vol)       isa Tuple{ClosedInterval{Float32}, ClosedInterval{Float32}, ClosedInterval{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, vol)                isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, xs, ys, zs, vol)    isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, i, i, i, vol)       isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
                 end
 
                 @testset "Wireframe" begin
@@ -481,5 +484,4 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
             # TODO glyphcollection
         end
     end
-
 end

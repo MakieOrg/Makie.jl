@@ -1,5 +1,7 @@
 # COV_EXCL_START
 using Test
+using LinearAlgebra
+
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -32,6 +34,8 @@ using Makie: volume
     include("barplot.jl")
     include("bezier.jl")
     include("hist.jl")
+    include("cameras.jl")
+
     # for short tests of resolved issues
     include("issues.jl")
 
@@ -43,4 +47,5 @@ using Makie: volume
 
     include("float32convert.jl")
     include("dim-converts.jl")
+    include("Plane.jl")
 end

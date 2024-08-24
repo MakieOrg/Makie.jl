@@ -176,7 +176,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    render_tick::Observable{Nothing} # listeners must not Consume(true)
+    render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
@@ -210,7 +210,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
-            Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
+            Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
@@ -478,10 +478,10 @@ function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat; 
     return screen
 end
 
-function pollevents(screen::Screen)
+function pollevents(screen::Screen, frame_state::Makie.TickState)
     ShaderAbstractions.switch_context!(screen.glscreen)
     GLFW.PollEvents()
-    notify(screen.render_tick)
+    screen.render_tick[] = frame_state
     return
 end
 
@@ -770,7 +770,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    pollevents(screen)
+    pollevents(screen, Makie.BackendTick)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
@@ -903,7 +903,7 @@ function set_framerate!(screen::Screen, fps=30)
 end
 
 function refreshwindowcb(screen, window)
-    screen.render_tick[] = nothing
+    screen.render_tick[] = Makie.BackendTick
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return
@@ -929,14 +929,13 @@ end
 scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
 
 
-# TODO add render_tick event to scene events
 function vsynced_renderloop(screen)
     while isopen(screen) && !screen.stop_renderloop
         if screen.config.pause_renderloop
-            pollevents(screen); sleep(0.1)
+            pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
             continue
         end
-        pollevents(screen) # GLFW poll
+        pollevents(screen, Makie.RegularRenderTick) # GLFW poll
         render_frame(screen)
         yield()
         GC.safepoint()
@@ -947,10 +946,10 @@ end
 function fps_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        pollevents(screen)
-
-        if !screen.config.pause_renderloop
-            pollevents(screen) # GLFW poll
+        if screen.config.pause_renderloop
+            pollevents(screen, Makie.PausedRenderTick)
+        else
+            pollevents(screen, Makie.RegularRenderTick)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
@@ -973,14 +972,18 @@ end
 # const time_record = sizehint!(Float64[], 100_000)
 
 function on_demand_renderloop(screen::Screen)
+    tick_state = Makie.UnknownTickState
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop
-        pollevents(screen) # GLFW poll
+        pollevents(screen, tick_state) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
+            tick_state = Makie.RegularRenderTick
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
+        else
+            tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
         end
 
         GC.safepoint()

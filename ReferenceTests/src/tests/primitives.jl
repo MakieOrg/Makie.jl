@@ -157,6 +157,29 @@ end
     fig
 end
 
+@reference_test "line color interpolation with clipping" begin
+    # Clipping should not change the color interpolation of a line piece, so 
+    # these boxes should match in color
+    fig = Figure(); 
+    ax = Axis(fig[1,1]); 
+    ylims!(ax, -0.1, 1.1); 
+    lines!(
+        ax, Rect2f(0, 0, 1, 10), color = 1:5, linewidth = 5,
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    ); 
+    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5); 
+
+    ax = Axis(fig[1,2]); 
+    ylims!(ax, -0.1, 1.1); 
+    cs = [1, 2, 2, 3, 3, 4, 4, 5]
+    linesegments!(
+        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5, 
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    ); 
+    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5); 
+    fig
+end
+
 @reference_test "lines issue #3704" begin
     lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
 end
@@ -693,8 +716,8 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function to their
-    # parent scene (identity in this case)
+    # Tests that (primitive) plots can have different transform function 
+    # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
@@ -788,14 +811,8 @@ end
                 ax.title = "$space"
             end
             scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
-            # Somehow Axis3 comes out bigger than expected, by 0.1 units
-            # Not sure how this can happen, but to make the tests pass reliably without z-fighting
-            # Easiest is for now to add some padding for Axis3 + :data.
-            # Will need to investigate in the future why the markersize (and likely the upvector in Axis3)
-            # is off by a small amount
-            padding = space == :data && ax isa Axis3 ? 0.1 : 0.0
             scatter!(ax, data;
-                     markersize=msize + padding, markerspace=space, marker=Rect,
+                     markersize=msize, markerspace=space, marker=Rect,
                      strokewidth=2, strokecolor=:red, color=:transparent,)
         end
     end

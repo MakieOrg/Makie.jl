@@ -262,6 +262,7 @@ function _colormapping(
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
     colorscale = convert(Observable{Function}, colorscale)
+    colorscale.ignore_equal_values = true
 
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
@@ -300,7 +301,7 @@ function _colormapping(
         return Vec2f(apply_scale(scale, range))
     end
 
-    color_scaled = lift(color_tight, colorscale) do color, scale
+    color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
         return el32convert(apply_scale(scale, color))
     end
     CT = ColorMapping{N,V,typeof(color_scaled[])}
@@ -333,6 +334,7 @@ function ColorMapping(
 
     T = _array_value_type(color)
     color_tight = convert(Observable{T}, colors_obs)::Observable{T}
+    color_tight.ignore_equal_values = true
     _colormapping(color_tight, colors_obs, colormap, colorrange,
                          colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end

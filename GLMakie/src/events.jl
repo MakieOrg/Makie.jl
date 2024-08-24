@@ -186,7 +186,7 @@ struct MousePositionUpdater
     hasfocus::Observable{Bool}
 end
 
-function (p::MousePositionUpdater)(::Nothing)
+function (p::MousePositionUpdater)(::Makie.TickState)
     !p.hasfocus[] && return
     nw = to_native(p.screen)
     x, y = GLFW.GetCursorPos(nw)
@@ -294,4 +294,16 @@ end
 
 function Makie.disconnect!(window::GLFW.Window, ::typeof(entered_window))
     GLFW.SetCursorEnterCallback(window, nothing)
+end
+
+function Makie.frame_tick(scene::Scene, screen::Screen)
+    # Separating screen ticks from event ticks allows us to sanitize:
+    # Internal on-tick event updates happen first (mouseposition), 
+    # consuming in event.tick listeners doesn't affect backend ticks,
+    # more control/consistent order
+    on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
+end
+function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
+    connections = filter(x -> x[2] isa Makie.TickCallback, screen.render_tick.listeners)
+    foreach(x -> off(screen.render_tick, x[2]), connections)
 end
