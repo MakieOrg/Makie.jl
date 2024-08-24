@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fixed the broken OpenGL state cleanup for clip_planes which may cause plots to disappear randomly [#4157](https://github.com/MakieOrg/Makie.jl/pull/4157)
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
 - Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
 
