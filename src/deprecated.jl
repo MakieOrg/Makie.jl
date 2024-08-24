@@ -13,4 +13,8 @@ function Base.getproperty(scene::Scene, field::Symbol)
 end
 
 @deprecate pixelarea viewport true
-Base.@deprecate_binding Combined Plot true
+
+function Combined(args...) 
+    Base.depwarn("Makie.Combined(args...) is deprecated, use Makie.Plot(args...) instead")
+    Plot(args...)
+end
