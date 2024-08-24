@@ -80,7 +80,7 @@ function mixin_generic_plot_attributes()
         """
         Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here, 
         behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the 
-        parent plot or scene. You can remove parent clip_planes by passing `Plane3f[]`. 
+        parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`. 
         """
         clip_planes = automatic
     end
