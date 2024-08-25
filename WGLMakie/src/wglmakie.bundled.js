@@ -23316,9 +23316,6 @@ function pick_sorted(scene, xy, range) {
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dy; j++){
             const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
-            if (plot_matrix.length <= pindex) {
-                continue;
-            }
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid && x[1] == index);
