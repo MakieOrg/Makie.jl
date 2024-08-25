@@ -23170,7 +23170,6 @@ function pick_native(scene, _x, _y, _w, _h, apply_ppu = true) {
         _w,
         _h
     ];
-    console.log("x = " + x + "y = " + y + "w = " + w + "h = " + h);
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
     render_scene(scene, true);
@@ -23265,9 +23264,7 @@ function pick_closest(scene, xy, range) {
     const dx = x1 - x0;
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
-    console.log(plot_data);
     const plot_matrix = plot_data.data;
-    console.log("dx = " + dx + " dy = " + dy + " produ = " + dx * dy);
     let min_dist = 1e30;
     let selection = [
         null,
@@ -23279,7 +23276,6 @@ function pick_closest(scene, xy, range) {
     for(let i = 1; i <= dx; i++){
         for(let j = 1; j <= dy; j++){
             const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
-            console.log("i =" + i + " j = " + j + " pindex = " + pindex);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
