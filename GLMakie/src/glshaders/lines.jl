@@ -8,13 +8,13 @@ function sumlengths(points, resolution)
 
     T = eltype(eltype(typeof(points)))
     result = zeros(T, length(points))
-    for i in eachindex(points)
-        i0 = max(i-1, 1)
-        p1, p2 = points[i0], points[i]
+    for (i, idx) in enumerate(eachindex(points))
+        idx0 = max(idx-1, 1)
+        p1, p2 = points[idx0], points[idx]
         if any(map(isnan, p1)) || any(map(isnan, p2)) || invalid(p1) || invalid(p2)
             result[i] = 0f0
         else
-            result[i] = result[i0] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
+            result[i] = result[max(i-1, 1)] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
         end
     end
     result
