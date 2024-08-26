@@ -1564,3 +1564,7 @@ end
     spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
     f
 end
+
+@reference_test "Lines with OffsetArrays" begin
+    lines(Makie.OffsetArrays(-50)(1:100))
+end
