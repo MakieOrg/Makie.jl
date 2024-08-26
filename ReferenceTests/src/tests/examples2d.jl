@@ -1566,5 +1566,5 @@ end
 end
 
 @reference_test "Lines with OffsetArrays" begin
-    lines(Makie.OffsetArrays(-50)(1:100))
+    lines(Makie.OffsetArrays.Origin(-50)(1:100))
 end
