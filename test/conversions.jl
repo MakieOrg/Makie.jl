@@ -312,6 +312,12 @@ end
     @test pl.plots[1][1][][1] == Makie.poly_convert(points)
 end
 
+@testset "Poly with matrix" begin
+    x1 = [0.0, 1, 1, 0, 0]
+    y1 = [0.0, 0, 1, 1, 0]
+    @test convert_arguments(Poly, hcat(x1, y1))[1] == Point.(x1, y1)
+end
+
 @testset "GridBased and ImageLike conversions" begin
     # type tree
     @test GridBased <: ConversionTrait
