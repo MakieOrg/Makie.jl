@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Bring back `poly` convert arguments for matrix with points as row [#4266](https://github.com/MakieOrg/Makie.jl/pull/4258).
+- Fix text layouting with empty lines [#4269](https://github.com/MakieOrg/Makie.jl/pull/4269).
 
 ## [0.21.9] - 2024-08-27
 
