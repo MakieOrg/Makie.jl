@@ -233,7 +233,8 @@ function conversion_pipeline(
         # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
         # This is the case for e.g. convert_arguments returning types that need dim_convert
         new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
-        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), new_args_obs, user_attributes, deregister,
+        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
+                                   user_attributes, deregister,
                                    recursion + 1)
     elseif status === false && recursion === 2
         kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
