@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Bring back `poly` convert arguments for matrix with points as row [#4266](https://github.com/MakieOrg/Makie.jl/pull/4258).
+
 ## [0.21.9] - 2024-08-27
 
 - Hotfix for colormap + color updates [#4258](https://github.com/MakieOrg/Makie.jl/pull/4258).
