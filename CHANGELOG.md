@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.21.9] - 2024-08-27
+
+- Hotfix for colormap + color updates [#4258](https://github.com/MakieOrg/Makie.jl/pull/4258).
+
 ## [0.21.8] - 2024-08-26
 
 - Fix selected list in `WGLMakie.pick_sorted` [#4136](https://github.com/MakieOrg/Makie.jl/pull/4136).
@@ -575,7 +579,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...HEAD
+[0.21.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...v0.21.9
 [0.21.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...v0.21.8
 [0.21.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...v0.21.7
 [0.21.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...v0.21.6
