@@ -20253,8 +20253,12 @@ function attributes_to_type_declaration(attributes_dict) {
     let result = "";
     for(const name in attributes_dict){
         const attribute = attributes_dict[name];
-        const type = attribute_type(attribute);
-        result += `in ${type} ${name};\n`;
+        if (name.startsWith("lineindex")) {
+            result += `in int ${name};\n`;
+        } else {
+            const type = attribute_type(attribute);
+            result += `in ${type} ${name};\n`;
+        }
     }
     return result;
 }
@@ -21337,7 +21341,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;          // invalid / not needed
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;  // invalid / not needed
-            flat out uint f_instance_id;
+            flat out int f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
@@ -21473,7 +21477,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                // TODO: this line crashes when lineindex_start is of type uint, why?
+                f_instance_id = lineindex_start; // NOTE: this is correct, not need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -21532,7 +21537,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec2 f_extrusion;
             flat out float f_linewidth;
             flat out vec4 f_pattern_overwrite;
-            flat out uint f_instance_id;
+            flat out int f_instance_id;
             flat out ${color} f_color1;
             flat out ${color} f_color2;
             flat out float f_alpha_weight;
@@ -21920,7 +21925,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                // TODO: this line crashes when lineindex_start is of type uint, why?
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -22031,7 +22037,7 @@ function lines_fragment_shader(uniforms, attributes) {
     flat in ${color} f_color1;
     flat in ${color} f_color2;
     flat in float f_alpha_weight;
-    flat in uint f_instance_id;
+    flat in int f_instance_id;
     flat in float f_cumulative_length;
     flat in ivec2 f_capmode;
     flat in vec4 f_linepoints;
@@ -22278,7 +22284,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         if (picking) {
             if (color.a > 0.1) {
-                fragment_color = pack_int(object_id, f_instance_id);
+                fragment_color = pack_int(object_id, uint(f_instance_id));
             }
             return;
         }

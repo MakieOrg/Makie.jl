@@ -61,8 +61,14 @@ export function attributes_to_type_declaration(attributes_dict) {
     let result = "";
     for (const name in attributes_dict) {
         const attribute = attributes_dict[name];
-        const type = attribute_type(attribute);
-        result += `in ${type} ${name};\n`;
+        // TODO: what's the right way to do this?
+        if (name.startsWith("lineindex")) {
+            // TODO: uint seems to crash, probably due to poor browser support for uint?
+            result += `in int ${name};\n`;
+        } else {
+            const type = attribute_type(attribute);
+            result += `in ${type} ${name};\n`;
+        }
     }
     return result;
 }
