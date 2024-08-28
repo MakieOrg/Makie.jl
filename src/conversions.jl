@@ -423,6 +423,13 @@ function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
     return (x, y, el32convert(data))
 end
 
+function get_centers_range(center_values)
+    sorted_unique = sort(unique(center_values))
+    min_diff = minimum(b - a for (a, b) in zip(@view(sorted_unique[begin:end-1]), @view(sorted_unique[begin+1:end])))
+    n = round(Int, (last(sorted_unique) - first(sorted_unique)) / min_diff) + 1
+    return range(first(sorted_unique), last(sorted_unique), length = n)
+end
+
 function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealVector)
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
@@ -435,17 +442,31 @@ function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealV
         error("Found duplicate x/y coordinates: $cdup")
     end
 
-    x_centers = sort(unique(x))
-    any(isnan, x_centers) && error("x must not have NaN values.")
-    y_centers = sort(unique(y))
-    any(isnan, y_centers) && error("x must not have NaN values.")
-    zs = fill(NaN32, length(x_centers), length(y_centers))
-    foreach(zip(x, y, z)) do (xi, yi, zi)
-        i = searchsortedfirst(x_centers, xi)
-        j = searchsortedfirst(y_centers, yi)
-        @inbounds zs[i, j] = zi
+    any(isnan, x) && error("x must not have NaN values.")
+    any(isnan, y) && error("y must not have NaN values.")
+
+    xrange = get_centers_range(x)
+    yrange = get_centers_range(y)
+
+    xo = first(xrange)
+    xw = step(xrange)
+
+    yo = first(yrange)
+    yw = step(yrange)
+
+    function val_to_idx(val, o, w, kind::Symbol)
+        frac = (val - o) / w
+        mod(frac, 1.0) ≈ 0.0 || error("GridBased conversion from x, y, z vector format to x, y range with z matrix format failed. While computing the $kind range from the given vectors, found a value $val that did not lie on the determined grid range starting at $o with step size $w. The computed fraction was $frac which is not approximately integer. Only approximately equi-distant grids are allowed to be specified with the conversion method taking x, y and z as vectors.")
+        return round(Int, frac + 1)
     end
-    return convert_arguments(ct, x_centers, y_centers, zs)
+
+    zs = fill(NaN32, length(xrange), length(yrange))
+    foreach(zip(x, y, z)) do (xi, yi, zi)
+        i = val_to_idx(xi, xo, xw, :x)
+        j = val_to_idx(yi, yo, yw, :y)
+        zs[i, j] = zi
+    end
+    return convert_arguments(ct, xrange, yrange, zs)
 end
 
 """
