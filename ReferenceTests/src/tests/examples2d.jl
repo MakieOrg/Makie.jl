@@ -1137,6 +1137,22 @@ end
     f
 end
 
+@reference_test "Barplot label positions" begin
+    f = Figure(size = (450, 450))
+    func(fpos; label_position, direction) = barplot(fpos, [1, 1, 2], [1, 2, 3];
+        stack = [1, 1, 2], bar_labels = ["One", "Two", "Three"], label_position,
+        color = [:tomato, :bisque, :slategray2], direction, label_font = :bold)
+    func(f[1, 1]; label_position = :end, direction = :y)
+    ylims!(0, 4)
+    func(f[1, 2]; label_position = :end, direction = :x)
+    xlims!(0, 4)
+    func(f[2, 1]; label_position = :center, direction = :y)
+    ylims!(0, 4)
+    func(f[2, 2]; label_position = :center, direction = :x)
+    xlims!(0, 4)
+    f
+end
+
 @reference_test "Histogram" begin
     data = sin.(1:1000)
 
