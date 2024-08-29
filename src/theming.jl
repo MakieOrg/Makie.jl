@@ -193,7 +193,7 @@ current_default_theme() = CURRENT_DEFAULT_THEME
 
 
 """
-    set_theme(theme; kwargs...)
+    set_theme!(theme; kwargs...)
 
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
