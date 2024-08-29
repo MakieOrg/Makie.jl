@@ -58,6 +58,7 @@
 - Update JS OrbitControls to match Julia OrbitControls [#4084](https://github.com/MakieOrg/Makie.jl/pull/4084).
 - Fix `select_point()` [#4101](https://github.com/MakieOrg/Makie.jl/pull/4101).
 - Fix `absrect()` and `select_rectangle()` [#4110](https://github.com/MakieOrg/Makie.jl/issues/4110).
+- Allow segment-specific radius for `pie` plot [#4028](https://github.com/MakieOrg/Makie.jl/pull/4028).
 
 ## [0.21.5] - 2024-07-07
 
