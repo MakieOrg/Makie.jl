@@ -385,12 +385,20 @@ function convert_arguments(::CellGrid, x::EndPoints, y::EndPoints,
     return (x, y, el32convert(z))
 end
 
+function get_step(x::EndPoints, n)
+    # length 1 step should be 1
+    x[1] == x[2] && n == 1 && return 1
+    return step(range(x...; length = n))
+end
+
 function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
-    xstep = step(range(extrema(x)...; length = size(z, 1))) / 2.0
-    ystep = step(range(extrema(y)...; length = size(z, 2))) / 2.0
+
     xe = to_endpoints(x)
     ye = to_endpoints(y)
+    xstep = get_step(xe, size(z, 1)) / 2.0
+    ystep = get_step(ye, size(z, 2)) / 2.0
+
     Tx = typeof(xe[1])
     Ty = typeof(ye[1])
     # heatmaps are centered on the edges, so we need to adjust the range
@@ -668,6 +676,12 @@ end
 function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
+end
+
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
+    # f() returns interval for these plottypes
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
+    return convert_arguments(P, x, f.(x))
 end
 
 # OffsetArrays conversions

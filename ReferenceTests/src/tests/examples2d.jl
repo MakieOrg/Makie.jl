@@ -195,6 +195,40 @@ end
     current_figure()
 end
 
+@reference_test "Band with NaN" begin
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+
+    # NaN in the middle
+    band!(ax1, 1:5, [1, 2, NaN, 4, 5], [1.5, 3, 4, 5, 6.5])
+    band!(ax1, 1:5, [3, 4, 5, 6, 7], [3.5, 5, NaN, 7, 8.5])
+    band!(ax1, [1, 2, NaN, 4, 5], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax2 = Axis(f[1, 2])
+
+    # NaN at the beginning and end
+    band!(ax2, 1:5, [NaN, 2, 3, 4, NaN], [1.5, 3, 4, 5, 6.5])
+    band!(ax2, 1:5, [3, 4, 5, 6, 7], [NaN, 5, 6, 7, NaN])
+    band!(ax2, [NaN, 2, 3, 4, NaN], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax3 = Axis(f[2, 1])
+
+    # No complete section
+    band!(ax3, 1:5, [NaN, 2, NaN, 4, NaN], [1.5, 3, 4, 5, 6.5])
+    band!(ax3, 1:5, [3, 4, 5, 6, 7], [NaN, 5, NaN, 7, NaN])
+    band!(ax3, [NaN, 2, NaN, 4, NaN], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax4 = Axis(f[2, 2])
+    # Two adjacent NaNs
+    band!(ax4, 1:6, [1, 2, NaN, NaN, 5, 6], [1.5, 3, 4, 5, 6, 7.5])
+    band!(ax4, 1:6, [3, 4, 5, 6, 7, 8], [3.5, 5, NaN, NaN, 8, 9.5])
+    band!(ax4, [1, 2, NaN, NaN, 5, 6], [5, 6, 7, 8, 9, 10], [5.5, 7, 8, 9, 10, 11.5])
+
+    linkaxes!(ax1, ax2, ax3, ax4)
+
+    f
+end
+
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Observable(Base.Fix2(v, 0.0))
@@ -1121,6 +1155,22 @@ end
         axis=(; xscale=log10),
         direction = :x
     )
+    f
+end
+
+@reference_test "Barplot label positions" begin
+    f = Figure(size = (450, 450))
+    func(fpos; label_position, direction) = barplot(fpos, [1, 1, 2], [1, 2, 3];
+        stack = [1, 1, 2], bar_labels = ["One", "Two", "Three"], label_position,
+        color = [:tomato, :bisque, :slategray2], direction, label_font = :bold)
+    func(f[1, 1]; label_position = :end, direction = :y)
+    ylims!(0, 4)
+    func(f[1, 2]; label_position = :end, direction = :x)
+    xlims!(0, 4)
+    func(f[2, 1]; label_position = :center, direction = :y)
+    ylims!(0, 4)
+    func(f[2, 2]; label_position = :center, direction = :x)
+    xlims!(0, 4)
     f
 end
 

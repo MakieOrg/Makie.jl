@@ -371,6 +371,9 @@ end
 function Base.setproperty!(pl::PlotList, property::Symbol, value)
     hasfield(typeof(pl), property) && return setfield!(pl, property, value)
     property === :model && return setproperty!(pl.attributes, property, value)
+    if haskey(pl.attributes, property)
+        return setproperty!(pl.attributes, property, value)
+    end
     if length(pl.plots) == 1
         setproperty!(pl.plots[1], property, value)
     else
@@ -429,6 +432,9 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
         if isnothing(reused_plot)
             @debug("Creating new plot for spec")
             # Create new plot, store it into our `cached_plots` dictionary
+            if !isnothing(plotlist)
+                merge!(plotspec.kwargs, plotlist.kw)
+            end
             plot = plot!(scene, to_plot_object(plotspec))
             if !isnothing(plotlist)
                 push!(plotlist.plots, plot)
