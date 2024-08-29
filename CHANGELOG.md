@@ -3,7 +3,24 @@
 ## [Unreleased]
 
 - Added translation, zoom and limit reset interactions to Axis3 [4131](https://github.com/MakieOrg/Makie.jl/pull/4131)
+- Fix attribute updates for SpecApi and SpecPlots (e.g. ecdfplot) [#4265](https://github.com/MakieOrg/Makie.jl/pull/4265).
+- Bring back `poly` convert arguments for matrix with points as row [#4266](https://github.com/MakieOrg/Makie.jl/pull/4258).
+- Fix gl_ClipDistance related segfault on WSL with GLMakie [#4270](https://github.com/MakieOrg/Makie.jl/pull/4270)
+- Added option `label_position = :center` to place labels centered over each bar [#4274](https://github.com/MakieOrg/Makie.jl/pull/4274).
+
+## [0.21.9] - 2024-08-27
+
+- Hotfix for colormap + color updates [#4258](https://github.com/MakieOrg/Makie.jl/pull/4258).
+
+## [0.21.8] - 2024-08-26
+
+- Fix selected list in `WGLMakie.pick_sorted` [#4136](https://github.com/MakieOrg/Makie.jl/pull/4136).
+- Apply px per unit in `pick_closest`/`pick_sorted` [#4137](https://github.com/MakieOrg/Makie.jl/pull/4137).
+- Support plot(interval, func) for rangebars and band [#4102](https://github.com/MakieOrg/Makie.jl/pull/4102).
+- Fixed the broken OpenGL state cleanup for clip_planes which may cause plots to disappear randomly [#4157](https://github.com/MakieOrg/Makie.jl/pull/4157)
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
+- Add an informative error message to `save` when no backend is loaded [#4177](https://github.com/MakieOrg/Makie.jl/pull/4177)
+- Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
 
 ## [0.21.7] - 2024-08-19
 
@@ -568,7 +585,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...HEAD
+[0.21.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...v0.21.9
+[0.21.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...v0.21.8
 [0.21.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...v0.21.7
 [0.21.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.5...v0.21.6
 [0.21.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.4...v0.21.5
