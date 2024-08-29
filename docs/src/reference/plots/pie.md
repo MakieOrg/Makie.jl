@@ -53,7 +53,7 @@ pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_col
 pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
 pie!(ax, 20, 0, vs; radius=rs, inner_radius=rs_inner, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
 
-display(fig)
+fig
 ```
 
 ```@figure
