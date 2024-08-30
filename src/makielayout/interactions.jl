@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Union{Axis, Axis3})
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -401,6 +401,19 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
     =#
 
+    begin
+        model = ax.scene.transformation.model[]
+        world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
+        # make plane_normal perpendicular to the allowed trnaslation directions
+        allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+        plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+        p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
+        p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
+        delta = p1 - p0
+        translation = isfinite(delta) ? - delta : Point3d(0)
+        ax.lookat[] = ax.lookat[] + xyz_translate .* translation
+    end
+
     # Slower but more accurate
     model = ax.scene.transformation.model[]
     world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
@@ -413,7 +426,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
 
     # Perform translation
-    tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    # tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
 
     return Consume(true)
 end
@@ -479,10 +492,27 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     # Perform zoom
     zoom_mult = (1f0 - interaction.speed)^zoom
-    mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
-    maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
-    tlimits[] = Rect3f(mini, maxi - mini)
+    ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+    # mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+    # maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+    # tlimits[] = Rect3f(mini, maxi - mini)
 
     # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)
+end
+
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
+
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            ax.zoom_mult[] = 1.0
+            ax.lookat[] = Vec3d(0)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            end
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
 end

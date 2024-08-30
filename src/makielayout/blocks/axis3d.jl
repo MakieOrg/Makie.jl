@@ -56,8 +56,12 @@ function initialize_block!(ax::Axis3)
         return
     end
 
+    setfield!(ax, :lookat, Observable(Vec3d(0)))
+    setfield!(ax, :zoom_mult, Observable(1.0))
+
     matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
+                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
+                    ax.zoom_mult, ax.lookat)
 
     on(scene, matrices) do (model, view, proj, eyepos)
         cam = camera(scene)
@@ -190,7 +194,7 @@ function initialize_block!(ax::Axis3)
 end
 
 function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed)
+    viewmode, xreversed, yreversed, zreversed, zoom_mult, lookat)
 
     ori = limits.origin
     ws = widths(limits)
@@ -235,15 +239,16 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
     # distance = sphere_radius / Math.sin(vFov / 2)
 
     # radius = sqrt(3) / tand(angle / 2)
-    radius = sqrt(3) / sind(angle / 2)
+    radius = zoom_mult * sqrt(3) / sind(angle / 2)
 
     x = radius * cos(elev) * cos(azim)
     y = radius * cos(elev) * sin(azim)
     z = radius * sin(elev)
 
-    eyepos = Vec3{Float64}(x, y, z)
+    eyepos = Vec3{Float64}(x, y, z) + lookat
 
-    lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
+    lookat_matrix = Makie.lookat(eyepos, lookat, Vec3{Float64}(0, 0, 1))
+    # lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
 
     w = width(viewport)
     h = height(viewport)
@@ -275,18 +280,18 @@ function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle,
             maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
             maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
 
-            ratio_x = maxx
-            ratio_y = maxy
+            # ratio_x = maxx
+            # ratio_y = maxy
 
-            if viewmode === :fitzoom
-                if ratio_y > ratio_x
-                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
-                else
-                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
-                end
-            else
-                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
-            end
+            # if viewmode === :fitzoom
+            #     if ratio_y > ratio_x
+            #         pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
+            #     else
+            #         pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
+            #     end
+            # else
+            #     pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
+            # end
         end
         pm
     else
@@ -447,11 +452,13 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # we are going to transform the 3d frame points into 2d of the topscene
         # because otherwise the frame lines can
         # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        # to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        return [p1, p2, p3, p4, p5, p6]
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
+    framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        xautolimits = false, yautolimits = false, zautolimits = false, transparency = false,
         # transparency = true,
         clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false)
 
@@ -484,7 +491,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     ticksize = attr(:ticksize)
 
-    tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
+    tick_segments = lift(scene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
                 pview, pxa, tsize, xrev, yrev, zrev
 
@@ -500,7 +507,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        o = pxa.origin
+        # o = pxa.origin
+        o = Vec2f(0)
 
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
@@ -531,7 +539,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticks = linesegments!(topscene, tick_segments,
+    ticks = linesegments!(scene, tick_segments, space = :pixel,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false, clip_planes = Plane3f[],
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
@@ -540,10 +548,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
-    map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
+    map!(scene, labels_positions, scene.viewport, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
-        o = pxa.origin
+        # o = pxa.origin
+        o = Vec2f(0)
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -564,7 +573,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels_text = text!(topscene, labels_positions, align = align,
+    ticklabels_text = text!(scene, labels_positions, align = align, space = :pixel,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize), clip_planes = Plane3f[],
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
@@ -580,7 +589,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
-        o = pxa.origin
+        # o = pxa.origin
+        o = Vec2f(0)
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -652,7 +662,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(topscene, label_position,
+    label = text!(scene, label_position, space = :pixel,
         text = attr(:label), clip_planes = Plane3f[],
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
