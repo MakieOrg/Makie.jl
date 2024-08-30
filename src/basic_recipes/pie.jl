@@ -40,6 +40,8 @@ function plot!(plot::Pie)
     values = plot[3]
 
     polys = lift(plot, xs, ys, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
+        radius = length(radius) == 1 ? fill(only(radius), length(vals)) : radius
+        inner_radius = length(inner_radius) == 1 ? fill(only(inner_radius), length(vals)) : inner_radius
         offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius
 
         T = eltype(vals)
@@ -53,22 +55,22 @@ function plot!(plot::Pie)
         end
 
         # create vector of a vector of points for each piece
-        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end], xs, ys, offset_radius) do sta, en, x, y, r
-            x += cos((en + sta) / 2 + offset) * r
-            y += sin((en + sta) / 2 + offset) * r
+        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end], xs, ys, radius, inner_radius, offset_radius) do sta, en, x, y, r, inner_r, offset_r
+            x += cos((en + sta) / 2 + offset) * offset_r
+            y += sin((en + sta) / 2 + offset) * offset_r
             distance = en - sta
             # how many vertices are needed for the curve?
             nvertices = max(2, ceil(Int, rad2deg(distance) * vertex_per_deg))
 
             # curve points
             points = map(LinRange(sta, en, nvertices)) do rad
-                Point2(cos(rad + offset) * radius + x, sin(rad + offset) * radius + y)
+                Point2(cos(rad + offset) * r + x, sin(rad + offset) * r + y)
             end
 
             # add inner points (either curve or one point)
-            if inner_radius != 0
+            if inner_r != 0
                 inner_points = map(LinRange(en, sta, nvertices)) do rad
-                    Point2(cos(rad + offset) * inner_radius + x, sin(rad + offset) * inner_radius + y)
+                    Point2(cos(rad + offset) * inner_r + x, sin(rad + offset) * inner_r + y)
                 end
                 append!(points, inner_points)
             else
