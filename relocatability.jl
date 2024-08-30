@@ -1,8 +1,10 @@
+const BACKEND = ARGS[1]
+@assert BACKEND in ["CairoMakie", "GLMakie", "WGLMakie"]
 
 module_src = """
 module MakieApp
 
-using GLMakie
+using $BACKEND
 
 function julia_main()::Cint
     screen = display(scatter(1:4))
@@ -22,7 +24,7 @@ Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
 
-paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
+paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, BACKEND)]
 
 Pkg.develop(map(x-> (;path=x), paths))
 
