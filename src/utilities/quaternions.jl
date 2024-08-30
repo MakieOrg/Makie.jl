@@ -153,3 +153,11 @@ function quaternion_to_2d_angle(quat::Quaternion)
     # this assumes that the quaternion was calculated from a simple 2d rotation as well
     return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
 end
+
+# From Quaternions.jl without inf
+function Base.inv(q::Quaternion)
+    a = max(abs(q[4]), abs(q[1]), abs(q[2]), abs(q[3]))
+    p = q / a
+    iq = conj(p) / (a * sum(p.data .* p.data))
+    return iq
+end

@@ -130,6 +130,9 @@ from `eyeposition` to `lookat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
 function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+    return lookat_basis(eyePos, lookAt, up) * translationmatrix(-eyePos)
+end
+function lookat_basis(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
     zaxis  = normalize(eyePos-lookAt)
     xaxis  = normalize(cross(up,    zaxis))
     yaxis  = normalize(cross(zaxis, xaxis))
@@ -139,7 +142,7 @@ function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
         T0,       T0,       T0,       T1
-    ) * translationmatrix(-eyePos)
+    )
 end
 
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T

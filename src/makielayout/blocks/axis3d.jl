@@ -196,107 +196,167 @@ end
 function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
     viewmode, xreversed, yreversed, zreversed, zoom_mult, lookat)
 
+    # This produces:
+    # - standard model matrix                  (scaling + translation)
+    # - standard view/lookat matrix            (basis transform + translation)
+    # - standard perspective projection matrix (scaling + perspective projection)
+
+    if !(0 <= perspectiveness <= 1)
+        throw(ArgumentError("perspectiveness is limited to a 0..1 range!"))
+    end
+
+    # Raw limits (no rescaling)
     ori = limits.origin
     ws = widths(limits)
 
     limits = Rect3f(
         (
-            ori[1] + (xreversed ? ws[1] : zero(ws[1])),
-            ori[2] + (yreversed ? ws[2] : zero(ws[2])),
-            ori[3] + (zreversed ? ws[3] : zero(ws[3])),
+            ifelse(xreversed, ori[1] + ws[1], ori[1]),
+            ifelse(yreversed, ori[2] + ws[2], ori[2]),
+            ifelse(zreversed, ori[3] + ws[3], ori[3]),
         ),
         (
-            ws[1] * (xreversed ? -1 : 1),
-            ws[2] * (yreversed ? -1 : 1),
-            ws[3] * (zreversed ? -1 : 1),
+            ifelse(xreversed, -ws[1], ws[1]),
+            ifelse(yreversed, -ws[2], ws[2]),
+            ifelse(zreversed, -ws[3], ws[3]),
         )
     )
 
+    # Data normalization (model matrix)
+    o = origin(limits)
     ws = widths(limits)
-
-    t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect === :equal
-        scales = 2 ./ Float64.(ws)
-    elseif aspect === :data
-        scales = 2 ./ max.(maximum(ws), Float64.(ws))
+    if aspect == :equal || viewmode == :stretch
+        # normalize to -1..1 cube
+        scaling = 2.0 ./ ws
+    elseif aspect == :data
+        # normalize to -1..1 for the longest side, keep data aspect
+        scaling = Vec3f(2.0 / maximum(ws))
     elseif aspect isa VecTypes{3}
-        scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
+        # normalize aspect (max 1), then normalize data to -aspect..aspect
+        scaling = aspect ./ maximum(aspect) .* 2.0 ./ ws
     else
-        error("Invalid aspect $aspect")
-    end |> Makie.scalematrix
-
-    t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
-    model = t2 * s * t
-
-    ang_max = 90
-    ang_min = 0.5
-
-    @assert 0 <= perspectiveness <= 1
-
-    angle = ang_min + (ang_max - ang_min) * perspectiveness
-
-    # vFOV = 2 * Math.asin(sphereRadius / distance);
-    # distance = sphere_radius / Math.sin(vFov / 2)
-
-    # radius = sqrt(3) / tand(angle / 2)
-    radius = zoom_mult * sqrt(3) / sind(angle / 2)
-
-    x = radius * cos(elev) * cos(azim)
-    y = radius * cos(elev) * sin(azim)
-    z = radius * sin(elev)
-
-    eyepos = Vec3{Float64}(x, y, z) + lookat
-
-    lookat_matrix = Makie.lookat(eyepos, lookat, Vec3{Float64}(0, 0, 1))
-    # lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
-
-    w = width(viewport)
-    h = height(viewport)
-
-    projection_matrix = projectionmatrix(
-        lookat_matrix * model, limits, eyepos, radius, azim, elev, angle,
-        w, h, scales, viewmode)
-
-    return model, lookat_matrix, projection_matrix, eyepos
-end
-
-function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = 0.5 * (radius - sqrt(3))
-    far = radius + 2 * sqrt(3)
-
-    aspect_ratio = width / height
-
-    projection_matrix = if viewmode in (:fit, :fitzoom, :stretch)
-        if height > width
-            angle = angle / aspect_ratio
-        end
-
-        pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
-
-        if viewmode in (:fitzoom, :stretch)
-            points = decompose(Point3f, limits)
-            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
-
-            maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
-            maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
-
-            # ratio_x = maxx
-            # ratio_y = maxy
-
-            # if viewmode === :fitzoom
-            #     if ratio_y > ratio_x
-            #         pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
-            #     else
-            #         pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
-            #     end
-            # else
-            #     pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
-            # end
-        end
-        pm
-    else
-        error("Invalid viewmode $viewmode")
+        throw(ArgumentError("aspect must be :equal, :data or a 3D Vector"))
     end
+
+    center = scaling .* (o + 0.5 * ws) # after scaling
+    model = transformationmatrix(-center, scaling)
+
+    # view & projection matrix
+
+    fov_max = 90
+    fov_min = 0.5
+    fov = fov_min + (fov_max - fov_min) * perspectiveness
+
+    aspect_ratio = width(viewport) / height(viewport)
+
+    # Get basis transform
+    # change to coordinate system of camera, but don't move origin yet
+
+    eyeposition = Vec3f(
+        cos(elev) * cos(azim),
+        cos(elev) * sin(azim),
+        sin(elev)
+    )
+
+    view = lookat_basis(eyeposition, Vec3f(0), Vec3f(0, 0, 1))
+
+
+    zmin = zmax = 0.0
+    if viewmode == :fit
+        # Get the radius of the bounding sphere encompassing the bbox post model
+        radius = norm(0.5 .* scaling .* ws)
+
+        # Next find the distance from the bounding sphere origin which is needed
+        # to not clip the sphere at a given fov.
+        #                       _.--'
+        #                  .--:' ':
+        #  0.5fov     .--'   :     :  radius
+        #        .--'       :       :
+        #  cam -*-----------|--------x
+        #      | <--      d       -> |
+        # sin(0.5fov) = radius / d
+
+        aspect_scaling = max(1.0, 1.0 ./ aspect_ratio) # viewport scaling
+        distance = aspect_scaling * radius / sind(0.5 * fov)
+        zmin = -radius; zmax = radius #  for near, far
+
+    elseif viewmode == :fitzoom
+
+        # Get bbox after model
+        whd = 0.5 .* scaling .* ws
+
+        # width, height, depth vector of bbos transform to these in view basis
+        x_vec = whd[1] * view[Vec(1,2,3), 1]
+        y_vec = whd[2] * view[Vec(1,2,3), 2]
+        z_vec = whd[3] * view[Vec(1,2,3), 3]
+
+        # Find zmin, zmax of the bbox corners in view basis.
+        # Find distance required to not clip any bbox corners after projection.
+        # For this we solve abs(projection * Point4f(corner, 1))[i] = 1 with
+        # i = 1, 2 for a given fov and (viewport) aspect_ratio. This results in
+        #   corner[i] / (aspect[i] * tand(0.5 * fov)) - corner[3]
+        # with a = (aspect_ratio, 1.0).
+        distance = 0.0
+        fy = 1.0 / tand(0.5 * fov)
+        fx = fy / aspect_ratio
+        for i in (-1.0, 1.0), j in (-1.0, 1.0), k in (-1.0, 1.0)
+            p = i * x_vec + j * y_vec + k * z_vec
+            distance = max(distance, abs(p[1]) * fx - p[3])
+            distance = max(distance, abs(p[2]) * fy - p[3])
+            zmin = min(zmin, p[3])
+            zmax = max(zmax, p[3])
+        end
+
+    elseif viewmode == :stretch
+
+        # For :stretch model always generates a -1..1^3 cube, so the width,
+        # height and depth vectors in view basis simplify to
+        x_vec = view[Vec(1,2,3), 1]
+        y_vec = view[Vec(1,2,3), 2]
+        z_vec = view[Vec(1,2,3), 3]
+
+        # To stretch the visualization to full viewport we solve the same
+        # equation as for :fitzoom in one dimension and then adjust
+        # `aspect_ratio` such that the other dimension is mapped to a -1..1
+        # range. Here get distance from Y and get aspect_ratio from the ratio
+        # of distances.
+        x_dist_max = y_dist_max = 0.0
+        f = 1.0 / tand(0.5 * fov)
+        for i in (-1.0, 1.0), j in (-1.0, 1.0), k in (-1.0, 1.0)
+            p = i * x_vec + j * y_vec + k * z_vec
+            x_dist_max = max(x_dist_max, abs(p[1]) * f - p[3])
+            y_dist_max = max(y_dist_max, abs(p[2]) * f - p[3])
+            zmin = min(zmin, p[3])
+            zmax = max(zmax, p[3])
+        end
+
+        distance = y_dist_max
+        aspect_ratio = x_dist_max / y_dist_max
+
+    else
+        throw(ArgumentError("$viewmode is not a valid viewmode. Use :fit, :fitzoom or :stretch."))
+    end
+
+    # Note:
+    # The distance is currently set to clip exactly at the extrema of the
+    # limits/bounding box. If this causes any clipping issues we can simplify
+    # slightly increase distance.
+    # We could get minor near and far clipping issues for the same reason,
+    # wich can be fixed by multiplying with zmin, zmax by (1.0 + epsilon).
+    # (This may also require increasing distance to avoid near <= 0.0.)
+
+    # move camera coordinate system to eyeposition
+    distance = zoom_mult * distance
+    eyeposition = distance * eyeposition + lookat
+    view = view * translationmatrix(-eyeposition)
+
+    # Generate projection matrix
+    near = distance + zmin # closest rendered point of bounding box/sphere
+    far  = distance + zmax # farthest rendered point of bounding box/sphere
+    projection = perspectiveprojection(Float32, fov, aspect_ratio, near, far)
+
+    return model, view, projection, eyeposition
+
 end
 
 function update_state_before_display!(ax::Axis3)
@@ -1015,12 +1075,13 @@ function attribute_examples(::Type{Axis3})
                     fig = Figure()
 
                     for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                        Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+
                         for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
 
-                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
-
                             # show the extent of each cell using a box
-                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+                            b = Box(fig[i, j], strokewidth = 0, color = :gray95)
+                            translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
 
                             ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
                             hidedecorations!(ax)
@@ -1135,21 +1196,23 @@ function attribute_examples(::Type{Axis3})
         :protrusions => [
             Example(
                 code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
-                        title = "protrusions = 100")
-                    fig
+                fig = Figure(backgroundcolor = :gray97)
+                b = Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
+                Axis3(fig[1, 1], protrusions = 100, viewmode = :stretch,
+                    title = "protrusions = 100")
+                fig
                 """
             ),
             Example(
                 code = """
-                    fig = Figure(backgroundcolor = :gray97)
-                    Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
-                    ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
-                        title = "protrusions = (0, 0, 0, 20)")
-                    hidedecorations!(ax)
-                    fig
+                fig = Figure(backgroundcolor = :gray97)
+                b = Box(fig[1, 1], strokewidth = 0) # visualizes the layout cell
+                translate!(b.blockscene, Vec3f(0,0,-10_000)) # move behind Axis3
+                ax = Axis3(fig[1, 1], protrusions = (0, 0, 0, 20), viewmode = :stretch,
+                    title = "protrusions = (0, 0, 0, 20)")
+                hidedecorations!(ax)
+                fig
                 """
             ),
         ]

@@ -230,6 +230,7 @@ function setup_camera_matrices!(po::PolarAxis)
         mini = minimum(bb); ws = widths(bb)
         scale = minimum(2usable_fraction ./ ws)
         trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
+        camera(po.overlay).eyeposition[] = -Vec3f(scale, scale, 1)
         camera(po.scene).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
         return
     end
@@ -242,6 +243,7 @@ function setup_camera_matrices!(po::PolarAxis)
         scale = minimum(2usable_fraction ./ ws)
         trans = to_ndim(Vec3f, -scale .* (mini .+ 0.5ws), 0)
         scale *= rmax
+        camera(po.overlay).eyeposition[] = -Vec3f(scale, scale, 1)
         camera(po.overlay).view[] = transformationmatrix(trans, Vec3f(scale, scale, 1))
     end
 
