@@ -161,9 +161,9 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
-        newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
-        cursorindex[] = index
+        return cursorindex[] = index
     end
 
     function appendchar!(c)
@@ -211,7 +211,7 @@ function initialize_block!(tbox::Textbox)
         cursorindex[] = max(0, cursorindex[] - 1)
     end
 
-
+    keyboard_state = events(scene).keyboardstate
     on(topscene, events(scene).keyboardbutton; priority=60) do event
         if tbox.focused[]
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
@@ -239,8 +239,10 @@ function initialize_block!(tbox::Textbox)
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
                 elseif key == Keyboard.enter
-                    # don't do anything for invalid input which should stay red
-                    if displayed_is_valid[]
+                    if Keyboard.left_shift in keyboard_state
+                        # TODO, I guess we need to treat newline in a special way since its invisible?
+                        insertchar!('\n', cursorindex[] + 1)
+                    elseif displayed_is_valid[]
                         # submit the written text
                         tbox.stored_string[] = tbox.displayed_string[]
                         if tbox.defocus_on_submit[]
