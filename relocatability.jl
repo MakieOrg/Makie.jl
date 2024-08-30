@@ -6,6 +6,11 @@ module MakieApp
 
 using $BACKEND
 
+if "$BACKEND" == "WGLMakie"
+    using Electron
+    WGLMakie.Bonito.use_electron_display()
+end
+
 function julia_main()::Cint
     screen = display(scatter(1:4))
     # wait(screen) commented out to test if this blocks anything, but didn't change anything
@@ -27,6 +32,9 @@ Pkg.activate("MakieApp")
 paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, BACKEND)]
 
 Pkg.develop(map(x-> (;path=x), paths))
+if BACKEND == "WGLMakie"
+    Pkg.add("Electron")
+end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
