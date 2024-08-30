@@ -47,8 +47,11 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
+
+_success(cmd) = success(pipeline(cmd, stdout = stdout, stderr = stderr))
+
 @info "Running executable..."
-@test success(`$(exe)`)
+@test _success(`$(exe)`)
 @info "Done"
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
@@ -57,7 +60,7 @@ mvd_julia_pkg_dir = julia_pkg_dir * ".old"
 try
     @info "Running executable in relocated mode..."
     mv(julia_pkg_dir, mvd_julia_pkg_dir)
-    @test success(`$(exe)`)
+    @test _success(`$(exe)`)
     @info "Done"
 finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
