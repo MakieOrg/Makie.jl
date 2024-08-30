@@ -39,14 +39,18 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
+@info "Running executable..."
 @test success(`$(exe)`)
+@info "Done"
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
+    @info "Running executable in relocated mode..."
     mv(julia_pkg_dir, mvd_julia_pkg_dir)
     @test success(`$(exe)`)
-catch e
+    @info "Done"
+finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
 end
