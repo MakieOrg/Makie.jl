@@ -439,6 +439,11 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             if !isnothing(plotlist)
                 merge!(plotspec.kwargs, plotlist.kw)
             end
+            # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
+            # But we want the scene to only contain one PlotList item with the newly created 
+            # Plots from the plotlist to only appear as children of the PlotList recipe
+            # - so we dont push it to the scene if there's a plotlist.
+            # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
             plot_obj = to_plot_object(plotspec)
             connect_plot!(scene, plot_obj)
             if !isnothing(plotlist)
