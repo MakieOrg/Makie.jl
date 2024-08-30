@@ -35,7 +35,8 @@ See also: [`data_limits`](@ref)
 function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     # Assume primitive plot
     if isempty(plot.plots)
-        return apply_transform_and_model(plot, data_limits(plot))
+        raw_bb = apply_transform_and_model(plot, data_limits(plot))
+        return apply_clipping_planes(plot.clip_planes[], raw_bb)
     end
 
     # Assume combined plot
@@ -79,10 +80,15 @@ function boundingbox(plot::Scatter)
         model = plot.model[]
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
         transform_marker = to_value(get(plot, :transform_marker, false))::Bool
+        clip_planes = plot.clip_planes[]
 
         bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
             marker_pos = apply_transform_and_model(plot, p)
+            if is_clipped(clip_planes, marker_pos)
+                continue
+            end
+
             quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
             quad_size = Vec2d(sv_getindex(scale[], i))
             quad_rotation = sv_getindex(rotations, i)
@@ -106,7 +112,8 @@ function boundingbox(plot::Scatter)
         return bb
 
     else
-        return apply_transform_and_model(plot, data_limits(plot))
+        raw_bb = apply_transform_and_model(plot, data_limits(plot))
+        return apply_clipping_planes(plot.clip_planes[], raw_bb)
     end
 end
 
@@ -120,5 +127,5 @@ end
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 
 function iterate_transformed(plot, points::AbstractArray{<: VecTypes})
-    return apply_transform_and_model(plot, points)
+    return filter(p -> !is_clipped(plot.clip_planes[], p), apply_transform_and_model(plot, points))
 end

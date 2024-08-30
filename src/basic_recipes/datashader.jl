@@ -288,8 +288,9 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 """
 @recipe DataShader (points,) begin
     """
-    Can be `AggCount()`, `AggAny()` or `AggMean()`. User-extensible by overloading:
-
+    Can be `AggCount()`, `AggAny()` or `AggMean()`.
+    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accomodate the output of `local_operation`.
+    User-extensible by overloading:
     ```julia
     struct MyAgg{T} <: Makie.AggOp end
     MyAgg() = MyAgg{Float64}()
@@ -299,7 +300,7 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
     ```
     """
-    agg = AggCount()
+    agg = AggCount{Float32}()
     """
     Can be `AggThreads()` or `AggSerial()` for threaded vs. serial aggregation.
     """
@@ -468,7 +469,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     return p
 end
 
-data_limits(p::DataShader) =  p._boundingbox[]
+data_limits(p::DataShader) = p._boundingbox[]
 boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p._boundingbox[])
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)

@@ -53,7 +53,8 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
     space = to_value(get(poly, :space, :data))
-    points = project_position.(Ref(poly), space, points, Ref(model))
+    points = clip_poly(poly.clip_planes[], points, space, model)
+    points = _project_position(scene, space, points, model, true)
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
@@ -83,10 +84,11 @@ end
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_poly(scene, screen, poly, [bezierpath])
 
-function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2,BezierPath}})
+function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2, BezierPath}})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_shapes = project_shape.(Ref(poly), space, shapes, Ref(model))
+    clipped_shapes = clip_shape.(Ref(poly.clip_planes[]), shapes, space, Ref(model))
+    projected_shapes = project_shape.(Ref(poly), space, clipped_shapes, Ref(model))
 
     color = to_cairo_color(poly.color[], poly)
 
@@ -164,7 +166,9 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_polygon.(Ref(poly), space, polygons, Ref(model))
+    projected_polys = map(polygons) do polygon
+        return project_polygon(poly, space, polygon, poly.clip_planes[], model)
+    end
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -184,7 +188,9 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = project_multipolygon.(Ref(poly), space, polygons, Ref(model))
+    projected_polys = map(polygons) do polygon 
+        project_multipolygon(poly, space, polygon, poly.clip_planes[], model)
+    end
 
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -210,24 +216,50 @@ end
 #        gradients as well via `mesh` we have to intercept the poly use        #
 ################################################################################
 
+function band_segment_ranges(lowerpoints, upperpoints)
+    ranges = UnitRange{Int}[]
+    start = nothing
+
+    for i in eachindex(lowerpoints, upperpoints)
+        if isnan(lowerpoints[i]) || isnan(upperpoints[i])
+            if start !== nothing && i - start > 1 # more than one point
+                push!(ranges, start:i-1)
+            end
+            start = nothing
+        elseif start === nothing
+            start = i
+        elseif i == lastindex(lowerpoints)
+            push!(ranges, start:i)
+        end
+    end
+    return ranges
+end
+
 function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
-        color = to_cairo_color(band.color[], band)
-        upperpoints = band[1][]
-        lowerpoints = band[2][]
-        points = vcat(lowerpoints, reverse(upperpoints))
+        basecolor = to_cairo_color(band.color[], band)
+        color = coloralpha(basecolor, alpha(basecolor) * band.alpha[])
+
         model = band.model[]
         space = to_value(get(band, :space, :data))
-        points = project_position.(Ref(band), space, points, Ref(model))
-        Cairo.move_to(screen.context, points[1]...)
-        for p in points[2:end]
-            Cairo.line_to(screen.context, p...)
+
+        upperpoints = band[1][]
+        lowerpoints = band[2][]
+
+        for rng in band_segment_ranges(lowerpoints, upperpoints)
+            points = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))
+            points = clip_poly(band.clip_planes[], points, space, model)
+            points = project_position.(Ref(band), space, points, Ref(model))
+            Cairo.move_to(screen.context, points[1]...)
+            for p in points[2:end]
+                Cairo.line_to(screen.context, p...)
+            end
+            Cairo.close_path(screen.context)
+            set_source(screen.context, color)
+            Cairo.fill(screen.context)
         end
-        Cairo.close_path(screen.context)
-        set_source(screen.context, color)
-        Cairo.fill(screen.context)
     else
         for p in band.plots
             draw_plot(scene, screen, p)
@@ -258,7 +290,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     polygons = pol[1][]
     model = pol.model[]
     space = to_value(get(pol, :space, :data))
-    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(model))
+    projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(tric.clip_planes[]), Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))

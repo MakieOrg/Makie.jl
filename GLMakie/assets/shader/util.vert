@@ -249,6 +249,23 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 }
 
 
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+out float gl_ClipDistance[8];
+
+void process_clip_planes(vec3 world_pos)
+{
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++)
+        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+
+    // TODO: can be skipped?
+    for (int i = num_clip_planes; i < 8; i++)
+        gl_ClipDistance[i] = 1.0;
+}
+
+
 uniform float depth_shift;
 
 // TODO maybe ifdef SSAO this stuff?
@@ -271,6 +288,8 @@ out vec3 o_camdir;
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
+    process_clip_planes(position_world.xyz);
+
     // position in view space (as seen from camera)
     vec4 view_pos = view * position_world;
     view_pos /= view_pos.w;
