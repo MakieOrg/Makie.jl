@@ -20,6 +20,9 @@ function convert_arguments(::Type{<:Poly}, path::BezierPath)
     return convert_pointlike(path)
 end
 
+function convert_arguments(::Type{<:Poly}, path::AbstractMatrix{<:Number})
+    return convert_pointlike(path)
+end
 
 function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
     return convert_arguments(Mesh, vertices, indices)

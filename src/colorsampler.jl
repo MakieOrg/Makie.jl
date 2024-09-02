@@ -257,7 +257,6 @@ function _colormapping(
         @nospecialize(highclip),
         @nospecialize(nan_color),
         color_mapping_type) where {V <: AbstractArray{T, N}} where {N, T}
-
     map_colors = Observable(RGBAf[]; ignore_equal_values=true)
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
@@ -333,8 +332,17 @@ function ColorMapping(
         color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
 
     T = _array_value_type(color)
-    color_tight = convert(Observable{T}, colors_obs)::Observable{T}
-    color_tight.ignore_equal_values = true
+    color_tight = Observable{T}(color)
+    # We need to copy, to check for changes
+    # Since users may re-use the array when pushing updates
+    last_colors = copy(color)
+    on(colors_obs) do new_colors
+        if new_colors !== last_colors
+            color_tight[] = new_colors
+            last_colors = copy(new_colors)
+        end
+    end
+     # color_tight.ignore_equal_values = true
     _colormapping(color_tight, colors_obs, colormap, colorrange,
                          colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end
