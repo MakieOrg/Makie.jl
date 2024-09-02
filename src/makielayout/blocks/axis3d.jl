@@ -427,7 +427,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # we are going to transform the 3d frame points into 2d of the topscene
         # because otherwise the frame lines can
         # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        to_topscene_small_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
@@ -440,13 +440,24 @@ end
 
 # this function projects a point from a 3d subscene into the parent space with a really
 # small z value
-function to_topscene_z_2d(p3d, scene)
+function to_topscene_small_z_2d(p3d, scene)
     o = scene.viewport[].origin
     p2d = Point2f(o + Makie.project(scene, p3d))
     # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
     # to clip into plot objects anymore
     Point3f(p2d..., -10000)
 end
+
+# this function projects a point from a 3d subscene into the parent space with a really
+# small z value
+function to_topscene_big_z_2d(p3d, scene)
+    o = scene.viewport[].origin
+    p2d = Point2f(o + Makie.project(scene, p3d))
+    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
+    # to clip into plot objects anymore
+    Point3f(p2d..., 10000)
+end
+
 
 function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
@@ -507,7 +518,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     # be cut when they extend beyond the scene boundary
     tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.viewport) do ts, _, _
         map(ts) do p1_p2
-            to_topscene_z_2d.(p1_p2, Ref(scene))
+            to_topscene_small_z_2d.(p1_p2, Ref(scene))
         end
     end
 
