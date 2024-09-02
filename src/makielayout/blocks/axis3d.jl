@@ -404,7 +404,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
+    framepoints_main = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
             ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
         o = pxa.origin
 
@@ -429,12 +429,36 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # be cut when they lie directly on the scene boundary
         to_topscene_small_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
+    framepoints_fullbox = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
+            ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
+        o = pxa.origin
+
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+
+        mi1 = mi1 ⊻ rev1
+        mi2 = mi2 ⊻ rev2
+
+        f(mi) = mi ? minimum : maximum
+    
+        p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+        p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+
+        # we are going to transform the 3d frame points into 2d of the topscene
+        # because otherwise the frame lines can
+        # be cut when they lie directly on the scene boundary
+        to_topscene_big_z_2d.([p7, p8], Ref(scene))
+    end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
+    framelines = linesegments!(topscene, framepoints_main, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
-
+        if ax.fullbox[] == true
+            framelines = linesegments!(topscene, framepoints_fullbox, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
+                # transparency = true,
+                visible = attr(:spinesvisible), inspectable = false)
+        end
     return gridline1, gridline2, framelines
 end
 
