@@ -473,12 +473,10 @@ function to_topscene_small_z_2d(p3d, scene)
 end
 
 # this function projects a point from a 3d subscene into the parent space with a really
-# small z value
+# big z value
 function to_topscene_big_z_2d(p3d, scene)
     o = scene.viewport[].origin
     p2d = Point2f(o + Makie.project(scene, p3d))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
     Point3f(p2d..., 10000)
 end
 
