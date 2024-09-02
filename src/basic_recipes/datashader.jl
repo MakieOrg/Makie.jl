@@ -512,8 +512,9 @@ end
 
 Makie.@recipe HeatmapShader (x, y, image) begin
     max_resolution = 1024
-    colormap = :viridis
-    colorrange = Makie.automatic
+    interpolate = false
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
 end
 
 function xy_to_rect(x, y)
@@ -555,6 +556,21 @@ function resample_image(x, y, image, max_resolution, limits)
     return xvisible, yvisible, image[xrange, yrange]
 end
 
+
+
+function remove_oldest!(channel::Channel)
+    lock(channel) do
+        queued = channel.data
+        splice!(queued, 1:(length(queued)-1))
+        Base._increment_n_avail(channel, -1)
+        return
+    end
+end
+
+extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
+
+needs_tight_limits(::HeatmapShader) = true
+
 function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
@@ -571,14 +587,33 @@ function Makie.plot!(p::HeatmapShader)
     on(p, Makie.throttle(0.1, scroll_obs)) do _
         return limits_slow[] = limits[]
     end
-    limits_async = Makie.map_latest(identity, limits_slow; spawn=true)
+
+    limits_async = limits_slow
     x, y, image = p.x, p.y, p.image
     image_area = lift(xy_to_rect, x, y)
-    xy_image = map(resample_image, p, x, y, image, p.max_resolution, limits_async)
     large_image = map(resample_image, p, x, y, image, p.max_resolution, image_area)
-    lp = image!(p, x, y, map(last, large_image); colormap=p.colormap, colorrange=p.colorrange)
+
+    gpa = MakieCore.generic_plot_attributes(p)
+    cpa = MakieCore.colormap_attributes(p)
+
+    lp = image!(p, x, y, map(last, large_image); interpolate=p.interpolate, gpa..., cpa...)
     translate!(lp, 0, 0, -1)
-    image!(p, map(first, xy_image), map(x -> x[2], xy_image), map(last, xy_image); colormap=p.colormap,
-           colorrange=p.colorrange)
+
+    xy_image = Observable(resample_image(x[], y[], image[], p.max_resolution[], limits[]))
+
+    images = Channel(Inf) do ch
+        for arg in ch
+            xy_image[] = arg
+        end
+    end
+
+    onany(p, x, y, image, p.max_resolution, limits_async) do x, y, image, res, limits
+        Threads.@spawn begin
+            remove_oldest!(images)
+            put!(images, resample_image(x, y, image, res, limits))
+        end
+    end
+
+    image!(p, map(first, xy_image), map(x -> x[2], xy_image), map(last, xy_image); interpolate=p.interpolate, gpa..., cpa...)
     return p
 end
