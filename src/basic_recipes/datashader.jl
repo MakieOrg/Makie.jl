@@ -508,3 +508,77 @@ function extract_colormap(plot::DataShader)
         plot.lowclip,
         plot.nan_color)
 end
+
+
+Makie.@recipe HeatmapShader (x, y, image) begin
+    max_resolution = 1024
+    colormap = :viridis
+    colorrange = Makie.automatic
+end
+
+function xy_to_rect(x, y)
+    xmin, xmax = extrema(x)
+    ymin, ymax = extrema(y)
+    return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
+end
+
+Makie.conversion_trait(::Type{HeatmapShader}) = Makie.conversion_trait(Heatmap)
+
+function resample_image(x, y, image, max_resolution, limits)
+    xmin, xmax = x
+    ymin, ymax = y
+    data_rect = Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
+    visible_rect = GeometryBasics.intersect(data_rect, limits)
+    mini = minimum(visible_rect)
+    w = widths(visible_rect)
+    if !(visible_rect in data_rect) || any(w -> w < 0, w)
+        return (xmin, xmax), (ymin, ymax), image[1:2, 1:2]
+    end
+
+    xvisible = minmax(mini[1], mini[1] + w[1])
+    yvisible = minmax(mini[2], mini[2] + w[2])
+
+    xindices = round.(Int, (xvisible .- xmin) ./ (xmax - xmin) .* (size(image, 1) - 1) .+ 1)
+    xindices = clamp.(xindices, 1, size(image, 1))
+
+    yindices = round.(Int, (yvisible .- ymin) ./ (ymax - ymin) .* (size(image, 2) - 1) .+ 1)
+    yindices = clamp.(yindices, 1, size(image, 2))
+
+    xstep = max(1, floor(Int, (xindices[2] - xindices[1]) / max_resolution))
+    ystep = max(1, floor(Int, (yindices[2] - yindices[1]) / max_resolution))
+
+    xrange = range(xindices[1], xindices[2]; step=xstep)
+    yrange = range(yindices[1], yindices[2]; step=ystep)
+    if isempty(xrange) || isempty(yrange)
+        return (xmin, xmax), (ymin, ymax), image[1:1, 1:1]
+    end
+    return xvisible, yvisible, image[xrange, yrange]
+end
+
+function Makie.plot!(p::HeatmapShader)
+    limits = Makie.projview_to_2d_limits(p)
+    scene = Makie.parent_scene(p)
+    limits_slow = Observable(limits[]; ignore_equal_values=true)
+    on(p, scene.events.mousebutton) do button
+        if button.action == Makie.Mouse.release
+            limits_slow[] = limits[]
+        end
+    end
+    scroll_obs = Observable(nothing)
+    on(p, scene.events.scroll; priority=10000) do _
+        return scroll_obs[] = nothing
+    end
+    on(p, Makie.throttle(0.1, scroll_obs)) do _
+        return limits_slow[] = limits[]
+    end
+    limits_async = Makie.map_latest(identity, limits_slow; spawn=true)
+    x, y, image = p.x, p.y, p.image
+    image_area = lift(xy_to_rect, x, y)
+    xy_image = map(resample_image, p, x, y, image, p.max_resolution, limits_async)
+    large_image = map(resample_image, p, x, y, image, p.max_resolution, image_area)
+    lp = image!(p, x, y, map(last, large_image); colormap=p.colormap, colorrange=p.colorrange)
+    translate!(lp, 0, 0, -1)
+    image!(p, map(first, xy_image), map(x -> x[2], xy_image), map(last, xy_image); colormap=p.colormap,
+           colorrange=p.colorrange)
+    return p
+end
