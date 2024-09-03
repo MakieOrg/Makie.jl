@@ -33,7 +33,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # avoid them inverting.
     # TODO: If we have neither perspective projection not clip_planes we can
     #       use the normal projection_position() here
-    projected_positions, indices, color = project_line_points(scene, primitive, positions, color)
+    projected_positions, color, linewidth = 
+        project_line_points(scene, primitive, positions, color, linewidth)
 
     # The linestyle can be set globally, as we do here.
     # However, there is a discrepancy between Makie
@@ -83,7 +84,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         draw_multi(
             primitive, ctx,
             projected_positions,
-            color, linewidth, indices,
+            color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
         )
     else
@@ -179,9 +180,8 @@ end
 # getindex if array, otherwise just return value
 using Makie: sv_getindex
 
-function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, indices, dash)
+function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, dash)
     @assert iseven(length(positions))
-    @assert isempty(indices)
 
     for i in 1:2:length(positions)
         if isnan(positions[i+1]) || isnan(positions[i])
@@ -214,13 +214,14 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths,
     end
 end
 
-function draw_multi(primitive::Lines, ctx, positions, colors, linewidths, indices, dash)
-    isempty(indices) && return
+function draw_multi(primitive::Lines, ctx, positions, colors, linewidths, dash)
+    isempty(positions) && return
 
-    @assert length(indices) == length(positions)
+    @assert !(colors isa AbstractVector) || length(colors) == length(positions)
+    @assert !(linewidths isa AbstractVector) || length(linewidths) == length(positions)
 
     prev_color = sv_getindex(colors, 1)
-    prev_linewidth = sv_getindex(linewidths, indices[1])
+    prev_linewidth = sv_getindex(linewidths, 1)
     prev_position = positions[begin]
     prev_nan = isnan(prev_position)
     prev_continued = false
@@ -237,7 +238,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors, linewidths, indice
         this_position = positions[i]
         this_color = sv_getindex(colors, i)
         this_nan = isnan(this_position)
-        this_linewidth = sv_getindex(linewidths, indices[i])
+        this_linewidth = sv_getindex(linewidths, i)
         if this_nan
             # this is nan
             if prev_continued
