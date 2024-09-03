@@ -757,7 +757,7 @@ end
     
     xs = -180:180
     ys = -90:90
-    field = [exp(cosd(x)) + 3(y/90) for x in xs, y in ys] ./ 10
+    field = [exp(cosd(x)) + 3(y/90) for x in xs, y in ys] ./ 5
     
     f, a, p = surface(xs, ys, field; axis = (; type = LScene,), shading = NoShading)
     p.transformation.transform_func[] = SPHERICAL_TRANSFORM
