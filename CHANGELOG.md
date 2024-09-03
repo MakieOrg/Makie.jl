@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
+- Fix float precision based assertions error in GLMakie.volume [#4311](https://github.com/MakieOrg/Makie.jl/pull/4311)
 
 ## [0.21.7] - 2024-08-19
 
