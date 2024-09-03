@@ -201,7 +201,7 @@ function absrect(rect)
         wh[i] < 0 ? xy[i] + wh[i] : xy[i]
     end
 
-    return Rect2(Vec2(xy), abs.(wh))
+    return Rect2(Vec(xy), abs.(wh))
 end
 
 
