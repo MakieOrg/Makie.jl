@@ -162,7 +162,8 @@ function limits_to_uvmesh(plot, f32c)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
-
+    px = lift(identity, plot, px; ignore_equal_values=true)
+    py = lift(identity, plot, py; ignore_equal_values=true)
     if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
             xmin, xmax = extrema(x)
@@ -171,8 +172,9 @@ function limits_to_uvmesh(plot, f32c)
         end
         ps = lift(rect -> decompose(Point2f, rect), plot, rect)
         positions = Buffer(apply_transform_and_f32_conversion(plot, f32c, ps))
-        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
-        uv = Buffer(lift(decompose_uv, plot, rect))
+        # UV + Faces stay the same for the rectangle
+        faces = Buffer(decompose(GLTriangleFace, rect[]))
+        uv = Buffer(decompose_uv(rect[]))
     else
         px = lift((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
         py = lift((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)

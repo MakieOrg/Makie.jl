@@ -195,6 +195,40 @@ end
     current_figure()
 end
 
+@reference_test "Band with NaN" begin
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+
+    # NaN in the middle
+    band!(ax1, 1:5, [1, 2, NaN, 4, 5], [1.5, 3, 4, 5, 6.5])
+    band!(ax1, 1:5, [3, 4, 5, 6, 7], [3.5, 5, NaN, 7, 8.5])
+    band!(ax1, [1, 2, NaN, 4, 5], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax2 = Axis(f[1, 2])
+
+    # NaN at the beginning and end
+    band!(ax2, 1:5, [NaN, 2, 3, 4, NaN], [1.5, 3, 4, 5, 6.5])
+    band!(ax2, 1:5, [3, 4, 5, 6, 7], [NaN, 5, 6, 7, NaN])
+    band!(ax2, [NaN, 2, 3, 4, NaN], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax3 = Axis(f[2, 1])
+
+    # No complete section
+    band!(ax3, 1:5, [NaN, 2, NaN, 4, NaN], [1.5, 3, 4, 5, 6.5])
+    band!(ax3, 1:5, [3, 4, 5, 6, 7], [NaN, 5, NaN, 7, NaN])
+    band!(ax3, [NaN, 2, NaN, 4, NaN], [5, 6, 7, 8, 9], [5.5, 7, 8, 9, 10.5])
+
+    ax4 = Axis(f[2, 2])
+    # Two adjacent NaNs
+    band!(ax4, 1:6, [1, 2, NaN, NaN, 5, 6], [1.5, 3, 4, 5, 6, 7.5])
+    band!(ax4, 1:6, [3, 4, 5, 6, 7, 8], [3.5, 5, NaN, NaN, 8, 9.5])
+    band!(ax4, [1, 2, NaN, NaN, 5, 6], [5, 6, 7, 8, 9, 10], [5.5, 7, 8, 9, 10, 11.5])
+
+    linkaxes!(ax1, ax2, ax3, ax4)
+
+    f
+end
+
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Observable(Base.Fix2(v, 0.0))
@@ -371,6 +405,27 @@ end
 
 @reference_test "Open pie chart" begin
     pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
+end
+
+@reference_test "Pie with Segment-specific Radius" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1]; autolimitaspect=1)
+
+    kw = (; offset_radius=0.4, strokecolor=:transparent, strokewidth=0)
+    pie!(ax, ones(7); radius=sqrt.(2:8) * 3, kw..., color=Makie.wong_colors(0.8)[1:7])
+
+    vs = [2, 3, 4, 5, 6, 7, 8]
+    vs_inner = [1, 1, 1, 1, 2, 2, 2]
+    rs = 8
+    rs_inner = sqrt.(vs_inner ./ vs) * rs
+
+    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
+    pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
+    pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
+    pie!(ax, 20, 0, vs; radius=rs, inner_radius=rs_inner, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
+
+    fig
 end
 
 @reference_test "Pie Position" begin
@@ -1100,6 +1155,22 @@ end
         axis=(; xscale=log10),
         direction = :x
     )
+    f
+end
+
+@reference_test "Barplot label positions" begin
+    f = Figure(size = (450, 450))
+    func(fpos; label_position, direction) = barplot(fpos, [1, 1, 2], [1, 2, 3];
+        stack = [1, 1, 2], bar_labels = ["One", "Two", "Three"], label_position,
+        color = [:tomato, :bisque, :slategray2], direction, label_font = :bold)
+    func(f[1, 1]; label_position = :end, direction = :y)
+    ylims!(0, 4)
+    func(f[1, 2]; label_position = :end, direction = :x)
+    xlims!(0, 4)
+    func(f[2, 1]; label_position = :center, direction = :y)
+    ylims!(0, 4)
+    func(f[2, 2]; label_position = :center, direction = :x)
+    xlims!(0, 4)
     f
 end
 
