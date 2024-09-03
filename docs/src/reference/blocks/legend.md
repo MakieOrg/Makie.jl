@@ -95,7 +95,8 @@ You can pass a selected axis plus arguments which are forwarded to the `Legend` 
 If you pass only a string, it's used as the title with the current axis.
 
 The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
-
+Or you can set position with tuple (halign, valign) with elements from 0 to 1:
+`position = (0.1, 0.9)`
 ```@figure
 
 f = Figure()
