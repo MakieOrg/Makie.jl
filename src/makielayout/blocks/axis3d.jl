@@ -454,11 +454,11 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     framelines = linesegments!(topscene, framepoints_main, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
-        if ax.fullbox[] == true
-            framelines = linesegments!(topscene, framepoints_fullbox, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
-                # transparency = true,
-                visible = attr(:spinesvisible), inspectable = false)
-        end
+       
+    framelines = linesegments!(topscene, framepoints_fullbox, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
+        # transparency = true,
+        visible = ax.fullbox[] && attr(:spinesvisible), inspectable = false)
+        
     return gridline1, gridline2, framelines
 end
 
