@@ -719,14 +719,15 @@ end
 
 function attribute_name_allowlist()
     return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
-            :dim_conversions, :cycle)
+            :dim_conversions, :cycle, :clip_planes)
 end
 
-function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
+function validate_attribute_keys(plot::P) where {P<:Plot}
     nameset = attribute_names(P)
     nameset === nothing && return
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
+    kw = plot.kw
     unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
     if !isempty(unknown)
         throw(InvalidAttributeError(P, unknown))
@@ -741,4 +742,5 @@ function validate_attribute_keys(P::Type{<:Plot}, kw::Dict{Symbol})
             end
         end
     end
+    return
 end

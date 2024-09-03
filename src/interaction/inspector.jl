@@ -189,11 +189,12 @@ mutable struct DataInspector
     selection::AbstractPlot
 
     obsfuncs::Vector{Any}
+    lock::Threads.ReentrantLock
 end
 
 
 function DataInspector(scene::Scene, plot::AbstractPlot, attributes)
-    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[])
+    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[], Threads.ReentrantLock())
     # finalizer(cleanup, x) # doesn't get triggered when this is dereferenced
     x
 end
@@ -297,31 +298,33 @@ DataInspector(; kwargs...) = DataInspector(current_figure(); kwargs...)
 
 function on_hover(inspector)
     parent = inspector.root
-    (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
+    lock(inspector.lock) do
+        (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
 
-    mp = mouseposition_px(parent)
-    should_clear = true
-    for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
-        if to_value(get(plt.attributes, :inspectable, true))
-            # show_data should return true if it created a tooltip
-            if show_data_recursion(inspector, plt, idx)
-                should_clear = false
-                break
+        mp = mouseposition_px(parent)
+        should_clear = true
+        for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
+            if to_value(get(plt.attributes, :inspectable, true))
+                # show_data should return true if it created a tooltip
+                if show_data_recursion(inspector, plt, idx)
+                    should_clear = false
+                    break
+                end
             end
         end
-    end
 
-    if should_clear
-        plot = inspector.selection
-        if to_value(get(plot, :inspector_clear, automatic)) !== automatic
-            plot[:inspector_clear][](inspector, plot)
+        if should_clear
+            plot = inspector.selection
+            if to_value(get(plot, :inspector_clear, automatic)) !== automatic
+                plot[:inspector_clear][](inspector, plot)
+            end
+            inspector.plot.visible[] = false
+            inspector.attributes.indicator_visible[] = false
+            inspector.plot.offset.val = inspector.attributes.offset[]
         end
-        inspector.plot.visible[] = false
-        inspector.attributes.indicator_visible[] = false
-        inspector.plot.offset.val = inspector.attributes.offset[]
-    end
 
-    return Consume(false)
+        return Consume(false)
+    end
 end
 
 
@@ -812,8 +815,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     tt = inspector.plot
     scene = parent_scene(plot)
 
-    pos = plot[1][][idx]
-    proj_pos = shift_project(scene, apply_transform_and_model(plot, to_ndim(Point3f, pos, 0)))
+    proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
@@ -824,10 +826,9 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
                 scene, bbox, model = model, color = a.indicator_color,
-                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false
             )
-            translate!(p, Vec3f(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
         elseif !isempty(inspector.temp_plots)
             p = inspector.temp_plots[1]
@@ -838,6 +839,13 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.indicator_visible[] = true
     end
 
+    # We pass the input space position to user defined
+    # functions to keep the user from dealing with
+    # log space scaling in their function.
+    pos = plot[1][][idx] # input space position/data
+    if plot.direction[] === :x
+        pos = reverse(pos)
+    end
     if to_value(get(plot, :inspector_label, automatic)) == automatic
         tt.text[] = position2string(pos)
     else

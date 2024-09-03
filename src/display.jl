@@ -313,6 +313,15 @@ function FileIO.save(
         update = true,
         screen_config...
     )
+    if ismissing(backend)
+        error("""
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """)
+    end
     scene = get_scene(fig)
     if resolution !== nothing
         @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
@@ -341,6 +350,7 @@ function FileIO.save(
             config = Dict{Symbol, Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
+            events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
             backend_show(screen, io, mime, scene)
         end
     catch e

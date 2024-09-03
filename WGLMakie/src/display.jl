@@ -53,8 +53,16 @@ mutable struct Screen <: Makie.MakieScreen
     displayed_scenes::Set{String}
     config::ScreenConfig
     canvas::Union{Nothing,Bonito.HTMLElement}
+    tick_clock::Makie.BudgetedTimer
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
-        return new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing)
+        timer = Makie.BudgetedTimer(1.0 / 30.0)
+        screen = new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing, timer)
+
+        finalizer(screen) do screen
+            close(screen.tick_clock)
+        end
+
+        return screen
     end
 end
 
