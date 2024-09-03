@@ -377,6 +377,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 @testset "Band" begin
                     @test apply_conversion(Band, xs, ys, zs) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Band, i, x -> x..(x+1)) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
                 end
 
                 @testset "Bracket" begin
@@ -396,6 +397,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                     @test apply_conversion(Rangebars, xs, ys, zs)      isa Tuple{Vector{Vec3{T_out}}}
                     @test apply_conversion(Rangebars, xs, ps2)         isa Tuple{Vector{Vec3{T_out}}}
+                    @test apply_conversion(Rangebars, i, x->x..(x+1))  isa Tuple{Vector{Vec3{T_out}}}
                 end
 
                 @testset "Poly" begin
