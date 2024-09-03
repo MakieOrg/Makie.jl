@@ -95,7 +95,7 @@ end
 function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
     axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
-        pop!(axis_kw, :type)
+        to_value(pop!(axis_kw, :type))
     else
         preferred_axis_type(plot)
     end
@@ -103,8 +103,8 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
         return nothing
     end
     bbox = pop!(axis_kw, :bbox, nothing)
-    set_axis_attributes!(to_value(AxType), axis_kw, plot)
-    return _block(to_value(AxType), figure, [], axis_kw, bbox)
+    set_axis_attributes!(AxType, axis_kw, plot)
+    return _block(AxType, figure, [], axis_kw, bbox)
 end
 
 const PlotOrNot = Union{AbstractPlot, Nothing}
