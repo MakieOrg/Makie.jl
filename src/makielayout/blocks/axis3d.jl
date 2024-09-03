@@ -429,7 +429,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # be cut when they lie directly on the scene boundary
         to_topscene_small_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
-    framepoints_fullbox = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
+    framepoints_front_spines = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
             ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
         o = pxa.origin
 
@@ -455,9 +455,9 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
        
-    framelines = linesegments!(topscene, framepoints_fullbox, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
+    framelines = linesegments!(topscene, framepoints_front_spines, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
         # transparency = true,
-        visible = ax.fullbox[] && attr(:spinesvisible), inspectable = false)
+        visible = ax.front_spines[] && attr(:spinesvisible), inspectable = false)
         
     return gridline1, gridline2, framelines
 end

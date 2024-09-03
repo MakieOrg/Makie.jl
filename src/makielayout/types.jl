@@ -1697,7 +1697,7 @@ end
         "The color of z spine 3 opposite of the ticks"
         zspinecolor_3 = :black       
         "Controls if the 4. Spines are created to close the outline box"
-        fullbox = false
+        front_spines = false
         "The color of x spine 4"
         xspinecolor_4 = :black
         "The color of y spine 4"
