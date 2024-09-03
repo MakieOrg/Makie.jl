@@ -194,7 +194,7 @@ end
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
     per_point_colors = colors <: AbstractArray
-    per_point_linewidths = linewidths <: AbstractArray
+    per_point_linewidths = (T <: Lines) && (linewidths <: AbstractArray)
     
     quote
         @get_attribute(plot, (space, model))
