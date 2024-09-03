@@ -176,35 +176,28 @@ function draw_single(primitive::LineSegments, ctx, positions)
     Cairo.new_path(ctx)
 end
 
-# if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, indices, dash)
-    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], indices, dash)
-end
+# getindex if array, otherwise just return value
+using Makie: sv_getindex
 
-# if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, indices, dash)
-    draw_multi(primitive, ctx, positions, [color for _ in positions], linewidths, indices, dash)
-end
-
-function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
+function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, indices, dash)
     @assert iseven(length(positions))
-    @assert length(positions) == length(colors)
-    @assert length(linewidths) == length(colors)
+    @assert isempty(indices)
 
     for i in 1:2:length(positions)
         if isnan(positions[i+1]) || isnan(positions[i])
             continue
         end
-        if linewidths[i] != linewidths[i+1]
-            error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
+        lw = sv_getindex(linewidths, i)
+        if lw != sv_getindex(linewidths, i+1)
+            error("Cairo doesn't support two different line widths ($lw and $(sv_getindex(linewidths, i+1)) at the endpoints of a line.")
         end
         Cairo.move_to(ctx, positions[i]...)
         Cairo.line_to(ctx, positions[i+1]...)
-        Cairo.set_line_width(ctx, linewidths[i])
+        Cairo.set_line_width(ctx, lw)
 
-        !isnothing(dash) && Cairo.set_dash(ctx, dash .* linewidths[i])
-        c1 = colors[i]
-        c2 = colors[i+1]
+        !isnothing(dash) && Cairo.set_dash(ctx, dash .* lw)
+        c1 = sv_getindex(colors, i)
+        c2 = sv_getindex(colors, i+1)
         # we can avoid the more expensive gradient if the colors are the same
         # this happens if one color was given for each segment
         if c1 == c2
@@ -221,15 +214,13 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
     end
 end
 
-function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
+function draw_multi(primitive::Lines, ctx, positions, colors, linewidths, indices, dash)
     isempty(indices) && return
 
-    linewidths = linewidths[indices]
-    @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
-    @assert length(linewidths) == length(colors) "$(length(linewidths)) != $(length(colors))"
+    @assert length(indices) == length(positions)
 
-    prev_color = colors[begin]
-    prev_linewidth = linewidths[begin]
+    prev_color = sv_getindex(colors, 1)
+    prev_linewidth = sv_getindex(linewidths, indices[1])
     prev_position = positions[begin]
     prev_nan = isnan(prev_position)
     prev_continued = false
@@ -244,9 +235,9 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
 
     for i in eachindex(positions)[begin+1:end]
         this_position = positions[i]
-        this_color = colors[i]
+        this_color = sv_getindex(colors, i)
         this_nan = isnan(this_position)
-        this_linewidth = linewidths[i]
+        this_linewidth = sv_getindex(linewidths, indices[i])
         if this_nan
             # this is nan
             if prev_continued
@@ -323,7 +314,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         end
         prev_nan = this_nan
         prev_color = this_color
-        prev_linewidth = linewidths[i]
+        prev_linewidth = this_linewidth
         prev_position = this_position
     end
 end
