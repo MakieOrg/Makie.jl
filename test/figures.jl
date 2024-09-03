@@ -175,5 +175,8 @@ end
     # and must be interpreted as a value on plot creation.
     @test_nowarn lines(1:10; axis = (; type = LScene))
     @test_nowarn lines(1:10; axis = (; type = Axis3))
-    @test_nowarn lines(1:10; axis = (; type = PolarAxis))
+    # and must be interpreted as a value on plot creation.
+    @test_nowarn lines(1:10; axis = Attributes(; type = LScene))
+    @test_nowarn lines(1:10; axis = Attributes(; type = Axis3))
+    @test_nowarn lines(1:10; axis = Attributes(; type = PolarAxis))
 end
