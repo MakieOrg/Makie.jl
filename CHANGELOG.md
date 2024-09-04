@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Make sure we wait for the screen session [#4316](https://github.com/MakieOrg/Makie.jl/pull/4316).
 - Fix for absrect [#4312](https://github.com/MakieOrg/Makie.jl/pull/4312).
 - Fix attribute updates for SpecApi and SpecPlots (e.g. ecdfplot) [#4265](https://github.com/MakieOrg/Makie.jl/pull/4265).
 - Bring back `poly` convert arguments for matrix with points as row [#4266](https://github.com/MakieOrg/Makie.jl/pull/4258).
