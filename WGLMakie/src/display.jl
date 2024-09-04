@@ -209,11 +209,12 @@ function get_screen_session(screen::Screen; timeout=100,
         throw_error("Screen has no session. Not yet displayed?")
         return nothing
     end
-    if !(screen.session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
+    session = screen.session
+    if !(session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
         throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)")
         return nothing
     end
-    success = Bonito.wait_for_ready(screen.session; timeout=timeout)
+    success = Bonito.wait_for_ready(session; timeout=timeout)
     if success !== :success
         throw_error("Timed out waiting for session to get ready")
         return nothing
@@ -224,7 +225,7 @@ function get_screen_session(screen::Screen; timeout=100,
         throw_error("Timed out waiting $(timeout)s for session to get initilize")
     end
     # At this point we should have a fully initialized plot + session
-    return screen.session
+    return session
 end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, args...)
@@ -258,6 +259,7 @@ function Base.display(screen::Screen, scene::Scene; unused...)
         return render_with_init(screen, session, scene)
     end
     display(app)
+    Bonito.wait_for(()-> !isnothing(screen.session))
     Bonito.wait_for_ready(screen.session)
     # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
     get_screen_session(screen; error="Waiting for plot to be initialized in display")
