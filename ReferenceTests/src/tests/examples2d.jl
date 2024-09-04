@@ -1607,6 +1607,7 @@ end
     data2 = map(data) do x
         Float32(round(x))
     end
+    f = Figure()
     ax1, pl = heatmapshader(f[1, 1], data)
     ax2, pl = heatmapshader(f[1, 2], data)
     limits!(ax2, 2800, 4800, 2800, 5000)
