@@ -340,3 +340,15 @@ end
     translate!(vl, 1, 0, 0)
     f
 end
+
+@reference_test "PolarAxis fontsize from :Axis" begin
+    fig = Figure()
+    ax = PolarAxis(fig[1, 1], rticklabelsize = 35, thetaticklabelsize = 65)
+    fig
+end
+
+@reference_test "PolarAxis fontsize from Figure()" begin
+    fig = Figure(fontsize = 50)
+    ax = PolarAxis(fig[1, 1])
+    fig
+end
