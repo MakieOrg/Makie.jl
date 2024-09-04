@@ -344,8 +344,6 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     return robj
 end
 
-Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
-
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
@@ -893,7 +891,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
-            @assert modelinv[4, 4] == 1
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6) 
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
@@ -967,7 +965,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
             modelinv = inv(model)
-            @assert modelinv[4, 4] == 1
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6) 
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
