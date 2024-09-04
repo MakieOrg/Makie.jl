@@ -360,6 +360,3 @@ end
     translate!(vl, 1, 0, 0)
     f
 end
-
-
-
