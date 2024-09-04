@@ -75,6 +75,25 @@ function draw_mesh_particle(screen, p, data)
         texturecoordinates = nothing
     end
 
+    # TODO: use instance attributes
+    if to_value(data[:uv_transform]) isa Vector
+        transforms = pop!(data, :uv_transform)
+        @gen_defaults! data begin
+            uv_transform = map(transforms) do transforms
+                # 3x Vec2 should match the element order of glsl mat3x2
+                output = Vector{Vec2f}(undef, 3 * length(transforms))
+                for i in eachindex(transforms)
+                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
+                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
+                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
+                end
+                return output
+            end => TextureBuffer
+        end
+    else 
+        # handled automatically
+    end
+
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         color_map = nothing => Texture
@@ -86,7 +105,6 @@ function draw_mesh_particle(screen, p, data)
         matcap = nothing => Texture
         fetch_pixel = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1)
         backlight = 0f0
 
         instances = const_lift(length, position)

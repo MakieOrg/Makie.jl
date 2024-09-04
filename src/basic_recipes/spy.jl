@@ -14,7 +14,7 @@ spy(x)
 spy(0..1, 0..1, x)
 ```
 """
-@recipe Spy (x::ClosedInterval, y::ClosedInterval, z::RealMatrix) begin
+@recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
     """
     Can be any of the markers supported by `scatter!`.
     Note, for huge sparse arrays, one should use `FastPixel`, which is a very fast, but can only render square markers.
@@ -54,8 +54,8 @@ spy(0..1, 0..1, x)
 end
 
 function data_limits(plot::Spy)
-    xmin, xmax = minmax(endpoints(plot.x[])...)
-    ymin, ymax = minmax(endpoints(plot.y[])...)
+    xmin, xmax = minmax(plot.x[]...)
+    ymin, ymax = minmax(plot.y[]...)
     return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
@@ -69,8 +69,8 @@ function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
 end
 
 function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
-    x = to_interval(xs, "x")
-    y = to_interval(ys, "y")
+    x = to_endpoints(xs, "x")
+    y = to_endpoints(ys, "y")
     return (x, y, convert(SparseArrays.SparseMatrixCSC, matrix))
 end
 
@@ -78,8 +78,8 @@ needs_tight_limits(::Spy) = true
 
 function Makie.plot!(p::Spy)
     rect = lift(p, p.x, p.y) do x, y
-        xe = minmax(endpoints(x)...)
-        ye = minmax(endpoints(y)...)
+        xe = minmax(x...)
+        ye = minmax(y...)
         Rect2((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
     end
     # TODO FastPixel isn't accepting marker size in data coordinates

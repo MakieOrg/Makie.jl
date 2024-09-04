@@ -75,10 +75,11 @@ end
     @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
     atlas = Makie.get_texture_atlas()
     # Test quad data
+    transformed = Makie.apply_transform_and_f32_conversion(
+        nothing, Makie.transform_func(p), p.model[], p.position[], :data
+    )
     positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
-        atlas,
-        to_ndim(Point3f, p.position[], 0), glyph_collection,
-        Vec2f(0), Makie.f32_conversion(scene), Makie.transform_func_obs(scene)[], :data
+        atlas, transformed, glyph_collection, Vec2f(0)
     )
 
     # Also doesn't work
