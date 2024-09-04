@@ -533,7 +533,7 @@ function resample_image(x, y, image, max_resolution, limits)
     mini = minimum(visible_rect)
     w = widths(visible_rect)
     if !(visible_rect in data_rect) || any(w -> w < 0, w)
-        return (xmin, xmax), (ymin, ymax), image[1:2, 1:2]
+        return EndPoints{Float32}((xmin, xmax)), EndPoints{Float32}((ymin, ymax)), image[1:2, 1:2]
     end
 
     xvisible = minmax(mini[1], mini[1] + w[1])
@@ -550,10 +550,11 @@ function resample_image(x, y, image, max_resolution, limits)
 
     xrange = range(xindices[1], xindices[2]; step=xstep)
     yrange = range(yindices[1], yindices[2]; step=ystep)
+
     if isempty(xrange) || isempty(yrange)
-        return (xmin, xmax), (ymin, ymax), image[1:1, 1:1]
+        return EndPoints{Float32}((xmin, xmax)), EndPoints{Float32}((ymin, ymax)), image[1:1, 1:1]
     end
-    return xvisible, yvisible, image[xrange, yrange]
+    return EndPoints{Float32}(xvisible), EndPoints{Float32}(yvisible), image[xrange, yrange]
 end
 
 
@@ -575,45 +576,57 @@ function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
     limits_slow = Observable(limits[]; ignore_equal_values=true)
-    on(p, scene.events.mousebutton) do button
-        if button.action == Makie.Mouse.release
-            limits_slow[] = limits[]
+    on(p, scene.events.mousebutton, limits) do buttons, lims
+        if buttons.action != Mouse.press
+            limits_slow[] = lims
         end
-    end
-    scroll_obs = Observable(nothing)
-    on(p, scene.events.scroll; priority=10000) do _
-        return scroll_obs[] = nothing
-    end
-    on(p, Makie.throttle(0.1, scroll_obs)) do _
-        return limits_slow[] = limits[]
+        return
     end
 
     limits_async = limits_slow
     x, y, image = p.x, p.y, p.image
     image_area = lift(xy_to_rect, x, y)
-    large_image = map(resample_image, p, x, y, image, p.max_resolution, image_area)
+    x_y_overview_image = lift(resample_image, p, x, y, image, p.max_resolution, image_area)
+    overview_image = lift(last, x_y_overview_image)
 
+    colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image
+        if crange isa Automatic
+            return nan_extrema(image)
+        else
+            return Vec2f(crange)
+        end
+    end
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
 
-    lp = image!(p, x, y, map(last, large_image); interpolate=p.interpolate, gpa..., cpa...)
+    lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
     translate!(lp, 0, 0, -1)
 
     xy_image = Observable(resample_image(x[], y[], image[], p.max_resolution[], limits[]))
-
-    images = Channel(Inf) do ch
+    # To make this threadsafe, the observable needs to be triggered from the current thread
+    image_to_obs = Channel{typeof(xy_image[])}(Inf) do ch
         for arg in ch
             xy_image[] = arg
         end
     end
-
-    onany(p, x, y, image, p.max_resolution, limits_async) do x, y, image, res, limits
-        Threads.@spawn begin
-            remove_oldest!(images)
-            put!(images, resample_image(x, y, image, res, limits))
+    # To actually run the resampling on another thread, we need another channel:
+    do_resample = Channel(Inf; spawn=true) do ch
+        for (x, y, image, res, limits) in ch
+            put!(image_to_obs, resample_image(x, y, image, res, limits))
         end
     end
 
-    image!(p, map(first, xy_image), map(x -> x[2], xy_image), map(last, xy_image); interpolate=p.interpolate, gpa..., cpa...)
+    onany(p, x, y, image, p.max_resolution, limits_async) do x, y, image, res, limits
+        # We remove any queued up resampling requests, since we only care about the latest one
+        remove_oldest!(do_resample)
+        # And then we put the newest.
+        put!(do_resample, (x, y, image, res, limits))
+        return
+    end
+    image!(p,
+        lift(first, p, xy_image), lift(x-> getindex(x, 2), p, xy_image), lift(last, p, xy_image);
+        gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange,
+    )
+
     return p
 end
