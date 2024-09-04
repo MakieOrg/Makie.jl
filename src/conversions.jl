@@ -172,10 +172,10 @@ function convert_arguments(P::PointBased, mesh::AbstractMesh)
     return convert_arguments(P, coordinates(mesh))
 end
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:Point}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
 
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
@@ -541,23 +541,31 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T_in}) where {N, T_in}
+    T = T_in
     T_out = float_type(T)
-    # Make sure we have normals!
+
+    # convert face type if necessary (this can't include attributes if we convert MultiFace)
+    if GeometryBasics.facetype(mesh) !== GLTriangleFace
+        mesh = GeometryBasics.mesh(mesh, GLTriangleFace, pointtype = T_out)
+        T = T_out
+    end
+    
+    # try to add normals if they are missing
     if !hasproperty(mesh, :normals)
-        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
+        n = normals(coordinates(mesh), faces(mesh))
         if !isnothing(n)
-            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
+            mesh = GeometryBasics.mesh(mesh, normal = n, pointtype = T_out)
+            T = T_out
         end
     end
-    # If already correct eltypes for GL, we can pass the mesh through as is
-    if eltype(metafree(coordinates(mesh))) == Point{N, T_out} && eltype(faces(mesh)) == GLTriangleFace
-        return (mesh,)
-    else
-        # Else, we need to convert it!
-        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T_out}, facetype=GLTriangleFace),)
+
+    # clean up position type if it's not yet right
+    if T != T_out
+        mesh(mesh, pointtype = T_out)
     end
+
+    return (mesh,)
 end
 
 function convert_arguments(
@@ -575,7 +583,7 @@ end
 # TODO GeometryBasics can't deal with this directly for Integer Points?
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector{<: AbstractPoint{2}}
+        xyz::AbstractVector{<: Point{2}}
     )
     ps = float_convert(xyz)
     m = GeometryBasics.mesh(ps; pointtype=eltype(ps), facetype=GLTriangleFace)
@@ -585,7 +593,10 @@ end
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.mesh(geom; pointtype=Point{N,float_type(T)}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
+    m = GeometryBasics.uv_normal_mesh(
+        geom; pointtype = Point{N, float_type(T)}, 
+        uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
+    )
     return (m,)
 end
 
@@ -619,10 +630,10 @@ function convert_arguments(
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
         ns = Vec3f.(normals(vs, fs))
-        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = ns)
     else
         # TODO, we don't need to add normals here, but maybe nice for type stability?
-        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = fill(Vec3f(0, 0, 1), length(vs)))
     end
     return (m,)
 end
