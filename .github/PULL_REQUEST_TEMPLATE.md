@@ -1,6 +1,5 @@
-# Info
-
 <!--
+# Info
 * Please don't force push to PRs, it removes the history, creates bad notifications, and we will squash and merge in the end.
 * Feel free to ping for a review after a few days (@simondanisch, @ffreyer). We can't guarantee a review in a certain time frame, but we can guarantee to forget about PRs after a while.
 * The easier a PR is to review, the easier we can merge it:
