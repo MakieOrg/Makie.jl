@@ -1602,7 +1602,7 @@ end
     f
 end
 
-@reference_test "HeatmapShader"
+@reference_test "HeatmapShader" begin
     data = Makie.peaks(10_000)
     data2 = map(data) do x
         Float32(round(x))

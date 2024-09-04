@@ -576,7 +576,7 @@ function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
     limits_slow = Observable(limits[]; ignore_equal_values=true)
-    on(p, scene.events.mousebutton, limits) do buttons, lims
+    onany(p, scene.events.mousebutton, limits) do buttons, lims
         if buttons.action != Mouse.press
             limits_slow[] = lims
         end
