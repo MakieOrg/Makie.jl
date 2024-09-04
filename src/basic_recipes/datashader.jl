@@ -557,13 +557,15 @@ function resample_image(x, y, image, max_resolution, limits)
     return EndPoints{Float32}(xvisible), EndPoints{Float32}(yvisible), image[xrange, yrange]
 end
 
-
-
 function remove_oldest!(channel::Channel)
     lock(channel.cond_take) do
         queued = channel.data
-        splice!(queued, 1:(length(queued)-1))
-        Base._increment_n_avail(channel, -1)
+        n_remove = length(queued) - 1
+        splice!(queued, 1:n_remove)
+        if isdefined(Base, :_increment_n_avail)
+            # Before _increment_n_avail, the length of the channel was just `length(channel.data)`
+            Base._increment_n_avail(channel, -n_remove)
+        end
         return
     end
 end
