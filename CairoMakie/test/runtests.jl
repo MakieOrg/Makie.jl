@@ -150,6 +150,11 @@ end
     plotlist!([Makie.SpecApi.Scatter(1:10)])
 end
 
+@testset "multicolor line clipping (#4313)" begin
+    fig, ax, p = contour(rand(20,20))
+    xlims!(ax, 0, 10)
+    Makie.colorbuffer(fig; backend=CairoMakie)
+end
 
 excludes = Set([
     "Colored Mesh",
