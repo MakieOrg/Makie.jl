@@ -487,9 +487,15 @@ end
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
-    if length(scene.plots) == len
-        error("$(typeof(plot)) not in scene!")
-    end
+    # TODO, if we want to delete a subplot of a plot,
+    # It won't be in scene.plots directly, but will still be deleted
+    # by delete!(screen, scene, plot)
+    # Should we check here if the plot is in the scene as a subplot?
+    # on the other hand, delete!(Dict(:a=>1), :b) also doesn't error...
+
+    # if length(scene.plots) == len
+    #     error("$(typeof(plot)) not in scene!")
+    # end
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
