@@ -317,7 +317,6 @@ end
 
 function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
     for plot in plots
-        plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)
