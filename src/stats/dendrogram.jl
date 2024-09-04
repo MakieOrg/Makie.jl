@@ -39,8 +39,9 @@ and parent nodes identified by `merges`.
     )
 end
 
-function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_colors = []; color=:black, branch_shape=:tree, groups=nothing)
-    isnothing(node.children) && return nothing
+function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
+                                     color=:black, branch_shape=:tree, groups=nothing)
+    isnothing(node.children) && return
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
    
@@ -65,19 +66,22 @@ function recursive_dendrogram_points(node, nodes, ret_points = Point2f[], ret_co
 
     recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape, groups)
     recursive_dendrogram_points(child2, nodes, ret_points, ret_colors; branch_shape, groups)
-    return ret_points, ret_colors
 end
 
 
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
     args = @extract plot (color, groups)
 
-    points_vec = Observable{Vector{GeometryBasics.Point{2, Float32}}}([[0,0]])
-    colors_vec = Observable{Any}([NaN])
+    points_vec = Observable{Vector{GeometryBasics.Point{2, Float32}}}([])
+    colors_vec = Observable{Any}([])
 
     length(plot[1][])>1 && lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
+        points_vec[] = []
+        colors_vec[] = []
+
         # this pattern is basically first updating the values of the observables,
-        points_vec.val, colors_vec.val = recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes; color, branch_shape, groups=groups.val)
+        recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes, points_vec.val, colors_vec.val;
+                                    color, branch_shape, groups=groups.val)
         # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec); notify(colors_vec)
     end
