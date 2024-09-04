@@ -59,7 +59,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
             was_nan = true
             loop_start_idx = -1
-            for (i, p) in enumerate(transformed_points)
+            for (i, p) in pairs(transformed_points)
                 if isnan(p)
                     # line section end (last was value, now nan)
                     if !was_nan
@@ -108,9 +108,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                     (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
 
                     push!(indices[], indices[][loop_start_idx+1])
-                    indices[][loop_start_idx-1] = length(transformed_points)-1
+                    indices[][loop_start_idx-1] = prevind(transformed_points, lastindex(transformed_points))
                 else
-                    push!(indices[], length(transformed_points))
+                    push!(indices[], lastindex(transformed_points))
                 end
             end
 

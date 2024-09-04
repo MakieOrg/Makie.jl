@@ -323,7 +323,7 @@ function Base.setproperty!(lentry::LegendEntry, s::Symbol, value)
 end
 
 function Base.propertynames(lentry::LegendEntry)
-    [fieldnames(T)..., keys(lentry.attributes)...]
+    return (fieldnames(LegendEntry)..., keys(lentry.attributes)...)
 end
 
 legendelements(le::LegendElement, legend) = LegendElement[le]
