@@ -764,7 +764,8 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     end
 
     # TODO: avoid intermediate observable
-    positions = map(m -> metafree(coordinates(m)), mesh)
+    # TODO: Should these use direct getters? (faces, normals, texturecoordinates)
+    positions = map(coordinates, mesh)
     gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)

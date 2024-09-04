@@ -342,7 +342,6 @@ function RenderObject(
         pre::Pre, post,
         context=current_context()
     ) where Pre
-
     switch_context!(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
