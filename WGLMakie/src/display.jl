@@ -259,7 +259,7 @@ function Base.display(screen::Screen, scene::Scene; unused...)
         return render_with_init(screen, session, scene)
     end
     display(app)
-    Bonito.wait_for(x-> !isnothing(screen.session))
+    Bonito.wait_for(()-> !isnothing(screen.session))
     Bonito.wait_for_ready(screen.session)
     # wait for plot to be full initialized, so that operations don't get racy (e.g. record/RamStepper & friends)
     get_screen_session(screen; error="Waiting for plot to be initialized in display")
