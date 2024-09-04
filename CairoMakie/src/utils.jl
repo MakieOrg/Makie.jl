@@ -204,8 +204,8 @@ end
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
         clip_points = Vector{Vec4f}(undef, length(points))
-        @inbounds for i in eachindex(points)
-            clip_points[i] = transform * to_ndim(Vec4d, to_ndim(Vec3d, points[i], 0), 1)
+        @inbounds for (i, point) in enumerate(points)
+            clip_points[i] = transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
         end
         
         # yflip and clip -> screen/pixel coords

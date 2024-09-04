@@ -23,6 +23,7 @@
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
 - Add an informative error message to `save` when no backend is loaded [#4177](https://github.com/MakieOrg/Makie.jl/pull/4177)
 - Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
+- Fix plotting of lines with OffsetArrays across all backends [#4242](https://github.com/MakieOrg/Makie.jl/pull/4242).
 
 ## [0.21.7] - 2024-08-19
 
