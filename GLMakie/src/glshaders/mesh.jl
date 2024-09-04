@@ -5,8 +5,8 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     result[:vertices] = GLBuffer(map(coordinates, m))
 
     function to_buffer(name, target)
-        if hasproperty(m, name)
-            val = getproperty(m, name)
+        if hasproperty(m[], name)
+            val = getproperty(m[], name)
             if mesh_obs isa Observable
                 val = map(m -> getproperty(m, name), m)
             end
@@ -28,7 +28,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
-        to_buffer(:normals, :normals)
+        to_buffer(:normal, :normals)
     end
     to_buffer(:attribute_id, :attribute_id)
     
