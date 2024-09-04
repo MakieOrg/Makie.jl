@@ -560,7 +560,7 @@ end
 
 
 function remove_oldest!(channel::Channel)
-    lock(channel) do
+    lock(channel.cond_take) do
         queued = channel.data
         splice!(queued, 1:(length(queued)-1))
         Base._increment_n_avail(channel, -1)
