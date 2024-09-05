@@ -2,12 +2,13 @@
 function pick_native(screen::Screen, rect::Rect2i)
     (x, y) = minimum(rect)
     (w, h) = widths(rect)
-    session = get_screen_session(screen; error="Can't do picking!")
+    session = get_screen_session(screen)
+    empty = Matrix{Tuple{Union{Nothing,AbstractPlot},Int}}(undef, 0, 0)
+    isnothing(session) && return empty
     scene = screen.scene
     picking_data = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_native_matrix(scene, $x, $y, $w, $h))
     """)
-    empty = Matrix{Tuple{Union{Nothing, AbstractPlot}, Int}}(undef, 0, 0)
     if isnothing(picking_data)
         return empty
     end
@@ -34,7 +35,9 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     # isopen(screen) || return (nothing, 0)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
-    session = get_screen_session(screen; error="Can't do picking!")
+    session = get_screen_session(screen)
+    # E.g. if websocket got closed
+    isnothing(session) && return (nothing, 0)
     selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_closest(scene, $(xy_vec), $(range)))
     """)
@@ -48,7 +51,9 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
 
-    session = get_screen_session(screen; error="Can't do picking!")
+    session = get_screen_session(screen)
+    # E.g. if websocket got closed
+    isnothing(session) && return Tuple{Union{Nothing,AbstractPlot},Int}[]
     selection = Bonito.evaljs_value(session, js"""
         Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
     """)

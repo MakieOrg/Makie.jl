@@ -200,6 +200,7 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
+
                 # update to replace the whole buffer!
                 if f === ShaderAbstractions.update!
                     new_array = args[1]
