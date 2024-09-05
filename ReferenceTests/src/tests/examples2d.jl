@@ -1606,18 +1606,18 @@ end
     lines(Makie.OffsetArrays.Origin(-50)(1:100))
 end
 
-@reference_test "HeatmapShader" begin
+@reference_test "Heatmap Shader" begin
     data = Makie.peaks(10_000)
     data2 = map(data) do x
         Float32(round(x))
     end
     f = Figure()
-    ax1, pl = heatmapshader(f[1, 1], Resampler(data))
-    ax2, pl = heatmapshader(f[1, 2], Resampler(data))
+    ax1, pl = heatmap(f[1, 1], Resampler(data))
+    ax2, pl = heatmap(f[1, 2], Resampler(data))
     limits!(ax2, 2800, 4800, 2800, 5000)
-    ax3, pl = heatmapshader(f[2, 1], Resampler(data2))
-    ax4, pl = heatmapshader(f[2, 2], Resampler(data2))
+    ax3, pl = heatmap(f[2, 1], Resampler(data2))
+    ax4, pl = heatmap(f[2, 2], Resampler(data2))
     limits!(ax4, 3000, 3090, 3460, 3500)
-    sleep(1)
+    sleep(1) # give the async operations some time
     f
 end
