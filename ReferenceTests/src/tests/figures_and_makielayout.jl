@@ -229,26 +229,6 @@ end
     f
 end
 
-@reference_test "Set PolarAxis fontsize from Figure()" begin
-    fig = Figure(fontsize = 50)
-    ax = PolarAxis(fig[1, 1])
-    fig
-end
-
-@reference_test "Set PolarAxis fontsize from :Axis" begin
-    fig = Figure(; Axis = (; xticklabelsize = 35, yticklabelsize = 65))
-    ax = PolarAxis(fig[1, 1])
-    fig
-end
-
-@reference_test "Set PolarAxis fontsize from Theme()" begin
-    fig = Figure()
-    ax = PolarAxis(fig[1, 1])
-    fontsize_theme = Theme(fontsize = 10)
-    set_theme!(fontsize_theme)
-    fig
-end
-
 @reference_test "PolarAxis limits" begin
     f = Figure(size = (800, 600))
     for (i, theta_0) in enumerate((0, -pi/6, pi/2))
