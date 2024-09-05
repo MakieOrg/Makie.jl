@@ -133,6 +133,13 @@ end
     f
 end
 
+@reference_test "Non-standard log tick formatting" begin
+    xs = range(-10, 10; length=100)
+    f, ax, _ = lines(xs, xs)
+    ax.xscale = Makie.pseudolog10
+    f
+end
+
 @reference_test "Legend draw order" begin
     with_theme(Lines = (linewidth = 10,)) do
         f = Figure()
