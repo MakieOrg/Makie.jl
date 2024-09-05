@@ -165,11 +165,12 @@
     end
 
     @testset "PolarAxis fontsize from Theme()" begin
-        fig = Figure()
-        ax = PolarAxis(fig[1, 1])
-        fontsize_theme = Theme(fontsize = 10)
-        set_theme!(fontsize_theme)
-        @test ax.rticklabelsize[] == 10
-        @test ax.thetaticklabelsize[] == 10
+		fontsize_theme = Theme(fontsize = 10)
+		with_theme(fontsize_theme) do
+        	fig = Figure()
+        	ax = PolarAxis(fig[1, 1])
+            @test ax.rticklabelsize[] == 10
+            @test ax.thetaticklabelsize[] == 10
+        end
     end
 end
