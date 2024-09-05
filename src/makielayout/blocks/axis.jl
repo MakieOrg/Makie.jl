@@ -1438,7 +1438,7 @@ defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
 defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
-defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
+defined_interval(::StandardLogFunctions) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 
