@@ -1612,11 +1612,11 @@ end
         Float32(round(x))
     end
     f = Figure()
-    ax1, pl = heatmapshader(f[1, 1], data)
-    ax2, pl = heatmapshader(f[1, 2], data)
+    ax1, pl = heatmapshader(f[1, 1], Resampler(data))
+    ax2, pl = heatmapshader(f[1, 2], Resampler(data))
     limits!(ax2, 2800, 4800, 2800, 5000)
-    ax3, pl = heatmapshader(f[2, 1], data2)
-    ax4, pl = heatmapshader(f[2, 2], data2)
+    ax3, pl = heatmapshader(f[2, 1], Resampler(data2))
+    ax4, pl = heatmapshader(f[2, 2], Resampler(data2))
     limits!(ax4, 3000, 3090, 3460, 3500)
     sleep(1)
     f

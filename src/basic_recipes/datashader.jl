@@ -509,21 +509,42 @@ function extract_colormap(plot::DataShader)
         plot.nan_color)
 end
 
-
-Makie.@recipe HeatmapShader (x, y, image) begin
-    max_resolution = 1024
-    interpolate = false
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
-end
-
 function xy_to_rect(x, y)
     xmin, xmax = extrema(x)
     ymin, ymax = extrema(y)
     return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
 end
 
-Makie.conversion_trait(::Type{HeatmapShader}) = Makie.conversion_trait(Heatmap)
+
+struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
+    data::T
+    max_resolution::Int
+end
+
+Resampler(data; resolution=1024) = Resampler(data, resolution)
+
+const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}}
+
+# The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
+struct HeatmapShaderConversion <: MakieCore.ConversionTrait end
+
+function conversion_trait(::Type{<:Heatmap}, x, y, ::Resampler)
+    return HeatmapShaderConversion()
+end
+function conversion_trait(::Type{<:Heatmap}, ::Resampler)
+    return HeatmapShaderConversion()
+end
+
+function Makie.MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
+    return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
+end
+
+
+function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
+    return
+end
+extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
+
 
 function resample_image(x, y, image, max_resolution, limits)
     xmin, xmax = x
@@ -557,38 +578,41 @@ function resample_image(x, y, image, max_resolution, limits)
     return EndPoints{Float32}(xvisible), EndPoints{Float32}(yvisible), image[xrange, yrange]
 end
 
-function remove_oldest!(channel::Channel)
-    lock(channel.cond_take) do
-        queued = channel.data
-        n_remove = length(queued) - 1
-        splice!(queued, 1:n_remove)
-        if isdefined(Base, :_increment_n_avail)
-            # Before _increment_n_avail, the length of the channel was just `length(channel.data)`
-            Base._increment_n_avail(channel, -n_remove)
-        end
-        return
-    end
+
+
+function convert_arguments(::Type{Heatmap}, image::Resampler)
+    x, y, img = convert_arguments(Heatmap, image.data)
+    return (x, y, Resampler(img))
 end
 
-extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
+function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
+    x, y, img = convert_arguments(Heatmap, x, y, image.data)
+    return (x, y, Resampler(img))
+end
 
-needs_tight_limits(::HeatmapShader) = true
 
 function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
-    limits_slow = Observable(limits[]; ignore_equal_values=true)
-    onany(p, scene.events.mousebutton, limits) do buttons, lims
-        if buttons.action != Mouse.press
-            limits_slow[] = lims
+    limits_slow = Observable(limits[])
+    onany(p, scene.events.mousebutton, scene.events.keyboardbutton, limits) do buttons, kb, lims
+        # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
+        # This works best with `ax.zoombutton = Keyboard.left_control`.
+        # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
+        if buttons.action != Mouse.press && kb.action !== Keyboard.press
+            if !(minimum(lims) ≈ minimum(limits_slow[]) && widths(lims) ≈ widths(limits_slow[]))
+                limits_slow[] = lims
+            end
         end
         return
     end
 
     limits_async = limits_slow
-    x, y, image = p.x, p.y, p.image
-    image_area = lift(xy_to_rect, x, y)
-    x_y_overview_image = lift(resample_image, p, x, y, image, p.max_resolution, image_area)
+    x, y = p.x, p.y
+    max_resolution = lift(x-> x.max_resolution, p, p.values)
+    image = lift(x-> x.data, p, p.values)
+    image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
+    x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
     overview_image = lift(last, x_y_overview_image)
 
     colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image
@@ -600,35 +624,54 @@ function Makie.plot!(p::HeatmapShader)
     end
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
-
+    # Create an overview image that gets shown behind, so we always see the "big picture"
+    # In case updating the detailed view takes longer
     lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
     translate!(lp, 0, 0, -1)
 
-    xy_image = Observable(resample_image(x[], y[], image[], p.max_resolution[], limits[]))
+    xy_image = Observable(resample_image(x[], y[], image[], max_resolution[], limits[]); ignore_equal_values=true)
     # To make this threadsafe, the observable needs to be triggered from the current thread
-    image_to_obs = Channel{typeof(xy_image[])}(Inf) do ch
+    do_resample = nothing
+    image_to_obs = Channel{typeof(xy_image[])}(0) do ch
         for arg in ch
-            xy_image[] = arg
+            # if do_resample/ch is not empty, we already know that
+            # there is a newer image queued to be updated
+            # So we can skip this update
+            if !isnothing(do_resample) && isempty(do_resample) && isempty(ch)
+                xy_image[] = arg
+            end
         end
     end
+    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
+    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_async[])}
     # To actually run the resampling on another thread, we need another channel:
-    do_resample = Channel(Inf; spawn=true) do ch
+    do_resample = Channel{CT}(Inf; spawn=false) do ch
         for (x, y, image, res, limits) in ch
-            put!(image_to_obs, resample_image(x, y, image, res, limits))
+            if isempty(ch)
+                put!(image_to_obs, resample_image(x, y, image, res, limits))
+            end
         end
     end
 
-    onany(p, x, y, image, p.max_resolution, limits_async) do x, y, image, res, limits
+    onany(p, args..., limits_async) do x, y, image, res, limits
         # We remove any queued up resampling requests, since we only care about the latest one
-        remove_oldest!(do_resample)
-        # And then we put the newest.
+        empty!(do_resample)
+        # And then we put the newest:
         put!(do_resample, (x, y, image, res, limits))
         return
     end
-    image!(p,
-        lift(first, p, xy_image), lift(x-> getindex(x, 2), p, xy_image), lift(last, p, xy_image);
+
+    imgp = image!(
+        p, xy_image[]...;
         gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange,
     )
-
+    on(p, xy_image) do (x, y, image)
+        imgp[1] = x
+        imgp[2] = y
+        imgp[3] = image
+        return
+    end
     return p
 end
+
+export Resampler
