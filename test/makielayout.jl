@@ -227,7 +227,7 @@ end
     @test get_auto_ticks(exp10.(numbers), Makie.logit) == (exp10.(numbers), ["10.000000", "31.622777", "100.000000"])
     @test get_auto_ticks(inv_pseudolog10.(numbers), pseudolog10) == (inv_pseudolog10.(numbers), ["101.0", "101.5", "102.0"])
 
-    for func in [identity, log, log2, log10, Makie.logit]
+    for func in [identity, log, log2, log10, Makie.logit, Makie.pseudolog10]
         # Test formatting with explicit labels
         tup = ([1, 2, 3], ["a", "b", "c"])
         @test get_ticks(tup, func, automatic, 0, 5) == tup
