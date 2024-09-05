@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- Treat pseudolog10 and Symlog10 like log10. [#4092](https://github.com/MakieOrg/Makie.jl/issues/4092)
+- Treat pseudolog10 and Symlog10 like log10, and fix formatting of manual ticks
+  with log scales. [#4092](https://github.com/MakieOrg/Makie.jl/issues/4092)
 - Make sure we wait for the screen session [#4316](https://github.com/MakieOrg/Makie.jl/pull/4316).
 - Fix for absrect [#4312](https://github.com/MakieOrg/Makie.jl/pull/4312).
 - Fix attribute updates for SpecApi and SpecPlots (e.g. ecdfplot) [#4265](https://github.com/MakieOrg/Makie.jl/pull/4265).
