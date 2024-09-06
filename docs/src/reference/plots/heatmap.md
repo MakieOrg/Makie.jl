@@ -165,6 +165,11 @@ Colorbar(fig[1, 2], hm)
 fig
 ```
 
+## Showing large Heatmaps
+
+
+
+
 ## Attributes
 
 ```@attrdocs

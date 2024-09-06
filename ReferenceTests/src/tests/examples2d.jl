@@ -1612,12 +1612,13 @@ end
         Float32(round(x))
     end
     f = Figure()
-    ax1, pl = heatmap(f[1, 1], Resampler(data))
-    ax2, pl = heatmap(f[1, 2], Resampler(data))
+    ax1, pl1 = heatmap(f[1, 1], Resampler(data))
+    ax2, pl2 = heatmap(f[1, 2], Resampler(data))
     limits!(ax2, 2800, 4800, 2800, 5000)
-    ax3, pl = heatmap(f[2, 1], Resampler(data2))
-    ax4, pl = heatmap(f[2, 2], Resampler(data2))
+    ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
+    ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
     limits!(ax4, 3000, 3090, 3460, 3500)
+    Colorbar(f[:, 3], pl1)
     sleep(1) # give the async operations some time
     f
 end

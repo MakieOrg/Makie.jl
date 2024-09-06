@@ -515,13 +515,40 @@ function xy_to_rect(x, y)
     return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
 end
 
+"""
+    Resampler(matrix; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
 
+Creates a resampling type which can be used with `heatmap`, to display large images/heatmaps.
+Passed can be any array that supports `array(linrange, linrange)`, as the interpolation interface from Interpolations.jl.
+If the array doesn't support this, it will be converted to an interpolation object via: `Interpolations.interpolate(data, Interpolations.BSpline(method))`.
+* `resolution` can be set to `automatic` to use the full resolution of the screen, or a tuple of the desired resolution.
+* `method` is the interpolation method used, defaulting to `Interpolations.Linear()`.
+* `update_while_button_pressed` will update the heatmap while a mouse button is pressed, useful for zooming/panning. Set it to false for e.g. WGLMakie to avoid updating while dragging.
+"""
 struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     data::T
-    max_resolution::Int
+    max_resolution::Union{Automatic, Bool}
+    update_while_button_pressed::Bool
 end
 
-Resampler(data; resolution=1024) = Resampler(data, resolution)
+import Interpolations
+
+function Resampler(data; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
+    # Our interpolation interface is to do matrix(linrange, linrange)
+    # There doesn't seem to be an official trait for this,
+    # so we fall back to just check if this method applies:
+    LRT = LinRange{Float64, Int64}
+    if hasmethod(data, Tuple{LRT,LRT})
+        return Resampler(data, resolution, update_while_button_pressed)
+    else
+        dataf32 = el32convert(data)
+        ET = eltype(dataf32)
+        # Interpolations happily converts to Float64 here, but that's not desirable for e.g. RGB{N0f8}, or Float32 data
+        # Since we expect these arrays to be huge, this is no laughing matter ;)
+        interp = Interpolations.interpolate(eltype(ET), ET, data, Interpolations.BSpline(method))
+        return Resampler(interp, resolution, update_while_button_pressed)
+    end
+end
 
 const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}}
 
@@ -539,45 +566,41 @@ function Makie.MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapSh
     return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
 end
 
-
 function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
     return
 end
+
 extract_colormap_recursive(plot::HeatmapShader) = extract_colormap_recursive(plot.plots[1])
 
 
 function resample_image(x, y, image, max_resolution, limits)
+    # extent of the image in data coordinates (same as limits)
     xmin, xmax = x
     ymin, ymax = y
     data_rect = Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
     visible_rect = GeometryBasics.intersect(data_rect, limits)
-    mini = minimum(visible_rect)
-    w = widths(visible_rect)
-    if !(visible_rect in data_rect) || any(w -> w < 0, w)
-        return EndPoints{Float32}((xmin, xmax)), EndPoints{Float32}((ymin, ymax)), image[1:2, 1:2]
+    vmini = minimum(visible_rect)
+    vw = widths(visible_rect)
+    if !(visible_rect in data_rect) || any(w -> w <= 0, vw)
+        return nothing
     end
 
-    xvisible = minmax(mini[1], mini[1] + w[1])
-    yvisible = minmax(mini[2], mini[2] + w[2])
-
-    xindices = round.(Int, (xvisible .- xmin) ./ (xmax - xmin) .* (size(image, 1) - 1) .+ 1)
-    xindices = clamp.(xindices, 1, size(image, 1))
-
-    yindices = round.(Int, (yvisible .- ymin) ./ (ymax - ymin) .* (size(image, 2) - 1) .+ 1)
-    yindices = clamp.(yindices, 1, size(image, 2))
-
-    xstep = max(1, floor(Int, (xindices[2] - xindices[1]) / max_resolution))
-    ystep = max(1, floor(Int, (yindices[2] - yindices[1]) / max_resolution))
-
-    xrange = range(xindices[1], xindices[2]; step=xstep)
-    yrange = range(yindices[1], yindices[2]; step=ystep)
-
-    if isempty(xrange) || isempty(yrange)
-        return EndPoints{Float32}((xmin, xmax)), EndPoints{Float32}((ymin, ymax)), image[1:1, 1:1]
+    # (xmin, ymin), (xmax, ymax)
+    ranges = minmax.(vmini, vmini .+ vw)
+    # scaling from data coordinates to indices
+    data_min = (xmin, ymin)
+    data_width = (xmax - xmin, ymax - ymin)
+    imgsize = size(image)
+    x_index_range, y_index_range = ntuple(2) do i
+        nrange = ranges[i]
+        si = imgsize[i]
+        indices = ((nrange .- data_min[i]) ./ data_width[i]) .* (si .- 1) .+ 1
+        resolution = round(Int, indices[2] - indices[1])
+        return LinRange(max(1, indices[1]), min(indices[2], si), min(resolution, max_resolution[i]))
     end
-    return EndPoints{Float32}(xvisible), EndPoints{Float32}(yvisible), image[xrange, yrange]
+    interpolated = image(x_index_range, y_index_range)
+    return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
 end
-
 
 
 function convert_arguments(::Type{Heatmap}, image::Resampler)
@@ -590,7 +613,6 @@ function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
     return (x, y, Resampler(img))
 end
 
-
 function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
@@ -599,7 +621,9 @@ function Makie.plot!(p::HeatmapShader)
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        if buttons.action != Mouse.press && kb.action !== Keyboard.press
+        if p.values[].update_while_button_pressed || (buttons.action != Mouse.press && kb.action !== Keyboard.press)
+            # instead of ignore_equal_values=true (uses ==),
+            # we check with isapprox to not update when there are very small changes
             if !(minimum(lims) ≈ minimum(limits_slow[]) && widths(lims) ≈ widths(limits_slow[]))
                 limits_slow[] = lims
             end
@@ -607,19 +631,24 @@ function Makie.plot!(p::HeatmapShader)
         return
     end
 
-    limits_async = limits_slow
     x, y = p.x, p.y
-    max_resolution = lift(x-> x.max_resolution, p, p.values)
+    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+        return resampler.max_resolution isa Automatic ? widths(viewport) : ntuple(x-> resampler.max_resolution, 2)
+    end
     image = lift(x-> x.data, p, p.values)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
     x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
     overview_image = lift(last, x_y_overview_image)
 
     colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image
-        if crange isa Automatic
-            return nan_extrema(image)
+        if eltype(image) <: Number
+            if crange isa Automatic
+                return nan_extrema(image)
+            else
+                return Vec2f(crange)
+            end
         else
-            return Vec2f(crange)
+            return crange
         end
     end
     gpa = MakieCore.generic_plot_attributes(p)
@@ -629,7 +658,8 @@ function Makie.plot!(p::HeatmapShader)
     lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
     translate!(lp, 0, 0, -1)
 
-    xy_image = Observable(resample_image(x[], y[], image[], max_resolution[], limits[]); ignore_equal_values=true)
+    first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
+    xy_image = Observable(first_downsample; ignore_equal_values=true)
     # To make this threadsafe, the observable needs to be triggered from the current thread
     do_resample = nothing
     image_to_obs = Channel{typeof(xy_image[])}(0) do ch
@@ -642,18 +672,34 @@ function Makie.plot!(p::HeatmapShader)
             end
         end
     end
+
+    # Make sure we don't trigger an event if the image/xy stays the same
     args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
-    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_async[])}
+
+    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
+    # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
+    visible = Observable(p.visible[])
+    on(p, p.visible) do v
+        visible[] = v
+    end
     # To actually run the resampling on another thread, we need another channel:
-    do_resample = Channel{CT}(Inf; spawn=false) do ch
+    do_resample = Channel{CT}(Inf; spawn=true) do ch
         for (x, y, image, res, limits) in ch
-            if isempty(ch)
-                put!(image_to_obs, resample_image(x, y, image, res, limits))
+            if isempty(ch) # only update if there is no newer image queued
+                resampled = resample_image(x, y, image, res, limits)
+                if !isnothing(resampled)
+                    put!(image_to_obs, resampled)
+                    if !visible[]
+                        visible[] = true
+                    end
+                else
+                    visible[] = false
+                end
             end
         end
     end
 
-    onany(p, args..., limits_async) do x, y, image, res, limits
+    onany(p, args..., limits_slow) do x, y, image, res, limits
         # We remove any queued up resampling requests, since we only care about the latest one
         empty!(do_resample)
         # And then we put the newest:
@@ -663,7 +709,7 @@ function Makie.plot!(p::HeatmapShader)
 
     imgp = image!(
         p, xy_image[]...;
-        gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange,
+        gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange, visible=visible,
     )
     on(p, xy_image) do (x, y, image)
         imgp[1] = x
