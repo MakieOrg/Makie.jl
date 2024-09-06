@@ -1,12 +1,22 @@
 function typedarray_to_vectype(typedArray, ndim) {
-    if (ndim === 1) {
-        return "float";
-    } else if (typedArray instanceof Float32Array) {
-        return "vec" + ndim;
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
     } else if (typedArray instanceof Int32Array) {
-        return "ivec" + ndim;
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
     } else if (typedArray instanceof Uint32Array) {
-        return "uvec" + ndim;
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
     } else {
         return;
     }
@@ -61,14 +71,8 @@ export function attributes_to_type_declaration(attributes_dict) {
     let result = "";
     for (const name in attributes_dict) {
         const attribute = attributes_dict[name];
-        // TODO: what's the right way to do this?
-        if (name.startsWith("lineindex")) {
-            // TODO: uint seems to crash, probably due to poor browser support for uint?
-            result += `in int ${name};\n`;
-        } else {
-            const type = attribute_type(attribute);
-            result += `in ${type} ${name};\n`;
-        }
+        const type = attribute_type(attribute);
+        result += `in ${type} ${name};\n`;
     }
     return result;
 }

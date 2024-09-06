@@ -43,7 +43,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     # involved point are not NaN, i.e. p1 -- p2 is only drawn if all of
     # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to dublicate p2 to
     # make the p1 -- p2 segment draw, which is what indices does.
-    indices = Observable(Int32[])
+    indices = Observable(UInt32[])
     points_transformed = lift(
             plot, f32c, transform_func_obs(plot), plot.model, plot[1], plot.space
         ) do f32c, tf, model, ps, space
