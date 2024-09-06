@@ -1328,6 +1328,12 @@ end
     fig
 end
 
+@reference_test "Triplot with linestyle" begin
+    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+    fig, ax, sc = triplot(pts; linestyle = :dashdot)
+    fig
+end
+
 @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
     curve_1 = [[
         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
