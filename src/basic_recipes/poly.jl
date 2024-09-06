@@ -84,6 +84,10 @@ function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_f
     return [merge(poly_convert.(multipoly.polygons, (transform_func,))) for multipoly in multipolygons]
 end
 
+function poly_convert(multipolygon::MultiPolygon, transform_func=identity)
+    return poly_convert.(multipolygon.polygons, (transform_func,))
+end
+
 poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
 
 function poly_convert(polygon::Polygon, transform_func=identity)
@@ -145,7 +149,7 @@ function to_lines(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)
