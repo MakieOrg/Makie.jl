@@ -45,6 +45,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
@@ -96,6 +97,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
@@ -147,6 +149,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
