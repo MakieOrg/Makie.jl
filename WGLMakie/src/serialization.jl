@@ -33,7 +33,7 @@ end
 
 _pairs(any) = Base.pairs(any)
 function _pairs(mesh::GeometryBasics.Mesh)
-    return (kv for kv in GeometryBasics.attributes(mesh))
+    return (kv for kv in GeometryBasics.vertex_attributes(mesh))
 end
 
 # Don't overload faces to not invalidate

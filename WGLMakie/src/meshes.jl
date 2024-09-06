@@ -93,7 +93,7 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     uniforms[:object_id] = UInt32(0)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
-    mesh = GeometryBasics.Mesh(meta(pos; per_vertex...), faces)
+    mesh = GeometryBasics.Mesh(pos, faces; per_vertex...)
 
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
@@ -101,9 +101,8 @@ end
 function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
-    mattributes = GeometryBasics.attributes
     get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
-    data = mattributes(mesh_signal[])
+    data = GeometryBasics.vertex_attributes(mesh_signal[])
 
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
