@@ -172,7 +172,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
     # with this we can beuild a mesh
-    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
+    mesh = GeometryBasics.Mesh(vec(positions[]), faces, uv = uv)
 
     rpr_mesh = RPR.Shape(context, mesh)
     color = plot.color[]
