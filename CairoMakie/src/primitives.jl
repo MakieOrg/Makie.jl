@@ -9,22 +9,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     isempty(positions) && return
 
-    # workaround for a LineSegments object created from a GLNormalMesh
-    # the input argument is a view of points using faces, which results in
-    # a vector of tuples of two points. we convert those to a list of points
-    # so they don't trip up the rest of the pipeline
-    # TODO this shouldn't be necessary anymore!
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
-        positions = let
-            pos = Point3f[]
-            for tup in positions
-                push!(pos, tup[1])
-                push!(pos, tup[2])
-            end
-            pos
-        end
-    end
-
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
     color = to_color(primitive.calculated_colors[])
@@ -1200,7 +1184,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)
+    model = copy(model)::Mat4d
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin
@@ -1256,7 +1240,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
 
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive.model[])
+    model = copy(primitive.model[])::Mat4d
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin
