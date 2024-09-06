@@ -44,6 +44,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: >
           cd docs;
+          julia --project=docs -e "using Pkg; Pkg.add(name=\"GeometryBasics\", rev = \"ff/refactor\"); Pkg.add(name=\"MeshIO\", rev = \"ff/GeometryBasics_refactor\")"
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
     - name: Upload site as artifact
