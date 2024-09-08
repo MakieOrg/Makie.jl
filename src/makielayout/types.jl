@@ -1092,6 +1092,51 @@ end
     end
 end
 
+@Block Checkbox begin
+    @attributes begin
+        "The horizontal alignment of the checkbox in its suggested boundingbox"
+        halign = :center
+        "The vertical alignment of the checkbox in its suggested boundingbox"
+        valign = :center
+        "The width setting of the checkbox."
+        width = Auto()
+        "The height setting of the checkbox."
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The size (width/height) of the checkbox"
+        size = @inherit(:fontsize, 18)
+        "The size of the checkmark, relative to the size."
+        checkmarksize = 0.85
+        "The checkmark marker symbol. Anything that `scatter` can use."
+        checkmark = '✓'
+        "0 is square, 1 is circular."
+        roundness = 0.15
+        "The color of the checkbox background when checked."
+        checkboxcolor_checked = COLOR_ACCENT[]
+        "The color of the checkbox background when unchecked."
+        checkboxcolor_unchecked = RGBf(0.92, 0.92, 0.92)
+        "The color of the checkmark."
+        checkmarkcolor = :white
+        "The color of the checkmark when the mouse hovers over the checkbox."
+        checkmarkcolor_hover = COLOR_ACCENT_DIMMED[]
+        "The color of the checkmark when the mouse clicks the checkbox."
+        checkmarkcolor_active = COLOR_ACCENT[]
+        "The color of the checkbox when the mouse clicks the checkbox."
+        checkboxcolor_active = COLOR_ACCENT[]
+        "The color of the checkbox when the mouse hovers over the checkbox."
+        checkboxcolor_hover = COLOR_ACCENT_DIMMED[]
+        "The align mode of the checkbox in its parent GridLayout."
+        alignmode = Inside()
+        "If the checkbox is currently checked."
+        checked = false
+        "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
+        onchange = !
+    end
+end
+
 @Block Toggle begin
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
