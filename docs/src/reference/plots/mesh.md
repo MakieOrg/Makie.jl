@@ -39,7 +39,7 @@ mesh(
 
 ## Using GeometryBasics.Mesh and Buffer/Sampler type
 
-We can also create a mesh, to specify normals, uv coordinates:
+We can also create a mesh to specify normals, uv coordinates:
 
 ```@example sampler
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
@@ -76,7 +76,7 @@ uv = gen_uv(0.0)
 # We can use a Buffer to update single elements in an array directly on the GPU
 # with GLMakie. They work just like normal arrays, but forward any updates written to them directly to the GPU
 uv_buff = Buffer(uv)
-gb_mesh = GeometryBasics.Mesh(meta(points; uv=uv_buff, normals), faces)
+gb_mesh = GeometryBasics.Mesh(points, faces; uv = uv_buff, normal = normals)
 
 f, ax, pl = mesh(gb_mesh,  color = rand(100, 100), colormap=:blues)
 wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
