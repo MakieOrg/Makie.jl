@@ -689,7 +689,6 @@ FxaaFloat4 FxaaPixelShader(
     // we run fxaa if (this is edge) && (any in + shape use fxaa)
     FxaaBool keep = ((idS != id) || (idE != id) || (idN != id) || (idW != id)) && 
         (unpack_bool(id) || unpack_bool(idS) || unpack_bool(idE) || unpack_bool(idN) || unpack_bool(idW));
-    keep = false;
 
 /*--------------------------------------------------------------------------*/
     if(!keep)
