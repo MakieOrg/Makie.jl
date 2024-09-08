@@ -1,5 +1,13 @@
 {{GLSL_VERSION}}
 
+uniform usampler2D object_ids;
+
+bool unpack_bool(uint id) {
+    uint high_bit_mask = uint(1) << uint(31);
+    bool fxaa = id > high_bit_mask;
+    return !( (id == 0) || !fxaa );
+}
+
 #define FXAA_PC 1
 #define FXAA_GLSL_130 1
 #define FXAA_QUALITY__PRESET 12
@@ -669,10 +677,22 @@ FxaaFloat4 FxaaPixelShader(
     FxaaFloat rangeMin = min(minWN, minESM);
     FxaaFloat rangeMaxScaled = rangeMax * fxaaQualityEdgeThreshold;
     FxaaFloat range = rangeMax - rangeMin;
-    FxaaFloat rangeMaxClamped = max(fxaaQualityEdgeThresholdMin, rangeMaxScaled);
-    FxaaBool earlyExit = range < rangeMaxClamped;
+
+
+    // detect edge
+    uint id = texture(object_ids, posM).x; // this fragment
+    uint idS = texture(object_ids, posM + vec2( 0, 1) * fxaaQualityRcpFrame.xy).x;
+    uint idE = texture(object_ids, posM + vec2( 1, 0) * fxaaQualityRcpFrame.xy).x;
+    uint idN = texture(object_ids, posM + vec2( 0,-1) * fxaaQualityRcpFrame.xy).x;
+    uint idW = texture(object_ids, posM + vec2(-1, 0) * fxaaQualityRcpFrame.xy).x;
+
+    // we run fxaa if (this is edge) && (any in + shape use fxaa)
+    FxaaBool keep = ((idS != id) || (idE != id) || (idN != id) || (idW != id)) && 
+        (unpack_bool(id) || unpack_bool(idS) || unpack_bool(idE) || unpack_bool(idN) || unpack_bool(idW));
+    keep = false;
+
 /*--------------------------------------------------------------------------*/
-    if(earlyExit)
+    if(!keep)
         #if (FXAA_DISCARD == 1)
             FxaaDiscard;
         #else
@@ -1028,23 +1048,39 @@ out vec4 fragment_color;
 
 void main(void)
 {
-    // fragment_color = texture(color_texture, frag_uv);
     fragment_color.rgb = FxaaPixelShader(
         frag_uv,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsolePosPos,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsolePosPos,
         color_texture,                            // FxaaTex tex,
         color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegOne,
         color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegTwo,
-        RCPFrame,                            // FxaaFloat2 fxaaQualityRcpFrame,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
+        RCPFrame,                                 // FxaaFloat2 fxaaQualityRcpFrame,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsoleRcpFrameOpt,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
         0.75f,                                    // FxaaFloat fxaaQualitySubpix,
-        0.166f,                                    // FxaaFloat fxaaQualityEdgeThreshold,
-        0.0833f,                                // FxaaFloat fxaaQualityEdgeThresholdMin,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeSharpness,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThreshold,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
+        0.166f,                                   // FxaaFloat fxaaQualityEdgeThreshold,
+        0.0833f,                                  // FxaaFloat fxaaQualityEdgeThresholdMin,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeSharpness,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeThreshold,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeThresholdMin,
         FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
     ).rgb;
+
+
+    // // DEBUG EDGE detection and fxaa detection
+    // uint id  = texture(object_ids, frag_uv).x; // this fragment
+    // uint idS = texture(object_ids, frag_uv + vec2( 0, 1) * RCPFrame.xy).x;
+    // uint idE = texture(object_ids, frag_uv + vec2( 1, 0) * RCPFrame.xy).x;
+    // uint idN = texture(object_ids, frag_uv + vec2( 0,-1) * RCPFrame.xy).x;
+    // uint idW = texture(object_ids, frag_uv + vec2(-1, 0) * RCPFrame.xy).x;
+
+    // bool isEdge = (idS != id) || (idE != id) || (idN != id) || (idW != id);
+    // bool isBackground = id == 0;
+    // uint high_bit_mask = uint(1) << uint(31);
+    // bool fxaa = id > high_bit_mask;
+    // fragment_color.r = float(isEdge);
+    // fragment_color.g = float(isBackground);
+    // fragment_color.b = float(fxaa);
+    // fragment_color.a = 1.0;
 }

@@ -223,8 +223,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         loadshader("postprocessing/postprocess.frag")
     )
     data1 = Dict{Symbol, Any}(
-        :color_texture => framebuffer[:color][2],
-        :object_ids => framebuffer[:objectid][2]
+        :color_texture => framebuffer[:color][2]
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
@@ -237,6 +236,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
     )
     data2 = Dict{Symbol, Any}(
         :color_texture => getfallback(framebuffer, :color_luma, :HDR_color)[2],
+        :object_ids => framebuffer[:objectid][2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
