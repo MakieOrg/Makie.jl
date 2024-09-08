@@ -38,9 +38,9 @@ end
 
 # Don't overload faces to not invalidate
 _faces(x::VertexArray) = _faces(getfield(x, :data))
-function _faces(x)
-    return GeometryBasics.faces(x)
-end
+_faces(x) = GeometryBasics.faces(x)
+_faces(x::GeometryBasics.AbstractMesh) = GeometryBasics.faces(x)
+_faces(x::Dict) = x[:faces]
 
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1

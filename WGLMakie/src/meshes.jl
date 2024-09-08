@@ -109,7 +109,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
+    for (key, default) in (:uv => Vec2f(0), :normal => Vec3f(0))
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else
