@@ -809,7 +809,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
 end
 
 
-
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.attributes
     tt = inspector.plot
@@ -859,6 +858,7 @@ end
 function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
+
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.attributes
     tt = inspector.plot
@@ -1044,6 +1044,34 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
         tt.visible[] = false
         a.indicator_visible[] = false
     end
+
+    return true
+end
+
+function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
+    scatter = spy.plots[1]
+    if picked_plot != scatter
+        # we only pick the scatter subplot
+        return false
+    end
+    a = inspector.attributes
+    tt = inspector.plot
+    scene = parent_scene(scatter)
+    pos = position_on_plot(scatter, idx; apply_transform=false)
+    proj_pos = shift_project(scene, apply_transform_and_model(scatter, pos))
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    if to_value(get(scatter, :inspector_label, automatic)) == automatic
+        tt.text[] = position2string(pos)
+    else
+        idx2d = spy._index_map[][idx]
+        tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
+    end
+    tt.offset[] = ifelse(a.apply_tooltip_offset[],
+                         0.5 * maximum(sv_getindex(scatter.markersize[], idx)) + 2,
+                         a.offset[])
+    tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
 end
