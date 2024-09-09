@@ -552,7 +552,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T_in}) w
     end
     
     # try to add normals if they are missing
-    if !hasproperty(mesh, :normals)
+    if !hasproperty(mesh, :normal)
         n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
         if !isnothing(n)
             mesh = GeometryBasics.mesh(mesh, normal = n, pointtype = Point{N, T_out})
