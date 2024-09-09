@@ -615,7 +615,7 @@ function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
 end
 
 function empty_channel!(channel::Channel)
-    lock(channel) do 
+    lock(channel.cond_take) do
         while !isempty(channel)
             take!(channel)
         end
