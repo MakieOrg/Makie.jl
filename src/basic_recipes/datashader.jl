@@ -614,6 +614,14 @@ function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
     return (x, y, Resampler(img))
 end
 
+function empty_channel!(channel::Channel)
+    lock(channel) do 
+        while !isempty(channel)
+            take!(channel)
+        end
+    end
+end
+
 function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
@@ -706,7 +714,8 @@ function Makie.plot!(p::HeatmapShader)
 
     onany(p, args..., limits_slow) do x, y, image, res, limits
         # We remove any queued up resampling requests, since we only care about the latest one
-        empty!(do_resample)
+        # empty!(do_resample)
+        empty_channel!(do_resample)
         # And then we put the newest:
         put!(do_resample, (x, y, image, res, limits))
         return
@@ -717,9 +726,11 @@ function Makie.plot!(p::HeatmapShader)
         gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange, visible=visible,
     )
     on(p, xy_image) do (x, y, image)
+        visible[] = false
         imgp[1] = x
         imgp[2] = y
         imgp[3] = image
+        visible[] = true
         return
     end
     return p
