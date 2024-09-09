@@ -617,11 +617,15 @@ function Makie.plot!(p::HeatmapShader)
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
     limits_slow = Observable(limits[])
-    onany(p, scene.events.mousebutton, scene.events.keyboardbutton, limits) do buttons, kb, lims
+    events = scene.events
+    onany(p, events.mousebutton, events.keyboardbutton, limits) do buttons, kb, lims
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        if p.values[].update_while_button_pressed || (buttons.action != Mouse.press && kb.action !== Keyboard.press)
+        update_while_pressed = p.values[].update_while_button_pressed
+        no_mbutton = isempty(events.mousebuttonstate)
+        no_kbutton = isempty(events.keyboardstate)
+        if update_while_pressed || (no_mbutton && no_kbutton)
             # instead of ignore_equal_values=true (uses ==),
             # we check with isapprox to not update when there are very small changes
             if !(minimum(lims) ≈ minimum(limits_slow[]) && widths(lims) ≈ widths(limits_slow[]))
