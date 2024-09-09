@@ -1237,6 +1237,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
+
+    # Face culling
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
+        pos = pos[valid]
+        colors = colors[valid]
+    end
+
     marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
 
     # For correct z-ordering we need to be in view/camera or screen space
@@ -1255,7 +1263,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = Plane3f[]
     )
 
     for i in zorder
