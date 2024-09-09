@@ -31,17 +31,6 @@ function lift_convert(key, value, plot)
     end
 end
 
-_pairs(any) = Base.pairs(any)
-function _pairs(mesh::GeometryBasics.Mesh)
-    return (kv for kv in GeometryBasics.vertex_attributes(mesh))
-end
-
-# Don't overload faces to not invalidate
-_faces(x::VertexArray) = _faces(getfield(x, :data))
-_faces(x) = GeometryBasics.faces(x)
-_faces(x::GeometryBasics.AbstractMesh) = GeometryBasics.faces(x)
-_faces(x::Dict) = x[:faces]
-
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
 
@@ -190,24 +179,22 @@ function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
     return Dict(:flat => serialize_three(buffer), :type_length => tlength(T))
 end
 
-function serialize_named_buffer(buffer)
-    return Dict(map(_pairs(buffer)) do (name, buff)
+function serialize_named_buffer(va::ShaderAbstractions.VertexArray)
+    return Dict(map(ShaderAbstractions.buffers(va)) do (name, buff)
                     return name => serialize_buffer_attribute(buff)
                 end)
 end
 
-function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers)
-    for (name, buffer) in _pairs(named_buffers)
-        if buffer isa Buffer
-            on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
-                # update to replace the whole buffer!
-                if f === ShaderAbstractions.update!
-                    new_array = args[1]
-                    flat = flatten_buffer(new_array)
-                    update_buffer[] = [name, serialize_three(flat), length(new_array)]
-                end
-                return
+function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers::ShaderAbstractions.VertexArray)
+    for (name::Symbol, buffer::Buffer) in ShaderAbstractions.buffers(named_buffers)
+        on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
+            # update to replace the whole buffer!
+            if f === ShaderAbstractions.update!
+                new_array = args[1]
+                flat = flatten_buffer(new_array)
+                update_buffer[] = [name, serialize_three(flat), length(new_array)]
             end
+            return
         end
     end
     return update_buffer
@@ -263,7 +250,7 @@ end
 
 
 function serialize_three(@nospecialize(plot), program::Program)
-    facies = reinterpret_faces(plot, _faces(program.vertexarray))
+    facies = reinterpret_faces(plot, ShaderAbstractions.indexbuffer(program.vertexarray))
     indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
