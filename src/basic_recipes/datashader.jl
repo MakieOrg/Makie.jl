@@ -537,8 +537,9 @@ function Resampler(data; resolution=automatic, method=Interpolations.Linear(), u
     # Our interpolation interface is to do matrix(linrange, linrange)
     # There doesn't seem to be an official trait for this,
     # so we fall back to just check if this method applies:
-    LRT = LinRange{Float64, Int64}
-    if hasmethod(data, Tuple{LRT,LRT})
+    # The type of LinRange has changed since Julia 1.6, so we need to construct it and use that
+    lr = LinRange(0, 1, 10)
+    if applicable(data, lr, lr)
         return Resampler(data, resolution, update_while_button_pressed)
     else
         dataf32 = el32convert(data)
