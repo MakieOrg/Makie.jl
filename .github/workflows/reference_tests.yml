@@ -47,7 +47,7 @@ jobs:
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
-          pkg"add ShaderAbstractions#ff/refactor"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -100,7 +100,7 @@ jobs:
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
-          pkg"add ShaderAbstractions#ff/refactor"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
@@ -153,7 +153,7 @@ jobs:
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add GeometryBasics#ff/refactor"
-          pkg"add ShaderAbstractions#ff/refactor"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
