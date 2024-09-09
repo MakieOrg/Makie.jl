@@ -12,13 +12,14 @@ end
 plotfunc(::Plot{F}) where F = F
 plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
 plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
-plotfunc(f::Function) =
+function plotfunc(f::Function)
     if endswith(string(nameof(f)), "!")
         name = Symbol(chopsuffix(string(nameof(f)), "!"))
-        getproperty(parentmodule(f), name)
+        return getproperty(parentmodule(f), name)
     else
-        f
+        return f
     end
+end
 
 function plotfunc!(x)
     F = plotfunc(x)::Function
