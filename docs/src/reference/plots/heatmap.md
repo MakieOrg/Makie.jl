@@ -4,7 +4,6 @@
 heatmap
 ```
 
-
 ## Examples
 
 ### Two vectors and a matrix
@@ -171,9 +170,13 @@ You can wrap your data into `Makie.Resampler`, to automatically resample large h
 When zooming in, it will update the resampled version, to show it at best fidelity.
 It blocks updates while any mouse or keyboard button is pressed, to not spam e.g. WGLMakie with data updates.
 This goes well with `Axis(figure; zoombutton=Keyboard.left_control)`.
-You can disable this behaviour with `Resampler(update_while_button_pressed=true)`.
+You can disable this behavior with:
+
+`Resampler(data; update_while_button_pressed=true)`.
+
 
 Example:
+
 ```julia
 using Downloads, FileIO, GLMakie
 # 30000×22943 image
