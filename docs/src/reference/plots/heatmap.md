@@ -165,9 +165,28 @@ Colorbar(fig[1, 2], hm)
 fig
 ```
 
-## Showing large Heatmaps
+## Plotting large Heatmaps
 
+You can wrap your data into `Makie.Resampler`, to automatically resample large heatmaps only for the viewing area.
+When zooming in, it will update the resampled version, to show it at best fidelity.
+It blocks updates while any mouse or keyboard button is pressed, to not spam e.g. WGLMakie with data updates.
+This goes well with `Axis(figure; zoombutton=Keyboard.left_control)`.
+You can disable this behaviour with `Resampler(update_while_button_pressed=true)`.
 
+Example:
+```julia
+using Downloads, FileIO, GLMakie
+# 30000×22943 image
+path = Downloads.download("https://upload.wikimedia.org/wikipedia/commons/7/7e/In_the_Conservatory.jpg")
+img = rotr90(load(path))
+f, ax, pl = heatmap(Resampler(img); axis=(; aspect=DataAspect()), figure=(;size=size(img)./20))
+hidedecorations!(ax)
+f
+```
+
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/heatmap-resampler.mp4" />
+```
 
 
 ## Attributes
