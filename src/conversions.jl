@@ -547,7 +547,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T_in}) w
 
     # convert face type if necessary (this can't include attributes if we convert MultiFace)
     if GeometryBasics.facetype(mesh) !== GLTriangleFace
-        mesh = GeometryBasics.mesh(mesh, GLTriangleFace, pointtype = Point{N, T_out})
+        mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, T_out})
         T = T_out
     end
     
