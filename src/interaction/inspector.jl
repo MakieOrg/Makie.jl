@@ -278,11 +278,19 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     inspector = DataInspector(parent, plot, base_attrib)
 
     e = events(parent)
-    f1 = on(_ -> on_hover(inspector), e.mouseposition, priority = priority)
-    f2 = on(_ -> on_hover(inspector), e.scroll, priority = priority)
-
-    push!(inspector.obsfuncs, f1, f2)
-
+    # We delegate the hover processing to another channel, 
+    # So that we can skip queued up updates with empty_channel!
+    # And also not slow down the processing of e.mouseposition/e.scroll
+    channel = Channel{Nothing}(Inf) do ch
+        for _ in ch
+            on_hover(inspector)
+        end
+    end
+    listners = onany(e.mouseposition, e.scroll) do _, _
+        empty_channel!(channel) # remove queued up hover requests
+        put!(channel, nothing)
+    end
+    append!(inspector.obsfuncs, listners)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()
@@ -1056,9 +1064,8 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     end
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(scatter)
     pos = position_on_plot(scatter, idx; apply_transform=false)
-    proj_pos = shift_project(scene, apply_transform_and_model(scatter, pos))
+    proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if to_value(get(scatter, :inspector_label, automatic)) == automatic

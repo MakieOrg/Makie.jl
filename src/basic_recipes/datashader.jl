@@ -722,7 +722,6 @@ function Makie.plot!(p::HeatmapShader)
         # there is a newer image queued to be updated
         # So we can skip this update
         if isempty(do_resample) && isempty(image_to_obs)
-            println("Threadid, update image: ", Threads.threadid())
             x, y, image = x_y_image
             visible[] = false
             imgp[1] = x
