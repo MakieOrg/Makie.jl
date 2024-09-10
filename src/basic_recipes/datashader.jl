@@ -531,7 +531,8 @@ struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     update_while_button_pressed::Bool
 end
 
-import Interpolations
+using Interpolations: Interpolations
+using ImageBase: ImageBase
 
 function Resampler(data; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
     # Our interpolation interface is to do matrix(linrange, linrange)
@@ -672,42 +673,25 @@ function Makie.plot!(p::HeatmapShader)
     translate!(lp, 0, 0, -1)
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
-    xy_image = Observable(first_downsample; ignore_equal_values=true)
-    # To make this threadsafe, the observable needs to be triggered from the current thread
-    do_resample = nothing
-    image_to_obs = Channel{typeof(xy_image[])}(0) do ch
-        for arg in ch
-            # if do_resample/ch is not empty, we already know that
-            # there is a newer image queued to be updated
-            # So we can skip this update
-            if !isnothing(do_resample) && isempty(do_resample) && isempty(ch)
-                xy_image[] = arg
-            end
-        end
-    end
 
     # Make sure we don't trigger an event if the image/xy stays the same
     args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
 
     CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
-    visible = Observable(p.visible[])
+    visible = Observable(p.visible[]; ignore_equal_values=true)
     on(p, p.visible) do v
         visible[] = v
     end
     # To actually run the resampling on another thread, we need another channel:
+    # To make this threadsafe, the observable needs to be triggered from the current thread
+    # So we need another channel for the result (unbuffered, so `put!` blocks while the image is being updated)
+    image_to_obs = Channel{Union{Nothing, typeof(first_downsample)}}(0)
     do_resample = Channel{CT}(Inf; spawn=true) do ch
         for (x, y, image, res, limits) in ch
             if isempty(ch) # only update if there is no newer image queued
                 resampled = resample_image(x, y, image, res, limits)
-                if !isnothing(resampled)
-                    put!(image_to_obs, resampled)
-                    if !visible[]
-                        visible[] = true
-                    end
-                else
-                    visible[] = false
-                end
+                put!(image_to_obs, resampled)
             end
         end
     end
@@ -722,18 +706,74 @@ function Makie.plot!(p::HeatmapShader)
     end
 
     imgp = image!(
-        p, xy_image[]...;
+        p, first_downsample...;
         gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange, visible=visible,
     )
-    on(p, xy_image) do (x, y, image)
-        visible[] = false
-        imgp[1] = x
-        imgp[2] = y
-        imgp[3] = image
-        visible[] = true
-        return
+
+    # We need to update the image from the same thread as the one that created it
+    # Which is why we need another task here:
+    task = @async for x_y_image in image_to_obs
+        # Image is nothing
+        if isnothing(x_y_image)
+            visible[] = false
+            continue
+        end
+        # if do_resample/ch is not empty, we already know that
+        # there is a newer image queued to be updated
+        # So we can skip this update
+        if isempty(do_resample) && isempty(image_to_obs)
+            println("Threadid, update image: ", Threads.threadid())
+            x, y, image = x_y_image
+            visible[] = false
+            imgp[1] = x
+            imgp[2] = y
+            imgp[3] = image
+            visible[] = true
+        end
     end
+    bind(image_to_obs, task)
     return p
+end
+
+struct Pyramid{T,M<:AbstractMatrix{T}} <: AbstractMatrix{T}
+    data::Vector{M}
+end
+
+function Pyramid(data::AbstractMatrix; min_resolution=1024, mode=Interpolations.Linear())
+    ranges(d) = (LinRange(1, size(data, 1), size(d, 1)), LinRange(1, size(data, 2), size(d, 2)))
+    ET = ImageBase.restrict_eltype(first(data))
+    resized = convert(Matrix{ET}, data)
+    pyramid = [Interpolations.interpolate(eltype(ET), ET, ranges(resized), resized, Interpolations.Gridded(mode))]
+    while any(x -> x > min_resolution, size(resized))
+        resized = ImageBase.restrict(resized)
+        interp = Interpolations.interpolate(
+            eltype(ET), ET, ranges(resized), resized,
+            Interpolations.Gridded(mode)
+        )
+        push!(pyramid, interp)
+    end
+    return Pyramid(pyramid)
+end
+
+function (p::Pyramid)(x::LinRange, y::LinRange)
+    xystep = step.((x, y))
+    maxsize = size(p.data[1])
+    val, idx = findmin(p.data) do data
+        steps = step.(LinRange.(1, maxsize, size(data)))
+        return norm(xystep .- steps)
+    end
+    level = p.data[idx]
+    return level(x, y)
+end
+
+function Base.size(p::Pyramid)
+    return size(p.data[1])
+end
+function Base.show(io::IO, ::MIME"text/plain", p::Pyramid)
+    return show(io, p)
+end
+function Base.show(io::IO, p::Pyramid)
+    return println(io, "Pyramid with levels: $(size.(p.data))")
 end
 
 export Resampler
