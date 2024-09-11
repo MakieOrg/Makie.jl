@@ -600,6 +600,9 @@ function resample_image(x, y, image, max_resolution, limits)
         resolution = round(Int, indices[2] - indices[1])
         return LinRange(max(1, indices[1]), min(indices[2], si), min(resolution, max_resolution[i]))
     end
+    if isempty(x_index_range) || isempty(y_index_range)
+        return nothing
+    end
     interpolated = image(x_index_range, y_index_range)
     return EndPoints{Float32}(ranges[1]), EndPoints{Float32}(ranges[2]), interpolated
 end
