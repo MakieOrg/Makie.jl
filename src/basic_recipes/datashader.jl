@@ -94,10 +94,11 @@ function Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCoun
     xsize, ysize = resolution
     n_elements = xsize * ysize
     o0 = null(op)
+    v0 = value(op, o0)
     aggbuffer = fill(o0, n_elements)
-    pixelbuffer = fill(o0, n_elements)
+    pixelbuffer = fill(v0, n_elements)
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (o0, o0))
+    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
 end
 
 n_threads(::AggSerial) = 1
@@ -116,9 +117,10 @@ end
 function change_op!(canvas::Canvas, op::AggOp)
     op == canvas.op && return false
     o0 = null(op)
+    v0 = value(op, o0)
     if eltype(canvas.aggbuffer) != typeof(o0)
         canvas.aggbuffer = fill(o0, size(c.aggbuffer))
-        canvas.pixelbuffer = fill(o0, size(c.pixelbuffer))
+        canvas.pixelbuffer = fill(v0, size(c.pixelbuffer))
     end
     return true
 end
