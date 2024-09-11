@@ -346,13 +346,14 @@ function fast_bb(points, f)
     N = length(points)
     NT = Threads.nthreads()
     slices = ceil(Int, N / NT)
-    results = fill(Point2f(0), NT, 2)
+    results = fill(Point2d(0), NT, 2)
+    R = eltype(points) isa Point2 ? Rect2d : Rect3d
     Threads.@threads for i in 1:NT
         start = ((i - 1) * slices + 1)
         stop = min(length(points), i * slices)
-        pmin, pmax = extrema(Rect2f(view(points, start:stop)))
-        results[i, 1] = f(pmin)
-        results[i, 2] = f(pmax)
+        pmin, pmax = extrema(R(view(points, start:stop)))
+        results[i, 1] = f(Point2d(Point3d(pmin)))
+        results[i, 2] = f(Point2d(Point3d(pmax)))
     end
     return Rect3f(Rect2f(vec(results)))
 end
