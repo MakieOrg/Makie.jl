@@ -541,29 +541,14 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T_in}) where {N, T_in}
-    T = T_in
-    T_out = float_type(T)
-
-    # convert face type if necessary (this can't include attributes if we convert MultiFace)
-    if GeometryBasics.facetype(mesh) !== GLTriangleFace
-        mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, T_out})
-        T = T_out
-    end
-    
-    # try to add normals if they are missing
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
+    n = nothing
     if !hasproperty(mesh, :normal)
         n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
-        if !isnothing(n)
-            mesh = GeometryBasics.mesh(mesh, normal = n, pointtype = Point{N, T_out})
-            T = T_out
-        end
     end
 
-    # clean up position type if it's not yet right
-    if T != T_out
-        mesh(mesh, pointtype = Point{N, T_out})
-    end
+    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    mesh = GeometryBasics.clear_faceviews(mesh) # TODO: can we do this (more) in-place?
 
     return (mesh,)
 end
@@ -572,6 +557,7 @@ function convert_arguments(
         ::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
+    # TODO: clear faceviews
     return (meshes,)
 end
 
@@ -593,10 +579,10 @@ end
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.uv_normal_mesh(
+    m = GeometryBasics.clear_faceviews(GeometryBasics.uv_normal_mesh(
         geom; pointtype = Point{N, float_type(T)}, 
         uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
-    )
+    ))
     return (m,)
 end
 
@@ -1948,7 +1934,7 @@ function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return normal_mesh(value)
+    return GeometryBasics.clear_faceviews(normal_mesh(value))
 end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)

@@ -423,7 +423,7 @@ end
 end
 
 @reference_test "Normals of a Cat" begin
-    x = loadasset("cat.obj")
+    x = GeometryBasics.clear_faceviews(loadasset("cat.obj"))
     f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)

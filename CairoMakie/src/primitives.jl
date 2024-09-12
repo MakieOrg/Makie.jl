@@ -1245,7 +1245,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         colors = colors[valid]
     end
 
-    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = GeometryBasics.clear_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
 
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(primitive.model[])::Mat4d

@@ -63,7 +63,7 @@ end
 # Poly conversion
 function poly_convert(geometries::AbstractVector, transform_func=identity)
     # TODO is this a problem with Float64 meshes?
-    isempty(geometries) && return GeometryBasics.SimpleMesh{2, Float32, GLTriangleFace}[]
+    isempty(geometries) && return GeometryBasics.Mesh{2, Float32, GLTriangleFace}[]
     return poly_convert.(geometries, (transform_func,))
 end
 
@@ -76,7 +76,7 @@ poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = 
 function poly_convert(polys::AbstractVector{<:Polygon}, transform_func=identity)
     # GLPlainMesh2D is not concrete?
     # TODO is this a problem with Float64 meshes?
-    T = GeometryBasics.SimpleMesh{2, Float32, GLTriangleFace}
+    T = GeometryBasics.Mesh{2, Float32, GLTriangleFace}
     return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
 end
 
@@ -114,7 +114,7 @@ function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=
     points_transformed = apply_transform(transform_func, points)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.Mesh{2, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
