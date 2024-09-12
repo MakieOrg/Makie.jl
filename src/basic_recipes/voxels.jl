@@ -52,7 +52,7 @@ function calculated_attributes!(::Type{<:Voxels}, plot)
         dummy_data = Observable(UInt8[1, 255])
 
         # Always sample N colors
-        cmap = map(plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
+        cmap = lift(plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
             cm = if cmap isa Vector && length(cmap) != 255
                 resample_cmap(cmap, 253)
             else

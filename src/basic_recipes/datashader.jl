@@ -459,7 +459,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
-    op = map(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
+    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
 
     for (k, canv) in canvases
         color = colors[k]
@@ -499,7 +499,7 @@ end
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?
 function extract_colormap(plot::DataShader)
-    color = map(x -> x.aggbuffer, plot.canvas)
+    color = lift(x -> x.aggbuffer, plot.canvas)
     return ColorMapping(
        color[], color, plot.colormap, plot.raw_colorrange,
         plot.colorscale,
