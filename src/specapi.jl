@@ -42,7 +42,8 @@ struct PlotSpec
             if v isa Cycled # special case for conversions needing a scene
                 kw[k] = v
             elseif v isa Observable
-                error("PlotSpec are supposed to be used without Observables")
+                kw[k] = to_value(v)
+                # error("PlotSpec are supposed to be used without Observables")
             else
                 try
                     # Really unfortunate!
@@ -80,7 +81,25 @@ struct BlockSpec
     type::Symbol # Type as :Scatter, :BarPlot
     kwargs::Dict{Symbol,Any}
     plots::Vector{PlotSpec}
+    then_funcs::Set{Function}
+    function BlockSpec(type::Symbol, kwargs::Dict{Symbol,Any}, plots::Vector{PlotSpec}=PlotSpec[])
+        return new(type, kwargs, plots, Set{Function}())
+    end
 end
+
+function Base.setproperty!(p::BlockSpec, k::Symbol, v)
+    p.kwargs[k] = v
+end
+
+function Base.getproperty(p::BlockSpec, k::Symbol)
+    if k === :then
+        return (f) -> push!(p.then_funcs, f)
+    end
+    k in fieldnames(BlockSpec) && return getfield(p, k)
+    return p.kwargs[k]
+end
+Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
+
 
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
@@ -440,7 +459,7 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
                 merge!(plotspec.kwargs, plotlist.kw)
             end
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
-            # But we want the scene to only contain one PlotList item with the newly created 
+            # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
             # - so we dont push it to the scene if there's a plotlist.
             # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
@@ -540,6 +559,9 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
     # TODO forward kw
     block = BType(get_top_parent(parent); spec.kwargs...)
     parent[position...] = block
+    for func in spec.then_funcs
+        func(block)
+    end
     return block
 end
 
