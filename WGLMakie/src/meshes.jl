@@ -94,7 +94,6 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
     mesh = GeometryBasics.Mesh(pos, faces; per_vertex...)
-
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 

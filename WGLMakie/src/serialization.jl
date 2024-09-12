@@ -134,7 +134,7 @@ function flatten_buffer(array::Buffer)
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
-    return reinterpret(UInt8, array)
+    return collect(reinterpret(UInt8, array))
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
@@ -159,8 +159,6 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
                                             t::Quaternion)
     return convert(Quaternion, t)
 end
-
-
 
 function wgl_convert(value, key1, key2...)
     val = Makie.convert_attribute(value, key1, key2...)

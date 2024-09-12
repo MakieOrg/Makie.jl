@@ -893,7 +893,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
-            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6) 
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
@@ -967,7 +967,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
             modelinv = inv(model)
-            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6) 
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
