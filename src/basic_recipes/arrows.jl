@@ -153,7 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
     else
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
         markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+        lift!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
             ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth

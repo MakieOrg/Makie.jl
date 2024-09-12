@@ -187,7 +187,7 @@ function plot!(plot::Voxels)
     end
 
     # Initial limits
-    map!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
+    lift!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
         if colorrange !== automatic
             return colorrange
         end
