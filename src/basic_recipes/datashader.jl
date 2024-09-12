@@ -356,10 +356,10 @@ function fast_bb(points, f)
 end
 
 
-function canvas_obs(limits::Observable, pixel_area::Observable, op, binsize::Observable)
+function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, op, binsize::Observable)
     canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
     canvas_obs = Observable(canvas)
-    onany(limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
+    onany(p, limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
         binsize isa Int || error("Bin factor $binsize is not an Int.")
         xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binsize)
         has_changed = Base.resize!(canvas, (xsize, ysize))
@@ -380,7 +380,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
     limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(limits, viewport, p.agg, p.binsize)
+    canvas = canvas_obs(p, limits, viewport, p.agg, p.binsize)
     p._boundingbox = lift(fast_bb, p.points, p.point_transform)
     on_func = p.async[] ? onany_latest : onany
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
@@ -392,7 +392,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         end
     end
 
-    on_func(canvas, p.points, p.point_transform) do canvas, points, f
+    on_func(p, canvas, p.points, p.point_transform) do canvas, points, f
         Aggregation.aggregate!(canvas, points; point_transform=f, method=p.method[])
         canvas_with_aggregation[] = canvas
         # If not automatic, it will get updated by the above on(p.colorrange)
@@ -435,8 +435,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     scene = parent_scene(p)
     limits = projview_to_2d_limits(p)
     viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(limits, viewport, Observable(AggCount{Float32}()), p.binsize)
-    p._boundingbox = lift(p.points, p.point_transform) do cats, func
+    canvas = canvas_obs(p, limits, viewport, Observable(AggCount{Float32}()), p.binsize)
+    p._boundingbox = lift(p, p.points, p.point_transform) do cats, func
         rects = map(points -> fast_bb(points, func), values(cats))
         return reduce(union, rects)
     end
@@ -448,7 +448,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
     p.canvas = canvas_with_aggregation
     toal_value = Observable(0f0)
-    on_func(canvas, p.points) do canvas, cats
+    on_func(p, canvas, p.points) do canvas, cats
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
@@ -459,7 +459,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
-    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), toal_value)
+    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, toal_value)
 
     for (k, canv) in canvases
         color = colors[k]
@@ -499,7 +499,7 @@ end
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?
 function extract_colormap(plot::DataShader)
-    color = lift(x -> x.aggbuffer, plot.canvas)
+    color = lift(x -> x.aggbuffer, plot, plot.canvas)
     return ColorMapping(
        color[], color, plot.colormap, plot.raw_colorrange,
         plot.colorscale,

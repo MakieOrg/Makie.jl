@@ -20,7 +20,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat=:repeat)
-        uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), linestyle)
+        uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), plot, linestyle)
     end
 
     color = plot.calculated_colors

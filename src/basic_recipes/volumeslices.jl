@@ -15,7 +15,7 @@ end
 function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
-        lift(extrema, volume)
+        lift(extrema, plot, volume)
     end
 
     # heatmap will fail if we don't keep its attributes clean
