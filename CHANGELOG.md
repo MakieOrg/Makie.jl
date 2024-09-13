@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added.
+
 ## [0.21.10] - 2024-09-12
 
 - Introduce `heatmap(Resampler(large_matrix))`, allowing to show big images interactively [#4317](https://github.com/MakieOrg/Makie.jl/pull/4317).
