@@ -89,6 +89,10 @@ function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N
     return (elconvert(Point{N, float_type(_T)}, positions),)
 end
 
+function convert_arguments(T::PointBased, positions::OffsetVector)
+   return convert_arguments(T, OffsetArrays.no_offset_view(positions))
+end
+
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
     # TODO figure out a good subarray solution
     (positions,)
