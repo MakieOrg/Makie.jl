@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.21.11] - 2024-09-13
+
+- Hot fixes for 0.21.10 [#4356](https://github.com/MakieOrg/Makie.jl/pull/4356).
+
 ## [0.21.10] - 2024-09-12
 
 - Introduce `heatmap(Resampler(large_matrix))`, allowing to show big images interactively [#4317](https://github.com/MakieOrg/Makie.jl/pull/4317).
@@ -594,7 +598,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...HEAD
+[0.21.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...v0.21.11
 [0.21.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...v0.21.10
 [0.21.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...v0.21.9
 [0.21.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...v0.21.8
