@@ -82,8 +82,9 @@ struct BlockSpec
     kwargs::Dict{Symbol,Any}
     plots::Vector{PlotSpec}
     then_funcs::Set{Function}
+    then_observers::Set{ObserverFunction}
     function BlockSpec(type::Symbol, kwargs::Dict{Symbol,Any}, plots::Vector{PlotSpec}=PlotSpec[])
-        return new(type, kwargs, plots, Set{Function}())
+        return new(type, kwargs, plots, Set{Function}(), Set{ObserverFunction}())
     end
 end
 
@@ -554,13 +555,25 @@ end
 
 compare_layout_slot(a, b) = false # types dont match
 
+add_observer!(::BlockSpec, ::Nothing) = nothing
+function add_observer!(block::BlockSpec, obs::ObserverFunction)
+    push!(block.then_observers, obs)
+    return
+end
+
+function add_observer!(block::BlockSpec, obs::AbstractVector{<:ObserverFunction})
+    append!(block.then_observers, obs)
+    return
+end
+
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
     BType = getfield(Makie, spec.type)
     # TODO forward kw
     block = BType(get_top_parent(parent); spec.kwargs...)
     parent[position...] = block
     for func in spec.then_funcs
-        func(block)
+        observers = func(block)
+        add_observer!(spec, observers)
     end
     return block
 end
@@ -611,6 +624,20 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         if any(needs_tight_limits, scene.plots)
             tightlimits!(block)
         end
+    end
+    for observer in spec.then_observers
+        Observables.off(observer)
+    end
+    empty!(spec.then_observers)
+    if hasproperty(spec, :xaxislinks)
+        empty!(spec.xaxislinks)
+    end
+    if hasproperty(spec, :yaxislinks)
+        empty!(spec.yaxislinks)
+    end
+    for func in spec.then_funcs
+        observers = func(block)
+        add_observer!(spec, observers)
     end
     return
 end
