@@ -535,6 +535,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "Button that needs to be pressed to allow scroll zooming."
+        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."

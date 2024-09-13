@@ -278,11 +278,19 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     inspector = DataInspector(parent, plot, base_attrib)
 
     e = events(parent)
-    f1 = on(_ -> on_hover(inspector), e.mouseposition, priority = priority)
-    f2 = on(_ -> on_hover(inspector), e.scroll, priority = priority)
-
-    push!(inspector.obsfuncs, f1, f2)
-
+    # We delegate the hover processing to another channel,
+    # So that we can skip queued up updates with empty_channel!
+    # And also not slow down the processing of e.mouseposition/e.scroll
+    channel = Channel{Nothing}(Inf) do ch
+        for _ in ch
+            on_hover(inspector)
+        end
+    end
+    listners = onany(e.mouseposition, e.scroll) do _, _
+        empty_channel!(channel) # remove queued up hover requests
+        put!(channel, nothing)
+    end
+    append!(inspector.obsfuncs, listners)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()
@@ -627,13 +635,19 @@ function show_data(inspector::DataInspector, plot::Image, idx)
     show_imagelike(inspector, plot, "img", false)
 end
 
+_to_array(x::AbstractArray) = x
+_to_array(x::Resampler) = x.data
+
+
 function show_imagelike(inspector, plot, name, edge_based)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
     pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
-
+    xrange = plot[1][]
+    yrange = plot[2][]
+    zrange = _to_array(plot[3][])
     # Not on image/heatmap
     if isnan(pos)
         a.indicator_visible[] = false
@@ -642,10 +656,10 @@ function show_imagelike(inspector, plot, name, edge_based)
     end
 
     if plot.interpolate[]
-        i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], pos)
+        i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
-        i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], pos, edge_based)
+        i, j, z = _pixelated_getindex(xrange, yrange, zrange, pos, edge_based)
         x = i; y = j
     end
 
@@ -698,7 +712,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 notify(p[1])
             end
         else
-            bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
+            bbox = _pixelated_image_bbox(xrange, yrange, zrange, i, j, edge_based)
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)
@@ -1056,9 +1070,8 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     end
     a = inspector.attributes
     tt = inspector.plot
-    scene = parent_scene(scatter)
     pos = position_on_plot(scatter, idx; apply_transform=false)
-    proj_pos = shift_project(scene, apply_transform_and_model(scatter, pos))
+    proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
@@ -1074,4 +1087,12 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
+end
+
+
+function show_data(inspector::DataInspector, hs::HeatmapShader, idx, pp::Image)
+    # Simply force the hs recipe to be treated like a heatmap plot
+    # Indices get ignored anyways, since they're calculated from the mouse position + xrange/yrange of the heatmap
+    # If we don't overwrite this here, show_data will get called on `pp`, which will use the small resampled version
+    return show_data(inspector, hs, nothing)
 end

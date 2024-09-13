@@ -22510,7 +22510,7 @@ function connect_uniforms(mesh, updater) {
 }
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
-    const rgbaArray = new Float32Array(length / 3 * 4);
+    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
     for(let i = 0, j = 0; i < length; i += 3, j += 4){
         rgbaArray[j] = rgbArray[i];
         rgbaArray[j + 1] = rgbArray[i + 1];
@@ -22528,10 +22528,13 @@ function create_texture_from_data(data) {
         return tex;
     } else {
         let format = mod[data.three_format];
+        console.log(buffer);
+        console.log(data);
         if (data.three_format == "RGBFormat") {
             buffer = convert_RGB_to_RGBA(buffer);
             format = mod.RGBAFormat;
         }
+        console.log(format);
         return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
     }
 }
