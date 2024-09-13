@@ -69,6 +69,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
+    kw_obs::Observable{Vector{Pair{Symbol,Any}}}
     args::Vector{Any}
 
     converted::Vector{Observable}
@@ -80,10 +81,11 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(
-                         kw::Dict{Symbol,Any}, args::Vector{Any}, converted::Vector{Observable},
-            deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+                kw::Dict{Symbol,Any}, kw_obs::Observable{Vector{Pair{Symbol,Any}}},
+                args::Vector{Any}, converted::Vector{Observable},
+                deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T}
-        return new{Typ,T}(nothing, kw, args, converted, Attributes(), Plot[], deregister_callbacks)
+        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 

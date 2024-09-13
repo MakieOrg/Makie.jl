@@ -22518,13 +22518,10 @@ function create_texture_from_data(data) {
         return tex;
     } else {
         let format = mod[data.three_format];
-        console.log(buffer);
-        console.log(data);
         if (data.three_format == "RGBFormat") {
             buffer = convert_RGB_to_RGBA(buffer);
             format = mod.RGBAFormat;
         }
-        console.log(format);
         return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
     }
 }
