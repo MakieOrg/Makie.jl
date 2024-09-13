@@ -946,8 +946,8 @@ end
 end
 
 """
-A grid of horizontal `Slider`s, where each slider has one name label on the left,
-and a value label on the right.
+A grid of one or more horizontal `Slider`s, where each slider has a 
+name label on the left and a value label on the right.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
 and `label`, and optionally a `format` for the value label. Beyond that, you can set
