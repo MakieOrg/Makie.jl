@@ -103,3 +103,29 @@ end
     @test ax.dim2_conversion[] isa Makie.CategoricalConversion
     f
 end
+
+struct ForwardAllAttributes end
+function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs...)
+    return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
+end
+Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.attribute_names(T)...,)
+@testset "Forward all attribute without error" begin
+    f, ax, pl = lines(ForwardAllAttributes(); color=:red)
+    @test pl.color[] == to_color(:red)
+end
+
+struct UsedAttributesStairs
+    a::Vector{Int}
+    b::Vector{Int}
+end
+
+Makie.used_attributes(::Type{<:Stairs}, h::UsedAttributesStairs) = (:clamp_bincounts,)
+function Makie.convert_arguments(P::Type{<:Stairs}, h::UsedAttributesStairs; clamp_bincounts=false)
+    return convert_arguments(P, h.a, h.b)
+end
+
+@testset "Used attributes with stair plot" begin
+    f, ax, pl = stairs(UsedAttributesStairs([1, 2, 3], [1, 2, 3]))
+    @test !haskey(pl, :clamp_bincounts)
+    @test !haskey(pl.plots[1], :clamp_bincounts)
+end
