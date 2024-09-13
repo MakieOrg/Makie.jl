@@ -265,13 +265,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     P = Plot{Func}
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
-    # don't use convert(Observable{Any}, x) here,
-    # We assume if a user passes the observable, they type it correctly
-    # And if they pass a value, they may want to change the type, so we need Observable{Any}
-    args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
-    deregister = Observables.ObserverFunction[]
     PTrait = conversion_trait(P, args...)
-    expanded_args_obs = apply_expand_dimensions(PTrait, args, args_obs, deregister)
+    expanded_args_obs = apply_expand_dimensions(PTrait, args)
     kw_obs = get_kw_obs(attr, user_attributes)
     converted_obs = conversion_pipeline(P, attr, args, kw_obs, expanded_args_obs, user_attributes, deregister)
     args2 = map(to_value, converted_obs)
