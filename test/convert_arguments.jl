@@ -121,6 +121,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 nan = vcat(xs[1:4], NaN, zs[6:end])
                 r = T_in(1):T_in(1):T_in(10)
                 i = T_in(1)..T_in(10)
+                ov = Makie.OffsetVector(ys, -5:4)
 
                 ps2 = Point2.(xs, ys)
                 ps3 = Point3.(xs, ys, zs)
@@ -191,6 +192,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, i, i, m)        isa Tuple{Vector{Point3{T_out}}}
                         # @test apply_conversion(CT, r, i, zs)       isa Tuple{Vector{Point3{T_out}}}
                         # @test apply_conversion(CT, i, i, zs)       isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, ov)             isa Tuple{Vector{Point3{T_out}}}
 
                         # TODO: implement as PointBased conversion?
                         if CT !== PointBased()
