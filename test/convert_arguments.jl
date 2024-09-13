@@ -173,6 +173,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                         # because indices are Int we end up converting to Float64 no matter what
                         @test apply_conversion(CT, xs)         isa Tuple{Vector{Point2{Float64}}}
+                        @test apply_conversion(CT, ov)         isa Tuple{Vector{Point2{Float64}}}
 
                         @test apply_conversion(CT, xs, ys)     isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, xs, v32)    isa Tuple{Vector{Point2{T_out}}}
@@ -192,7 +193,6 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, i, i, m)        isa Tuple{Vector{Point3{T_out}}}
                         # @test apply_conversion(CT, r, i, zs)       isa Tuple{Vector{Point3{T_out}}}
                         # @test apply_conversion(CT, i, i, zs)       isa Tuple{Vector{Point3{T_out}}}
-                        @test apply_conversion(CT, ov)             isa Tuple{Vector{Point3{T_out}}}
 
                         # TODO: implement as PointBased conversion?
                         if CT !== PointBased()
