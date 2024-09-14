@@ -535,6 +535,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "Button that needs to be pressed to allow scroll zooming."
+        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -944,8 +946,8 @@ end
 end
 
 """
-A grid of horizontal `Slider`s, where each slider has one name label on the left,
-and a value label on the right.
+A grid of one or more horizontal `Slider`s, where each slider has a 
+name label on the left and a value label on the right.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
 and `label`, and optionally a `format` for the value label. Beyond that, you can set
