@@ -46,7 +46,7 @@ function Makie.plot!(plot::Band)
 
     meshcolor = Observable{RGBColors}()
 
-    map!(plot, meshcolor, plot.color) do c
+    lift!(plot, meshcolor, plot.color) do c
         if c isa AbstractArray
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other
