@@ -52,7 +52,7 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-function serialize_three(array::AbstractArray{T}) where {T<:Union{UInt8,Int32,UInt32,Float32,Float16,Float64}}
+function serialize_three(array::AbstractArray{T}) where {T<:Union{N0f8,UInt8,Int32,UInt32,Float32,Float16,Float64}}
     vec(convert(Array, array))
 end
 
@@ -78,6 +78,10 @@ three_type(::Type{UInt8}) = "UnsignedByteType"
 function three_filter(sym::Symbol)
     sym === :linear && return "LinearFilter"
     sym === :nearest && return "NearestFilter"
+    sym == :nearest_mipmap_nearest && return "NearestMipmapNearestFilter"
+    sym == :nearest_mipmap_linear  && return "NearestMipmapLinearFilter"
+    sym == :linear_mipmap_nearest  && return "LinearMipmapNearestFilter"
+    sym == :linear_mipmap_linear   && return "LinearMipmapLinearFilter"
     error("Unknown filter mode '$sym'")
 end
 
@@ -89,12 +93,16 @@ function three_repeat(s::Symbol)
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], :three_format => three_format(T),
+    tex = Dict(:type => "Sampler", 
+               :data => serialize_three(color.data),
+               :size => Int32[size(color.data)...], 
+               :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
                :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
+               :wrapS => three_repeat(color.repeat[1]), 
+               :mipmap => color.mipmap,
+               :anisotropy => color.anisotropic)
     if N > 1
         tex[:wrapT] = three_repeat(color.repeat[2])
     end

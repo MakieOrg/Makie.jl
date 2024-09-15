@@ -740,6 +740,10 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
                 return convert_attribute(uv_transform, key"uv_transform"())
             end
         end
+    elseif to_value(color) isa ShaderAbstractions.Sampler
+        gl_attributes[:image] = Texture(lift(el32convert, plot, color))
+        delete!(gl_attributes, :color_map)
+        delete!(gl_attributes, :color_norm)    
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

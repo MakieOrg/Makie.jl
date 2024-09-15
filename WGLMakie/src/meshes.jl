@@ -26,6 +26,8 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
+    elseif color[] isa ShaderAbstractions.Sampler
+        uniforms[uniform_color_name] = to_value(color)
     elseif color[] isa AbstractVector
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
