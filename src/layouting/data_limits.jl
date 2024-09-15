@@ -171,7 +171,7 @@ function point_iterator(plot::Text{<: Tuple{<: Union{GlyphCollection, AbstractVe
     return plot.position[]
 end
 
-point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
+point_iterator(mesh::GeometryBasics.AbstractMesh) = decompose(Point, mesh)
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
 # Fallback for other primitive plots, used in boundingbox
