@@ -1375,7 +1375,7 @@ end
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]] 
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
     points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)]
     # The noise forces the triangulation to be unique. Not using RNG to not disrupt the RNG stream later
@@ -1599,5 +1599,26 @@ end
     spy(f[2, 1], sdata; color=:black, alpha=0.7)
     data[1, 1] = NaN
     spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
+    f
+end
+
+@reference_test "Lines with OffsetArrays" begin
+    lines(Makie.OffsetArrays.Origin(-50)(1:100))
+end
+
+@reference_test "Heatmap Shader" begin
+    data = Makie.peaks(10_000)
+    data2 = map(data) do x
+        Float32(round(x))
+    end
+    f = Figure()
+    ax1, pl1 = heatmap(f[1, 1], Resampler(data))
+    ax2, pl2 = heatmap(f[1, 2], Resampler(data))
+    limits!(ax2, 2800, 4800, 2800, 5000)
+    ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
+    ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
+    limits!(ax4, 3000, 3090, 3460, 3500)
+    Colorbar(f[:, 3], pl1)
+    sleep(1) # give the async operations some time
     f
 end
