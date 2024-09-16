@@ -47,7 +47,7 @@ $(Base.doc(ScreenConfig))
 $(Base.doc(MakieScreen))
 """
 mutable struct Screen <: Makie.MakieScreen
-    plot_initialized::Channel{Bool}
+    plot_initialized::Channel{Any}
     session::Union{Nothing,Session}
     scene::Union{Nothing,Scene}
     displayed_scenes::Set{String}
@@ -56,7 +56,7 @@ mutable struct Screen <: Makie.MakieScreen
     tick_clock::Makie.BudgetedTimer
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
-        screen = new(Channel{Bool}(1), nothing, scene, Set{String}(), config, nothing, timer)
+        screen = new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
 
         finalizer(screen) do screen
             close(screen.tick_clock)
@@ -78,17 +78,23 @@ end
 function render_with_init(screen::Screen, session::Session, scene::Scene)
     # Reference to three object which gets set once we serve this to a browser
     # Make sure it's a new Channel, since we may re-use the screen.
-    screen.plot_initialized = Channel{Bool}(1)
+    screen.plot_initialized = Channel{Any}(1)
     screen.session = session
     Makie.push_screen!(scene, screen)
     canvas, on_init = three_display(screen, session, scene)
     screen.canvas = canvas
     on(session, on_init) do initialized
-        if !isready(screen.plot_initialized) && initialized
+        if isready(screen.plot_initialized)
+            # plot_initialized contains already an item
+            # This should not happen, but lets check anyways, so it errors and doesn't hang forever
+            error("Plot inititalized multiple times?")
+        end
+        if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
         else
-            error("Three object should be ready after init, but isn't - connection interrupted? Session: $(session), initialized: $(initialized)")
+            # Will be an eror from WGLMakie.js
+            put!(screen.plot_initialized, initialized)
         end
         return
     end
@@ -203,6 +209,8 @@ function get_screen_session(screen::Screen; timeout=100,
         if !isnothing(error)
             message = "Can't get three: $(status)\n$(error)"
             Base.error(message)
+        else
+            # @warn "Can't get three: $(status)\n$(error)"
         end
     end
     if isnothing(screen.session)
@@ -211,7 +219,7 @@ function get_screen_session(screen::Screen; timeout=100,
     end
     session = screen.session
     if !(session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
-        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status)")
+        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status), id: $(session.id)")
         return nothing
     end
     success = Bonito.wait_for_ready(session; timeout=timeout)
@@ -223,6 +231,12 @@ function get_screen_session(screen::Screen; timeout=100,
     # Throw error if error message specified
     if success !== :success
         throw_error("Timed out waiting $(timeout)s for session to get initilize")
+        return nothing
+    end
+    value = fetch(screen.plot_initialized)
+    if value !== true
+        throw_error("Error initializing plot: $(value)")
+        return nothing
     end
     # At this point we should have a fully initialized plot + session
     return session
@@ -243,7 +257,7 @@ Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
-    screen.plot_initialized = Channel{Bool}(1)
+    screen.plot_initialized = Channel{Any}(1)
     return
     # TODO, empty state in JS, to be able to reuse screen
 end

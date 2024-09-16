@@ -33,7 +33,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # avoid them inverting.
     # TODO: If we have neither perspective projection not clip_planes we can
     #       use the normal projection_position() here
-    projected_positions, color, linewidth = 
+    projected_positions, color, linewidth =
         project_line_points(scene, primitive, positions, color, linewidth)
 
     # The linestyle can be set globally, as we do here.
@@ -798,7 +798,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
 
         weird_cairo_limit = (2^15) - 23
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
-            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
+            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with heatmap(Resampler(data)).")
         end
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)

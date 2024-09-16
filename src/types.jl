@@ -24,7 +24,7 @@ Identifies the source of a tick:
 - `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
 - `PausedRenderTick`: A tick from a paused renderloop.
 - `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
-- `RegularRenderTick`: A tick from a running renderloop where a new image was produced. 
+- `RegularRenderTick`: A tick from a running renderloop where a new image was produced.
 - `OneTimeRenderTick`: A tick from a call to `colorbuffer`, i.e. an image request from `save` or `record`.
 """
 @enum TickState begin
@@ -147,7 +147,7 @@ struct Events
     for `save` or `record`. A Tick contains:
     - `state` which identifies what caused the tick (see Makie.TickState)
     - `count` which increments with every tick
-    - `time` which is the total time since the screen has been created 
+    - `time` which is the total time since the screen has been created
     - `delta_time` which is the time since the last frame
     """
     tick::Observable{Tick}
