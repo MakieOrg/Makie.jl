@@ -1629,6 +1629,7 @@ end
     datashader!(ax, data3d; agg = Makie.AggMean(), operation = identity, async = false)
     ax2 = Axis(f[1, 2])
     datashader!(ax2, data3d; agg = Makie.AggMean(), operation = identity, async = false, binsize = 3)
+end
 
 @reference_test "Heatmap Shader" begin
     data = Makie.peaks(10_000)
