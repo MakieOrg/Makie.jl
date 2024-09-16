@@ -64,3 +64,13 @@ end
 ```
 * We still kind of need a compute graph if we don't want to run everything every time (e.g., which functions to run if argument 1 changed, or if only one color changed). I almost think this can be somewhat hardcoded, since we only have `convert_attributes`, `convert_arguments` and `calculated_attributes!` that need to run on each update.
 * `plot!(... ; other_plot.attributes...)` wouldn't propagate the updates anymore. `plot!(recipe_plot, ...; color=recipe_plot.color)` neither. I feel like this needs a cleaner API anyways, but simply forwarding the observables here surely is simple from the users perspective. Instead of the above `Dict{Symbol, Observable}` for backwards compatibility, we could also return something like `color=AttributeView(other_plot, :color)`, which the plot constructor connects internally to the other plot object (`plot.color isa AttributeView`). AttributeView would have the large problem, that `on(f, plot.color)` won't easily work, which must be widely used across the Makie ecosystem.
+
+## APIS
+
+```julia
+on(plot, :attr1, :attr2) do attr1, attr2
+
+end
+
+update!(plot, attr1=> 22, attr2=> :red)
+```

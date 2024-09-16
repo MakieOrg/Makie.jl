@@ -6,13 +6,16 @@ function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plot
     return
 end
 
-function color_and_colormap!(plot, colors = plot.color)
+function color_and_colormap!(plot, colorsym = plot.color)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
         add_cycle_attribute!(plot, scene)
     end
+    on(plot, colorsym, :colormap, :colorrange) do changed
+        color = plot[][colorsym]
+
     colors = assemble_colors(colors[], colors, plot)
-    attributes(plot.attributes)[:calculated_colors] = colors
+    plot.computed[:color] = colors
 end
 
 function calculated_attributes!(::Type{<: AbstractPlot}, plot)
@@ -151,47 +154,6 @@ function expand_dimensions(::VolumeLike, data::RealArray{3})
     return (x, y, z, data)
 end
 
-function apply_expand_dimensions(trait, args, args_obs, deregister)
-    expanded = expand_dimensions(trait, args...)
-    if isnothing(expanded)
-        return args_obs
-    else
-        new_obs = map(Observable{Any}, expanded)
-        fs = onany(args_obs...) do args...
-            expanded = expand_dimensions(trait, args...)
-            for (obs, arg) in zip(new_obs, expanded)
-                obs.val = arg
-            end
-            foreach(notify, new_obs)
-            return
-        end
-        append!(deregister, fs)
-        return new_obs
-    end
-end
-
-
-# Internal function to apply convert_arguments to observable arguments
-function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
-    # Fully converted arguments to target type for Plot
-    new_args_obs = map(Observable, converted)
-    fs = onany(kw_obs, args_obs...) do kw, args...
-        conv = convert_arguments(P, args...; kw...)
-        if conv isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
-            conv = (conv,) # for PlotSpec
-        elseif !(conv isa Tuple)
-            error("Returned type of convert_arguments needs to be a PlotSpec or Tuple, got: $(typeof(conv))")
-        end
-        for (obs, arg) in zip(new_args_obs, conv)
-            obs.val = arg
-        end
-        foreach(notify, new_args_obs)
-        return
-    end
-    append!(deregister, fs)
-    return new_args_obs
-end
-
 function got_converted(P::Type, PTrait::ConversionTrait, result)
     if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
         return SpecApi
@@ -210,50 +172,47 @@ end
 The main conversion pipeline for converting arguments for a plot type.
 Applies dim_converts, expand_dimensions (in `try_dim_convert`), convert_arguments and checks if the conversion was successful.
 """
-function conversion_pipeline(
-        P::Type{<:Plot}, used_attrs::Tuple, args::Tuple, kw_obs,
-        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
-    if recursion === 3
-        error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
-        return P, args_obs
-    end
-
-    kw = to_value(kw_obs)
-    PTrait = conversion_trait(P, args...)
-    dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs, deregister)
-    args = map(to_value, dim_converted)
+function conversion_pipeline(P, user_args::Tuple, user_attributes::Dict, used_attrs,
+        PTrait=conversion_trait(P, user_args...),
+        recursion=1
+    )
+    expanded_args = expand_dimensions(PTrait, user_args...)
+    args = isnothing(expanded_args) ? user_args : expanded_args
+    kw = [k => user_attributes[k] for k in used_attrs if haskey(user_attributes, k)]
     converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, PTrait, converted)
+    @show args converted
     if status === true
         # We're done converting!
-        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+        return converted
     elseif status === SpecApi
-        return convert_observable_args(P, dim_converted, kw_obs, (converted,), deregister)
-    elseif status === false && recursion === 1
-        # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
-        # This is the case for e.g. convert_arguments returning types that need dim_convert
-        new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
-        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
-                                   user_attributes, deregister,
-                                   recursion + 1)
-    elseif status === false && recursion === 2
-        kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
-        kw_convert = isempty(kw) ? "" : "; kw..."
-        conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
-        types = MakieCore.types_for_plot_arguments(P, PTrait)
-        throw(ArgumentError("""
-            Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
-            $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
-            To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
-        """))
+        return converted
+    elseif status === false
+        if recursion === 1
+            # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
+            # This is the case for e.g. convert_arguments returning types that need dim_convert
+            return conversion_pipeline(P, converted, user_attributes, used_attrs, PTrait, recursion + 1)
+        else # recursion > 1
+            kw_str = isempty(kw) ? "" : " and kw: $(typeof(kw))"
+            kw_convert = isempty(kw) ? "" : "; kw..."
+            conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
+            types = MakieCore.types_for_plot_arguments(P, PTrait)
+            throw(ArgumentError("""
+                Conversion failed for $(P)$(conv_trait) with args: $(typeof(user_args)) $(kw_str).
+                $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
+                To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+            """))
+        end
     elseif isnothing(status)
         # No types_for_plot_arguments defined, so we don't know what we need to convert to.
         # This is for backwards compatibility for recipes that don't define argument types
-        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+        return converted
     else
         error("Unknown status: $(status)")
     end
+    return
 end
+
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
@@ -265,17 +224,11 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     P = Plot{Func}
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
-    PTrait = conversion_trait(P, args...)
-    expanded_args_obs = apply_expand_dimensions(PTrait, args)
-    kw_obs = get_kw_obs(attr, user_attributes)
-    converted_obs = conversion_pipeline(P, attr, args, kw_obs, expanded_args_obs, user_attributes, deregister)
-    args2 = map(to_value, converted_obs)
-    ArgTyp = MakieCore.argtypes(args2)
-    FinalPlotFunc = plotfunc(plottype(P, args2...))
-    foreach(x -> delete!(user_attributes, x), attr)
-    return Plot{FinalPlotFunc,ArgTyp}(
-        user_attributes, kw_obs, Any[args_obs...],
-        Observable[converted_obs...], deregister)
+    converted = conversion_pipeline(P, args, user_attributes, attr)
+    ArgTyp = MakieCore.argtypes(converted)
+    FinalPlotFunc = plotfunc(plottype(P, converted...))
+
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, user_args, converted)
 end
 
 """
@@ -361,7 +314,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
     scene = parent_scene(parent)
     apply_theme!(scene, plot)
-    t_user = to_value(get(attributes(plot), :transformation, automatic))
+    t_user = to_value(get(plot.input, :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
     else
@@ -381,8 +334,8 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
 
-    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
-        attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
+    if to_value(get(plot.input, :clip_planes, automatic)) === automatic
+        plot.input[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
     end
 
     plot!(plot)
@@ -390,13 +343,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
-    end
-    attr = used_attributes(plot)
-    used_attr_obs = map(k -> get!(plot.attributes, k, Observable{Any}(nothing)), attr)
-    onany(plot, used_attr_obs...) do args...
-        zipped = filter(((k, v),) -> !isnothing(v), collect(zip(attr, args)))
-        plot.kw_obs[] = map(x -> x[1] => x[2], zipped)
-        return
     end
     return plot
 end
@@ -408,19 +354,19 @@ function plot!(scene::SceneLike, plot::Plot)
 end
 
 function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
-    raw_attr = attributes(plot.attributes)
+    raw_attr = plot.computed
     plot_theme = default_theme(scene, P)
     plot_sym = plotsym(P)
     if haskey(theme(scene), plot_sym)
         merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
     end
 
-    for (k, v) in plot.kw
+    for (k, v) in plot.input
         if v isa NamedTuple
             raw_attr[k] = Attributes(v)
         else
             raw_attr[k] = convert(Observable{Any}, v)
         end
     end
-    return merge!(plot.attributes, plot_theme)
+    return merge!(plot.computed, plot_theme.attributes)
 end

@@ -43,13 +43,6 @@ abstract type MakieScreen <: AbstractDisplay end
 
 const SceneLike = Union{AbstractScene, ScenePlot}
 
-"""
-Main structure for holding attributes, for theming plots etc!
-Will turn all values into observables, so that they can be updated.
-"""
-struct Attributes
-    attributes::Dict{Symbol, Observable}
-end
 
 """
     Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
@@ -68,26 +61,39 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     transformation::Union{Nothing, Transformable}
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
-    kw::Dict{Symbol,Any}
-    kw_obs::Observable{Vector{Pair{Symbol,Any}}}
-    args::Vector{Any}
+    input::Dict{Symbol,Any}
 
-    converted::Vector{Observable}
-    # Converted and processed arguments
-    attributes::Attributes
+    computed::Dict{Symbol,Any}
+    # Backwards compatibility for plot.attribute::Observable
+    observables::Dict{Symbol, Observable}
+    changed::Set{Symbol}
 
     plots::Vector{Plot}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(
-                kw::Dict{Symbol,Any}, kw_obs::Observable{Vector{Pair{Symbol,Any}}},
-                args::Vector{Any}, converted::Vector{Observable},
-                deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+                kw::Dict{Symbol,Any}, args::Tuple, converted_args::Tuple,
+                deregister_callbacks=Observables.ObserverFunction[]
             ) where {Typ,T}
-        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
+        input = copy(kw)
+        computed = Dict{Symbol, Any}()
+        observables = Dict{Symbol, Observable}()
+        P = Plot{Typ, T}
+        arg_names = argument_names(P, length(converted_args))
+        for (name, value) in zip(arg_names, args)
+            input[name] = value
+        end
+        for (name, value) in zip(arg_names, converted_args)
+            computed[name] = value
+        end
+        return new{Typ,T}(nothing, input, computed, observables, Plot[], deregister_callbacks)
     end
 end
+
+Plot{Func}(args...; kw...) where {Func} = Plot{Func}(args, Dict{Symbol, Any}(kw))
+
+
 
 function Base.show(io::IO, plot::Plot)
     print(io, typeof(plot))

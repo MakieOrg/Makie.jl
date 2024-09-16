@@ -55,13 +55,13 @@ plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
-function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted))
-end
-
-function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
+argument_names(::P) where {P<:AbstractPlot} = argument_names(P)
+argument_names(::Type{<:AbstractPlot}) = nothing
+function argument_name(::Type{P}, idx::Integer) where P<:AbstractPlot
+    names = argument_names(P)
+    isnothing(names) && return Symbol("arg$(idx)") # fallback
     # this is called in the indexing function, so let's be a bit efficient
-    ntuple(i -> Symbol("arg$i"), num_args)
+    return names[idx]
 end
 
 # Since we can use Plot like a scene in some circumstances, we define this alias
@@ -191,13 +191,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
-        push!(
-            expr.args,
-            :(
-                $(esc(:($(MakieCore).argument_names)))(::Type{<:$PlotType}, len::Integer) =
-                    $args
-            ),
-        )
+        argnames = :($(MakieCore.argument_names)(::Type{<:$(PlotType)}) = $args)
+        push!(expr.args, argnames)
     end
     expr
 end
@@ -740,20 +735,20 @@ function validate_attribute_keys(plot::P) where {P<:Plot}
     nameset === nothing && return
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
-    kw = plot.kw
+    kw = plot.input
     unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
-    if !isempty(unknown)
-        throw(InvalidAttributeError(P, unknown))
-    end
-    for (deprecated, message, should_error) in deprecations
-        if haskey(kw, deprecated)
-            full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
-            if should_error
-                throw(ArgumentError(full_message))
-            else
-                @warn full_message
-            end
-        end
-    end
+    # if !isempty(unknown)
+    #     throw(InvalidAttributeError(P, unknown))
+    # end
+    # for (deprecated, message, should_error) in deprecations
+    #     if haskey(kw, deprecated)
+    #         full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
+    #         if should_error
+    #             throw(ArgumentError(full_message))
+    #         else
+    #             @warn full_message
+    #         end
+    #     end
+    # end
     return
 end

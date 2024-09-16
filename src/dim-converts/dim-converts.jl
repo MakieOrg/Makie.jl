@@ -87,8 +87,8 @@ function get_conversions(ax::AbstractAxis)
     end
 end
 function get_conversions(plot::Plot)
-    if haskey(plot.kw, :dim_conversions)
-        return to_value(plot.kw[:dim_conversions])
+    if haskey(plot.input, :dim_conversions)
+        return to_value(plot.input[:dim_conversions])
     else
         for elem in plot.plots
             x = get_conversions(elem)

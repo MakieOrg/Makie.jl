@@ -229,10 +229,10 @@ end
 
 function default_shading!(plot, lights::Vector{<: AbstractLight})
     # if the plot does not have :shading we assume the plot doesn't support it
-    haskey(plot.attributes, :shading) || return
+    haskey(plot, :shading) || return
 
     # Bad type
-    shading = to_value(plot.attributes[:shading])
+    shading = to_value(plot.shading)
     if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
         prev = shading
         if (shading isa Bool) && (shading == false)

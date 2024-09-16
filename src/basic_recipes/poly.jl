@@ -194,64 +194,65 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     )
 end
 
+function generate_mesh_colors(colors, num_meshes)
+    # one mesh per color
+    if colors isa AbstractVector && length(colors) == length(num_meshes)
+        ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
+        result = similar(ccolors, float32type(ccolors), sum(num_meshes))
+        i = 1
+        for (cs, len) in zip(ccolors, num_meshes)
+            for j in 1:len
+                result[i] = cs
+                i += 1
+            end
+        end
+        # For (W)GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
+        return result, false
+    else
+        # If we have colors per vertex, we need to interpolate in fragment shader
+        return to_color(colors), true
+    end
+end
+
+function merge_mesh(meshes, tf)
+    if isempty(meshes)
+        # TODO: Float64
+        return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+    else
+        triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
+        return merge(triangle_meshes)
+    end
+end
+
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
-    meshes = plot[1]
-    attrs = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
-        inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space, ssao = plot.ssao,
-        alpha = plot.alpha,
-        lowclip = get(plot, :lowclip, automatic),
-        highclip = get(plot, :highclip, automatic),
-        nan_color = get(plot, :nan_color, :transparent),
-        colormap = get(plot, :colormap, nothing),
-        colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic),
-        depth_shift = plot.depth_shift
+    meshes = plot[].mesh
+    old_num_vertices = Int[length(coordinates(m)) for m in meshes]
+
+    mpl = mesh!(
+        plot,
+        plot, # second plot for forwarding all attributes not in `; kw...`
+        merge_mesh(meshes, plot[].transform_func);
+        color=generate_mesh_colors(plot[].color, old_num_vertices)
     )
 
-    num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
-        return Int[length(coordinates(m)) for m in meshes]
-    end
+    on(plot, :mesh, :color, :transform_func) do updated
+        color = plot[].color
+        meshes = plot[].mesh
+        transform_func = plot[].transform_func
 
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
+        updates = Pair{Symbol, Any}[]
+        num_vertices = Int[length(coordinates(m)) for m in meshes]
+        if old_num_vertices != num_vertices && :color in updated
 
-    interpolate_in_fragment_shader = Observable(false)
-
-    lift!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
-        # one mesh per color
-        if colors isa AbstractVector && length(colors) == length(num_meshes)
-            ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
-            result = similar(ccolors, float32type(ccolors), sum(num_meshes))
-            i = 1
-            for (cs, len) in zip(ccolors, num_meshes)
-                for j in 1:len
-                    result[i] = cs
-                    i += 1
-                end
-            end
-            # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
-            interpolate_in_fragment_shader[] = false
-            return result
-        else
-            # If we have colors per vertex, we need to interpolate in fragment shader
-            interpolate_in_fragment_shader[] = true
-            return to_color(colors)
+            old_num_vertices = num_vertices
+            colors, interpolate_frag = generate_mesh_colors(color, num_vertices)
+            push!(updates, :color => colors, :interpolate_in_fragment_shader => interpolate_frag)
         end
-    end
-    attrs[:color] = mesh_colors
-    transform_func = plot.transformation.transform_func
-    bigmesh = lift(plot, meshes, transform_func) do meshes, tf
-        if isempty(meshes)
-            # TODO: Float64
-            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
-        else
-            triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
-            return merge(triangle_meshes)
+        if :mesh in updated || :transform_func in updated
+            push!(updates, :mesh => merge_mesh(meshes, transform_func))
         end
+        update!(mpl, updates)
+        return
     end
-    mpl = mesh!(plot, attrs, bigmesh)
-    # splice in internal attribute after creation to avoid validation
-    attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
     return mpl
 end
