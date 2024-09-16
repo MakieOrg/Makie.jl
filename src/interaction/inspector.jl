@@ -677,7 +677,7 @@ function show_imagelike(inspector, plot, name, edge_based)
         tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
     end
 
-    a._color[] = if z isa Number
+    a._color[] = if z isa Real
         get(plot.calculated_colors[], z)
     else
         z
