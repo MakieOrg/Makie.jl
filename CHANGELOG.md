@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
+- `MultiplesTicks` accepts new option `strip_zero=true`, allowing labels of the form `0x` to be `0` [#4372](https://github.com/MakieOrg/Makie.jl/pull/4372)
 
 ## [0.21.11] - 2024-09-13
 
