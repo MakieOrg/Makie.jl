@@ -1620,7 +1620,7 @@ end
     f
 end
 
-@reference_test "datashader AggMean" begin
+@reference_test "Datashader AggMean" begin
     with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
     data2d = RNG.randn(Point2f, 100_000)
     data3d = map(with_z, data2d)
@@ -1629,6 +1629,7 @@ end
     datashader!(ax, data3d; agg = Makie.AggMean(), operation = identity, async = false)
     ax2 = Axis(f[1, 2])
     datashader!(ax2, data3d; agg = Makie.AggMean(), operation = identity, async = false, binsize = 3)
+    f
 end
 
 @reference_test "Heatmap Shader" begin
