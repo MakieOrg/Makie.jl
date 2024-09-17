@@ -3,12 +3,12 @@
 ##
 
 function DiscreteSurface(args...; kwargs...)
-    Base.depwarn("Makie.DiscreteSurface() is deprecated, use Makie.CellGrid() instead", :DiscreteSurface)
+    @warn "Makie.DiscreteSurface() is deprecated, use Makie.CellGrid() instead" maxlog=1
     CellGrid(args...; kwargs...)
 end
 
 function ContinuousSurface(args...; kwargs...)
-    Base.depwarn("Makie.ContinuousSurface() is deprecated, use Makie.VertexGrid() instead", :ContinuousSurface)
+    @warn "Makie.ContinuousSurface() is deprecated, use Makie.VertexGrid() instead" maxlog=1
     VertexGrid(args...; kwargs...)
 end
 
@@ -23,6 +23,6 @@ end
 @deprecate pixelarea viewport true
 
 function Combined(args...; kwargs...)
-    Base.depwarn("Makie.Combined() is deprecated, use Makie.Plot() instead", :Combined)
+    @warn "Makie.Combined() is deprecated, use Makie.Plot() instead" maxlog=1
     Plot(args...; kwargs...)
 end
