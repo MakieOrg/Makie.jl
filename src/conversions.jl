@@ -164,8 +164,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::PointBased, x::Rect2{T}) where T
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2{float_type(T)}, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{float_type(T)}, x))
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
@@ -182,14 +181,14 @@ function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where {T}
-    f = decompose(LineFace{Int}, rect)
+    f = GeometryBasics.remove_duplicates(decompose(LineFace{Int}, rect))
     p = connect(decompose(Point3{float_type(T)}, rect), f)
     return convert_arguments(P, p)
 end
 
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
-    points = unique(decompose(PT, rect))
+    points = decompose(PT, rect)
     push!(points, PT(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
@@ -487,9 +486,8 @@ end
 ################################################################################
 
 function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 4, 3, 1]],)
+    return (points[[1, 2, 3, 4, 1]],)
 end
 
 ################################################################################
@@ -505,9 +503,8 @@ function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
+    return (points[[1, 2, 2, 3, 3, 4, 4, 1]],)
 end
 
 ################################################################################
