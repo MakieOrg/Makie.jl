@@ -819,7 +819,7 @@ end
     f
 end
 
-@reference_test "Reverse imagem, heatmap and surface axes" begin
+@reference_test "Reverse image, heatmap and surface axes" begin
     img = [2 0 0 3; 0 0 0 0; 1 1 0 0; 1 1 0 4]
 
     f = Figure(size = (600, 400))
