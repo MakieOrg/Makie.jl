@@ -1328,12 +1328,6 @@ end
     fig
 end
 
-@reference_test "Triplot with linestyle" begin
-    pts = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
-    fig, ax, sc = triplot(pts; linestyle = :dashdot)
-    fig
-end
-
 @reference_test "Triplot of a constrained triangulation with holes and a custom bounding box" begin
     curve_1 = [[
         (0.0, 0.0), (4.0, 0.0), (8.0, 0.0), (12.0, 0.0), (12.0, 4.0),
@@ -1392,7 +1386,7 @@ end
 @reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
     points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
     tri = Observable(triangulate(points; delete_ghosts = false))
-    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true, linestyle = :dash)
     for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
         add_point!(tri[], p)
     end
