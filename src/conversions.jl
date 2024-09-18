@@ -696,7 +696,8 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
 Converts the element array type to `T1` without making a copy if the element type matches
