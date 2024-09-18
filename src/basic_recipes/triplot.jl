@@ -223,7 +223,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     update_plot(p[1][])
 
     poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
-          color=p.triangle_color)
+          color=p.triangle_color, linestyle=p.linestyle)
     linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
                   linecap=p.linecap, linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
     lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
