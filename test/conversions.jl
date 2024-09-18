@@ -2,6 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
+using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion
@@ -484,4 +485,15 @@ end
     # sanity checks
     @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
     @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+end
+
+@testset "func-Plot conversions" begin
+    @test plotfunc(scatter) === scatter
+    @test plotfunc(hist!) === hist
+    @test plotfunc(ScatterLines) === scatterlines
+    @test plotfunc!(mesh) === mesh!
+    @test plotfunc!(ablines!) === ablines!
+    @test plotfunc!(Image) === image!
+    @test func2type(lines) == Lines
+    @test func2type(hexbin!) == Hexbin
 end

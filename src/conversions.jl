@@ -746,7 +746,9 @@ float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
 float32type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float32type(T)}
 
 # We may want to always use UInt8 for colors?
-float32type(::Type{<: RGB}) = RGB{Float32}
+float32type(::Type{<:RGB{N0f8}}) = RGB{N0f8}
+float32type(::Type{<:RGBA{N0f8}}) = RGBA{N0f8}
+float32type(::Type{<:RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
