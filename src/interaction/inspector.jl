@@ -664,7 +664,7 @@ function show_imagelike(inspector, plot, name, edge_based)
     end
 
     # in case we hover over NaN values
-    if isnan(z)
+    if isnan(z) && alpha(to_color(to_value(plot.nan_color))) <= 0.0
         a.indicator_visible[] = false
         tt.visible[] = false
         return true
@@ -677,11 +677,8 @@ function show_imagelike(inspector, plot, name, edge_based)
         tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
     end
 
-    a._color[] = if z isa AbstractFloat
-        interpolated_getindex(
-            to_colormap(plot.colormap[]), z,
-            extract_colorrange(plot)
-        )
+    a._color[] = if z isa Real
+        get(plot.calculated_colors[], z)
     else
         z
     end
