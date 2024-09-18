@@ -44,6 +44,27 @@ function initialize_block!(t::Toggle)
     button = scatter!(topscene, buttonpos, markersize = buttonsize,
         color = t.buttoncolor, strokewidth = 0, inspectable = false, marker = Circle)
 
+    # tooltip
+    ttposition = lift(t.tooltip_placement, t.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y>1, t.tooltip_enable, buttonfactor)
+    tt = tooltip!(topscene, ttposition, t.tooltip_text,
+                  visible=ttvisible, placement=t.tooltip_placement;
+                  t.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, t.tooltip_depth[])
+
     mouseevents = addmouseevents!(topscene, t.layoutobservables.computedbbox)
 
     onmouseleftdown(mouseevents) do event

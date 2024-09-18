@@ -222,6 +222,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
+    hovering::Observable{Bool}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     xaxis::LineAxis
     yaxis::LineAxis
@@ -676,6 +677,14 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         on the values of `yticks` and `ytickformat`.
         """
         yscale = identity
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Axis. Can be :above, :below, :left, :right, :center."
+        tooltip_placement = :center
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -949,6 +958,14 @@ end
         alignmode = Inside()
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1049,6 +1066,14 @@ end
         alignmode = Inside()
         "Controls if the buttons snap to valid positions or move freely"
         snap::Bool = true
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1098,6 +1123,14 @@ end
         clicks = 0
         "The align mode of the button in its parent GridLayout."
         alignmode = Inside()
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1185,6 +1218,14 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1284,6 +1325,14 @@ end
         prompt = "Select..."
         "Speed of scrolling in large Menu lists."
         scroll_speed = 15.0
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1472,6 +1521,13 @@ end
         alignmode = Inside()
         "Controls the visibility of the 3D axis plot object."
         show_axis::Bool = true
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Axis. Can be :above, :below, :left, :right, :center."
+        tooltip_placement = :center
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1543,6 +1599,14 @@ end
         restriction = nothing
         "The color of the cursor."
         cursorcolor = :transparent
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Textbox. Can be :above, :below, :left, :right."
+        tooltip_placement = :above
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 
@@ -1552,6 +1616,7 @@ end
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
+    hovering::Observable{Bool}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
         """
@@ -1842,6 +1907,14 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Axis. Can be :above, :below, :left, :right, :center."
+        tooltip_placement = :center
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
     end
 end
 

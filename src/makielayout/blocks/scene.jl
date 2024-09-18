@@ -11,6 +11,41 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
     scenekw = merge((clear = false, camera=cam3d!), scenekw)
     ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); scenekw...)
 
+    # tooltip
+
+    hovering = Observable(false)
+
+    mouseevents = addmouseevents!(ls.scene)
+    onmouseover(mouseevents) do state
+        hovering[] = true
+        return Consume(false)
+    end
+
+    onmouseout(mouseevents) do state
+        hovering[] = false
+        return Consume(false)
+    end
+
+    ttposition = lift(ls.tooltip_placement, ls.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, ls.tooltip_enable, hovering)
+    tt = tooltip!(blockscene, ttposition, ls.tooltip_text,
+                  visible=ttvisible, placement=ls.tooltip_placement;
+                  ls.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, ls.tooltip_depth[])
+
     on(blockscene, ls.show_axis) do show_axis
         ax = ls.scene[OldAxis]
         if show_axis

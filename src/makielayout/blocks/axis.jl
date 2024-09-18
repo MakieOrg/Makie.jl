@@ -28,6 +28,16 @@ function register_events!(ax, scene)
     setfield!(ax, :keysevents, keysevents)
     evs = events(scene)
 
+    setfield!(ax, :hovering, Observable(false))
+    onmouseover(mouseeventhandle) do _
+        ax.hovering[] = true
+        return Consume(false)
+    end
+    onmouseout(mouseeventhandle) do _
+        ax.hovering[] = false
+        return Consume(false)
+    end
+
     on(scene, evs.scroll) do s
         if is_mouseinside(scene)
             result = setindex!(scrollevents, ScrollEvent(s[1], s[2]))
@@ -490,6 +500,27 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.layoutobservables.suggestedbbox)
 
     register_events!(ax, scene)
+
+    # tooltip
+    ttposition = lift(ax.tooltip_placement, ax.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, ax.tooltip_enable, ax.hovering)
+    tt = tooltip!(blockscene, ttposition, ax.tooltip_text,
+                  visible=ttvisible, placement=ax.tooltip_placement;
+                  ax.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, ax.tooltip_depth[])
 
     # these are the user defined limits
     on(blockscene, ax.limits) do _

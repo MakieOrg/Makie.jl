@@ -113,6 +113,27 @@ function initialize_block!(tbox::Textbox)
     # trigger bbox
     tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]
 
+    # tooltip
+    ttposition = lift(tbox.tooltip_placement, tbox.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, tbox.tooltip_enable, hovering)
+    tt = tooltip!(topscene, ttposition, tbox.tooltip_text,
+                  visible=ttvisible, placement=tbox.tooltip_placement;
+                  tbox.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, tbox.tooltip_depth[])
+
     mouseevents = addmouseevents!(scene)
 
     onmouseleftdown(mouseevents) do state

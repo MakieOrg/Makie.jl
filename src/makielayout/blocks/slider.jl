@@ -89,7 +89,41 @@ function initialize_block!(sl::Slider)
     button = scatter!(topscene, middlepoint, color = sl.color_active, strokewidth = 0,
         markersize = buttonsize, inspectable = false, marker=Circle)
 
+    # tooltip
+    
+    hovering = Observable(false)
+
+    ttposition = lift(sl.tooltip_placement, sl.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, sl.tooltip_enable, hovering)
+    tt = tooltip!(topscene, ttposition, sl.tooltip_text,
+                  visible=ttvisible, placement=sl.tooltip_placement;
+                  sl.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, sl.tooltip_depth[])
+
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
+
+    onmouseover(mouseevents) do state
+        hovering[] = true
+        return Consume(false)
+    end
+
+    onmouseout(mouseevents) do state
+        hovering[] = false
+        return Consume(false)
+    end
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true

@@ -148,6 +148,30 @@ function initialize_block!(m::Menu; default = 1)
     was_inside_options = false
     was_inside_button = false
 
+    # tooltip
+    
+    hovering = Observable(false)
+
+    ttposition = lift(m.tooltip_placement, m.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, m.tooltip_enable, hovering)
+    tt = tooltip!(blockscene, ttposition, m.tooltip_text,
+                  visible=ttvisible, placement=m.tooltip_placement;
+                  m.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, m.tooltip_depth[])
+
     e = menuscene.events
 
     # Up events are notoriusly hard,
@@ -211,10 +235,12 @@ function initialize_block!(m::Menu; default = 1)
                     end
                     return Consume(true)
                 else # HOVER
+                    hovering[] = true
                     selectionpoly.color = m.cell_color_hover[]
                 end
             else
                 # If not inside anymore, invalidate was_pressed
+                hovering[] = false
                 was_pressed_button[] = false
             end
         end

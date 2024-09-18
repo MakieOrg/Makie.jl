@@ -132,6 +132,37 @@ function initialize_block!(ax::Axis3)
         return Consume(false)
     end
 
+    setfield!(ax, :hovering, Observable(false))
+    onmouseover(ax.mouseeventhandle) do _
+        ax.hovering[] = true
+        return Consume(false)
+    end
+    onmouseout(ax.mouseeventhandle) do _
+        ax.hovering[] = false
+        return Consume(false)
+    end
+
+    # tooltip
+    ttposition = lift(ax.tooltip_placement, ax.layoutobservables.computedbbox) do placement, bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    ttvisible = lift((x,y)->x && y, ax.tooltip_enable, ax.hovering)
+    tt = tooltip!(blockscene, ttposition, ax.tooltip_text,
+                  visible=ttvisible, placement=ax.tooltip_placement;
+                  ax.tooltip_kwargs[]...)
+    translate!(tt, 0, 0, ax.tooltip_depth[])
+
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
     on(scene, ax.limits) do lims
