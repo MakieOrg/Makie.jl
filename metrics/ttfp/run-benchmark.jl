@@ -8,6 +8,7 @@ using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 pkg"registry up"
+pkg"add GeometryBasics#ff/refactor MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
 Pkg.update()
 using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
 using BenchmarkTools.JSON

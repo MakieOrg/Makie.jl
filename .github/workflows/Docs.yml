@@ -45,8 +45,7 @@ jobs:
       run: >
           cd docs;
           julia --project=docs -e "using Pkg; Pkg.add(name=\"GeometryBasics\", rev = \"ff/refactor\"); Pkg.add(name=\"MeshIO\", rev = \"ff/GeometryBasics_refactor\"); Pkg.add(name=\"ShaderAbstractions\", rev = \"ff/GeometryBasics_refactor\")"
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
-          julia --color=yes makedocs.jl
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes makedocs.jl
     - name: Upload site as artifact
       uses: actions/upload-artifact@v4
       with:
