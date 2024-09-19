@@ -536,24 +536,83 @@ end
 
 
 
-## BlockSpec
-function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesting, bp, b)::Tuple{Int,GP,BlockSpec}) where {GP<:GridLayoutPosition}
-    anesting !== bnesting && return false
-    a.type !== b.type && return false
-    ap !== bp && return false
-    return true
+function distance_score(a::Any, b::Any, scores)
+    a === b && return 0.0
+    a == b && return 0.0
+    typeof(a) == typeof(b) && return 0.5
+    return 2.0
 end
 
-function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP, GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP, GridLayoutSpec}) where {GP <: GridLayoutPosition}
-    anesting !== bnesting && return false
-    ap !== bp && return false
-    for (ac, bc) in zip(a.content, b.content)
-        compare_layout_slot((anesting + 1, ac[1], ac[2]), (bnesting + 1, bc[1], bc[2])) || return false
+function distance_score(a::PlotSpec, b::PlotSpec, scores)
+    scores = Float64[
+        a.type === b.type,
+        distance_score(a.args, b.args, scores),
+        distance_score(a.kwargs, b.kwargs, scores),
+    ]
+    return norm(scores)
+end
+
+_has_index(a::Tuple, i) = i <= length(a)
+_has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
+_has_index(a::Dict, i) = haskey(a, i)
+
+
+function distance_score(a::Union{AbstractVector, Tuple, Dict{Symbol, Any}}, b::Union{AbstractVector, Tuple, Dict{Symbol, Any}}, scores)
+    a === b && return 0.0
+    all_keys = union(keys(a), keys(b))
+    scores = map(all_keys) do key
+        if _has_index(a, key) && _has_index(b, key)
+            return distance_score(a[key], b[key], scores)
+        else
+            return 2.0
+        end
     end
-    return true
+    return norm(scores)
 end
 
-compare_layout_slot(a, b) = false # types dont match
+
+function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores)
+    a === b && return 0.0
+    return norm(distance_score.(a, b, Ref(scores)))
+end
+
+function distance_score(a::BlockSpec, b::BlockSpec, scores)
+    a === b && return 0.0
+    get!(scores, (a, b)) do
+        [
+            a.type !== b.type, # Type as :Scatter, :BarPlot
+            distance_score(a.kwargs, b.kwargs, scores),
+            distance_score(a.plots, b.plots, scores),
+            distance_score(a.then_funcs, b.then_funcs, scores),
+        ]
+    end
+end
+
+
+function distance_score((anesting, ap, a)::Tuple{Int,GP,BS}, (bnesting, bp, b)::Tuple{Int,GP,BS}, scores) where {GP<:GridLayoutPosition, BS <: BlockSpec}
+    return norm([
+        abs(anesting - bnesting),
+        distance_score(ap, bp, scores),
+        distance_score(a, b, scores)
+    ])
+end
+
+
+function distance_score(at::Tuple{Int,GP, GridLayoutSpec}, bt::Tuple{Int,GP, GridLayoutSpec}, scores) where {GP <: GridLayoutPosition}
+    at === bt && return 0.0
+    anesting, ap, a = at
+    bnesting, bp, b = bt
+    get!(scores, (at, bt)) do
+        anested = map(ac-> (anesting + 1, ac[1], ac[2]), a.content)
+        bnested = map(bc-> (anesting + 1, bc[1], bc[2]), b.content)
+        return norm([
+            abs(anesting - bnesting),
+            distance_score(ap, bp, scores),
+            distance_score(anested, bnested, scores)
+        ])
+    end
+end
+
 
 add_observer!(::BlockSpec, ::Nothing) = nothing
 function add_observer!(block::BlockSpec, obs::ObserverFunction)
@@ -683,13 +742,16 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     return
 end
 
-function find_layoutable(spec, layoutables)
-    for (i, (key, value)) in enumerate(layoutables)
-        if compare_layout_slot(key, spec)
-            return i, key, value
-        end
+
+function find_layoutable(nest_pos_spec, layoutables)
+    score, index = findmin(layoutables) do (b_nest_pos_spec, value)
+        return distance_score(nest_pos_spec, b_nest_pos_spec)
     end
-    return 0, nothing, nothing
+    if score >= 1.0
+        return (index, layoutables[index]...)
+    else
+        return 0, nothing, nothing
+    end
 end
 
 
