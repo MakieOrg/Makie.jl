@@ -6,9 +6,9 @@ macro depwarn_message(expr)
             $(esc(expr))
         end
         if length(logger.logs) == 1
-            return logger.logs[1].message
+            logger.logs[1].message
         else
-            return nothing
+            nothing
         end
     end
 end
@@ -34,17 +34,14 @@ end
     end
     @testset "Plot -> Combined" begin
         logger = Test.TestLogger()
-        msg = @depwarn_message Combined
-        @test occursin("Combined is deprecated", msg)
-        @test Combined == Plot
+        msg = @depwarn_message Makie.Combined()
+        @test occursin("Combined() is deprecated", msg)
     end
     @testset "Surface Traits" begin
-        @test DiscreteSurface == CellGrid
-        @test ContinuousSurface == VertexGrid
-        msg = @depwarn_message DiscreteSurface()
-        @test occursin("DiscreteSurface is deprecated", msg)
-        msg = @depwarn_message ContinuousSurface()
-        @test occursin("ContinuousSurface is deprecated", msg)
+        msg = @depwarn_message Makie.DiscreteSurface()
+        @test occursin("DiscreteSurface() is deprecated", msg)
+        msg = @depwarn_message Makie.ContinuousSurface()
+        @test occursin("ContinuousSurface() is deprecated", msg)
     end
     @testset "AbstractVector ImageLike" begin
         msg = @depwarn_message image(1:10, 1..10, zeros(10, 10))

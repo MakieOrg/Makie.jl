@@ -65,18 +65,25 @@ flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 flat out vec2 f_sprite_scale;
-out float gl_ClipDistance[8];
 
-void process_clip_planes(vec3 world_pos)
+
+bool is_clipped(vec3 world_pos)
 {
+    // We clip scatter points based on the user position rather than the 
+    // sprite vertex positions.
     // distance = dot(world_pos - plane.point, plane.normal)
     // precalculated: dot(plane.point, plane.normal) -> plane.w
-    for (int i = 0; i < num_clip_planes; i++)
-        gl_ClipDistance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+    for (int i = 0; i < num_clip_planes; i++) {
+        // WSL segfaults with geometry shaders that use gl_ClipDistance so we
+        // instead just check if we should clip here and emit no primitive if
+        // that's the case.
+        float dist = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+        if (dist < 0.0) {
+            return true;
+        }
+    }
 
-    // TODO: can be skipped?
-    for (int i = num_clip_planes; i < 8; i++)
-        gl_ClipDistance[i] = 1.0;
+    return false;
 }
 
 float get_distancefield_scale(sampler2D distancefield){
@@ -107,7 +114,6 @@ void emit_vertex(vec4 vertex, vec2 uv)
     EmitVertex();
 }
 
-
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
@@ -121,7 +127,9 @@ void main(void)
     o_view_normal = vec3(0);
 
     // Position of sprite center in marker space + clipping
-    process_clip_planes(g_world_position[0]);
+    if (is_clipped(g_world_position[0]))
+        return;
+    
     vec4 p = preprojection * vec4(g_world_position[0], 1);
     vec3 position = p.xyz / p.w + g_marker_offset[0];
 

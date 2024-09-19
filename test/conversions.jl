@@ -2,6 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
+using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion
@@ -312,6 +313,12 @@ end
     @test pl.plots[1][1][][1] == Makie.poly_convert(points)
 end
 
+@testset "Poly with matrix" begin
+    x1 = [0.0, 1, 1, 0, 0]
+    y1 = [0.0, 0, 1, 1, 0]
+    @test convert_arguments(Poly, hcat(x1, y1))[1] == Point.(x1, y1)
+end
+
 @testset "GridBased and ImageLike conversions" begin
     # type tree
     @test GridBased <: ConversionTrait
@@ -474,4 +481,15 @@ end
     # sanity checks
     @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
     @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+end
+
+@testset "func-Plot conversions" begin
+    @test plotfunc(scatter) === scatter
+    @test plotfunc(hist!) === hist
+    @test plotfunc(ScatterLines) === scatterlines
+    @test plotfunc!(mesh) === mesh!
+    @test plotfunc!(ablines!) === ablines!
+    @test plotfunc!(Image) === image!
+    @test func2type(lines) == Lines
+    @test func2type(hexbin!) == Hexbin
 end

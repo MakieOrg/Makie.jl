@@ -407,6 +407,27 @@ end
     pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
+@reference_test "Pie with Segment-specific Radius" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1]; autolimitaspect=1)
+
+    kw = (; offset_radius=0.4, strokecolor=:transparent, strokewidth=0)
+    pie!(ax, ones(7); radius=sqrt.(2:8) * 3, kw..., color=Makie.wong_colors(0.8)[1:7])
+
+    vs = [2, 3, 4, 5, 6, 7, 8]
+    vs_inner = [1, 1, 1, 1, 2, 2, 2]
+    rs = 8
+    rs_inner = sqrt.(vs_inner ./ vs) * rs
+
+    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
+    pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
+    pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
+    pie!(ax, 20, 0, vs; radius=rs, inner_radius=rs_inner, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
+
+    fig
+end
+
 @reference_test "Pie Position" begin
     fig = Figure()
     ax = Axis(fig[1, 1]; autolimitaspect=1)
@@ -1137,6 +1158,22 @@ end
     f
 end
 
+@reference_test "Barplot label positions" begin
+    f = Figure(size = (450, 450))
+    func(fpos; label_position, direction) = barplot(fpos, [1, 1, 2], [1, 2, 3];
+        stack = [1, 1, 2], bar_labels = ["One", "Two", "Three"], label_position,
+        color = [:tomato, :bisque, :slategray2], direction, label_font = :bold)
+    func(f[1, 1]; label_position = :end, direction = :y)
+    ylims!(0, 4)
+    func(f[1, 2]; label_position = :end, direction = :x)
+    xlims!(0, 4)
+    func(f[2, 1]; label_position = :center, direction = :y)
+    ylims!(0, 4)
+    func(f[2, 2]; label_position = :center, direction = :x)
+    xlims!(0, 4)
+    f
+end
+
 @reference_test "Histogram" begin
     data = sin.(1:1000)
 
@@ -1338,7 +1375,7 @@ end
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]] 
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
     points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)]
     # The noise forces the triangulation to be unique. Not using RNG to not disrupt the RNG stream later
@@ -1349,7 +1386,7 @@ end
 @reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
     points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
     tri = Observable(triangulate(points; delete_ghosts = false))
-    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true, linestyle = :dash)
     for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
         add_point!(tri[], p)
     end
@@ -1562,5 +1599,26 @@ end
     spy(f[2, 1], sdata; color=:black, alpha=0.7)
     data[1, 1] = NaN
     spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
+    f
+end
+
+@reference_test "Lines with OffsetArrays" begin
+    lines(Makie.OffsetArrays.Origin(-50)(1:100))
+end
+
+@reference_test "Heatmap Shader" begin
+    data = Makie.peaks(10_000)
+    data2 = map(data) do x
+        Float32(round(x))
+    end
+    f = Figure()
+    ax1, pl1 = heatmap(f[1, 1], Resampler(data))
+    ax2, pl2 = heatmap(f[1, 2], Resampler(data))
+    limits!(ax2, 2800, 4800, 2800, 5000)
+    ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
+    ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
+    limits!(ax4, 3000, 3090, 3460, 3500)
+    Colorbar(f[:, 3], pl1)
+    sleep(1) # give the async operations some time
     f
 end

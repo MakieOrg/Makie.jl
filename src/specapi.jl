@@ -387,9 +387,6 @@ plottype(::Type{<:Plot{F}}, ::Union{PlotSpec,AbstractVector{PlotSpec}}) where {F
 plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec,BlockSpec}) where {F} = Plot{plot}
 plottype(::Type{<:Plot}, ::Union{GridLayoutSpec,BlockSpec}) = Plot{plot}
 
-# Since we directly plot into the parent scene (hacky), we need to overload these
-Base.insert!(::MakieScreen, ::Scene, ::PlotList) = nothing
-
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
@@ -418,6 +415,13 @@ function find_reusable_plot(plotspec::PlotSpec, reusable_plots::IdDict{PlotSpec,
     return nothing, nothing
 end
 
+function push_without_add!(scene::Scene, plot)
+    MakieCore.validate_attribute_keys(plot)
+    for screen in scene.current_screens
+        Base.invokelatest(insert!, screen, scene, plot)
+    end
+end
+
 function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify, reusable_plots,
                         plotlist::Union{Nothing,PlotList}=nothing)
     new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
@@ -435,11 +439,20 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             if !isnothing(plotlist)
                 merge!(plotspec.kwargs, plotlist.kw)
             end
-            plot = plot!(scene, to_plot_object(plotspec))
+            # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
+            # But we want the scene to only contain one PlotList item with the newly created
+            # Plots from the plotlist to only appear as children of the PlotList recipe
+            # - so we dont push it to the scene if there's a plotlist.
+            # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
+            plot_obj = to_plot_object(plotspec)
+            connect_plot!(scene, plot_obj)
             if !isnothing(plotlist)
-                push!(plotlist.plots, plot)
+                push!(plotlist.plots, plot_obj)
+            else
+                push!(scene.plots, plot_obj)
             end
-            new_plots[plotspec] = plot
+            push_without_add!(scene, plot_obj)
+            new_plots[plotspec] = plot_obj
         else
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
@@ -498,13 +511,12 @@ end
 function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
     update_plotspecs!(scene, p[1], p)
-    return
+    return p
 end
 
 
 
 ## BlockSpec
-
 function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesting, bp, b)::Tuple{Int,GP,BlockSpec}) where {GP<:GridLayoutPosition}
     anesting !== bnesting && return false
     a.type !== b.type && return false
@@ -704,7 +716,6 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
-
     on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
             # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
