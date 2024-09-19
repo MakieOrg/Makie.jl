@@ -678,7 +678,9 @@ function show_imagelike(inspector, plot, name, edge_based)
     end
 
     a._color[] = if z isa Real
-        get(plot.calculated_colors[], z)
+        if haskey(plot, :calculated_colors)
+            get(plot.calculated_colors[], z)
+        end
     else
         z
     end
