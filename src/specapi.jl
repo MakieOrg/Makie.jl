@@ -683,7 +683,6 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
                 update_state_before_display!(layoutable)
-                layoutable.blockscene.visible[] = true
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
