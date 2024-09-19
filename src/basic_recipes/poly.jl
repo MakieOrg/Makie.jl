@@ -32,32 +32,12 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
-    mesh!(
-        plot, plot[1],
-        color = plot.color,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        colorrange = plot.colorrange,
-        alpha = plot.alpha,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        nan_color = plot.nan_color,
-        shading = plot.shading,
-        visible = plot.visible,
-        overdraw = plot.overdraw,
-        inspectable = plot.inspectable,
-        transparency = plot.transparency,
-        space = plot.space,
-        depth_shift = plot.depth_shift
-    )
-    wireframe!(
-        plot, plot[1],
-        color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
-        linewidth = plot.strokewidth, linecap = plot.linecap,
-        visible = plot.visible, overdraw = plot.overdraw,
-        inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift=plot.stroke_depth_shift
-    )
+    mesh!(plot, shared_attributes(plot, Mesh), plot[1])
+    wf_attr = shared_attributes(plot, Wireframe, rename = [
+        :strokecolor => :color, :strokewidth => :linewidth, :strokecolormap => :colormap,
+        :stroke_depth_shift => :depth_shift
+    ])
+    wireframe!(plot, wf_attr, plot[1])
 end
 
 # Poly conversion
@@ -149,24 +129,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     geometries = plot[1]
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)
-    mesh!(plot, meshes;
-        visible = plot.visible,
-        shading = plot.shading,
-        color = plot.color,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        colorrange = plot.colorrange,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        nan_color=plot.nan_color,
-        alpha=plot.alpha,
-        overdraw = plot.overdraw,
-        fxaa = plot.fxaa,
-        transparency = plot.transparency,
-        inspectable = plot.inspectable,
-        space = plot.space,
-        depth_shift = plot.depth_shift
-    )
+    mesh!(plot, shared_attributes(plot, Mesh), meshes)
 
     outline = lift(to_lines, plot, geometries)
     stroke = lift(plot, outline, plot.strokecolor) do outline, sc
@@ -182,33 +145,17 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-    lines!(
-        plot, outline, visible = plot.visible,
-        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
-        colormap = plot.strokecolormap,
-        linewidth = plot.strokewidth, linecap = plot.linecap,
-        joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
-        space = plot.space,
-        overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
-    )
+    l_attr = shared_attributes(plot, Lines, rename = [
+        :strokewidth => :linewidth, :strokecolormap => :colormap, 
+        :stroke_depth_shift => :depth_shift
+    ])
+    l_attr[:color] = stroke
+    lines!(plot, l_attr, outline)
 end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
-    attrs = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
-        inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space, ssao = plot.ssao,
-        alpha = plot.alpha,
-        lowclip = get(plot, :lowclip, automatic),
-        highclip = get(plot, :highclip, automatic),
-        nan_color = get(plot, :nan_color, :transparent),
-        colormap = get(plot, :colormap, nothing),
-        colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic),
-        depth_shift = plot.depth_shift
-    )
+    attrs = shared_attributes(plot, Mesh)
 
     num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
         return Int[length(coordinates(m)) for m in meshes]

@@ -570,15 +570,44 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=10
 end
 
 """
-    shared_attributes(plot::Plot, target::Type{<:Plot})
+    shared_attributes(plot::Plot, target::Type{<:Plot}[; kwargs])
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
+
+Keyword arguments can be used to further manipulate the attributes that get 
+extracted:
+- `skip` sets a collection of additional attribute names that get removed.
+- `rename` provides a collection of replacement names where `old_name => new_name`.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot})
-    valid_attributes = attribute_names(target)
+function shared_attributes(
+        plot::Plot, target::Type{<:Plot}; 
+        skip = Set{Symbol}(), rename = Dict{Symbol, Symbol}()
+    )
+
+    valid_attributes = copy(attribute_names(target))
+    
+    # Some Attributes should not be shared
+    # delete!(valid_attributes, :model) # set through transformations
+    delete!(valid_attributes, :inspector_clear)
+    delete!(valid_attributes, :inspector_hover)
+    delete!(valid_attributes, :inspector_label)
+
+    # User removals
+    foreach(k::Symbol -> delete!(valid_attributes, k), skip)
+
     existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)
-    return drop_attributes(plot, to_drop)
+    attr = drop_attributes(plot, to_drop)
+
+    # User replacements
+    parent_attr = attributes(plot)
+    foreach(rename) do kv::Pair{Symbol, Symbol}
+        (old, new) = kv
+        delete!(attr, old)
+        attr[new] = parent_attr[old]
+    end
+
+    return attr
 end
 
 function drop_attributes(plot::Plot, to_drop::Symbol...)
