@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
+- Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
+
 ## [0.21.11] - 2024-09-13
 
 - Hot fixes for 0.21.10 [#4356](https://github.com/MakieOrg/Makie.jl/pull/4356).
