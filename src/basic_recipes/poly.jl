@@ -62,13 +62,12 @@ end
 
 # Poly conversion
 function poly_convert(geometries::AbstractVector, transform_func=identity)
-    # TODO is this a problem with Float64 meshes?
-    isempty(geometries) && return GeometryBasics.Mesh{2, Float32, GLTriangleFace, Vector{GLTriangleFace}}[]
+    isempty(geometries) && return GeometryBasics.SimpleMesh{2, Float64, GLTriangleFace}[]
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{2, T}, transform_func=identity) where {T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{2,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
@@ -77,7 +76,7 @@ function poly_convert(polys::AbstractVector{PT}, transform_func=identity) where 
     get_eltype(::Type{<: Polygon{2, T}}) where {T} = float_type(T)
     get_eltype(::Type{<: Polygon}) = Float64 # assuming mixed type
 
-    T = GeometryBasics.Mesh{2, get_eltype(PT), GLTriangleFace, Vector{GLTriangleFace}}
+    T = GeometryBasics.SimpleMesh{2, get_eltype(PT), GLTriangleFace}
     return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
 end
 
@@ -115,7 +114,7 @@ function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=
     points_transformed = apply_transform(transform_func, points)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)::GeometryBasics.Mesh{2, float_type(T), GLTriangleFace, Vector{GLTriangleFace}}
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{2, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
