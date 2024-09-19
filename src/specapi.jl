@@ -595,6 +595,7 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+    block.blockscene.visible[] = true
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -770,10 +771,9 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
             # while it gets removed from `unused_layoutables`.
             empty!(new_layoutables)
             update_gridlayout!(layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
-            # Everything that still is in unused_layoutables is not used anymore and can be deleted
-            for (key, (layoutable, obs)) in unused_layoutables
-                delete_layoutable!(layoutable)
-                Observables.clear(obs)
+            # We keep all layoutables and just disconnect them and hide them, so we can re-use them
+            foreach(unused_layoutables) do (p, (block, obs))
+                return disconnect!(block) # hide & disconnect block
             end
             layouts_to_update = Set{GridLayout}([layout])
             for (_, (content, _)) in new_layoutables
@@ -791,8 +791,8 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
             # Finally transfer all new_layoutables into reusable_layoutables,
             # since in the next update they will be the once we re-use
             # TODO: Is this actually more efficent for GC then `reusable_layoutables=new_layoutables` ?
-            empty!(unused_layoutables)
             append!(unused_layoutables, new_layoutables)
+            unique!(unused_layoutables)
             return
         end
     end

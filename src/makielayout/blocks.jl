@@ -466,17 +466,24 @@ function Base.delete!(block::Block)
     # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
 
+    disconnect!(block)
+    block.parent = nothing
+    return
+end
+
+function disconnect!(block::Block)
+    block.blockscene.visible[] = false
     gc = GridLayoutBase.gridcontent(block)
     if gc !== nothing
         GridLayoutBase.remove_from_gridlayout!(gc)
     end
 
     if block.parent !== nothing
-        delete_from_parent!(block.parent, block)
-        block.parent = nothing
+        Makie.delete_from_parent!(block.parent, block)
     end
     return
 end
+
 
 # do nothing for scene and nothing
 function delete_from_parent!(parent, block::Block)
