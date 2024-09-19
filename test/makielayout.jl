@@ -212,6 +212,18 @@ end
     end
 end
 
+@testset "MultiplesTicks strip_zero" begin
+    default = MultiplesTicks(5, pi, "π")
+    strip = MultiplesTicks(5, pi, "π", true)
+    no_strip = MultiplesTicks(5, pi, "π", false)
+
+    @test default == no_strip
+    zero_default = Makie.get_ticks(default, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_default == "0π"
+    zero_stripped = Makie.get_ticks(strip, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_stripped == "0"
+end
+
 @testset "Colorbars" begin
     fig = Figure()
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
