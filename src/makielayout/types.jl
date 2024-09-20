@@ -1488,6 +1488,12 @@ end
     end
 end
 
+function MakieCore.__valid_attributes(T::Type{<:Legend}) 
+    atrs = _attribute_docs(T)
+    atrs[:entrygroups] = ""
+    return keys(atrs) 
+end
+
 @Block Axis3 <: AbstractAxis begin
     scene::Scene
     finallimits::Observable{Rect3f}

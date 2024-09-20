@@ -148,7 +148,13 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie.MakieCore: InvalidAttributeError
+import Makie.MakieCore: 
+    __obj_name, 
+    __valid_attributes, 
+    __has_generic_attributes, 
+    InvalidAttributeError,
+    attribute_names
+import Makie: _attribute_docs
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -178,13 +184,13 @@ end
 end
 
 @testset "validated attributes for blocks" begin 
-    @test MakieCore.__obj_name(Lines) == "plot"
-    @test MakieCore.__valid_attributes(Lines) == MakieCore.attribute_names(Lines)
-    @test MakieCore.__has_generic_attributes(Lines) 
+    @test __obj_name(Lines) == "plot"
+    @test __valid_attributes(Lines) == attribute_names(Lines)
+    @test __has_generic_attributes(Lines) 
 
-    @test MakieCore.__obj_name(Axis) == "block"
-    @test MakieCore.__valid_attributes(Axis3) == keys(Makie._attribute_docs(Axis3))
-    @test !MakieCore.__has_generic_attributes(Axis3)
+    @test __obj_name(Axis) == "block"
+    @test __valid_attributes(Axis3) == keys(_attribute_docs(Axis3))
+    @test !__has_generic_attributes(Axis3)
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
