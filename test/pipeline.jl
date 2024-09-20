@@ -194,7 +194,6 @@ end
     @test_throws InvalidAttributeError Label(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Box(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
-    @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError SliderGrid(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError IntervalSlider(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Button(fig[1, 1], does_not_exist = 123)
