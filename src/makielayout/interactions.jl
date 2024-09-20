@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Union{Axis, Axis3})
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -498,4 +498,20 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)
+end
+
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
+
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            ax.zoom_mult[] = 1.0
+            ax.lookat[] = Vec3d(0)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            end
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
 end
