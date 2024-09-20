@@ -407,15 +407,21 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     model = ax.scene.transformation.model[]
     world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
     # make plane_normal perpendicular to the allowed trnaslation directions
-    allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
-    plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+    # allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+    # plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+    plane = Plane3f(world_center, ax.scene.camera.view_direction[])
     p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
     p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
     delta = p1 - p0
-    translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
-
+    
     # Perform translation
-    tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    if ax.viewmode[] == :free
+        translation = isfinite(delta) ? -delta / ax.zoom_mult[] : Point3d(0)
+        ax.lookat[] = ax.lookat[] + translation
+    else
+        translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+        tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    end
 
     return Consume(true)
 end
@@ -481,9 +487,14 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     # Perform zoom
     zoom_mult = (1f0 - interaction.speed)^zoom
-    mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
-    maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
-    tlimits[] = Rect3f(mini, maxi - mini)
+
+    if ax.viewmode[] == :free
+        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+    else
+        mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+        maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+        tlimits[] = Rect3f(mini, maxi - mini)
+    end
 
     # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)

@@ -18,23 +18,9 @@ function initialize_block!(ax::Axis3)
     ax.scene = scene
     cam = Axis3Camera()
     cameracontrols!(scene, cam)
-    scene.theme.clip_planes = map(
-            scene, scene.transformation.model, ax.finallimits,
-            ax.xreversed, ax.yreversed, ax.zreversed
-            ) do model, lims, xrev, yrev, zrev
-        mini = Point3f(model * to_ndim(Point4f, minimum(lims), 1))
-        maxi = Point3f(model * to_ndim(Point4f, maximum(lims), 1))
-        x = ifelse(xrev, -1f0, 1f0)
-        y = ifelse(yrev, -1f0, 1f0)
-        z = ifelse(zrev, -1f0, 1f0)
-        return [
-            Plane3f(Vec3f( x,  0,  0),  x * mini[1]),
-            Plane3f(Vec3f( 0,  y,  0),  y * mini[2]),
-            Plane3f(Vec3f( 0,  0,  z),  z * mini[3]),
-            Plane3f(Vec3f(-x,  0,  0), -x * maxi[1]),
-            Plane3f(Vec3f( 0, -y,  0), -y * maxi[2]),
-            Plane3f(Vec3f( 0,  0, -z), -z * maxi[3])
-        ]
+    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
+        _planes = planes(lims)
+        return apply_transform.(Ref(model), _planes)
     end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
@@ -56,8 +42,12 @@ function initialize_block!(ax::Axis3)
         return
     end
 
+    setfield!(ax, :lookat, Observable(Vec3d(0)))
+    setfield!(ax, :zoom_mult, Observable(1.0))
+
     matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
+                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
+                    ax.zoom_mult, ax.lookat)
 
     on(scene, matrices) do (model, view, proj, eyepos)
         cam = camera(scene)
@@ -190,7 +180,7 @@ function initialize_block!(ax::Axis3)
 end
 
 function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed)
+    viewmode, xreversed, yreversed, zreversed, zoom_mult, lookat)
 
     ori = limits.origin
     ws = widths(limits)
@@ -210,8 +200,7 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
 
     ws = widths(limits)
 
-    t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect === :equal
+    if aspect === :equal 
         scales = 2 ./ Float64.(ws)
     elseif aspect === :data
         scales = 2 ./ max.(maximum(ws), Float64.(ws))
@@ -219,54 +208,63 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
     else
         error("Invalid aspect $aspect")
-    end |> Makie.scalematrix
+    end
 
-    t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
-    model = t2 * s * t
+    # direction from center of axis bbox towards camera/view
+    camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
+
+    # center and scale axis bbox so that the longest side is -1..1
+    # then rotate (and permute axes) according to azimuth and elevation
+    model = 
+        Makie.lookat_basis(camdir, Vec3d(0), Vec3d(0,0,1)) * 
+        translationmatrix(-0.5 .* ws .* scales) * 
+        scalematrix(scales) * 
+        translationmatrix(-Float64.(limits.origin))
 
     ang_max = 90
     ang_min = 0.5
 
     @assert 0 <= perspectiveness <= 1
 
-    angle = ang_min + (ang_max - ang_min) * perspectiveness
+    fov = ang_min + (ang_max - ang_min) * perspectiveness
 
     # vFOV = 2 * Math.asin(sphereRadius / distance);
     # distance = sphere_radius / Math.sin(vFov / 2)
 
-    # radius = sqrt(3) / tand(angle / 2)
-    radius = sqrt(3) / sind(angle / 2)
+    radius = zoom_mult * sqrt(3) / sind(fov / 2)
+    eyepos = Vec3d(0, 0, radius)
 
-    x = radius * cos(elev) * cos(azim)
-    y = radius * cos(elev) * sin(azim)
-    z = radius * sin(elev)
-
-    eyepos = Vec3{Float64}(x, y, z)
-
-    lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
+    if viewmode == :free
+        lookat_matrix = translationmatrix(-eyepos - zoom_mult * lookat)
+    else
+        lookat_matrix = translationmatrix(-eyepos)
+    end
 
     w = width(viewport)
     h = height(viewport)
 
     projection_matrix = projectionmatrix(
-        lookat_matrix * model, limits, eyepos, radius, azim, elev, angle,
-        w, h, scales, viewmode)
+        lookat_matrix * model, limits, radius, fov,
+        w, h, viewmode)
 
     return model, lookat_matrix, projection_matrix, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = 0.5 * (radius - sqrt(3))
-    far = radius + 2 * sqrt(3)
+function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, viewmode)
+    # model normalizes the the longest axis of the axis bbox to -1..1, so its 
+    # bounding sphere has a radius of sqrt(3)
+    # The distance of the camera to the center of the bounding sphere is "radius"
+    near = max(1e-9,              radius - sqrt(3))
+    far  = max((1 + 1e-4) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
 
-    projection_matrix = if viewmode in (:fit, :fitzoom, :stretch)
+    projection_matrix = if viewmode in (:free, :fit, :fitzoom, :stretch)
         if height > width
-            angle = angle / aspect_ratio
+            fov = fov / aspect_ratio
         end
 
-        pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
+        pm = Makie.perspectiveprojection(Float64, fov, aspect_ratio, near, far)
 
         if viewmode in (:fitzoom, :stretch)
             points = decompose(Point3f, limits)
