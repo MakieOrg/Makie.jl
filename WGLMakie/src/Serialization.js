@@ -265,7 +265,7 @@ function connect_uniforms(mesh, updater) {
 
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
-    const rgbaArray = new Float32Array((length / 3) * 4);
+    const rgbaArray = new rgbArray.constructor((length / 3) * 4);
 
     for (let i = 0, j = 0; i < length; i += 3, j += 4) {
         rgbaArray[j] = rgbArray[i]; // R
