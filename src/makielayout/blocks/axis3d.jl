@@ -203,7 +203,7 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
     if aspect === :equal 
         scales = 2 ./ Float64.(ws)
     elseif aspect === :data
-        scales = 2 ./ max.(maximum(ws), Float64.(ws))
+        scales = 2 .* sign.(ws) ./ max.(maximum(ws), Float64.(ws))
     elseif aspect isa VecTypes{3}
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
     else
