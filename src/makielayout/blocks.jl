@@ -288,6 +288,18 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
+MakieCore.__obj_name(::Type{<:Block}) = "block"
+MakieCore.__valid_attributes(T::Type{<:Block}) = keys(_attribute_docs(T))
+MakieCore.__has_generic_attributes(::Type{<:Block}) = false
+
+function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
+    badnames = setdiff(keys(kwdict), MakieCore.__valid_attributes(T))
+    if !isempty(badnames)
+        throw(MakieCore.InvalidAttributeError(T, badnames))
+    end
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -301,6 +313,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     end
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
+    _check_remaining_kwargs(T, non_attribute_kwargs)
 
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme
