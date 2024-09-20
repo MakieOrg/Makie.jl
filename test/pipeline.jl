@@ -176,3 +176,32 @@ end
     @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
     @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
 end
+
+@testset "validated attributes for blocks" begin 
+    @test MakieCore.__obj_name(Lines) == "plot"
+    @test MakieCore.__valid_attributes(Lines) == MakieCore.attribute_names(Lines)
+    @test MakieCore.__has_generic_attributes(Lines) 
+
+    @test MakieCore.__obj_name(Axis) == "block"
+    @test MakieCore.__valid_attributes(Axis3) == keys(Makie._attribute_docs(Axis3))
+    @test !MakieCore.__has_generic_attributes(Axis3)
+
+    fig = Figure()
+    @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Axis3(fig[1, 1], does_not_exist = 123, does_not_exist2 = 123)
+    @test_throws InvalidAttributeError lines(1:10, axis = (does_not_exist = 123,))
+    @test_throws InvalidAttributeError Colorbar(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Label(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Box(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError SliderGrid(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError IntervalSlider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Button(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Toggle(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Menu(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Legend(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError LScene(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Textbox(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError PolarAxis(fig[1, 1], does_not_exist = 123)
+end
