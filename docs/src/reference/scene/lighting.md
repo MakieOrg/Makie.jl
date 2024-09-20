@@ -201,7 +201,7 @@ function to_mesh(l::RectLight)
     positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
     faces = GLTriangleFace[(1,2,3), (2,3,4)]
     normals = [n,n,n,n]
-    return GeometryBasics.Mesh(positions, face, normal = normals)
+    return GeometryBasics.Mesh(positions, faces, normal = normals)
 end
 
 fig = Figure(backgroundcolor = :black)
