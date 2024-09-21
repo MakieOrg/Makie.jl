@@ -163,7 +163,7 @@ import Makie.MakieCore: InvalidAttributeError
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
-import Makie.MakieCore: find_nearby_attributes
+import Makie.MakieCore: find_nearby_attributes, attribute_names
 
 @testset "attribute suggestions" begin
     @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
