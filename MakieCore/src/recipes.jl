@@ -796,7 +796,7 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
     println(io, ".")
     nameset = sort(string.(collect(attribute_names(i.plottype))))
     possible_cands, any_close = find_nearby_attributes(i.attributes, nameset)
-    println(io)
+    any_close && println(io)
     if any_close && length(possible_cands) == 1 
         print(io, "Did you mean ")
         printstyled(io, possible_cands[1][1]; color = :blue, bold = true)
