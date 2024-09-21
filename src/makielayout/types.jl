@@ -672,6 +672,12 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     end
 end
 
+function MakieCore.__valid_attributes(T::Type{<:Axis}) 
+    atrs = _attribute_docs(T)
+    atrs[:palette] = ""
+    return keys(atrs) 
+end
+
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
     rect_scene = Scene(ax.scene)
@@ -1229,6 +1235,11 @@ end
     end
 end
 
+function MakieCore.__valid_attributes(T::Type{<:Menu}) 
+    atrs = _attribute_docs(T)
+    atrs[:default] = ""
+    return keys(atrs) 
+end
 
 abstract type LegendElement end
 
@@ -1382,6 +1393,12 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
     end
 end
 
+function MakieCore.__valid_attributes(T::Type{<:Legend}) 
+    atrs = _attribute_docs(T)
+    atrs[:entrygroups] = ""
+    return keys(atrs) 
+end
+
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
@@ -1486,12 +1503,6 @@ end
         "The color of the cursor."
         cursorcolor = :transparent
     end
-end
-
-function MakieCore.__valid_attributes(T::Type{<:Legend}) 
-    atrs = _attribute_docs(T)
-    atrs[:entrygroups] = ""
-    return keys(atrs) 
 end
 
 @Block Axis3 <: AbstractAxis begin

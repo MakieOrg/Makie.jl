@@ -209,4 +209,8 @@ end
     @test_throws InvalidAttributeError LScene(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError Textbox(fig[1, 1], does_not_exist = 123)
     @test_throws InvalidAttributeError PolarAxis(fig[1, 1], does_not_exist = 123)
+
+    @test Axis(fig[1, 1], palette = nothing) isa Axis # just checking that it doesn't error
+    @test Menu(fig[1, 2], default = nothing) isa Menu
+    @test Legend(fig[1, 3], entrygroups = []) isa Legend
 end
