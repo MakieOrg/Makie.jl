@@ -136,6 +136,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
+                split_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
                 tmpdir = URL_CACHE[download_url]
@@ -172,4 +173,49 @@ function unzip(file, exdir = "")
     end
     close(zarchive)
     @info "Extracted zip file"
+end
+
+
+function split_scores(path)
+    # Load all refimg scores into a Dict
+    # `filename => (score_glmakie, score_cairomakie, score_wglmakie)`
+    data = Dict{String, Vector{Float64}}()
+    open(joinpath(path, "scores.tsv"), "r") do file
+        for line in eachline(file)
+            score, filepath = split(line, '\t')
+            pieces = split(filepath, '/')
+            backend = pieces[1]
+            filename = join(pieces[2:end], '/')
+
+            scores = get!(data, filename, [-1.0, -1.0, -1.0])
+            if backend == "GLMakie"
+                scores[1] = parse(Float64, score)
+            elseif backend == "CairoMakie"
+                scores[2] = parse(Float64, score)
+            elseif backend == "WGLMakie"
+                scores[3] = parse(Float64, score)
+            else
+                error("$line -> $backend")
+            end
+        end
+    end
+    
+    # sort by max score across all backends so problem come first
+    data_vec = collect(pairs(data))
+    sort!(data_vec, by = x -> maximum(x[2]), rev = true)
+
+    # generate new file with
+    #    GLMakie         CairoMakie        WGLMakie
+    # score filename   score filename   score filename
+    open(joinpath(path, "scores_table.tsv"), "w") do file
+        for (filename, scores) in data_vec
+            skip = scores .== -1.0
+            println(file,
+                ifelse(skip[1], "0.0", scores[1]), '\t', ifelse(skip[1], "", "GLMakie/$filename"), '\t',
+                ifelse(skip[2], "0.0", scores[2]), '\t', ifelse(skip[2], "", "CairoMakie/$filename"), '\t',
+                ifelse(skip[3], "0.0", scores[3]), '\t', ifelse(skip[3], "", "WGLMakie/$filename")
+            )
+        end
+    end
+
 end
