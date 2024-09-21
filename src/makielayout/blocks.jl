@@ -289,7 +289,16 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
 end
 
 MakieCore.__obj_name(::Type{<:Block}) = "block"
-MakieCore.__valid_attributes(T::Type{<:Block}) = keys(_attribute_docs(T))
+function MakieCore.__valid_attributes(T::Type{S}) where {S<:Block}
+    attrs = _attribute_docs(T)
+    # Some blocks have keyword arguments that are not attributes.
+    # TODO: Refactor intiailize_block! to just not use kwargs?
+    (S <: Axis || S <: PolarAxis) && (attrs[:palette] = "")
+    S <: Legend && (attrs[:entrygroups] = "")
+    S <: Menu && (attrs[:default] = "")
+    S <: LScene && (attrs[:scenekw] = "")
+    return keys(attrs)
+end
 MakieCore.__has_generic_attributes(::Type{<:Block}) = false
 
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)

@@ -213,4 +213,9 @@ end
     @test Axis(fig[1, 1], palette = nothing) isa Axis # just checking that it doesn't error
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
+    @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
+    @test haskey(__valid_attributes(Axis), :palette)
+    @test haskey(__valid_attributes(Menu), :default)
+    @test haskey(__valid_attributes(Legend), :entrygroups)
+    @test haskey(__valid_attributes(PolarAxis), :palette)
 end
