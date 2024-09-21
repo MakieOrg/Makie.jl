@@ -224,7 +224,7 @@ Makie.isvisible(screen::Screen) = screen.config.visible
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
 
-function empty_screen(debugging::Bool; reuse=true, window=nothing)
+Base.@constprop :none function empty_screen(debugging::Bool; reuse=true, window=nothing)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
 
@@ -268,9 +268,7 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
         end
 
         # GLFW doesn't support setting the icon on OSX
-        if !Sys.isapple()
-            GLFW.SetWindowIcon(window, Makie.icon())
-        end
+        GLFW.SetWindowIcon(window, Makie.icon())
     end
 
     # tell GLAbstraction that we created a new context.
@@ -446,13 +444,14 @@ function display_scene!(screen::Screen, scene::Scene)
     return
 end
 
-function Screen(scene::Scene; start_renderloop=true, screen_config...)
+Base.@constprop :none function Screen(scene::Scene; start_renderloop=true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config; start_renderloop=start_renderloop)
 end
 
 # Open an interactive window
-function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_renderloop=true)
+Base.@constprop :none function Screen(scene::Scene, config::ScreenConfig; visible=nothing,
+                                      start_renderloop=true)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)
@@ -461,7 +460,8 @@ function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_rende
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
+Base.@constprop :none function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing,String,IO},
+                                      typ::MIME; visible=nothing, start_renderloop=false)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)

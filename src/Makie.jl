@@ -16,8 +16,7 @@ using Base64
 # When loading Electron for WGLMakie, which depends on FilePaths
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-#
-import FilePaths
+# import FilePaths
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -330,11 +329,10 @@ export ReversibleScale
 
 export assetpath
 # default icon for Makie
-function icon()
+Base.@constprop :none function icon()
     path = assetpath("icons")
-    imgs = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
-    return reinterpret.(NTuple{4,UInt8}, icons)
+    icons = Matrix{RGBA{Colors.N0f8}}[FileIO.load(joinpath(path, x)) for x in readdir(path)]
+    return [reinterpret(NTuple{4,UInt8}, i) for i in icons]
 end
 
 function logo()

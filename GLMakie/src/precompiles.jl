@@ -19,6 +19,7 @@ let
 
             GLMakie.activate!()
             screen = GLMakie.singleton_screen(false)
+            GLFramebuffer((10,10))
             close(screen)
             destroy!(screen)
 
@@ -40,7 +41,8 @@ let
             config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
             screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible=false, start_renderloop=false)
             close(screen)
-
+            screen = Screen(Scene(), config; visible=false, start_renderloop=true)
+            close(screen)
 
             config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}())
             screen = Screen(Scene(), config; visible=false, start_renderloop=false)

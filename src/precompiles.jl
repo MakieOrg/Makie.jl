@@ -9,6 +9,7 @@ macro compile(block)
     end
 end
 
+precompile(Makie.icon, ())
 precompile(Makie.initialize_block!, (Axis,))
 precompile(_get_glyphcollection_and_linesegments,
            (LaTeXStrings.LaTeXString, Int64, Float32,

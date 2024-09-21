@@ -250,5 +250,7 @@ if !isnothing(pr_to_comment)
     make_or_edit_comment(ctx, pr, Package, benchmark_rows)
 else
     @info("Not commenting, no PR found")
-    println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
+    open("../../../benchmark.md", "w") do io
+        println(io, update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
+    end
 end
