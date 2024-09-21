@@ -176,7 +176,8 @@ import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
     @test textdiff("clor", "color") == "c\e[34m\e[1mo\e[22m\e[39mlor"
     @test textdiff("", "color") == "\e[34m\e[1mc\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1mr\e[22m\e[39m"
     @test textdiff("colorcolor", "color") == "color"
-    @test textdiff("cloourm", "color") == "c\e[34m\e[1mo\e[22m\e[39mlor"
+    @test textdiff("cloourm", "color") == "co\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39mr"
+    @test textdiff("ssoa", "ssao") == "ss\e[34m\e[1ma\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m"
 end 
 
 @recipe(TestRecipe, x, y) do scene

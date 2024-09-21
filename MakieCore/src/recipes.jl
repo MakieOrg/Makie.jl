@@ -797,37 +797,40 @@ function textdiff(X::String, Y::String)
     # Backtrack to print the differences with style
     i, j = m, n
     results = Vector{Tuple{Char, Symbol}}()
+    
     while i > 0 || j > 0
         if i > 0 && j > 0 && a[i] == b[j]
             # Characters match, print normally
             push!(results, (b[j], :normal))
             i -= 1
             j -= 1
-        elseif i > 0 && d[i+1, j+1] == d[i, j+1] + 1
-            # Deletion in `X` (character in `X` but not in `Y`)
-            # push!(results, (a[i], :blue)) # Not going to print deletions
-            i -= 1
-        elseif j > 0 && d[i+1, j+1] == d[i+1, j] + 1
-            # Insertion in `Y` (character in `Y` but not in `X`)
-            push!(results, (b[j], :red))
-            j -= 1
         elseif i > 0 && j > 0 && d[i+1, j+1] == d[i, j] + 1
             # Substitution (different characters between `X` and `Y`)
-            push!(results, (b[j], :orange))
+            push!(results, (b[j], :orange))  # Highlighting the new character. Not showing the old one
             i -= 1
             j -= 1
+        elseif j > 0 && d[i+1, j+1] == d[i+1, j] + 1
+            # Insertion in `Y` (character in `Y` but not in `X`)
+            push!(results, (b[j], :red))  # Highlighting the added character
+            j -= 1
+        elseif i > 0 && d[i+1, j+1] == d[i, j+1] + 1
+            # Deletion in `X` (character in `X` but not in `Y`)
+            i -= 1  # Just move the index for X. Not showing the deletion here.
         end
     end
+     
     reverse!(results)
     io = IOBuffer()
     cio = IOContext(io, :color => true)
+    
     for (char, clr) in results
         if clr == :normal 
             print(io, char)
         else
-            printstyled(cio, char; color = :blue, bold = true) # Ignoring color for now
+            printstyled(cio, char; color = :blue, bold = true) # Ignoring different color choices here
         end
     end
+    
     return String(take!(io))
 end
 
