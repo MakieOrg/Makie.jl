@@ -214,8 +214,8 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test haskey(__valid_attributes(Axis), :palette)
-    @test haskey(__valid_attributes(Menu), :default)
-    @test haskey(__valid_attributes(Legend), :entrygroups)
-    @test haskey(__valid_attributes(PolarAxis), :palette)
+    @test :palette in __valid_attributes(Axis)
+    @test :default in __valid_attributes(Menu)
+    @test :entrygroups in __valid_attributes(Legend)
+    @test :palette in __valid_attributes(PolarAxis)
 end
