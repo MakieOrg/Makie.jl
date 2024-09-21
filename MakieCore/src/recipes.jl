@@ -706,7 +706,7 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     return
 end
 
-function _levenshtein(s1, s2)
+function _levenshtein_matrix(s1, s2)
     # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L648
     a, b = collect(s1), collect(s2)
     m, n = length(a), length(b)
@@ -718,7 +718,12 @@ function _levenshtein(s1, s2)
             d[i+1, j+1] = min(d[i, j+1] + 1, d[i+1, j] + 1, d[i, j] + (a[i] != b[j]))
         end
     end
-    return d[m+1, n+1]
+    return d
+end
+function _levenshtein(s1, s2)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L648
+    d = _levenshtein_matrix(s1, s2)
+    return d[end]
 end
 function _fuzzyscore(needle, haystack)
     # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L631
@@ -784,6 +789,48 @@ function find_nearby_attributes(attributes, candidates)
     return d, any_close
 end
 
+function textdiff(X::String, Y::String)
+    d = _levenshtein_matrix(X, Y)
+    a, b = collect(X), collect(Y)
+    m, n = length(a), length(b)
+
+    # Backtrack to print the differences with style
+    i, j = m, n
+    results = Vector{Tuple{Char, Symbol}}()
+    while i > 0 || j > 0
+        if i > 0 && j > 0 && a[i] == b[j]
+            # Characters match, print normally
+            push!(results, (b[j], :normal))
+            i -= 1
+            j -= 1
+        elseif i > 0 && d[i+1, j+1] == d[i, j+1] + 1
+            # Deletion in `X` (character in `X` but not in `Y`)
+            # push!(results, (a[i], :blue)) # Not going to print deletions
+            i -= 1
+        elseif j > 0 && d[i+1, j+1] == d[i+1, j] + 1
+            # Insertion in `Y` (character in `Y` but not in `X`)
+            push!(results, (b[j], :red))
+            j -= 1
+        elseif i > 0 && j > 0 && d[i+1, j+1] == d[i, j] + 1
+            # Substitution (different characters between `X` and `Y`)
+            push!(results, (b[j], :orange))
+            i -= 1
+            j -= 1
+        end
+    end
+    reverse!(results)
+    io = IOBuffer()
+    cio = IOContext(io, :color => true)
+    for (char, clr) in results
+        if clr == :normal 
+            print(io, char)
+        else
+            printstyled(cio, char; color = :blue, bold = true) # Ignoring color for now
+        end
+    end
+    return String(take!(io))
+end
+
 function Base.showerror(io::IO, i::InvalidAttributeError)
     n = length(i.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
@@ -795,24 +842,26 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
     printstyled(io, i.plottype; color = :blue, bold = true)
     println(io, ".")
     nameset = sort(string.(collect(attribute_names(i.plottype))))
-    possible_cands, any_close = find_nearby_attributes(i.attributes, nameset)
+    attrs = string.(collect(i.attributes))
+    possible_cands, any_close = find_nearby_attributes(attrs, nameset)
     any_close && println(io)
     if any_close && length(possible_cands) == 1 
-        print(io, "Did you mean ")
-        printstyled(io, possible_cands[1][1]; color = :blue, bold = true)
-        print(io, "?")
+        print(io, "Did you mean ", textdiff(attrs[1], possible_cands[1][1]), "?")
         println(io)
     elseif any_close
-        println(io, "Did you mean:")
-        for (passed, (suggestion, close)) in zip(i.attributes, possible_cands)
-            close || continue
-            print(io, "  - ")
-            printstyled(io, passed; color = :red, bold = true)
-            print(io, " -> ")
-            printstyled(io, suggestion; color = :blue, bold = true)
-            print(io, "?")
-            println(io)
+        print(io, "Did you mean:")
+        for (id, (passed, (suggestion, close))) in enumerate(zip(attrs, possible_cands))
+            close || continue 
+            any_next = any(x -> x[2], view(possible_cands, id+1:length(possible_cands)))
+            if (id == length(i.attributes)) || (id < length(i.attributes) && !any_next)
+                print(io, " and")
+            end
+            print(io, " ", textdiff(passed, suggestion))
+            if id < length(i.attributes) && any_next
+                print(io, ",")
+            end
         end
+        println(io, "?")
         println(io)
     end
     println(io)
