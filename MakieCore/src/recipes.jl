@@ -706,6 +706,84 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     return
 end
 
+function _levenshtein(s1, s2)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L648
+    a, b = collect(s1), collect(s2)
+    m, n = length(a), length(b)
+    d = Matrix{Int}(undef, m + 1, n + 1)
+    d[1:m+1, 1] = 0:m 
+    d[1, 1:n+1] = 0:n 
+    for i in 1:m 
+        for j in 1:n 
+            d[i+1, j+1] = min(d[i, j+1] + 1, d[i+1, j] + 1, d[i, j] + (a[i] != b[j]))
+        end
+    end
+    return d[m+1, n+1]
+end
+function _fuzzyscore(needle, haystack)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L631
+    score = 0.0
+    is, acro = _bestmatch(needle, haystack)
+    score += (acro ? 2 : 1) * length(is)                # Matched characters 
+    score -= 2(length(needle) - length(is))             # Missing characters 
+    !acro && (score -= _avgdistance(is)/10)             # Contiguous 
+    !isempty(is) && (score -= sum(is)/length(is)/100)   # Closer to beginning
+end
+function _matchinds(needle, haystack; acronym::Bool = false)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L602
+    chars = collect(needle)
+    is = Int[]
+    lastc = '\0'
+    for (i, char) in enumerate(haystack)
+        while !isempty(chars) && isspace(first(chars))
+            popfirst!(chars)
+        end
+        isempty(chars) && break
+        if lowercase(char) == lowercase(chars[1]) && (!acronym || !isletter(lastc))
+            push!(is, i)
+            popfirst!(chars)
+        end
+        lastc = char
+    end
+    return is
+end
+function _longer(x, y)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L621
+    return length(x) ≥ length(y) ? (x, true) : (y, false)
+end
+function _bestmatch(needle, haystack)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L623
+    return _longer(
+        _matchinds(needle, haystack, acronym = true),
+        _matchinds(needle, haystack)
+    )
+end
+function _avgdistance(xs)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L627
+    return isempty(xs) ? 0 : (xs[end] - xs[1] - length(xs) + 1) / length(xs)
+end
+function _levsort(search::String, candidates::Vector{String})
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L666
+    scores = map(candidates) do cand 
+        lev = Float64(_levenshtein(search, cand))
+        fuz = -_fuzzyscore(search, cand)
+        return (lev, -fuz)
+    end
+    candidates = candidates[sortperm(scores)]
+    valid = _levenshtein(search, candidates[1]) < 3 # is the first close enough?
+    return candidates[1], valid # Only return one suggestion per search
+end
+function find_nearby_attributes(attributes, candidates)
+    d = Vector{Tuple{String, Bool}}(undef, length(attributes)) 
+    any_close = false
+    for (i, attr) in enumerate(attributes)
+        candidate, valid = _levsort(String(attr), candidates)
+        any_close = any_close || valid
+        d[i] = (candidate, valid)
+    end
+    return d, any_close
+end
+
 function Base.showerror(io::IO, i::InvalidAttributeError)
     n = length(i.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
@@ -717,6 +795,26 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
     printstyled(io, i.plottype; color = :blue, bold = true)
     println(io, ".")
     nameset = sort(string.(collect(attribute_names(i.plottype))))
+    possible_cands, any_close = find_nearby_attributes(i.attributes, nameset)
+    println(io)
+    if any_close && length(possible_cands) == 1 
+        print(io, "Did you mean ")
+        printstyled(io, possible_cands[1][1]; color = :blue, bold = true)
+        print(io, "?")
+        println(io)
+    elseif any_close
+        println(io, "Did you mean:")
+        for (passed, (suggestion, close)) in zip(i.attributes, possible_cands)
+            close || continue
+            print(io, "  - ")
+            printstyled(io, passed; color = :red, bold = true)
+            print(io, " -> ")
+            printstyled(io, suggestion; color = :blue, bold = true)
+            print(io, "?")
+            println(io)
+        end
+        println(io)
+    end
     println(io)
     println(io, "The available plot attributes for $(i.plottype) are:")
     println(io)

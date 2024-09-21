@@ -163,6 +163,15 @@ import Makie.MakieCore: InvalidAttributeError
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
+import Makie.MakieCore: find_nearby_attributes
+
+@testset "attribute suggestions" begin
+    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
+    suggestions = find_nearby_attributes(attrs, triplot_attrs)
+    @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
+end
 
 @recipe(TestRecipe, x, y) do scene
     Attributes()

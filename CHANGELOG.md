@@ -4,6 +4,7 @@
 
 - Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
 - Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
+- The error shown for invalid attributes will now also show suggestions for nearby attributes (if there are any). 
 
 ## [0.21.11] - 2024-09-13
 
