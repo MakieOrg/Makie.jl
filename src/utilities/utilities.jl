@@ -588,25 +588,29 @@ function shared_attributes(
     )
 
     valid_attributes = copy(attribute_names(target))
-    existing_attributes = keys(plot.attributes)
+    rename_targets = Set(last.(renames))
 
-    invalid_renames = setdiff(Set(last.(renames)), valid_attributes)
+    # Check that all renames are valid for the given plot type
+    invalid_renames = setdiff(rename_targets, valid_attributes)
     if !isempty(invalid_renames)
         @info "Invalid Renames in attribute passthrough from $(typeof(plot).parameters[1])():"
         throw(MakieCore.InvalidAttributeError(target, invalid_renames))
     end
 
-    # Some Attributes should not be shared
+    # Some Attributes should not be shared and not count as missing
     # delete!(valid_attributes, :model) # set through transformations
     delete!(valid_attributes, :inspector_clear)
     delete!(valid_attributes, :inspector_hover)
     delete!(valid_attributes, :inspector_label)
 
-    foreach(kv -> delete!(valid_attributes, kv[1]), renames)
+    # All attribute names that can be copied directly, i.e. are valid, exist and not renamed
+    existing_attributes = setdiff(keys(plot.attributes), first.(renames))
+    copied_attributes = intersect(existing_attributes, valid_attributes)
 
+    # Check whether there are any valid names that are not set by either a direct
+    # copy or a rename
     if warn_on_missing
-        renamed_attribs = Set(last.(renames))
-        missing_attribs = setdiff(valid_attributes, existing_attributes, renamed_attribs)
+        missing_attribs = setdiff(valid_attributes, copied_attributes, rename_targets)
         if !isempty(missing_attribs)
             str = "Not all attributes valid for ::$(target) are given in " * 
                 "$(typeof(plot).parameters[1])(). Missing ones include:\n"
@@ -615,13 +619,16 @@ function shared_attributes(
         end
     end
 
-    to_drop = setdiff(existing_attributes, valid_attributes)
-    attr = drop_attributes(plot, to_drop)
+    parent_attr = attributes(plot)
+    attr = Attributes()
+    
+    # Direct copy
+    for k in copied_attributes
+        attr[k] = parent_attr[k]
+    end
 
     # User replacements
-    parent_attr = attributes(plot)
-    foreach(renames) do kv
-        (old, new) = kv
+    for (old, new) in renames
         attr[new] = parent_attr[old]
     end
 
