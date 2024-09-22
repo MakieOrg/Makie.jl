@@ -570,40 +570,58 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=10
 end
 
 """
-    shared_attributes(plot::Plot, target::Type{<:Plot}[; kwargs])
+    shared_attributes(plot::Plot, target::Type{<:Plot}[, renames; warn_on_missing = false])
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
 
-Keyword arguments can be used to further manipulate the attributes that get 
-extracted:
-- `skip` sets a collection of additional attribute names that get removed.
-- `rename` provides a collection of replacement names where `old_name => new_name`.
+Optionally `renames::Vector{Pair{Symbol, Symbol}}` can be given to map attribute
+names from `plot` to names in `target`. 
+
+```julia
+shared_attributes(parent, Lines, [:strokecolor => :color])
+```
 """
 function shared_attributes(
-        plot::Plot, target::Type{<:Plot}; 
-        skip = Set{Symbol}(), rename = Dict{Symbol, Symbol}()
+        plot::Plot, target::Type{<:Plot}, 
+        renames::Vector{Pair{Symbol, Symbol}} = Pair{Symbol, Symbol}[];
+        warn_on_missing = true, 
     )
 
     valid_attributes = copy(attribute_names(target))
-    
+    existing_attributes = keys(plot.attributes)
+
+    invalid_renames = setdiff(Set(last.(renames)), valid_attributes)
+    if !isempty(invalid_renames)
+        @info "Invalid Renames in attribute passthrough from $(typeof(plot).parameters[1])():"
+        throw(MakieCore.InvalidAttributeError(target, invalid_renames))
+    end
+
     # Some Attributes should not be shared
     # delete!(valid_attributes, :model) # set through transformations
     delete!(valid_attributes, :inspector_clear)
     delete!(valid_attributes, :inspector_hover)
     delete!(valid_attributes, :inspector_label)
 
-    # User removals
-    foreach(k::Symbol -> delete!(valid_attributes, k), skip)
+    foreach(kv -> delete!(valid_attributes, kv[1]), renames)
 
-    existing_attributes = keys(plot.attributes)
+    if warn_on_missing
+        renamed_attribs = Set(last.(renames))
+        missing_attribs = setdiff(valid_attributes, existing_attributes, renamed_attribs)
+        if !isempty(missing_attribs)
+            str = "Not all attributes valid for ::$(target) are given in " * 
+                "$(typeof(plot).parameters[1])(). Missing ones include:\n"
+            foreach(x -> str *= "  $x\n", missing_attribs)
+            @warn str
+        end
+    end
+
     to_drop = setdiff(existing_attributes, valid_attributes)
     attr = drop_attributes(plot, to_drop)
 
     # User replacements
     parent_attr = attributes(plot)
-    foreach(rename) do kv::Pair{Symbol, Symbol}
+    foreach(renames) do kv
         (old, new) = kv
-        delete!(attr, old)
         attr[new] = parent_attr[old]
     end
 

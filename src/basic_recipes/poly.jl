@@ -33,7 +33,7 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(plot, shared_attributes(plot, Mesh), plot[1])
-    wf_attr = shared_attributes(plot, Wireframe, rename = [
+    wf_attr = shared_attributes(plot, Wireframe, [
         :strokecolor => :color, :strokewidth => :linewidth, :strokecolormap => :colormap,
         :stroke_depth_shift => :depth_shift
     ])
@@ -145,7 +145,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-    l_attr = shared_attributes(plot, Lines, rename = [
+    l_attr = shared_attributes(plot, Lines, [
         :strokewidth => :linewidth, :strokecolormap => :colormap, 
         :stroke_depth_shift => :depth_shift
     ])
