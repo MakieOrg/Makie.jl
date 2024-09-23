@@ -292,6 +292,7 @@ function Scene(
         viewport=nothing,
         clear=false,
         camera=nothing,
+        visible=copy(parent.visible),
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         kw...
@@ -306,6 +307,7 @@ function Scene(
         viewport=child_px_area,
         clear=convert(Observable{Bool}, clear),
         camera=camera,
+        visible=visible,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,

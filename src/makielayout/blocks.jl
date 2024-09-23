@@ -473,6 +473,9 @@ end
 
 function disconnect!(block::Block)
     block.blockscene.visible[] = false
+    if hasproperty(block, :scene)
+        block.scene.visible[] = false
+    end
     gc = GridLayoutBase.gridcontent(block)
     if gc !== nothing
         GridLayoutBase.remove_from_gridlayout!(gc)
