@@ -127,9 +127,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     text_attr = shared_attributes(p, Text)
     text_attr[:align] = text_align
     text_attr[:offset] = text_offset
-    text_attr[:fxaa] = false
-    text_attr[:space] = :pixel
-    text_attr[:transformation] = Transformation()
+    text_attr[:fxaa] = Observable(false)
+    text_attr[:space] = Observable(:pixel)
+    text_attr[:transformation] = Observable(Transformation())
     tp = text!(p, text_attr, px_pos)
     translate!(tp, 0, 0, 1)
 
@@ -145,10 +145,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     # Text background mesh
 
     mesh_attr = shared_attributes(p, Mesh, [:backgroundcolor => :color])
-    mesh_attr[:shading] = NoShading
-    mesh_attr[:space] = :pixel
-    mesh_attr[:fxaa] = false
-    mesh_attr[:transformation] = Transformation()
+    mesh_attr[:shading] = Observable(NoShading)
+    mesh_attr[:space] = Observable(:pixel)
+    mesh_attr[:fxaa] = Observable(false)
+    mesh_attr[:transformation] = Observable(Transformation())
     mesh!(p, mesh_attr, bbox)
 
     # Triangle mesh
