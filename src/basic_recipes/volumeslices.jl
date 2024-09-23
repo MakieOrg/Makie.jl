@@ -20,7 +20,7 @@ function Makie.plot!(plot::VolumeSlices)
     end
 
     heatmap_attr = shared_attributes(plot, Heatmap)
-    pop!(heatmap_attr, :model) # stops `transform!()` from working
+    # pop!(heatmap_attr, :model) # stops `transform!()` from working
 
     axes = :x, :y, :z
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))

@@ -17,16 +17,10 @@ If you want to plot intervals from low to high values instead of relative errors
 @recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
-    "The color of the lines. Can be an array to color each bar separately."
-    color = @inherit linecolor
-    "The thickness of the lines in screen units."
-    linewidth = @inherit linewidth
-    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
+    MakieCore.documented_attributes(LineSegments)...
     cycle = [:color]
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
 end
 
 const RealOrVec = Union{Real, RealVector}
@@ -45,16 +39,10 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 @recipe Rangebars begin
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
-    "The color of the lines. Can be an array to color each bar separately."
-    color = @inherit linecolor
-    "The thickness of the lines in screen units."
-    linewidth = @inherit linewidth
-    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
+    MakieCore.documented_attributes(LineSegments)...
     cycle = [:color]
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
 end
 
 ### conversions for errorbars
@@ -203,7 +191,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (whiskerwidth, color, linewidth, linecap)
+    @extract plot (whiskerwidth, color, linewidth)
 
     scene = parent_scene(plot)
 
@@ -239,7 +227,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
 
-    bar_attr = shared_attributes(plot, LineSegment)
+    bar_attr = shared_attributes(plot, LineSegments)
     linesegments!(plot, bar_attr, linesegpairs)
     
     whisker_attr = shared_attributes(plot, LineSegments)
