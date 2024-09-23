@@ -56,6 +56,7 @@ spy(0..1, 0..1, x)
     color = nothing
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
+    fxaa = false
 end
 
 function data_limits(plot::Spy)

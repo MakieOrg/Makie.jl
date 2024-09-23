@@ -27,6 +27,7 @@ Plots `scatter` markers and `lines` between them.
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
     cycle = [:color]
+    fxaa = false
 end
 
 conversion_trait(::Type{<: ScatterLines}) = PointBased()

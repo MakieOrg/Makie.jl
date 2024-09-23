@@ -337,6 +337,7 @@ function Makie.plot!(p::BarPlot)
         text_attr[:align] = label_aligns
         text_attr[:offset] = label_offsets
         text_attr[:color] = label_colors
+        text_attr[:fxaa] = Observable(false)
         text!(p, text_attr, labels)
     end
 end

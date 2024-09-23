@@ -37,6 +37,7 @@ See the function `Makie.streamplot_impl` for implementation details.
     linestyle = nothing
     MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
@@ -215,13 +216,13 @@ function plot!(p::StreamPlot)
         end
     end
 
-    func = scatterfun(N)
-    scatter_attr = shared_attributes(p, func)
+    scatter_attr = shared_attributes(p, N == 2 ? Scatter : MeshScatter)
     scatter_attr[:markersize] = arrow_size
     scatter_attr[:rotation] = rotations
     scatter_attr[:color] = lift(x -> x[4], p, data)
     scatter_attr[:marker] = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality)
-    func(p, scatter_attr, lift(first, p, data))
+    (N == 3) && (scatter_attr[:fxaa] = Observable(true))
+    scatterfun(N)(p, scatter_attr, lift(first, p, data))
 
     return p
 end

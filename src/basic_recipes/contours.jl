@@ -45,6 +45,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     labelsize = 10 # arbitrary
     MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
 end
 
 """

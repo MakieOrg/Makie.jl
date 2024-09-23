@@ -48,6 +48,7 @@ Creates a tooltip pointing at `position` displaying the given `string
     outline_linestyle = nothing
 
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
     inspectable = false
 end
 
@@ -127,7 +128,6 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     text_attr = shared_attributes(p, Text)
     text_attr[:align] = text_align
     text_attr[:offset] = text_offset
-    text_attr[:fxaa] = Observable(false)
     text_attr[:space] = Observable(:pixel)
     text_attr[:transformation] = Observable(Transformation())
     tp = text!(p, text_attr, px_pos)
@@ -144,12 +144,11 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Text background mesh
 
-    mesh_attr = shared_attributes(p, Mesh, [:backgroundcolor => :color])
-    mesh_attr[:shading] = Observable(NoShading)
-    mesh_attr[:space] = Observable(:pixel)
-    mesh_attr[:fxaa] = Observable(false)
-    mesh_attr[:transformation] = Observable(Transformation())
-    mesh!(p, mesh_attr, bbox)
+    background_attr = shared_attributes(p, Mesh, [:backgroundcolor => :color])
+    background_attr[:shading] = Observable(NoShading)
+    background_attr[:space] = Observable(:pixel)
+    background_attr[:transformation] = Observable(Transformation())
+    mesh!(p, background_attr, bbox)
 
     # Triangle mesh
 
@@ -158,7 +157,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         GLTriangleFace[(1,2,3)]
     )
 
-    mp = mesh!(p, mesh_attr, triangle)
+    triangle_attr = copy(background_attr)
+    # since this gets translated and rotated we cannot share a Transformation object
+    triangle_attr[:transformation] = Observable(Transformation()) 
+    mp = mesh!(p, triangle_attr, triangle)
 
     onany(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         o = origin(bb); w = widths(bb)

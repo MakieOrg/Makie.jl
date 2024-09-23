@@ -31,6 +31,7 @@ The conversion trait of `stem` is `PointBased`.
     strokecolor = @inherit markerstrokecolor
     strokewidth = @inherit markerstrokewidth
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
     cycle = [[:stemcolor, :color, :trunkcolor] => :color]
 end
 

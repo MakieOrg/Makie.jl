@@ -37,6 +37,7 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         :strokecolor => :color, :strokewidth => :linewidth, :strokecolormap => :colormap,
         :stroke_depth_shift => :depth_shift
     ])
+    wf_attr[:fxaa] = Observable(false)
     wireframe!(plot, wf_attr, plot[1])
 end
 
@@ -150,6 +151,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         :stroke_depth_shift => :depth_shift
     ])
     l_attr[:color] = stroke
+    l_attr[:fxaa] = Observable(false)
     lines!(plot, l_attr, outline)
 end
 
