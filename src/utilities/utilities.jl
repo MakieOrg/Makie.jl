@@ -598,7 +598,8 @@ function shared_attributes(
     end
 
     # Some Attributes should not be shared and not count as missing
-    # delete!(valid_attributes, :model) # set through transformations
+    delete!(valid_attributes, :transformation) # inherited through transformations
+    delete!(valid_attributes, :model) # set through transformations
     delete!(valid_attributes, :inspector_clear)
     delete!(valid_attributes, :inspector_hover)
     delete!(valid_attributes, :inspector_label)
