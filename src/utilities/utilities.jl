@@ -584,7 +584,7 @@ shared_attributes(parent, Lines, [:strokecolor => :color])
 function shared_attributes(
         plot::Plot, target::Type{<:Plot}, 
         renames::Vector{Pair{Symbol, Symbol}} = Pair{Symbol, Symbol}[];
-        warn_on_missing = true, 
+        warn_on_missing = false, 
     )
 
     valid_attributes = copy(attribute_names(target))
