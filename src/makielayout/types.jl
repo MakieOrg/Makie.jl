@@ -946,7 +946,7 @@ end
 end
 
 """
-A grid of one or more horizontal `Slider`s, where each slider has a 
+A grid of one or more horizontal `Slider`s, where each slider has a
 name label on the left and a value label on the right.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
@@ -1252,6 +1252,7 @@ end
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
+    scene::Scene
     entrygroups::Observable{Vector{EntryGroup}}
     _tellheight::Observable{Bool}
     _tellwidth::Observable{Bool}
