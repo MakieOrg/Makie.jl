@@ -23,6 +23,7 @@
 - `plotfunc()` and `func2type()` support functions ending with `!` [#4275](https://github.com/MakieOrg/Makie.jl/pull/4275).
 - Fixed Boundserror in clipped multicolor lines in CairoMakie [#4313](https://github.com/MakieOrg/Makie.jl/pull/4313)
 - Fix float precision based assertions error in GLMakie.volume [#4311](https://github.com/MakieOrg/Makie.jl/pull/4311)
+ - Support images with reversed axes [#4338](https://github.com/MakieOrg/Makie.jl/pull/4338)
 
 ## [0.21.9] - 2024-08-27
 

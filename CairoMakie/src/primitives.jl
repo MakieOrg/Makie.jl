@@ -730,14 +730,14 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     if xs isa Makie.EndPoints
-        l, r = extrema(xs)
+        l, r = xs
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
     if ys isa Makie.EndPoints
-        l, r = extrema(ys)
+        l, r = ys
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
