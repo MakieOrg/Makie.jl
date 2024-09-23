@@ -149,7 +149,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     attr = shared_attributes(plot, Volume)
     attr[:colorrange] = cliprange
     attr[:colormap] = cmap
-    attr[:algorithm] = 7
+    attr[:algorithm] = Observable(7)
     volume!(plot, attr, x, y, z, volume)
 
     return plot
@@ -234,8 +234,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     text_attr[:color] = Observable(RGBA{Float32}[])
     text_attr[:rotation] = Observable(Float32[])
     text_attr[:text] = Observable(String[])
-    text_attr[:align] = (:center, :center)
-    text_attr[:transform_marker] = false # default
+    text_attr[:align] = Observable((:center, :center))
+    text_attr[:transform_marker] = Observable(false) # default
     texts = text!(plot, text_attr, Observable(P[]))
 
     lift(plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,

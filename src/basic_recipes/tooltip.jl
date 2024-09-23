@@ -244,9 +244,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     outline_attr = shared_attributes(p, Lines, [:outline_color => :color, 
         :outline_linewidth => :linewidth, :outline_linestyle => :linestyle])
-    outline_attr[:space] = :pixel
-    outline_attr[:miter_limit] = pi/18
-    outline_attr[:transformation] = Transformation()
+    outline_attr[:space] = Observable(:pixel)
+    outline_attr[:miter_limit] = Observable(pi/18)
+    outline_attr[:transformation] = Observable(Transformation())
 
     lines!(p, outline_attr, outline)
 

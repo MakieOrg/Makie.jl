@@ -118,12 +118,12 @@ function Makie.plot!(p::Spy)
 
     scatter_attr = shared_attributes(p, Scatter)
     scatter_attr[:color] = color
-    scatter_attr[:markerspace] = :data
+    scatter_attr[:markerspace] = Observable(:data)
     scatter_attr[:markersize] = markersize
     scatter!(p, scatter_attr, lift(first, p, xycol))
 
     line_attr = shared_attributes(p, Lines, [:framecolor => :color, 
         :framesize => :linewidth, :framevisible => :visible])
-    line_attr[:inspectable] = false
+    line_attr[:inspectable] = Observable(false)
     lines!(p, line_attr, rect)
 end

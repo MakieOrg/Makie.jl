@@ -63,7 +63,7 @@ function Makie.plot!(p::Waterfall)
 
     bar_attr = shared_attributes(p, Barplot)
     bar_attr[:fillto] = lift(x -> x.fillto, p, fromto)
-    bar_attr[:stack] = automatic
+    bar_attr[:stack] = Observable(automatic)
     barplot!(p, bar_attr, lift(x -> x.xy, p, fromto))
 
     if p.show_direction[]

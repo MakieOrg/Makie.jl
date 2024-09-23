@@ -72,7 +72,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
 
     poly_attributes = shared_attributes(p, Poly)
     # we handle transform_func manually
-    poly_attributes[:transformation] = Transformation(p, transform_func = identity)
+    poly_attributes[:transformation] = Observable(Transformation(p, transform_func = identity))
     poly!(p, poly_attributes, rects)
     p
 end

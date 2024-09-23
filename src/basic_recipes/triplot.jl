@@ -231,18 +231,18 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
 
     hull_attr = shared_attributes(p, Lines, [:convex_hull_color => :color,
         :convex_hull_linewidth => :linewidth, :convex_hull_linestyle => :linestyle])
-    hull_attr[:depth_shift] = -1.0f-5
+    hull_attr[:depth_shift] = Observable(-1.0f-5)
     lines!(p, hull_attr, convex_hull_2f)
 
     edge_attr = shared_attributes(p, LineSegments, [:constrained_edge_color => :color,
         :constrained_edge_linewidth => :linewidth, :constrained_edge_linestyle => :linestyle])
-    edge_attr[:depth_shift] = -2.0f-5
+    edge_attr[:depth_shift] = Observable(-2.0f-5)
     linesegments!(p, edge_attr, constrained_edges_2f)
 
     scatter_attr = shared_attributes(p, Scatter, [:markercolor => :color, :show_points => :visible])
-    scatter_attr[:depth_shift] = -3.0f-5
+    scatter_attr[:depth_shift] = Observable(-3.0f-5)
     scatter!(p, scatter_attr, present_points_2f)
-    
+
     return p
 end
 

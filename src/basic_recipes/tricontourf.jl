@@ -197,8 +197,8 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     attr[:highclip] = highcolor
     attr[:lowclip] = lowcolor
     attr[:color] = colors
-    attr[:strokewidth] = 0
-    attr[:strokecolor] = :transparent
+    attr[:strokewidth] = Observable(0)
+    attr[:strokecolor] = Observable(:transparent)
     
     poly!(c, attr, polys)
 
