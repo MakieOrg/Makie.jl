@@ -132,24 +132,19 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             end
         end
 
-        linesegments!(
-            arrowplot, headstart,
-                      color=line_c, colormap=colormap, colorscale=colorscale, linestyle=linestyle,
-                      colorrange=arrowplot.colorrange,
-            linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
-            fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible,
-        )
-        scatter!(
-            arrowplot,
-            lift(x-> last.(x), arrowplot, headstart),
-            marker=marker_head,
-            markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
-            color = arrow_c, rotation = rotations, strokewidth = 0.0,
-                 colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
-            fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible
-        )
+        line_attr = shared_attributes(arrowplot, LineSegments)
+        line_attr[:color] = line_c
+        line_attr[:linewidth] = lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth)
+        line_attr[:fxaa] = fxaa_bool
+        linesegments!(arrowplot, line_attr, headstart)
+
+        scatter_attr = shared_attributes(arrowplot, Scatter)
+        scatter_attr[:marker] = marker_head
+        scatter_attr[:markersize] = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize)
+        scatter_attr[:color] = arrow_c
+        scatter_attr[:rotation] = rotations
+        scatter_attr[:fxaa] = fxaa_bool
+        scatter!(arrowplot, scatter_attr, lift(x-> last.(x), arrowplot, headstart))
     else
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
         markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
@@ -176,25 +171,22 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
                 return Point3f(p .- shift)
             end
         end
-        marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
-        meshscatter!(
-            arrowplot,
-            start, rotation = directions, markersize = msize,
-            marker = marker_tail,
-            color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao, shading = shading,
-            diffuse = diffuse, specular = specular, shininess = shininess,
-            inspectable = inspectable, transparency = transparency, visible = visible
-        )
-        meshscatter!(
-            arrowplot,
-            start, rotation = directions, markersize = markersize,
-            marker = marker_head,
-            color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
-            fxaa = fxaa_bool, ssao = ssao, shading = shading,
-            diffuse = diffuse, specular = specular, shininess = shininess,
-            inspectable = inspectable, transparency = transparency, visible = visible
-        )
+
+        tail_attr = shared_attributes(arrowplot, MeshScatter)
+        tail_attr[:rotation] = directions
+        tail_attr[:markersize] = msize
+        tail_attr[:marker] = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
+        tail_attr[:color] = line_c
+        tail_attr[:fxaa] = fxaa_bool
+        meshscatter!(arrowplot, tail_attr, start)
+
+        head_attr = shared_attributes(arrowplot, MeshScatter)
+        head_attr[:rotation] = directions
+        head_attr[:markersize] = markersize
+        head_attr[:marker] = marker_head
+        head_attr[:color] = arrow_c
+        head_attr[:fxaa] = fxaa_bool
+        meshscatter!(arrowplot, head_attr, start)
     end
 
 end

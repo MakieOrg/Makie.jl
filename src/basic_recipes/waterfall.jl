@@ -61,23 +61,10 @@ function Makie.plot!(p::Waterfall)
         )
     end
 
-    bar_attrs = copy(p.attributes)
-    delete!(bar_attrs, :direction_color)
-    delete!(bar_attrs, :marker_pos)
-    delete!(bar_attrs, :final_color)
-    delete!(bar_attrs, :final_dodge_gap)
-    delete!(bar_attrs, :show_direction)
-    delete!(bar_attrs, :final_gap)
-    delete!(bar_attrs, :show_final)
-    delete!(bar_attrs, :marker_neg)
-
-    barplot!(
-        p,
-        lift(x -> x.xy, p, fromto);
-        bar_attrs...,
-        fillto=lift(x -> x.fillto, p, fromto),
-        stack=automatic,
-    )
+    bar_attr = shared_attributes(p, Barplot)
+    bar_attr[:fillto] = lift(x -> x.fillto, p, fromto)
+    bar_attr[:stack] = automatic
+    barplot!(p, bar_attr, lift(x -> x.xy, p, fromto))
 
     if p.show_direction[]
         function direction_markers(
@@ -124,11 +111,9 @@ function Makie.plot!(p::Waterfall)
             p.dodge_gap,
         )
 
-        scatter!(
-            p,
-            lift(x -> x.xy, p, markers);
-            marker=lift(x -> x.shapes, p, markers),
-            color=p.direction_color)
+        scatter_attr = shared_attributes(p, Scatter, [:direction_color => :color])
+        scatter_attr[:marker] = lift(x -> x.shapes, p, markers)
+        scatter!(p, scatter_attr, lift(x -> x.xy, p, markers))
     end
 
     return p

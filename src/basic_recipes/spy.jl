@@ -116,20 +116,14 @@ function Makie.plot!(p::Spy)
         return isnothing(color) ? xycol[2] : color
     end
 
-    scatter!(
-        p,
-        lift(first, p, xycol);
-        color = color,
-        markerspace = :data,
-        marker = p.marker, markersize = markersize,
-        MakieCore.colormap_attributes(p)...,
-        MakieCore.generic_plot_attributes(p)...
-    )
+    scatter_attr = shared_attributes(p, Scatter)
+    scatter_attr[:color] = color
+    scatter_attr[:markerspace] = :data
+    scatter_attr[:markersize] = markersize
+    scatter!(p, scatter_attr, lift(first, p, xycol))
 
-    lines!(p, rect,
-        color = p.framecolor,
-        linewidth = p.framesize,
-        visible = p.framevisible,
-        inspectable = false
-    )
+    line_attr = shared_attributes(p, Lines, [:framecolor => :color, 
+        :framesize => :linewidth, :framevisible => :visible])
+    line_attr[:inspectable] = false
+    lines!(p, line_attr, rect)
 end

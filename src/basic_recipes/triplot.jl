@@ -222,17 +222,27 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
-          color=p.triangle_color)
-    linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
-                  linecap=p.linecap, linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
-    lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linecap = p.linecap, joinstyle = p.joinstyle, miter_limit = p.miter_limit,
-           linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
-    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
-                  linecap=p.linecap, linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
-    scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
-             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
+    poly_attr = shared_attributes(p, Poly, [:triangle_color => :color])
+    poly!(p, poly_attr, points_2f, triangles_3f)
+
+    ghost_attr = shared_attributes(p, LineSegments, [:ghost_edge_color => :color, 
+        :ghost_edge_linewidth => :linewidth, :ghost_edge_linestyle => :linestyle])
+    linesegments!(p, ghost_attr, ghost_edges_2f)
+
+    hull_attr = shared_attributes(p, Lines, [:convex_hull_color => :color,
+        :convex_hull_linewidth => :linewidth, :convex_hull_linestyle => :linestyle])
+    hull_attr[:depth_shift] = -1.0f-5
+    lines!(p, hull_attr, convex_hull_2f)
+
+    edge_attr = shared_attributes(p, LineSegments, [:constrained_edge_color => :color,
+        :constrained_edge_linewidth => :linewidth, :constrained_edge_linestyle => :linestyle])
+    edge_attr[:depth_shift] = -2.0f-5
+    linesegments!(p, edge_attr, constrained_edges_2f)
+
+    scatter_attr = shared_attributes(p, Scatter, [:markercolor => :color, :show_points => :visible])
+    scatter_attr[:depth_shift] = -3.0f-5
+    scatter!(p, scatter_attr, present_points_2f)
+    
     return p
 end
 

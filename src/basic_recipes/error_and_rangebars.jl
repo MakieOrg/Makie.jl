@@ -203,9 +203,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    @extract plot (
-        whiskerwidth, color, linewidth, linecap, visible, colormap, colorscale, colorrange,
-        inspectable, transparency)
+    @extract plot (whiskerwidth, color, linewidth, linecap)
 
     scene = parent_scene(plot)
 
@@ -241,17 +239,16 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
 
-    linesegments!(
-        plot, linesegpairs, color = color, linewidth = linewidth, linecap = linecap, visible = visible,
-        colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
-        transparency = transparency
-    )
-    linesegments!(
-        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, linecap = linecap,
-        visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency, space = :pixel,
-        model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
-    )
+    bar_attr = shared_attributes(plot, LineSegment)
+    linesegments!(plot, bar_attr, linesegpairs)
+    
+    whisker_attr = shared_attributes(plot, LineSegment)
+    whisker_attr[:color] = whiskercolors
+    whisker_attr[:linewidth] = whiskerlinewidths
+    whisker_attr[:space] = :pixel
+    whisker_attr[:transformation] = Transformation() # overwrite transformations
+    linesegments!(plot, whisker_attr, whiskers)
+    
     plot
 end
 

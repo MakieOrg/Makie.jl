@@ -60,7 +60,7 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, linecap, joinstyle, miter_limit, color, solid_color, space, linestyle)
+    @extract plot (curves, labels, color, solid_color, linestyle)
     sargs = [:marker, :markersize, :strokecolor, :strokewidth]
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
@@ -77,17 +77,23 @@ function plot!(plot::Series)
         positions = lift(c-> c[i], plot, curves)
         series_color = lift(c-> c isa AbstractVector ? c[i] : c, plot, colors)
         series_linestyle = lift(ls-> ls isa AbstractVector ? ls[i] : ls, plot, linestyle)
+
         if !isempty(scatter)
-            mcolor = plot.markercolor
-            markercolor = lift((mc, sc)-> mc == automatic ? sc : mc, plot, mcolor, series_color)
-            scatterlines!(plot, positions;
-                linewidth=linewidth, linecap = plot.linecap, joinstyle = joinstyle,
-                miter_limit = miter_limit, color=series_color, markercolor=series_color,
-                label=label[], scatter..., space = space, linestyle = series_linestyle)
+            attr = shared_attributes(plot, ScatterLines)
+            drop_attributes!(attr, sargs) # we don't want to pass nothing
+            foreach((k, v) -> attr[k] = v, scatter)
+            attr[:label] = label
+            attr[:color] = series_color
+            attr[:linestyle] = series_linestyle
+
+            scatterlines!(plot, attr, positions)
         else
-            lines!(plot, positions; linewidth=linewidth, linecap = plot.linecap,
-                joinstyle = joinstyle, miter_limit = miter_limit, color=series_color,
-                label=label, space = space, linestyle = series_linestyle)
+            attr = shared_attributes(plot, Lines)
+            attr[:label] = label
+            attr[:color] = series_color
+            attr[:linestyle] = series_linestyle
+            
+            lines!(plot, attr, positions)
         end
     end
 end

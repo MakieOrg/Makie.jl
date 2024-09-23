@@ -111,13 +111,19 @@ function plot!(pl::Bracket)
         return rots
     end
 
-    # Avoid scale!() / translate!() / rotate!() to affect these
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
-        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
-        miter_limit = pl.miter_limit, transformation = Transformation())
-    text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
-        fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
-        justification = pl.justification, model = Mat4f(I))
+    # Avoid scale!() / translate!() / rotate!() to affect these (replace transformations/model)
+    line_attr = shared_attributes(pl, Series, [:color => :solid_color])
+    line_attr[:space] = :pixel
+    line_attr[:transformation] = Transformation()
+    series!(pl, line_attr, bp)
+
+    text_attr = shared_attributes(pl, Text, [:textcolor => :color])
+    text_attr[:space] = :pixel
+    text_attr[:offset] = textoffset_vec
+    text_attr[:rotation] = textoffset_vec
+    text_attr[:model] = Mat4f(I)
+    text!(pl, text_attr, text_tuples)
+    
     pl
 end
 

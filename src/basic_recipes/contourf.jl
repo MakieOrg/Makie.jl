@@ -131,20 +131,16 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-    poly!(c,
-        polys,
-        colormap = c._computed_colormap,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
-        nan_color = c.nan_color,
-        color = colors,
-        strokewidth = 0,
-        strokecolor = :transparent,
-        shading = NoShading,
-        inspectable = c.inspectable,
-        transparency = c.transparency
-    )
+    attr = shared_attributes(c, Poly, [Symbol("_computed_colormap") => :colormap])
+    attr[:colormap] = c._computed_colormap
+    attr[:colorrange] = colorrange
+    attr[:highclip] = highcolor
+    attr[:lowclip] = lowcolor
+    attr[:color] = colors
+    attr[:strokewidth] = 0
+    attr[:strokecolor] = :transparent
+
+    poly!(c, attr, polys)
 end
 
 """
