@@ -602,6 +602,9 @@ function shared_attributes(
     delete!(valid_attributes, :inspector_clear)
     delete!(valid_attributes, :inspector_hover)
     delete!(valid_attributes, :inspector_label)
+    delete!(valid_attributes, :xautolimits)
+    delete!(valid_attributes, :yautolimits)
+    delete!(valid_attributes, :zautolimits)
 
     # All attribute names that can be copied directly, i.e. are valid, exist and not renamed
     existing_attributes = setdiff(keys(plot.attributes), first.(renames))
