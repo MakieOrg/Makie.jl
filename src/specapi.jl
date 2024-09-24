@@ -704,10 +704,10 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
             tightlimits!(block)
         end
     end
-    for observer in spec.then_observers
+    for observer in old_spec.then_observers
         Observables.off(observer)
     end
-    empty!(spec.then_observers)
+    empty!(old_spec.then_observers)
     if hasproperty(spec, :xaxislinks)
         empty!(spec.xaxislinks)
     end
