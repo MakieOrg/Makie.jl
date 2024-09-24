@@ -296,8 +296,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting),
-        distance_score(ap, bp, scores),
+        abs(anesting - bnesting) * 2,
+        distance_score(ap, bp, scores) * 2,
         distance_score(a, b, scores)
     ]
     return norm(scores)
@@ -698,7 +698,9 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
-        plot_obs[] = spec.plots
+        if plot_obs[] != spec.plots
+            plot_obs[] = spec.plots
+        end
         scene = get_scene(block)
         if any(needs_tight_limits, scene.plots)
             tightlimits!(block)
@@ -760,8 +762,6 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     end
     return
 end
-
-
 
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
@@ -830,10 +830,12 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
     # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
+
     update_gridlayout!(target_layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
-    # We keep all layoutables and just disconnect them and hide them, so we can re-use them
     foreach(unused_layoutables) do (p, (block, obs))
-        return disconnect!(block) # hide & disconnect block
+        # disconnect! all unused layoutables, so they dont show up anymore
+        disconnect!(block)
+        return
     end
     layouts_to_update = Set{GridLayout}([target_layout])
     for (_, (content, _)) in new_layoutables
@@ -848,9 +850,14 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
         l.block_updates = false
         GridLayoutBase.update!(l)
     end
+
+    # foreach(unused_layoutables) do (p, (block, obs))
+    #     # Finally, disconnect all blocks that haven't been used!
+    #     disconnect!(block)
+    #     return
+    # end
     # Finally transfer all new_layoutables into reusable_layoutables,
     # since in the next update they will be the once we re-use
-    # TODO: Is this actually more efficent for GC then `reusable_layoutables=new_layoutables` ?
     append!(unused_layoutables, new_layoutables)
     unique!(unused_layoutables)
     return
