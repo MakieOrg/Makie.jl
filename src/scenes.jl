@@ -292,7 +292,7 @@ function Scene(
         viewport=nothing,
         clear=false,
         camera=nothing,
-        visible=copy(parent.visible),
+        visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         kw...
@@ -302,6 +302,17 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    listener = nothing
+    _visible = Observable(true)
+    if visible isa Observable
+        listener = on(visible) do v
+            _visible[] = v
+        end
+    elseif visible isa Bool
+        _visible[] = visible
+    else
+        error("Unsupported typer visible: $(typeof(visible))")
+    end
     child = Scene(;
         events=events,
         viewport=child_px_area,
@@ -315,6 +326,9 @@ function Scene(
         theme=theme(parent),
         kw...
     )
+    if !isnothing(listener)
+        push!(child.deregister_callbacks, listener)
+    end
     if isnothing(viewport)
         map!(identity, child, child_px_area, parent.viewport)
     elseif viewport isa Rect2
