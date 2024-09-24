@@ -682,7 +682,7 @@ end
 @reference_test "Clip planes - voxel" begin
     f = Figure()
     a = LScene(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-2, -1, -0.5), 0.0), Plane3f(Vec3f(-0.5, -1, -2), 0.0)]
+    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-2, -1, -0.5), 0.1), Plane3f(Vec3f(-0.5, -1, -2), 0.1)]
     r = -10:10
     p = voxels!(a, [cos(sin(x+y)+z) for x in r, y in r, z in r])
     f
