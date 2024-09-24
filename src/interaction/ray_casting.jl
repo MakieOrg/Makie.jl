@@ -292,10 +292,11 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     if apply_transform
         return inv_f32_convert(plot, Point3d(pos))
     else
-        p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, pos), 1)
+        p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, Point3d(pos)), 1)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
-        return Makie.apply_transform(itf, p3d, get(plot, :space, :data))
+        out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
+        return out 
     end
 end
 
@@ -415,16 +416,17 @@ end
 function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     min, max = Point3d.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
 
+    space = to_value(get(plot, :space, :data))
     if apply_transform
         min = apply_transform_and_model(plot, min)
         max = apply_transform_and_model(plot, max)
         return ray_rect_intersection(Rect3(min, max .- min), ray)
     else
-        min = Makie.apply_transform(transform_func(plot), min, get(plot, :space, :data))
-        max = Makie.apply_transform(transform_func(plot), max, get(plot, :space, :data))
+        min = Makie.apply_transform(transform_func(plot), min, space)
+        max = Makie.apply_transform(transform_func(plot), max, space)
         ray = transform(inv(plot.model[]), ray)
         pos = ray_rect_intersection(Rect3(min, max .- min), ray)
-        return Makie.apply_transform(inverse_transform(plot), pos, get(plot, :space, :data))
+        return Makie.apply_transform(inverse_transform(plot), pos, space)
     end
 end
 
