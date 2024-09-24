@@ -241,6 +241,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
 
     scatter_attr = shared_attributes(p, Scatter, [:markercolor => :color, :show_points => :visible])
     scatter_attr[:depth_shift] = Observable(-3.0f-5)
+    pop!.(scatter_attr, (:strokecolor, :strokewidth))
     scatter!(p, scatter_attr, present_points_2f)
 
     return p

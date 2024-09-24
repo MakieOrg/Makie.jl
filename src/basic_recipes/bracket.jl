@@ -120,7 +120,7 @@ function plot!(pl::Bracket)
     text_attr = shared_attributes(pl, Text, [:textcolor => :color])
     text_attr[:space] = Observable(:pixel)
     text_attr[:offset] = textoffset_vec
-    text_attr[:rotation] = textoffset_vec
+    text_attr[:rotation] = autorotations
     text_attr[:model] = Observable(Mat4f(I))
     text!(pl, text_attr, text_tuples)
     

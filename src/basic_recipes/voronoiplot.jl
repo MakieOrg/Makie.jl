@@ -205,8 +205,9 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     poly_attr = shared_attributes(p, Poly, [Symbol("_calculated_colors") => :color])
     poly!(p, poly_attr, polygons)
     
-    scatter_attr = shared_attributes(p, Poly, [:markercolor => :color, :show_generators => :visible])
+    scatter_attr = shared_attributes(p, Scatter, [:markercolor => :color, :show_generators => :visible])
     scatter_attr[:depth_shift] = Observable(-2.0f-5)
+    pop!.(scatter_attr, (:strokewidth, :strokecolor))
     scatter!(p, scatter_attr, generators_2f)
 
     return p
