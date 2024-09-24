@@ -587,7 +587,7 @@ function shared_attributes(
         warn_on_missing = false, 
     )
 
-    valid_attributes = copy(attribute_names(target))
+    valid_attributes = Set(attribute_names(target))
     rename_targets = Set(last.(renames))
 
     # Check that all renames are valid for the given plot type
