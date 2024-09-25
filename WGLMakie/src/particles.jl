@@ -272,7 +272,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     glyphcollection = plot[1]
     f32c, model = Makie.patch_model(plot)
     pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
-    space = plot.space
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
@@ -282,10 +281,10 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     # unpack values from the one signal:
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        return lift(getindex, plot, glyph_data, i)
+        return lift(getindex, plot, glyph_data, i; ignore_equal_values=true)
     end
 
-    uniform_color = lift(plot, glyphcollection) do gc
+    uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
                 init = RGBAf[])
@@ -294,7 +293,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         end
     end
 
-    uniform_rotation = lift(plot, glyphcollection) do gc
+    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
             reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
                 init = Quaternionf[])

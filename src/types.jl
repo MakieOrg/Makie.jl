@@ -370,7 +370,7 @@ end
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
+Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
     if sv.sv isa Vector
         if length(sv.sv) != n
@@ -450,6 +450,18 @@ struct GlyphCollection
         strokewidths = Float32.(strokewidths)
         new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
     end
+end
+
+function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
+    a.glyphs == b.glyphs &&
+    a.fonts == b.fonts &&
+    a.origins == b.origins &&
+    a.extents == b.extents &&
+    a.scales == b.scales &&
+    a.rotations == b.rotations &&
+    a.colors == b.colors &&
+    a.strokecolors == b.strokecolors &&
+    a.strokewidths == b.strokewidths
 end
 
 
