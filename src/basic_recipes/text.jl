@@ -26,6 +26,7 @@ function plot!(plot::Text)
         attributes(plot)[:text] = plot[2]
     end
     calc_color = plot.calculated_colors[]
+
     color_scaled = calc_color isa ColorMapping ? calc_color.color_scaled : plot.color
     cmap = calc_color isa ColorMapping ? calc_color.colormap : plot.colormap
 

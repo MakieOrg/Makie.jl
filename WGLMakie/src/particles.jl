@@ -218,7 +218,6 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     handle_color!(plot, uniform_dict, per_instance, :color)
     handle_color_getter!(uniform_dict, per_instance)
-
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
         to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
@@ -238,7 +237,11 @@ function scatter_shader(scene::Scene, attributes, plot)
     get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
     get!(uniform_dict, :glowwidth, 0f0)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
-
+    _, arr = first(per_instance)
+    if any(v-> length(arr) != length(v), values(per_instance))
+        lens = [k => length(v) for (k, v) in per_instance]
+        error("Not all have the same length: $(lens)")
+    end
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
@@ -286,19 +289,36 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
-                init = RGBAf[])
+            if length(gc) == 1
+                gc[1].colors.sv
+            else
+                col1 = gc[1].colors.sv
+                if all(x -> col1 === x.colors.sv, gc)
+                    return col1
+                else
+                    reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
+                           init=RGBAf[])
+                end
+            end
         else
-            Makie.collect_vector(gc.colors, length(gc.glyphs))
+            gc.colors.sv
         end
     end
-
     uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
-                init = Quaternionf[])
+            if length(gc) == 1
+                gc[1].rotations.sv
+            else
+                rot1 = gc[1].rotations.sv
+                if all(x-> rot1 === x.rotations.sv, gc)
+                    return rot1
+                else
+                    reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
+                           init=Quaternionf[])
+                end
+            end
         else
-            Makie.collect_vector(gc.rotations, length(gc.glyphs))
+            gc.rotations.sv
         end
     end
 

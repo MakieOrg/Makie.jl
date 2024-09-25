@@ -423,7 +423,7 @@ Stores information about the glyphs in a string that had a layout calculated for
 """
 struct GlyphCollection
     glyphs::Vector{UInt64}
-    fonts::Vector{FTFont}
+    fonts::ScalarOrVector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
@@ -436,19 +436,24 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts) == n
+        # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
+        return new(
+            glyphs,
+            to_font(fonts),
+            origins,
+            extents,
+            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            to_rotation(rotations),
+            to_color(colors),
+            to_color(strokecolors),
+            to_linewidth(strokewidths)
+        )
     end
 end
 
