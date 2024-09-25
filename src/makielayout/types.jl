@@ -78,7 +78,7 @@ struct MultiplesTicks
     strip_zero::Bool
 end
 
-MultiplesTicks(n_ideal, multiple, suffix) = MultiplesTicks(n_ideal, multiple, suffix, false)
+MultiplesTicks(n_ideal, multiple, suffix; strip_zero = false) = MultiplesTicks(n_ideal, multiple, suffix, strip_zero)
 
 """
     AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
