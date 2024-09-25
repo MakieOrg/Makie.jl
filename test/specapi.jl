@@ -161,9 +161,9 @@ end
     pl[1] = S.GridLayout(reverse(axes))
     rev_axes = copy(f.content[1:3])
     c_axes = map(x-> x.content, f.layout.content)
-    # Axis get reversed in layout, but not in f.content
-    @test rev_axes == reverse(c_axes)
-    @test map(x-> x.title[], rev_axes) == ["Title $i" for i in 1:3]
+    # Axis don't get reversed, we only update the titles
+    @test rev_axes == c_axes
+    @test map(x-> x.title[], rev_axes) == reverse(["Title $i" for i in 1:3])
     @test all(((a, b),) -> a === b, zip(rev_axes, real_axes))
     @test all(((a, b),) -> a.title[] == b.title[], zip(rev_axes, real_axes))
     pl[1] =  S.GridLayout()
