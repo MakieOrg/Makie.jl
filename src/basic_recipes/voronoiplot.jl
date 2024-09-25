@@ -175,7 +175,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
-            cs = [i for i in DelTri.each_generator(vorn)]
+            cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
             return cs
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
