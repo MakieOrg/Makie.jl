@@ -170,7 +170,6 @@ excludes = Set([
     "Orthographic Camera", # This renders blank, why?
     "3D Contour with 2D contour slices",
     "Surface with image",
-    "step-2",
     "FEM poly and mesh", # different color due to bad colormap resolution on mesh
     "Image on Surface Sphere", # bad texture resolution
     "Arrows 3D",
