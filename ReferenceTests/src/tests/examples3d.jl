@@ -90,9 +90,8 @@ end
 
 @reference_test "Wireframe of mesh, GeoemtryPrimitive and Surface" begin
     f = Figure()
-    wireframe(f[1, 1], loadasset("cat.obj"))
 
-    wireframe(f[1, 2], Sphere(Point3f(0), 1f0))
+    wireframe(f[1, 1], Sphere(Point3f(0), 1f0))
 
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -103,6 +102,8 @@ end
     z = Float32[xy_data(x, y) for x in lspace, y in lspace]
     r = range(0, stop=3, length=N)
     wireframe(f[2, 1], r, r, z)
+
+    wireframe(f[1:2, 2], loadasset("cat.obj"))
 
     f
 end
