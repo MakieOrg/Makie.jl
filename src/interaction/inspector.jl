@@ -677,12 +677,12 @@ function show_imagelike(inspector, plot, name, edge_based)
         tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
     end
 
-    a._color[] = if z isa Real
+    if z isa Real
         if haskey(plot, :calculated_colors)
-            get(plot.calculated_colors[], z)
+            a._color[] = get(plot.calculated_colors[], z)
         end
     else
-        z
+        a._color[] = z
     end
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
