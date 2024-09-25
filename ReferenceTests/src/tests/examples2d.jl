@@ -85,7 +85,7 @@ end
     f = Figure()
     poly(f[1, 1], coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
 
-    mesh(f[2, 1], coordinates, connectivity, color=color, shading=NoShading)
+    a, meshplot = mesh(f[2, 1], coordinates, connectivity, color=color, shading=NoShading)
     wireframe!(meshplot[1], color=(:black, 0.6), linewidth=3)
 
     cat = loadasset("cat.obj")
