@@ -35,6 +35,9 @@ end
     f = Figure()
     scatter(f[1, 1], 0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
     scatter(f[1, 2], LinRange(0, 1, 10), RNG.rand(10))
+    colors = Makie.resample(to_colormap(:Spectral), 20)
+    scatter!(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
+    
     scatter(f[2, 1], -1..1, x -> x^2)
     scatter(f[2, 2], RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
     f
