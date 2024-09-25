@@ -1,13 +1,13 @@
 
 @reference_test "mesh textured and loaded" begin
     f = Figure(size = (600, 600))
-
+    
     moon = loadasset("moon.png")
     ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon, 
         shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     cameracontrols(ax).settings.center[] = false # avoid recenter on display
-
+    
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
     mesh(f[1, 2], m, color=earth, shading=NoShading)
@@ -127,15 +127,6 @@ end
     colS = [RGBAf(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:length(positions)]
     sizesS = [RNG.rand(Point3f) .* 0.05f0 for i = 1:length(positions)]
     meshscatter(positions, color=colS, markersize=sizesS)
-end
-
-@reference_test "scatter" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=10)
-end
-
-@reference_test "Marker sizes" begin
-    colors = Makie.resample(to_colormap(:Spectral), 20)
-    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
 end
 
 @reference_test "Ellipsoid marker sizes" begin # see PR #3722

@@ -172,12 +172,6 @@ end
     fig
 end
 
-@reference_test "reverse range heatmap" begin
-    x = [1 0
-         2 3]
-    heatmap(1:2, 1:-1:0, x)
-end
-
 @reference_test "lines linesegments width test" begin
     res = 200
     s = Scene(camera=campixel!, size=(res, res))

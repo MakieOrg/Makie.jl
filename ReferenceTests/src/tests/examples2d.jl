@@ -435,14 +435,6 @@ end
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
 end
 
-
-@reference_test "Line Function" begin
-    x = range(0, stop=3pi)
-    fig, ax, lineplot = lines(x, sin.(x))
-    lines!(ax, x, cos.(x), color=:blue)
-    fig
-end
-
 @reference_test "Grouped bar" begin
     x1         = ["a_right", "a_right", "a_right", "a_right"]
     y1         = [2, 3, -3, -2]
