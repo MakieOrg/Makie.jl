@@ -471,6 +471,15 @@ function Base.delete!(block::Block)
     return
 end
 
+function unhide!(block::Block)
+    if !block.blockscene.visible[]
+        block.blockscene.visible[] = true
+    end
+    if hasproperty(block, :scene) && !block.scene.visible[]
+        block.scene.visible[] = true
+    end
+end
+
 function hide!(block::Block)
     if block.blockscene.visible[]
         block.blockscene.visible[] = false

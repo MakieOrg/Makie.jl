@@ -238,18 +238,18 @@ end
 # pessimistic about what's updatable and to avoid issues with
 # Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
 # TODO when focussing better performance, this is one of the first things we want to try
-function distance_score(a::PlotSpec, b::PlotSpec, scores)
+function distance_score(a::PlotSpec, b::PlotSpec, scores_dict)
     (a.type !== b.type) && return 100.0
     scores = Float64[
-        distance_score(a.args, b.args, scores),
-        distance_score(a.kwargs, b.kwargs, scores)
+        distance_score(a.args, b.args, scores_dict),
+        distance_score(a.kwargs, b.kwargs, scores_dict)
     ]
     return norm(scores)
 end
 
 function distance_score(a::Any, b::Any, scores)
     a === b && return 0.0
-    a == b && return 0.01
+    a == b && return 0.0
     typeof(a) == typeof(b) && return 0.5
     return 100.0
 end
@@ -258,13 +258,13 @@ _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
 
-function distance_score(a::T, b::T, scores) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
+function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
     a === b && return 0.0
     isempty(a) && isempty(b) && return 0.0
     all_keys = collect(union(keys(a), keys(b)))
     scores = map(all_keys) do key
         if _has_index(a, key) && _has_index(b, key)
-            return distance_score(a[key], b[key], scores)
+            return distance_score(a[key], b[key], scores_dict)
         else
             return 1.0
         end
@@ -277,28 +277,28 @@ function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores)
     return norm(distance_score.(a, b, Ref(scores)))
 end
 
-function distance_score(a::BlockSpec, b::BlockSpec, scores)
+function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     a === b && return 0.0
-    (a.type !== b.type) && return 100.0
-    get!(scores, (a, b)) do
+    (a.type !== b.type) && return 100.0 # Cant update when types dont match
+    get!(scores_dict, (a, b)) do
         scores = Float64[
-            distance_score(a.kwargs, b.kwargs, scores),
-            distance_score(a.plots, b.plots, scores),
-            distance_score(a.then_funcs, b.then_funcs, scores)
+            distance_score(a.kwargs, b.kwargs, scores_dict),
+            distance_score(a.plots, b.plots, scores_dict),
+            distance_score(a.then_funcs, b.then_funcs, scores_dict)
         ]
         return norm(scores)
     end
 end
 
 function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
-                        scores) where {GP<:GridLayoutPosition,BS<:BlockSpec}
+                        scores_dict) where {GP<:GridLayoutPosition,BS<:BlockSpec}
     at === bt && return 0.0
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
         abs(anesting - bnesting) * 2,
-        distance_score(ap, bp, scores) * 2,
-        distance_score(a, b, scores)
+        distance_score(ap, bp, scores_dict) * 2,
+        distance_score(a, b, scores_dict)
     ]
     return norm(scores)
 end
@@ -317,32 +317,37 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
     end
 end
 
-function find_reusable_plot(plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot})
-    isempty(plots) && return nothing, nothing
-    scores = IdDict{Any,Float64}()
-    specs = collect(keys(plots))
-    score, idx = findmin(specs) do spec
-        return distance_score(plotspec, spec, scores)
+function find_min_distance(f, to_compare, list, scores)
+    isempty(list) && return -1
+    minscore = 2.0
+    idx = -1
+    for key in keys(list)
+        score = distance_score(to_compare, f(list[key], key), scores)
+        if score ≈ 0.0 # shortcuircit for exact matches
+            return key
+        end
+        if score < minscore
+            minscore = score
+            idx = key
+        end
     end
-    if score <= 1.0
-        return plots[specs[idx]], specs[idx]
-    end
-    return nothing, nothing
+    return idx
 end
 
-function find_layoutable(nest_pos_spec::LayoutableKey,
-                         layoutables::Vector{Pair{LayoutableKey,
-                                                  Tuple{Layoutable,Observable{Vector{PlotSpec}}}}})
-    scores = IdDict{Any,Float64}()
-    isempty(layoutables) && return 0, nothing, nothing
-    score, index = findmin(layoutables) do (b_nest_pos_spec, _)
-        return distance_score(nest_pos_spec, b_nest_pos_spec, scores)
-    end
-    if score <= 1.0
-        return (index, layoutables[index]...)
-    else
-        return 0, nothing, nothing
-    end
+function find_layoutable(
+        nest_pos_spec::LayoutableKey,
+        layoutables::Vector{Pair{LayoutableKey, Tuple{Layoutable,Observable{Vector{PlotSpec}}}}},
+        scores
+    )
+    idx = find_min_distance((x, _)-> first(x), nest_pos_spec, layoutables, scores)
+    idx == -1 && return 0, nothing, nothing
+    return (idx, layoutables[idx]...)
+end
+
+function find_reusable_plot(plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
+    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
+    idx == -1 && return nothing, nothing
+    return plots[idx], idx
 end
 
 to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
@@ -543,9 +548,10 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     empty!(obs_to_notify)
+    scores = IdDict{Any, Float64}()
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots)
+        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots, scores)
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
@@ -628,8 +634,6 @@ function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotS
     return p
 end
 
-
-
 add_observer!(::BlockSpec, ::Nothing) = nothing
 function add_observer!(block::BlockSpec, obs::ObserverFunction)
     push!(block.then_observers, obs)
@@ -670,10 +674,7 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
-    block.blockscene.visible[] = true
-    if hasproperty(block, :scene)
-        block.scene.visible[] = true
-    end
+    unhide!(block)
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -768,10 +769,11 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                             gridspec::GridLayoutSpec, previous_contents, new_layoutables)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
-
+    scores = IdDict{Any, Float64}()
     for (position, spec) in gridspec.content
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents)
+
+        idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
             @debug("Creating new content for spec")
             # Create new plot, store it into `new_layoutables`
