@@ -321,7 +321,7 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
-    positions = coordinates(plot.mesh[])
+    positions = decompose(Point3, plot.mesh[])
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
