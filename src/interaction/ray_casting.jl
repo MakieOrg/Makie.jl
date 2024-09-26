@@ -273,12 +273,11 @@ end
 function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
     point = plot[1][][idx]
     point3 = to_ndim(Point3d, point, 0)
-    point_t = if apply_transform && !isnan(point3)
-        apply_transform_and_model(plot, point3)
+    if apply_transform && !isnan(point3)
+        return apply_transform_and_model(plot, point3)
     else
-        point3
+        return point3
     end
-    return to_ndim(typeof(point), point_t, 0.0f0)
 end
 
 function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
