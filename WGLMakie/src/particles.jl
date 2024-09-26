@@ -294,38 +294,16 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            if isempty(gc)
-                return RGBAf[]
-            elseif length(gc) == 1
-                gc[1].colors.sv
-            else
-                col1 = gc[1].colors.sv
-                if all(x -> col1 === x.colors.sv, gc)
-                    return col1
-                else
-                    reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
-                           init=RGBAf[])
-                end
-            end
+            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
+                    init=RGBAf[])
         else
             gc.colors.sv
         end
     end
     uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            if isempty(gc)
-                return Float32[]
-            elseif length(gc) == 1
-                gc[1].rotations.sv
-            else
-                rot1 = gc[1].rotations.sv
-                if all(x-> rot1 === x.rotations.sv, gc)
-                    return rot1
-                else
-                    reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
-                           init=Quaternionf[])
-                end
-            end
+            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
+                    init=Quaternionf[])
         else
             gc.rotations.sv
         end
