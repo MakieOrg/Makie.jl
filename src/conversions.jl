@@ -364,12 +364,10 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
     return EndPoints(T.(x))
 end
-to_endpoints(x::ClosedInterval) = to_endpoints(endpoints(x))
-function to_endpoints(x::Union{Interval,AbstractVector,ClosedInterval})
-    return to_endpoints((minimum(x), maximum(x)))
-end
+to_endpoints(x::Interval) = to_endpoints(endpoints(x))
+to_endpoints(x::EndPoints) = x
+to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
 function to_endpoints(x, dim)
-    # having minimum and maximum here actually invites bugs
     x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
     return to_endpoints(x)
 end
@@ -692,7 +690,8 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
 Converts the element array type to `T1` without making a copy if the element type matches
