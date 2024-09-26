@@ -1784,6 +1784,37 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+
+        # Interaction
+        "Locks interactive zooming in the x direction."
+        xzoomlock::Bool = false
+        "Locks interactive zooming in the y direction."
+        yzoomlock::Bool = false
+        "Locks interactive zooming in the z direction."
+        zzoomlock::Bool = false
+        "The key for limiting zooming to the x direction."
+        xzoomkey::IsPressedInputType = Keyboard.x
+        "The key for limiting zooming to the y direction."
+        yzoomkey::IsPressedInputType = Keyboard.y
+        "The key for limiting zooming to the z direction."
+        zzoomkey::IsPressedInputType = Keyboard.z
+        "Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor` for zooming centered approximately where the cursor is."
+        zoommode::Symbol = :center
+
+        "Locks interactive translation in the x direction."
+        xtranslationlock::Bool = false
+        "Locks interactive translation in the y direction."
+        ytranslationlock::Bool = false
+        "Locks interactive translation in the z direction."
+        ztranslationlock::Bool = false
+        "The key for limiting translation to the x direction."
+        xtranslationkey::IsPressedInputType = Keyboard.x
+        "The key for limiting translations to the y direction."
+        ytranslationkey::IsPressedInputType = Keyboard.y
+        "The key for limiting translations to the y direction."
+        ztranslationkey::IsPressedInputType = Keyboard.z
+
+
     end
 end
 

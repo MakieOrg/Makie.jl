@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added translation, zoom and limit reset interactions to Axis3 [4131](https://github.com/MakieOrg/Makie.jl/pull/4131)
 - Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
 - Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
 - Fix voxel clipping not being based on voxel centers [#4397](https://github.com/MakieOrg/Makie.jl/pull/4397)
