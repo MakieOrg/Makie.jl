@@ -179,7 +179,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     per_instance = filter(attributes) do (k, v)
-        return k in per_instance_keys && !(isscalar(v[]))
+        return k in per_instance_keys && !(isscalar(to_value(v)))
     end
 
     for (k, v) in per_instance
@@ -248,7 +248,12 @@ end
 
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
-    attributes = copy(plot.attributes.attributes)
+    # create new dict so we don't automatically convert to observables
+    # Which is the case for Dict{Symbol, Observable}
+    attributes = Dict{Symbol, Any}()
+    for (k, v) in plot.attributes.attributes
+        attributes[k] = v
+    end
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
     f32c, model = Makie.patch_model(plot)
