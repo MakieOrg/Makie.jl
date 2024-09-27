@@ -86,8 +86,7 @@ function initialize_block!(tbox::Textbox)
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
-            cursorindex[] = length(bbs)
-            return
+            ci = cursorindex[] = length(bbs)
         end
 
         if 0 < ci < length(bbs)
