@@ -82,7 +82,7 @@ function set_packing_alignment(a) # at some point we should specialize to array/
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0)
 end
 
-function Texture(
+Makie.@noconstprop function Texture(
         data::Ptr{T}, dims::NTuple{NDim, Int};
         internalformat::GLenum = default_internalcolorformat(T),
         texturetype   ::GLenum = default_texturetype(NDim),

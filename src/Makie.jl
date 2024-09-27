@@ -329,16 +329,34 @@ export Pattern
 export ReversibleScale
 
 export assetpath
+
+# 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
+# We use this mainly in GLMakie to avoid a few bigger OpenGL based functions to get constant propagation
+# (e.g. GLFrameBuffer((width, height)), which should not profit from any constant propagation)
+macro noconstprop(expr)
+    if isdefined(Base, Symbol("@constprop"))
+        return esc(:(Base.@constprop :none @noinline $(expr)))
+    else
+        return esc(:(@noinline $(expr)))
+    end
+end
+
+using PNGFiles
+
 # default icon for Makie
+function load_icon(name::String)::Matrix{NTuple{4,UInt8}}
+    img = PNGFiles.load(name)::Matrix{RGBA{Colors.N0f8}}
+    return reinterpret(NTuple{4,UInt8}, img)
+end
+
 function icon()
     path = assetpath("icons")
-    imgs = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
-    return reinterpret.(NTuple{4,UInt8}, icons)
+    icons = readdir(path; join=true)
+    return map(load_icon, icons)
 end
 
 function logo()
-    FileIO.load(assetpath("logo.png"))
+    return PNGFiles.load(assetpath("logo.png"))
 end
 
 # populated by __init__()

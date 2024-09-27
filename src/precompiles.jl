@@ -25,6 +25,8 @@ precompile(MakieCore.convert_arguments, (Type{Scatter}, UnitRange{Int64}))
 precompile(Makie.assemble_colors, (UnitRange{Int64}, Any, Any))
 let
     @compile_workload begin
+        icon()
+        logo()
         f = Figure()
         ax = Axis(f[1, 1])
         Makie.initialize_block!(ax)
