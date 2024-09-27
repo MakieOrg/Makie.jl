@@ -80,7 +80,7 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     # xlink:href="someid" (but not xlink:href="data:someothercontent" which is how image data is attached)
     # url(#someid)
     svg = replace(svg, r"((?:(?:id|xlink:href)=\"(?!data:)[^\"]+)|url\(#[^)]+)" => SubstitutionString("\\1-$salt"))
-    
+
     print(io, svg)
     return screen
 end

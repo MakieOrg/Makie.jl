@@ -16,7 +16,6 @@ using Base64
 # When loading Electron for WGLMakie, which depends on FilePaths
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-#
 import FilePaths
 using LaTeXStrings
 using MathTeXEngine
@@ -106,6 +105,18 @@ const NativeFont = FreeTypeAbstraction.FTFont
 
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
+
+
+# 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
+# We use this mainly in GLMakie to avoid a few bigger OpenGL based functions to get constant propagation
+# (e.g. GLFrameBuffer((width, height)), which should not profit from any constant propagation)
+macro noconstprop(expr)
+    if isdefined(Base, Symbol("@constprop"))
+        return esc(:(Base.@constprop :none @noinline $(expr)))
+    else
+        return esc(:(@noinline $(expr)))
+    end
+end
 
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
@@ -329,17 +340,6 @@ export Pattern
 export ReversibleScale
 
 export assetpath
-
-# 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
-# We use this mainly in GLMakie to avoid a few bigger OpenGL based functions to get constant propagation
-# (e.g. GLFrameBuffer((width, height)), which should not profit from any constant propagation)
-macro noconstprop(expr)
-    if isdefined(Base, Symbol("@constprop"))
-        return esc(:(Base.@constprop :none @noinline $(expr)))
-    else
-        return esc(:(@noinline $(expr)))
-    end
-end
 
 using PNGFiles
 
