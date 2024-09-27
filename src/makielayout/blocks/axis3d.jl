@@ -12,7 +12,11 @@ function initialize_block!(ax::Axis3)
     finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
     setfield!(ax, :finallimits, finallimits)
 
-    scenearea = lift(round_to_IRect2D, blockscene, ax.layoutobservables.computedbbox)
+    scenearea = lift(blockscene, ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+        mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+        maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+        return round_to_IRect2D(Rect2f(mini, maxi - mini))
+    end
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
@@ -45,7 +49,7 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :lookat, Observable(Vec3d(0)))
     setfield!(ax, :zoom_mult, Observable(1.0))
 
-    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
+    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions, ax.elevation, ax.azimuth,
                     ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
                     ax.zoom_mult, ax.lookat)
 
@@ -179,7 +183,7 @@ function initialize_block!(ax::Axis3)
     return
 end
 
-function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
+function calculate_matrices(limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
     viewmode, xreversed, yreversed, zreversed, zoom_mult, lookat)
 
     ori = limits.origin
@@ -245,12 +249,12 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, radius, fov,
-        w, h, viewmode)
+        w, h, to_protrusions(protrusions), viewmode)
 
     return model, lookat_matrix, projection_matrix, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, viewmode)
+function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode)
     # model normalizes the the longest axis of the axis bbox to -1..1, so its 
     # bounding sphere has a radius of sqrt(3)
     # The distance of the camera to the center of the bounding sphere is "radius"
@@ -264,28 +268,42 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, viewm
             fov = fov / aspect_ratio
         end
 
+        # this transforms w.r.t scene viewport, i.e. protrusions are not yet
+        # included
         pm = Makie.perspectiveprojection(Float64, fov, aspect_ratio, near, far)
 
+        # protrusions shrink the effective viewport which causes clip space 
+        # coordinates in the real viewport to grow
+        dx = (protrusions.left - protrusions.right) / width
+        dy = (protrusions.bottom - protrusions.top) / height
+        w = (width - protrusions.left - protrusions.right)
+        h = (height - protrusions.bottom - protrusions.top)
+
         if viewmode in (:fitzoom, :stretch)
+            # coordinates of axis rect w.r.t real viewport
             points = decompose(Point3f, limits)
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
 
-            maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
-            maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
-
-            ratio_x = maxx
-            ratio_y = maxy
+            # convert to effective viewport
+            w = w/width; h = h/height
+            maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
+            maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
+            
+            # normalization to map max x/y to 1 in effective viewport
+            ratio_x = 1.0 / maxx
+            ratio_y = 1.0 / maxy
 
             if viewmode === :fitzoom
-                if ratio_y > ratio_x
-                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
-                else
-                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
-                end
+                s = min(ratio_x, ratio_y)
+                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(s, s, 1)) * pm
             else
-                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
+                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3(ratio_x, ratio_y, 1)) * pm
             end
+        else
+            wh = min(w, h) / min(width, height) # works for :fit
+            pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(wh, wh, 1)) * pm
         end
+
         pm
     else
         error("Invalid viewmode $viewmode")
