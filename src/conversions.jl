@@ -55,6 +55,7 @@ end
 # Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
 convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
 convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
+convert_single_argument(a::OffsetArray{<:Point}) = OffsetArrays.no_offset_view(a)
 
 
 ################################################################################
@@ -86,6 +87,10 @@ function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N
         throw(ArgumentError("Only 2D and 3D points are supported."))
     end
     return (elconvert(Point{N, float_type(_T)}, positions),)
+end
+
+function convert_arguments(T::PointBased, positions::OffsetVector)
+   return convert_arguments(T, OffsetArrays.no_offset_view(positions))
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
