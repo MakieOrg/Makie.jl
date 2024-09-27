@@ -41,13 +41,13 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
 )
 
 """
-    QuadraticCurveTo(x0::Real, y0::Real, cx1::Real, cy1::Real, p1::Real, p2::Real)
+    quadratic_curve_to(x0::Real, y0::Real, cx1::Real, cy1::Real, p1::Real, p2::Real)
 
 A path command for use within a `BezierPath` which continues the current subpath with a quadratic
 bezier curve to point `p`, with the control point `c`. The curve is converted into a cubic bezier
 curve internally.
 """
-QuadraticCurveTo(x0, y0, cx1, cy1, p1, p2) = CurveTo(
+quadratic_curve_to(x0, y0, cx1, cy1, p1, p2) = CurveTo(
     x0 + 2/3 * (cx1 - x0), y0 + 2/3 * (cy1 - y0),
     p1 + 2/3 * (cx1 - p1), p2 + 2/3 * (cy1 - p2),
     p1, p2
@@ -508,12 +508,12 @@ function parse_bezier_commands(svg)
         elseif comm == "Q"
             x0, y0 = lastp()
             x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
-            push!(commands, QuadraticCurveTo(x0, y0, x1, y1, x2, y2))
+            push!(commands, quadratic_curve_to(x0, y0, x1, y1, x2, y2))
             i += 5
         elseif comm == "q"
             x0, y0 = lastp()
             x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
-            push!(commands, QuadraticCurveTo(x0, y0, x1 + x0, y1 + y0, x2 + x0, y2 + y0))
+            push!(commands, quadratic_curve_to(x0, y0, x1 + x0, y1 + y0, x2 + x0, y2 + y0))
             i += 5
         else
             for c in commands
