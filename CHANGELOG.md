@@ -1,8 +1,10 @@
 # Changelog
 
 ## [Unreleased]
-- Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
 
+## [0.21.12] - 2024-09-28
+
+- Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
 - Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
 - Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
 - Fix voxel clipping not being based on voxel centers [#4397](https://github.com/MakieOrg/Makie.jl/pull/4397)
@@ -606,7 +608,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...HEAD
+[0.21.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...v0.21.12
 [0.21.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...v0.21.11
 [0.21.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...v0.21.10
 [0.21.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...v0.21.9
