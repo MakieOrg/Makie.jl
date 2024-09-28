@@ -53,16 +53,16 @@ function initialize_block!(ax::Axis3)
                     ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
                     ax.zoom_mult, ax.lookat)
 
-    on(scene, matrices) do (model, view, proj, eyepos)
+    on(scene, matrices) do (model, view, proj, lookat, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
-        cam.eyeposition[] = eyepos
-        viewdir = -normalize(eyepos)
+
+        viewdir = normalize(lookat - eyepos)
         up = Vec3d(0, 0, 1)
-        lookat = Vec3d(0)
-        u_z = normalize(eyepos .- lookat)
+        u_z = -viewdir
         u_x = normalize(cross(up, u_z))
+        cam.eyeposition[] = eyepos
         cam.upvector[] = cross(u_z, u_x)
         cam.view_direction[] = viewdir
     end
@@ -184,7 +184,7 @@ function initialize_block!(ax::Axis3)
 end
 
 function calculate_matrices(limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed, zoom_mult, lookat)
+    viewmode, xreversed, yreversed, zreversed, zoom_mult, offset)
 
     ori = limits.origin
     ws = widths(limits)
@@ -214,13 +214,9 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
         error("Invalid aspect $aspect")
     end
 
-    # direction from center of axis bbox towards camera/view
-    camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
-
     # center and scale axis bbox so that the longest side is -1..1
     # then rotate (and permute axes) according to azimuth and elevation
     model = 
-        Makie.lookat_basis(camdir, Vec3d(0), Vec3d(0,0,1)) * 
         translationmatrix(-0.5 .* ws .* scales) * 
         scalematrix(scales) * 
         translationmatrix(-Float64.(limits.origin))
@@ -236,12 +232,22 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
     # distance = sphere_radius / Math.sin(vFov / 2)
 
     radius = zoom_mult * sqrt(3) / sind(fov / 2)
-    eyepos = Vec3d(0, 0, radius)
+
+    camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
+    eyepos = radius * camdir
 
     if viewmode == :free
-        lookat_matrix = translationmatrix(-eyepos - zoom_mult * lookat)
+        up = Vec3d(0, 0, 1)
+        u_z = camdir
+        u_x = normalize(cross(up, u_z))
+        u_y = cross(u_z, u_x)
+
+        lookat = zoom_mult * sqrt(3) * (offset[1] * u_x + offset[2] * u_y)
+        eyepos += lookat
+        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
     else
-        lookat_matrix = translationmatrix(-eyepos)
+        lookat = Vec3d(0)
+        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
     end
 
     w = width(viewport)
@@ -251,7 +257,7 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
         lookat_matrix * model, limits, radius, fov,
         w, h, to_protrusions(protrusions), viewmode)
 
-    return model, lookat_matrix, projection_matrix, eyepos
+    return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
 function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode)
