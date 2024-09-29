@@ -466,17 +466,17 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
-        # we are going to transform the 3d frame points into 2d of the topscene
-        # because otherwise the frame lines can
-        # be cut when they lie directly on the scene boundary
-        # to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
-        return [p1, p2, p3, p4, p5, p6]
+        # Not projecting here causes alignment (and render order?) issues with
+        # ticks, probably due to float precision differences. 
+        map([p1, p2, p3, p4, p5, p6]) do p
+            return Point3f(project(scene, p)..., -10_000)
+        end
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = false,
-        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false)
+        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false, space = :pixel)
 
     return gridline1, gridline2, framelines
 end
