@@ -282,6 +282,15 @@ end
     f
 end
 
+@reference_test "Scene backgroundcolor" begin
+    root = Scene(size = (500, 500))
+    Scene(root, viewport = Rect2f(0,0,250,250), backgroundcolor = :red, clear = true)
+    Scene(root, viewport = Rect2f(250,0,250,250), backgroundcolor = :blue, clear = true)
+    Scene(root, viewport = Rect2f(50,300,300,50), backgroundcolor = :cyan, clear = true)
+    Scene(root, viewport = Rect2f(350,400,50,200), backgroundcolor = :orange, clear = true)
+    root
+end
+
 
 # Needs a way to disable autolimits on show
 # @reference_test "interactions after close" begin
