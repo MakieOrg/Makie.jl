@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
+
 ## [0.21.12] - 2024-09-28
 
 - Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
