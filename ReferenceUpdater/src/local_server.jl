@@ -1,5 +1,13 @@
 const URL_CACHE = Dict{String, String}()
 
+function wipe_cache!()
+    for path in values(URL_CACHE)
+        rm(path, recursive = true)
+    end
+    empty!(URL_CACHE)
+    return
+end
+
 function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
