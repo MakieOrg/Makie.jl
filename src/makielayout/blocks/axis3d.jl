@@ -100,7 +100,7 @@ function initialize_block!(ax::Axis3)
     zticks, zticklabels, zlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
-    titlepos = lift(scene, scene.viewport, ax.titlegap, ax.titlealign) do a, titlegap, align
+    titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
