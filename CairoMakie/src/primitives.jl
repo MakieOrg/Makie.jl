@@ -730,14 +730,14 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     if xs isa Makie.EndPoints
-        l, r = extrema(xs)
+        l, r = xs
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
     if ys isa Makie.EndPoints
-        l, r = extrema(ys)
+        l, r = ys
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
@@ -1253,7 +1253,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    
+    # Face culling
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
+        pos = pos[valid]
+        colors = colors[valid]
+    end
 
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(primitive.model[])
@@ -1271,7 +1278,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = Plane3f[]
     )
 
     for i in zorder

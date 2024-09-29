@@ -273,6 +273,40 @@ end
     f
 end
 
+@reference_test "Axis3 viewmode x xreversed x aspect" begin
+    fig = Figure(size = (1200, 900))
+
+    protrusions = (40, 30, 20, 10)
+    perspectiveness = 0.0
+    m = load(Makie.assetpath("cat.obj"))
+    cs = 1:length(Makie.coordinates(m))
+    
+    for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
+        gl = GridLayout(fig[by, bx])
+        Label(gl[0, 1:3], "viewmode = $viewmode")
+        for (x, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
+            for (y, rev) in enumerate((true, false))
+                ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect, 
+                    protrusions = protrusions, perspectiveness = perspectiveness)
+                mesh!(ax, m, color = cs)
+
+                # for debug purposes
+                ax.scene.clear = true
+                ax.scene.backgroundcolor[] = RGBAf(1,0.8,0.6, 1.0)
+                lines!(fig.scene, ax.layoutobservables.computedbbox, color = (:blue, 0.5), linestyle = :dash)
+                fullarea = lift(ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+                    mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+                    maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+                    return Rect2f(mini, maxi - mini)
+                end
+                lines!(fig.scene, fullarea, color = :red)
+            end
+        end
+    end
+
+    fig
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)

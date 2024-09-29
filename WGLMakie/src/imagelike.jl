@@ -129,7 +129,7 @@ end
 
 
 
-xy_convert(x::Makie.EndPoints, n) = LinRange(extrema(x)..., n + 1)
+xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
 xy_convert(x::AbstractArray, n) = x
 
 # TODO, speed up GeometryBasics
@@ -166,8 +166,8 @@ function limits_to_uvmesh(plot, f32c)
     py = lift(identity, plot, py; ignore_equal_values=true)
     if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = x
+            ymin, ymax = y
             return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         ps = lift(rect -> decompose(Point2f, rect), plot, rect)
