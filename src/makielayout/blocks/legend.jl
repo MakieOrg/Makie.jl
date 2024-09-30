@@ -335,6 +335,8 @@ end
 legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
+legendelements(p::Pair{<:Any, LegendOverride}, legend) = legendelements(p[1], legend, p[2])
+
 function legendelements(any, legend, override::LegendOverride)
     les = legendelements(any, legend)
     for le in les
@@ -361,8 +363,7 @@ function apply_legend_override!(le::LineElement, override::LegendOverride)
     end
 end
 
-function LegendEntry(label_and_override::Pair, contentelement, legend; kwargs...)
-    label, override = label_and_override
+function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
     attrs = Attributes(; label)
 
     kwargattrs = Attributes(kwargs)
@@ -689,7 +690,19 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         lplots, labels = mergedplots, ulabels
     end
 
-    lplots, labels
+    lplots_with_overrides = map(lplots, labels) do plots, label
+        if label isa Pair
+            if !(label[2] isa LegendOverride)
+                error("Found legend label in Pair form but the second element was not of type LegendOverride as expected, but was $(label[2])")
+            end
+            plots => label[2]
+        else
+            plots
+        end
+    end
+    labels = [label isa Pair ? label[1] : label for label in labels]
+
+    lplots_with_overrides, labels
 end
 
 get_plots(p::AbstractPlot) = [p]
