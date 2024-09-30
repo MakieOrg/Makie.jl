@@ -24,4 +24,9 @@ include("image_download.jl")
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 
+function __init__()
+    # cleanup downloaded files when julia closes
+    atexit(wipe_cache!)
+end
+
 end
