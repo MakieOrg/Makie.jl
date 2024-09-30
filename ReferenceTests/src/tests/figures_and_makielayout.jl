@@ -190,10 +190,11 @@ end
         f[1, 3],
         [
             sc => LegendOverride(markersize = 30),
-            [li => LegendOverride(color = :red), sc => LegendOverride(color = :cyan)]
+            [li => LegendOverride(color = :red), sc => LegendOverride(color = :cyan)],
+            [li, sc] => LegendOverride(color = :cyan),
         ],
-        ["Scatter", "Line and Scatter"],
-        patchsize = (40, 40)
+        ["Scatter", "Line and Scatter", "Another"],
+        patchsize = (40, 20)
     )
     f
 end
