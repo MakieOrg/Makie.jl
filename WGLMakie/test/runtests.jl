@@ -19,19 +19,12 @@ import Electron
 end
 
 excludes = Set([
-    "image scatter",
-    # missing transparency & image
-    "Image on Surface Sphere",
-    # Marker size seems wrong in some occasions:
-    "Hbox",
-    "UnicodeMarker",
-    # Not sure, looks pretty similar to me! Maybe blend mode?
-    "Test heatmap + image overlap",
+    "Image on Surface Sphere", # TODO: texture rotated 180°
     # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
+    "Array of Images Scatter", # scatter does not support texture images
+    
     "Order Independent Transparency",
     "fast pixel marker",
-    "Array of Images Scatter",
-    "Image Scatter different sizes",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
 ])
