@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
 - Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
 - Added threshold before a drag starts which improves false negative rates for clicks. `Button` can now trigger on click and not mouse-down which is the canonical behavior in other GUI systems [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
 
