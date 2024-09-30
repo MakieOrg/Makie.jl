@@ -376,25 +376,26 @@ function LegendEntry(label, contentelement, override::Attributes, legend; kwargs
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label, contentelements::AbstractArray, legend; kwargs...)
+
+function LegendEntry(label, content, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = vcat(legendelements.(contentelements, Ref(legend))...)
-    LegendEntry(elems, attrs)
-end
-
-function LegendEntry(label, contentelement, legend; kwargs...)
-    attrs = Attributes(label = label)
-
-    kwargattrs = Attributes(kwargs)
-    merge!(attrs, kwargattrs)
-
-    elems = legendelements(contentelement, legend)
+    if content isa AbstractArray
+        elems = vcat(legendelements.(content, Ref(legend))...)
+    elseif content isa Pair
+        if content[1] isa AbstractArray
+            elems = vcat(legendelements.(content[1] .=> Ref(content[2]), Ref(legend))...)
+        else
+            elems = legendelements(content, legend)
+        end
+    else
+        elems = legendelements(content, legend)
+    end
     if isempty(elems)
-        error("`legendelements` returned an empty list for content element of type $(typeof(contentelement)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+        error("`legendelements` returned an empty list for content element of type $(typeof(content)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
     end
     LegendEntry(elems, attrs)
 end
