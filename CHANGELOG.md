@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
+
 ## [0.21.12] - 2024-09-28
 
 - Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
