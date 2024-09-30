@@ -144,6 +144,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
+                rm(filepath)
                 split_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
