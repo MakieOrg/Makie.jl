@@ -249,6 +249,12 @@ function initialize_block!(leg::Legend; entrygroups)
     return
 end
 
+struct LegendOverride
+    overrides::Attributes
+end
+
+LegendOverride(; kwargs...) = LegendOverride(Attributes(; kwargs...))
+
 function connect_block_layoutobservables!(leg::Legend, layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
     connect!(layout_width, leg.width)
     connect!(layout_height, leg.height)
@@ -329,6 +335,45 @@ end
 legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
+function legendelements(any, legend, override::LegendOverride)
+    les = legendelements(any, legend)
+    for le in les
+        apply_legend_override!(le, override)
+    end
+    return les
+end
+
+function apply_legend_override!(le::MarkerElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(MarkerElement, copy(override.overrides))
+    for sym in (:markerpoints, :markersize, :markercolor, :markerstrokewidth, :markerstrokecolor, :markercolormap, :markercolorrange)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
+function apply_legend_override!(le::LineElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
+    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
+function LegendEntry(label_and_override::Pair, contentelement, legend; kwargs...)
+    label, override = label_and_override
+    attrs = Attributes(; label)
+
+    kwargattrs = Attributes(kwargs)
+    merge!(attrs, kwargattrs)
+
+    elems = legendelements(contentelement, legend, override)
+    if isempty(elems)
+        error("`legendelements` returned an empty list for content element of type $(typeof(contentelement)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+    end
+    LegendEntry(elems, attrs)
+end
 
 function LegendEntry(label, contentelements::AbstractArray, legend; kwargs...)
     attrs = Attributes(label = label)
@@ -609,6 +654,24 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
     end
     labels = map(lplots) do l
         l.label[]
+    end
+
+    if any(x -> x isa AbstractVector, labels)
+        _lplots = []
+        _labels = []
+        for (lplot, label) in zip(lplots, labels)
+            if label isa AbstractVector
+                for lab in label
+                    push!(_lplots, lplot)
+                    push!(_labels, lab)
+                end
+            else
+                push!(_lplots, lplot)
+                push!(_labels, label)
+            end
+        end
+        lplots = _lplots
+        labels = _labels
     end
 
     # filter out plots with same plot type and label

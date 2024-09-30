@@ -46,7 +46,7 @@ export Label
 export Box
 export Toggle
 export Legend, axislegend
-export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
+export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement, LegendOverride
 export LScene
 export Menu
 export Textbox
