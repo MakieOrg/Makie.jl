@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
+- Added new `Checkbox` block [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
 
 ## [0.21.12] - 2024-09-28
 
