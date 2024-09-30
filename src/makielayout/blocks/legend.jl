@@ -363,6 +363,15 @@ function apply_legend_override!(le::LineElement, override::LegendOverride)
     end
 end
 
+function apply_legend_override!(le::PolyElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(PolyElement, copy(override.overrides))
+    for sym in (:polypoints, :polycolor, :polystrokewidth, :polystrokecolor, :polycolormap, :polycolorrange, :polystrokestyle)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
 function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
     attrs = Attributes(; label)
 
