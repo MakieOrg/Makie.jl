@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
+- Add `LegendOverride` object to override legend element attributes [#4427](https://github.com/MakieOrg/Makie.jl/pull/4427).
 
 ## [0.21.12] - 2024-09-28
 
