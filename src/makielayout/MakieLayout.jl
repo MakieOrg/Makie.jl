@@ -42,6 +42,7 @@ export Slider
 export SliderGrid
 export IntervalSlider
 export Button
+export Checkbox
 export Colorbar
 export Label
 export Box
