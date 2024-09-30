@@ -33,7 +33,7 @@ function initialize_block!(c::Checkbox)
         scene,
         shape,
         color = polycolor,
-        strokewidth = 1.5,
+        strokewidth = c.checkboxstrokewidth,
         strokecolor = strokecolor,
     )
 

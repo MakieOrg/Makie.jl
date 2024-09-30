@@ -1120,8 +1120,10 @@ const CHECKMARK_BEZIER = scale(BezierPath(
         checkmarksize = 0.85
         "The checkmark marker symbol. Anything that `scatter` can use."
         checkmark = CHECKMARK_BEZIER
-        "0 is square, 1 is circular."
+        "Roundness of the checkbox poly, 0 is square, 1 is circular."
         roundness = 0.15
+        "The strokewidth of the checkbox poly."
+        checkboxstrokewidth = 1.5
         "The color of the checkbox background when checked."
         checkboxcolor_checked = COLOR_ACCENT[]
         "The color of the checkbox background when unchecked."
@@ -1136,7 +1138,7 @@ const CHECKMARK_BEZIER = scale(BezierPath(
         checkmarkcolor_checked = :white
         "The align mode of the checkbox in its parent GridLayout."
         alignmode = Inside()
-        "If the checkbox is currently checked."
+        "If the checkbox is currently checked. This value should not be modified directly."
         checked = false
         "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
         onchange = !
