@@ -166,6 +166,38 @@ end
     f
 end
 
+@reference_test "Legend overrides" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    li = lines!(
+        1:10,
+        label = "Line" => LegendOverride(linewidth = 4, color = :gray60, linestyle = :dot),
+    )
+    sc = scatter!(
+        1:10,
+        2:11,
+        color = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        colorrange = (1, 3),
+        marker = :utriangle,
+        markersize = 20,
+        label = [
+            label => LegendOverride(; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+        ]
+    )
+    Legend(f[1, 2], ax)
+    Legend(
+        f[1, 3],
+        [
+            sc => LegendOverride(markersize = 30),
+            [li => LegendOverride(color = :red), sc => LegendOverride(color = :cyan)]
+        ],
+        ["Scatter", "Line and Scatter"],
+        patchsize = (40, 40)
+    )
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
