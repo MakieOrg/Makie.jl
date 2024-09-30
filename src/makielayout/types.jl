@@ -1094,6 +1094,12 @@ end
     end
 end
 
+const CHECKMARK_BEZIER = scale(BezierPath(
+    "M 81.449219,-0.08203125A 7.5,7.5 0 0 0 76.628906,3.0332031L 38.113281,58.792969 18.806641,34.650391A 7.5,7.5 0 0 0 8.265625,33.478516 7.5,7.5 0 0 0 7.0917969,44.019531L 32.697266,76.037109A 7.50075,7.50075 0 0 0 44.724609,75.615234L 88.970703,11.558594A 7.5,7.5 0 0 0 87.0625,1.125 7.5,7.5 0 0 0 81.449219,-0.08203125Z",
+    fit = true,
+    flipy = true,
+), 0.85)
+
 @Block Checkbox begin
     @attributes begin
         "The horizontal alignment of the checkbox in its suggested boundingbox"
@@ -1109,27 +1115,25 @@ end
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The size (width/height) of the checkbox"
-        size = @inherit(:fontsize, 18)
+        size = 11
         "The size of the checkmark, relative to the size."
         checkmarksize = 0.85
         "The checkmark marker symbol. Anything that `scatter` can use."
-        checkmark = '✓'
+        checkmark = CHECKMARK_BEZIER
         "0 is square, 1 is circular."
         roundness = 0.15
         "The color of the checkbox background when checked."
         checkboxcolor_checked = COLOR_ACCENT[]
         "The color of the checkbox background when unchecked."
-        checkboxcolor_unchecked = RGBf(0.92, 0.92, 0.92)
-        "The color of the checkmark."
-        checkmarkcolor = :white
-        "The color of the checkmark when the mouse hovers over the checkbox."
-        checkmarkcolor_hover = COLOR_ACCENT_DIMMED[]
+        checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
+        "The strokecolor of the checkbox background when checked."
+        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        "The strokecolor of the checkbox background when unchecked."
+        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        "The color of the checkmark when unchecked."
+        checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
-        checkmarkcolor_active = COLOR_ACCENT[]
-        "The color of the checkbox when the mouse clicks the checkbox."
-        checkboxcolor_active = COLOR_ACCENT[]
-        "The color of the checkbox when the mouse hovers over the checkbox."
-        checkboxcolor_hover = COLOR_ACCENT_DIMMED[]
+        checkmarkcolor_checked = :white
         "The align mode of the checkbox in its parent GridLayout."
         alignmode = Inside()
         "If the checkbox is currently checked."

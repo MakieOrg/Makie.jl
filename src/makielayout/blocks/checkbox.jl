@@ -17,15 +17,24 @@ function initialize_block!(c::Checkbox)
         roundedrectpath(Float64.((size, size)), (r, r, r, r))
     end
 
-    polycolor = lift(scene, ischecked, ishovered, c.checkboxcolor_unchecked, c.checkboxcolor_checked, c.checkboxcolor_hover) do checked, hovered, color_uc, color_c, color_h
-        checked ? color_c : hovered ? color_h : color_uc 
+    strokecolor = lift(scene, ischecked, c.checkboxstrokecolor_unchecked, c.checkboxstrokecolor_checked) do checked, color_uc, color_c
+        Makie.to_color(checked ? color_c : color_uc)
+    end
+
+    polycolor = lift(scene, ischecked, c.checkboxcolor_unchecked, c.checkboxcolor_checked) do checked, color_uc, color_c
+        Makie.to_color(checked ? color_c : color_uc)
+    end
+
+    checkmarkcolor = lift(scene, ischecked, c.checkmarkcolor_unchecked, c.checkmarkcolor_checked) do checked, color_uc, color_c
+        Makie.to_color(checked ? color_c : color_uc)
     end
 
     shp = poly!(
         scene,
         shape,
         color = polycolor,
-        strokewidth = 0,
+        strokewidth = 1.5,
+        strokecolor = strokecolor,
     )
 
     on(checkboxrect, update = true) do rect
@@ -41,13 +50,13 @@ function initialize_block!(c::Checkbox)
         markerpos,
         marker = c.checkmark,
         markersize = @lift($(c.size) * $(c.checkmarksize)),
-        color = c.checkmarkcolor,
+        color = checkmarkcolor,
         visible = @lift($ischecked || $ishovered),
     )
 
     mouseevents = addmouseevents!(scene, shp, sc)
 
-    onmouseleftdown(mouseevents) do _
+    onmouseleftclick(mouseevents) do _
         newstatus = c.onchange[](c.checked[])
         if newstatus != c.checked[]
             c.checked[] = newstatus
