@@ -20196,14 +20196,24 @@ function getErrorMessage(version) {
     return element;
 }
 function typedarray_to_vectype(typedArray, ndim) {
-    if (ndim === 1) {
-        return "float";
-    } else if (typedArray instanceof Float32Array) {
-        return "vec" + ndim;
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
     } else if (typedArray instanceof Int32Array) {
-        return "ivec" + ndim;
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
     } else if (typedArray instanceof Uint32Array) {
-        return "uvec" + ndim;
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
     } else {
         return;
     }
@@ -21473,7 +21483,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -21920,7 +21930,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -22500,7 +22510,7 @@ function connect_uniforms(mesh, updater) {
 }
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
-    const rgbaArray = new Float32Array(length / 3 * 4);
+    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
     for(let i = 0, j = 0; i < length; i += 3, j += 4){
         rgbaArray[j] = rgbArray[i];
         rgbaArray[j + 1] = rgbArray[i + 1];

@@ -2,6 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
+using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion
@@ -341,9 +342,11 @@ end
 
     v1 = collect(1:10)
     v2 = collect(1:6)
+    v3 = reverse(v1)
 
     i1 = 1 .. 10
     i2 = 1 .. 6
+    i3 = 10 .. 1
 
     o3 = Float32.(m3)
 
@@ -353,6 +356,8 @@ end
         @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
         @test convert_arguments(Image, v1, r2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
         @test convert_arguments(Image, i1, v2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, v3, i1, m3) == ((10, 1), (1, 10), o3)
+        @test convert_arguments(Image, v1, i3, m3) == ((1, 10), (10, 1), o3)
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
@@ -480,4 +485,15 @@ end
     # sanity checks
     @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
     @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+end
+
+@testset "func-Plot conversions" begin
+    @test plotfunc(scatter) === scatter
+    @test plotfunc(hist!) === hist
+    @test plotfunc(ScatterLines) === scatterlines
+    @test plotfunc!(mesh) === mesh!
+    @test plotfunc!(ablines!) === ablines!
+    @test plotfunc!(Image) === image!
+    @test func2type(lines) == Lines
+    @test func2type(hexbin!) == Hexbin
 end
