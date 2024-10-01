@@ -1719,3 +1719,28 @@ end
 
     f
 end
+
+@reference_test "waterfall" begin
+    y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
+
+    fig = Figure()
+    waterfall(fig[1, 1], y)
+    waterfall(fig[1, 2], y, show_direction = true, marker_pos = :cross, 
+        marker_neg = :hline, direction_color = :yellow)
+
+    colors = Makie.wong_colors()
+    x = repeat(1:2, inner=5)
+    group = repeat(1:5, outer=2)
+
+    waterfall(fig[2, 1], x, y, dodge = group, color = colors[group], 
+        show_direction = true, show_final = true, final_color=(colors[6], 1//3),
+        dodge_gap = 0.1, gap = 0.05)
+
+    x = repeat(1:5, outer=2)
+    group = repeat(1:2, inner=5)
+        
+    waterfall(fig[2, 2], x, y, dodge = group, color = colors[group], 
+        show_direction = true, stack = :x, show_final = true)
+
+    fig
+end
