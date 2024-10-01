@@ -172,7 +172,7 @@ end
 
     li = lines!(
         1:10,
-        label = "Line" => LegendOverride(linewidth = 4, color = :gray60, linestyle = :dot),
+        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
     )
     sc = scatter!(
         1:10,
@@ -182,16 +182,16 @@ end
         marker = :utriangle,
         markersize = 20,
         label = [
-            label => LegendOverride(; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+            label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
         ]
     )
     Legend(f[1, 2], ax)
     Legend(
         f[1, 3],
         [
-            sc => LegendOverride(markersize = 30),
-            [li => LegendOverride(color = :red), sc => LegendOverride(color = :cyan)],
-            [li, sc] => LegendOverride(color = :cyan),
+            sc => (; markersize = 30),
+            [li => (; color = :red), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan),
         ],
         ["Scatter", "Line and Scatter", "Another"],
         patchsize = (40, 20)
