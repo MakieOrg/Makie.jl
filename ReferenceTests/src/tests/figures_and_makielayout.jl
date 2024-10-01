@@ -396,3 +396,18 @@ end
     Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
     f
 end
+
+@reference_test "Checkbox" begin
+    f = Figure(size = (300, 200))
+    Makie.Checkbox(f[1, 1])
+    Makie.Checkbox(f[1, 2], checked = true)
+    Makie.Checkbox(f[1, 3], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6)
+    Makie.Checkbox(f[1, 4], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6, size = 20)
+    Makie.Checkbox(f[1, 5], checkboxstrokewidth = 3)
+    Makie.Checkbox(f[2, 1], checkboxstrokecolor_unchecked = :red)
+    Makie.Checkbox(f[2, 2], checked = true, checkboxstrokecolor_checked = :cyan)
+    Makie.Checkbox(f[2, 3], checked = true, checkmarkcolor_checked = :black)
+    Makie.Checkbox(f[2, 4], checked = false, checkboxcolor_unchecked = :yellow)
+    Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
+    f
+end
