@@ -130,9 +130,10 @@ end
     meshscatter(positions, color=colS, markersize=sizesS)
 end
 
-@reference_test "Ellipsoid marker sizes" begin # see PR #3722
+@reference_test "Basic Shading" begin
     f = Figure(size = (500, 300))
 
+    # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]

@@ -109,17 +109,25 @@ function prepare_for_scene(screen::Screen, scene::Scene)
 end
 
 function draw_background(screen::Screen, scene::Scene)
+    w, h = Makie.widths(viewport(Makie.root(scene))[])
+    return draw_background(screen, scene, h)
+end
+
+function draw_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = viewport(scene)[]
-        Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
+        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up, 
+        # Cairo down. Negative height breaks other backgrounds
+        x, y = origin(r); w, h = widths(r)
+        Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
         fill(cr)
     end
     Cairo.restore(cr)
-    foreach(child_scene-> draw_background(screen, child_scene), scene.children)
+    foreach(child_scene-> draw_background(screen, child_scene, root_h), scene.children)
 end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
