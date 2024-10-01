@@ -208,28 +208,37 @@ f
 
 By default, legends inherit the visual attributes of the plots they belong to.
 Sometimes, it is necessary to override some of these attributes to make the legend more legible.
-You can pair a `LegendOverride` object to a plot's `label` to override its automatic legend entry, for example to increase the marker size of a `Scatter`:
+You can pair a key-value object like a `NamedTuple` or a `Dict{Symbol}` to a plot's `label` to override its automatic legend entry, for example to increase the marker size of a `Scatter`:
 
 ```@figure
 f, ax, sc = scatter(
     cos.(range(0, 7pi, 100)),
     color = :black,
     markersize = 8,
-    label = "cos" => LegendOverride(markersize = 15)
+    label = "cos" => (; markersize = 15)
 )
 scatter!(
     sin.(range(0, 7pi, 100)),
     color = :black,
     marker = :utriangle,
     markersize = 8,
-    label = "sin" => LegendOverride(markersize = 15)
+    label = "sin" => (; markersize = 15)
 )
 Legend(f[1, 2], ax)
 f
 ```
 
+These are the attributes you can override (note that some of them have convenience aliases like `color` which applies to all elements while `polycolor` only applies to `PolyElement`s):
+
+- `MarkerElement`
+  - `[marker]points`, `markersize`, `[marker]strokewidth`, `[marker]color`, `[marker]strokecolor`, `[marker]colorrange`, `[marker]colormap`
+- `LineElement`
+  - `[line]points`, `linewidth`, `[line]color`, `linestyle`, `[line]colorrange`, `[line]colormap`
+- `PolyElement`
+  - `[poly]points`, `[poly]strokewidth`, `[poly]color`, `[poly]strokecolor`, `[poly]colorrange`, `[poly]colormap`
+
 Another common case is when you want to create a legend for a plot with a categorical colormap.
-By passing a vector of labels paired with `LegendOverride`s, you can create multiple entries with the correct colors:
+By passing a vector of labels paired with overrides, you can create multiple entries with the correct colors:
 
 ```@figure
 f, ax, bp = barplot(
@@ -238,14 +247,14 @@ f, ax, bp = barplot(
     color = 1:5,
     colorrange = (1, 5),
     colormap = :Set1_5,
-    label = [label => LegendOverride(color = i)
+    label = [label => (; color = i)
         for (i, label) in enumerate(["red", "blue", "green", "purple", "orange"])]
 )
 Legend(f[1, 2], ax)
 f
 ```
 
-You may also override plots in the `Legend` constructor itself, in this case, you pair the `LegendOverride`s with the plots whose legend entries you want to override:
+You may also override plots in the `Legend` constructor itself, in this case, you pair the overrides with the plots whose legend entries you want to override:
 
 ```@figure
 f = Figure()
@@ -255,10 +264,10 @@ sc = scatter!(ax, 1:5, markersize = 10)
 Legend(
     f[1, 2],
     [
-        sc => LegendOverride(markersize = 20),
-        li => LegendOverride(linewidth = 3),
-        [li, sc] => LegendOverride(color = :red),
-        [li => LegendOverride(linewidth = 3), sc => LegendOverride(markersize = 20)],
+        sc => (; markersize = 20),
+        li => (; linewidth = 3),
+        [li, sc] => (; color = :red),
+        [li => (; linewidth = 3), sc => (; markersize = 20)],
     ],
     ["Scatter", "Line", "Both", "Both 2"],
     patchsize = (40, 20),
