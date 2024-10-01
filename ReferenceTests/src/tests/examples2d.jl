@@ -1592,7 +1592,7 @@ end
     fig = Figure()
     
     xs = [1, 1, 2, 2, 3, 3]
-    ys = rand(6)
+    ys = RNG.rand(6)
     ymins = ys .- 1
     ymaxs = ys .+ 1
     dodge = [1, 2, 1, 2, 1, 2]
@@ -1602,11 +1602,31 @@ end
     crossbar(fig[1, 2], xs, ys, ymins, ymaxs, 
         dodge = dodge, dodge_gap = 0.25,
         gap = 0.05,
-        midlinecolor = :cyan, midlinewidth = 5,
+        midlinecolor = :blue, midlinewidth = 5,
         show_notch = true, notchwidth = 0.3,
         notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
         strokewidth = 2, strokecolor = :black,
-        orientation = :horizontal
+        orientation = :horizontal, color = :lightblue
     )
+    fig
+end
+
+@reference_test "qqnorm" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3
+    qqnorm(fig[1, 1], xs, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
+    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqnorm(fig[2, 2], xs, qqline = :identity, color = :orange)
+    fig
+end
+
+@reference_test "qqplot" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3; ys = RNG.randn(10)
+    qqplot(fig[1, 1], xs, ys, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
+    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
     fig
 end
