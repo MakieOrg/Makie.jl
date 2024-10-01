@@ -615,7 +615,7 @@ end
 
 function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
     x, y, img = convert_arguments(Heatmap, x, y, image.data)
-    return (x, y, Resampler(img))
+    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), Resampler(img))
 end
 
 function empty_channel!(channel::Channel)
