@@ -1587,3 +1587,26 @@ end
 
     fig
 end
+
+@reference_test "crossbar" begin
+    fig = Figure()
+    
+    xs = [1, 1, 2, 2, 3, 3]
+    ys = rand(6)
+    ymins = ys .- 1
+    ymaxs = ys .+ 1
+    dodge = [1, 2, 1, 2, 1, 2]
+    
+    crossbar(fig[1, 1], xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
+    
+    crossbar(fig[1, 2], xs, ys, ymins, ymaxs, 
+        dodge = dodge, dodge_gap = 0.25,
+        gap = 0.05,
+        midlinecolor = :cyan, midlinewidth = 5,
+        show_notch = true, notchwidth = 0.3,
+        notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
+        strokewidth = 2, strokecolor = :black,
+        orientation = :horizontal
+    )
+    fig
+end
