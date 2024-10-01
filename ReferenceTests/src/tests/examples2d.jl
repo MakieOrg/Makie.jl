@@ -1646,3 +1646,20 @@ end
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
     fig
 end
+
+@reference_test "rainclouds" begin
+    data = RNG.randn(1000)
+    data[1:200] .+= 3
+    data[201:500] .-= 3
+    data[501:end] .= 3 .* abs.(data[501:end]) .- 3
+    labels = vcat(fill("red", 500), fill("green", 500))
+    
+    fig = Figure()
+    rainclouds(fig[1, 1], labels, data, plot_boxplots = false, cloud_width = 2.0,
+        markersize = 5.0)
+    rainclouds(fig[1, 2], labels, data, color = labels, orientation = :horizontal, cloud_width = 2.0)
+    rainclouds(fig[2, 1], labels, data, clouds = hist, hist_bins = 30, boxplot_nudge = 0.1, 
+        center_boxplot = false, boxplot_width = 0.2, whiskerwidth = 1.0, strokewidth = 3.0)
+    rainclouds(fig[2, 2], labels, data, color = labels, side = :right, violin_limits = extrema)
+    fig
+end
