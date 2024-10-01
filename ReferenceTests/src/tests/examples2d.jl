@@ -1547,3 +1547,43 @@ end
     sleep(1) # give the async operations some time
     f
 end
+
+@reference_test "boxplot" begin
+    fig = Figure()
+    
+    categories = RNG.rand(1:3, 1000)
+    values = RNG.randn(1000)
+    boxplot(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 1000)
+    boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true, 
+        color = map(d->d==1 ? :blue : :red, dodge), 
+        outliercolor = RNG.rand([:red, :green, :blue, :black, :yellow], 1000)
+    )
+
+    ax_vert = Axis(fig[2,1];
+        xlabel = "categories",
+        ylabel = "values",
+        xticks = (1:3, ["one", "two", "three"])
+    )
+    ax_horiz = Axis(fig[2,2];
+        xlabel="values",
+        ylabel="categories",
+        yticks=(1:3, ["one", "two", "three"])
+    )
+
+    weights = 1.0 ./ (1.0 .+ abs.(values))
+    boxplot!(ax_vert, categories, values, orientation=:vertical, weights = weights,
+        gap = 0.5, 
+        show_notch = true, notchwidth = 0.75, 
+        markersize = 5, strokewidth = 2.0, strokecolor = :black,
+        medianlinewidth = 5, mediancolor = :orange,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
+        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        width = 1.5, 
+
+    )
+    boxplot!(ax_horiz, categories, values; orientation=:horizontal)
+
+    fig
+end
