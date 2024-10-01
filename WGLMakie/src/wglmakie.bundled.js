@@ -21032,13 +21032,18 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     controls.target0 = center.clone();
     scene.orbitcontrols = controls;
     controls.addEventListener("change", (e)=>{
-        const view = camera.matrixWorldInverse;
-        const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
-        const [x, y, z] = camera.position;
+        const position = camera.position;
+        const lookat = controls.target;
+        const [x, y, z] = position;
+        const dist = position.distanceTo(lookat);
         camera.aspect = width / height;
+        camera.near = dist * 0.1;
+        camera.far = dist * 5;
         camera.updateProjectionMatrix();
         camera.updateWorldMatrix();
+        const view = camera.matrixWorldInverse;
+        const projection = camera.projectionMatrix;
         makie_camera.update_matrices(view.elements, projection.elements, [
             width,
             height
