@@ -667,7 +667,13 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmax = vmax / m.multiple
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
-    multiples .* m.multiple, showoff_minus(multiples) .* m.suffix
+    locs = multiples .* m.multiple
+    labs = showoff_minus(multiples) .* m.suffix
+    if m.strip_zero
+        labs = map( ((x, lab),) -> x != 0 ? lab : "0", zip(multiples, labs))
+    end
+
+    return locs, labs
 end
 
 function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
