@@ -90,31 +90,35 @@ function initialize_block!(tbox::Textbox)
             return
         end
 
-        points = if 0 < ci < length(bbs)
+        if 0 < ci < length(bbs)
             [leftline(bbs[ci+1])...]
         elseif ci == 0
             [leftline(bbs[1])...]
         else
             [leftline(bbs[ci])...] .+ Point2f(hadvances[ci], 0)
         end
-
-        textpos = textplot.converted[1][][1]
-        offset = if points[1][1] > tbox.layoutobservables.computedbbox[].widths[1]
-            points[1][1] - tbox.layoutobservables.computedbbox[].widths[1]
-        elseif points[1][1] < 0
-            points[1][1]
-        else
-            0
-        end
-        if offset != 0
-            textplot.converted[1][] = [Point3f(textpos[1]-offset, textpos[2:3]...)]
-            points = [Point2f(p[1]-offset, p[2]) for p in points]
-        end
-
-        points
     end
 
     cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
+
+    on(cursorpoints) do cpts
+        typeof(tbox.width[]) <: Number || return
+
+        # translate scene to keep cursor within box
+        rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]
+        offset = if rel_cursor_pos <= 0
+            -rel_cursor_pos
+        elseif rel_cursor_pos < tbox.width[]
+            0
+        else
+            tbox.width[] - rel_cursor_pos
+        end
+        translate!(Accum, scene, offset, 0, 0)
+
+        # don't let right side of box be empty if length of text exceeds box width
+        offset = tbox.width[] - right(displayed_charbbs[][end])
+        scene.transformation.translation[][1] < offset < 0 && translate!(scene, offset, 0, 0)
+    end
 
     tbox.cursoranimtask = nothing
 
@@ -139,7 +143,11 @@ function initialize_block!(tbox::Textbox)
             return Consume(true)
         end
 
-        pos = state.data
+        if typeof(tbox.width[]) <: Number
+            pos = state.data .- scene.transformation.translation[][1:2]
+        else
+            pos = state.data
+        end
         closest_charindex = argmin(
             [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
         )
@@ -176,12 +184,8 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
-        textplot = t.blockscene.plots[1]
-        oldval = textplot.converted[1][][1]
         newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
-        offset = displayed_charbbs[][index].widths[1] / 2
-        textplot.converted[1][] = [Point3f(oldval[1]+offset, oldval[2:3]...)]
         cursorindex[] = index
     end
 
@@ -190,7 +194,6 @@ function initialize_block!(tbox::Textbox)
     end
 
     function removechar!(index)
-        index==0 && return
         newchars = [displayed_chars[][1:index-1]; displayed_chars[][index+1:end]]
 
         if isempty(newchars)
@@ -201,14 +204,7 @@ function initialize_block!(tbox::Textbox)
             cursorindex[] = max(0, cursorindex[] - 1)
         end
 
-        textplot = t.blockscene.plots[1]
-        oldval = textplot.converted[1][][1]
-        offset = displayed_charbbs[][index].widths[1] / 2
-        if displayed_charbbs[][1].origin[1] < 0
-            offset *= -1
-        end
         tbox.displayed_string[] = join(newchars)
-        textplot.converted[1][] = [Point3f(oldval[1]-offset, oldval[2:3]...)]
     end
 
     on(topscene, events(scene).unicode_input; priority=60) do char
