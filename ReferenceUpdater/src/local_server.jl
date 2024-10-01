@@ -120,14 +120,20 @@ function serve_update_page(; commit = nothing, pr = nothing)
             return false
         end
     end
+
     if isempty(checkruns)
         error("\"Merge artifacts\" run is not available.")
     end
     if length(checkruns) > 1
-        error("Found multiple checkruns for \"Merge artifacts\", this is unexpected.")
-    end
-
+        datetimes = map(checkruns) do checkrun
+            DateTime(checkrun["completed_at"], dateformat"y-m-dTH:M:SZ")
+        end
+        datetime, idx = findmax(datetimes)
+        @warn("Found multiple checkruns for \"Merge artifacts\". Using latest with timestamp: $datetime")
+        check = checkruns[idx]
+    else
     check = only(checkruns)
+    end
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
