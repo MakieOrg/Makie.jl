@@ -1611,6 +1611,22 @@ end
     fig
 end
 
+@reference_test "ecdfplot" begin
+    f = Figure(size = (500, 250))
+
+    x = RNG.randn(200)
+    ecdfplot(f[1, 1], x, color = (:blue, 0.3))
+    ecdfplot!(x, color = :red, npoints=10, step = :pre, linewidth = 3)
+    ecdfplot!(x, color = :orange, npoints=10, step = :center, linewidth = 3)
+    ecdfplot!(x, color = :green, npoints=10, step = :post, linewidth = 3)
+
+    w = @. x^2 * (1 - x)^2
+    ecdfplot(f[1, 2], x)
+    ecdfplot!(x; weights = w, color=:orange)
+    
+    f
+end
+
 @reference_test "qqnorm" begin
     fig = Figure()
     xs = 2 .* RNG.randn(10) .+ 3
