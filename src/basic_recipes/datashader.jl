@@ -564,8 +564,19 @@ function conversion_trait(::Type{<:Heatmap}, ::Resampler)
     return HeatmapShaderConversion()
 end
 
-function Makie.MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
+function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
     return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
+end
+
+function data_limits(p::HeatmapShader)
+    x, y = p[1][], p[2][]
+    mini = Vec3f(x[1], y[1], 0)
+    widths = Vec3f(x[2] - x[1], y[2] - y[1], 0)
+    return Rect3f(mini, widths)
+end
+
+function boundingbox(p::HeatmapShader, space::Symbol=:data)
+    return apply_transform_and_model(p, data_limits(p))
 end
 
 function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
@@ -597,8 +608,9 @@ function resample_image(x, y, image, max_resolution, limits)
         nrange = ranges[i]
         si = imgsize[i]
         indices = ((nrange .- data_min[i]) ./ data_width[i]) .* (si .- 1) .+ 1
-        resolution = round(Int, indices[2] - indices[1])
-        return LinRange(max(1, indices[1]), min(indices[2], si), min(resolution, max_resolution[i]))
+        resolution = max(2, round(Int, indices[2] - indices[1]))
+        len = min(resolution, max_resolution[i])
+        return LinRange(max(1, indices[1]), min(indices[2], si), len)
     end
     if isempty(x_index_range) || isempty(y_index_range)
         return nothing
@@ -650,7 +662,9 @@ function Makie.plot!(p::HeatmapShader)
 
     x, y = p.x, p.y
     max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
-        return resampler.max_resolution isa Automatic ? widths(viewport) : ntuple(x-> resampler.max_resolution, 2)
+        res = resampler.max_resolution isa Automatic ? widths(viewport) :
+              ntuple(x -> resampler.max_resolution, 2)
+        return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
     image = lift(x-> x.data, p, p.values)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
@@ -676,16 +690,22 @@ function Makie.plot!(p::HeatmapShader)
     translate!(lp, 0, 0, -1)
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
-
-    # Make sure we don't trigger an event if the image/xy stays the same
-    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
-
-    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
     visible = Observable(p.visible[]; ignore_equal_values=true)
     on(p, p.visible) do v
         visible[] = v
+        return
     end
+    # if nothing, the image is currently not visible in the limits chosen
+    if isnothing(first_downsample)
+        visible[] = false
+        first_downsample = EndPoints{Float32}(0, 1), EndPoints{Float32}(0, 1), zeros(Float32, 2, 2)
+    end
+    # Make sure we don't trigger an event if the image/xy stays the same
+    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
+
+    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
+
     # To actually run the resampling on another thread, we need another channel:
     # To make this threadsafe, the observable needs to be triggered from the current thread
     # So we need another channel for the result (unbuffered, so `put!` blocks while the image is being updated)
