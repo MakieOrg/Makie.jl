@@ -14,6 +14,10 @@ macro compile(block)
             Bonito.jsrender(session, figlike)
             s = serialize_scene(scene)
             Bonito.SerializedMessage(session, Dict(:data => s))
+            session = Session()
+            app = App(()-> DOM.div(figlike))
+            dom = Bonito.session_dom(session, app)
+            show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
             close(session)
             return nothing
         end
