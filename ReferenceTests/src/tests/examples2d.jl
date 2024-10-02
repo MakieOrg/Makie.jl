@@ -1744,3 +1744,22 @@ end
 
     fig
 end
+
+@reference_test "ablines + h/v lines/span" begin
+    f = Figure()
+
+    ax = Axis(f[1, 1])
+    hspan!(ax, -1, -0.9, color = :lightblue, alpha = 0.5, strokewidth = 2, strokecolor = :black)
+    hspan!(ax, 0.9, 1, xmin = 0.2, xmax = 0.8)
+    vspan!(ax, -1, -0.9)
+    vspan!(ax, 0.9, 1, ymin = 0.2, ymax = 0.8, strokecolor = RGBf(0,1,0.1), strokewidth = 3)
+
+    ablines!([0.3, 0.7], [-0.2, 0.2], color = :orange, linewidth = 4, linestyle = :dash)
+
+    hlines!(ax, -0.8)
+    hlines!(ax, 0.8, xmin = 0.2, xmax = 0.8)
+    vlines!(ax, -0.8, color = :green, linewidth = 3)
+    vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
+
+    f
+end

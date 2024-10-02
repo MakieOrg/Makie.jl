@@ -412,8 +412,7 @@ end
     f
 end
 
-# @reference_test "Button - Slider - Toggle" 
-begin
+@reference_test "Button - Slider - Toggle" begin
     f = Figure(size = (500, 200))
     Button(f[1, 1:2])
     Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20, 
