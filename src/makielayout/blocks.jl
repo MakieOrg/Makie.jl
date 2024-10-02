@@ -216,17 +216,37 @@ function extract_attributes!(body)
         layout_related_attribute_block.args
     )
 
+    tooltip_related_attribute_block = quote
+        "The String displayed by the tooltip."
+        tooltip_text = ""
+        "Sets where the tooltip should be placed relative to the Axis. Can be :above, :below, :left, :right, :center."
+        tooltip_placement = :center
+        "Controls whether the tooltip will be rendered or not."
+        tooltip_enable = false
+        "Keyword arguments to pass to the tooltip.  See the tooltip docstring for valid attributes."
+        tooltip_kwargs = ()
+        "Depth value of the tooltip. This should be high so that the tooltip is always in front."
+        tooltip_depth = 9e3
+    end
+    tooltip_related_attributes = filter(
+        x -> !(x isa LineNumberNode),
+        tooltip_related_attribute_block.args
+    )
+
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
     attrs::Vector{Any} = map(MakieCore.extract_attribute_metadata, args)
 
     lras = map(MakieCore.extract_attribute_metadata, layout_related_attributes)
-
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)
-        if i === nothing
-            push!(attrs, lra)
-        end
+        i === nothing && push!(attrs, lra)
+    end
+
+    tras = map(MakieCore.extract_attribute_metadata, tooltip_related_attributes)
+    for tra in tras
+        i = findfirst(x -> x.symbol == tra.symbol, attrs)
+        i === nothing && push!(attrs, tra)
     end
 
     attrs
