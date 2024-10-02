@@ -166,6 +166,39 @@ end
     f
 end
 
+@reference_test "Legend overrides" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    li = lines!(
+        1:10,
+        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+    )
+    sc = scatter!(
+        1:10,
+        2:11,
+        color = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        colorrange = (1, 3),
+        marker = :utriangle,
+        markersize = 20,
+        label = [
+            label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+        ]
+    )
+    Legend(f[1, 2], ax)
+    Legend(
+        f[1, 3],
+        [
+            sc => (; markersize = 30),
+            [li => (; color = :red), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan),
+        ],
+        ["Scatter", "Line and Scatter", "Another"],
+        patchsize = (40, 20)
+    )
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -238,7 +271,7 @@ end
             lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
 
             b = Box(f[i, j], color = (:blue, 0.2))
-            translate!(b.blockscene, 0, 0, 9001)
+            translate!(b.blockscene, 0, 0, 9999)
         end
     end
     colgap!(f.layout, 5)
@@ -338,5 +371,43 @@ end
     scale!(a.scene, 0.5, 2, 1.0)
     translate!(hl, 0, 1, 0)
     translate!(vl, 1, 0, 0)
+    f
+end
+
+@reference_test "Latex labels after the fact" begin
+    f = Figure(fontsize = 50)
+    ax = Axis(f[1, 1])
+    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
+end
+
+@reference_test "Rich text" begin
+    f = Figure(fontsize = 30, size = (800, 600))
+    ax = Axis(f[1, 1],
+        limits = (1, 100, 0.001, 1),
+        xscale = log10,
+        yscale = log2,
+        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
+        xlabel = rich("X", subscript("label", fontsize = 25)),
+        ylabel = rich("Y", superscript("label")),
+    )
+    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
+    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
+    f
+end
+
+@reference_test "Checkbox" begin
+    f = Figure(size = (300, 200))
+    Makie.Checkbox(f[1, 1])
+    Makie.Checkbox(f[1, 2], checked = true)
+    Makie.Checkbox(f[1, 3], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6)
+    Makie.Checkbox(f[1, 4], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6, size = 20)
+    Makie.Checkbox(f[1, 5], checkboxstrokewidth = 3)
+    Makie.Checkbox(f[2, 1], checkboxstrokecolor_unchecked = :red)
+    Makie.Checkbox(f[2, 2], checked = true, checkboxstrokecolor_checked = :cyan)
+    Makie.Checkbox(f[2, 3], checked = true, checkmarkcolor_checked = :black)
+    Makie.Checkbox(f[2, 4], checked = false, checkboxcolor_unchecked = :yellow)
+    Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
     f
 end

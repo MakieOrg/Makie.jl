@@ -63,7 +63,7 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
     z = elconvert(T, z)
     points = [elconvert(T, x)'; elconvert(T, y)']
     if triangulation isa DelaunayTriangulation
-        tri = DelTri.triangulate(points)
+        tri = DelTri.triangulate(points, randomise = false)
     elseif !(triangulation isa DelTri.Triangulation)
         # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined.
         if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3
@@ -132,12 +132,12 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(compute_lowcolor, lowcolor, c.extendlow, c.colormap)
+    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(!isnothing, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
-    map!(compute_highcolor, highcolor, c.extendhigh, c.colormap)
+    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
 

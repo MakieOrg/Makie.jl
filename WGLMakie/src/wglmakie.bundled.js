@@ -20196,14 +20196,24 @@ function getErrorMessage(version) {
     return element;
 }
 function typedarray_to_vectype(typedArray, ndim) {
-    if (ndim === 1) {
-        return "float";
-    } else if (typedArray instanceof Float32Array) {
-        return "vec" + ndim;
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
     } else if (typedArray instanceof Int32Array) {
-        return "ivec" + ndim;
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
     } else if (typedArray instanceof Uint32Array) {
-        return "uvec" + ndim;
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
     } else {
         return;
     }
@@ -20237,7 +20247,7 @@ function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return;
+        return "invalid";
     }
 }
 function uniforms_to_type_declaration(uniform_dict) {
@@ -20245,7 +20255,7 @@ function uniforms_to_type_declaration(uniform_dict) {
     for(const name in uniform_dict){
         const uniform = uniform_dict[name];
         const type = uniform_type(uniform);
-        result += `uniform ${type} ${name};\n`;
+        if (type != "invalid") result += `uniform ${type} ${name};\n`;
     }
     return result;
 }
@@ -21013,19 +21023,27 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     const [w, h] = makie_camera.resolution.value;
     const camera = new yt(cam3d.fov.value, w / h, 0.01, 100.0);
     const center = new A(...cam3d.lookat.value);
-    camera.up = new A(...cam3d.upvector.value);
+    camera.up = new A(0, 0, 1);
     camera.position.set(...cam3d.eyeposition.value);
     camera.lookAt(center);
     const use_orbit_cam = ()=>!(Bonito.can_send_to_julia && Bonito.can_send_to_julia());
     const controls = new OrbitControls(camera, canvas, use_orbit_cam, (e)=>in_scene(scene, e));
+    controls.target = center.clone();
+    controls.target0 = center.clone();
+    scene.orbitcontrols = controls;
     controls.addEventListener("change", (e)=>{
-        const view = camera.matrixWorldInverse;
-        const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
-        const [x, y, z] = camera.position;
+        const position = camera.position;
+        const lookat = controls.target;
+        const [x, y, z] = position;
+        const dist = position.distanceTo(lookat);
         camera.aspect = width / height;
+        camera.near = dist * 0.1;
+        camera.far = dist * 5;
         camera.updateProjectionMatrix();
         camera.updateWorldMatrix();
+        const view = camera.matrixWorldInverse;
+        const projection = camera.projectionMatrix;
         makie_camera.update_matrices(view.elements, projection.elements, [
             width,
             height
@@ -21326,7 +21344,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
             ${attribute_decl}
 
-
             out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
             out float f_linestart;              // constant
@@ -21345,6 +21362,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21370,6 +21388,37 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2)
+            {
+                float d1, d2;
+                for (int i = 0; i < int(num_clip_planes); i++) {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        return;
+                    }
+                    
+                    // one outside - shorten segment
+                    else if (d1 < 0.0)
+                    {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                    }
+                    else if (d2 < 0.0)
+                    {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                    }
+                }
+
+                return;
+            }
+
 
             ////////////////////////////////////////////////////////////////////////
             // Main
@@ -21387,16 +21436,29 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
+                // color at line start/end for interpolation
+                f_color1 = color_start;
+                f_color2 = color_end;
+
                 // restrict to visible area (see other shader)
                 vec3 p1, p2;
                 {
                     vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+
                     vec4 v1 = _p2 - _p1;
 
-                    if (_p1.w < 0.0)
+                    if (_p1.w < 0.0) {
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
-                    if (_p2.w < 0.0)
+                        f_color1 = f_color1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+                    if (_p2.w < 0.0) {
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(_p1, _p2);
 
                     p1 = screen_space(_p1);
                     p2 = screen_space(_p2);
@@ -21426,7 +21488,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -21439,7 +21501,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
 
                 // linecaps
                 f_capmode = ivec2(linecap);
@@ -21465,9 +21526,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = 0.0;
                 f_linelength = segment_length;
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -21498,6 +21557,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -21612,11 +21672,40 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
             float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+            {
+                float d1, d2;
+                for(int i = 0; i < int(num_clip_planes); i++)
+                {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+            
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        isvalid[1] = false;
+                        isvalid[2] = false;
+                        return;
+                    // one outside - shorten segment
+                    } else if (d1 < 0.0) {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                        isvalid[0] = false;
+                    } else if (d2 < 0.0) {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                        isvalid[3] = false;
+                    }
+                }
+            
+                return;
+            } 
 
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
-
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -21631,6 +21720,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 bool[4] isvalid = bool[4](true, true, true, true);
+
+                // color at start/end of segment
+                f_color1 = color_start;
+                f_color2 = color_end;
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -21659,11 +21752,17 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         // where (-) gives us the result for the near clipping plane as p.z
                         // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
                         clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+                        f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
                     if (clip_p2.w < 0.0) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(clip_p1, clip_p2, isvalid);
 
                     // transform clip -> screen space, applying xyz / w normalization (which
                     // is now save as all vertices are in front of the camera)
@@ -21836,7 +21935,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -21850,7 +21949,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
 
                 vec3 offset;
                 int x = int(is_end);
@@ -21906,9 +22004,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = shape_factor * halfwidth * extrusion[0];
                 f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -22332,6 +22428,7 @@ function deserialize_plot(scene, data) {
     mesh.frustumCulled = false;
     mesh.matrixAutoUpdate = false;
     mesh.plot_uuid = data.uuid;
+    mesh.renderOrder = data.zvalue;
     update_visible(data.visible.value);
     data.visible.on(update_visible);
     connect_uniforms(mesh, data.uniform_updater);
@@ -22418,7 +22515,7 @@ function connect_uniforms(mesh, updater) {
 }
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
-    const rgbaArray = new Float32Array(length / 3 * 4);
+    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
     for(let i = 0, j = 0; i < length; i += 3, j += 4){
         rgbaArray[j] = rgbArray[i];
         rgbaArray[j + 1] = rgbArray[i + 1];
@@ -22773,24 +22870,6 @@ function start_renderloop(three_scene) {
     render_scene(three_scene);
     renderloop();
 }
-function throttle_function(func, delay) {
-    let prev = 0;
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        const now = new Date().getTime();
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-        if (now - prev > delay) {
-            prev = now;
-            return func(...args);
-        } else {
-            future_id = setTimeout(()=>inner_throttle(...args), now - prev + 1);
-        }
-    }
-    return inner_throttle;
-}
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
     const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
@@ -22870,7 +22949,7 @@ function add_canvas_events(screen, comm, resize_to) {
             ]
         });
     }
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
     function mousemove(event) {
         notify_mouse_throttled(event);
         return false;
@@ -22960,7 +23039,7 @@ function add_canvas_events(screen, comm, resize_to) {
         }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(resize_callback, 100);
+        const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
         window.addEventListener("resize", (event)=>resize_callback_throttled());
         setTimeout(resize_callback, 50);
     }
@@ -23074,10 +23153,12 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
             material.blending = mod.NormalBlending;
             const id = uniforms.object_id.value;
             if (id in picked_plots) {
-                plots.push([
-                    plot,
-                    picked_plots[id]
-                ]);
+                picked_plots[id].forEach((index)=>{
+                    plots.push([
+                        plot,
+                        index
+                    ]);
+                });
                 id_to_plot[id] = plot;
             }
         }
@@ -23088,14 +23169,16 @@ function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_t
     });
     return next_id;
 }
-function pick_native(scene, _x, _y, _w, _h) {
+function pick_native(scene, _x, _y, _w, _h, apply_ppu = true) {
     const { renderer , picking_target , px_per_unit  } = scene.screen;
-    [_x, _y, _w, _h] = [
-        _x,
-        _y,
-        _w,
-        _h
-    ].map((x)=>Math.ceil(x * px_per_unit));
+    if (apply_ppu) {
+        [_x, _y, _w, _h] = [
+            _x,
+            _y,
+            _w,
+            _h
+        ].map((x)=>Math.round(x * px_per_unit));
+    }
     const [x, y, w, h] = [
         _x,
         _y,
@@ -23119,7 +23202,12 @@ function pick_native(scene, _x, _y, _w, _h) {
             id,
             index
         ]);
-        picked_plots[id] = index;
+        if (!picked_plots[id]) {
+            picked_plots[id] = [];
+        }
+        if (!picked_plots[id].includes(index)) {
+            picked_plots[id].push(index);
+        }
     }
     const plots = [];
     const id_to_plot = {};
@@ -23173,7 +23261,7 @@ function get_picking_buffer(scene) {
     };
 }
 function pick_closest(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { canvas , px_per_unit , renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23184,25 +23272,25 @@ function pick_closest(scene, xy, range) {
             0
         ];
     }
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
-    let min_dist = range ^ 2;
+    let min_dist = 1e30;
     let selection = [
         null,
         0
     ];
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
-        for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
+        for(let j = 1; j <= dy; j++){
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -23217,7 +23305,7 @@ function pick_closest(scene, xy, range) {
     return selection;
 }
 function pick_sorted(scene, xy, range) {
-    const { renderer  } = scene.screen;
+    const { canvas , px_per_unit , renderer  } = scene.screen;
     const [width, height] = [
         renderer._width,
         renderer._height
@@ -23225,30 +23313,27 @@ function pick_sorted(scene, xy, range) {
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return null;
     }
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy, false);
     if (selected.length == 0) {
         return null;
     }
     const plot_matrix = plot_data.data;
-    const distances = selected.map((x)=>range ^ 2);
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const distances = selected.map((x)=>1e30);
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for(let i = 1; i <= dx; i++){
-        for(let j = 1; j <= dx; j++){
-            const d = x - i ^ 2 + (y - j) ^ 2;
-            if (plot_matrix.length <= pindex) {
-                continue;
-            }
+        for(let j = 1; j <= dy; j++){
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
-            const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid);
+            const plot_index = selected.findIndex((x)=>x[0].plot_uuid == plot_uuid && x[1] == index);
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;
             }

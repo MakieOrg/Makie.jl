@@ -174,7 +174,7 @@ It works exactly the same for vector graphics, just with a different target unit
 What are the default values of `px_per_unit` and `pt_per_unit` in each Makie backend, and why are they set that way?
 
 Let us start with `pt_per_unit` because this value is only relevant for one backend, which is CairoMakie.
-The default value in CairoMakie is `pt_per_unit = 0.75`. So if you `save(figure, "output.svg")` a `Figure` with `size = (600, 450)`, this comes out as a vector graphic that is 450 x 337.5 pt large.
+The default value in CairoMakie is `pt_per_unit = 0.75`. So if you `save("output.svg", figure)` a `Figure` with `size = (600, 450)`, this comes out as a vector graphic that is 450 x 337.5 pt large.
 
 Why 0.75 and not simply 1? This has to do with web standards and device-independent pixels. Websites mix vector graphics and images, so they need some way to relate the sizes of both types to each other. In principle, a pixel in an image doesn't have a real-world width. But you don't want the images on your site to shrink relative to the other content when device pixels are small, or grow when device pixels are large. So web browsers don't directly map image pixels to device pixels. Instead, they use a concept called device-independent pixels. If you place an image with 600 x 450 pixels in a website, this image is interpreted by default to be 600 x 450 device-independent pixels wide. One device-independent pixel is defined to be 0.75 pt wide, that's where the factor 0.75 comes in. So an image with 600 x 450 device-independent pixels is the same apparent size as a vector graphic with size 450 x 337.5 pt. On high-resolution screens, browsers then simply render one device-independent pixel with multiple device pixels (for example 2x2 on an Apple Retina display) so that content stays at readable sizes and doesn't look tiny.
 
@@ -189,7 +189,7 @@ In GLMakie, the default behavior is different. Because GLMakie doesn't just prod
 Academic journals usually demand that figures you submit adhere to specific physical dimensions.
 How can you render Makie figures at exactly the right sizes?
 
-First, let's look at vector graphics, which are usually desired for documents because they have the best text and line rendering quality at any zoom level. The output unit of vector graphics is always `pt` in CairoMakie. You can convert to points from inches via `1 in == 72 pt` and from centimeters via `1 cm = 28,3465 pt`.
+First, let's look at vector graphics, which are usually desired for documents because they have the best text and line rendering quality at any zoom level. The output unit of vector graphics is always `pt` in CairoMakie. You can convert to points from inches via `1 in == 72 pt` and from centimeters via `1 cm = 28.3465 pt`.
 
 Let's say your desired output size is 5 x 4 inches and you should use a font size of 12 pt. You multiply 5 x 4 by 72 to get 360 x 288 pt. The size you need to set on your `Figure` depends on the `pt_per_unit` value you want to use. When making plots for publications, you should usually just save with `pt_per_unit = 1`. So in our example, we would use `Figure(size = (360, 288))` and for text set `fontsize = 12` to match the 12 pt requirement.
 

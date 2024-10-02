@@ -553,6 +553,7 @@ function _polar_clip_polygon(
     return [Polygon(exterior, [interior])]
 end
 
+
 function draw_axis!(po::PolarAxis)
     rtick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     rtick_align = Observable{Point2f}()
@@ -713,57 +714,11 @@ function draw_axis!(po::PolarAxis)
         visible = po.thetaminorgridvisible,
     )
 
-    # tick labels
+    # Clipping
 
     clipcolor = map(po.blockscene, po.clipcolor, po.backgroundcolor) do cc, bgc
         return cc === automatic ? RGBf(to_color(bgc)) : RGBf(to_color(cc))
     end
-
-    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    rticklabelplot = text!(
-        po.overlay, rtick_pos_lbl;
-        fontsize = po.rticklabelsize,
-        font = po.rticklabelfont,
-        color = po.rticklabelcolor,
-        strokewidth = po.rticklabelstrokewidth,
-        strokecolor = rstrokecolor,
-        align = rtick_align,
-        rotation = rtick_rotation,
-        visible = po.rticklabelsvisible
-    )
-    # OPT: skip glyphcollection update on offset changes
-    rticklabelplot.plots[1].plots[1].offset = rtick_offset
-
-
-    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    thetaticklabelplot = text!(
-        po.overlay, thetatick_pos_lbl;
-        fontsize = po.thetaticklabelsize,
-        font = po.thetaticklabelfont,
-        color = po.thetaticklabelcolor,
-        strokewidth = po.thetaticklabelstrokewidth,
-        strokecolor = thetastrokecolor,
-        align = thetatick_align[],
-        visible = po.thetaticklabelsvisible
-    )
-    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
-
-    # Hack to deal with synchronous update problems
-    on(po.blockscene, thetatick_align) do align
-        thetaticklabelplot.align.val = align
-        if length(align) == length(thetatick_pos_lbl[])
-            notify(thetaticklabelplot.align)
-        end
-        return
-    end
-
-    # Clipping
 
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
@@ -853,11 +808,58 @@ function draw_axis!(po::PolarAxis)
         visible = po.spinevisible
     )
 
+    # tick labels
+
+    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : to_color(sc)
+    end
+
+    rticklabelplot = text!(
+        po.overlay, rtick_pos_lbl;
+        fontsize = po.rticklabelsize,
+        font = po.rticklabelfont,
+        color = po.rticklabelcolor,
+        strokewidth = po.rticklabelstrokewidth,
+        strokecolor = rstrokecolor,
+        align = rtick_align,
+        rotation = rtick_rotation,
+        visible = po.rticklabelsvisible
+    )
+    # OPT: skip glyphcollection update on offset changes
+    rticklabelplot.plots[1].plots[1].offset = rtick_offset
+
+
+    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : to_color(sc)
+    end
+
+    thetaticklabelplot = text!(
+        po.overlay, thetatick_pos_lbl;
+        fontsize = po.thetaticklabelsize,
+        font = po.thetaticklabelfont,
+        color = po.thetaticklabelcolor,
+        strokewidth = po.thetaticklabelstrokewidth,
+        strokecolor = thetastrokecolor,
+        align = thetatick_align[],
+        visible = po.thetaticklabelsvisible
+    )
+    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
+
+    # Hack to deal with synchronous update problems
+    on(po.blockscene, thetatick_align) do align
+        thetaticklabelplot.align.val = align
+        if length(align) == length(thetatick_pos_lbl[])
+            notify(thetaticklabelplot.align)
+        end
+        return
+    end
+
+    # updates and z order
     notify(po.target_thetalims)
 
-    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
-    translate!(spineplot, 0, 0, 9001)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
+    translate!(spineplot, 0, 0, 9001)
+    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
     on(po.blockscene, po.gridz) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end

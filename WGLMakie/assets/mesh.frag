@@ -1,9 +1,11 @@
 in vec2 frag_uv;
 in vec4 frag_color;
-flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;
+in float o_clip_distance[8];
+
+uniform int num_clip_planes;
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -107,7 +109,12 @@ vec4 pack_int(uint id, uint index) {
     return unpack;
 }
 
-void main() {
+void main()
+{
+    for (int i = 0; i < num_clip_planes; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.rgb;
 
