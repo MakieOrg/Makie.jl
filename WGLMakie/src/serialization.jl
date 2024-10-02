@@ -198,12 +198,17 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
-
                 # update to replace the whole buffer!
                 if f === ShaderAbstractions.update!
                     new_array = args[1]
                     flat = flatten_buffer(new_array)
-                    update_buffer[] = [name, serialize_three(flat), length(new_array)]
+                    update = [name, serialize_three(flat), length(new_array)]
+                    # if sizeof(flat) > 10000
+                    #     update_buffer[] = Bonito.LargeUpdate(update)
+                    # else
+                        update_buffer[] = update
+                    # end
+
                 end
                 return
             end
@@ -221,12 +226,12 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
 end
 
 function uniform_updater(@nospecialize(plot), uniforms::Dict)
-    updater = Observable(Any[:none, []])
+    updater = Observable{Any}(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
             on(plot, ShaderAbstractions.updater(value).update) do (f, args)
                 if f === ShaderAbstractions.update!
-                    updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    updater[] = Bonito.LargeUpdate([name, [Int32[size(value.data)...], serialize_three(args[1])]])
                 end
                 return
             end
@@ -265,7 +270,7 @@ function serialize_three(@nospecialize(plot), program::Program)
     facies = reinterpret_faces(plot, _faces(program.vertexarray))
     indices = convert(Observable, facies)
     uniforms = serialize_uniforms(program.uniforms)
-    attribute_updater = Observable(["", [], 0])
+    attribute_updater = Observable{Any}(["", [], 0])
     register_geometry_updates(plot, attribute_updater, program)
     # TODO, make this configurable in ShaderAbstractions
     update_shader(x) = replace(x, "#version 300 es" => "")
