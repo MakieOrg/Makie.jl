@@ -69,6 +69,7 @@ pages = [
             "reference/blocks/axis3.md",
             "reference/blocks/box.md",
             "reference/blocks/button.md",
+            "reference/blocks/checkbox.md",
             "reference/blocks/colorbar.md",
             "reference/blocks/gridlayout.md",
             "reference/blocks/intervalslider.md",
