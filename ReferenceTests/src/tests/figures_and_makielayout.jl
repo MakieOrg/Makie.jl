@@ -166,6 +166,39 @@ end
     f
 end
 
+@reference_test "Legend overrides" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    li = lines!(
+        1:10,
+        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+    )
+    sc = scatter!(
+        1:10,
+        2:11,
+        color = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        colorrange = (1, 3),
+        marker = :utriangle,
+        markersize = 20,
+        label = [
+            label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+        ]
+    )
+    Legend(f[1, 2], ax)
+    Legend(
+        f[1, 3],
+        [
+            sc => (; markersize = 30),
+            [li => (; color = :red), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan),
+        ],
+        ["Scatter", "Line and Scatter", "Another"],
+        patchsize = (40, 20)
+    )
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -361,5 +394,20 @@ end
     )
     Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
     Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
+    f
+end
+
+@reference_test "Checkbox" begin
+    f = Figure(size = (300, 200))
+    Makie.Checkbox(f[1, 1])
+    Makie.Checkbox(f[1, 2], checked = true)
+    Makie.Checkbox(f[1, 3], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6)
+    Makie.Checkbox(f[1, 4], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6, size = 20)
+    Makie.Checkbox(f[1, 5], checkboxstrokewidth = 3)
+    Makie.Checkbox(f[2, 1], checkboxstrokecolor_unchecked = :red)
+    Makie.Checkbox(f[2, 2], checked = true, checkboxstrokecolor_checked = :cyan)
+    Makie.Checkbox(f[2, 3], checked = true, checkmarkcolor_checked = :black)
+    Makie.Checkbox(f[2, 4], checked = false, checkboxcolor_unchecked = :yellow)
+    Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
     f
 end
