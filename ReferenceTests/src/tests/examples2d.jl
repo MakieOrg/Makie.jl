@@ -1571,6 +1571,10 @@ end
     ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
     ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
     limits!(ax4, 3000, 3090, 3460, 3500)
+    heatmap(f[3, 1], (1000, 2000), (500, 1000), Resampler(data2))
+    ax = Axis(f[3, 2])
+    limits!(ax, (0, 1), (0, 1))
+    heatmap!(ax, (1, 2), (1, 2), Resampler(data2))
     Colorbar(f[:, 3], pl1)
     sleep(1) # give the async operations some time
     f
