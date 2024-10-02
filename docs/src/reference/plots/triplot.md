@@ -25,7 +25,7 @@ ax, tr = triplot(f[1, 2], tri, show_points = true)
 f
 ```
 
-You can use `triplot` to visualise the [ghost edges](https://danielvandh.github.io/DelaunayTriangulation.jl/stable/boundary_handling/#Ghost-Triangles) surrounding the boundary.
+You can use `triplot` to visualise the [ghost edges](https://juliageometry.github.io/DelaunayTriangulation.jl/stable/manual/ghost_triangles/) surrounding the boundary.
 
 ```@figure
 using DelaunayTriangulation

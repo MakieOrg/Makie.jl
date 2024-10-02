@@ -68,6 +68,7 @@ pages = [
             "reference/blocks/axis3.md",
             "reference/blocks/box.md",
             "reference/blocks/button.md",
+            "reference/blocks/checkbox.md",
             "reference/blocks/colorbar.md",
             "reference/blocks/gridlayout.md",
             "reference/blocks/intervalslider.md",
@@ -203,7 +204,7 @@ empty!(MakieDocsHelpers.FIGURES)
 Documenter.makedocs(;
     sitename="Makie",
     format=DocumenterVitepress.MarkdownVitepress(;
-        repo = "https://github.com/MakieOrg/Makie.jl",
+        repo = "github.com/MakieOrg/Makie.jl",
         devurl = "dev",
         devbranch = "master",
         deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them

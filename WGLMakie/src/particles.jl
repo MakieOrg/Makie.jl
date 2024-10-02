@@ -163,6 +163,7 @@ function scatter_shader(scene::Scene, attributes, plot)
         font = get(attributes, :font, Observable(Makie.defaultfont()))
         marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
+            marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
             return Makie.to_spritemarker(marker)
         end
 

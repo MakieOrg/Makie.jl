@@ -46,7 +46,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     mi = p isa HSpan ? p.xmin : p.ymin
     ma = p isa HSpan ? p.xmax : p.ymax
 
-    onany(limits, p[1], p[2], mi, ma, transf) do lims, lows, highs, mi, ma, transf
+    onany(p, limits, p[1], p[2], mi, ma, transf) do lims, lows, highs, mi, ma, transf
         empty!(rects[])
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)

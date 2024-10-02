@@ -6,22 +6,25 @@
                 font-family: sans-serif;
             }
             .refimage {
-                display: block;
+                max-width: 100%;
             }
             .image-list {
-                display: flex;
-                flex-wrap: wrap;
+                display: table;
             }
             .image-list > div {
-                margin: 1em;
+                display: table-row;
+            } 
+            .image-list > div > td > div{
+                display: block;
+                margin: 0.25em;
                 padding: 0.5em;
-                border: 2px solid #eee;
+                border: 2px solid lightblue;
+                background-color: #eee;
                 border-radius: 1em;
-            }
-
-            .image-list > div > h3 {
+            } 
+            .image-list > div > td > div > h3 {
                 margin: 0 0 1em 0;  
-            }
+            }   
         </style>
 
     </head>
@@ -41,7 +44,7 @@
         // this string should be replaced by the server script with the correct value
         default_tag = DEFAULT_TAG
 
-        fetch('scores.tsv')
+        fetch('scores_table.tsv')
             .then(response => response.text())
             .then(data => {
                 di = document.querySelector("#refimage-list")
@@ -50,27 +53,48 @@
                         return
                     }
                     parts = line.split('\t')
-                    score = parseFloat(parts[0])
-                    let path = parts[1]
-                    
-                    div = document.createElement("div")
-                    di.append(div)
-                    div.innerHTML = `
-                    <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
-                    <span>${path}</span>
-                    <div>Score: ${score.toFixed(4)}</div>
-                    <button class="mode-button">Showing recorded</button>
-                    `
-                    if (path.endsWith(".png")){
-                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
-                    } else if (path.endsWith(".mp4")){
-                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
+           
+                    // row
+                    row = document.createElement("div") 
+                    di.append(row)
+
+                    // Cells
+                    for (let i = 0; i < 3; i++) {
+                        score = parseFloat(parts[2*i])
+                        let path = parts[2*i+1]
+
+                        cell = document.createElement("td")
+                        row.append(cell)
+
+                        if (path == "")
+                            continue;
+
+                        div = document.createElement("div") 
+                        cell.append(div)
+
+                        if (score > 0.05)
+                            div.style.backgroundColor = '#ffbbbb';
+                        else if (score > 0.001)
+                            div.style.backgroundColor = '#ffffbb';
+
+                        div.innerHTML = `
+                        <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
+                        <span>${path}</span>
+                        <div>Score: ${score.toFixed(4)}</div>
+                        <button class="mode-button">Showing recorded</button>
+                        <br>
+                        `
+                        if (path.endsWith(".png")){
+                            div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
+                        } else if (path.endsWith(".mp4")){
+                            div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
+                        }
                     }
                 })
 
                 document.querySelectorAll(".mode-button").forEach(but => {
                     but.onclick = function(){
-                        img = but.nextElementSibling
+                        img = but.nextElementSibling.nextElementSibling
                         if (img.dataset.version == "recorded"){
                             img.dataset.version = "reference"
                             but.innerHTML = "Showing reference"
