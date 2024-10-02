@@ -87,3 +87,24 @@ end
 @compile begin
     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
 end
+
+@compile begin
+    f = Figure()
+    ax = Makie.Axis(f)
+    Makie.Toggle(f)
+    Makie.Slider(f)
+    Makie.LScene(f)
+    Makie.PolarAxis(f)
+    Makie.IntervalSlider(f)
+    lines!(ax, 1:2, label = "Line")
+    Makie.Legend(f, ax, "Default", nbanks = 2)
+    Makie.Box(f)
+    Makie.Label(f)
+    Makie.Textbox(f)
+    Makie.Axis3(f)
+    Makie.Colorbar(f)
+    Makie.Button(f)
+    Makie.Menu(f, options=["one"])
+    Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
+    f
+end
