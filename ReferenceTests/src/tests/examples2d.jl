@@ -1773,7 +1773,7 @@ end
     fig
 end
 
-@reference_test "ablines + h/v lines/span" begin
+@reference_test "ablines + hvlines + hvspan" begin
     f = Figure()
 
     ax = Axis(f[1, 1])
