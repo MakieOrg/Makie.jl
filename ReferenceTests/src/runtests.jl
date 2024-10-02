@@ -92,10 +92,16 @@ function record_comparison(base_folder::String; record_folder_name="recorded", t
     end
     cp(reference_folder, local_reference_copy_dir)
     testimage_paths = get_all_relative_filepaths_recursively(record_folder)
-    missing_refimages, scores = compare(testimage_paths, reference_folder, record_folder)
+    missing_refimages, missing_recordings, scores = compare(testimage_paths, reference_folder, record_folder)
 
     open(joinpath(base_folder, "new_files.txt"), "w") do file
         for path in missing_refimages
+            println(file, path)
+        end
+    end
+
+    open(joinpath(base_folder, "missing_files.txt"), "w") do file
+        for path in missing_recordings
             println(file, path)
         end
     end
@@ -120,12 +126,19 @@ function test_comparison(scores; threshold)
     end
 end
 
-function compare(relative_test_paths::Vector{String}, reference_dir::String, record_dir; o_refdir=reference_dir, missing_refimages=String[], scores=Dict{String,Float64}())
+function compare(
+        relative_test_paths::Vector{String}, reference_dir::String, record_dir; 
+        o_refdir = reference_dir, missing_refimages = String[], 
+        missing_recordings = String[], scores = Dict{String,Float64}()
+    )
+
     for relative_test_path in relative_test_paths
         ref_path = joinpath(reference_dir, relative_test_path)
         rec_path = joinpath(record_dir, relative_test_path)
         if !isfile(ref_path)
             push!(missing_refimages, relative_test_path)
+        elseif !isfile(rec_path)
+            push!(missing_recordings, relative_test_path)
         elseif endswith(ref_path, ".html")
             # ignore
         else
@@ -133,5 +146,5 @@ function compare(relative_test_paths::Vector{String}, reference_dir::String, rec
             scores[relative_test_path] = diff
         end
     end
-    return missing_refimages, scores
+    return missing_refimages, missing_recordings, scores
 end
