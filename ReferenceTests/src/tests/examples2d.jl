@@ -1496,6 +1496,34 @@ end
     fig
 end
 
+# @reference_test "Violin" 
+begin
+    fig = Figure()
+    
+    categories = RNG.rand(1:3, 1000)
+    values = RNG.randn(1000)
+    violin(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 1000)
+    violin(fig[1, 2], categories, values, dodge = dodge, 
+        color = map(d->d==1 ? :yellow : :orange, dodge), 
+        strokewidth = 2, strokecolor = :black, gap = 0.1, dodge_gap = 0.5
+    )
+
+    violin(fig[2, 1], categories, values, orientation = :horizontal,
+        color = :gray, side = :left
+    )
+
+    violin!(categories, values, orientation = :horizontal, 
+        color = :yellow, side = :right, strokewidth = 2, strokecolor = :black,
+        weights = abs.(values)
+    )
+
+    # TODO: test bandwidth, boundary
+
+    fig
+end
+
 @reference_test "Clip planes - CairoMakie overrides" begin
     f = Figure()
     a = Axis(f[1, 1])
