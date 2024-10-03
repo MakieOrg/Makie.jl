@@ -652,9 +652,9 @@ function Makie.plot!(p::HeatmapShader)
     max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
         return resampler.max_resolution isa Automatic ? widths(viewport) : ntuple(x-> resampler.max_resolution, 2)
     end
-    image = lift(x-> x.data, p, p.values)
+    image = lift(x-> x.data, p, p.values; ignore_equal_values=true)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
-    x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
+    x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area; priority=-10)
     overview_image = lift(last, x_y_overview_image)
 
     colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image

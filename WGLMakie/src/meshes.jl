@@ -60,7 +60,7 @@ end
 lift_or(f, p, x) = f(x)
 lift_or(f, @nospecialize(p), x::Observable) = lift(f, p, x)
 
-function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
+function draw_mesh(::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
