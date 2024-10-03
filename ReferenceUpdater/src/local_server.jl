@@ -13,6 +13,7 @@ function serve_update_page_from_dir(folder)
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
     
+    group_scores(folder)
     group_files(folder, "new_files.txt", "new_files_grouped.txt")
     group_files(folder, "missing_files.txt", "missing_files_grouped.txt")
 
@@ -161,7 +162,6 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
                 rm(filepath)
-                group_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
                 tmpdir = URL_CACHE[download_url]
@@ -202,13 +202,15 @@ end
 
 
 function group_scores(path)
+    isfile(joinpath(path, "scores_table.tsv")) && return
+
     # Load all refimg scores into a Dict
     # `filename => (score_glmakie, score_cairomakie, score_wglmakie)`
     data = Dict{String, Vector{Float64}}()
     open(joinpath(path, "scores.tsv"), "r") do file
         for line in eachline(file)
             score, filepath = split(line, '\t')
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             filename = join(pieces[2:end], '/')
 
@@ -243,9 +245,12 @@ function group_scores(path)
         end
     end
 
+    return
 end
 
 function group_files(path, input_filename, output_filename)
+    isfile(joinpath(path, output_filename)) && return
+    
     # Group files in new_files/missing_files into a table like layout:
     #  GLMakie  CairoMakie  WGLMakie
 
@@ -279,4 +284,5 @@ function group_files(path, input_filename, output_filename)
         end
     end
 
+    return
 end
