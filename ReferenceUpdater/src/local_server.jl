@@ -17,7 +17,8 @@ function serve_update_page_from_dir(folder)
 
     function receive_update(req)
         data = JSON3.read(req.body)
-        images = data["images"]
+        images_to_update = data["images_to_update"]
+        images_to_delete = data["images_to_delete"]
         tag = data["tag"]
 
         tempdir = tempname()
@@ -27,13 +28,19 @@ function serve_update_page_from_dir(folder)
         @info "Copying reference folder to \"$tempdir\""
         cp(reference_folder, tempdir)
 
-        for image in images
+        for image in images_to_update
             @info "Overwriting \"$image\" in new reference folder"
             copy_filepath = joinpath(tempdir, image)
             copy_dir = splitdir(copy_filepath)[1]
             # make the path in case a new refimage is in a not yet existing folder
             mkpath(copy_dir)
             cp(joinpath(recorded_folder, image), copy_filepath, force = true)
+        end
+
+        for image in images_to_delete
+            @info "Deleting \"$image\" from new reference folder"
+            copy_filepath = joinpath(tempdir, image)
+            rm(copy_filepath, recursive = true)
         end
 
         @info "Uploading updated reference images under tag \"$tag\""

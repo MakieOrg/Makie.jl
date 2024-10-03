@@ -34,9 +34,14 @@
         <h3 id="update-counter"></h3>
         <ul id="update-list">
         </ul>
-        <h2>New images without references</h2>
+        <h3 id="delete-counter"></h3>
+        <ul id="delete-list">
+        </ul>
+        <h2>New images without references (Adding selected)</h2>
         <div id="new-images-list" class="image-list"></div>
-        <h2>Images with references</h2>
+        <h2>Reference images that have no been tested (Deleting selected)</h2>
+        <div id="missing-images-list" class="image-list"></div>
+        <h2>Images with references (Updating selected)</h2>
         <div id="refimage-list" class="image-list"></div>
     </body>
 
@@ -124,7 +129,7 @@
                     di.append(div)
                     div.innerHTML = `
                     <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
-                    <span>${path}</span>
+                    <span>${path}</span><br>
                     `
                     if (path.endsWith(".png")){
                         div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
@@ -151,13 +156,57 @@
             document.querySelector("#update-list").innerHTML = listitems
         }
 
+        fetch('missing_files.txt')
+            .then(response => response.text())
+            .then(data => {
+                di = document.querySelector("#missing-images-list")
+                data.split(/\r?\n/).forEach(path => {
+                    if (path == ""){
+                        return
+                    }
+                    
+                    div = document.createElement("div")
+                    di.append(div)
+                    div.innerHTML = `
+                    <input type="checkbox" class="delete-checkbox" data-image="${path}"></input>
+                    <span>${path}</span><br>
+                    `
+                    if (path.endsWith(".png")){
+                        div.innerHTML += `<img class="refimage" data-version="reference" data-image="${path}" src="reference/${encodeURIComponent(path)}">`
+                    } else if (path.endsWith(".mp4")){
+                        div.innerHTML += `<video class="refimage" data-version="reference" data-image="${path}" controls src="reference/${encodeURIComponent(path)}">`
+                    }
+                })
+
+                document.querySelectorAll(".delete-checkbox").forEach(inp => {
+                    inp.onclick = delete_list
+                })
+            })
+
+        function delete_list(){
+            checked = Array.from(document.querySelectorAll(".delete-checkbox")).filter(inp => inp.checked)
+            n_checked = checked.length
+
+            document.querySelector("#delete-counter").innerHTML = `${n_checked} images selected for removal.`
+
+            
+            listitems = checked.map(c => {
+                return `<li>${c.dataset.image}</li>`
+            }).join("")
+            document.querySelector("#delete-list").innerHTML = listitems
+        }
+
         document.querySelector("#update-reference").onclick = function(){
 
-            images = Array.from(document.querySelectorAll(".update-checkbox"))
+            images_to_update = Array.from(document.querySelectorAll(".update-checkbox"))
                 .filter(inp => inp.checked)
                 .map(inp => inp.dataset.image)
 
-            if (images.length == 0){
+            images_to_delete = Array.from(document.querySelectorAll(".delete-checkbox"))
+                .filter(inp => inp.checked)
+                .map(inp => inp.dataset.image)
+
+            if (images_to_update.length + images_to_delete.length == 0){
                 alert("No images selected for update.")
                 return
             }
@@ -166,7 +215,8 @@
 
             if (chosen_tag != null){
                 data = {
-                    images: images,
+                    images_to_update: images_to_update,
+                    images_to_delete: images_to_delete,
                     tag: chosen_tag,
                 }
                 fetch(window.location, {
@@ -180,6 +230,9 @@
             }
         }
 
-        window.onload = update_list
+        window.onload = () => {
+            update_list()
+            delete_list()
+        }
     </script>
 </html>
