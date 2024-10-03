@@ -333,7 +333,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
-    plot_data = serialize_plots(scene, [plot])
+    plot_data = serialize_plots(scene, Plot[plot])
     plot_sub = Session(session)
     Bonito.init_session(plot_sub)
     plot.__wgl_session = plot_sub
