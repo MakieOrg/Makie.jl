@@ -1159,9 +1159,9 @@ end
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
         "The width of the toggle."
-        width = 32
+        width = Auto()
         "The height of the toggle."
-        height = 18
+        height =  Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1185,6 +1185,8 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
+        "The orientation of the toggle (:horizontal or :vertical)."
+        orientation = :horizontal
     end
 end
 

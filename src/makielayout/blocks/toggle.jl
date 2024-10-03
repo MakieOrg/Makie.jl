@@ -2,18 +2,39 @@ function initialize_block!(t::Toggle)
 
     topscene = t.blockscene
 
+    on(t.orientation) do or
+        if or == :horizontal
+            t.width[] = 32
+            t.height[] = 18
+        elseif or == :vertical
+            t.width[] = 18
+            t.height[] = 32
+        else
+            error("orientation must be either :horizontal or :vertical")
+        end
+    end
+    notify(t.orientation)
+
     markersize = lift(topscene, t.layoutobservables.computedbbox) do bbox
         min(width(bbox), height(bbox))
     end
 
-    button_endpoint_inactive = lift(topscene, markersize) do ms
+    button_endpoint_inactive = lift(topscene, markersize, t.orientation) do ms, or
         bbox = t.layoutobservables.computedbbox[]
-        Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
+        if or == :horizontal
+            Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
+        elseif or == :vertical
+            Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
+        end
     end
 
-    button_endpoint_active = lift(topscene, markersize) do ms
+    button_endpoint_active = lift(topscene, markersize, t.orientation) do ms, or
         bbox = t.layoutobservables.computedbbox[]
-        Point2f(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
+        if or == :horizontal
+            Point2f(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
+        elseif or == :vertical
+            Point2f(left(bbox) + ms / 2, top(bbox) - ms / 2)
+        end
     end
 
     buttonvertices = lift(topscene, markersize, t.cornersegments) do ms, cs

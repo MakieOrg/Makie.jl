@@ -541,3 +541,10 @@ end
     end
     @test isempty(limits.listeners)
 end
+
+@testset "Toggle" begin
+    f = Figure()
+    Toggle(f[1,1])
+    Toggle(f[2,1], orientation=:vertical)
+    @test_throws ErrorException Toggle(f[3,1], orientation=:diagonal)
+end
