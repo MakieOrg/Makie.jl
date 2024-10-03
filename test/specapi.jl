@@ -129,3 +129,44 @@ end
     @test !haskey(pl, :clamp_bincounts)
     @test !haskey(pl.plots[1], :clamp_bincounts)
 end
+
+@testset "then observer clean up" begin
+    ax = S.Axis(title="interaction")
+    ax.then(axis-> on(println, events(axis).mouseposition))
+    gl = S.GridLayout(ax)
+
+    f, _, pl = plot(gl)
+    real_ax = f.content[1]
+    mpos = events(real_ax).mouseposition
+    @test length(mpos.listeners) == 2
+    @test mpos.listeners[end][2] === println
+    @test length(ax.then_observers) == 1
+    @test first(ax.then_observers).f === println
+
+    pl[1] = S.GridLayout(S.Axis(title="interaction"))
+    @test real_ax === f.content[1] # re-use axis
+    @test length(mpos.listeners) == 1
+    @test mpos.listeners[1][2] !== println
+end
+
+@testset "Blockspec re-use" begin
+    ax1 = S.Axis(; title="Title 1")
+    ax2 = S.Axis(; title="Title 2")
+    ax3 = S.Axis(; title="Title 3")
+    axes = [ax1, ax2, ax3]
+    gl = S.GridLayout(axes)
+    f, _, pl = plot(gl)
+    real_axes = copy(f.content[1:3])
+    @test map(x-> x.title[], real_axes) == ["Title $i" for i in 1:3]
+    pl[1] = S.GridLayout(reverse(axes))
+    rev_axes = copy(f.content[1:3])
+    c_axes = map(x-> x.content, f.layout.content)
+    # Axis don't get reversed, we only update the titles
+    @test rev_axes == c_axes
+    @test map(x-> x.title[], rev_axes) == reverse(["Title $i" for i in 1:3])
+    @test all(((a, b),) -> a === b, zip(rev_axes, real_axes))
+    @test all(((a, b),) -> a.title[] == b.title[], zip(rev_axes, real_axes))
+    pl[1] =  S.GridLayout()
+    @test isempty(f.content)
+    @test isempty(f.layout.content)
+end
