@@ -1,6 +1,25 @@
 function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
     metamesh = p[1][]
     meshes = GeometryBasics.split_mesh(metamesh.mesh)
+    
+    if !haskey(metamesh, :material_names) || !haskey(metamesh, :materials)
+        @error "The given mesh has no :material_names or :materials. Drawing without material information."
+        for (i, m) in enumerate(meshes)
+            attr = Attributes()
+            # Differentiate colors?
+            attr[:color] = i
+            attr[:colorrange] = (1, length(meshes))
+
+            for k in Makie.attribute_names(Makie.Mesh)
+                get!(attr, k, map(identity, p.attributes[k]))
+            end
+
+            mesh!(p, attr, m)
+        end
+
+        return p
+    end
+
     names = metamesh[:material_names]
     
     for (name, m) in zip(names, meshes)
@@ -46,10 +65,10 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
         end
 
         for k in Makie.attribute_names(Makie.Mesh)
-            get!(attr, k, p.attributes[k])
+            get!(attr, k, map(identity, p.attributes[k]))
         end
 
-        plt = mesh!(p, attr, m)
+        mesh!(p, attr, m)
     end
 
     return p
