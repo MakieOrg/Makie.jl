@@ -1,13 +1,13 @@
 
 @reference_test "mesh textured and loaded" begin
     f = Figure(size = (600, 600))
-    
+
     moon = loadasset("moon.png")
-    ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon, 
+    ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon,
         shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     cameracontrols(ax).settings.center[] = false # avoid recenter on display
-    
+
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
     mesh(f[1, 2], m, color=earth, shading=NoShading)
@@ -52,7 +52,7 @@ end
     r = range(-1, stop=1, length=100)
     matr = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
     volume(f[1, 1], matr .* (matr .> 1.4), algorithm=:iso, isorange=0.05, isovalue=1.7, colorrange=(0, 1))
-    
+
     volume(f[1, 2], RNG.rand(32, 32, 32), algorithm=:mip)
 
     r = LinRange(-3, 3, 100);  # our value range
@@ -69,9 +69,9 @@ end
     ax.scene.clear[] = true
 
     r = range(-3pi, stop=3pi, length=100)
-    volume(f[2, 2], r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), 
+    volume(f[2, 2], r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z),
         colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
-    volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, 
+    volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
         colorrange=(0, 1), transformation=(translation=Vec3f(6pi, 0, 0),))
 
     f
@@ -606,7 +606,7 @@ end
     a = LScene(f[1, 1])
     a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
     linesegments!(
-        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[], 
+        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[],
         fxaa = true, transparency = false, linewidth = 3)
 
     p = mesh!(Sphere(Point3f(0,0,1), 1f0), transparency = false, color = :orange, backlight = 1.0)
@@ -665,7 +665,7 @@ end
     r = -10:10
     data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
     clip_planes = [Plane3f(Vec3f(-1), 0.0)]
-    
+
     attr = (clip_planes = clip_planes, axis = (show_axis = false,))
 
     volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
@@ -682,7 +682,7 @@ end
         algorithm = :additive)
     volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
         algorithm = :indexedabsorption)
-    
+
     f
 end
 
@@ -710,7 +710,7 @@ end
 @reference_test "volumeslices" begin
     r = range(-1, 1, length = 10)
     data = RNG.rand(10,10,10)
-    
+
     fig = Figure()
     volumeslices(fig[1, 1], r, r, r, data)
     a, p = volumeslices(fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
@@ -719,4 +719,12 @@ end
     p.update_yz[](4)
     p.update_xy[](10)
     fig
+end
+@reference_test "MetaMesh (Sponza)" begin
+    m = load(Makie.assetpath("sponza/sponza.obj"))
+    f, a, p = mesh(m)
+    cameracontrols(a).settings.center[] = false
+    cameracontrols(a).settings.fixed_axis[] = false # irrelevant here
+    update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
+    f
 end
