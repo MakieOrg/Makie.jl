@@ -7,6 +7,12 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
         attr = Attributes()
         material = metamesh[:materials][name]
 
+        # TODO: Add ambient multiplier
+        # attr[:ambient]   = get(material, "ambient", p.attributes[:ambient])
+        attr[:diffuse]   = get(material, "diffuse", p.attributes[:diffuse])
+        attr[:specular]  = get(material, "specular", p.attributes[:specular])
+        attr[:shininess] = get(material, "shininess", p.attributes[:shininess])
+
         if haskey(material, "diffuse map")
             try 
                 x = material["diffuse map"]
@@ -30,18 +36,20 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
             catch e
                 @error "Failed to load texture from material $name: " exception = e
             end
+ 
+        # What should we do if no texture is given?
+        # Should we assume diffuse carries color information if no texture is given?
+        elseif haskey(material, "diffuse")
+            attr[:color] = RGBAf(1,1,1,1)
+        else
+            # use Makie default?
         end
-
-        # attr[:ambient]   = get(material, "ambient", p.attributes[:ambient])
-        attr[:diffuse]   = get(material, "diffuse", p.attributes[:diffuse])
-        attr[:specular]  = get(material, "specular", p.attributes[:specular])
-        attr[:shininess] = get(material, "shininess", p.attributes[:shininess])
 
         for k in Makie.attribute_names(Makie.Mesh)
             get!(attr, k, p.attributes[k])
         end
 
-        plt = mesh!(p, m; attr...)
+        plt = mesh!(p, attr, m)
     end
 
     return p
