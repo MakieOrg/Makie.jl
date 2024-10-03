@@ -734,3 +734,12 @@ end
     ls2, pl = surface(f[1, 2], Makie.peaks(20); interpolate=false, axis=(; show_axis=false))
     f
 end
+
+@reference_test "MetaMesh (Sponza)" begin
+    m = load(Makie.assetpath("sponza/sponza.obj"))
+    f, a, p = mesh(m)
+    cameracontrols(a).settings.center[] = false
+    cameracontrols(a).settings.fixed_axis[] = false # irrelevant here
+    update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
+    f
+end
