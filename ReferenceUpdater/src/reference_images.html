@@ -42,6 +42,7 @@
         The selected CI run produced an image for which no reference image exists. 
         Selected images will be added as new reference images.
         <br><br>
+        <input type="checkbox" id='toggle-all-add' onClick="toggle_all(this, '.add-checkbox'); update_list();"></input>Toggle All<br>
         <div id="new-images-list" class="image-list"></div>
 
         <h2>Old reference images without recordings</h2>
@@ -49,6 +50,7 @@
         This implies that a reference test was deleted or renamed. 
         Selected images will be deleted from the reference images.
         <br><br>
+        <input type="checkbox" id='toggle-all-delete' onClick="toggle_all(this, '.delete-checkbox'); delete_list();"></input>Toggle All<br>
         <div id="missing-images-list" class="image-list"></div>
 
         <h2>Images with references</h2>
@@ -158,7 +160,7 @@
                         div = document.createElement("div")
                         cell.append(div)
                         div.innerHTML = `
-                        <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
+                        <input type="checkbox" class="add-checkbox" data-image="${path}"></input>
                         <span>${path}</span>
                         <br>
                         `
@@ -170,18 +172,20 @@
                     }
                 })
 
-                document.querySelectorAll(".update-checkbox").forEach(inp => {
+                document.querySelectorAll(".add-checkbox").forEach(inp => {
                     inp.onclick = update_list
                 })
             })
 
         function update_list(){
-            checked = Array.from(document.querySelectorAll(".update-checkbox")).filter(inp => inp.checked)
+            updated = Array.from(document.querySelectorAll(".update-checkbox")).filter(inp => inp.checked)
+            added = Array.from(document.querySelectorAll(".add-checkbox")).filter(inp => inp.checked)
+            checked = updated.concat(added)
+            
             n_checked = checked.length
 
             document.querySelector("#update-counter").innerHTML = `${n_checked} images selected for updating:`
 
-            
             listitems = checked.map(c => {
                 return `<li>${c.dataset.image}</li>`
             }).join("")
@@ -238,11 +242,19 @@
 
             document.querySelector("#delete-counter").innerHTML = `${n_checked} images selected for removal:`
 
-            
             listitems = checked.map(c => {
                 return `<li>${c.dataset.image}</li>`
             }).join("")
             document.querySelector("#delete-list").innerHTML = listitems
+        }
+
+        function toggle_all(source, group) {
+            console.log(source)
+            console.log(group)
+            
+            checkboxes = document.querySelectorAll(group)
+            console.log(checkboxes)
+            checkboxes.forEach(checkbox => { checkbox.checked = source.checked })
         }
 
         document.querySelector("#update-reference").onclick = function(){
@@ -280,6 +292,8 @@
         }
 
         window.onload = () => {
+            document.querySelector("#toggle-all-add").checked = false;
+            document.querySelector("#toggle-all-delete").checked = false;
             update_list()
             delete_list()
         }
