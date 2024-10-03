@@ -196,7 +196,7 @@ function split_scores(path)
             score, filepath = split(line, '\t')
             pieces = splitpath(filepath)
             backend = pieces[1]
-            filename = joinpath(pieces[2:end])
+            filename = join(pieces[2:end], '/')
 
             scores = get!(data, filename, [-1.0, -1.0, -1.0])
             if backend == "GLMakie"
