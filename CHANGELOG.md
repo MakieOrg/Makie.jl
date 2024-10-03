@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- For `Textbox`es in which a fixed width is specified, the text is now scrolled
+  if the width is exceeded [#4293](https://github.com/MakieOrg/Makie.jl/pull/4293)
+
 ## [0.21.13] - 2024-10-07
 
 - Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).

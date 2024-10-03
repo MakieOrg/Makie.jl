@@ -90,13 +90,28 @@ function initialize_block!(tbox::Textbox)
             return
         end
 
-        if 0 < ci < length(bbs)
+        points = if 0 < ci < length(bbs)
             [leftline(bbs[ci+1])...]
         elseif ci == 0
             [leftline(bbs[1])...]
         else
             [leftline(bbs[ci])...] .+ Point2f(hadvances[ci], 0)
         end
+
+        textpos = textplot.converted[1][][1]
+        offset = if points[1][1] > tbox.layoutobservables.computedbbox[].widths[1]
+            points[1][1] - tbox.layoutobservables.computedbbox[].widths[1]
+        elseif points[1][1] < 0
+            points[1][1]
+        else
+            0
+        end
+        if offset != 0
+            textplot.converted[1][] = [Point3f(textpos[1]-offset, textpos[2:3]...)]
+            points = [Point2f(p[1]-offset, p[2]) for p in points]
+        end
+
+        points
     end
 
     cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
@@ -161,8 +176,12 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
+        textplot = t.blockscene.plots[1]
+        oldval = textplot.converted[1][][1]
         newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
+        offset = displayed_charbbs[][index].widths[1] / 2
+        textplot.converted[1][] = [Point3f(oldval[1]+offset, oldval[2:3]...)]
         cursorindex[] = index
     end
 
@@ -171,6 +190,7 @@ function initialize_block!(tbox::Textbox)
     end
 
     function removechar!(index)
+        index==0 && return
         newchars = [displayed_chars[][1:index-1]; displayed_chars[][index+1:end]]
 
         if isempty(newchars)
@@ -181,7 +201,14 @@ function initialize_block!(tbox::Textbox)
             cursorindex[] = max(0, cursorindex[] - 1)
         end
 
+        textplot = t.blockscene.plots[1]
+        oldval = textplot.converted[1][][1]
+        offset = displayed_charbbs[][index].widths[1] / 2
+        if displayed_charbbs[][1].origin[1] < 0
+            offset *= -1
+        end
         tbox.displayed_string[] = join(newchars)
+        textplot.converted[1][] = [Point3f(oldval[1]-offset, oldval[2:3]...)]
     end
 
     on(topscene, events(scene).unicode_input; priority=60) do char
