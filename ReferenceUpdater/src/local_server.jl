@@ -25,15 +25,15 @@ function serve_update_page_from_dir(folder)
         images_to_delete = data["images_to_delete"]
         tag = data["tag"]
 
-        tempdir = tempname()
         recorded_folder = joinpath(folder, "recorded")
-        reference_folder = joinpath(folder, "reference")
 
-        @info "Copying reference folder to \"$tempdir\""
-        cp(reference_folder, tempdir)
+        @info "Downloading latest reference folder for $tag"
+        tempdir = download_refimages(tag)
+        
+        @info "Updating files in $tempdir"
 
         for image in images_to_update
-            @info "Overwriting \"$image\" in new reference folder"
+            @info "Overwriting or adding $image"
             copy_filepath = joinpath(tempdir, image)
             copy_dir = splitdir(copy_filepath)[1]
             # make the path in case a new refimage is in a not yet existing folder
@@ -42,9 +42,13 @@ function serve_update_page_from_dir(folder)
         end
 
         for image in images_to_delete
-            @info "Deleting \"$image\" from new reference folder"
+            @info "Deleting $image"
             copy_filepath = joinpath(tempdir, image)
-            rm(copy_filepath, recursive = true)
+            if isfile(copy_filepath)
+                rm(copy_filepath, recursive = true)
+            else
+                @warn "Cannot delete $image - it has already been deleted."
+            end
         end
 
         @info "Uploading updated reference images under tag \"$tag\""
