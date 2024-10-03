@@ -314,7 +314,7 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
