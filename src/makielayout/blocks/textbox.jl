@@ -343,10 +343,18 @@ end
 Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
 function set!(tb::Textbox, string::String)
-    if !validate_textbox(string, tb.validator[])
+    if validate_textbox(string, tb.validator[])
+        unsafe_set!(tb, string)
+    else
         error("Invalid string \"$(string)\" for textbox.")
     end
+end
 
+"""
+    unsafe_set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, ignoring the possibility that it might not pass the validator function.
+"""
+function unsafe_set!(tb::Textbox, string::String)
     tb.displayed_string = string
     tb.stored_string = string
     nothing

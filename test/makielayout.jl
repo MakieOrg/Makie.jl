@@ -547,3 +547,11 @@ end
     end
     @test isempty(limits.listeners)
 end
+
+@testset "Textbox set! & unsafe_set!" begin
+    f = Figure()
+    tb = Textbox(f[1,1], validator = isequal("hi"))
+    @test isnothing(Makie.set!(tb, "hi"))
+    @test_throws ErrorException Makie.set!(tb, "there")
+    @test isnothing(Makie.unsafe_set!(tb, "there"))
+end
