@@ -37,11 +37,26 @@
         <h3 id="delete-counter"></h3>
         <ul id="delete-list">
         </ul>
-        <h2>New images without references (Adding selected)</h2>
+        
+        <h2>New images without references</h2>
+        The selected CI run produced an image for which no reference image exists. 
+        Selected images will be added as new reference images.
+        <br><br>
         <div id="new-images-list" class="image-list"></div>
-        <h2>Reference images that have no been tested (Deleting selected)</h2>
+
+        <h2>Old reference images without recordings</h2>
+        The selected CI run did not produce an image, but a reference image exists. 
+        This implies that a reference test was deleted or renamed. 
+        Selected images will be deleted from the reference images.
+        <br><br>
         <div id="missing-images-list" class="image-list"></div>
-        <h2>Images with references (Updating selected)</h2>
+
+        <h2>Images with references</h2>
+        This is the normal case where the selected CI run produced an image and the reference image exists.
+        Each row shows one image per backend from the same reference image test, which can be compared with its reference image.
+        Rows are sorted based on the maximum row score (bigger = more different).
+        Red cells fail CI (assuming the thresholds are up to date), yellow cells may but likely don't have signficant visual difference and gray cells are visually equivalent.
+        <br><br>
         <div id="refimage-list" class="image-list"></div>
     </body>
 
@@ -116,25 +131,42 @@
                 })
             })
 
-        fetch('new_files.txt')
+        fetch('new_files_grouped.txt')
             .then(response => response.text())
             .then(data => {
                 di = document.querySelector("#new-images-list")
-                data.split(/\r?\n/).forEach(path => {
-                    if (path == ""){
+                data.split(/\r?\n/).forEach(line => {
+                    if (line == ""){
                         return
                     }
+                    parts = line.split('\t')
                     
-                    div = document.createElement("div")
-                    di.append(div)
-                    div.innerHTML = `
-                    <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
-                    <span>${path}</span><br>
-                    `
-                    if (path.endsWith(".png")){
-                        div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
-                    } else if (path.endsWith(".mp4")){
-                        div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
+                    // row
+                    row = document.createElement("div") 
+                    di.append(row)
+
+                     // Cells
+                     for (let i = 0; i < 3; i++) {
+                        let path = parts[i]
+
+                        cell = document.createElement("td")
+                        row.append(cell)
+
+                        if (path == "")
+                            continue;
+           
+                        div = document.createElement("div")
+                        cell.append(div)
+                        div.innerHTML = `
+                        <input type="checkbox" class="update-checkbox" data-image="${path}"></input>
+                        <span>${path}</span>
+                        <br>
+                        `
+                        if (path.endsWith(".png")){
+                            div.innerHTML += `<img class="refimage" data-version="recorded" data-image="${path}" src="recorded/${encodeURIComponent(path)}">`
+                        } else if (path.endsWith(".mp4")){
+                            div.innerHTML += `<video class="refimage" data-version="recorded" data-image="${path}" controls src="recorded/${encodeURIComponent(path)}">`
+                        }
                     }
                 })
 
@@ -147,7 +179,7 @@
             checked = Array.from(document.querySelectorAll(".update-checkbox")).filter(inp => inp.checked)
             n_checked = checked.length
 
-            document.querySelector("#update-counter").innerHTML = `${n_checked} images selected for updating.`
+            document.querySelector("#update-counter").innerHTML = `${n_checked} images selected for updating:`
 
             
             listitems = checked.map(c => {
@@ -156,25 +188,42 @@
             document.querySelector("#update-list").innerHTML = listitems
         }
 
-        fetch('missing_files.txt')
+        fetch('missing_files_grouped.txt')
             .then(response => response.text())
             .then(data => {
                 di = document.querySelector("#missing-images-list")
-                data.split(/\r?\n/).forEach(path => {
-                    if (path == ""){
+                data.split(/\r?\n/).forEach(line => {
+                    if (line == ""){
                         return
                     }
+                    parts = line.split('\t')
                     
-                    div = document.createElement("div")
-                    di.append(div)
-                    div.innerHTML = `
-                    <input type="checkbox" class="delete-checkbox" data-image="${path}"></input>
-                    <span>${path}</span><br>
-                    `
-                    if (path.endsWith(".png")){
-                        div.innerHTML += `<img class="refimage" data-version="reference" data-image="${path}" src="reference/${encodeURIComponent(path)}">`
-                    } else if (path.endsWith(".mp4")){
-                        div.innerHTML += `<video class="refimage" data-version="reference" data-image="${path}" controls src="reference/${encodeURIComponent(path)}">`
+                    // row
+                    row = document.createElement("div") 
+                    di.append(row)
+
+                     // Cells
+                     for (let i = 0; i < 3; i++) {
+                        let path = parts[i]
+
+                        cell = document.createElement("td")
+                        row.append(cell)
+
+                        if (path == "")
+                            continue;
+           
+                        div = document.createElement("div")
+                        cell.append(div)
+                        div.innerHTML = `
+                        <input type="checkbox" class="delete-checkbox" data-image="${path}"></input>
+                        <span>${path}</span>
+                        <br>
+                        `
+                        if (path.endsWith(".png")){
+                            div.innerHTML += `<img class="refimage" data-version="reference" data-image="${path}" src="reference/${encodeURIComponent(path)}">`
+                        } else if (path.endsWith(".mp4")){
+                            div.innerHTML += `<video class="refimage" data-version="reference" data-image="${path}" controls src="reference/${encodeURIComponent(path)}">`
+                        }
                     }
                 })
 
@@ -187,7 +236,7 @@
             checked = Array.from(document.querySelectorAll(".delete-checkbox")).filter(inp => inp.checked)
             n_checked = checked.length
 
-            document.querySelector("#delete-counter").innerHTML = `${n_checked} images selected for removal.`
+            document.querySelector("#delete-counter").innerHTML = `${n_checked} images selected for removal:`
 
             
             listitems = checked.map(c => {

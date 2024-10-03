@@ -13,6 +13,9 @@ function serve_update_page_from_dir(folder)
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
     
+    group_files(folder, "new_files.txt", "new_files_grouped.txt")
+    group_files(folder, "missing_files.txt", "missing_files_grouped.txt")
+
     router = HTTP.Router()
 
     function receive_update(req)
@@ -158,7 +161,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
                 rm(filepath)
-                split_scores(tmpdir)
+                group_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
                 tmpdir = URL_CACHE[download_url]
@@ -198,7 +201,7 @@ function unzip(file, exdir = "")
 end
 
 
-function split_scores(path)
+function group_scores(path)
     # Load all refimg scores into a Dict
     # `filename => (score_glmakie, score_cairomakie, score_wglmakie)`
     data = Dict{String, Vector{Float64}}()
@@ -236,6 +239,42 @@ function split_scores(path)
                 ifelse(skip[1], "0.0", scores[1]), '\t', ifelse(skip[1], "", "GLMakie/$filename"), '\t',
                 ifelse(skip[2], "0.0", scores[2]), '\t', ifelse(skip[2], "", "CairoMakie/$filename"), '\t',
                 ifelse(skip[3], "0.0", scores[3]), '\t', ifelse(skip[3], "", "WGLMakie/$filename")
+            )
+        end
+    end
+
+end
+
+function group_files(path, input_filename, output_filename)
+    # Group files in new_files/missing_files into a table like layout:
+    #  GLMakie  CairoMakie  WGLMakie
+
+    # collect refimg names and which backends they exist for
+    data = Dict{String, Vector{Bool}}()
+    open(joinpath(path, input_filename), "r") do file
+        for filepath in eachline(file)
+            pieces = split(filepath, '/')
+            backend = pieces[1]
+            if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
+                error("Failed to parse backend in \"$line\", got \"$backend\"")
+            end
+            
+            filename = join(pieces[2:end], '/')
+            exists = get!(data, filename, [false, false, false])
+
+            exists[1] |= backend == "GLMakie"
+            exists[2] |= backend == "CairoMakie"
+            exists[3] |= backend == "WGLMakie"
+        end
+    end
+
+    # generate new structed file
+    open(joinpath(path, output_filename), "w") do file
+        for (filename, valid) in data
+            println(file,
+                ifelse(valid[1], "GLMakie/$filename", "INVALID"), '\t',
+                ifelse(valid[2], "CairoMakie/$filename", "INVALID"), '\t',
+                ifelse(valid[3], "WGLMakie/$filename", "INVALID")
             )
         end
     end
