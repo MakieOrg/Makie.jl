@@ -15,7 +15,7 @@ date_time_range = range(date_time, step=Week(5), length=10)
     f
 end
 
-@reference_test "Don't sometimes allow mixing units incorrectly" begin
+@reference_test "Don'some_time allow mixing units incorrectly" begin
     date_time_range = range(date_time, step=Second(5), length=10)
     f, ax, pl = scatter(date_time_range, 1:10)
     @test_throws ErrorException scatter!(time_range, 1:10)
