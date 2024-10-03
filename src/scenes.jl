@@ -72,7 +72,7 @@ mutable struct Scene <: AbstractScene
     float32convert::Union{Nothing, Float32Convert}
 
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{Plot}
 
     theme::Attributes
 
