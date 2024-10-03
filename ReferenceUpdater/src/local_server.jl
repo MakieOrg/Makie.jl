@@ -12,6 +12,7 @@ function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
+    split_scores(folder)
     
     router = HTTP.Router()
 
@@ -145,7 +146,6 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
                 rm(filepath)
-                split_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
                 tmpdir = URL_CACHE[download_url]
@@ -186,13 +186,15 @@ end
 
 
 function split_scores(path)
+    isfile(joinpath(path, "scores_table.tsv")) && return
+
     # Load all refimg scores into a Dict
     # `filename => (score_glmakie, score_cairomakie, score_wglmakie)`
     data = Dict{String, Vector{Float64}}()
     open(joinpath(path, "scores.tsv"), "r") do file
         for line in eachline(file)
             score, filepath = split(line, '\t')
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             filename = join(pieces[2:end], '/')
 
@@ -227,4 +229,5 @@ function split_scores(path)
         end
     end
 
+    return
 end
