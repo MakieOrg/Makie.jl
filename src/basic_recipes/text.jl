@@ -1,11 +1,20 @@
 function check_textsize_deprecation(@nospecialize(dictlike))
     if haskey(dictlike, :textsize)
-        throw(ArgumentError("The attribute `textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
+        throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 end
 
+# conversion stopper for previous methods
+convert_arguments(::Type{<:Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
+convert_arguments(::Type{<:Text}, gc::GlyphCollection) = (gc,)
+convert_arguments(::Type{<:Text}, vec::AbstractVector{<:Tuple{<:Any,<:Point}}) = (vec,)
+convert_arguments(::Type{<:Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
+convert_arguments(::Type{<:Text}, string::AbstractString) = (string,)
+# Fallback to PointBased
+convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
+
+
 function plot!(plot::Text)
-    check_textsize_deprecation(plot)
     positions = plot[1]
     # attach a function to any text that calculates the glyph layout and stores it
     glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
@@ -13,15 +22,23 @@ function plot!(plot::Text)
     linewidths = Observable(Float32[]; ignore_equal_values=true)
     linecolors = Observable(RGBAf[]; ignore_equal_values=true)
     lineindices = Ref(Int[])
+    if !haskey(plot, :text)
+        attributes(plot)[:text] = plot[2]
+    end
+    calc_color = plot.calculated_colors[]
+
+    color_scaled = calc_color isa ColorMapping ? calc_color.color_scaled : plot.color
+    cmap = calc_color isa ColorMapping ? calc_color.colormap : plot.colormap
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
+          plot.rotation, plot.justification, plot.lineheight, color_scaled, cmap,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+                ts, f, fs, al, rot, jus, lh, cs, cmap, scol, swi, www, offs
+
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
-        col = to_color(col)
+        col = to_color(plot.calculated_colors[])
         scol = to_color(scol)
         offs = to_offset(offs)
 
@@ -42,13 +59,13 @@ function plot!(plot::Text)
         if str isa Vector
             # If we have a Vector of strings, Vector arguments are interpreted
             # as per string.
-            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
-            )
+            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
             push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
+
         glyphcollections[] = gcs
         linewidths[] = lwidths
         linecolors[] = lcolors
@@ -60,8 +77,8 @@ function plot!(plot::Text)
 
     sc = parent_scene(plot)
 
-    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport,
-            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, transf, space
+    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport, f32_conversion_obs(sc),
+            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, _, transf, space
         pos_transf = plot_to_screen(plot, pos)
         linesegs_shifted[] = map(segs, lineindices[]) do seg, index
             seg + attr_broadcast_getindex(pos_transf, index)
@@ -72,17 +89,18 @@ function plot!(plot::Text)
 
     attrs = copy(plot.attributes)
     # remove attributes that are already in the glyphcollection
-    pop!(attrs, :position)
+    attributes(attrs)[:position] = positions
     pop!(attrs, :text)
     pop!(attrs, :align)
     pop!(attrs, :color)
+    pop!(attrs, :calculated_colors)
 
-    t = text!(plot, glyphcollections; attrs..., position = positions)
+    t = text!(plot, attrs, glyphcollections)
     # remove attributes that the backends will choke on
     pop!(t.attributes, :font)
     pop!(t.attributes, :fonts)
+    pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-
     plot
 end
 
@@ -124,16 +142,13 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
 end
 
 function plot!(plot::Text{<:Tuple{<:AbstractString}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 
-# conversion stopper for previous methods
-convert_arguments(::Type{<: Text}, gcs::AbstractVector{<:GlyphCollection}) = (gcs,)
-convert_arguments(::Type{<: Text}, gc::GlyphCollection) = (gc,)
-convert_arguments(::Type{<: Text}, vec::AbstractVector{<:Tuple{<:Any, <:Point}}) = (vec,)
-convert_arguments(::Type{<: Text}, strings::AbstractVector{<:AbstractString}) = (strings,)
-convert_arguments(::Type{<: Text}, string::AbstractString) = (string,)
+
 
 # TODO: is this necessary? there seems to be a recursive loop with the above
 # function without these two interceptions, but I didn't need it before merging
@@ -142,7 +157,9 @@ plot!(plot::Text{<:Tuple{<:GlyphCollection}}) = plot
 plot!(plot::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}) = plot
 
 function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    text!(plot, plot.position; text = plot[1], plot.attributes...)
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors)
+    text!(plot, plot.position; attrs..., text = plot[1])
     plot
 end
 
@@ -153,18 +170,20 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
     strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
 
     positions = Observable(
-        Point3f[to_ndim(Point3f, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+        Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
     )
 
     attrs = plot.attributes
     pop!(attrs, :position)
+    pop!(attrs, :calculated_colors)
+    pop!(attrs, :text)
 
-    text!(plot, positions; text = strings, attrs...)
+    text!(plot, positions; attrs..., text = strings)
 
     # update both text and positions together
     on(plot, strings_and_positions) do str_pos
         strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3f), last.(str_pos), 0)
+        poss = to_ndim.(Ref(Point3d), last.(str_pos), 0)
 
         strings_unequal = strings.val != strs
         pos_unequal = positions.val != poss

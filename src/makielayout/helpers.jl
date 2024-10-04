@@ -303,7 +303,7 @@ Returns a `NamedTuple`:
 
 `(slider = slider, label = label, valuelabel = valuelabel, layout = layout)`
 
-Specify a format function for the value label with the `format` keyword or pass a format string used by `Formatting.format`.
+Specify a format function for the value label with the `format` keyword or pass a format string used by `Format.format`.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
@@ -362,7 +362,7 @@ Returns a `NamedTuple`:
 
 `(sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)`
 
-Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Formatting.format`.
+Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Format.format`.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
@@ -428,7 +428,7 @@ function apply_format(value, format)
 end
 
 function apply_format(value, formatstring::String)
-    Formatting.format(formatstring, value)
+    Format.format(formatstring, value)
 end
 
 Makie.get_scene(ax::Axis) = ax.scene

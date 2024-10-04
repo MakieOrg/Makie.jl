@@ -48,6 +48,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,
+    linecap = :butt,
+    joinstyle = :miter,
+    miter_limit = pi/3,
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
@@ -67,6 +70,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
     inspectable = true,
+    clip_planes = Vector{Plane3f}(),
 
     # Vec is equvalent to 36° right/east, 39° up/north from camera position
     # The order here is Vec3f(right of, up from, towards) viewer/camera
@@ -86,7 +90,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
         pt_per_unit = 0.75,
         antialias = :best,
         visible = true,
-        start_renderloop = false
+        start_renderloop = false,
+        pdf_version = nothing
     ),
 
     GLMakie = Attributes(
@@ -188,7 +193,7 @@ current_default_theme() = CURRENT_DEFAULT_THEME
 
 
 """
-    set_theme(theme; kwargs...)
+    set_theme!(theme; kwargs...)
 
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.

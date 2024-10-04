@@ -56,7 +56,6 @@ struct WilkinsonTicks
     simplicity_weight::Float64
     coverage_weight::Float64
     niceness_weight::Float64
-    min_px_dist::Float64
 end
 
 """
@@ -67,12 +66,19 @@ that are multiples of pi, printed like "1π", "2π", etc.:
 ```
 MultiplesTicks(5, pi, "π")
 ```
+
+If `strip_zero == true`, then the resulting labels
+will be checked and any label that is a multiple of 0
+will be set to "0".
 """
 struct MultiplesTicks
     n_ideal::Int
     multiple::Float64
     suffix::String
+    strip_zero::Bool
 end
+
+MultiplesTicks(n_ideal, multiple, suffix; strip_zero = false) = MultiplesTicks(n_ideal, multiple, suffix, strip_zero)
 
 """
     AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
@@ -150,15 +156,15 @@ mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2f}
-    to::Union{Nothing, Point2f}
-    rectnode::Observable{Rect2f}
+    from::Union{Nothing, Point2d}
+    to::Union{Nothing, Point2d}
+    rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
 function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
     return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
-                         nothing, nothing, Observable(Rect2f(0, 0, 1, 1)), modifier)
+                         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
 struct ScrollZoom
@@ -197,12 +203,21 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
+"""
+A 2D axis which can be plotted into.
+
+**Constructors**
+
+```julia
+Axis(fig_or_scene; palette = nothing, kwargs...)
+```
+"""
 @Block Axis <: AbstractAxis begin
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2f}
-    finallimits::Observable{Rect2f}
+    targetlimits::Observable{Rect2d}
+    finallimits::Observable{Rect2d}
     block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
@@ -212,6 +227,15 @@ end
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
         """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
@@ -292,9 +316,9 @@ end
         "The font family of the yticklabels."
         yticklabelfont = :regular
         "The color of xticklabels."
-        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xticklabelcolor = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        yticklabelcolor = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize::Float64 = @inherit(:fontsize, 16f0)
         "The font size of the yticklabels."
@@ -336,9 +360,9 @@ end
         "The width of the ytick marks."
         ytickwidth::Float64 = 1f0
         "The color of the xtick marks."
-        xtickcolor::RGBAf = RGBf(0, 0, 0)
+        xtickcolor = RGBf(0, 0, 0)
         "The color of the ytick marks."
-        ytickcolor::RGBAf = RGBf(0, 0, 0)
+        ytickcolor = RGBf(0, 0, 0)
         "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
         xticksmirrored::Bool = false
         "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
@@ -366,9 +390,9 @@ end
         "The width of the y grid lines."
         ygridwidth::Float64 = 1f0
         "The color of the x grid lines."
-        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        ygridcolor = RGBAf(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
@@ -382,9 +406,9 @@ end
         "The width of the y minor grid lines."
         yminorgridwidth::Float64 = 1f0
         "The color of the x minor grid lines."
-        xminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        xminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The color of the y minor grid lines."
-        yminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        yminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The linestyle of the x minor grid lines."
         xminorgridstyle = nothing
         "The linestyle of the y minor grid lines."
@@ -470,7 +494,7 @@ end
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
           formats numbers rounded to 2 decimal digits and with the suffix `kg`.
         """
         xtickformat = Makie.automatic
@@ -504,7 +528,7 @@ end
         Common objects that can be used for tick formatting are:
         - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
           that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Formatting.jl`. For example, `"{:.2f}kg"`
+        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
           formats numbers rounded to 2 decimal digits and with the suffix `kg`.
         """
         ytickformat = Makie.automatic
@@ -518,6 +542,8 @@ end
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "Button that needs to be pressed to allow scroll zooming."
+        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -583,7 +609,7 @@ end
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1f0
         "The tick color of x minor ticks"
-        xminortickcolor::RGBAf = :black
+        xminortickcolor = :black
         """
         The tick locator for the minor ticks of the x axis.
 
@@ -602,7 +628,7 @@ end
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1f0
         "The tick color of y minor ticks"
-        yminortickcolor::RGBAf = :black
+        yminortickcolor = :black
         """
         The tick locator for the minor ticks of the y axis.
 
@@ -655,16 +681,19 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+    rect_scene = Scene(ax.scene)
+    selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
                               r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
-                 inspectable = false, visible=r.active, transparency=true)
+    mesh = mesh!(rect_scene,
+        selection_vertices, faces, space=:pixel,
+        color = (:black, 0.2), shading = NoShading,
+        inspectable = false, transparency=true, overdraw=true, visible=r.active)
     # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 100)
+    translate!(mesh, 0, 0, 1000)
     return r
 end
 
@@ -677,6 +706,22 @@ function RectangleZoom(ax::Axis; kw...)
     end
 end
 
+"""
+Create a colorbar that shows a continuous or categorical colormap with ticks
+chosen according to the colorrange.
+
+You can set colorrange and colormap manually, or pass a plot object as the second argument
+to copy its respective attributes.
+
+## Constructors
+
+```julia
+Colorbar(fig_or_scene; kwargs...)
+Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
+```
+"""
 @Block Colorbar begin
     axis::LineAxis
     @attributes begin
@@ -907,6 +952,42 @@ end
     end
 end
 
+"""
+A grid of one or more horizontal `Slider`s, where each slider has a
+name label on the left and a value label on the right.
+
+Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
+and `label`, and optionally a `format` for the value label. Beyond that, you can set
+any keyword that `Slider` takes, such as `startvalue`.
+
+The `format` keyword can be a `String` with Format.jl style, such as "{:.2f}Hz", or
+a function.
+
+## Constructors
+
+```julia
+SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
+```
+
+## Examples
+
+```julia
+sg = SliderGrid(fig[1, 1],
+    (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
+    (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
+    (label = "Phase", range = 0:0.01:2pi,
+        format = x -> string(round(x/pi, digits = 2), "π"))
+)
+```
+
+Working with slider values:
+
+```julia
+on(sg.sliders[1].value) do val
+    # do something with `val`
+end
+```
+"""
 @Block SliderGrid begin
     @forwarded_layout
     sliders::Vector{Slider}
@@ -1020,6 +1101,57 @@ end
     end
 end
 
+const CHECKMARK_BEZIER = scale(BezierPath(
+    "M 81.449219,-0.08203125A 7.5,7.5 0 0 0 76.628906,3.0332031L 38.113281,58.792969 18.806641,34.650391A 7.5,7.5 0 0 0 8.265625,33.478516 7.5,7.5 0 0 0 7.0917969,44.019531L 32.697266,76.037109A 7.50075,7.50075 0 0 0 44.724609,75.615234L 88.970703,11.558594A 7.5,7.5 0 0 0 87.0625,1.125 7.5,7.5 0 0 0 81.449219,-0.08203125Z",
+    fit = true,
+    flipy = true,
+), 0.85)
+
+@Block Checkbox begin
+    @attributes begin
+        "The horizontal alignment of the checkbox in its suggested boundingbox"
+        halign = :center
+        "The vertical alignment of the checkbox in its suggested boundingbox"
+        valign = :center
+        "The width setting of the checkbox."
+        width = Auto()
+        "The height setting of the checkbox."
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The size (width/height) of the checkbox"
+        size = 11
+        "The size of the checkmark, relative to the size."
+        checkmarksize = 0.85
+        "The checkmark marker symbol. Anything that `scatter` can use."
+        checkmark = CHECKMARK_BEZIER
+        "Roundness of the checkbox poly, 0 is square, 1 is circular."
+        roundness = 0.15
+        "The strokewidth of the checkbox poly."
+        checkboxstrokewidth = 1.5
+        "The color of the checkbox background when checked."
+        checkboxcolor_checked = COLOR_ACCENT[]
+        "The color of the checkbox background when unchecked."
+        checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
+        "The strokecolor of the checkbox background when checked."
+        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        "The strokecolor of the checkbox background when unchecked."
+        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        "The color of the checkmark when unchecked."
+        checkmarkcolor_unchecked = :transparent
+        "The color of the checkmark when the mouse clicks the checkbox."
+        checkmarkcolor_checked = :white
+        "The align mode of the checkbox in its parent GridLayout."
+        alignmode = Inside()
+        "If the checkbox is currently checked. This value should not be modified directly."
+        checked = false
+        "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
+        onchange = !
+    end
+end
+
 @Block Toggle begin
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
@@ -1056,6 +1188,52 @@ end
     end
 end
 
+"""
+A drop-down menu with multiple selectable options. You can pass options
+with the keyword argument `options`.
+
+Options are given as an iterable of elements.
+For each element, the option label in the menu is determined with `optionlabel(element)`
+and the option value with `optionvalue(element)`. These functions can be
+overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
+where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
+
+When an item is selected in the menu, the menu's `selection` attribute is set to
+`optionvalue(selected_element)`. When nothing is selected, that value is `nothing`.
+
+You can set the initial selection by passing one of the labels with the `default` keyword.
+
+## Constructors
+
+```julia
+Menu(fig_or_scene; default = nothing, kwargs...)
+```
+
+## Examples
+
+Menu with string entries, second preselected:
+
+```julia
+menu1 = Menu(fig[1, 1], options = ["first", "second", "third"], default = "second")
+```
+
+Menu with two-element entries, label and function:
+
+```julia
+funcs = [sin, cos, tan]
+labels = ["Sine", "Cosine", "Tangens"]
+
+menu2 = Menu(fig[1, 1], options = zip(labels, funcs))
+```
+
+Executing a function when a selection is made:
+
+```julia
+on(menu2.selection) do selected_function
+    # do something with the selected function
+end
+```
+"""
 @Block Menu begin
     @attributes begin
         "The height setting of the menu."
@@ -1132,6 +1310,7 @@ end
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
+    scene::Scene
     entrygroups::Observable{Vector{EntryGroup}}
     _tellheight::Observable{Bool}
     _tellwidth::Observable{Bool}
@@ -1189,7 +1368,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         framewidth = 1f0
         "Controls if the legend border is visible."
         framevisible = true
-        "The size of the rectangles containing the legend markers."
+        "The size of the rectangles containing the legend markers. It can help to increase the width if line patterns are not clearly visible with the default size."
         patchsize = (20f0, 20f0)
         "The color of the border of the patches containing the legend markers."
         patchstrokecolor = :transparent
@@ -1265,6 +1444,19 @@ end
 @Block LScene <: AbstractAxis begin
     scene::Scene
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1346,7 +1538,7 @@ end
         cornerradius = 5
         "Corner segments of one rounded corner."
         cornersegments = 20
-        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(T, string)`."
         validator = str -> true
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
@@ -1363,6 +1555,18 @@ end
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
     @attributes begin
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+        """
+        Global state for the z dimension conversion.
+        """
+        dim3_conversion = nothing
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -1651,6 +1855,15 @@ end
     target_r0::Observable{Float32}
     @attributes begin
         # Generic
+        """
+        Global state for the x dimension conversion.
+        """
+        dim1_conversion = nothing
+        """
+        Global state for the y dimension conversion.
+        """
+        dim2_conversion = nothing
+
 
         "The height setting of the scene."
         height = nothing
@@ -1672,7 +1885,7 @@ end
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
-        sample_density::Int = 120
+        sample_density::Int = 90
         "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
@@ -1719,7 +1932,7 @@ end
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
-        rticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), 16)
+        rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
@@ -1755,7 +1968,7 @@ end
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."
-        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), 16)
+        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."

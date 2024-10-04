@@ -1,10 +1,11 @@
-function vertexbuffer(x, trans, space)
+function vertexbuffer(x, f32c, transform_func, model, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    transformed = apply_transform_and_f32_conversion(f32c, transform_func, model, pos, space)
+    return transformed
 end
 
-function vertexbuffer(x::Observable, @nospecialize(p))
-    return Buffer(lift(vertexbuffer, p, x, transform_func_obs(p), get(p, :space, :data)))
+function vertexbuffer(x::Observable, @nospecialize(plot), f32c::Observable)
+    return Buffer(lift(vertexbuffer, plot, x, f32c, transform_func_obs(plot), plot.model, plot.space))
 end
 
 facebuffer(x) = faces(x)
@@ -21,7 +22,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     color = plot.calculated_colors
     minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
 
-    convert_text(x) = permute_tex ? lift(permutedims, plot, x) : x
+    convert_texture(x) = permute_tex ? lift(permutedims, plot, x) : x
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
@@ -29,14 +30,14 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
         uniforms[:pattern] = true
-        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
+        uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa AbstractMatrix
-        uniforms[uniform_color_name] = Sampler(convert_text(color); minfilter=minfilter)
+        uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMapping
         if color[].color_scaled[] isa AbstractVector
             buffers[:color] = Buffer(color[].color_scaled)
         else
-            color_scaled = convert_text(color[].color_scaled)
+            color_scaled = convert_texture(color[].color_scaled)
             uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
         end
         uniforms[:colormap] = Sampler(color[].colormap)
@@ -49,6 +50,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
     get!(uniforms, uniform_color_name, false)
     get!(uniforms, :colormap, false)
     get!(uniforms, :colorrange, false)
+    get!(uniforms, :pattern, false)
     get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
     get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
@@ -62,8 +64,6 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     filter!(kv -> !(kv[2] isa Function), uniforms)
     handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
 
-    get!(uniforms, :pattern, false)
-    get!(uniforms, :model, plot.model)
     get!(uniforms, :ambient, Vec3f(1))
     get!(uniforms, :light_direction, Vec3f(1))
     get!(uniforms, :light_color, Vec3f(1))
@@ -72,9 +72,9 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
 
     get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
 
-    uniforms[:normalmatrix] = map(plot.model) do m
+    uniforms[:normalmatrix] = map(uniforms[:model]) do m
         i = Vec(1, 2, 3)
-        return transpose(inv(m[i, i]))
+        return Mat3f(transpose(inv(m[i, i])))
     end
 
 
@@ -94,7 +94,6 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
     mesh = GeometryBasics.Mesh(meta(pos; per_vertex...), faces)
-
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
@@ -118,8 +117,20 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
     end
 
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:mesh}())
+        if M === nothing
+            return Mat3f(I)
+        else
+            return Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        end
+    end
+
     faces = facebuffer(mesh_signal)
-    positions = vertexbuffer(mesh_signal, plot)
+    f32c, model = Makie.patch_model(plot)
+    uniforms[:model] = model
+    positions = vertexbuffer(mesh_signal, plot, f32c)
     attributes[:faces] = faces
     attributes[:positions] = positions
 

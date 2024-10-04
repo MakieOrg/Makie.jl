@@ -122,7 +122,7 @@ end
 
 Displays the figurelike in a window or the browser, depending on the backend.
 
-The parameters for `screen_config` are backend dependend,
+The parameters for `screen_config` are backend dependent,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
@@ -291,13 +291,13 @@ Save a `Scene` with the specified filename and format.
 - `size`: `(width::Int, height::Int)` of the scene in dimensionless units.
 - `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
 - `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 - Further keywords will be forwarded to the screen.
 
 
 ## CairoMakie
 
 - `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
-- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
         filename::String, fig::FigureLike; args...
@@ -313,6 +313,15 @@ function FileIO.save(
         update = true,
         screen_config...
     )
+    if ismissing(backend)
+        error("""
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """)
+    end
     scene = get_scene(fig)
     if resolution !== nothing
         @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
@@ -341,6 +350,7 @@ function FileIO.save(
             config = Dict{Symbol, Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
+            events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
             backend_show(screen, io, mime, scene)
         end
     catch e
@@ -451,7 +461,7 @@ or RGBA.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
-- `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
+- `screen_config`: Backend dependent, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
@@ -489,6 +499,7 @@ function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene:
     png_io = IOBuffer()
     backend_show(screen, png_io, MIME"image/png"(), scene)
     b64 = Base64.base64encode(String(take!(png_io)))
-    print(io, "<img width=$w height=$h style='object-fit: contain;' src=\"data:image/png;base64, $(b64)\"/>")
+    style = "object-fit: contain; height: auto;"
+    print(io, "<img width=$w height=$h style='$style' src=\"data:image/png;base64, $(b64)\"/>")
     return
 end

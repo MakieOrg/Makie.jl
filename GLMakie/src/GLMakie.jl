@@ -16,6 +16,7 @@ using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
 using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
+using Makie: BudgetedTimer, reset!
 import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 import Makie: RelocatableFolders
 
@@ -58,12 +59,19 @@ const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
 const LOADED_SHADERS = Dict{String, ShaderSource}()
 
+const SHADER_PATHS = Dict{String,Union{RelocatableFolders.Path, String}}()
+
+# Turns out, loading shaders is so slow, that it actually makes sense to memoize it :-O
+# when creating 1000 plots with the PlotSpec API, timing drop from 1.5s to 1s just from this change:
+function shader_path(name)
+    return get!(SHADER_PATHS, name) do
+        return joinpath(SHADER_DIR, name)
+    end
+end
+
 function loadshader(name)
-    # Turns out, joinpath is so slow, that it actually makes sense
-    # To memoize it :-O
-    # when creating 1000 plots with the PlotSpec API, timing drop from 1.5s to 1s just from this change:
     return get!(LOADED_SHADERS, name) do
-        return ShaderSource(joinpath(SHADER_DIR, name))
+        return ShaderSource(shader_path(name))
     end
 end
 

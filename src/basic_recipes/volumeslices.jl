@@ -5,22 +5,17 @@ VolumeSlices
     volumeslices(x, y, z, v)
 
 Draws heatmap slices of the volume v
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(VolumeSlices, x, y, z, volume) do scene
-    Attributes(;
-        default_theme(scene, Heatmap)...,
-        bbox_visible = true,
-        bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
-    )
+@recipe VolumeSlices (x, y, z, volume) begin
+    MakieCore.documented_attributes(Heatmap)...
+    bbox_visible = true
+    bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 
-function plot!(plot::VolumeSlices)
+function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
-        map(extrema, volume)
+        lift(extrema, plot, volume)
     end
 
     # heatmap will fail if we don't keep its attributes clean
@@ -29,7 +24,7 @@ function plot!(plot::VolumeSlices)
     bbox_visible = pop!(attr, :bbox_visible)
     pop!(attr, :model) # stops `transform!()` from working
 
-    bbox = map(x, y, z) do x, y, z
+    bbox = lift(plot, x, y, z) do x, y, z
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)

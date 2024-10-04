@@ -166,6 +166,39 @@ end
     f
 end
 
+@reference_test "Legend overrides" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    li = lines!(
+        1:10,
+        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+    )
+    sc = scatter!(
+        1:10,
+        2:11,
+        color = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        colorrange = (1, 3),
+        marker = :utriangle,
+        markersize = 20,
+        label = [
+            label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+        ]
+    )
+    Legend(f[1, 2], ax)
+    Legend(
+        f[1, 3],
+        [
+            sc => (; markersize = 30),
+            [li => (; color = :red), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan),
+        ],
+        ["Scatter", "Line and Scatter", "Another"],
+        patchsize = (40, 20)
+    )
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -224,6 +257,7 @@ end
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
         thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
+        rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
     f
 end
@@ -237,7 +271,7 @@ end
             lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
 
             b = Box(f[i, j], color = (:blue, 0.2))
-            translate!(b.blockscene, 0, 0, 9001)
+            translate!(b.blockscene, 0, 0, 9999)
         end
     end
     colgap!(f.layout, 5)
@@ -281,7 +315,7 @@ end
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(x, y, z, values; levels=10, colormap=:viridis)
+    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
     Colorbar(fig[2, 1], cp; size=300)
 
     _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
@@ -326,3 +360,54 @@ end
     fig
 end
 
+@reference_test "Axis limits with translation, scaling and transform_func" begin
+    f = Figure()
+    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
+    hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
+    vl = linesegments!(a, ps, color = :blue)
+    # translation happens before scale! here because scale! acts on scene and
+    # translate! acts on the plot (these are combined by matmult)
+    scale!(a.scene, 0.5, 2, 1.0)
+    translate!(hl, 0, 1, 0)
+    translate!(vl, 1, 0, 0)
+    f
+end
+
+@reference_test "Latex labels after the fact" begin
+    f = Figure(fontsize = 50)
+    ax = Axis(f[1, 1])
+    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
+end
+
+@reference_test "Rich text" begin
+    f = Figure(fontsize = 30, size = (800, 600))
+    ax = Axis(f[1, 1],
+        limits = (1, 100, 0.001, 1),
+        xscale = log10,
+        yscale = log2,
+        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
+        xlabel = rich("X", subscript("label", fontsize = 25)),
+        ylabel = rich("Y", superscript("label")),
+    )
+    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
+    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
+    f
+end
+
+@reference_test "Checkbox" begin
+    f = Figure(size = (300, 200))
+    Makie.Checkbox(f[1, 1])
+    Makie.Checkbox(f[1, 2], checked = true)
+    Makie.Checkbox(f[1, 3], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6)
+    Makie.Checkbox(f[1, 4], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6, size = 20)
+    Makie.Checkbox(f[1, 5], checkboxstrokewidth = 3)
+    Makie.Checkbox(f[2, 1], checkboxstrokecolor_unchecked = :red)
+    Makie.Checkbox(f[2, 2], checked = true, checkboxstrokecolor_checked = :cyan)
+    Makie.Checkbox(f[2, 3], checked = true, checkmarkcolor_checked = :black)
+    Makie.Checkbox(f[2, 4], checked = false, checkboxcolor_unchecked = :yellow)
+    Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
+    f
+end

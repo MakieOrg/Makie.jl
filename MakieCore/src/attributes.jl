@@ -77,7 +77,7 @@ function Base.merge!(target::Attributes, args::Attributes...)
     return target
 end
 
-Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
+Base.merge(target::Attributes, args::Attributes...) = merge!(deepcopy(target), args...)
 
 function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
     if hasfield(typeof(x), key)
@@ -118,17 +118,7 @@ function Base.setindex!(x::Attributes, value, key::Symbol)
 end
 
 function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
-    if haskey(x, key)
-        # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-        # You can do this manually like this:
-        # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-        # ")
-        return x.attributes[key] = node_any(value)
-    else
-        #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = node_any(value)
-    end
-    return x
+    return x.attributes[key] = node_any(value)
 end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
@@ -190,16 +180,16 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # Plot plots break this assumption in some way, but the way to look at it is,
 # that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
-Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
-Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
-Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.args[idx][] = value)
-Base.length(plot::AbstractPlot) = length(plot.converted)
+Base.getindex(plot::Plot, idx::Integer) = plot.converted[idx]
+Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+Base.setindex!(plot::Plot, value, idx::Integer) = (plot.args[idx][] = value)
+Base.length(plot::Plot) = length(plot.converted)
 
-function Base.getindex(x::AbstractPlot, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
+function Base.getindex(x::T, key::Symbol) where {T <: Plot}
+    argnames = argument_names(T, length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        return x.attributes[key]
+        return attributes(x)[key]
     else
         return x.converted[idx]
     end
@@ -233,15 +223,7 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        if haskey(x, key)
-            # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-            # You can do this manually like this:
-            # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-            # ")
-            return x.attributes[key] = value
-        else
-            return x.attributes[key] = value
-        end
+        return attributes(x)[key] = value
     else
         return setindex!(x.converted[idx], value)
     end

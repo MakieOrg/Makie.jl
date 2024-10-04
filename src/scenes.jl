@@ -68,8 +68,11 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "A transformation rescaling data to a Float32-save range."
+    float32convert::Union{Nothing, Float32Convert}
+
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{Plot}
 
     theme::Attributes
 
@@ -89,6 +92,8 @@ mutable struct Scene <: AbstractScene
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
 
+    conversions::DimConversions
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
@@ -104,7 +109,8 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector
+            lights::Vector;
+            deregister_callbacks=Observables.ObserverFunction[]
         )
         scene = new(
             parent,
@@ -114,6 +120,7 @@ mutable struct Scene <: AbstractScene
             camera,
             camera_controls,
             transformation,
+            nothing,
             plots,
             theme,
             children,
@@ -122,8 +129,9 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             convert(Vector{AbstractLight}, lights),
-            Observables.ObserverFunction[],
-            Cycler()
+            deregister_callbacks,
+            Cycler(),
+            DimConversions()
         )
         finalizer(free, scene)
         return scene
@@ -206,6 +214,7 @@ function Scene(;
         ssao = SSAO(),
         lights = automatic,
         theme = Attributes(),
+        deregister_callbacks=Observables.ObserverFunction[],
         theme_kw...
     )
 
@@ -237,7 +246,8 @@ function Scene(;
     scene = Scene(
         parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights
+        children, current_screens, bg, visible, ssao, _lights;
+        deregister_callbacks=deregister_callbacks
     )
     camera isa Function && camera(scene)
 
@@ -285,6 +295,7 @@ function Scene(
         viewport=nothing,
         clear=false,
         camera=nothing,
+        visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         kw...
@@ -294,18 +305,35 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    deregister_callbacks = Observables.ObserverFunction[]
+    _visible = Observable(true)
+    if visible isa Observable
+        listener = on(visible; update=true) do v
+            _visible[] = v
+        end
+        push!(deregister_callbacks, listener)
+    elseif visible isa Bool
+        _visible[] = visible
+    else
+        error("Unsupported typer visible: $(typeof(visible))")
+    end
     child = Scene(;
         events=events,
         viewport=child_px_area,
         clear=convert(Observable{Bool}, clear),
         camera=camera,
+        visible=_visible,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
         current_screens=copy(parent.current_screens),
         theme=theme(parent),
+        deregister_callbacks=deregister_callbacks,
         kw...
     )
+    # if !isnothing(listener)
+    #     push!(child.deregister_callbacks, listener)
+    # end
     if isnothing(viewport)
         map!(identity, child, child_px_area, parent.viewport)
     elseif viewport isa Rect2
@@ -443,11 +471,13 @@ function Base.empty!(scene::Scene; free=false)
 end
 
 function Base.push!(plot::Plot, subplot)
+    MakieCore.validate_attribute_keys(subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
 
-function Base.push!(scene::Scene, @nospecialize(plot::AbstractPlot))
+function Base.push!(scene::Scene, @nospecialize(plot::Plot))
+    MakieCore.validate_attribute_keys(plot)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
@@ -478,9 +508,15 @@ end
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
-    if length(scene.plots) == len
-        error("$(typeof(plot)) not in scene!")
-    end
+    # TODO, if we want to delete a subplot of a plot,
+    # It won't be in scene.plots directly, but will still be deleted
+    # by delete!(screen, scene, plot)
+    # Should we check here if the plot is in the scene as a subplot?
+    # on the other hand, delete!(Dict(:a=>1), :b) also doesn't error...
+
+    # if length(scene.plots) == len
+    #     error("$(typeof(plot)) not in scene!")
+    # end
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
@@ -547,10 +583,9 @@ end
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
-    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
+    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     scene
 end
@@ -562,7 +597,7 @@ parent_scene(x::Scene) = x
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = data_limits(scene)
+    lims = boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end

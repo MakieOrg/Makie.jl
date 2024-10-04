@@ -11,8 +11,18 @@ using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
+using ReferenceTests.SparseArrays
 using Makie: Record, volume
 
+@testset "categorical" begin
+    include("categorical.jl")
+end
+@testset "dates" begin
+    include("dates.jl")
+end
+@testset "unitful" begin
+    include("unitful.jl")
+end
 @testset "specapi" begin
     include("specapi.jl")
 end

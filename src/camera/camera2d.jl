@@ -1,9 +1,9 @@
 struct Camera2D <: AbstractCamera
-    area::Observable{Rect2f}
-    zoomspeed::Observable{Float32}
+    area::Observable{Rect2d}
+    zoomspeed::Observable{Float64}
     zoombutton::Observable{IsPressedInputType}
     panbutton::Observable{IsPressedInputType}
-    padding::Observable{Float32}
+    padding::Observable{Float64}
     last_area::Observable{Vec{2, Int}}
     update_limits::Observable{Bool}
 end
@@ -17,7 +17,7 @@ selections.
 
 ## Keyword Arguments
 
-- `zoomspeed = 0.1f0` sets the zoom speed.
+- `zoomspeed = 0.1` sets the zoom speed.
 - `zoombutton = true` sets a button (combination) which needs to be pressed to enable zooming. By default no button needs to be pressed.
 - `panbutton = Mouse.right` sets the button used to translate the camera. This must include a mouse button.
 - `selectionbutton = (Keyboard.space, Mouse.left)` sets the button used for rectangle selection. This must include a mouse button.
@@ -25,8 +25,8 @@ selections.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Attributes(
-            area = Observable(Rectf(0, 0, 1, 1)),
-            zoomspeed = 0.10f0,
+            area = Observable(Rectd(0, 0, 1, 1)),
+            zoomspeed = 0.1,
             zoombutton = true,
             panbutton = Mouse.right,
             selectionbutton = (Keyboard.space, Mouse.left),
@@ -38,6 +38,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     cam = from_dict(Camera2D, cam_attributes)
     # remove previously connected camera
     disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
     add_zoom!(scene, cam)
     add_pan!(scene, cam)
     correct_ratio!(scene, cam)
@@ -72,7 +73,7 @@ Useful when using the `Observable` pipeline.
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), data_limits(scene))
 
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
-    area = Rect2f(area3d)
+    area = Rect2d(area3d)
     area = positive_widths(area)
     # ignore rects with width almost 0
     any(x-> x ≈ 0.0, widths(area)) && return
@@ -88,18 +89,18 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
         # so we make the minimum 1.0, and grow in the other dimension
         s = ratio ./ minimum(ratio)
         newwh = s .* widths(area)
-        cam.area[] = Rectf(minimum(area), newwh)
+        cam.area[] = Rect2d(minimum(area), newwh)
     end
     update_cam!(scene, cam)
 end
 
 function update_cam!(scene::SceneLike, cam::Camera2D)
-    x, y = minimum(cam.area[])
-    w, h = widths(cam.area[]) ./ 2f0
+    x, y = Float64.(minimum(cam.area[]))
+    w, h = Float64.(0.5 .* widths(cam.area[]))
     # These observables should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
-    view = translationmatrix(Vec3f(-x - w, -y - h, 0))
-    projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
+    view = translationmatrix(Vec3d(-x - w, -y - h, 0))
+    projection = orthographicprojection(-w, w, -h, h, -10_000.0, 10_000.0)
     set_proj_view!(camera(scene), projection, view)
     cam.last_area[] = Vec(size(scene))
     return
@@ -111,7 +112,7 @@ function correct_ratio!(scene, cam)
         change = neww .- cam.last_area[]
         if !(change ≈ Vec(0.0, 0.0))
             s = 1.0 .+ (change ./ cam.last_area[])
-            camrect = Rectf(minimum(cam.area[]), widths(cam.area[]) .* s)
+            camrect = Rect2d(minimum(cam.area[]), widths(cam.area[]) .* s)
             cam.area[] = camrect
             update_cam!(scene, cam)
         end
@@ -141,7 +142,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             startpos[] = mp
             area = cam.area[]
             diff = Vec(diff) .* wscale(viewport(scene)[], area)
-            cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
+            cam.area[] = Rect2d(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             active[] = false
             return Consume(true)
@@ -159,7 +160,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
             startpos[] = pos
             area = cam.area[]
             diff = Vec(diff) .* wscale(viewport(scene)[], area)
-            cam.area[] = Rectf(minimum(area) .+ diff, widths(area))
+            cam.area[] = Rect2d(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             return Consume(true)
         end
@@ -171,17 +172,17 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
     e = events(scene)
     on(camera(scene), e.scroll) do x
         @extractvalue cam (zoomspeed, zoombutton, area)
-        zoom = Float32(x[2])
+        zoom = Float64(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
             pa = viewport(scene)[]
-            z = (1f0 - zoomspeed)^zoom
-            mp = Vec2f(e.mouseposition[]) - minimum(pa)
+            z = (1.0 - zoomspeed)^zoom
+            mp = Vec2d(e.mouseposition[]) - minimum(pa)
             mp = (mp .* wscale(pa, area)) + minimum(area)
             p1, p2 = minimum(area), maximum(area)
             p1, p2 = p1 - mp, p2 - mp # translate to mouse position
             p1, p2 = z * p1, z * p2
             p1, p2 = p1 + mp, p2 + mp
-            cam.area[] = Rectf(p1, p2 - p1)
+            cam.area[] = Rect2d(p1, p2 - p1)
             update_cam!(scene, cam)
             return Consume(true)
         end
@@ -194,18 +195,18 @@ function camspace(scene::SceneLike, cam::Camera2D, point)
     return Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
-function absrect(rect)
+function absrect(rect::Rect)
     xy, wh = minimum(rect), widths(rect)
-    xy = ntuple(Val(2)) do i
-        wh[i] < 0 ? xy[i] + wh[i] : xy[i]
+    xy = map(xy, wh) do xy, wh
+        wh < 0 ? xy + wh : xy
     end
-    return Rectf(Vec2f(xy), Vec2f(abs.(wh)))
+    return Rect2(xy, abs.(wh))
 end
 
 
 function selection_rect!(scene, cam, key)
     rect = RefValue(Rectf(NaN, NaN, NaN, NaN))
-    lw = 2f0
+    lw = 2.0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
         cam = copy(camera(scene)), clear = false
@@ -273,14 +274,14 @@ function reset!(cam, boundingbox, preserveratio = true)
         ratio = w2 ./ w1
         w1 = if ratio[1] > ratio[2]
             s = w2[1] ./ w2[2]
-            Vec2f(s * w1[2], w1[2])
+            Vec2(s * w1[2], w1[2])
         else
             s = w2[2] ./ w2[1]
-            Vec2f(w1[1], s * w1[1])
+            Vec2(w1[1], s * w1[1])
         end
     end
     p = minimum(w1) .* 0.001 # 2mm padding
-    update_cam!(cam, Rectf(-p, -p, w1 .+ 2p))
+    update_cam!(cam, Rect(-p, -p, w1 .+ 2p))
     return
 end
 
@@ -289,7 +290,7 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
     restrict_action = paused_action(1.0) do t
         o = lerp(origin(area_ref[]), origin(cam[Area]), t)
         wh = lerp(widths(area_ref[]), widths(cam[Area]), t)
-        update_cam!(cam, Rectf(o, wh))
+        update_cam!(cam, Rect2d(o, wh))
     end
     on(window, Mouse.Drag) do drag
         if drag == Mouse.up && !isplaying(restrict_action)
@@ -301,13 +302,13 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
             maxi = maxi - newmax
             newo = newo - maxi
             newwh = newmax - newo
-            scale = 1f0
+            scale = 1.0
             for (w1, w2) in zip(minwidths, newwh)
-                stmp = w1 > w2 ? w1 / w2 : 1f0
+                stmp = w1 > w2 ? w1 / w2 : 1.0
                 scale = max(scale, stmp)
             end
             newwh = newwh * scale
-            area_ref[] = Rectf(newo, newwh)
+            area_ref[] = Rect2d(newo, newwh)
             if area_ref[] != cam[Area]
                 play!(restrict_action)
             end
@@ -323,26 +324,27 @@ get_space(::PixelCamera) = :pixel
 
 struct UpdatePixelCam
     camera::Camera
-    near::Float32
-    far::Float32
+    near::Float64
+    far::Float64
 end
 get_space(::UpdatePixelCam) = :pixel
 
 function (cam::UpdatePixelCam)(window_size)
-    w, h = Float32.(widths(window_size))
-    projection = orthographicprojection(0f0, w, 0f0, h, cam.near, cam.far)
-    set_proj_view!(cam.camera, projection, Mat4f(I))
+    w, h = Float64.(widths(window_size))
+    projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
+    set_proj_view!(cam.camera, projection, Mat4d(I))
 end
 
 """
-    campixel!(scene; nearclip=-1000f0, farclip=1000f0)
+    campixel!(scene; nearclip=-1000.0, farclip=1000.0)
 
 Creates a pixel camera for the given `scene`. This means that the positional
 data of a plot will be interpreted in pixel units. This camera does not feature
 controls.
 """
-function campixel!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
+function campixel!(scene::Scene; nearclip=-10_000.0, farclip=10_000.0)
     disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
     update_once = Observable(false)
     closure = UpdatePixelCam(camera(scene), nearclip, farclip)
     on(closure, camera(scene), viewport(scene))
@@ -363,9 +365,11 @@ get_space(::RelativeCamera) = :relative
 Creates a camera for the given `scene` which maps the scene area to a 0..1 by
 0..1 range. This camera does not feature controls.
 """
-function cam_relative!(scene::Scene; nearclip=-10_000f0, farclip=10_000f0)
-    projection = orthographicprojection(0f0, 1f0, 0f0, 1f0, nearclip, farclip)
-    set_proj_view!(camera(scene), projection, Mat4f(I))
+function cam_relative!(scene::Scene; nearclip=-10_000.0, farclip=10_000.0)
+    disconnect!(camera(scene))
+    camera(scene).view_direction[] = Vec3f(0, 0, -1)
+    projection = orthographicprojection(0.0, 1.0, 0.0, 1.0, nearclip, farclip)
+    set_proj_view!(camera(scene), projection, Mat4d(I))
     cam = RelativeCamera()
     cameracontrols!(scene, cam)
     cam

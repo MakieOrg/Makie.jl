@@ -157,6 +157,21 @@ end
     @test ax.limits[] == ((0,1),(0,2),(nothing,nothing))
 end
 
+@testset "Axis limits intervals" begin
+    fig = Figure()
+    ax = Axis(fig[1,1],limits=(0..600,0..15))
+    xlims!(ax, 100..400)
+    @test ax.limits[] == ((100,400),(0,15))
+    ylims!(ax, 1..13)
+    @test ax.limits[] == ((100,400),(1,13))
+    limits!(ax, 1..3, 1..2)
+    @test ax.limits[] == ((1,3),(1,2))
+    ax3 = Axis3(fig[1,1],limits=(0..1,0..2,0..3))
+    xlims!(ax3, 10..20)
+    zlims!(ax3, 1..2)
+    @test ax3.limits[] == ((10,20),(0,2),(1,2))
+end
+
 @testset "Colorbar plot object kwarg clash" begin
     for attr in (:colormap, :limits)
         f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
@@ -195,6 +210,18 @@ end
 
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
     end
+end
+
+@testset "MultiplesTicks strip_zero" begin
+    default = MultiplesTicks(5, pi, "π")
+    strip = MultiplesTicks(5, pi, "π"; strip_zero=true)
+    no_strip = MultiplesTicks(5, pi, "π"; strip_zero=false)
+
+    @test default == no_strip
+    zero_default = Makie.get_ticks(default, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_default == "0π"
+    zero_stripped = Makie.get_ticks(strip, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_stripped == "0"
 end
 
 @testset "Colorbars" begin
@@ -259,6 +286,7 @@ end
     leg = axislegend(ax, position = (0.4, 0.8))
     @test leg.halign[] == 0.4
     @test leg.valign[] == 0.8
+    @test_nowarn axislegend(ax, "foo")  # issue 2530
 end
 
 # issue 2005
@@ -437,6 +465,15 @@ end
     f, ax, h = hist(randn(100), bar_labels = :y, label = "My histogram")
     @test_nowarn axislegend()
     f
+end
+
+@testset "Legend with plotlists" begin
+    Axis(Figure()[1, 1])
+    plotlist!([Makie.SpecApi.Scatter(1:10)], label="MyPlot 1")
+    @test_nowarn axislegend()
+
+    plotlist([Makie.SpecApi.Scatter(1:10)], label="MyPlot 2")
+    @test_nowarn axislegend()
 end
 
 @testset "ReversibleScale" begin

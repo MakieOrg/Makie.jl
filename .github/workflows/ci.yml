@@ -33,16 +33,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Develop and test Makie
         shell: julia --project=monorepo {0}
         run: |
           using Pkg
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore"
           Pkg.test("Makie"; coverage=true)
 

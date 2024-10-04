@@ -41,6 +41,22 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 
+intensity_convert(intensity, verts) = intensity
+function intensity_convert(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        GLBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        TextureBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+
 
 
 @nospecialize
@@ -59,6 +75,25 @@ function draw_mesh_particle(screen, p, data)
         texturecoordinates = nothing
     end
 
+    # TODO: use instance attributes
+    if to_value(data[:uv_transform]) isa Vector
+        transforms = pop!(data, :uv_transform)
+        @gen_defaults! data begin
+            uv_transform = map(transforms) do transforms
+                # 3x Vec2 should match the element order of glsl mat3x2
+                output = Vector{Vec2f}(undef, 3 * length(transforms))
+                for i in eachindex(transforms)
+                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
+                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
+                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
+                end
+                return output
+            end => TextureBuffer
+        end
+    else 
+        # handled automatically
+    end
+
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         color_map = nothing => Texture
@@ -70,7 +105,6 @@ function draw_mesh_particle(screen, p, data)
         matcap = nothing => Texture
         fetch_pixel = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1)
         backlight = 0f0
 
         instances = const_lift(length, position)
@@ -104,7 +138,7 @@ This is supposed to be the fastest way of displaying particles!
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
+        color_map    = nothing => Texture
         color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
@@ -119,7 +153,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = PointSizeRender(data[:scale])
+    data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     return assemble_shader(data)
 end
 

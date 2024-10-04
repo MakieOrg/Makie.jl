@@ -381,21 +381,25 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     return t
 end
 
-texsubimage(t::Texture{T, 1}, newvalue::Array{T, 1}, xrange::UnitRange, level=0) where {T} = glTexSubImage1D(
-    t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
-)
-function texsubimage(t::Texture{T, 2}, newvalue::Array{T, 2}, xrange::UnitRange, yrange::UnitRange, level=0) where T
+function texsubimage(t::Texture{T, 1}, newvalue::Array{T}, xrange::UnitRange, level=0) where {T}
+    glTexSubImage1D(
+        t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
+    )
+end
+function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, level=0) where T
     glTexSubImage2D(
         t.texturetype, level,
         first(xrange)-1, first(yrange)-1, length(xrange), length(yrange),
         t.format, t.pixeltype, newvalue
     )
 end
-texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T} = glTexSubImage3D(
-    t.texturetype, level,
-    first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
-    t.format, t.pixeltype, newvalue
-)
+function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T}
+    glTexSubImage3D(
+        t.texturetype, level,
+        first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
+        t.format, t.pixeltype, newvalue
+    )
+end
 
 Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
