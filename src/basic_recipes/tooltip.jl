@@ -9,7 +9,7 @@ Creates a tooltip pointing at `position` displaying the given `string
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
     offset = 10
-    "Sets where the tooltip should be placed relative to `position`. Can be `:above`, `:below`, `:left`, `:right`."
+    "Sets where the tooltip should be placed relative to `position`. Can be `:above`, `:below`, `:left`, `:right`, `:center`."
     placement = :above
     "Sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`."
     align = 0.5
@@ -103,6 +103,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             return Vec2f(l - align * (l + r), -o - t - ts)
         elseif placement in (:above, :up, :top)
             return Vec2f(l - align * (l + r),  o + b + ts)
+        elseif placement === :center
+            return Vec2f(l - align * (l + r),  b - align * (b + t))
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             return Vec2f(0, o + b + ts)
@@ -118,6 +120,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             return (align, 1.0)
         elseif placement in (:above, :up, :top)
             return (align, 0.0)
+        elseif placement === :center
+            return (0.5, 0.5)
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             return (align, 0.0)
@@ -184,6 +188,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         elseif placement in (:above, :up, :top)
             translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
             rotate!(mp, Quaternionf(0,0,0,1)) # 0
+        elseif placement === :center
+            mp.visible = false
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
@@ -235,6 +241,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
                 (l + align * w,        b-s),
                 (l + align * w - 0.5s, b),
                 (l, b)
+            ]
+        elseif placement === :center
+            Vec2f[
+                (l, b), (l, t), (r, t), (r, b), (l, b)
             ]
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
