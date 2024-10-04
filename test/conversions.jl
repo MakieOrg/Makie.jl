@@ -16,6 +16,13 @@ using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 end
 
+@testset "Heatmapshader with ranges" begin
+    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol,Any}())
+    hm.converted[1][] isa Makie.EndPoints{Float32}
+    hm.converted[2][] isa Makie.EndPoints{Float32}
+    hm.converted[3][].data == Resampler(zeros(4, 4)).data
+end
+
 @testset "changing input types" begin
     input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
     f, ax, pl = mesh(input)
