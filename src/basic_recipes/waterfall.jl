@@ -61,9 +61,10 @@ function Makie.plot!(p::Waterfall)
         )
     end
 
-    bar_attr = shared_attributes(p, Barplot)
-    bar_attr[:fillto] = lift(x -> x.fillto, p, fromto)
-    bar_attr[:stack] = Observable(automatic)
+    bar_attr = shared_attributes(
+        p, Barplot,
+        fillto = lift(x -> x.fillto, p, fromto), stack = automatic
+    )
     barplot!(p, bar_attr, lift(x -> x.xy, p, fromto))
 
     if p.show_direction[]
@@ -111,8 +112,10 @@ function Makie.plot!(p::Waterfall)
             p.dodge_gap,
         )
 
-        scatter_attr = shared_attributes(p, Scatter, [:direction_color => :color])
-        scatter_attr[:marker] = lift(x -> x.shapes, p, markers)
+        scatter_attr = shared_attributes(
+            p, Scatter, 
+            color = p.direction_color, marker = lift(x -> x.shapes, p, markers)
+        )
         scatter!(p, scatter_attr, lift(x -> x.xy, p, markers))
     end
 

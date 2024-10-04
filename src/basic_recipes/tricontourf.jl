@@ -191,15 +191,12 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     # it on a first run!
     calculate_polys(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-    attr = shared_attributes(c, Poly)
-    attr[:colormap] = c._computed_colormap
-    attr[:colorrange] = colorrange
-    attr[:highclip] = highcolor
-    attr[:lowclip] = lowcolor
-    attr[:color] = colors
-    attr[:strokewidth] = Observable(0)
-    attr[:strokecolor] = Observable(:transparent)
-    
+    attr = shared_attributes(
+        c, Poly, 
+        :strokewidth, :strokecolor,
+        colormap = c._computed_colormap, colorrange = colorrange,
+        highclip = highcolor, lowclip = lowcolor, color = colors,
+    )
     poly!(c, attr, polys)
 
 end

@@ -333,12 +333,12 @@ function Makie.plot!(p::BarPlot)
     poly!(p, poly_attr, bars)
 
     if !isnothing(p.bar_labels[])
-        text_attr = shared_attributes(p, Text, [:label_size => :fontsize,
-            :label_rotation => :rotation, :label_font => :font])
-        text_attr[:align] = label_aligns
-        text_attr[:offset] = label_offsets
-        text_attr[:color] = label_colors
-        text_attr[:fxaa] = Observable(false)
+        text_attr = shared_attributes(
+            p, Text, 
+            :fxaa, :strokewidth, :strokecolor,
+            fontsize = p.label_size, rotation = p.label_rotation, font = p.label_font,
+            align = label_aligns, offset = label_offsets, color = label_colors
+        )
         text!(p, text_attr, labels)
     end
 end

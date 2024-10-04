@@ -44,9 +44,10 @@ function Makie.plot!(plot::VolumeSlices)
         mz, Mz = extrema(z)
         Rect3(mx, my, mz, Mx-mx, My-my, Mz-mz)
     end
-    bbox_attr = shared_attributes(plot, LineSegments, [:bbox_color => :color, :bbox_visible => :visible])
-    bbox_attr[:inspectable] = Observable(false)
-
+    bbox_attr = shared_attributes(
+        plot, LineSegments, 
+        color = plot.bbox_color, visible = plot.bbox_visible, inspectable = false
+    )
     linesegments!(plot, bbox_attr, bbox)
 
     return plot

@@ -227,14 +227,13 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
 
-    bar_attr = shared_attributes(plot, LineSegments)
-    linesegments!(plot, bar_attr, linesegpairs)
+    linesegments!(plot, shared_attributes(plot, LineSegments), linesegpairs)
     
-    whisker_attr = shared_attributes(plot, LineSegments)
-    whisker_attr[:color] = whiskercolors
-    whisker_attr[:linewidth] = whiskerlinewidths
-    whisker_attr[:space] = Observable(:pixel)
-    whisker_attr[:transformation] = Observable(Transformation()) # overwrite transformations
+    whisker_attr = shared_attributes(
+        plot, LineSegments,
+        color = whiskercolors, linewidth = whiskerlinewidths, space = :pixel, 
+        transformation = Transformation() # overwrite transformations
+    )
     linesegments!(plot, whisker_attr, whiskers)
     
     plot

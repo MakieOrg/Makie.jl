@@ -147,10 +147,9 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = shared_attributes(plot, Volume)
-    attr[:colorrange] = cliprange
-    attr[:colormap] = cmap
-    attr[:algorithm] = Observable(7)
+    attr = shared_attributes(
+        plot, Volume, colorrange = cliprange, colormap = cmap, algorithm = 7
+    )
     volume!(plot, attr, x, y, z, volume)
 
     return plot
@@ -231,12 +230,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     scene = parent_scene(plot)
     space = plot.space[]
 
-    text_attr = shared_attributes(plot, Text, [:labelsize => :fontsize, :labelfont => :font])
-    text_attr[:color] = Observable(RGBA{Float32}[])
-    text_attr[:rotation] = Observable(Float32[])
-    text_attr[:text] = Observable(String[])
-    text_attr[:align] = Observable((:center, :center))
-    text_attr[:transform_marker] = Observable(false) # default
+    text_attr = shared_attributes(
+        plot, Text, 
+        fontsize = plot.labelsize, font = plot.labelfont,
+        color = RGBA{Float32}[], rotation = Float32[], text = String[], 
+        align = (:center, :center), transform_marker = false
+    )
     texts = text!(plot, text_attr, Observable(P[]))
 
     lift(plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
@@ -310,9 +309,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         masked
     end
 
-    line_attr = shared_attributes(plot, Lines)
-    line_attr[:color] = colors
-    lines!(plot, line_attr, masked_lines)
+    lines!(plot, shared_attributes(plot, Lines, color = colors), masked_lines)
 
     return plot
 end

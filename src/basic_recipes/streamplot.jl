@@ -175,8 +175,7 @@ function plot!(p::StreamPlot)
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
 
-    line_attr = shared_attributes(p, Lines)
-    line_attr[:color] = lift(last, p, data)
+    line_attr = shared_attributes(p, Lines, :fxaa, color = lift(last, p, data))
     lines!(p, line_attr, lift(x-> x[3], p, data))
 
     N = ndims(p.limits[])
@@ -216,12 +215,13 @@ function plot!(p::StreamPlot)
         end
     end
 
-    scatter_attr = shared_attributes(p, N == 2 ? Scatter : MeshScatter)
-    scatter_attr[:markersize] = arrow_size
-    scatter_attr[:rotation] = rotations
-    scatter_attr[:color] = lift(x -> x[4], p, data)
-    scatter_attr[:marker] = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality)
-    (N == 3) && (scatter_attr[:fxaa] = Observable(true))
+    scatter_attr = shared_attributes(
+        p, N == 2 ? Scatter : MeshScatter,
+        :fxaa, # Let it default
+        markersize = arrow_size, rotation = rotations,
+        color = lift(x -> x[4], p, data),
+        marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality)
+    )
     scatterfun(N)(p, scatter_attr, lift(first, p, data))
 
     return p

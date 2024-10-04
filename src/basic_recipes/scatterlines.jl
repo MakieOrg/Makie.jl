@@ -57,9 +57,10 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
 
     lines!(p, shared_attributes(p, Lines), p[1:N]...)
 
-    attr = shared_attributes(p, Scatter)
-    attr[:color] = real_markercolor
-    attr[:colormap] = real_markercolormap
-    attr[:colorrange] = real_markercolorrange
+    attr = shared_attributes(
+        p, Scatter,
+        color = real_markercolor, colormap = real_markercolormap, 
+        colorrange = real_markercolorrange
+    )
     scatter!(p, attr, p[1:N]...)
 end

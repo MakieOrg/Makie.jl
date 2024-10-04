@@ -125,11 +125,11 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    text_attr = shared_attributes(p, Text)
-    text_attr[:align] = text_align
-    text_attr[:offset] = text_offset
-    text_attr[:space] = Observable(:pixel)
-    text_attr[:transformation] = Observable(Transformation())
+    text_attr = shared_attributes(
+        p, Text,
+        align = text_align, offset = text_offset,
+        space = :pixel, transformation = Transformation()
+    )
     tp = text!(p, text_attr, px_pos)
     translate!(tp, 0, 0, 1)
 
@@ -144,10 +144,11 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Text background mesh
 
-    background_attr = shared_attributes(p, Mesh, [:backgroundcolor => :color])
-    background_attr[:shading] = Observable(NoShading)
-    background_attr[:space] = Observable(:pixel)
-    background_attr[:transformation] = Observable(Transformation())
+    background_attr = shared_attributes(
+        p, Mesh, 
+        color = p.backgroundcolor, 
+        shading = NoShading, space = :pixel, transformation = Transformation()
+    )
     mesh!(p, background_attr, bbox)
 
     # Triangle mesh
@@ -244,12 +245,12 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         return to_ndim.(Vec3f, shift, z)
     end
 
-    outline_attr = shared_attributes(p, Lines, [:outline_color => :color, 
-        :outline_linewidth => :linewidth, :outline_linestyle => :linestyle])
-    outline_attr[:space] = Observable(:pixel)
-    outline_attr[:miter_limit] = Observable(pi/18)
-    outline_attr[:transformation] = Observable(Transformation())
-
+    outline_attr = shared_attributes(
+        p, Lines, 
+        color = p.outline_color, 
+        linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
+        space = :pixel, miter_limit = pi/18, transformation = Transformation()
+    )
     lines!(p, outline_attr, outline)
 
     notify(p[1])

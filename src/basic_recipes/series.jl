@@ -61,7 +61,7 @@ end
 
 function plot!(plot::Series)
     @extract plot (curves, labels, color, solid_color, linestyle)
-    sargs = [:marker, :markersize, :strokecolor, :strokewidth]
+    sargs = (:marker, :markersize, :strokecolor, :strokewidth)
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
     colors = lift(plot, color, solid_color) do color, scolor
@@ -79,20 +79,20 @@ function plot!(plot::Series)
         series_linestyle = lift(ls-> ls isa AbstractVector ? ls[i] : ls, plot, linestyle)
 
         if !isempty(scatter)
-            attr = shared_attributes(plot, ScatterLines)
-            drop_attributes!(attr, sargs) # we don't want to pass nothing
-            foreach((k, v) -> attr[k] = v, scatter)
-            attr[:label] = label
-            attr[:color] = series_color
-            attr[:linestyle] = series_linestyle
-
+            # We don't want to pass sargs that are nothing so we avoid copying
+            # them from parent and only add them when they are not nothing
+            # TODO: This should probably be reworked to generate defaults instead?
+            attr = shared_attributes(
+                plot, ScatterLines,
+                sargs...,
+                label = label, color = series_color, linestyle = series_linestyle; scatter...
+            )
             scatterlines!(plot, attr, positions)
         else
-            attr = shared_attributes(plot, Lines)
-            attr[:label] = label
-            attr[:color] = series_color
-            attr[:linestyle] = series_linestyle
-            
+            attr = shared_attributes(
+                plot, Lines,
+                label = label, color = series_color, linestyle = series_linestyle
+            )
             lines!(plot, attr, positions)
         end
     end

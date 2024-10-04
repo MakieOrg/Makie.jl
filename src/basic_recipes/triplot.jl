@@ -222,26 +222,35 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly_attr = shared_attributes(p, Poly, [:triangle_color => :color])
+    poly_attr = shared_attributes(p, Poly, color = p.triangle_color)
     poly!(p, poly_attr, points_2f, triangles_3f)
 
-    ghost_attr = shared_attributes(p, LineSegments, [:ghost_edge_color => :color, 
-        :ghost_edge_linewidth => :linewidth, :ghost_edge_linestyle => :linestyle])
+    ghost_attr = shared_attributes(
+        p, LineSegments, 
+        color = p.ghost_edge_color,
+        linewidth = p.ghost_edge_linewidth, linestyle = p.ghost_edge_linestyle
+    )
     linesegments!(p, ghost_attr, ghost_edges_2f)
 
-    hull_attr = shared_attributes(p, Lines, [:convex_hull_color => :color,
-        :convex_hull_linewidth => :linewidth, :convex_hull_linestyle => :linestyle])
-    hull_attr[:depth_shift] = Observable(-1.0f-5)
+    hull_attr = shared_attributes(
+        p, Lines, 
+        color = p.convex_hull_color, depth_shift = -1.0f-5,
+        linewidth = p.convex_hull_linewidth, linestyle = p.convex_hull_linestyle
+    )
     lines!(p, hull_attr, convex_hull_2f)
 
-    edge_attr = shared_attributes(p, LineSegments, [:constrained_edge_color => :color,
-        :constrained_edge_linewidth => :linewidth, :constrained_edge_linestyle => :linestyle])
-    edge_attr[:depth_shift] = Observable(-2.0f-5)
+    edge_attr = shared_attributes(
+        p, LineSegments, 
+        color = p.constrained_edge_color, depth_shift = -2.0f-5,
+        linewidth = p.constrained_edge_linewidth, linestyle = p.constrained_edge_linestyle
+    )
     linesegments!(p, edge_attr, constrained_edges_2f)
 
-    scatter_attr = shared_attributes(p, Scatter, [:markercolor => :color, :show_points => :visible])
-    scatter_attr[:depth_shift] = Observable(-3.0f-5)
-    pop!.(scatter_attr, (:strokecolor, :strokewidth))
+    scatter_attr = shared_attributes(
+        p, Scatter, 
+        :strokecolor, :strokewidth,
+        color = p.markercolor, visible = p.show_points, depth_shift = -3.0f-5
+    )
     scatter!(p, scatter_attr, present_points_2f)
 
     return p

@@ -54,14 +54,18 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
 
     trunkpoints = lift(st -> last.(st), s, stemtuples)
 
-    trunk_attr = shared_attributes(s, Lines, [:trunkwidth => :linewidth, 
-        :trunkcolor => :color, :trunkcolormap => :colormap, 
-        :trunkcolorrange => :colorrange, :trunklinestyle => :linestyle])
+    trunk_attr = shared_attributes(
+        s, Lines, 
+        linewidth = s.trunkwidth, linestyle = s.trunklinestyle, color = s.trunkcolor, 
+        colormap = s.trunkcolormap, colorrange = s.trunkcolorrange, 
+    )
     lines!(s, trunk_attr, trunkpoints)
 
-    stem_attr = shared_attributes(s, LineSegments, [:stemwidth => :linewidth, 
-        :stemcolor => :color, :stemcolormap => :colormap, 
-        :stemcolorrange => :colorrange, :stemlinestyle => :linestyle])
+    stem_attr = shared_attributes(
+        s, LineSegments, 
+        linewidth = s.stemwidth, linestyle = s.stemlinestyle,
+        color = s.stemcolor, colormap = s.stemcolormap, colorrange = s.stemcolorrange
+    )
     linesegments!(s, stem_attr, stemtuples)
 
     scatter!(s, shared_attributes(s, Scatter), s[1])

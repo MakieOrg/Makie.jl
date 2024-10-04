@@ -112,16 +112,17 @@ function plot!(pl::Bracket)
     end
 
     # Avoid scale!() / translate!() / rotate!() to affect these (replace transformations/model)
-    line_attr = shared_attributes(pl, Series, [:color => :solid_color])
-    line_attr[:space] = Observable(:pixel)
-    line_attr[:transformation] = Observable(Transformation())
+    line_attr = shared_attributes(
+        pl, Series, 
+        solid_color = pl.color, space = :pixel, transformation = Transformation()
+    )
     series!(pl, line_attr, bp)
 
-    text_attr = shared_attributes(pl, Text, [:textcolor => :color])
-    text_attr[:space] = Observable(:pixel)
-    text_attr[:offset] = textoffset_vec
-    text_attr[:rotation] = autorotations
-    text_attr[:model] = Observable(Mat4f(I))
+    text_attr = shared_attributes(
+        pl, Text, 
+        color = pl.textcolor, offset = textoffset_vec, rotation = autorotations,
+        space = :pixel,  model = Mat4f(I)
+    )
     text!(pl, text_attr, text_tuples)
     
     pl

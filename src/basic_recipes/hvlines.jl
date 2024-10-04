@@ -77,9 +77,11 @@ function Makie.plot!(p::Union{HLines, VLines})
 
     notify(p[1])
 
-    line_attributes = shared_attributes(p, LineSegments)
     # Drop transform_func because we handle it manually
-    line_attributes[:transformation] = Observable(Transformation(p, transform_func = identity))
+    line_attributes = shared_attributes(
+        p, LineSegments, 
+        transformation = Transformation(p, transform_func = identity)
+    )
     linesegments!(p, line_attributes, points)
     p
 end
