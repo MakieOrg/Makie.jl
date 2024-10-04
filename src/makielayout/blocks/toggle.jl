@@ -36,6 +36,9 @@ function initialize_block!(t::Toggle)
         end
     end
 
+    hovering = Observable(false)
+    setfield!(t, :hovering, hovering)
+
     buttonfactor = Observable(1.0)
     buttonsize = lift(topscene, markersize, t.rimfraction, buttonfactor) do ms, rf, bf
         ms * (1 - rf) * bf
@@ -87,11 +90,13 @@ function initialize_block!(t::Toggle)
 
     onmouseover(mouseevents) do event
         buttonfactor[] = 1.15
+        hovering[] = true
         return Consume(false)
     end
 
     onmouseout(mouseevents) do event
         buttonfactor[] = 1.0
+        hovering[] = false
         return Consume(false)
     end
 
