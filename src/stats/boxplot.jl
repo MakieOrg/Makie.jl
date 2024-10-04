@@ -118,7 +118,7 @@ function Makie.plot!(plot::BoxPlot)
             end
 
             # outliers
-            if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
+            if !iszero(range)  # if the range is 0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
                 for (value, idx) in zip(values,idxs)
@@ -135,8 +135,6 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
-                # register boxcolor
-                push!(boxcolor, getuniquevalue(color, idxs))
             end
 
             # whiskers
@@ -147,6 +145,7 @@ function Makie.plot!(plot::BoxPlot)
             push!(t_segments, (center, q4), (center, q5), (rw, q5), (lw, q5)) # upper T
 
             # box
+            push!(boxcolor, getuniquevalue(color, idxs))
             push!(centers, center)
             push!(boxwidth, bw)
             push!(boxmin, q2)
