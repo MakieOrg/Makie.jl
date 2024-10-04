@@ -748,13 +748,15 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
         gl_attributes[:vertex_color] = lift(el32convert, plot, color)
+    elseif to_value(color) isa Nothing
+        # this is ok, since e.g. colormapped colors will go into `intensity`
     else
-        # error("Unsupported color type: $(typeof(to_value(color)))")
+        error("Unsupported color type: $(typeof(to_value(color)))")
     end
 
     if haskey(gl_attributes, :intensity)
         intensity = pop!(gl_attributes, :intensity)
-        if intensity[] isa Matrix
+        if intensity[] isa AbstractArray
             gl_attributes[:image] = Texture(intensity, minfilter = interp)
         else
             gl_attributes[:vertex_color] = intensity
@@ -767,7 +769,11 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
-        gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
+        if eltype(to_value(mesh).uv) <: Vec2
+            gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
+        elseif eltype(to_value(mesh).uv) <: Vec3
+            gl_attributes[:texturecoordinates] = lift(GeometryBasics.decompose_uvw, mesh)
+        end
     end
     if hasproperty(to_value(mesh), :normals) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
