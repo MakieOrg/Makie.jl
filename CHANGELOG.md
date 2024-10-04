@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
 - Fix `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
 - Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
 - Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
