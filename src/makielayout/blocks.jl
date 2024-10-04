@@ -615,3 +615,28 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
+
+"""
+    function tooltip!(b::Block, str::AbstractString; kwargs...)
+
+Adds a tooltip to a block.
+"""
+function tooltip!(b::Block, str; kwargs...)
+    placement = kwargs[:placement]
+    position = lift(b.layoutobservables.computedbbox) do bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        else
+            placement == :center || warn("invalid value for tooltip_placement, using :center")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        end
+    end
+    tt = tooltip!(b.blockscene, position, str; kwargs...)
+    translate!(tt, 0, 0, 9e3)
+end
