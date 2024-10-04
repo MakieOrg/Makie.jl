@@ -1496,8 +1496,7 @@ end
     fig
 end
 
-# @reference_test "Violin" 
-begin
+@reference_test "Violin" begin
     fig = Figure()
     
     categories = RNG.rand(1:3, 1000)
