@@ -94,6 +94,8 @@ import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
+import MakieCore: GLShader, glshader!, glshader
+export GLShader, glshader!, glshader
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
@@ -374,6 +376,7 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+include("basic_recipes/shader.jl")
 include("deprecated.jl")
 
 export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels

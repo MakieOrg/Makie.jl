@@ -777,3 +777,14 @@ or other array-like output.
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
 end
+
+@recipe GLShader (rect::Rect2f, shader::String) begin
+    """Defines code that replaces the specified keys in shaders.
+    E.g. `{{my_code}}` will be replaced by `shader_injections["my_code"]`.
+    These code injections happen before compile time and require
+    `GLMakie.closeall()` to be overwritten.
+    """
+    uniforms = Dict{Symbol,Any}()
+    mixin_generic_plot_attributes()...
+    fxaa = false
+end

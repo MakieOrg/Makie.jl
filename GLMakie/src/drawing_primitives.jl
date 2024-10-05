@@ -336,7 +336,11 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
         robj = robj_func(gl_attributes)
 
-        get!(gl_attributes, :ssao, Observable(false))
+        gl_attributes[:ssao] = plot.ssao
+        gl_attributes[:transparency] = plot.transparency
+        gl_attributes[:overdraw] = plot.overdraw
+        gl_attributes[:visible] = plot.visible
+        gl_attributes[:fxaa] = plot.fxaa
         screen.cache2plot[robj.id] = plot
         return robj
     end
@@ -1016,4 +1020,53 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
 
         return draw_voxels(screen, tex, gl_attributes)
     end
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::GLShader)
+    robj = get!(screen.cache, objectid(plot)) do
+        uniforms = copy(plot.uniforms[])
+        uniforms[:model] = plot.model
+        uniforms[:px_per_unit] = screen.px_per_unit
+        connect_camera!(plot, uniforms, scene.camera, :data)
+
+        m = plot.rect[]
+        uniforms[:faces] = indexbuffer(decompose(GLTriangleFace, m))
+        uniforms[:vertices] = GLBuffer(decompose(Point2f, m))
+        uniforms[:uv] = GLBuffer(GeometryBasics.decompose_uv(m))
+
+        templates = Dict("SHADERTOY_INPUTS" => """
+                         uniform vec2 iResolution;
+                         uniform vec2 iMouse;
+                         uniform float iGlobalTime;
+                         uniform sampler2D iChannel0;
+                         uniform sampler2D iChannel1;
+                         uniform sampler2D iChannel2;
+                         uniform sampler2D iChannel3;
+                         """,
+                         "TOY_SHADER" => plot.shader[],
+                         "buffers" => output_buffers(screen, to_value(false)),
+                         "buffer_writes" => output_buffer_writes(screen, to_value(false)))
+        @gen_defaults! uniforms begin
+            iResolution = scene.camera.resolution
+            iChannel0 = nothing => Texture
+            iChannel1 = nothing => Texture
+            iChannel2 = nothing => Texture
+            iChannel3 = nothing => Texture
+            iGlobalTime = lift(x -> Float32(x.time), scene.events.tick)
+            iMouse = lift(Vec2f, scene.events.mouseposition)
+            iGlobalTime = 0.0f0
+            shader = GLVisualizeShader(
+                screen,
+                "fragment_output.frag", "glshader.frag", "glshader.vert";
+                view=templates
+            )
+        end
+        get!(uniforms, :ssao, Observable(false))
+        get!(uniforms, :transparency, Observable(true))
+        robj = GLMakie.assemble_shader(uniforms)
+        screen.cache2plot[robj.id] = plot
+        return robj
+    end
+    push!(screen, scene, robj)
+    return robj
 end
