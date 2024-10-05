@@ -373,7 +373,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     if t_user isa Transformation
         plot.transformation = t_user
     else
-        if t_user isa Automatic
+        if t_user isa Union{Nothing, Automatic}
             plot.transformation = Transformation()
         else
             t = Transformation()
