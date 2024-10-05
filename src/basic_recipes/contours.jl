@@ -45,7 +45,6 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     labelsize = 10 # arbitrary
     MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
-    fxaa = false
 end
 
 """
@@ -148,7 +147,9 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
 
     attr = shared_attributes(
-        plot, Volume, colorrange = cliprange, colormap = cmap, algorithm = 7
+        plot, Volume, 
+        :levels, :alpha, # handled here explicitly
+        colorrange = cliprange, colormap = cmap, algorithm = 7
     )
     volume!(plot, attr, x, y, z, volume)
 
@@ -234,7 +235,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot, Text, 
         fontsize = plot.labelsize, font = plot.labelfont,
         color = RGBA{Float32}[], rotation = Float32[], text = String[], 
-        align = (:center, :center), transform_marker = false
+        align = (:center, :center), transform_marker = false, fxaa = false
     )
     texts = text!(plot, text_attr, Observable(P[]))
 
@@ -309,7 +310,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         masked
     end
 
-    lines!(plot, shared_attributes(plot, Lines, color = colors), masked_lines)
+    line_attr = shared_attributes(plot, Lines, color = colors, fxaa = false)
+    lines!(plot, line_attr, masked_lines)
 
     return plot
 end
