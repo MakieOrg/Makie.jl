@@ -414,8 +414,8 @@ end
 
 @reference_test "Button - Slider - Toggle - Textbox" begin
     f = Figure(size = (500, 250))
-    Button(f[1, 1:2])
-    Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20, 
+    Makie.Button(f[1, 1:2])
+    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20, 
         strokecolor = :red, strokewidth = 2, # TODO: allocate space for this
         fontsize = 16, labelcolor = :blue)
 
@@ -430,8 +430,8 @@ end
     Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue, 
         framecolor_active = :yellow, rimfraction = 0.6)
 
-    Slider(f[3, 3])
-    sl = Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan, 
+    Makie.Slider(f[3, 3])
+    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan, 
         color_active_dimmed = :lightgreen)
     Makie.set_close_to!(sl, 30)
 
