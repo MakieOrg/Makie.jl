@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.21.13] - 2024-10-07
+
 - Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
 - Fix `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
 - Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
@@ -619,7 +621,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...HEAD
+[0.21.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...v0.21.13
 [0.21.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...v0.21.12
 [0.21.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...v0.21.11
 [0.21.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...v0.21.10
