@@ -1499,11 +1499,11 @@ end
 @reference_test "Violin" begin
     fig = Figure()
     
-    categories = RNG.rand(1:3, 1000)
-    values = RNG.randn(1000)
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = vcat(RNG.randn(300), (1.5 .* RNG.rand(300)).^2, -(1.5 .* RNG.rand(300)).^2)
     violin(fig[1, 1], categories, values)
 
-    dodge = RNG.rand(1:2, 1000)
+    dodge = RNG.rand(1:2, 900)
     violin(fig[1, 2], categories, values, dodge = dodge, 
         color = map(d->d==1 ? :yellow : :orange, dodge), 
         strokewidth = 2, strokecolor = :black, gap = 0.1, dodge_gap = 0.5
@@ -1582,14 +1582,14 @@ end
 @reference_test "boxplot" begin
     fig = Figure()
     
-    categories = RNG.rand(1:3, 1000)
-    values = RNG.randn(1000)
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = RNG.randn(900) .+ range(-1, 1, length=900)
     boxplot(fig[1, 1], categories, values)
 
-    dodge = RNG.rand(1:2, 1000)
+    dodge = RNG.rand(1:2, 900)
     boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true, 
         color = map(d->d==1 ? :blue : :red, dodge), 
-        outliercolor = RNG.rand([:red, :green, :blue, :black, :yellow], 1000)
+        outliercolor = RNG.rand([:red, :green, :blue, :black, :orange], 900)
     )
 
     ax_vert = Axis(fig[2,1];
