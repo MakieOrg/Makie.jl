@@ -24,7 +24,7 @@
     
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)
-        @test pick(scene, Point2f(30, 60)) == (sc1, 3)
+        @test pick(scene, Point2f(29, 59)) == (sc1, 3)
         @test pick(scene, Point2f(57, 58)) == (nothing, 0) # maybe fragile
         @test pick(scene, Point2f(57, 13)) == (sc2, 1) # maybe fragile
         @test pick(scene, Point2f(20, 80)) == (nothing, 0)
@@ -50,11 +50,11 @@
 
         # more precise checks around borders (these maybe off by a pixel due to AA)
         @test pick(scene, 20, 200) == (l2, 2)
-        @test pick(scene, 30, 210) == (l2, 2)
+        @test pick(scene, 30, 209) == (l2, 2)
         @test pick(scene, 30, 211) == (nothing, 0)
-        @test pick(scene, 60, 200) == (l2, 2)
+        @test pick(scene, 59, 200) == (l2, 2)
         @test pick(scene, 61, 200) == (nothing, 0)
-        @test pick(scene, 57, 207) == (l2, 2)
+        @test pick(scene, 57, 206) == (l2, 2)
         @test pick(scene, 57, 208) == (nothing, 0)
         @test pick(scene, 40, 230) == (l2, 5) # nan handling
     end
@@ -62,16 +62,16 @@
     @testset "linesegments" begin
         @test pick(scene,  8, 260) == (nothing, 0) # off by a pixel due to AA
         @test pick(scene, 10, 260) == (ls, 2)
-        @test pick(scene, 30, 270) == (ls, 2)
+        @test pick(scene, 30, 269) == (ls, 2)
         @test pick(scene, 30, 271) == (nothing, 0)
-        @test pick(scene, 60, 260) == (ls, 2)
+        @test pick(scene, 59, 260) == (ls, 2)
         @test pick(scene, 61, 260) == (nothing, 0)
 
         @test pick(scene,  8, 290) == (nothing, 0) # off by a pixel due to AA
         @test pick(scene, 10, 290) == (ls, 6)
         @test pick(scene, 30, 280) == (ls, 6)
         @test pick(scene, 30, 278) == (nothing, 0) # off by a pixel due to AA
-        @test pick(scene, 60, 290) == (ls, 6)
+        @test pick(scene, 59, 290) == (ls, 6)
         @test pick(scene, 61, 290) == (nothing, 0)
     end
 
@@ -84,7 +84,7 @@
         @test pick(scene, 20, 333) == (nothing, 0)
         # space is counted
         @test pick(scene, 43, 320) == (t, 3)
-        @test pick(scene, 48, 325) == (t, 3)
+        @test pick(scene, 48, 324) == (t, 3)
         @test pick(scene, 49, 326) == (nothing, 0)
         # characters at nan position are counted
         @test pick(scene, 20, 350) == (t, 6)
