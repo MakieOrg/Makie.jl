@@ -1,5 +1,5 @@
 @testset "picking" begin
-    scene = Scene(size = (500, 500))
+    scene = Scene(size = (130, 370))
     campixel!(scene)
     
     sc1 = scatter!(scene, [20, NaN, 20], [20, NaN, 50], marker = Rect, markersize = 20)
