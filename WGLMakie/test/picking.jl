@@ -1,0 +1,195 @@
+@testset "picking" begin
+    scene = Scene(size = (130, 370))
+    campixel!(scene)
+    
+    sc1 = scatter!(scene, [20, NaN, 20], [20, NaN, 50], marker = Rect, markersize = 20)
+    sc2 = scatter!(scene, [50, 50, 20, 50], [20, 50, 80, 80], marker = Circle, markersize = 20, color = [:red, :red, :transparent, :red])
+    ms = meshscatter!(scene, [20, NaN, 50], [110, NaN, 110], markersize = 10)
+    l1 = lines!(scene, [20, 50, 50, 20, 20], [140, 140, 170, 170, 140], linewidth = 10)
+    l2 = lines!(scene, [20, 50, NaN, 20, 50], [200, 200, NaN, 230, 230], linewidth = 20, linecap = :round)
+    ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
+    tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
+    t = tp.plots[1]
+
+    i = image!(scene, 80..110, 20..50, rand(RGBf, 2, 2))
+    s = surface!(scene, 80..110, 80..110, rand(2, 2))
+    hm = heatmap!(scene, [80, 110], [140, 170], [1 2; 3 4])
+    # mesh coloring should match triangle placements
+    m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
+    vx = voxels!(scene, [65, 125], [245, 305], [-1, 1], reshape([1,2,3,4], (2,2,1)), shading = NoShading)
+    vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
+
+    # render one frame to generate picking texture
+    colorbuffer(scene);
+    
+    @testset "scatter" begin
+        @test pick(scene, Point2f(20, 20)) == (sc1, 1)
+        @test pick(scene, Point2f(30, 60)) == (sc1, 3)
+        @test pick(scene, Point2f(57, 58)) == (nothing, 0) # maybe fragile
+        @test pick(scene, Point2f(57, 13)) == (sc2, 1) # maybe fragile
+        @test pick(scene, Point2f(20, 80)) == (nothing, 0)
+        @test pick(scene, Point2f(50, 80)) == (sc2, 4)
+    end
+
+    @testset "meshscatter" begin
+        @test pick(scene, (20, 110)) == (ms, 1)
+        @test pick(scene, (44, 117)) == (ms, 3)
+        @test pick(scene, (57, 117)) == (nothing, 0)
+    end
+
+    @testset "lines" begin
+        # Bit less precise since joints aren't strictly one segment or the other
+        @test pick(scene, 22, 140) == (l1, 2)
+        @test pick(scene, 48, 140) == (l1, 2)
+        @test pick(scene, 50, 142) == (l1, 3)
+        @test pick(scene, 50, 168) == (l1, 3)
+        @test pick(scene, 48, 170) == (l1, 4)
+        @test pick(scene, 22, 170) == (l1, 4)
+        @test pick(scene, 20, 168) == (l1, 5)
+        @test pick(scene, 20, 142) == (l1, 5)
+
+        # more precise checks around borders (these maybe off by a pixel due to AA)
+        @test pick(scene, 20, 200) == (l2, 2)
+        @test pick(scene, 30, 210) == (l2, 2)
+        @test pick(scene, 30, 211) == (nothing, 0)
+        @test pick(scene, 60, 200) == (l2, 2)
+        @test pick(scene, 61, 200) == (nothing, 0)
+        @test pick(scene, 57, 207) == (l2, 2)
+        @test pick(scene, 57, 208) == (nothing, 0)
+        @test pick(scene, 40, 230) == (l2, 5) # nan handling
+    end
+
+    @testset "linesegments" begin
+        @test pick(scene,  8, 260) == (nothing, 0) # off by a pixel due to AA
+        @test pick(scene, 10, 260) == (ls, 2)
+        @test pick(scene, 30, 270) == (ls, 2)
+        @test pick(scene, 30, 271) == (nothing, 0)
+        @test pick(scene, 60, 260) == (ls, 2)
+        @test pick(scene, 61, 260) == (nothing, 0)
+
+        @test pick(scene,  8, 290) == (nothing, 0) # off by a pixel due to AA
+        @test pick(scene, 10, 290) == (ls, 6)
+        @test pick(scene, 30, 280) == (ls, 6)
+        @test pick(scene, 30, 278) == (nothing, 0) # off by a pixel due to AA
+        @test pick(scene, 60, 290) == (ls, 6)
+        @test pick(scene, 61, 290) == (nothing, 0)
+    end
+
+    @testset "text" begin        
+        @test pick(scene, 15, 320) == (t, 1)
+        @test pick(scene, 13, 320) == (nothing, 0)
+        # edge checks, further outside due to AA
+        @test pick(scene, 20, 306) == (nothing, 0)
+        @test pick(scene, 20, 320) == (t, 1)
+        @test pick(scene, 20, 333) == (nothing, 0)
+        # space is counted
+        @test pick(scene, 43, 320) == (t, 3)
+        @test pick(scene, 48, 325) == (t, 3)
+        @test pick(scene, 49, 326) == (nothing, 0)
+        # characters at nan position are counted
+        @test pick(scene, 20, 350) == (t, 6)
+    end
+
+    @testset "image" begin
+        # TODO: This is just a quad, picked like a mesh. Can we do better?
+        # 1px offset to make sure we're inside
+        @test pick(scene, 80, 20)[1] == i
+        @test pick(scene, 79, 20) == (nothing, 0)
+        @test pick(scene, 80, 19) == (nothing, 0)
+        @test pick(scene, 81, 30) == (i, 3)
+        @test pick(scene, 81, 49) == (i, 3)
+        @test pick(scene, 105, 49) == (i, 3)
+        @test pick(scene, 90, 21) == (i, 4)
+        @test pick(scene, 109, 21) == (i, 4)
+        @test pick(scene, 109, 45) == (i, 4)
+        @test pick(scene, 109, 49)[1] == i
+        @test pick(scene, 111, 50) == (nothing, 0)
+        @test pick(scene, 110, 51) == (nothing, 0)
+    end
+
+    @testset "surface" begin
+        # TODO: Same as image
+        @test pick(scene, 80, 80)[1] == s
+        @test pick(scene, 79, 80) == (nothing, 0)
+        @test pick(scene, 80, 79) == (nothing, 0)
+        @test pick(scene, 81, 90) == (s, 3)
+        @test pick(scene, 81, 109) == (s, 3)
+        @test pick(scene, 105, 109) == (s, 3)
+        @test pick(scene, 90, 81) == (s, 4)
+        @test pick(scene, 109, 81) == (s, 4)
+        @test pick(scene, 109, 105) == (s, 4)
+        @test pick(scene, 109, 109)[1] == s
+        @test pick(scene, 111, 110) == (nothing, 0)
+        @test pick(scene, 110, 111) == (nothing, 0)
+    end
+
+    @testset "heatmap" begin
+        # outside border
+        for p in vcat(
+                [(x, y) for x in (64, 126) for  y in (126, 184)],
+                [(x, y) for x in (66, 124) for  y in (124, 186)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        
+        # TODO: Add indices to make these more useful
+        @test pick(scene,  80, 140) == (hm, 0)
+        @test pick(scene,  80, 170) == (hm, 0)
+        @test pick(scene, 110, 140) == (hm, 0)
+        @test pick(scene, 110, 170) == (hm, 0)
+        # precise check for the future (same order as above)
+        # @test pick(scene, 94, 154) == (hm, 0)
+        # @test pick(scene, 94, 156) == (hm, 0)
+        # @test pick(scene, 96, 154) == (hm, 0)
+        # @test pick(scene, 96, 156) == (hm, 0)
+    end
+
+    @testset "mesh" begin
+        @test pick(scene, 80, 200)[1] == m
+        @test pick(scene, 79, 200) == (nothing, 0)
+        @test pick(scene, 80, 199) == (nothing, 0)
+        @test pick(scene,  81, 201) == (m, 3)
+        @test pick(scene,  81, 225) == (m, 3)
+        @test pick(scene, 105, 201) == (m, 3)
+        @test pick(scene,  85, 229) == (m, 4)
+        @test pick(scene, 109, 205) == (m, 4)
+        @test pick(scene, 109, 229) == (m, 4)
+        @test pick(scene, 109, 229)[1] == m
+        @test pick(scene, 111, 230) == (nothing, 0)
+        @test pick(scene, 110, 231) == (nothing, 0)
+    end
+
+    @testset "voxel" begin
+        for p in vcat(
+                [(x, y) for x in (64, 246) for  y in (126, 304)],
+                [(x, y) for x in (66, 244) for  y in (124, 306)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        # also confirmed visually that these indices line up with the array values/colors
+        @test pick(scene,  80, 260) == (vx, 1)
+        @test pick(scene,  80, 290) == (vx, 3)
+        @test pick(scene, 110, 260) == (vx, 2)
+        @test pick(scene, 110, 290) == (vx, 4)
+        
+        @test pick(scene, 94, 274) == (vx, 1)
+        @test pick(scene, 94, 276) == (vx, 3)
+        @test pick(scene, 96, 274) == (vx, 2)
+        @test pick(scene, 96, 276) == (vx, 4)
+    end
+    
+    @testset "volume" begin
+        # volume doesn't produce indices because we can't resolve the depth of 
+        # the pick
+        @test pick(scene,  80, 320)[1] == vol
+        @test pick(scene,  79, 320) == (nothing, 0)
+        @test pick(scene,  80, 319) == (nothing, 0)
+        @test pick(scene,  81, 321) == (vol, 0)
+        @test pick(scene,  81, 349) == (vol, 0)
+        @test pick(scene, 109, 321) == (vol, 0)
+        @test pick(scene, 109, 349) == (vol, 0)
+        @test pick(scene, 109, 349)[1] == vol
+        @test pick(scene, 111, 350) == (nothing, 0)
+        @test pick(scene, 110, 351) == (nothing, 0)
+    end
+end
