@@ -66,21 +66,26 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
-    camera = scene.camera
-
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
     left, bottom = minimum(lims32)
-    right, top   = maximum(lims32)
-    leftright = xrev ? (right, left) : (left, right)
-    bottomtop = yrev ? (top, bottom) : (bottom, top)
+    width, height = widths(lims32)  
+  
+    camera = scene.camera
+    eyeposition = Vec3f(left + 0.5 * width, bottom + 0.5 * height, -nearclip)
+    view = Makie.translationmatrix(-eyeposition)
 
+    half_width  = 0.5 * ifelse(xrev, -width, width)
+    half_height = 0.5 * ifelse(yrev, -height, height)
     projection = Makie.orthographicprojection(
         Float32,
-        leftright...,
-        bottomtop..., nearclip, farclip)
+        -half_width, half_width,
+        -half_height, half_height,
+        0, farclip-nearclip
+    )
 
-    Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
+    Makie.set_proj_view!(camera, projection, view)
+    camera.eyeposition[] = eyeposition
     return
 end
 

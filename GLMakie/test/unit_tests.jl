@@ -465,5 +465,5 @@ end
     cam = ax.scene.camera
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
-    @test robj.uniforms[:projectionview][] == cam.projectionview[]
+    @test robj.uniforms[:projectionview][] == Mat4f(cam.projectionview[])
 end
