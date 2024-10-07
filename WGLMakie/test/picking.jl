@@ -21,6 +21,8 @@
 
     # render one frame to generate picking texture
     colorbuffer(scene);
+
+    # TODO: Can we verify slow heatmap path somehow?
     
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)

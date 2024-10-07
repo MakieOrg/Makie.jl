@@ -21,6 +21,15 @@
 
     # render one frame to generate picking texture
     colorbuffer(scene);
+
+    # verify that heatmap doesn't get optimized away
+    @test begin
+        screen = scene.current_screens[1]
+        robj = screen.renderlist[11][3] # text generates a text + line plot
+        shaders = robj.vertexarray.program.shader
+        names = [string(shader.name) for shader in shaders]
+        any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
+    end
     
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)
