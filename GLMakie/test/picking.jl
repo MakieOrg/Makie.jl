@@ -11,7 +11,7 @@
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
     t = tp.plots[1]
 
-    i = image!(scene, 80..110, 20..50, rand(RGBf, 2, 2))
+    i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
     s = surface!(scene, 80..110, 80..110, rand(2, 2))
     hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 2; 3 4; 5 6])
     # mesh coloring should match triangle placements
@@ -20,6 +20,7 @@
     vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
 
     # reversed axis
+    i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
     # render one frame to generate picking texture
@@ -103,20 +104,38 @@
     end
 
     @testset "image" begin
-        # TODO: This is just a quad, picked like a mesh. Can we do better?
-        # 1px offset to make sure we're inside
-        @test pick(scene, 80, 20)[1] == i
-        @test pick(scene, 79, 20) == (nothing, 0)
-        @test pick(scene, 80, 19) == (nothing, 0)
-        @test pick(scene, 81, 30) == (i, 3)
-        @test pick(scene, 81, 49) == (i, 3)
-        @test pick(scene, 105, 49) == (i, 3)
-        @test pick(scene, 90, 21) == (i, 4)
-        @test pick(scene, 109, 21) == (i, 4)
-        @test pick(scene, 109, 45) == (i, 4)
-        @test pick(scene, 109, 49)[1] == i
-        @test pick(scene, 111, 50) == (nothing, 0)
-        @test pick(scene, 110, 51) == (nothing, 0)
+        # outside border
+        for p in vcat(
+                [(x, y) for x in (79, 141) for y in (21, 49)],
+                [(x, y) for x in (81, 139) for y in (19, 51)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        
+        # cell centered checks
+        @test pick(scene,  90, 30) == (i, 1)
+        @test pick(scene, 110, 30) == (i, 2)
+        @test pick(scene, 130, 30) == (i, 3)
+        @test pick(scene,  90, 40) == (i, 4)
+        @test pick(scene, 110, 40) == (i, 5)
+        @test pick(scene, 130, 40) == (i, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene, 100-1, 35-1) == (i, 1)
+        @test pick(scene, 100+1, 35-1) == (i, 2)
+        @test pick(scene, 100-1, 35+1) == (i, 4)
+        @test pick(scene, 100+1, 35+1) == (i, 5)
+        
+        @test pick(scene, 120-1, 35-1) == (i, 2)
+        @test pick(scene, 120+1, 35-1) == (i, 3)
+        @test pick(scene, 120-1, 35+1) == (i, 5)
+        @test pick(scene, 120+1, 35+1) == (i, 6)
+
+        # reversed axis check
+        @test pick(scene, 200, 30) == (i2, 1)
+        @test pick(scene, 190, 30) == (i2, 2)
+        @test pick(scene, 200, 40) == (i2, 3)
+        @test pick(scene, 190, 40) == (i2, 4)
     end
 
     @testset "surface" begin
@@ -138,8 +157,8 @@
     @testset "heatmap" begin
         # outside border
         for p in vcat(
-                [(x, y) for x in (64, 156) for  y in (126, 184)],
-                [(x, y) for x in (66, 154) for  y in (124, 186)]
+                [(x, y) for x in (64, 156) for y in (126, 184)],
+                [(x, y) for x in (66, 154) for y in (124, 186)]
             )
             @test pick(scene, p) == (nothing, 0)
         end
@@ -164,10 +183,10 @@
         @test pick(scene, 126, 156) == (hm, 6)
 
         # reversed axis check
-        @test pick(scene, 210, 140) == (hm, 1)
-        @test pick(scene, 180, 140) == (hm, 2)
-        @test pick(scene, 210, 170) == (hm, 3)
-        @test pick(scene, 180, 170) == (hm, 4)
+        @test pick(scene, 210, 140) == (hm2, 1)
+        @test pick(scene, 180, 140) == (hm2, 2)
+        @test pick(scene, 210, 170) == (hm2, 3)
+        @test pick(scene, 180, 170) == (hm2, 4)
     end
 
     @testset "mesh" begin
@@ -187,8 +206,8 @@
 
     @testset "voxel" begin
         for p in vcat(
-                [(x, y) for x in (64, 246) for  y in (126, 304)],
-                [(x, y) for x in (66, 244) for  y in (124, 306)]
+                [(x, y) for x in (64, 246) for y in (126, 304)],
+                [(x, y) for x in (66, 244) for y in (124, 306)]
             )
             @test pick(scene, p) == (nothing, 0)
         end
