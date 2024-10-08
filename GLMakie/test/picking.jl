@@ -12,7 +12,7 @@
     t = tp.plots[1]
 
     i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
-    s = surface!(scene, 80..110, 80..110, rand(2, 2))
+    s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
     hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 2; 3 4; 5 6])
     # mesh coloring should match triangle placements
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
@@ -21,7 +21,10 @@
 
     # reversed axis
     i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
+    s2 = surface!(scene, 210..180, 80..110, rand(2, 2))
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
+
+    scene
 
     # render one frame to generate picking texture
     colorbuffer(scene);
@@ -139,19 +142,38 @@
     end
 
     @testset "surface" begin
-        # TODO: Same as image
-        @test pick(scene, 80, 80)[1] == s
-        @test pick(scene, 79, 80) == (nothing, 0)
-        @test pick(scene, 80, 79) == (nothing, 0)
-        @test pick(scene, 81, 90) == (s, 3)
-        @test pick(scene, 81, 109) == (s, 3)
-        @test pick(scene, 105, 109) == (s, 3)
-        @test pick(scene, 90, 81) == (s, 4)
-        @test pick(scene, 109, 81) == (s, 4)
-        @test pick(scene, 109, 105) == (s, 4)
-        @test pick(scene, 109, 109)[1] == s
-        @test pick(scene, 111, 110) == (nothing, 0)
-        @test pick(scene, 110, 111) == (nothing, 0)
+        # outside border
+        for p in vcat(
+                [(x, y) for x in (79, 141) for y in (81, 109)],
+                [(x, y) for x in (81, 139) for y in (79, 111)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        
+        # cell centered checks
+        @test pick(scene,  90,  90) == (s, 1)
+        @test pick(scene, 110,  90) == (s, 2)
+        @test pick(scene, 130,  90) == (s, 3)
+        @test pick(scene,  90, 100) == (s, 4)
+        @test pick(scene, 110, 100) == (s, 5)
+        @test pick(scene, 130, 100) == (s, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene,  95-1, 95-1) == (s, 1)
+        @test pick(scene,  95+1, 95-1) == (s, 2)
+        @test pick(scene,  95-1, 95+1) == (s, 4)
+        @test pick(scene,  95+1, 95+1) == (s, 5)
+        
+        @test pick(scene, 125-1, 95-1) == (s, 2)
+        @test pick(scene, 125+1, 95-1) == (s, 3)
+        @test pick(scene, 125-1, 95+1) == (s, 5)
+        @test pick(scene, 125+1, 95+1) == (s, 6)
+
+        # reversed axis check
+        @test pick(scene, 200,  90) == (s2, 1)
+        @test pick(scene, 190,  90) == (s2, 2)
+        @test pick(scene, 200, 100) == (s2, 3)
+        @test pick(scene, 190, 100) == (s2, 4)
     end
 
     @testset "heatmap" begin
