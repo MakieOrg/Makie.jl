@@ -68,7 +68,7 @@ The index returned relates to the main input of the respective primitive plot.
 - For `mesh` it is the largest vertex index of the picked triangle face.
 - For `volume` it is always 0.
 
-See also: [`pick_sorted`](@ref)
+See also: `pick_sorted`
 """
 pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
 function pick(scene::Scene, x::Number, y::Number)
