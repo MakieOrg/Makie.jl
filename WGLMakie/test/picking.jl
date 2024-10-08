@@ -1,5 +1,5 @@
 @testset "picking" begin
-    scene = Scene(size = (130, 370))
+    scene = Scene(size = (230, 370))
     campixel!(scene)
     
     sc1 = scatter!(scene, [20, NaN, 20], [20, NaN, 50], marker = Rect, markersize = 20)
@@ -11,13 +11,20 @@
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
     t = tp.plots[1]
 
-    i = image!(scene, 80..110, 20..50, rand(RGBf, 2, 2))
-    s = surface!(scene, 80..110, 80..110, rand(2, 2))
-    hm = heatmap!(scene, [80, 110], [140, 170], [1 2; 3 4])
+    i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
+    s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
+    hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 2; 3 4; 5 6])
     # mesh coloring should match triangle placements
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
     vx = voxels!(scene, [65, 125], [245, 305], [-1, 1], reshape([1,2,3,4], (2,2,1)), shading = NoShading)
     vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
+    
+    # reversed axis
+    i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
+    s2 = surface!(scene, 210..180, 80..110, rand(2, 2))
+    hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
+
+    scene
 
     # render one frame to generate picking texture
     colorbuffer(scene);
@@ -93,57 +100,108 @@
     end
 
     @testset "image" begin
-        # TODO: This is just a quad, picked like a mesh. Can we do better?
-        # 1px offset to make sure we're inside
-        @test pick(scene, 80, 20)[1] == i
-        @test pick(scene, 79, 20) == (nothing, 0)
-        @test pick(scene, 80, 19) == (nothing, 0)
-        @test pick(scene, 81, 30) == (i, 3)
-        @test pick(scene, 81, 49) == (i, 3)
-        @test pick(scene, 105, 49) == (i, 3)
-        @test pick(scene, 90, 21) == (i, 4)
-        @test pick(scene, 109, 21) == (i, 4)
-        @test pick(scene, 109, 45) == (i, 4)
-        @test pick(scene, 109, 49)[1] == i
-        @test pick(scene, 111, 50) == (nothing, 0)
-        @test pick(scene, 110, 51) == (nothing, 0)
+        # outside border
+        for p in vcat(
+                [(x, y) for x in (79, 141) for y in (21, 49)],
+                [(x, y) for x in (81, 139) for y in (19, 51)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        
+        # cell centered checks
+        @test pick(scene,  90, 30) == (i, 1)
+        @test pick(scene, 110, 30) == (i, 2)
+        @test pick(scene, 130, 30) == (i, 3)
+        @test pick(scene,  90, 40) == (i, 4)
+        @test pick(scene, 110, 40) == (i, 5)
+        @test pick(scene, 130, 40) == (i, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene, 100-1, 35-1) == (i, 1)
+        @test pick(scene, 100+1, 35-1) == (i, 2)
+        @test pick(scene, 100-1, 35+1) == (i, 4)
+        @test pick(scene, 100+1, 35+1) == (i, 5)
+        
+        @test pick(scene, 120-1, 35-1) == (i, 2)
+        @test pick(scene, 120+1, 35-1) == (i, 3)
+        @test pick(scene, 120-1, 35+1) == (i, 5)
+        @test pick(scene, 120+1, 35+1) == (i, 6)
+
+        # reversed axis check
+        @test pick(scene, 200, 30) == (i2, 1)
+        @test pick(scene, 190, 30) == (i2, 2)
+        @test pick(scene, 200, 40) == (i2, 3)
+        @test pick(scene, 190, 40) == (i2, 4)
     end
 
     @testset "surface" begin
-        # TODO: Same as image
-        @test pick(scene, 80, 80)[1] == s
-        @test pick(scene, 79, 80) == (nothing, 0)
-        @test pick(scene, 80, 79) == (nothing, 0)
-        @test pick(scene, 81, 90) == (s, 3)
-        @test pick(scene, 81, 109) == (s, 3)
-        @test pick(scene, 105, 109) == (s, 3)
-        @test pick(scene, 90, 81) == (s, 4)
-        @test pick(scene, 109, 81) == (s, 4)
-        @test pick(scene, 109, 105) == (s, 4)
-        @test pick(scene, 109, 109)[1] == s
-        @test pick(scene, 111, 110) == (nothing, 0)
-        @test pick(scene, 110, 111) == (nothing, 0)
+        # outside border
+        for p in vcat(
+                [(x, y) for x in (79, 141) for y in (81, 109)],
+                [(x, y) for x in (81, 139) for y in (79, 111)]
+            )
+            @test pick(scene, p) == (nothing, 0)
+        end
+        
+        # cell centered checks
+        @test pick(scene,  90,  90) == (s, 1)
+        @test pick(scene, 110,  90) == (s, 2)
+        @test pick(scene, 130,  90) == (s, 3)
+        @test pick(scene,  90, 100) == (s, 4)
+        @test pick(scene, 110, 100) == (s, 5)
+        @test pick(scene, 130, 100) == (s, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene,  95-1, 95-1) == (s, 1)
+        @test pick(scene,  95+1, 95-1) == (s, 2)
+        @test pick(scene,  95-1, 95+1) == (s, 4)
+        @test pick(scene,  95+1, 95+1) == (s, 5)
+        
+        @test pick(scene, 125-1, 95-1) == (s, 2)
+        @test pick(scene, 125+1, 95-1) == (s, 3)
+        @test pick(scene, 125-1, 95+1) == (s, 5)
+        @test pick(scene, 125+1, 95+1) == (s, 6)
+
+        # reversed axis check
+        @test pick(scene, 200,  90) == (s2, 1)
+        @test pick(scene, 190,  90) == (s2, 2)
+        @test pick(scene, 200, 100) == (s2, 3)
+        @test pick(scene, 190, 100) == (s2, 4)
     end
 
     @testset "heatmap" begin
         # outside border
         for p in vcat(
-                [(x, y) for x in (64, 126) for  y in (126, 184)],
-                [(x, y) for x in (66, 124) for  y in (124, 186)]
+                [(x, y) for x in (64, 156) for y in (126, 184)],
+                [(x, y) for x in (66, 154) for y in (124, 186)]
             )
             @test pick(scene, p) == (nothing, 0)
         end
         
-        # TODO: Add indices to make these more useful
-        @test pick(scene,  80, 140) == (hm, 0)
-        @test pick(scene,  80, 170) == (hm, 0)
-        @test pick(scene, 110, 140) == (hm, 0)
-        @test pick(scene, 110, 170) == (hm, 0)
-        # precise check for the future (same order as above)
-        # @test pick(scene, 94, 154) == (hm, 0)
-        # @test pick(scene, 94, 156) == (hm, 0)
-        # @test pick(scene, 96, 154) == (hm, 0)
-        # @test pick(scene, 96, 156) == (hm, 0)
+        # cell centered checks
+        @test pick(scene,  80, 140) == (hm, 1)
+        @test pick(scene, 110, 140) == (hm, 2)
+        @test pick(scene, 140, 140) == (hm, 3)
+        @test pick(scene,  80, 170) == (hm, 4)
+        @test pick(scene, 110, 170) == (hm, 5)
+        @test pick(scene, 140, 170) == (hm, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene, 94, 154) == (hm, 1)
+        @test pick(scene, 96, 154) == (hm, 2)
+        @test pick(scene, 94, 156) == (hm, 4)
+        @test pick(scene, 96, 156) == (hm, 5)
+        
+        @test pick(scene, 124, 154) == (hm, 2)
+        @test pick(scene, 126, 154) == (hm, 3)
+        @test pick(scene, 124, 156) == (hm, 5)
+        @test pick(scene, 126, 156) == (hm, 6)
+
+        # reversed axis check
+        @test pick(scene, 210, 140) == (hm2, 1)
+        @test pick(scene, 180, 140) == (hm2, 2)
+        @test pick(scene, 210, 170) == (hm2, 3)
+        @test pick(scene, 180, 170) == (hm2, 4)
     end
 
     @testset "mesh" begin
