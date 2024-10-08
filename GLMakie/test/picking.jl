@@ -1,5 +1,5 @@
 @testset "picking" begin
-    scene = Scene(size = (250, 370))
+    scene = Scene(size = (230, 370))
     campixel!(scene)
     
     sc1 = scatter!(scene, [20, NaN, 20], [20, NaN, 50], marker = Rect, markersize = 20)
@@ -13,10 +13,10 @@
 
     i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
     s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
-    hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 2; 3 4; 5 6])
+    hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 4; 2 5; 3 6])
     # mesh coloring should match triangle placements
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
-    vx = voxels!(scene, [65, 125], [245, 305], [-1, 1], reshape([1,2,3,4], (2,2,1)), shading = NoShading)
+    vx = voxels!(scene, [65, 155], [245, 305], [-1, 1], reshape([1,2,3,4,5,6], (3,2,1)), shading = NoShading)
     vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
 
     # reversed axis
@@ -227,22 +227,32 @@
     end
 
     @testset "voxel" begin
+        # outside border
         for p in vcat(
-                [(x, y) for x in (64, 246) for y in (126, 304)],
-                [(x, y) for x in (66, 244) for y in (124, 306)]
+                [(x, y) for x in (64, 246) for y in (126, 184)],
+                [(x, y) for x in (66, 244) for y in (124, 186)]
             )
             @test pick(scene, p) == (nothing, 0)
         end
-        # also confirmed visually that these indices line up with the array values/colors
-        @test pick(scene,  80, 260) == (vx, 1)
-        @test pick(scene,  80, 290) == (vx, 3)
-        @test pick(scene, 110, 260) == (vx, 2)
-        @test pick(scene, 110, 290) == (vx, 4)
         
-        @test pick(scene, 94, 274) == (vx, 1)
-        @test pick(scene, 94, 276) == (vx, 3)
-        @test pick(scene, 96, 274) == (vx, 2)
-        @test pick(scene, 96, 276) == (vx, 4)
+        # cell centered checks
+        @test pick(scene,  80, 260) == (vx, 1)
+        @test pick(scene, 110, 260) == (vx, 2)
+        @test pick(scene, 140, 260) == (vx, 3)
+        @test pick(scene,  80, 290) == (vx, 4)
+        @test pick(scene, 110, 290) == (vx, 5)
+        @test pick(scene, 140, 290) == (vx, 6)
+
+        # precise check (around cell intersection)
+        @test pick(scene,  94, 274) == (vx, 1)
+        @test pick(scene,  96, 274) == (vx, 2)
+        @test pick(scene,  94, 276) == (vx, 4)
+        @test pick(scene,  96, 276) == (vx, 5)
+        
+        @test pick(scene, 124, 274) == (vx, 2)
+        @test pick(scene, 126, 274) == (vx, 3)
+        @test pick(scene, 124, 276) == (vx, 5)
+        @test pick(scene, 126, 276) == (vx, 6)
     end
     
     @testset "volume" begin
