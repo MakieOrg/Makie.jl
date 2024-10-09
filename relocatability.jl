@@ -1,8 +1,15 @@
+const BACKEND = ARGS[1]
+@assert BACKEND in ["CairoMakie", "GLMakie", "WGLMakie"]
 
 module_src = """
 module MakieApp
 
-using GLMakie
+using $BACKEND
+
+if "$BACKEND" == "WGLMakie"
+    using Electron
+    WGLMakie.Bonito.use_electron_display()
+end
 
 function julia_main()::Cint
     screen = display(scatter(1:4))
@@ -22,9 +29,12 @@ Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
 
-paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
+paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, BACKEND)]
 
 Pkg.develop(map(x-> (;path=x), paths))
+if BACKEND == "WGLMakie"
+    Pkg.add("Electron")
+end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
@@ -37,14 +47,21 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
-@test success(`$(exe)`)
+
+_success(cmd) = success(pipeline(cmd, stdout = stdout, stderr = stderr))
+
+@info "Running executable..."
+@test _success(`$(exe)`)
+@info "Done"
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
+    @info "Running executable in relocated mode..."
     mv(julia_pkg_dir, mvd_julia_pkg_dir)
-    @test success(`$(exe)`)
-catch e
+    @test _success(`$(exe)`)
+    @info "Done"
+finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
 end
