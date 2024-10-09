@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add SwarmMakie to the ecosystem page of the documentation and add URLs for the other examples [#4460](https://github.com/MakieOrg/Makie.jl/pull/4460).
+
 ## [0.21.13] - 2024-10-07
 
 - Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
