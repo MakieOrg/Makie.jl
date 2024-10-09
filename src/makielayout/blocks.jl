@@ -653,9 +653,11 @@ function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
             bbox.origin + Point2f((0, bbox.widths[2]/2))
         elseif placement == :right
             bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
-        else
-            placement == :center || warn("invalid value for tooltip_placement, using :center")
+        elseif placement == :center
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        else
+            @error("invalid value for tooltip_placement, using :above")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
         end
     end
     tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
