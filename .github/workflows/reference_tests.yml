@@ -172,15 +172,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie_1
+          name: ReferenceImages_WGLMakie_1.10
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie_1
+          name: ReferenceImages_CairoMakie_1.10
           path: ./ReferenceImages/CairoMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_GLMakie_1
+          name: ReferenceImages_GLMakie_1.10
           path: ./ReferenceImages/GLMakie
       - name: Consolidate reference image folders
         run: |

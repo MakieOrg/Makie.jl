@@ -13,7 +13,7 @@ function serve_update_page_from_dir(folder)
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
     split_scores(folder)
-    
+
     router = HTTP.Router()
 
     function receive_update(req)
@@ -107,7 +107,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     checkruns = filter(checksinfo["check_runs"]) do checkrun
         name = checkrun["name"]
         id = checkrun["id"]
-    
+
         if name == "Merge artifacts"
             job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
@@ -210,7 +210,7 @@ function split_scores(path)
             end
         end
     end
-    
+
     # sort by max score across all backends so problem come first
     data_vec = collect(pairs(data))
     sort!(data_vec, by = x -> maximum(x[2]), rev = true)
