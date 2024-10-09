@@ -3,7 +3,6 @@ using GridLayoutBase: GridLayoutBase
 
 import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
 
-
 function get_recipe_function(name::Symbol)
     if hasproperty(Makie, name)
         return getfield(Makie, name)
@@ -12,7 +11,6 @@ function get_recipe_function(name::Symbol)
     end
 end
 
-@nospecialize
 """
     PlotSpec(plottype, args...; kwargs...)
 
@@ -42,7 +40,8 @@ struct PlotSpec
             if v isa Cycled # special case for conversions needing a scene
                 kw[k] = v
             elseif v isa Observable
-                error("PlotSpec are supposed to be used without Observables")
+                kw[k] = to_value(v)
+                # error("PlotSpec are supposed to be used without Observables")
             else
                 try
                     # Really unfortunate!
@@ -61,14 +60,100 @@ struct PlotSpec
     end
     PlotSpec(args...; kwargs...) = new(:plot, args...; kwargs...)
 end
-@specialize
 
+
+struct BlockSpec
+    type::Symbol # Type as :Scatter, :BarPlot
+    kwargs::Dict{Symbol,Any}
+    plots::Vector{PlotSpec}
+    then_funcs::Set{Function}
+    then_observers::Set{ObserverFunction}
+    function BlockSpec(type::Symbol, kwargs::Dict{Symbol,Any}, plots::Vector{PlotSpec}=PlotSpec[])
+        return new(type, kwargs, plots, Set{Function}(), Set{ObserverFunction}())
+    end
+end
+
+const GridLayoutPosition = Tuple{UnitRange{Int},UnitRange{Int},Side}
+
+struct GridLayoutSpec
+    content::Vector{Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}}
+
+    size::Tuple{Int,Int}
+    offsets::Tuple{Int,Int}
+
+    colsizes::Vector{ContentSize}
+    rowsizes::Vector{ContentSize}
+    colgaps::Vector{GapSize}
+    rowgaps::Vector{GapSize}
+    alignmode::AlignMode
+    tellheight::Bool
+    tellwidth::Bool
+    halign::Float64
+    valign::Float64
+
+    function GridLayoutSpec(content::AbstractVector{<:Pair};
+                            colsizes=nothing,
+                            rowsizes=nothing,
+                            colgaps=nothing,
+                            rowgaps=nothing,
+                            alignmode::AlignMode=GridLayoutBase.Inside(),
+                            tellheight::Bool=true,
+                            tellwidth::Bool=true,
+                            halign::Union{Symbol,Real}=:center,
+                            valign::Union{Symbol,Real}=:center,)
+        rowspan, colspan = foldl(content; init=(1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
+            return rangeunion(rows, _rows), rangeunion(cols, _cols)
+        end
+
+        content = map(content) do (position, x)
+            p = Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}(to_gridposition(position, rowspan,
+                                                                                         colspan), x)
+            return p
+        end
+
+        nrows = length(rowspan)
+        ncols = length(colspan)
+        colsizes = GridLayoutBase.convert_contentsizes(ncols, colsizes)
+        rowsizes = GridLayoutBase.convert_contentsizes(nrows, rowsizes)
+        default_rowgap = Fixed(16) # TODO: where does this come from?
+        default_colgap = Fixed(16) # TODO: where does this come from?
+        colgaps = GridLayoutBase.convert_gapsizes(ncols - 1, colgaps, default_colgap)
+        rowgaps = GridLayoutBase.convert_gapsizes(nrows - 1, rowgaps, default_rowgap)
+
+        halign = GridLayoutBase.halign2shift(halign)
+        valign = GridLayoutBase.valign2shift(valign)
+
+        return new(content,
+                   (nrows, ncols),
+                   (rowspan[1] - 1, colspan[1] - 1),
+                   colsizes,
+                   rowsizes,
+                   colgaps,
+                   rowgaps,
+                   alignmode,
+                   tellheight,
+                   tellwidth,
+                   halign,
+                   valign)
+    end
+end
+
+
+const Layoutable = Union{GridLayout,Block}
+const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
+const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
+# We use this to decide if we can re-use a plot.
+# (nesting_level_in_layout, position_in_layout, spec)
+const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
+
+#####################
+#### PlotSpec
+
+PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
 
-PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
-
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     S = plottype(p)
     return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
@@ -76,11 +161,34 @@ end
 
 plottype(p::PlotSpec) = getfield(Makie, p.type)
 
-struct BlockSpec
-    type::Symbol # Type as :Scatter, :BarPlot
-    kwargs::Dict{Symbol,Any}
-    plots::Vector{PlotSpec}
+function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
+    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    println(io, "S.", spec.type, "($args; $kws)")
+    return
 end
+
+function Base.show(io::IO, spec::PlotSpec)
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
+    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    println(io, "S.", spec.type, "($args; $kws)")
+    return
+end
+####################
+#### BlockSpec
+
+function Base.setproperty!(p::BlockSpec, k::Symbol, v)
+    p.kwargs[k] = v
+end
+
+function Base.getproperty(p::BlockSpec, k::Symbol)
+    if k === :then
+        return (f) -> push!(p.then_funcs, f)
+    end
+    k in fieldnames(BlockSpec) && return getfield(p, k)
+    return p.kwargs[k]
+end
+Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
@@ -100,7 +208,147 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
     end
 end
 
-const GridLayoutPosition = Tuple{UnitRange{Int},UnitRange{Int},Side}
+######################
+#### GridLayoutSpec
+
+GridLayoutSpec(v::AbstractVector; kwargs...) = GridLayoutSpec(reshape(v, :, 1); kwargs...)
+function GridLayoutSpec(v::AbstractMatrix; kwargs...)
+    indices = vec([Tuple(c) for c in CartesianIndices(v)])
+    pairs = [LayoutEntry((i:i, j:j, GridLayoutBase.Inner()), v[i, j]) for (i, j) in indices]
+    return GridLayoutSpec(pairs; kwargs...)
+end
+
+GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
+
+
+@inline function is_different(a, b)
+    # First check if they are the same object
+    # This disallows mutating PlotSpec arguments in place
+    a === b && return false
+    # If they're not the same objcets, we see if they contain the same values
+    a == b && return false
+    return true
+end
+
+# We use this function to decide which plots to reuse + update instead of re-creating.
+# Comparison based entirely of types inside args + kwargs.
+# This will return false for the same plotspec with a new attribute
+# E.g. `compare_spec(S.Scatter(1:4; color=:red), S.Scatter(1:4; marker=:circle))`
+# While we could easily update this, we don't want to, since we're
+# pessimistic about what's updatable and to avoid issues with
+# Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
+# TODO when focussing better performance, this is one of the first things we want to try
+function distance_score(a::PlotSpec, b::PlotSpec, scores_dict)
+    (a.type !== b.type) && return 100.0
+    scores = Float64[
+        distance_score(a.args, b.args, scores_dict),
+        distance_score(a.kwargs, b.kwargs, scores_dict)
+    ]
+    return norm(scores)
+end
+
+function distance_score(a::Any, b::Any, scores)
+    a === b && return 0.0
+    a == b && return 0.0
+    typeof(a) == typeof(b) && return 0.5
+    return 100.0
+end
+
+_has_index(a::Tuple, i) = i <= length(a)
+_has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
+_has_index(a::Dict, i) = haskey(a, i)
+
+function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
+    a === b && return 0.0
+    isempty(a) && isempty(b) && return 0.0
+    all_keys = collect(union(keys(a), keys(b)))
+    scores = map(all_keys) do key
+        if _has_index(a, key) && _has_index(b, key)
+            return distance_score(a[key], b[key], scores_dict)
+        else
+            return 1.0
+        end
+    end
+    return norm(scores)
+end
+
+function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores)
+    a === b && return 0.0
+    return norm(distance_score.(a, b, Ref(scores)))
+end
+
+function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
+    a === b && return 0.0
+    (a.type !== b.type) && return 100.0 # Cant update when types dont match
+    get!(scores_dict, (a, b)) do
+        scores = Float64[
+            distance_score(a.kwargs, b.kwargs, scores_dict),
+            distance_score(a.plots, b.plots, scores_dict),
+            distance_score(a.then_funcs, b.then_funcs, scores_dict)
+        ]
+        return norm(scores)
+    end
+end
+
+function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
+                        scores_dict) where {GP<:GridLayoutPosition,BS<:BlockSpec}
+    at === bt && return 0.0
+    (anesting, ap, a) = at
+    (bnesting, bp, b) = bt
+    scores = Float64[
+        abs(anesting - bnesting) * 2,
+        distance_score(ap, bp, scores_dict) * 2,
+        distance_score(a, b, scores_dict)
+    ]
+    return norm(scores)
+end
+
+function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridLayoutSpec},
+                        scores) where {GP<:GridLayoutPosition}
+    at === bt && return 0.0
+    anesting, ap, a = at
+    bnesting, bp, b = bt
+    get!(scores, (at, bt)) do
+        anested = map(ac -> (anesting + 1, ac[1], ac[2]), a.content)
+        bnested = map(bc -> (anesting + 1, bc[1], bc[2]), b.content)
+        return norm([abs(anesting - bnesting),
+                     distance_score(ap, bp, scores),
+                     distance_score(anested, bnested, scores)])
+    end
+end
+
+function find_min_distance(f, to_compare, list, scores)
+    isempty(list) && return -1
+    minscore = 2.0
+    idx = -1
+    for key in keys(list)
+        score = distance_score(to_compare, f(list[key], key), scores)
+        if score ≈ 0.0 # shortcuircit for exact matches
+            return key
+        end
+        if score < minscore
+            minscore = score
+            idx = key
+        end
+    end
+    return idx
+end
+
+function find_layoutable(
+        nest_pos_spec::LayoutableKey,
+        layoutables::Vector{Pair{LayoutableKey, Tuple{Layoutable,Observable{Vector{PlotSpec}}}}},
+        scores
+    )
+    idx = find_min_distance((x, _)-> first(x), nest_pos_spec, layoutables, scores)
+    idx == -1 && return 0, nothing, nothing
+    return (idx, layoutables[idx]...)
+end
+
+function find_reusable_plot(plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
+    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
+    idx == -1 && return nothing, nothing
+    return plots[idx], idx
+end
 
 to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
 to_span(range::Int, span::UnitRange{Int}) = (range < span.start || range > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range:range
@@ -110,89 +358,9 @@ to_gridposition(rows_cols_side::Tuple{Any,Any,Any}, rowspan, colspan) = (to_span
 
 rangeunion(r1, r2::UnitRange) = min(r1.start, r2.start):max(r1.stop, r2.stop)
 rangeunion(r1, r2::Int) = min(r1.start, r2):max(r1.stop, r2)
-rangeunion(r1, r2::Colon) = r1
+rangeunion(r1, ::Colon) = r1
 
-struct GridLayoutSpec
-    content::Vector{Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}}
 
-    size::Tuple{Int, Int}
-    offsets::Tuple{Int, Int}
-
-    colsizes::Vector{ContentSize}
-    rowsizes::Vector{ContentSize}
-    colgaps::Vector{GapSize}
-    rowgaps::Vector{GapSize}
-    alignmode::AlignMode
-    tellheight::Bool
-    tellwidth::Bool
-    halign::Float64
-    valign::Float64
-
-    function GridLayoutSpec(
-            content::AbstractVector{<:Pair};
-            colsizes = nothing,
-            rowsizes = nothing,
-            colgaps = nothing,
-            rowgaps = nothing,
-            alignmode::AlignMode = GridLayoutBase.Inside(),
-            tellheight::Bool = true,
-            tellwidth::Bool = true,
-            halign::Union{Symbol,Real} = :center,
-            valign::Union{Symbol,Real} = :center,
-        )
-
-        rowspan, colspan = foldl(content; init = (1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
-            rangeunion(rows, _rows), rangeunion(cols, _cols)
-        end
-
-        content = map(content) do (position, x)
-            p = Pair{GridLayoutPosition,Union{GridLayoutSpec,BlockSpec}}(to_gridposition(position, rowspan, colspan), x)
-            return p
-        end
-
-        nrows = length(rowspan)
-        ncols = length(colspan)
-        colsizes = GridLayoutBase.convert_contentsizes(ncols, colsizes)
-        rowsizes = GridLayoutBase.convert_contentsizes(nrows, rowsizes)
-        default_rowgap = Fixed(16) # TODO: where does this come from?
-        default_colgap = Fixed(16) # TODO: where does this come from?
-        colgaps = GridLayoutBase.convert_gapsizes(ncols - 1, colgaps, default_colgap)
-        rowgaps = GridLayoutBase.convert_gapsizes(nrows - 1, rowgaps, default_rowgap)
-
-        halign = GridLayoutBase.halign2shift(halign)
-        valign = GridLayoutBase.valign2shift(valign)
-
-        return new(
-            content,
-            (nrows, ncols),
-            (rowspan[1] - 1, colspan[1] - 1),
-            colsizes,
-            rowsizes,
-            colgaps,
-            rowgaps,
-            alignmode,
-            tellheight,
-            tellwidth,
-            halign,
-            valign,
-        )
-    end
-end
-
-const Layoutable = Union{GridLayout,Block}
-const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
-const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
-
-GridLayoutSpec(v::AbstractVector; kwargs...) = GridLayoutSpec(reshape(v, :, 1); kwargs...)
-function GridLayoutSpec(v::AbstractMatrix; kwargs...)
-    indices = vec([Tuple(c) for c in CartesianIndices(v)])
-    pairs = [
-        LayoutEntry((i:i, j:j, GridLayoutBase.Inner()), v[i, j]) for (i, j) in indices
-    ]
-    return GridLayoutSpec(pairs; kwargs...)
-end
-
-GridLayoutSpec(contents...; kwargs...) = GridLayoutSpec([contents...]; kwargs...)
 
 """
 See documentation for specapi.
@@ -227,35 +395,6 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-# We use this function to decide which plots to reuse + update instead of re-creating.
-# Comparison based entirely of types inside args + kwargs.
-# This will return false for the same plotspec with a new attribute
-# E.g. `compare_spec(S.Scatter(1:4; color=:red), S.Scatter(1:4; marker=:circle))`
-# While we could easily update this, we don't want to, since we're
-# pessimistic about what's updatable and to avoid issues with
-# Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
-# TODO when focussing better performance, this is one of the first things we want to try
-function compare_specs(a::PlotSpec, b::PlotSpec)
-    a.type === b.type || return false
-    length(a.args) == length(b.args) || return false
-    all(i-> typeof(a.args[i]) == typeof(b.args[i]), 1:length(a.args)) || return false
-
-    length(a.kwargs) == length(b.kwargs) || return false
-    ka = keys(a.kwargs)
-    kb = keys(b.kwargs)
-    ka == kb || return false
-    all(k -> typeof(a.kwargs[k]) == typeof(b.kwargs[k]), ka) || return false
-    return true
-end
-
-@inline function is_different(a, b)
-    # First check if they are the same object
-    # This disallows mutating PlotSpec arguments in place
-    a === b && return false
-    # If they're not the same objcets, we see if they contain the same values
-    a == b && return false
-    return true
-end
 
 function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
@@ -387,33 +526,12 @@ plottype(::Type{<:Plot{F}}, ::Union{PlotSpec,AbstractVector{PlotSpec}}) where {F
 plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec,BlockSpec}) where {F} = Plot{plot}
 plottype(::Type{<:Plot}, ::Union{GridLayoutSpec,BlockSpec}) = Plot{plot}
 
-function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
-    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
-    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
-    return
-end
-
-function Base.show(io::IO, spec::PlotSpec)
-    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
-    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
-    return
-end
 
 function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
     return P((ps.args...,), copy(ps.kwargs))
 end
 
-function find_reusable_plot(plotspec::PlotSpec, reusable_plots::IdDict{PlotSpec,Plot})
-    for (spec, plot) in reusable_plots
-        if compare_specs(spec, plotspec)
-            return plot, spec
-        end
-    end
-    return nothing, nothing
-end
 
 function push_without_add!(scene::Scene, plot)
     MakieCore.validate_attribute_keys(plot)
@@ -430,17 +548,19 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     empty!(obs_to_notify)
+    scores = IdDict{Any, Float64}()
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots)
+        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots, scores)
         if isnothing(reused_plot)
-            @debug("Creating new plot for spec")
             # Create new plot, store it into our `cached_plots` dictionary
+            @debug("Creating new plot for spec")
+            # Forward kw arguments from Plotlist
             if !isnothing(plotlist)
                 merge!(plotspec.kwargs, plotlist.kw)
             end
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
-            # But we want the scene to only contain one PlotList item with the newly created 
+            # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
             # - so we dont push it to the scene if there's a plotlist.
             # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
@@ -514,32 +634,26 @@ function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotS
     return p
 end
 
-
-
-## BlockSpec
-function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP,BlockSpec}, (bnesting, bp, b)::Tuple{Int,GP,BlockSpec}) where {GP<:GridLayoutPosition}
-    anesting !== bnesting && return false
-    a.type !== b.type && return false
-    ap !== bp && return false
-    return true
+add_observer!(::BlockSpec, ::Nothing) = nothing
+function add_observer!(block::BlockSpec, obs::ObserverFunction)
+    push!(block.then_observers, obs)
+    return
 end
 
-function compare_layout_slot((anesting, ap, a)::Tuple{Int,GP, GridLayoutSpec}, (bnesting, bp, b)::Tuple{Int,GP, GridLayoutSpec}) where {GP <: GridLayoutPosition}
-    anesting !== bnesting && return false
-    ap !== bp && return false
-    for (ac, bc) in zip(a.content, b.content)
-        compare_layout_slot((anesting + 1, ac[1], ac[2]), (bnesting + 1, bc[1], bc[2])) || return false
-    end
-    return true
+function add_observer!(block::BlockSpec, obs::AbstractVector{<:ObserverFunction})
+    append!(block.then_observers, obs)
+    return
 end
-
-compare_layout_slot(a, b) = false # types dont match
 
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
     BType = getfield(Makie, spec.type)
     # TODO forward kw
     block = BType(get_top_parent(parent); spec.kwargs...)
     parent[position...] = block
+    for func in spec.then_funcs
+        observers = func(block)
+        add_observer!(spec, observers)
+    end
     return block
 end
 
@@ -560,6 +674,7 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
+    unhide!(block)
     old_attr = keys(old_spec.kwargs)
     new_attr = keys(spec.kwargs)
     # attributes that have been set previously and need to get unset now
@@ -584,13 +699,29 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
-        plot_obs[] = spec.plots
+        if plot_obs[] != spec.plots
+            plot_obs[] = spec.plots
+        end
         scene = get_scene(block)
         if any(needs_tight_limits, scene.plots)
             tightlimits!(block)
         end
     end
-    return
+    for observer in old_spec.then_observers
+        Observables.off(observer)
+    end
+    empty!(old_spec.then_observers)
+    if hasproperty(spec, :xaxislinks)
+        empty!(spec.xaxislinks)
+    end
+    if hasproperty(spec, :yaxislinks)
+        empty!(spec.yaxislinks)
+    end
+    for func in spec.then_funcs
+        observers = func(block)
+        add_observer!(spec, observers)
+    end
+    return to_update, reset_to_defaults
 end
 
 function to_gl_key(key::Symbol)
@@ -633,24 +764,16 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     return
 end
 
-function find_layoutable(spec, layoutables)
-    for (i, (key, value)) in enumerate(layoutables)
-        if compare_layout_slot(key, spec)
-            return i, key, value
-        end
-    end
-    return 0, nothing, nothing
-end
-
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
                             gridspec::GridLayoutSpec, previous_contents, new_layoutables)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
-
+    scores = IdDict{Any, Float64}()
     for (position, spec) in gridspec.content
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents)
+
+        idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
             @debug("Creating new content for spec")
             # Create new plot, store it into `new_layoutables`
@@ -692,9 +815,7 @@ end
 get_layout!(fig::Figure) = fig.layout
 get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
 
-# We use this to decide if we can re-use a plot.
-# (nesting_level_in_layout, position_in_layout, spec)
-const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
+
 
 delete_layoutable!(block::Block) = delete!(block)
 function delete_layoutable!(grid::GridLayout)
@@ -702,6 +823,45 @@ function delete_layoutable!(grid::GridLayout)
     if !isnothing(gc)
         GridLayoutBase.remove_from_gridlayout!(gc)
     end
+    return
+end
+
+function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
+                            new_layoutables)
+    # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
+    # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
+    # while it gets removed from `unused_layoutables`.
+    empty!(new_layoutables)
+
+    update_gridlayout!(target_layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
+    foreach(unused_layoutables) do (p, (block, obs))
+        # disconnect! all unused layoutables, so they dont show up anymore
+        disconnect!(block)
+        return
+    end
+    layouts_to_update = Set{GridLayout}([target_layout])
+    for (_, (content, _)) in new_layoutables
+        if content isa GridLayout
+            push!(layouts_to_update, content)
+        else
+            gc = GridLayoutBase.gridcontent(content)
+            push!(layouts_to_update, gc.parent)
+        end
+    end
+    for l in layouts_to_update
+        l.block_updates = false
+        GridLayoutBase.update!(l)
+    end
+
+    # foreach(unused_layoutables) do (p, (block, obs))
+    #     # Finally, disconnect all blocks that haven't been used!
+    #     disconnect!(block)
+    #     return
+    # end
+    # Finally transfer all new_layoutables into reusable_layoutables,
+    # since in the next update they will be the once we re-use
+    append!(unused_layoutables, new_layoutables)
+    unique!(unused_layoutables)
     return
 end
 
@@ -716,34 +876,7 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
     layout = get_layout!(fig)
     on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
-            # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
-            # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
-            # while it gets removed from `unused_layoutables`.
-            empty!(new_layoutables)
-            update_gridlayout!(layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
-            # Everything that still is in unused_layoutables is not used anymore and can be deleted
-            for (key, (layoutable, obs)) in unused_layoutables
-                delete_layoutable!(layoutable)
-                Observables.clear(obs)
-            end
-            layouts_to_update = Set{GridLayout}([layout])
-            for (_, (content, _)) in new_layoutables
-                if content isa GridLayout
-                    push!(layouts_to_update, content)
-                else
-                    gc = GridLayoutBase.gridcontent(content)
-                    push!(layouts_to_update, gc.parent)
-                end
-            end
-            for l in layouts_to_update
-                l.block_updates = false
-                GridLayoutBase.update!(l)
-            end
-            # Finally transfer all new_layoutables into reusable_layoutables,
-            # since in the next update they will be the once we re-use
-            # TODO: Is this actually more efficent for GC then `reusable_layoutables=new_layoutables` ?
-            empty!(unused_layoutables)
-            append!(unused_layoutables, new_layoutables)
+            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
