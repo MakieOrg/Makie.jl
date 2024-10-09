@@ -14,17 +14,21 @@ end # module MakieApp
 """
 
 using Pkg, Test
-makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
+makie_dir = @__DIR__
+commit = cd(makie_dir) do
+    chomp(read(`git rev-parse --verify HEAD`, String))
+end
 
-paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
-
-Pkg.develop(map(x-> (;path=x), paths))
+# Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
+# Since, package dir is much easier to move then the active project (on windows at least).
+paths = ["MakieCore", "Makie", "GLMakie"]
+Pkg.add(map(x -> (; name=x, rev=commit), paths))
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
@@ -41,6 +45,7 @@ exe = joinpath(pwd(), "executable", "bin", "MakieApp")
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
+mv(julia_pkg_dir, mvd_julia_pkg_dir)
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
     mv(julia_pkg_dir, mvd_julia_pkg_dir)
