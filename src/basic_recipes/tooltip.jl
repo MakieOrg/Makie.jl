@@ -188,10 +188,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         elseif placement in (:above, :up, :top)
             translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
             rotate!(mp, Quaternionf(0,0,0,1)) # 0
-        elseif placement === :center
-            mp.visible = false
         else
-            @error "Tooltip placement $placement invalid. Assuming :above"
+            placement === :center || @error "Tooltip placement $placement invalid. Assuming :above"
             translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
             rotate!(mp, Quaternionf(0,0,0,1))
         end
