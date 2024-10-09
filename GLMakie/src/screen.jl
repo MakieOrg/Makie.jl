@@ -677,11 +677,13 @@ function Base.close(screen::Screen; reuse=true)
     return
 end
 
-function closeall()
+function closeall(; empty_shader=true)
     # Since we call closeall to reload any shader
     # We empty the shader source cache here
-    empty!(LOADED_SHADERS)
-    WARN_ON_LOAD[] = false
+    if empty_shader
+        empty!(LOADED_SHADERS)
+        WARN_ON_LOAD[] = false
+    end
     while !isempty(SCREEN_REUSE_POOL)
         screen = pop!(SCREEN_REUSE_POOL)
         delete!(ALL_SCREENS, screen)
