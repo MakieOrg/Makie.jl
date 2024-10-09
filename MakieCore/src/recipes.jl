@@ -706,6 +706,10 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     return
 end
 
+__obj_name(_) = "plot" 
+__valid_attributes(p) = attribute_names(p) 
+__has_generic_attributes(_) = true 
+
 function Base.showerror(io::IO, i::InvalidAttributeError)
     n = length(i.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
@@ -713,20 +717,22 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
         j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
         printstyled(io, att; color = :red, bold = true)
     end
-    print(io, " for plot type ")
+    print(io, " for $(__obj_name(i.plottype)) type ")
     printstyled(io, i.plottype; color = :blue, bold = true)
     println(io, ".")
-    nameset = sort(string.(collect(attribute_names(i.plottype))))
+    nameset = sort(string.(collect(__valid_attributes(i.plottype))))
     println(io)
-    println(io, "The available plot attributes for $(i.plottype) are:")
+    println(io, "The available $(__obj_name(i.plottype)) attributes for $(i.plottype) are:")
     println(io)
     print_columns(io, nameset; cols = displaysize(stderr)[2], rows_first = true)
-    allowlist = attribute_name_allowlist()
-    println(io)
-    println(io)
-    println(io, "Generic attributes are:")
-    println(io)
-    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    if __has_generic_attributes(i.plottype)
+        allowlist = attribute_name_allowlist()
+        println(io)
+        println(io)
+        println(io, "Generic attributes are:")
+        println(io)
+        print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    end
     println(io)
 end
 
