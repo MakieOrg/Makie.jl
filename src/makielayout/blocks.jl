@@ -617,12 +617,33 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
 end
 
 """
-    function tooltip!(b::Block, str::AbstractString; kwargs...)
+    function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
 
-Adds a tooltip to a block.
+Adds a tooltip to a block.  See `tooltip` for more details.  To make it only
+appear when hovering, set the `visible` property of the tooltip to the
+`hovering` property of the block.
+
+# Examples
+```julia-repl
+julia> f = Figure()
+
+julia> t = Toggle(f[1,1])
+Toggle()
+
+julia> tooltip!(t, "I'm a Toggle", visible = t.hovering)
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> b = Button(f[2,1])
+Button()
+
+julia> tt = tooltip!(b, "I'm a Button", placement = :below)
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> on(h -> tt.visible[]=h, b.hovering)
+ObserverFunction defined at REPL[7]:1 operating on Observable(false)
+```
 """
-function tooltip!(b::Block, str; kwargs...)
-    placement = kwargs[:placement]
+function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
     position = lift(b.layoutobservables.computedbbox) do bbox
         if placement == :above
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
@@ -637,6 +658,7 @@ function tooltip!(b::Block, str; kwargs...)
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
         end
     end
-    tt = tooltip!(b.blockscene, position, str; kwargs...)
+    tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
     translate!(tt, 0, 0, 9e3)
+    return tt
 end
