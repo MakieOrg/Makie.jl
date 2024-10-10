@@ -100,5 +100,5 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
 
     return InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
-                        instance, VertexArray(dummy = dummy_data), uniform_dict)
+                            instance, VertexArray(dummy = dummy_data), uniform_dict)
 end
