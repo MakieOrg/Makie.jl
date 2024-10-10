@@ -44,7 +44,8 @@ function initialize_block!(t::Toggle)
     button = scatter!(topscene, buttonpos, markersize = buttonsize,
         color = t.buttoncolor, strokewidth = 0, inspectable = false, marker = Circle)
 
-    onany(topscene, t.orientation, t.layoutobservables.computedbbox) do angle_rad, bbox
+    onany(topscene, t.orientation, t.layoutobservables.computedbbox) do or, bbox
+        angle_rad = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
         center = Vec3f(bbox.origin[1]+bbox.widths[1]/2, bbox.origin[2]+bbox.widths[2]/2, 0)
         R = Makie.rotationmatrix_z(angle_rad)
         T = Makie.translationmatrix(-center)
