@@ -1,0 +1,1292 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <title>
+      Legend
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form action="../../../search/index.html" id="lunrSearchForm" name="lunrSearchForm">
+              <input class="search-input" name="q" placeholder="Search docs" type="text"/>
+            </form>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Layoutables &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            Legend
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#legend">
+                              Legend
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#creating_a_legend_from_elements">
+                                  Creating A Legend From Elements
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#legend_element_attributes">
+                                      Legend element attributes
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <a href="#creating_a_legend_from_an_axis">
+                                  Creating A Legend From An Axis
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#multi-bank_legend">
+                                  Multi-Bank Legend
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#legend_inside_an_axis">
+                                  Legend Inside An Axis
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#creating_legend_entries_manually">
+                                  Creating Legend Entries Manually
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#horizontal_legend">
+                                  Horizontal Legend
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#multi-group_legends">
+                                  Multi-Group Legends
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/abline">
+                            abline!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvlines">
+                            hlines! and vlines!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvspan">
+                            hspan! and vspan!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/api_reference">
+                        API reference
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-3">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/backends_and_output">
+                        Backends &amp; Output
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends_and_output/figure_size">
+                            Exporting a Figure with physical dimensions
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends_and_output/wglmakie">
+                            JSServe and WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layoutables">
+                        Layoutables
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/news">
+                        News
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/remote">
+                        Remote servers
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-20" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-20">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="legend">
+            <a class="header-anchor" href="#legend">
+              Legend
+            </a>
+          </h1>
+          <h2 id="creating_a_legend_from_elements">
+            <a class="header-anchor" href="#creating_a_legend_from_elements">
+              Creating A Legend From Elements
+            </a>
+          </h2>
+          <p>
+            You can create a basic Legend by passing a vector of legend entries and a vector of labels, plus an optional title as the third argument.
+          </p>
+          <p>
+            The elements in the vector of legend entries can either be plot objects or LegendElements like LineElement, MarkerElement and PolyElement. Or they can be vectors of such objects that will be layered together as one.
+          </p>
+          <h3 id="legend_element_attributes">
+            <a class="header-anchor" href="#legend_element_attributes">
+              Legend element attributes
+            </a>
+          </h3>
+          <p>
+            The standard plot objects like
+            <code>
+              Scatter
+            </code>
+            or
+            <code>
+              Lines
+            </code>
+            have predefined conversions to
+            <code>
+              MarkerElement
+            </code>
+            s and
+            <code>
+              LineElement
+            </code>
+            s that copy the relevant plot attributes to the legend element. If an attribute has a vector-like value, it falls back to the scalar default of the legend. The legend defaults themselves are by default inherited from the main theme. For example,
+            <code>
+              polystrokewidth
+            </code>
+            of the legend falls back to
+            <code>
+              patchstrokewidth
+            </code>
+            of the main theme. In the following example, you can see that the legend for
+            <code>
+              sca2
+            </code>
+            copies the
+            <code>
+              :rect
+            </code>
+            marker but not the vector-valued color.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1])
+
+xs = 0:0.5:10
+ys = sin.(xs)
+lin = lines!(xs, ys, color = :blue)
+sca = scatter!(xs, ys, color = :red)
+sca2 = scatter!(xs, ys .+ 0.5, color = 1:length(xs), marker = :rect)
+
+Legend(f[1, 2],
+    [lin, sca, [lin, sca], sca2],
+    ["a line", "some dots", "both together", "rect markers"])
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_17379545052404395544">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_17379545052404395544.svg"/>
+            </a>
+          </p>
+          <h2 id="creating_a_legend_from_an_axis">
+            <a class="header-anchor" href="#creating_a_legend_from_an_axis">
+              Creating A Legend From An Axis
+            </a>
+          </h2>
+          <p>
+            You can also create a Legend by passing it an axis object, like
+            <code>
+              Axis
+            </code>
+            ,
+            <code>
+              LScene
+            </code>
+            or
+            <code>
+              Scene
+            </code>
+            . All plots that have a
+            <code>
+              label
+            </code>
+            attribute set will be put into the legend, in the order that they appear in the axis, and you can optionally pass a title as the third argument.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+ax = f[1, 1] = Axis(f)
+
+lines!(0..15, sin, label = "sin", color = :blue)
+lines!(0..15, cos, label = "cos", color = :red)
+lines!(0..15, x -&gt; -cos(x), label = "-cos", color = :green)
+
+f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_3855389068877976802">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_3855389068877976802.svg"/>
+            </a>
+          </p>
+          <p>
+            With the keywords
+            <code>
+              merge
+            </code>
+            and
+            <code>
+              unique
+            </code>
+            you can control how plot objects with the same labels are treated. If
+            <code>
+              merge
+            </code>
+            is
+            <code>
+              true
+            </code>
+            , all plot objects with the same label will be layered on top of each other into one legend entry. If
+            <code>
+              unique
+            </code>
+            is
+            <code>
+              true
+            </code>
+            , all plot objects with the same plot type and label will be reduced to one occurrence.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+traces = cumsum(randn(10, 5), dims = 1)
+
+for (i, (merge, unique)) in enumerate(
+        Iterators.product([false, true], [false true]))
+
+    axis = Axis(f[fldmod1(i, 2)...],
+        title = "merge = $merge, unique = $unique")
+
+    for trace in eachcol(traces)
+        lines!(trace, label = "single", color = (:black, 0.2))
+    end
+
+    mu = vec(sum(traces, dims = 2) ./ 5)
+    lines!(mu, label = "mean")
+    scatter!(mu, label = "mean")
+
+    axislegend(axis, merge = merge, unique = unique)
+
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_16982711902626239414">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_16982711902626239414.svg"/>
+            </a>
+          </p>
+          <h2 id="multi-bank_legend">
+            <a class="header-anchor" href="#multi-bank_legend">
+              Multi-Bank Legend
+            </a>
+          </h2>
+          <p>
+            You can control the number of banks with the
+            <code>
+              nbanks
+            </code>
+            attribute. Banks are columns when in vertical mode, and rows when in horizontal mode.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1])
+
+xs = 0:0.1:10
+lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf(v, 0, 1-v)) for v in 0:0.1:1]
+
+Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_3688098932957289413">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_3688098932957289413.svg"/>
+            </a>
+          </p>
+          <h2 id="legend_inside_an_axis">
+            <a class="header-anchor" href="#legend_inside_an_axis">
+              Legend Inside An Axis
+            </a>
+          </h2>
+          <p>
+            The
+            <code>
+              axislegend
+            </code>
+            function is a quick way to add a legend to an Axis. You can pass a selected axis plus arguments which are forwarded to the
+            <code>
+              Legend
+            </code>
+            constructor, or the current axis is used by default. If you pass only a string, it's used as the title with the current axis.
+          </p>
+          <p>
+            The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+ax = Axis(f[1, 1])
+
+sc1 = scatter!(randn(10, 2), color = :red, label = "Red Dots")
+sc2 = scatter!(randn(10, 2), color = :blue, label = "Blue Dots")
+scatter!(randn(10, 2), color = :orange, label = "Orange Dots")
+scatter!(randn(10, 2), color = :cyan, label = "Cyan Dots")
+
+axislegend()
+
+axislegend("Titled Legend", position = :lb)
+
+axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
+    orientation = :horizontal)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8079969162601109406">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_8079969162601109406.svg"/>
+            </a>
+          </p>
+          <p>
+            Alternatively, you can simply add a Legend to the same layout slot that an axis lives in. As long as the axis is bigger than the legend you can set the legend's
+            <code>
+              tellheight
+            </code>
+            and
+            <code>
+              tellwidth
+            </code>
+            to
+            <code>
+              false
+            </code>
+            and position it using the align variables. You can use the margin keyword to keep the legend from touching the axis spines.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+haligns = [:left, :right, :center]
+valigns = [:top, :bottom, :center]
+
+f = Figure()
+
+Axis(f[1, 1])
+
+xs = 0:0.1:10
+lins = [lines!(xs, sin.(xs .* i), color = color)
+    for (i, color) in zip(1:3, [:red, :blue, :green])]
+
+for (j, ha, va) in zip(1:3, haligns, valigns)
+    Legend(
+        f[1, 1], lins, ["Line $i" for i in 1:3],
+        "$ha &amp; $va",
+        tellheight = false,
+        tellwidth = false,
+        margin = (10, 10, 10, 10),
+        halign = ha, valign = va, orientation = :horizontal
+    )
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_6496361355257737470">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_6496361355257737470.svg"/>
+            </a>
+          </p>
+          <h2 id="creating_legend_entries_manually">
+            <a class="header-anchor" href="#creating_legend_entries_manually">
+              Creating Legend Entries Manually
+            </a>
+          </h2>
+          <p>
+            Sometimes you might want to construct legend entries from scratch to have maximum control. So far you can use
+            <code>
+              LineElement
+            </code>
+            s,
+            <code>
+              MarkerElement
+            </code>
+            s or
+            <code>
+              PolyElement
+            </code>
+            s. The attributes for these elements are the following (the
+            <code>
+              []
+            </code>
+            parts can be left out when constructing these elements directly, but have to be fully written out for the attributes that the legend holds):
+          </p>
+          <pre><code class="language-julia"># LineElement
+[line]points, [line]color, linestyle, linewidth
+
+# MarkerElement
+[marker]points, marker, markersize, [marker]color,
+[marker]strokewidth, [marker]strokecolor
+
+# PolyElement
+[poly]points, [poly]color, [poly]strokewidth, [poly]strokecolor</code>          </pre>
+          <p>
+            The attributes
+            <code>
+              linepoints
+            </code>
+            ,
+            <code>
+              markerpoints
+            </code>
+            and
+            <code>
+              polypoints
+            </code>
+            decide where in the legend entry patch rectangle the plot objects are placed. These values should be normalized to a 1 by 1 rectangle, and the final shape depends on the
+            <code>
+              patchsize
+            </code>
+            of the legend. For example, if you want wider line and poly markers, you could set the
+            <code>
+              patchsize
+            </code>
+            of the legend to
+            <code>
+              (50, 30)
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1])
+
+elem_1 = [LineElement(color = :red, linestyle = nothing),
+          MarkerElement(color = :blue, marker = 'x', markersize = 15,
+          strokecolor = :black)]
+
+elem_2 = [PolyElement(color = :red, strokecolor = :blue, strokewidth = 1),
+          LineElement(color = :black, linestyle = :dash)]
+
+elem_3 = LineElement(color = :green, linestyle = nothing,
+        points = Point2f[(0, 0), (0, 1), (1, 0), (1, 1)])
+
+elem_4 = MarkerElement(color = :blue, marker = 'π', markersize = 15,
+        points = Point2f[(0.2, 0.2), (0.5, 0.8), (0.8, 0.2)])
+
+elem_5 = PolyElement(color = :green, strokecolor = :black, strokewidth = 2,
+        points = Point2f[(0, 0), (1, 0), (0, 1)])
+
+Legend(f[1, 2],
+    [elem_1, elem_2, elem_3, elem_4, elem_5],
+    ["Line &amp; Marker", "Poly &amp; Line", "Line", "Marker", "Poly"],
+    patchsize = (35, 35), rowgap = 10)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_5662378107700001127">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_5662378107700001127.svg"/>
+            </a>
+          </p>
+          <h2 id="horizontal_legend">
+            <a class="header-anchor" href="#horizontal_legend">
+              Horizontal Legend
+            </a>
+          </h2>
+          <p>
+            In case you want the legend entries to be listed horizontally, set the
+            <code>
+              orientation
+            </code>
+            attribute to
+            <code>
+              :horizontal
+            </code>
+            . In this case the
+            <code>
+              nbanks
+            </code>
+            attribute refers to the number of rows instead of columns. To keep an adjacent axis from potentially shrinking to the width of the horizontal legend, set
+            <code>
+              tellwidth = false
+            </code>
+            and
+            <code>
+              tellheight = true
+            </code>
+            if you place the legend below or above the axis.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1])
+
+xs = 0:0.5:10
+ys = sin.(xs)
+lin = lines!(xs, ys, color = :blue)
+sca = scatter!(xs, ys, color = :red, markersize = 15)
+
+Legend(f[1, 2], [lin, sca, lin], ["a line", "some dots", "line again"])
+
+Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
+    orientation = :horizontal, tellwidth = false, tellheight = true)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10173715086820214783">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_10173715086820214783.svg"/>
+            </a>
+          </p>
+          <h2 id="multi-group_legends">
+            <a class="header-anchor" href="#multi-group_legends">
+              Multi-Group Legends
+            </a>
+          </h2>
+          <p>
+            Sometimes a legend consists of multiple groups, for example in a plot where both marker size and color are varied and those properties need to be visualized separately, but still together in one legend. Each group's content is given as an array of elements and an array of labels, each within one collective array. You can shift the position of the titles relative to each group with the
+            <code>
+              titleposition
+            </code>
+            attribute, either
+            <code>
+              :left
+            </code>
+            or
+            <code>
+              :top
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+Axis(f[1, 1])
+
+markersizes = [5, 10, 15, 20]
+colors = [:red, :green, :blue, :orange]
+
+for ms in markersizes, color in colors
+    scatter!(randn(5, 2), markersize = ms, color = color)
+end
+
+group_size = [MarkerElement(marker = :circle, color = :black,
+    strokecolor = :transparent,
+    markersize = ms) for ms in markersizes]
+
+group_color = [PolyElement(color = color, strokecolor = :transparent)
+    for color in colors]
+
+legends = [Legend(f,
+    [group_size, group_color],
+    [string.(markersizes), string.(colors)],
+    ["Size", "Color"]) for _ in 1:6]
+
+f[1, 2:4] = legends[1:3]
+f[2:4, 2] = legends[4:6]
+
+for l in legends[4:6]
+    l.orientation = :horizontal
+    l.tellheight = true
+    l.tellwidth = false
+end
+
+legends[2].titleposition = :left
+legends[5].titleposition = :left
+
+legends[3].nbanks = 2
+legends[5].nbanks = 2
+legends[6].nbanks = 2
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13748480395996139778">
+              <img alt="" src="../../../assets/examples/layoutables/legend/code/output/example_13748480395996139778.svg"/>
+            </a>
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: October 16, 2021. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.15.3, GLMakie: v0.4.7, CairoMakie: v0.6.6, WGLMakie: v0.4.7
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="../../../libs/lunr/lunr.min.js"></script>
+    <script src="../../../libs/lunr/lunr_index.js"></script>
+    <script src="../../../libs/lunr/lunrclient.min.js"></script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
