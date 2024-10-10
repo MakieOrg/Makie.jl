@@ -1165,7 +1165,11 @@ Toggle(fig_or_scene; kwargs...)
 
 ```julia
 t_horizontal = Toggle(fig[1, 1])
-t_vertical = Toggle(fig[2, 1], orientation = pi/2)
+t_vertical = Toggle(fig[2, 1], orientation = :vertical)
+t_diagonal = Toggle(fig[3, 1], orientation = pi/4)
+on(t_vertical.active) do switch_is_on
+    switch_is_on ? println("good morning!") : println("good night")
+end
 ```
 
 """
