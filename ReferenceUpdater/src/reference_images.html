@@ -249,11 +249,7 @@
         }
 
         function toggle_all(source, group) {
-            console.log(source)
-            console.log(group)
-            
             checkboxes = document.querySelectorAll(group)
-            console.log(checkboxes)
             checkboxes.forEach(checkbox => { checkbox.checked = source.checked })
         }
 
