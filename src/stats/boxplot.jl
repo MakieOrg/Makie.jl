@@ -194,46 +194,33 @@ function Makie.plot!(plot::BoxPlot)
         end
     end
 
-    scatter!(
-        plot,
-        color = outliercolor,
-        marker = plot[:marker],
-        markersize = plot[:markersize],
-        strokecolor = plot[:outlierstrokecolor],
+    scatter_attr = shared_attributes(
+        plot, Scatter, 
+        strokecolor = plot[:outlierstrokecolor], 
         strokewidth = plot[:outlierstrokewidth],
-        outliers,
-        inspectable = plot[:inspectable],
-        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), 
+        color = outliercolor
     )
-    linesegments!(
-        plot,
-        color = plot[:whiskercolor],
-        linewidth = plot[:whiskerlinewidth],
-        t_segments,
-        inspectable = plot[:inspectable]
+    scatter!(plot, scatter_attr, outliers)
+
+    line_attr = shared_attributes(plot, LineSegments, 
+        color = plot[:whiskercolor], linewidth = plot[:whiskerlinewidth]
     )
-    crossbar!(
-        plot,
+    linesegments!(plot, line_attr, t_segments,)
+
+    cb_attr = shared_attributes(plot, CrossBar,
         color = boxcolor,
-        colorrange = plot[:colorrange],
-        colormap = plot[:colormap],
-        colorscale = plot[:colorscale],
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
         midlinecolor = plot[:mediancolor],
         midlinewidth = plot[:medianlinewidth],
-        show_midline = plot[:show_median],
         orientation = orientation,
         width = boxwidth,
         gap = 0,
         show_notch = show_notch,
-        notchmin = notchmin,
+        notchmin = notchmin, 
         notchmax = notchmax,
-        notchwidth = plot[:notchwidth],
-        inspectable = plot[:inspectable],
-        centers,
-        medians,
-        boxmin,
-        boxmax,
     )
+    crossbar!(plot, cb_attr, centers, medians, boxmin, boxmax)
+
+    return plot
 end

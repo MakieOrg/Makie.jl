@@ -569,16 +569,71 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=10
     return Float16[-gappy(x, scaled) for x in r]
 end
 
-"""
-    shared_attributes(plot::Plot, target::Type{<:Plot})
+const LOCAL_ATTRIBUTES = Set([
+    :transformation, :model, 
+    :inspector_clear, :inspector_hover, :inspector_label, 
+    :xautolimits, :yautolimits, :zautolimits
+])
 
-Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot})
-    valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes)
-    to_drop = setdiff(existing_attributes, valid_attributes)
-    return drop_attributes(plot, to_drop)
+    shared_attributes(plot, TargetPlotType[, args...; warn_defaulted, default_removals, kwargs...])
+
+This function extracts the attributes valid to `TargetPlotType` from `plot`, 
+skipping every attribute which is named in `args`. After that each keyword 
+argument is added as an additional attribute (or replaces an existing one).
+
+This is effectively the same as:
+```julia
+attr = Attributes()
+for name in intersect(attribute_names(TargetPlotType), keys(attributes(plot)))
+    attr[name] = plot[name]
+end
+foreach(name -> delete!(attr, name), default_removals)
+foreach(name -> delete!(attr, name), args)
+merge!(attr, kwargs)
+```
+
+Reserved keyword arguments:
+- `warn_defaulted:Bool = false`: When enabled, a warning is generated if any Attribute has not been 
+set or removed.
+- `default_removal::Set{Symbol} = Makie.LOCAL_ATTRIBUTES`: Defines a default set of attributes to 
+remove, either because they are irrelevant in child plots or because they are (usually) handled 
+outside of attribute (e.g. transformations). Note that you can still set them via kwargs.
+"""
+function shared_attributes(
+        plot::Plot, target::Type{<:Plot}, remove::Symbol...;
+        warn_defaulted = false, default_removals::Set{Symbol} = LOCAL_ATTRIBUTES,
+        replacements...
+    )
+
+    output = Attributes(replacements)
+    parent_attributes = attributes(plot)
+    
+    valid_names = Set(attribute_names(target))
+    removed_names = union(Set{Symbol}(remove), default_removals)
+    existing_names = Set{Symbol}(keys(parent_attributes))
+    overwritten_names = Set{Symbol}(keys(output))
+
+    # valid & existing - removed - overwritten
+    names_to_set = setdiff!(
+        intersect(existing_names, valid_names), 
+        removed_names, overwritten_names
+    )
+
+    for name in names_to_set
+        output[name] = parent_attributes[name]
+    end
+
+    if warn_defaulted
+        unset_names = setdiff(valid_names, 
+            existing_names, removed_names, overwritten_names)
+
+        if !isempty(unset_names)
+            @warn "The following attribute names are valid for ::$target, but did not get set by the parent attributes or the given overwrites or have been explciitly excluded:\n $unset_names"
+        end
+    end
+
+    return output
 end
 
 function drop_attributes(plot::Plot, to_drop::Symbol...)

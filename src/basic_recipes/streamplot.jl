@@ -37,6 +37,7 @@ See the function `Makie.streamplot_impl` for implementation details.
     linestyle = nothing
     MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
@@ -173,21 +174,9 @@ function plot!(p::StreamPlot)
         end
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
-    colormap_args = MakieCore.colormap_attributes(p)
-    generic_plot_attributes = MakieCore.generic_plot_attributes(p)
 
-    lines!(
-        p,
-        lift(x->x[3], p, data),
-        color = lift(last, p, data),
-        linestyle = p.linestyle,
-        linecap = p.linecap,
-        joinstyle = p.joinstyle,
-        miter_limit = p.miter_limit,
-        linewidth = p.linewidth;
-        colormap_args...,
-        generic_plot_attributes...
-    )
+    line_attr = shared_attributes(p, Lines, :fxaa, color = lift(last, p, data))
+    lines!(p, line_attr, lift(x-> x[3], p, data))
 
     N = ndims(p.limits[])
 
@@ -226,13 +215,14 @@ function plot!(p::StreamPlot)
         end
     end
 
-    scatterfun(N)(
-        p,
-        lift(first, p, data);
-        markersize=arrow_size, rotation=rotations,
-        color=lift(x -> x[4], p, data),
-        marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
-        colormap_args...,
-        generic_plot_attributes...
+    scatter_attr = shared_attributes(
+        p, N == 2 ? Scatter : MeshScatter,
+        :fxaa, # Let it default
+        markersize = arrow_size, rotation = rotations,
+        color = lift(x -> x[4], p, data),
+        marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality)
     )
+    scatterfun(N)(p, scatter_attr, lift(first, p, data))
+
+    return p
 end

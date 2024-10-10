@@ -56,6 +56,7 @@ spy(0..1, 0..1, x)
     color = nothing
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
+    fxaa = false
 end
 
 function data_limits(plot::Spy)
@@ -116,20 +117,18 @@ function Makie.plot!(p::Spy)
         return isnothing(color) ? xycol[2] : color
     end
 
-    scatter!(
-        p,
-        lift(first, p, xycol);
-        color = color,
-        markerspace = :data,
-        marker = p.marker, markersize = markersize,
-        MakieCore.colormap_attributes(p)...,
-        MakieCore.generic_plot_attributes(p)...
+    scatter_attr = shared_attributes(
+        p, Scatter,
+        color = color, markersize = markersize, markerspace = :data
     )
+    scatter!(p, scatter_attr, lift(first, p, xycol))
 
-    lines!(p, rect,
-        color = p.framecolor,
-        linewidth = p.framesize,
-        visible = p.framevisible,
+    line_attr = shared_attributes(
+        p, Lines, 
+        color = p.framecolor, linewidth = p.framesize, visible = p.framevisible,
         inspectable = false
     )
+    lines!(p, line_attr, rect)
+
+    return p
 end

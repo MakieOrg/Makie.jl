@@ -111,10 +111,10 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    band!(plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
-        colorrange = plot.colorrange, inspectable = plot.inspectable)
-    l = lines!(plot, linepoints, color = plot.strokecolor,
-        linestyle = plot.linestyle, linewidth = plot.strokewidth,
-        inspectable = plot.inspectable)
-    plot
+    band!(plot, shared_attributes(plot, Band, color = colorobs), lower, upper)
+
+    line_attr = shared_attributes(plot, Lines, linewidth = plot.strokewidth, color = plot.strokecolor)
+    lines!(plot, line_attr, linepoints)
+
+    return plot
 end

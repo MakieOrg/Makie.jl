@@ -189,19 +189,15 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     else
         hb.colorscale
     end
-    return scatter!(hb, points;
-                    colorrange=hb.colorrange,
-                    color=count_hex,
-                    colormap=hb.colormap,
-                    colorscale=scale,
-                    lowclip=hb.lowclip,
-                    highclip=hb.highclip,
-                    nan_color=hb.nan_color,
-                    marker=hexmarker,
-                    markersize=markersize,
-                    markerspace=:data,
-                    strokewidth=hb.strokewidth,
-                    strokecolor=hb.strokecolor)
+
+    attr = shared_attributes(
+        hb, Scatter,
+        color = count_hex, colorscale = scale,
+        marker = hexmarker, markersize = markersize, markerspace = :data
+    )
+    scatter!(hb, attr, points)
+
+    return hb
 end
 
 function center_value(dv, spacing, offset, is_grid1)

@@ -27,6 +27,7 @@ Plots `scatter` markers and `lines` between them.
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
     cycle = [:color]
+    fxaa = false
 end
 
 conversion_trait(::Type{<: ScatterLines}) = PointBased()
@@ -54,27 +55,14 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         mcol === automatic ? col : mcol
     end
 
-    lines!(p, p[1:N]...;
-        color = p.color,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        linecap = p.linecap,
-        joinstyle = p.joinstyle,
-        miter_limit = p.miter_limit,
-        colormap = p.colormap,
-        colorscale = p.colorscale,
-        colorrange = p.colorrange,
-        inspectable = p.inspectable
+    lines!(p, shared_attributes(p, Lines), p[1:N]...)
+
+    attr = shared_attributes(
+        p, Scatter,
+        color = real_markercolor, colormap = real_markercolormap, 
+        colorrange = real_markercolorrange
     )
-    scatter!(p, p[1:N]...;
-        color = real_markercolor,
-        strokecolor = p.strokecolor,
-        strokewidth = p.strokewidth,
-        marker = p.marker,
-        markersize = p.markersize,
-        colormap = real_markercolormap,
-        colorscale = p.colorscale,
-        colorrange = real_markercolorrange,
-        inspectable = p.inspectable
-    )
+    scatter!(p, attr, p[1:N]...)
+
+    return p
 end
