@@ -135,6 +135,7 @@ struct Accum end
 
 """
     Absolute
+
 Force transformation to be absolute, not relative to the current state.
 This is the default setting.
 """
@@ -165,6 +166,32 @@ translate!(t::Transformable, xyz...) = translate!(Absolute, t, xyz)
 Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 """
 translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
+
+
+GeometryBasics.origin(t::Transformable) = transformation(t).origin
+
+"""
+    translate_origin!([mode = Absolute], t::Transformable, xyz...)
+    translate_origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
+
+Sets the origin of the transformable `t` to the given `xyz` value. This affects
+the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as 
+`Accum` the origin is translated by the given `xyz` instead.
+"""
+translate_origin!(t::Transformable, xyz...) = translate_origin!(Absolute, t, xyz)
+translate_origin!(t::Transformable, xyz::VecTypes) = translate_origin!(Absolute, t, xyz)
+translate_origin!(::Type{T}, t::Transformable, xyz...) where {T} = translate_origin!(T, t, xyz)
+
+function translate_origin!(::Type{T}, t::Transformable, xyz::VecTypes) where T
+    offset = to_ndim(Vec3d, xyz, 0)
+    if T === Accum
+        origin(t)[] = origin(t)[] + offset
+    elseif T === Absolute
+        origin(t)[] = offset
+    else
+        error("Unknown origin translation type: $T")
+    end
+end
 
 function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float64(x[2])
