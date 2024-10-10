@@ -250,7 +250,6 @@
             pos = Makie.position_on_plot(p, 527, ray, apply_transform = true)
             @test pos ≈ Point3f(0.27489948, -0.24948473, -0.9936166)
         end
-
     end
 
     # For recreating the above: (may not work on unfocused window, needs transform definitions above)

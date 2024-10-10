@@ -282,7 +282,7 @@ function plot_part!(scene, parent, name::String)
     # center the mesh to its origin, if we have one
     if !isnothing(origin)
         centered = m.position .- origin
-        m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
+        m = GeometryBasics.mesh(m, position = centered)
         translate!(child, origin)
     else
         # if we don't have an origin, we need to correct for the parents translation

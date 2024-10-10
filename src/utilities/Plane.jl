@@ -228,7 +228,7 @@ function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where T
     ps = Point3f[_origin - v1 - v2, _origin - v1 + v2, _origin + v1 - v2, _origin + v1 + v2]
     ns = [plane.normal for _ in 1:4]
     fs = GLTriangleFace[(1,2,3), (2, 3, 4)]
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; normals=ns), fs)
+    return GeometryBasics.Mesh(ps, fs; normal = ns)
 end
 
 function to_clip_space(cam::Camera, planes::Vector{<: Plane3})

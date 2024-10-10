@@ -24,7 +24,7 @@ end
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
-        return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
+        return GeometryBasics.mesh(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
     x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
@@ -315,7 +315,7 @@ end
     N = 3; nbfacese = 30; radius = 0.02
 
     large_sphere = Sphere(Point3f(0), 1f0)
-    positions = decompose(Point3f, large_sphere, 30)
+    positions = decompose(Point3f, Tesselation(large_sphere, 30))
     np = length(positions)
     pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
     pts = vcat(pts, 1.1 .* pts + RNG.randn(size(pts)) / perturbfactor) # light position influence ?
@@ -411,7 +411,7 @@ end
 end
 
 @reference_test "Normals of a Cat" begin
-    x = loadasset("cat.obj")
+    x = GeometryBasics.clear_faceviews(loadasset("cat.obj"))
     f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)
@@ -434,7 +434,7 @@ end
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
-        return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
+        return GeometryBasics.mesh(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
     x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0

@@ -1,21 +1,17 @@
 function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
-    m_attr = map(convert(Observable, mesh_obs)) do m
-        return (m, GeometryBasics.attributes(m))
-    end
-
-    result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
-    result[:vertices] = GLBuffer(map(((m, _),) -> metafree(coordinates(m)), m_attr))
-
-    attribs = m_attr[][2]
+    m = convert(Observable, mesh_obs)
+    
+    result[:faces]    = indexbuffer(map(faces, m))
+    result[:vertices] = GLBuffer(map(coordinates, m))
 
     function to_buffer(name, target)
-        if haskey(attribs, name)
-            val = attribs[name]
+        if hasproperty(m[], name)
+            val = getproperty(m[], name)
             if mesh_obs isa Observable
-                val = map(((m, a),)-> a[name], m_attr)
+                val = map(m -> getproperty(m, name), m)
             end
             if val[] isa AbstractVector
-                result[target] = GLBuffer(map(metafree, val))
+                result[target] = GLBuffer(val)
             elseif val[] isa AbstractMatrix
                 result[target] = Texture(val)
             else
@@ -23,16 +19,19 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
             end
         end
     end
+
     to_buffer(:color, :vertex_color)
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
+
     # Only emit normals, when we shadin'
     shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
-        to_buffer(:normals, :normals)
+        to_buffer(:normal, :normals)
     end
     to_buffer(:attribute_id, :attribute_id)
+    
     return result
 end
 

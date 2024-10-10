@@ -398,13 +398,12 @@ which ignores all contributions from points with `NaN` components.
 
 Equivalent in application to `GeometryBasics.normals`.
 """
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
     normals_result = zeros(Vec3f, length(vertices))
-    free_verts = GeometryBasics.metafree.(vertices)
 
     for face in faces
 
-        v1, v2, v3 = free_verts[face]
+        v1, v2, v3 = vertices[face]
         # we can get away with two edges since faces are planar.
         n = nan_aware_orthogonal_vector(v1, v2, v3)
 
@@ -417,13 +416,8 @@ function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces
     return normals_result
 end
 
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
     return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
-end
-
-
-function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
-    return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
@@ -441,7 +435,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
+    return GeometryBasics.Mesh(ps, faces; uv=uv, normal = nan_aware_normals(ps, faces))
 end
 
 

@@ -33,7 +33,7 @@ function create_shader(mscene::Scene, plot::Surface)
         return invert ? -ns : ns
     end)
 
-    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
+    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normal => normals)
     uniforms = Dict(:uniform_color => color, :color => false, :model => model)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
@@ -54,7 +54,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     f32c, model = Makie.patch_model(plot)
     mesh = limits_to_uvmesh(plot, f32c)
     uniforms = Dict(
-        :normals => Vec3f(0),
+        :normal => Vec3f(0),
         :shading => false,
         :diffuse => Vec3f(0),
         :specular => Vec3f(0),

@@ -82,7 +82,7 @@ function set_packing_alignment(a) # at some point we should specialize to array/
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0)
 end
 
-function Texture(
+Makie.@noconstprop function Texture(
         data::Ptr{T}, dims::NTuple{NDim, Int};
         internalformat::GLenum = default_internalcolorformat(T),
         texturetype   ::GLenum = default_texturetype(NDim),
@@ -139,7 +139,7 @@ function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
         pointer(s.data), size(s.data),
         minfilter = s.minfilter, magfilter = s.magfilter,
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
-        anisotropic = s.anisotropic; kwargs...
+        mipmap = s.mipmap, anisotropic = s.anisotropic; kwargs...
     )
     obsfunc = ShaderAbstractions.connect!(s, tex)
     push!(tex.observers, obsfunc)
