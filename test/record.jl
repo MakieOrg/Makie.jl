@@ -2,16 +2,18 @@ using Logging
 
 module VideoBackend
     using Makie
+    @kwdef struct ScreenConfig
+    px_per_unit = 1
+    end
     struct Screen <: MakieScreen
         size::Tuple{Int, Int}
-    end
-    struct ScreenConfig
+        config::ScreenConfig
     end
     Base.size(screen::Screen) = screen.size
-    Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(size(scene))
+    Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(size(scene), config)
     Makie.backend_showable(::Type{Screen}, ::MIME"text/html") = true
     Makie.backend_showable(::Type{Screen}, ::MIME"image/png") = true
-    Makie.colorbuffer(screen::Screen) = zeros(RGBf, reverse(screen.size)...)
+    Makie.colorbuffer(screen::Screen) = zeros(RGBf, ceil.(Int, reverse(screen.size) .* screen.config.px_per_unit)...)
     Base.display(::Screen, ::Scene; kw...) = nothing
 end
 
@@ -38,6 +40,20 @@ mktempdir() do tempdir
                 end
             end
         end
+
+        @testset "px_per_unit" begin
+            for fmt in ("mp4", "gif"), px_per_unit in (1, 2)
+                dst = joinpath(tempdir, "out_$px_per_unit.$fmt")
+                @test begin
+                    record(fig, dst, 1:n; px_per_unit) do i
+                        lines!(ax, sin.(i .* x))
+                        return nothing
+                    end
+                    true
+                end
+            end
+        end
+            
 
         # test that the proper warnings are thrown
         @testset "Warnings" begin

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
+- Fix `px_per_unit` not being recognized in `record` and `VideoStream`, leading to errors [#4466](https://github.com/MakieOrg/Makie.jl/pull/4466).
 
 ## [0.21.13] - 2024-10-07
 
