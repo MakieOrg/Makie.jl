@@ -84,5 +84,5 @@ function plot!(plot::Pie)
     # plot pieces as polys
     poly!(plot, shared_attributes(plot, Poly), polys)
 
-    plot
+    return plot
 end

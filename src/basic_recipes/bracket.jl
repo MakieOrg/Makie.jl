@@ -125,7 +125,7 @@ function plot!(pl::Bracket)
     )
     text!(pl, text_attr, text_tuples)
     
-    pl
+    return pl
 end
 
 data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])

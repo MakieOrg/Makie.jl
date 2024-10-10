@@ -199,6 +199,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     )
     poly!(c, attr, polys)
 
+    return c
 end
 
 function compute_triangulation(tri)

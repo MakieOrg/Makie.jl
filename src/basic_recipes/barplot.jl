@@ -341,4 +341,6 @@ function Makie.plot!(p::BarPlot)
         )
         text!(p, text_attr, labels)
     end
+
+    return p
 end

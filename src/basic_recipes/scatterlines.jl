@@ -63,4 +63,6 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         colorrange = real_markercolorrange
     )
     scatter!(p, attr, p[1:N]...)
+
+    return p
 end

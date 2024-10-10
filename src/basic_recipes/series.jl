@@ -96,6 +96,8 @@ function plot!(plot::Series)
             lines!(plot, attr, positions)
         end
     end
+
+    return plot
 end
 
 function Makie.get_plots(plot::Series)

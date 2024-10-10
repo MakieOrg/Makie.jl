@@ -221,4 +221,6 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = notchmax,
     )
     crossbar!(plot, cb_attr, centers, medians, boxmin, boxmax)
+
+    return plot
 end

@@ -129,4 +129,6 @@ function Makie.plot!(p::Spy)
         inspectable = false
     )
     lines!(p, line_attr, rect)
+
+    return p
 end

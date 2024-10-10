@@ -83,7 +83,8 @@ function Makie.plot!(p::Union{HLines, VLines})
         transformation = Transformation(p, transform_func = identity)
     )
     linesegments!(p, line_attributes, points)
-    p
+    
+    return p
 end
 
 function data_limits(p::HLines)

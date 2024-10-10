@@ -47,5 +47,6 @@ function Makie.plot!(plot::TimeSeries)
         buffer = points[]
         points[] = buff_ref
     end
-    plot
+    
+    return plot
 end

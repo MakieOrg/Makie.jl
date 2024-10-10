@@ -153,6 +153,8 @@ function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
     end
 
     _plot_bars!(plot, linesegpairs, is_in_y_direction)
+
+    return plot
 end
 
 
@@ -236,7 +238,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
     )
     linesegments!(plot, whisker_attr, whiskers)
     
-    plot
+    return plot
 end
 
 function plot_to_screen(plot, points::AbstractVector)

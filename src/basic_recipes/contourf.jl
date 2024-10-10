@@ -139,6 +139,8 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         strokewidth = 0, strokecolor = :transparent, shading = NoShading
     )
     poly!(c, attr, polys)
+
+    return c
 end
 
 """
@@ -211,5 +213,6 @@ function _group_polys(points, ids)
         unclassified_polyindices = unclassified_polyindices[to_keep]
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
-    groups
+    
+    return groups
 end

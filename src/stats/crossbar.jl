@@ -118,4 +118,6 @@ function Makie.plot!(plot::CrossBar)
         visible = plot[:show_midline],
     )
     linesegments!(plot, line_attr, midlines)
+
+    return plot
 end

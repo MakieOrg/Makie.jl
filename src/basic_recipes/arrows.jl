@@ -187,4 +187,5 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         meshscatter!(arrowplot, head_attr, start)
     end
 
+    return arrowplot
 end

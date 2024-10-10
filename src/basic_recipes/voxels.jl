@@ -157,7 +157,7 @@ function plot!(plot::Voxels)
     # convert_arguments
     if eltype(plot.args[end][]) == UInt8
         plot._limits[] = (1, 255)
-        return
+        return plot
     end
 
 
@@ -204,7 +204,7 @@ function plot!(plot::Voxels)
         return (mini, maxi)
     end
 
-    return
+    return plot
 end
 
 function voxel_size(p::Voxels)

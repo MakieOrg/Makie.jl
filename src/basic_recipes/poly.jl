@@ -39,6 +39,8 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
     )
     wireframe!(plot, wf_attr, plot[1])
+
+    return plot
 end
 
 # Poly conversion
@@ -152,6 +154,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
     )
     lines!(plot, l_attr, outline)
+    return plot
 end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
@@ -201,5 +204,5 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     mpl = mesh!(plot, attrs, bigmesh)
     # splice in internal attribute after creation to avoid validation
     attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
-    return mpl
+    return plot
 end

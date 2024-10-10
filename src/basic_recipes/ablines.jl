@@ -33,7 +33,7 @@ function Makie.plot!(p::ABLines)
     notify(p[1])
 
     linesegments!(p, points; p.attributes...)
-    p
+    return p
 end
 
 data_limits(::ABLines) = Rect3f(Point3f(NaN), Vec3f(NaN))

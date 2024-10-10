@@ -19,6 +19,8 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         connect(points, faces)
     end
     linesegments!(plot, Attributes(plot), points_faces)
+
+    return plot
 end
 
 function plot!(plot::Wireframe{Tuple{T}}) where T
@@ -34,4 +36,6 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
         end
     end
     linesegments!(plot, Attributes(plot), points)
+
+    return plot
 end

@@ -186,7 +186,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
 
     attr[:transformation] = Transformation(p.transformation; transform_func=identity)
     triplot!(p, attr, tri)
-    return
+    return p
 end
 
 function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
