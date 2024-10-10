@@ -331,7 +331,7 @@ function Makie.plot!(p::BarPlot)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency,
+        inspectable = p.inspectable, transparency = p.transparency, space = p.space,
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
     )
 
