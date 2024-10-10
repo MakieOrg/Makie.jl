@@ -18,3 +18,13 @@ function upload_reference_images(path=basedir("recorded"), tag=last_major_versio
         upload_release("MakieOrg", "Makie.jl", github_token(), tag, tarfile)
     end
 end
+
+function download_refimages(tag=last_major_version())
+    url = "https://github.com/MakieOrg/Makie.jl/releases/download/$(tag)/reference_images.tar"
+    images_tar = Downloads.download(url)
+    images = tempname()
+    isdir(images) && rm(images, recursive=true, force=true)
+    Tar.extract(images_tar, images)
+    rm(images_tar)
+    return images
+end
