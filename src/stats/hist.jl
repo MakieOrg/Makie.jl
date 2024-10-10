@@ -184,7 +184,7 @@ function Makie.plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     bar_attrs = shared_attributes(
-        plot, Barplot, 
+        plot, BarPlot, 
         width = widths[], gap = 0, bar_labels = bar_labels, color = color
     )
     bp = barplot!(plot, bar_attrs, points[])
