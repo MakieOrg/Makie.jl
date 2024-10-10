@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add kwarg to rotate Toggle [#4445](https://github.com/MakieOrg/Makie.jl/pull/4445)
 - Fix relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
 
 ## [0.21.13] - 2024-10-07
