@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Added further options to `shared_attributes` for use in recipes and improved attribute pasthrough of Makie recipes [#4399](https://github.com/MakieOrg/Makie.jl/pull/4399)
+- Added further options to `shared_attributes` for use in recipes and improved attribute passthrough of Makie recipes [#4399](https://github.com/MakieOrg/Makie.jl/pull/4399)
 
 ## [0.21.13] - 2024-10-07
 
