@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added further options to `shared_attributes` for use in recipes and improved attribute passthrough of Makie recipes [#4399](https://github.com/MakieOrg/Makie.jl/pull/4399)
+- Fix relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
 
 ## [0.21.13] - 2024-10-07
 
