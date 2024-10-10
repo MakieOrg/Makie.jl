@@ -121,6 +121,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 nan = vcat(xs[1:4], NaN, zs[6:end])
                 r = T_in(1):T_in(1):T_in(10)
                 i = T_in(1)..T_in(10)
+                ov = Makie.OffsetVector(ys, -5:4)
 
                 ps2 = Point2.(xs, ys)
                 ps3 = Point3.(xs, ys, zs)
@@ -172,6 +173,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                         # because indices are Int we end up converting to Float64 no matter what
                         @test apply_conversion(CT, xs)         isa Tuple{Vector{Point2{Float64}}}
+                        @test apply_conversion(CT, ov)         isa Tuple{Vector{Point2{Float64}}}
 
                         @test apply_conversion(CT, xs, ys)     isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, xs, v32)    isa Tuple{Vector{Point2{T_out}}}
@@ -377,6 +379,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 @testset "Band" begin
                     @test apply_conversion(Band, xs, ys, zs) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Band, i, x -> x..(x+1)) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
                 end
 
                 @testset "Bracket" begin
@@ -396,6 +399,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                     @test apply_conversion(Rangebars, xs, ys, zs)      isa Tuple{Vector{Vec3{T_out}}}
                     @test apply_conversion(Rangebars, xs, ps2)         isa Tuple{Vector{Vec3{T_out}}}
+                    @test apply_conversion(Rangebars, i, x->x..(x+1))  isa Tuple{Vector{Vec3{T_out}}}
                 end
 
                 @testset "Poly" begin

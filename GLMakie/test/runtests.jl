@@ -30,7 +30,7 @@ include("unit_tests.jl")
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests()
         recorded_files, recording_dir = @include_reference_tests GLMakie "refimages.jl" joinpath(@__DIR__, "glmakie_refimages.jl")
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "GLMakie")
         ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
 
@@ -61,24 +61,21 @@ end
         rm(filename)
     end
 
+    f, a, p = scatter(rand(10));
     filename = "$(tempname()).mp4"
     try
-        GLMakie.closeall()
         tick_record = Makie.Tick[]
-        @time record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        on(tick -> push!(tick_record, tick), events(f).tick)
+        record(_ -> nothing, f, filename, 1:10, framerate = 30)
+
+        start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
         dt = 1.0 / 30.0
 
-        i = 0
-        for tick in tick_record
-            if tick.state !== Makie.OneTimeRenderTick
-                @warn "Unexpected tick during recording. Full tick record: $tick_record." maxlog = 1
-                continue
-            end
+        for (i, tick) in enumerate(tick_record[start:end])
             @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == i
-            @test tick.time ≈ dt * i
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
             @test tick.delta_time ≈ dt
-            i += 1
         end
     finally
         rm(filename)

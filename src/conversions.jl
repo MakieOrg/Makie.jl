@@ -55,6 +55,7 @@ end
 # Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
 convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
 convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
+convert_single_argument(a::OffsetArray{<:Point}) = OffsetArrays.no_offset_view(a)
 
 
 ################################################################################
@@ -86,6 +87,10 @@ function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N
         throw(ArgumentError("Only 2D and 3D points are supported."))
     end
     return (elconvert(Point{N, float_type(_T)}, positions),)
+end
+
+function convert_arguments(T::PointBased, positions::OffsetVector)
+   return convert_arguments(T, OffsetArrays.no_offset_view(positions))
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -365,12 +370,10 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
     return EndPoints(T.(x))
 end
-to_endpoints(x::ClosedInterval) = to_endpoints(endpoints(x))
-function to_endpoints(x::Union{Interval,AbstractVector,ClosedInterval})
-    return to_endpoints((minimum(x), maximum(x)))
-end
+to_endpoints(x::Interval) = to_endpoints(endpoints(x))
+to_endpoints(x::EndPoints) = x
+to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
 function to_endpoints(x, dim)
-    # having minimum and maximum here actually invites bugs
     x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
     return to_endpoints(x)
 end
@@ -385,12 +388,20 @@ function convert_arguments(::CellGrid, x::EndPoints, y::EndPoints,
     return (x, y, el32convert(z))
 end
 
+function get_step(x::EndPoints, n)
+    # length 1 step should be 1
+    x[1] == x[2] && n == 1 && return 1
+    return step(range(x...; length = n))
+end
+
 function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
                            z::AbstractMatrix{<:Union{Real,Colorant}})
-    xstep = step(range(extrema(x)...; length = size(z, 1))) / 2.0
-    ystep = step(range(extrema(y)...; length = size(z, 2))) / 2.0
+
     xe = to_endpoints(x)
     ye = to_endpoints(y)
+    xstep = get_step(xe, size(z, 1)) / 2.0
+    ystep = get_step(ye, size(z, 2)) / 2.0
+
     Tx = typeof(xe[1])
     Ty = typeof(ye[1])
     # heatmaps are centered on the edges, so we need to adjust the range
@@ -670,6 +681,12 @@ function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Func
     return convert_arguments(P, x, y)
 end
 
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
+    # f() returns interval for these plottypes
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
+    return convert_arguments(P, x, f.(x))
+end
+
 # OffsetArrays conversions
 function convert_arguments(sl::GridBased, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
@@ -684,7 +701,8 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
 Converts the element array type to `T1` without making a copy if the element type matches
@@ -734,7 +752,9 @@ float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
 float32type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float32type(T)}
 
 # We may want to always use UInt8 for colors?
-float32type(::Type{<: RGB}) = RGB{Float32}
+float32type(::Type{<:RGB{N0f8}}) = RGB{N0f8}
+float32type(::Type{<:RGBA{N0f8}}) = RGBA{N0f8}
+float32type(::Type{<:RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
