@@ -17,6 +17,7 @@ const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
 const COUNTER = Ref(0)
+const SKIPPED_NAMES = Set{String}() # names skipped due to title exclusion or function exclusion
 
 """
     @reference_test(name, code)
@@ -32,6 +33,7 @@ macro reference_test(name, code)
         @testset $(title) begin
             if $skip
                 @test_broken false
+                mark_skipped!($title)
             else
                 t1 = time()
                 if $title in $REGISTERED_TESTS
@@ -84,9 +86,12 @@ end
 function mark_broken_tests(title_excludes = []; functions=[])
     empty!(SKIP_TITLES)
     empty!(SKIP_FUNCTIONS)
+    empty!(SKIPPED_NAMES)
     union!(SKIP_TITLES, title_excludes)
     union!(SKIP_FUNCTIONS, functions)
 end
+
+mark_skipped!(name::String) = push!(SKIPPED_NAMES, name)
 
 macro include_reference_tests(backend::Symbol, path, paths...)
     toplevel_folder = dirname(string(__source__.file))
