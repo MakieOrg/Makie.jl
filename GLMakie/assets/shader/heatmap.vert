@@ -49,7 +49,7 @@ void main(){
     vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
 
     o_uv = vec2(index01.x, 1.0 - index01.y);
-    o_objectid = uvec2(objectid, index1D+1);
+    o_objectid = uvec2(objectid, 1 + index);
 
     float x = texelFetch(position_x, index2D.x, 0).x;
     float y = texelFetch(position_y, index2D.y, 0).x;

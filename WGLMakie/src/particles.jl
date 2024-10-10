@@ -94,6 +94,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     get!(uniform_dict, :shininess, 8f0)
     get!(uniform_dict, :light_direction, Vec3f(1))
     get!(uniform_dict, :light_color, Vec3f(1))
+    get!(uniform_dict, :PICKING_INDEX_FROM_UV, false)
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false

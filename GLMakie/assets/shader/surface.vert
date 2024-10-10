@@ -163,7 +163,7 @@ void main()
     vec3 pos;
     {{position_calc}}
 
-    o_id = uvec2(objectid, index1D+1);
+    o_id = uvec2(objectid, 0); // calculated from uv in mesh.frag
     o_InstanceID = 0;
     // match up with mesh
     o_uv = apply_uv_transform(uv_transform, vec2(index01.x, 1 - index01.y));
