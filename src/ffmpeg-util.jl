@@ -260,7 +260,13 @@ function VideoStream(fig::FigureLike;
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, scene, config, GLNative)
-    _xdim, _ydim = ceil.(Int, size(screen) .* screen.config.px_per_unit)
+    # We extract `px_per_unit` from the screen in order to get the ground truth.
+    px_per_unit = if hasproperty(screen, :config) && hasproperty(screen.config, :px_per_unit)
+        screen.config.px_per_unit
+    else # backend has no screen config, or config has no px_per_unit, so assume 1 px per dip
+        1
+    end
+    _xdim, _ydim = ceil.(Int, size(screen) .* px_per_unit)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
