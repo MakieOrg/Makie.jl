@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added further options to `shared_attributes` for use in recipes and improved attribute pasthrough of Makie recipes [#4399](https://github.com/MakieOrg/Makie.jl/pull/4399)
+
 ## [0.21.13] - 2024-10-07
 
 - Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
