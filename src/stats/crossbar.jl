@@ -107,7 +107,7 @@ function Makie.plot!(plot::CrossBar)
     poly!(plot, shared_attributes(plot, Poly), boxes)
 
     line_attr = shared_attributes(
-        plot, LineSegment, 
+        plot, LineSegments, 
         color = lift(
             (mc, sc) -> mc === automatic ? sc : mc,
             plot,

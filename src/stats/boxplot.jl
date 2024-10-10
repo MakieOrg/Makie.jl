@@ -204,12 +204,12 @@ function Makie.plot!(plot::BoxPlot)
     )
     scatter!(plot, scatter_attr, outliers)
 
-    line_attr = shared_attributes(plot, LineSegment, 
+    line_attr = shared_attributes(plot, LineSegments, 
         color = plot[:whiskercolor], linewidth = plot[:whiskerlinewidth]
     )
     linesegments!(plot, line_attr, t_segments,)
 
-    cb_attr = shared_attributes(plot, Crossbar,
+    cb_attr = shared_attributes(plot, CrossBar,
         color = boxcolor,
         midlinecolor = plot[:mediancolor],
         midlinewidth = plot[:medianlinewidth],
