@@ -238,7 +238,7 @@ function initialize_block!(tbox::Textbox)
                     removechar!(cursorindex[])
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
-                elseif key == Keyboard.enter
+                elseif key == Keyboard.enter || key == Keyboard.kp_enter
                     # don't do anything for invalid input which should stay red
                     if displayed_is_valid[]
                         # submit the written text
