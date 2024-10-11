@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
+- Fix relocatability of WGLMakie [#4467](https://github.com/MakieOrg/Makie.jl/pull/4467).
 
 ## [0.21.13] - 2024-10-07
 
