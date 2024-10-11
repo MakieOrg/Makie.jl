@@ -1206,8 +1206,8 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
-        "The orientation of the toggle (-pi to pi; 0 is horizontal with \"on\" being to the right)."
-        orientation = 0
+        "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
+        orientation = :horizontal
     end
 end
 
