@@ -411,3 +411,12 @@ end
     Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
     f
 end
+
+@reference_test "Toggle" begin
+    f = Figure()
+    th = Makie.Toggle(f[1,1])
+    th.orientation[] = pi/2
+    tv = Makie.Toggle(f[2,1], orientation=pi/2)
+    tv.orientation[] = 0
+    f
+end

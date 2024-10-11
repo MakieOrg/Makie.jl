@@ -1152,15 +1152,36 @@ const CHECKMARK_BEZIER = scale(BezierPath(
     end
 end
 
+"""
+A switch with two states.
+
+## Constructors
+
+```julia
+Toggle(fig_or_scene; kwargs...)
+```
+
+## Examples
+
+```julia
+t_horizontal = Toggle(fig[1, 1])
+t_vertical = Toggle(fig[2, 1], orientation = :vertical)
+t_diagonal = Toggle(fig[3, 1], orientation = pi/4)
+on(t_vertical.active) do switch_is_on
+    switch_is_on ? println("good morning!") : println("good night")
+end
+```
+
+"""
 @Block Toggle begin
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
-        "The width of the toggle."
+        "The width (ie longitudinal length) of the toggle."
         width = 32
-        "The height of the toggle."
+        "The height (ie transverse length) of the toggle."
         height = 18
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
@@ -1185,6 +1206,8 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
+        "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
+        orientation = :horizontal
     end
 end
 
