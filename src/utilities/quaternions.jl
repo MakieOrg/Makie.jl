@@ -34,7 +34,9 @@ end
 Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
 Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 Base.getindex(x::Quaternion, i::Integer) = x.data[i]
-Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
+function Base.isapprox(x::Quaternion, y::Quaternion; kwargs...)
+    return all(isapprox.(x.data, y.data; kwargs...))
+end
 
 function qrotation(axis::StaticVector{3}, theta::Number)
     u = normalize(axis)

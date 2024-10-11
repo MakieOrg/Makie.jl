@@ -79,7 +79,7 @@ transformation(t::Transformation) = t
 
 scale(t::Transformable) = transformation(t).scale
 
-scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3d, s, 1))
+scale!(t::Transformable, s::VecTypes) = (scale(t)[] = to_ndim(Vec3d, s, 1))
 
 """
     scale!(t::Transformable, x, y)
@@ -129,6 +129,7 @@ translation(t::Transformable) = transformation(t).translation
 
 """
     Accum
+
 Force transformation to be relative to the current state, not absolute.
 """
 struct Accum end
