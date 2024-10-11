@@ -1,6 +1,5 @@
 const BACKEND = ARGS[1]
 @assert BACKEND in ["CairoMakie", "GLMakie", "WGLMakie"]
-
 module_src = """
 module MakieApp
 
@@ -8,11 +7,16 @@ using $BACKEND
 
 if "$BACKEND" == "WGLMakie"
     using Electron
-    WGLMakie.Bonito.use_electron_display()
+    function _display(fig)
+        disp = WGLMakie.Bonito.use_electron_display()
+        display(disp, WGLMakie.Bonito.App(fig))
+    end
+else
+    _display(fig) = display(fig)
 end
 
 function julia_main()::Cint
-    screen = display(scatter(1:4))
+    screen = _display(scatter(1:4))
     # wait(screen) commented out to test if this blocks anything, but didn't change anything
     return 0 # if things finished successfully
 end
@@ -31,10 +35,10 @@ makie_dir = @__DIR__
 commit = cd(makie_dir) do
     chomp(read(`git rev-parse --verify HEAD`, String))
 end
-  
+
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
 # Since, package dir is much easier to move then the active project (on windows at least).
-paths = ["MakieCore", "Makie", "GLMakie"]
+paths = ["MakieCore", "Makie", BACKEND]
 Pkg.add(map(x -> (; name=x, rev=commit), paths))
 if BACKEND == "WGLMakie"
     Pkg.add("Electron")
