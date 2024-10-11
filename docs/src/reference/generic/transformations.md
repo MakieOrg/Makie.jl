@@ -74,3 +74,73 @@ If you want to fully detach a plot from its parents transformations, you can cre
 If you want to remove only the `transform_func` but not model transformations, you can use `transformation = Transformation(parent, transform_func = identity)`.
 You can also pass different starting values for `translation`, `scale` and `rotation` to these functions.
 This will not affect whether the parents model transformations are considered.
+
+As an example, here is a two arms on a cart raising a box with a rope.
+
+```@figure backend=GLMakie
+using GLMakie
+using Makie: Vec3d 
+
+f = Figure(size = (600, 400))
+a = Axis(f[2, 2], aspect = DataAspect())
+ylims!(0, 3); xlims!(-3, 3)
+
+# Cart
+cart = Transformation()
+scatter!(a, [-0.32, -0.15, 0.15, 0.32], fill(0.09, 4), transformation = cart, 
+    marker = Circle, color = :transparent, strokewidth = 2, strokecolor = :black,
+    markerspace = :data, markersize = 0.1
+)
+linesegments!(a, [-0.4, 0.4], [0.2, 0.2], transformation = cart,
+    color = :black, linewidth = 5
+)
+
+# arms
+arm1 = Transformation(cart, origin = Vec3d(0, 0.2, 0))
+linesegments!(a, [0, 0], [0.2, 2], transformation = arm1, 
+    color = :black, linewidth = 5, linecap = :round
+)
+arm2 = Transformation(arm1, origin = Vec3d(0, 2, 0))
+linesegments!(a, [0.0, 1.5], [2, 2], transformation = arm2, 
+    color = :black, linewidth = 5, linecap = :round
+)
+
+# rope - we want this to just extend downwards rather than inherit rotations
+rope_length = Observable(1.0)
+rope_points = map(arm2.model, rope_length) do model, len
+    # position of end of arm2 after transformations apply
+    rope_origin = (model * Point4(1.5, 2, 0, 1))[Vec(1,2)]
+    rope_end = rope_origin - Vec2(0, len)
+    return [rope_origin, rope_end]
+end
+crate_origin = map(ps -> ps[2] .+ Vec2(0, -0.12), rope_points)
+
+linesegments!(a, rope_points,
+    color = :black, linewidth = 3, linestyle = :dot, linecap = :round
+)
+scatter!(a, crate_origin,
+    marker = Rect, color = :white, strokewidth = 2, strokecolor = :black,
+    markerspace = :data, markersize = Vec2f(0.3, 0.2)
+)
+
+# Move cart
+sl1 = Slider(f[3, 2], range = range(-4, 4, length = 101))
+on(v -> translate!(cart, v, 0, 0), sl1.value)
+# Pivot arm 1
+sl2 = Slider(f[1, 2], range = range(-pi/3, pi/3, length = 101))
+on(v -> Makie.rotate!(arm1, -v), sl2.value)
+# Pivot arm 2
+sl3 = Slider(f[2, 1], range = range(-pi/3, pi/3, length = 101), horizontal = false)
+on(v -> Makie.rotate!(arm2, -v), sl3.value)
+# Extend rope
+sl4 = Slider(f[2, 3], range = range(2, 0.1, length = 101), startvalue = 1.0, horizontal = false)
+on(v -> rope_length[] = v, sl4.value)
+
+# Set up some configuration
+set_close_to!(sl1, -1.0) # move cart to -1
+set_close_to!(sl2, -0.5) # angle arm1 to the left
+set_close_to!(sl3, 0.5) # counter-angle arm2 to be horizontal
+set_close_to!(sl4, 0.5) # raise crate 
+
+f
+```
