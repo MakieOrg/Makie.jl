@@ -346,14 +346,16 @@ end
 function Transformation(transform_func=identity;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation, scale, rotation, transform_func)
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0))
+    return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
 function Transformation(parent::Transformable;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
@@ -361,7 +363,8 @@ function Transformation(parent::Transformable;
     trans = Transformation(translation,
                            scale,
                            rotation,
-                           trans)
+                           trans,
+                           origin)
     connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
 end
