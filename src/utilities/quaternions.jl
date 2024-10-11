@@ -155,3 +155,20 @@ function quaternion_to_2d_angle(quat::Quaternion)
     # this assumes that the quaternion was calculated from a simple 2d rotation as well
     return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
 end
+
+Base.isinf(q::Quaternion) = any(isinf, q.data)
+Base.abs2(q::Quaternion) = mapreduce(*, +, q.data, q.data)
+function Base.inv(q::Quaternion)
+    if isinf(q)
+        return quat(
+            flipsign(-zero(q[1]), q[1]),
+            flipsign(-zero(q[2]), q[2]),
+            flipsign(-zero(q[3]), q[3]),
+            copysign(zero(q[4]), q[4]),
+        )
+    end
+    a = max(abs(q[4]), abs(q[1]), abs(q[2]), abs(q[3]))
+    p = q / a
+    iq = conj(p) / (a * abs2(p))
+    return iq
+end
