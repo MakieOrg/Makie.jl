@@ -2,7 +2,7 @@ using Logging
 
 module VideoBackend
     using Makie
-    @kwdef struct ScreenConfig
+    Base.@kwdef struct ScreenConfig
     px_per_unit = 1
     end
     struct Screen <: MakieScreen
