@@ -628,7 +628,7 @@ get_tickvalues(lt::LinearTicks, vmin, vmax) = locateticks(vmin, vmax, lt.n_ideal
 
 Convert tickvalues to a float array by default.
 """
-get_tickvalues(tickvalues, vmin, vmax) = filter!(p -> p >= vmin && p <= vmax, convert(Vector{Float64}, tickvalues))
+get_tickvalues(tickvalues, vmin, vmax) = filter!(p -> vmin ≤ p ≤ vmax, convert(Vector{Float64}, tickvalues))
 
 # function get_tickvalues(l::LogitTicks, vmin, vmax)
 #     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
