@@ -541,3 +541,13 @@ end
     end
     @test isempty(limits.listeners)
 end
+
+@testset "Tooltips on Blocks" begin
+    f = Figure()
+    t = Toggle(f[1,1])
+    tooltip!(t, "I'm a Toggle")
+    a, s = scatter(f[1,2], [1,2,3])
+    tooltip!(a, "I'm an Axis", placement = :center)
+    b = Button(f[1,3])
+    tooltip!(b, "I'm a Button", placement = :qwerty)
+end
