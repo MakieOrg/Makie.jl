@@ -116,14 +116,14 @@ rotate!(::Type{T}, t::Transformable, axis_rot...) where T = rotate!(T, t, axis_r
 
 """
     rotate!(t::Transformable, axis_rot::Quaternion)
-    rotate!(t::Transformable, axis_rot::AbstractFloat)
+    rotate!(t::Transformable, axis_rot::Real)
     rotate!(t::Transformable, axis_rot...)
 
 Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 """
 rotate!(t::Transformable, axis_rot...) = rotate!(Absolute, t, axis_rot)
 rotate!(t::Transformable, axis_rot::Quaternion) = rotate!(Absolute, t, axis_rot)
-rotate!(t::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::Real) = rotate!(Absolute, t, axis_rot)
 
 translation(t::Transformable) = transformation(t).translation
 
