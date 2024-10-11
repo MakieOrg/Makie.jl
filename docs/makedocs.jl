@@ -138,6 +138,9 @@ pages = [
             "reference/plots/waterfall.md",
             "reference/plots/wireframe.md",  
         ],
+        "Generic Concepts" => [
+            "reference/generic/transformations.md"
+        ],
         "Scene" => [
             "reference/scene/lighting.md",
             "reference/scene/matcap.md",
