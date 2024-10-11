@@ -145,7 +145,7 @@ function flatten_buffer(array::Buffer)
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
-    return reinterpret(UInt8, array)
+    return collect(reinterpret(UInt8, array))
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
@@ -170,8 +170,6 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
                                             t::Quaternion)
     return convert(Quaternion, t)
 end
-
-
 
 function wgl_convert(value, key1, key2...)
     val = Makie.convert_attribute(value, key1, key2...)
@@ -200,6 +198,7 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
+
                 # update to replace the whole buffer!
                 if f === ShaderAbstractions.update!
                     new_array = args[1]
@@ -315,9 +314,8 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
-        plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)

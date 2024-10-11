@@ -21,17 +21,21 @@ end # module MakieApp
 """
 
 using Pkg, Test
-makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
-
-paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, BACKEND)]
-
-Pkg.develop(map(x-> (;path=x), paths))
+makie_dir = @__DIR__
+commit = cd(makie_dir) do
+    chomp(read(`git rev-parse --verify HEAD`, String))
+end
+  
+# Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
+# Since, package dir is much easier to move then the active project (on windows at least).
+paths = ["MakieCore", "Makie", "GLMakie"]
+Pkg.add(map(x -> (; name=x, rev=commit), paths))
 if BACKEND == "WGLMakie"
     Pkg.add("Electron")
 end
@@ -47,21 +51,19 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
+# `run` allows to see potential informative printouts, `success` swallows those
+p = run(`$(exe)`)
+@test p.exitcode == 0
 
-_success(cmd) = success(pipeline(cmd, stdout = stdout, stderr = stderr))
-
-@info "Running executable..."
-@test _success(`$(exe)`)
-@info "Done"
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
+mv(julia_pkg_dir, mvd_julia_pkg_dir, force = true)
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
     @info "Running executable in relocated mode..."
-    mv(julia_pkg_dir, mvd_julia_pkg_dir)
-    @test _success(`$(exe)`)
-    @info "Done"
+    p2 = run(`$(exe)`)
+    @test p2.exitcode == 0
 finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
 end

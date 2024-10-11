@@ -15,7 +15,7 @@ end
 function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
     replace_automatic!(plot, :colorrange) do
-        map(extrema, volume)
+        lift(extrema, plot, volume)
     end
 
     # heatmap will fail if we don't keep its attributes clean
@@ -24,7 +24,7 @@ function Makie.plot!(plot::VolumeSlices)
     bbox_visible = pop!(attr, :bbox_visible)
     pop!(attr, :model) # stops `transform!()` from working
 
-    bbox = map(x, y, z) do x, y, z
+    bbox = lift(plot, x, y, z) do x, y, z
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)

@@ -222,8 +222,8 @@ end
 """
     broadcast_foreach_index(f, arg, indices, args...)
 
-Like broadcast_foreach but with indexing. The first arg is assumed to already 
-have indices applied while the remaining ones use the given indices. 
+Like broadcast_foreach but with indexing. The first arg is assumed to already
+have indices applied while the remaining ones use the given indices.
 
 Effectively calls:
 ```
@@ -576,7 +576,7 @@ Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
     valid_attributes = attribute_names(target)
-    existing_attributes = attribute_names(typeof(plot))
+    existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)
     return drop_attributes(plot, to_drop)
 end
