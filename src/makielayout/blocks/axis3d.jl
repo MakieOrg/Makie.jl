@@ -687,6 +687,7 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
     panel = poly!(scene, rect, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
+        strokecolor = :transparent, strokewidth = 0,
         transformation = (plane, 0),
         depth_shift = -0.01,
     )
