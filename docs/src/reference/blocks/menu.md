@@ -1,6 +1,9 @@
 # Menu
 
-```@figure backend=GLMakie
+```@example menu
+using GLMakie
+GLMakie.activate!() # hide
+
 fig = Figure()
 
 menu = Menu(fig, options = ["viridis", "heat", "blues"], default = "blues")
@@ -40,9 +43,45 @@ on(menu2.selection) do s
 end
 notify(menu2.selection)
 
-menu2.is_open = true
-
 fig
+nothing # hide
+```
+
+```@setup menu
+using ..FakeInteraction
+
+events = [
+    Wait(1),
+    Lazy() do fig
+        MouseTo(relative_pos(menu, (0.3, 0.3)))
+    end,
+    LeftClick(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(menu, (0.33, -0.6)))
+    end,
+    Wait(0.2),
+    LeftClick(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(menu2, (0.28, 0.3)))
+    end,
+    Wait(0.2),
+    LeftClick(),
+    Wait(0.2),
+    Lazy() do fig
+        MouseTo(relative_pos(menu2, (0.4, -3.6)))
+    end,
+    Wait(0.2),
+    LeftClick(),
+    Wait(2),
+]
+
+interaction_record(fig, "menu_example.mp4", events)
+```
+
+```@raw html
+<video autoplay loop muted playsinline src="./menu_example.mp4" width="600"/>
 ```
 
 
