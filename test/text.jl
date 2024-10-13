@@ -123,3 +123,14 @@ end
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
     # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end
+
+@testset "reduce overlaps" begin
+    fig = Figure();
+    ax = Axis(fig[1, 1])
+    mtexts = [mtext!(ax, divrem(i, 2)...; text = "hello") for i in 0:2]
+    xlims!(ax, -1, 20)
+    ylims!(ax, -1, 20)
+    reduce_overlap!(mtexts)
+    @test mtexts[2].position[][2] - mtexts[1].position[][2] > 1.01
+    @test mtexts[3].position[][1] - mtexts[1].position[][1] > 1.01
+end
