@@ -147,7 +147,7 @@ function render_cursor!(buffer, sz, cursor_pos, viewport, cursor_img, cursor_tip
     return
 end
 
-function interaction_record(func, figlike, filepath, events::AbstractVector; fps = 60, update = true, kwargs...)
+function interaction_record(func, figlike, filepath, events::AbstractVector; fps = 60, px_per_unit = 2, update = true, kwargs...)
     content_scene = Makie.get_scene(figlike)
     sz = content_scene.viewport[].widths
     # composite_scene = Scene(; camera = campixel!, size = sz)
@@ -169,7 +169,7 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
     cursor_pressed_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor_pressed.png"))'
     cursor_tip_frac = (0.3, 0.15)
 
-    record(content_scene, filepath; framerate = fps, kwargs...) do io
+    record(content_scene, filepath; framerate = fps, px_per_unit, kwargs...) do io
         t = 0.0
         t_event = 0.0
         current_duration = 0.0
