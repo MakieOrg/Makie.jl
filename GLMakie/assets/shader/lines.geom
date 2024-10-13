@@ -34,6 +34,7 @@ flat out float f_cumulative_length;
 flat out ivec2 f_capmode;
 flat out vec4 f_linepoints;
 flat out vec4 f_miter_vecs;
+out float gl_ClipDistance[8];
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
@@ -46,6 +47,10 @@ uniform vec2 scene_origin;
 uniform int linecap;
 uniform int joinstyle;
 uniform float miter_limit;
+
+uniform mat4 view, projection, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 // Constants
 const float AA_RADIUS = 0.8;
@@ -85,6 +90,37 @@ void emit_vertex(LineVertex vertex) {
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
 vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
+
+bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+{
+    float d1, d2;
+    for(int i = 0; i < _num_clip_planes; i++)
+    {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            isvalid[1] = false;
+            isvalid[2] = false;
+            return true;
+        // one outside - shorten segment
+        } else if (d1 < 0.0) {
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+            f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+            isvalid[0] = false;
+        } else if (d2 < 0.0) {
+            p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+            f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+            isvalid[3] = false;
+        }
+    }
+
+    return false;
+} 
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -196,24 +232,38 @@ void main(void)
         return;
     }
 
-    // We mark each of the four vertices as valid or not. Vertices can be
-    // marked invalid on input (eg, if they contain NaN). We also mark them
-    // invalid if they repeat in the index buffer. This allows us to render to
-    // the very ends of a polyline without clumsy buffering the position data on the
-    // CPU side by repeating the first and last points via the index buffer. It
-    // just requires a little care further down to avoid degenerate normals.
+    // We mark vertices based on their role in a line segment:
+    //  0: the vertex is skipped/invalid (i.e. NaN)
+    //  1: the vertex is valid (part of a plain line segment)
+    //  2: the vertex is either ..
+    //       a loop target if the previous or next vertex is marked 0
+    //       or a normal valid vertex otherwise
+    // isvalid[0] and [3] are used to discern whether a line segment is part
+    // of a continuing line (valid) or a line start/end (invalid). A line only
+    // ends if the previous / next vertex is invalid
+    // isvalid[1] and [2] are used to discern whether a line segment should be
+    // discarded. This should happen if either vertex is invalid or if one of
+    // the vertices is a loop target.
+    // A loop target is an extra vertex placed before/after the shared vertex to
+    // guide joint generation. Consider for example a closed triangle A B C A.
+    // To cleanly close the loop both A's need to create a joint as if we had
+    // c A B C A b, but without drawing the c-A and A-b segments. c and b would
+    // be loop targets, matching C and B in position, but only being valid in
+    // isvalid[0] and [3], not as a drawn segment in isvalid[1] and [2].
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
-        g_valid_vertex[1] == 1,
-        g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+        (g_valid_vertex[0] > 0) && g_id[0].y != g_id[1].y,
+        (g_valid_vertex[1] > 0) && !((g_valid_vertex[0] == 0) && (g_valid_vertex[1] == 2)),
+        (g_valid_vertex[2] > 0) && !((g_valid_vertex[2] == 2) && (g_valid_vertex[3] == 0)),
+        (g_valid_vertex[3] > 0) && g_id[2].y != g_id[3].y
     );
 
     if(!isvalid[1] || !isvalid[2]){
-        // If one of the central vertices is invalid or there is a break in the
-        // line, we don't emit anything.
         return;
     }
+
+    // line start/end colors for color sampling
+    f_color1 = g_color[1];
+    f_color2 = g_color[2];
 
     // Time to generate our quad. For this we need to find out how far a join
     // extends the line. First let's get some vectors we need.
@@ -227,7 +277,7 @@ void main(void)
     // moving them to the edge of the visible area.
     vec3 p0, p1, p2, p3;
     {
-        // All in clip space
+        // Not in clip
         vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
         vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
         vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
@@ -246,12 +296,19 @@ void main(void)
             //   p.z + t * v.z = +-(p.w + t * v.w)
             // where (-) gives us the result for the near clipping plane as p.z
             // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
-            clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            clip_p1  = clip_p1  + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
         if (clip_p2.w < 0.0) {
             isvalid[3] = false;
-            clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            clip_p2  = clip_p2  + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(clip_p1, clip_p2, isvalid))
+            return;
 
         // transform clip -> screen space, applying xyz / w normalization (which
         // is now save as all vertices are in front of the camera)
@@ -407,16 +464,12 @@ void main(void)
     // if joint skipped   elongate to new length
     // if normal joint    elongate a lot to let discard/truncation handle joint
     f_extrusion = vec2(
-        !isvalid[0] ? min(AA_RADIUS, halfwidth) : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
-        !isvalid[3] ? min(AA_RADIUS, halfwidth) : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
     );
 
     // used to compute width sdf
     f_linewidth = halfwidth;
-
-    // for color sampling
-    f_color1 = g_color[1];
-    f_color2 = g_color[2];
 
     // handle very thin lines by adjusting alpha rather than linewidth/sdfs
     f_alpha_weight = min(1.0, g_thickness[1] / AA_RADIUS);

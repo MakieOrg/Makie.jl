@@ -12,6 +12,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `depth_shift::Float32 = 0f0` adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
 - `model::Makie.Mat4f` sets a model matrix for the plot. This replaces adjustments made with `translate!`, `rotate!` and `scale!`.
 - `space::Symbol = :data` sets the transformation space for box encompassing the volume plot. See `Makie.spaces()` for possible inputs.
+- `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
 """
 function generic_plot_attributes!(attr)
     attr[:transformation] = automatic
@@ -26,6 +27,7 @@ function generic_plot_attributes!(attr)
     attr[:inspector_label] = automatic
     attr[:inspector_clear] = automatic
     attr[:inspector_hover] = automatic
+    attr[:clip_planes] = automatic
     return attr
 end
 
@@ -42,7 +44,9 @@ function generic_plot_attributes(attr)
         space = attr[:space],
         inspector_label = attr[:inspector_label],
         inspector_clear = attr[:inspector_clear],
-        inspector_hover = attr[:inspector_hover]
+        inspector_hover = attr[:inspector_hover],
+        clip_planes =  attr[:clip_planes]
+
     )
 end
 
@@ -73,6 +77,12 @@ function mixin_generic_plot_attributes()
         inspector_clear = automatic
         "Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods."
         inspector_hover = automatic
+        """
+        Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here,
+        behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
+        parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+        """
+        clip_planes = automatic
     end
 end
 
@@ -203,12 +213,23 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
-@recipe Image (x::ClosedInterval{<:FloatType}, y::ClosedInterval{<:FloatType}, image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+@recipe Image (
+        x::EndPoints,
+        y::EndPoints,
+        image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
     fxaa = false
+    """
+    Sets a transform for uv coordinates, which controls how the image is mapped to its rectangular area.
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
+    """
+    uv_transform = automatic
     colormap = [:black, :white]
 end
 
@@ -241,7 +262,9 @@ If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 """
-@recipe Heatmap (x::RealVector, y::RealVector, values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+@recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
+                 y::Union{EndPoints,RealVector, RealMatrix},
+                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -262,16 +285,16 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume (
-        x::ClosedInterval,
-        y::ClosedInterval,
-        z::ClosedInterval,
+        x::EndPoints,
+        y::EndPoints,
+        z::EndPoints,
         volume::AbstractArray{Float32,3}
     ) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip
-    "Sets the range of values picked up by the IsoValue algorithm."
-    isovalue = 0.5
     "Sets the target value for the IsoValue algorithm."
+    isovalue = 0.5
+    "Sets the range of values picked up by the IsoValue algorithm."
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
@@ -298,6 +321,16 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
+    "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
+    interpolate = true
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a surface.
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
+    """
+    uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -317,13 +350,26 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     color = @inherit linecolor
     "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
-    "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 0.5 linewidth extrusion) or :round."
+    """
+    Sets the type of line cap used. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
-    "Controls whether line joints are rounded (:round) or not (:miter)."
+    """
+    Controls the rendering at corners. Options are `:miter` for sharp corners,
+    `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
-    "Sets the minimum inner joint angle below which miter joints truncate. See also `Makie.miter_distance_to_angle()`"
+    "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     miter_limit = @inherit miter_limit
     "Sets which attributes to cycle when creating multiple plots."
     cycle = [:color]
@@ -345,7 +391,13 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     color = @inherit linecolor
     "Sets the width of the line in pixel units"
     linewidth = @inherit linewidth
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
@@ -372,6 +424,14 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     interpolate = true
     cycle = [:color => :patchcolor]
     matcap = nothing
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to a mesh.
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    They can also be changed by passing a tuple `(op3, op2, op1)`.
+    """
+    uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -451,6 +511,17 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
     rotation = 0.0
     cycle = [:color]
+    """
+    Sets a transform for uv coordinates, which controls how a texture is mapped to the scattered mesh.
+    Note that the mesh needs to include uv coordinates for this, which is not the case by default
+    for geometry primitives. You can use `GeometryBasics.uv_normal_mesh(prim)` with, for example `prim = Rect2f(0, 0, 1, 1)`.
+    The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`,
+    any of :rotr90, :rotl90, :rot180, :swap_xy/:transpose, :flip_x, :flip_y, :flip_xy, or most
+    generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`.
+    It can also be set per scattered mesh by passing a `Vector` of any of the above and operations
+    can be changed by passing a tuple `(op3, op2, op1)`.
+    """
+    uv_transform = automatic
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -594,7 +665,13 @@ Plots polygons, which are defined by
     strokecolormap = @inherit colormap
     "Sets the width of the outline."
     strokewidth = @inherit patchstrokewidth
-    "Sets the pattern of the line (e.g. `:solid`, `:dot`, `:dashdot`)"
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
     linestyle = nothing
     linecap = @inherit linecap
     joinstyle = @inherit joinstyle
@@ -603,7 +680,10 @@ Plots polygons, which are defined by
     shading = NoShading
 
     cycle = [:color => :patchcolor]
-
+    """
+    Depth shift of stroke plot. This is useful to avoid z-fighting between the stroke and the fill.
+    """
+    stroke_depth_shift = -1.0f-5
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
 end

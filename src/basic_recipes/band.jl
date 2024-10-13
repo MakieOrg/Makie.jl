@@ -27,15 +27,26 @@ end
 
 function Makie.plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
+    nanpoint(::Type{<:Point3}) = Point3(NaN)
+    nanpoint(::Type{<:Point2}) = Point2(NaN)
     coordinates = lift(plot, lowerpoints, upperpoints) do lowerpoints, upperpoints
-        @assert length(lowerpoints) == length(upperpoints) "length of lower band is not equal to length of upper band!"
-        return [lowerpoints; upperpoints]
+        n = length(lowerpoints)
+        @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
+        concat = [lowerpoints; upperpoints]
+        # if either x, upper or lower is NaN, all of them should be NaN to cut out a whole band segment and not just a triangle
+        for i in 1:n
+            if isnan(lowerpoints[i]) || isnan(upperpoints[i])
+                concat[i] = nanpoint(eltype(concat))
+                concat[n + i] = nanpoint(eltype(concat))
+            end
+        end
+        return concat
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
     meshcolor = Observable{RGBColors}()
 
-    map!(plot, meshcolor, plot.color) do c
+    lift!(plot, meshcolor, plot.color) do c
         if c isa AbstractArray
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other

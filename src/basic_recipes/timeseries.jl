@@ -40,7 +40,7 @@ function Makie.plot!(plot::TimeSeries)
     buffer = copy(points[])
     lines!(plot, points)
     start = time()
-    on(plot.signal) do x
+    on(plot, plot.signal) do x
         points[][end] = signal2point(x, start)
         circshift!(buffer, points[], 1)
         buff_ref = buffer

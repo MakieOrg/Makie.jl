@@ -3,9 +3,9 @@
     f, ax, pl = ablines(fill(0), fill(1))
     reset_limits!(ax)
     points = pl.plots[1][1]
-    @test points[] == [Point2f(0), Point2f(10)]
+    @test Point2f.(points[]) == [Point2f(0), Point2f(10)]
     limits!(ax, 5, 15, 6, 17)
-    @test points[] == [Point2f(5), Point2f(15)]
+    @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
 end
 
 @testset "arrows" begin
@@ -31,9 +31,9 @@ end
 
     # data conversion pipeline
     @test p.args[1][] === data
-    @test p.converted[1][] ≈ -3.0..3.0
-    @test p.converted[2][] ≈ -2.5..2.5
-    @test p.converted[3][] ≈ -2.0..2.0
+    @test p.converted[1][] == (-3.0, 3.0)
+    @test p.converted[2][] == (-2.5, 2.5)
+    @test p.converted[3][] == (-2.0, 2.0)
 
     @test p.colorrange[] == Makie.automatic # otherwise no auto _limits
     @test all(p._limits[] .≈ (0.3, 1.8)) # controls conversion to voxel ids

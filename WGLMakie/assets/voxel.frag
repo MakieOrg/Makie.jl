@@ -5,6 +5,7 @@ flat in vec3 o_normal;
 in vec3 o_uvw;
 flat in int o_side;
 in vec2 o_tex_uv;
+in float o_clip_distance[8];
 
 in vec3 o_camdir;
 
@@ -13,6 +14,9 @@ flat in float plane_render_idx; // debug
 flat in int plane_dim;
 flat in int plane_front;
 #endif
+
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 vec4 debug_color(uint id) {
     return vec4(
@@ -79,6 +83,22 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
+bool is_clipped()
+{
+    float d;
+    // get center pos of this voxel
+    vec3 size = vec3(textureSize(voxel_id, 0).xyz);
+    vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
+    for (int i = 0; i < num_clip_planes; i++) {
+        // distance between clip plane and voxel center
+        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        if (d < 0.0)
+            return true;
+    }
+
+    return false;
+}
+
 flat in uint frag_instance_id;
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
@@ -88,8 +108,12 @@ vec4 pack_int(uint id, uint index) {
     unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
     return unpack;
 }
+
 void main()
 {
+    if (is_clipped())
+        discard;
+
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
     if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
         voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)

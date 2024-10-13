@@ -92,6 +92,11 @@ end
     @test bb.origin ≈ Point3f(0)
     @test bb.widths ≈ Vec3f(10.0, 10.0, 0)
 
+    fig, ax, p = image(1..0, 1:10, rand(10, 10))
+    bb = boundingbox(p)
+    @test bb.origin ≈ Point3f(0, 1, 0)
+    @test bb.widths ≈ Vec3f(1.0, 9.0, 0)
+
     # text transforms to pixel space atm (TODO)
     fig = Figure(size = (400, 400))
     ax = Axis(fig[1, 1])
@@ -144,4 +149,17 @@ end
     bb3 = Rect3{Float64}([-1.5309311648155406, -1.5309311648155406, 0.0], [3.061862329631081, 3.061862329631081, 0.0])
     @test data_limits(p) ≈ bb1
     @test boundingbox(p) ≈ bb3
+end
+
+@testset "issue 3960" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    triangle = BezierPath([
+        MoveTo(Point(0, 0)),
+        LineTo(Point(1, 0)),
+        LineTo(Point(0, 1)),
+        ClosePath()
+    ])
+    sc = scatter!(ax, Point(0, 0), marker=triangle, markerspace=:data)
+    data_limits(sc) # doesn't stackoverflow
 end

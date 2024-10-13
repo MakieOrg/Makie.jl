@@ -109,17 +109,25 @@ function prepare_for_scene(screen::Screen, scene::Scene)
 end
 
 function draw_background(screen::Screen, scene::Scene)
+    w, h = Makie.widths(viewport(Makie.root(scene))[])
+    return draw_background(screen, scene, h)
+end
+
+function draw_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = viewport(scene)[]
-        Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
+        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up, 
+        # Cairo down. Negative height breaks other backgrounds
+        x, y = origin(r); w, h = widths(r)
+        Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
         fill(cr)
     end
     Cairo.restore(cr)
-    foreach(child_scene-> draw_background(screen, child_scene), scene.children)
+    foreach(child_scene-> draw_background(screen, child_scene, root_h), scene.children)
 end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
@@ -143,7 +151,7 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Plot, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, scale::Number = 1) where RT
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
     # Extract scene width in device indepentent units
@@ -163,8 +171,11 @@ function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Plot, scale
     # Cairo.scale(screen.context, w / scr.surface.width, h / scr.surface.height)
     Cairo.set_source_surface(screen.context, scr.surface, 0, 0)
     p = Cairo.get_source(scr.context)
-    # this is needed to avoid blurry edges
-    Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    if RT !== SVG
+        # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+        # setting seems to create broken SVGs
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    end
     # Set filter doesn't work!?
     Cairo.pattern_set_filter(p, Cairo.FILTER_BILINEAR)
     Cairo.fill(screen.context)
@@ -175,8 +186,4 @@ end
 
 function draw_atomic(::Scene, ::Screen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
-end
-
-function draw_atomic(::Scene, ::Screen, x::Makie.PlotList)
-    # Doesn't need drawing
 end

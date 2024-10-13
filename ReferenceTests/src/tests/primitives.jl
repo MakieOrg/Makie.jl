@@ -84,8 +84,28 @@ end
     fig
 end
 
-#@reference_test "Miter Limit"
-begin
+@reference_test "Line loops" begin
+    # check for issues with self-overlap of line segments with loops, interplay
+    # between loops, lines, nan separation
+    loop(p) = Point2f[p, p .+ Point2f(0.8, 0), p .+ Point2f(0, 0.8), p, Point2f(NaN)]
+    line(p) = Point2f[p, p .+ Point2f(0.8, 0), p .+ Point2f(0, 0.8), Point2f(NaN)]
+
+    nan = [Point2f(NaN)]
+    ps = vcat(
+        nan, nan, nan, loop((0, -1)), loop((1, -1)),
+        line((-1, 0)), line((0, 0)),
+        nan, nan, line((1, 0)), nan,
+        loop((-1, 1)), nan, loop((0, 1)),
+        nan, [Point2f(1, 1)], nan
+    )
+
+    f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    f
+end
+
+@reference_test "Miter Limit" begin
     ps = [Point2f(0, -0.5), Point2f(1, -0.5)]
     for phi in [160, -130, 121, 50, 119, -90] # these are 180-miter_angle
         R = Makie.Mat2f(cosd(phi), sind(phi), -sind(phi), cosd(phi))
@@ -137,8 +157,27 @@ end
     fig
 end
 
-@reference_test "lines issue #3704" begin
-    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+@reference_test "line color interpolation with clipping" begin
+    # Clipping should not change the color interpolation of a line piece, so 
+    # these boxes should match in color
+    fig = Figure(); 
+    ax = Axis(fig[1,1]); 
+    ylims!(ax, -0.1, 1.1); 
+    lines!(
+        ax, Rect2f(0, 0, 1, 10), color = 1:5, linewidth = 5,
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    ); 
+    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5); 
+
+    ax = Axis(fig[1,2]); 
+    ylims!(ax, -0.1, 1.1); 
+    cs = [1, 2, 2, 3, 3, 4, 4, 5]
+    linesegments!(
+        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5, 
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    ); 
+    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5); 
+    fig
 end
 
 @reference_test "scatters" begin
@@ -568,6 +607,21 @@ end
     f
 end
 
+@reference_test "Surface invert_normals" begin
+    fig = Figure(size = (400, 200))
+    for (i, invert) in ((1, false), (2, true))
+        surface(
+            fig[1, i],
+            range(-1, 1, length = 21), 
+            -cos.(range(-pi, pi, length = 21)), 
+            [sin(y) for x in range(-0.5pi, 0.5pi, length = 21), y in range(-0.5pi, 0.5pi, length = 21)],
+            axis = (show_axis = false, ),
+            invert_normals = invert
+        )
+    end
+    fig
+end
+
 @reference_test "barplot with TeX-ed labels" begin
     fig = Figure(size = (800, 800))
     lab1 = L"\int f(x) dx"
@@ -658,8 +712,8 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function to their
-    # parent scene (identity in this case)
+    # Tests that (primitive) plots can have different transform function 
+    # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
@@ -682,4 +736,109 @@ end
     meshscatter!(ax, [0.1, 0.9], [0.6, 0.7], markersize = 0.05, color = :red, transformation = Transformation())
 
     fig
+end
+
+@reference_test "uv_transform" begin
+    fig = Figure(size = (400, 400))
+    img = [RGBf(1,0,0) RGBf(0,1,0); RGBf(0,0,1) RGBf(1,1,1)]
+
+    function create_block(f, gl, args...; kwargs...)
+        ax, p = f(gl[1, 1], args..., uv_transform = I; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[1, 2], args..., uv_transform = :rotr90; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 1], args..., uv_transform = (Vec2f(0.5), Vec2f(0.5)); kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
+        hidedecorations!(ax)
+    end
+    
+    gl = fig[1, 1] = GridLayout()
+    create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
+    
+    gl = fig[1, 2] = GridLayout()
+    create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
+    
+    gl = fig[2, 1] = GridLayout()
+    create_block(
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img, 
+        marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
+
+    gl = fig[2, 2] = GridLayout()
+    create_block(image, gl, 0..1, 0..1, img)
+
+    fig
+end
+
+@testset "per element uv_transform" begin
+    cow = loadasset("cow.png")
+
+    N = 8; M = 10
+    f = Figure(size = (500, 400))
+    a, p = meshscatter(
+        f[1, 1],
+        [Point2f(x, y) for x in 1:M for y in 1:N],
+        color = cow,
+        uv_transform = [
+            Makie.uv_transform(:rotl90) * 
+            Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
+            for x in range(0, 1, length = M+1)[1:M] 
+            for y in range(0, 1, length = N+1)[1:N]
+        ],
+        markersize = Vec3f(0.9, 0.9, 1),
+        marker = uv_normal_mesh(Rect2f(-0.5, -0.5, 1, 1))
+    )
+    hidedecorations!(a)
+    xlims!(a, 0.3, M+0.7)
+    ylims!(a, 0.3, N+0.7)
+    f
+end
+@reference_test "Scatter with FastPixel" begin
+    f = Figure()
+    row = [(1, :pixel, 20), (2, :data, 0.5)]
+    points3d = decompose(Point3f, Rect3(Point3f(0), Vec3f(1)))
+    column = [(1, points3d, Axis3), (2, points3d, LScene),
+              (3, 1:4, Axis)]
+    for (i, space, msize) in row
+        for (j, data, AT) in column
+            ax = AT(f[i, j])
+            if ax isa Union{Axis,Axis3}
+                ax isa Axis && (ax.aspect = DataAspect())
+                ax.title = "$space"
+            end
+            scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
+            scatter!(ax, data;
+                     markersize=msize, markerspace=space, marker=Rect,
+                     strokewidth=2, strokecolor=:red, color=:transparent,)
+        end
+    end
+    f
+end
+
+@reference_test "Reverse image, heatmap and surface axes" begin
+    img = [2 0 0 3; 0 0 0 0; 1 1 0 0; 1 1 0 4]
+
+    f = Figure(size = (600, 400))
+
+    for (i, interp) in enumerate((true, false))
+        for (j, plot_func) in enumerate((
+            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading)
+        ))
+
+            gl = GridLayout(f[i, j])
+
+            a, p = plot_func(gl[1, 1], 1:4, 1:4, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 1], 1:4, 4..1, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[1, 2], 4:-1:1, 1:4, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 2], 4:-1:1, [4, 3, 2, 1], img, interp)
+            hidedecorations!(a)
+        end
+    end
+
+    f
 end

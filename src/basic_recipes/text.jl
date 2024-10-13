@@ -25,15 +25,20 @@ function plot!(plot::Text)
     if !haskey(plot, :text)
         attributes(plot)[:text] = plot[2]
     end
+    calc_color = plot.calculated_colors[]
+
+    color_scaled = calc_color isa ColorMapping ? calc_color.color_scaled : plot.color
+    cmap = calc_color isa ColorMapping ? calc_color.colormap : plot.colormap
 
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-            plot.rotation, plot.justification, plot.lineheight, plot.calculated_colors,
+          plot.rotation, plot.justification, plot.lineheight, color_scaled, cmap,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
-                ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
+                ts, f, fs, al, rot, jus, lh, cs, cmap, scol, swi, www, offs
+
         ts = to_fontsize(ts)
         f = to_font(fs, f)
         rot = to_rotation(rot)
-        col = to_color(col)
+        col = to_color(plot.calculated_colors[])
         scol = to_color(scol)
         offs = to_offset(offs)
 
@@ -54,13 +59,13 @@ function plot!(plot::Text)
         if str isa Vector
             # If we have a Vector of strings, Vector arguments are interpreted
             # as per string.
-            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs
-            )
+            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         else
             # Otherwise Vector arguments are interpreted by layout_text/
             # glyph_collection as per character.
             push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
+
         glyphcollections[] = gcs
         linewidths[] = lwidths
         linecolors[] = lcolors

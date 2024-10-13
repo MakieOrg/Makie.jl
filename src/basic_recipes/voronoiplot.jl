@@ -36,6 +36,8 @@ DelaunayTriangulation.jl.
     MakieCore.mixin_colormap_attributes()...
 end
 
+preferred_axis_type(::Voronoiplot) = Axis
+
 function _clip_polygon(poly::Polygon, circle::Circle)
     # Sutherland-Hodgman adjusted
     @assert isempty(poly.interiors) "Polygon must not have holes for clipping."
@@ -133,11 +135,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     # Handle transform_func early so tessellation is in cartesian space.
     vorn = map(p, p.transformation.transform_func, ps, smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
-        tri = DelTri.triangulate(transformed)
-        vorn = DelTri.voronoi(tri)
-        if smooth
-            vorn = DelTri.centroidal_smooth(vorn)
-        end
+        tri = DelTri.triangulate(transformed, randomise = false)
+        vorn = DelTri.voronoi(tri, clip = smooth, smooth = smooth, randomise = false)
         return vorn
     end
 

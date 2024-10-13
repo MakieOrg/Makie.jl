@@ -12,15 +12,15 @@ struct Camera3D <: AbstractCamera3D
     selected::Observable{Bool}
 
     # view matrix
-    eyeposition::Observable{Vec3f}
-    lookat::Observable{Vec3f}
-    upvector::Observable{Vec3f}
+    eyeposition::Observable{Vec3d}
+    lookat::Observable{Vec3d}
+    upvector::Observable{Vec3d}
 
     # perspective projection matrix
-    fov::Observable{Float32}
-    near::Observable{Float32}
-    far::Observable{Float32}
-    bounding_sphere::Observable{Sphere{Float32}}
+    fov::Observable{Float64}
+    near::Observable{Float64}
+    far::Observable{Float64}
+    bounding_sphere::Observable{Sphere{Float64}}
 end
 
 """
@@ -47,13 +47,13 @@ Settings include anything that isn't a mouse or keyboard button.
     - `:bbox_relative` scales `near` and `far` to the scene bounding box as passed to the camera with `update_cam!(..., bbox)`. (More specifically `far = 1` is scaled to the furthest point of a bounding sphere and `near` is generally overwritten to be the closest point.)
 - `center = true`: Controls whether the camera placement gets reset when calling `center!(scene)`, which is called when a new plot is added.
 
-- `keyboard_rotationspeed = 1f0` sets the speed of keyboard based rotations.
-- `keyboard_translationspeed = 0.5f0` sets the speed of keyboard based translations.
-- `keyboard_zoomspeed = 1f0` sets the speed of keyboard based zooms.
+- `keyboard_rotationspeed = 1.0` sets the speed of keyboard based rotations.
+- `keyboard_translationspeed = 0.5` sets the speed of keyboard based translations.
+- `keyboard_zoomspeed = 1.0` sets the speed of keyboard based zooms.
 
-- `mouse_rotationspeed = 1f0` sets the speed of mouse rotations.
-- `mouse_translationspeed = 0.5f0` sets the speed of mouse translations.
-- `mouse_zoomspeed = 1f0` sets the speed of mouse zooming (mousewheel).
+- `mouse_rotationspeed = 1.0` sets the speed of mouse rotations.
+- `mouse_translationspeed = 0.5` sets the speed of mouse translations.
+- `mouse_zoomspeed = 1.0` sets the speed of mouse zooming (mousewheel).
 
 - `update_rate = 1/30` sets the rate at which keyboard based camera updates are evaluated.
 - `circular_rotation = (true, true, true)` enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
@@ -95,9 +95,9 @@ Controls include any kind of hotkey setting.
 
 Some keyword arguments are used to initialize fields. These include
 
-- `eyeposition = Vec3f(3)`: The position of the camera.
-- `lookat = Vec3f(0)`: The point the camera is focused on.
-- `upvector = Vec3f(0, 0, 1)`: The world direction corresponding to the up direction of the screen.
+- `eyeposition = Vec3d(3)`: The position of the camera.
+- `lookat = Vec3d(0)`: The point the camera is focused on.
+- `upvector = Vec3d(0, 0, 1)`: The world direction corresponding to the up direction of the screen.
 
 - `fov = 45.0` is the field of view. This is irrelevant if the camera uses an orthographic projection.
 - `near = automatic` sets the position of the near clip plane. Anything between the camera and the near clip plane is hidden. Must be greater 0. Usage depends on `clipping_mode`.
@@ -105,12 +105,12 @@ Some keyword arguments are used to initialize fields. These include
 
 Note that updating these observables in an active camera requires a call to `update_cam(scene)`
 for them to be applied. For updating `eyeposition`, `lookat` and/or upvector
-`update_cam!(scene, eyeposition, lookat, upvector = Vec3f(0,0,1))` is preferred.
+`update_cam!(scene, eyeposition, lookat, upvector = Vec3d(0,0,1))` is preferred.
 
 The camera position and orientation can also be adjusted via the functions
 
 - `translate_cam!(scene, v)` will translate the camera by the given world/plot space vector `v`.
-- `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3f(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current `rotation_center` of the camera.
+- `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3d(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current `rotation_center` of the camera.
 - `zoom!(scene, zoom_step)` will change the zoom level of the scene without translating or rotating the scene. `zoom_step` applies multiplicatively to `cam.zoom_mult` which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
 """
 function Camera3D(scene::Scene; kwargs...)
@@ -152,13 +152,13 @@ function Camera3D(scene::Scene; kwargs...)
     replace!(controls, :Camera3D, scene, overwrites)
 
     settings = Attributes(
-        keyboard_rotationspeed = 1f0,
-        keyboard_translationspeed = 0.5f0,
-        keyboard_zoomspeed = 1f0,
+        keyboard_rotationspeed = 1.0,
+        keyboard_translationspeed = 0.5,
+        keyboard_zoomspeed = 1.0,
 
-        mouse_rotationspeed = 1f0,
-        mouse_translationspeed = 1f0,
-        mouse_zoomspeed = 1f0,
+        mouse_rotationspeed = 1.0,
+        mouse_translationspeed = 1.0,
+        mouse_zoomspeed = 1.0,
 
         projectiontype = Makie.Perspective,
         circular_rotation = (true, true, true),
@@ -174,11 +174,11 @@ function Camera3D(scene::Scene; kwargs...)
     replace!(settings, :Camera3D, scene, overwrites)
 
     if settings.clipping_mode[] === :view_relative
-        far_default = 2f0
+        far_default = 2.0
     elseif settings.clipping_mode[] === :bbox_relative
-        far_default = 1f0
+        far_default = 1.0
     else
-        far_default = 100f0 # will be set when inserting a plot
+        far_default = 100.0 # will be set when inserting a plot
     end
 
     cam = Camera3D(
@@ -189,22 +189,22 @@ function Camera3D(scene::Scene; kwargs...)
         Observable(true),
 
         # Semi-Internal - view matrix
-        get(overwrites, :eyeposition, Observable(Vec3f(3, 3, 3))),
-        get(overwrites, :lookat,      Observable(Vec3f(0, 0, 0))),
-        get(overwrites, :upvector,    Observable(Vec3f(0, 0, 1))),
+        get(overwrites, :eyeposition, Observable(Vec3d(3, 3, 3))),
+        get(overwrites, :lookat,      Observable(Vec3d(0, 0, 0))),
+        get(overwrites, :upvector,    Observable(Vec3d(0, 0, 1))),
 
         # Semi-Internal - projection matrix
         get(overwrites, :fov, Observable(45.0)),
         get(overwrites, :near, Observable(0.1)),
         get(overwrites, :far, Observable(far_default)),
-        Sphere(Point3f(0), 1f0)
+        Sphere(Point3d(0), 1.0)
     )
 
     disconnect!(camera(scene))
 
     # Keyboard controls
     # ticks every so often to get consistent position updates.
-    on(cam.pulser) do prev_time
+    on(camera(scene), cam.pulser) do prev_time
         current_time = time()
         active = on_pulse(scene, cam, current_time - prev_time)
         @async if active && cam.selected[]
@@ -338,7 +338,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
         if projectiontype == Perspective
             viewnorm = norm(cam.lookat[] - cam.eyeposition[])
             xynorm = 2 * viewnorm * tand(0.5 * cam.fov[])
-            translation = keyboard_translationspeed * timestep * Vec3f(
+            translation = keyboard_translationspeed * timestep * Vec3d(
                 xynorm * (right - left),
                 xynorm * (up - down),
                 viewnorm * (backward - forward)
@@ -346,7 +346,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
         else
             # translation in camera space x/y/z direction
             viewnorm = norm(cam.eyeposition[] - cam.lookat[])
-            translation = 2 * viewnorm * keyboard_translationspeed * timestep * Vec3f(
+            translation = 2 * viewnorm * keyboard_translationspeed * timestep * Vec3d(
                 right - left, up - down, backward - forward
             )
         end
@@ -365,7 +365,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
     if rotating
         # rotations around camera space x/y/z axes
         angles = keyboard_rotationspeed * timestep *
-            Vec3f(up - down, left - right, counterclockwise - clockwise)
+            Vec3d(up - down, left - right, counterclockwise - clockwise)
 
         _rotate_cam!(scene, cam, angles)
     end
@@ -376,7 +376,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
     zooming = zoom_out || zoom_in
 
     if zooming
-        zoom_step = (1f0 + keyboard_zoomspeed * timestep) ^ (zoom_out - zoom_in)
+        zoom_step = (1.0 + keyboard_zoomspeed * timestep) ^ (zoom_out - zoom_in)
         _zoom!(scene, cam, zoom_step, false, false)
     end
 
@@ -387,7 +387,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
 
     if fov_adjustment
         step = (1 + keyboard_zoomspeed * timestep) ^ (fov_inc - fov_dec)
-        cam.fov[] = clamp(cam.fov[] * step, 0.1, 179)
+        cam.fov[] = clamp(cam.fov[] * step, 0.1, 179.0)
     end
 
     # if any are active, update matrices, else stop clock
@@ -407,7 +407,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
         cad, projectiontype, zoom_shift_lookat
     )
 
-    last_mousepos = RefValue(Vec2f(0, 0))
+    last_mousepos = RefValue(Vec2d(0, 0))
     dragging = RefValue((false, false)) # rotation, translation
 
     e = events(scene)
@@ -446,22 +446,22 @@ function add_mouse_controls!(scene, cam::Camera3D)
                 diff = compute_diff(last_mousepos[] .- mousepos)
                 last_mousepos[] = mousepos
                 dragging[] = (false, false)
-                translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3f(diff[1], diff[2], 0f0))
+                translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3d(diff[1], diff[2], 0.0))
                 consume = true
             elseif dragging[][2]
                 mousepos = mouseposition_px(scene)
                 dragging[] = (false, false)
                 rot_scaling = mouse_rotationspeed[] * (e.window_dpi[] * 0.005)
-                mp = (last_mousepos[] .- mousepos) .* 0.01f0 .* rot_scaling
+                mp = (last_mousepos[] .- mousepos) .* 0.01 .* rot_scaling
                 last_mousepos[] = mousepos
-                rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
+                rotate_cam!(scene, cam, Vec3d(-mp[2], mp[1], 0.0), true)
                 consume = true
             end
 
             # reposition
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
-                p3d = to_ndim(Point3f, p, 0f0)
+                p3d = to_ndim(Point3d, p, 0.0)
                 if !isnan(p3d) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
                     # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
@@ -484,14 +484,14 @@ function add_mouse_controls!(scene, cam::Camera3D)
             mousepos = screen_relative(scene, mp)
             diff = compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
-            translate_cam!(scene, cam, mouse_translationspeed[] * Vec3f(diff[1], diff[2], 0f0))
+            translate_cam!(scene, cam, mouse_translationspeed[] * Vec3d(diff[1], diff[2], 0.0))
             return Consume(true)
         elseif dragging[][1] && ispressed(scene, rotation_button[])
             mousepos = screen_relative(scene, mp)
             rot_scaling = mouse_rotationspeed[] * (e.window_dpi[] * 0.005)
-            mp = (last_mousepos[] .- mousepos) * 0.01f0 * rot_scaling
+            mp = (last_mousepos[] .- mousepos) * 0.01 * rot_scaling
             last_mousepos[] = mousepos
-            rotate_cam!(scene, cam, Vec3f(-mp[2], mp[1], 0f0), true)
+            rotate_cam!(scene, cam, Vec3d(-mp[2], mp[1], 0.0), true)
             return Consume(true)
         end
         return Consume(false)
@@ -500,14 +500,12 @@ function add_mouse_controls!(scene, cam::Camera3D)
     #zoom
     on(camera(scene), e.scroll) do scroll
         if is_mouseinside(scene) && ispressed(scene, scroll_mod[])
-            zoom_step = (1f0 + 0.1f0 * mouse_zoomspeed[]) ^ -scroll[2]
+            zoom_step = (1.0 + 0.1 * mouse_zoomspeed[]) ^ -scroll[2]
             zoom!(scene, cam, zoom_step, cad[], zoom_shift_lookat[])
             return Consume(true)
         end
         return Consume(false)
     end
-
-
 end
 
 
@@ -588,7 +586,7 @@ function _translate_cam!(scene, cam::Camera3D, t)
     fix_y = ispressed(scene, fix_y_key)::Bool
     fix_z = ispressed(scene, fix_z_key)::Bool
     if fix_x || fix_y || fix_z
-        trans = Vec3f(fix_x, fix_y, fix_z) .* trans
+        trans = Vec3d(fix_x, fix_y, fix_z) .* trans
     end
 
     cam.eyeposition[] = eyepos + trans
@@ -610,7 +608,7 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
     right = cross(viewdir, up)  # +x
 
     x_axis = right
-    y_axis = fixed_axis ? Vec3f(0, 0, ifelse(up[3] < 0, -1, 1)) : up
+    y_axis = fixed_axis ? Vec3d(0, 0, ifelse(up[3] < 0, -1, 1)) : up
     z_axis = -viewdir
 
     fix_x = ispressed(scene, fix_x_key)::Bool
@@ -632,14 +630,14 @@ function _rotate_cam!(scene, cam::Camera3D, angles::VecTypes, from_mouse=false)
             # recontextualize the (dy, dx, 0) from mouse rotations so that
             # drawing circles creates continuous rotations around the fixed axis
             mp = mouseposition_px(scene)
-            past_half = 0.5f0 .* size(scene) .> mp
-            flip = 2f0 * past_half .- 1f0
+            past_half = 0.5 .* size(scene) .> mp
+            flip = 2.0 * past_half .- 1.0
             angle = flip[1] * angles[1] + flip[2] * angles[2]
-            angles = Vec3f(-angle, -angle, angle)
+            angles = Vec3d(-angle, -angle, angle)
             # only one fix is true so this only rotates around one axis
             rotation *= qrotation(
-                Vec3f(fix_x, fix_y, fix_z) .* Vec3f(sign(right[1]), viewdir[2], sign(up[3])),
-                dot(Vec3f(fix_x, fix_y, fix_z), angles)
+                Vec3d(fix_x, fix_y, fix_z) .* Vec3d(sign(right[1]), viewdir[2], sign(up[3])),
+                dot(Vec3d(fix_x, fix_y, fix_z), angles)
             )
         else
             # restrict total quaternion rotation to one axis
@@ -678,7 +676,7 @@ function _zoom!(scene, cam::Camera3D, zoom_step, cad = false, zoom_shift_lookat 
         u_x = normalize(cross(u_z, cam.upvector[]))
         u_y = normalize(cross(u_x, u_z))
 
-        rel_pos = 2.0f0 * mouseposition_px(scene) ./ scene_width .- 1.0f0
+        rel_pos = 2.0 * mouseposition_px(scene) ./ scene_width .- 1.0
         shift = rel_pos[1] * u_x + rel_pos[2] * u_y
         shift *= 0.1 * sign(1 - zoom_step) * norm(viewdir)
 
@@ -734,12 +732,13 @@ function update_cam!(scene::Scene, cam::Camera3D)
         far = far_dist * far
     elseif cam.settings.clipping_mode[] === :adaptive
         view_dist = norm(eyeposition - lookat)
-        near = view_dist * near; far = max(radius(bounding_sphere) / tand(0.5f0 * cam.fov[]), view_dist) * far
+        near = view_dist * near
+        far = max(radius(bounding_sphere) / tand(0.5 * cam.fov[]), view_dist) * far
     elseif cam.settings.clipping_mode[] !== :static
         @error "clipping_mode = $(cam.settings.clipping_mode[]) not recognized, using :static."
     end
 
-    aspect = Float32((/)(widths(scene)...))
+    aspect = Float64((/)(widths(scene)...))
     if cam.settings.projectiontype[] == Makie.Perspective
         proj = perspectiveprojection(fov, aspect, near, far)
     else
@@ -748,9 +747,9 @@ function update_cam!(scene::Scene, cam::Camera3D)
     end
 
     set_proj_view!(camera(scene), proj, view)
-
-    scene.camera.eyeposition[] = cam.eyeposition[]
-    scene.camera.view_direction[] = normalize(cam.lookat[] - cam.eyeposition[])
+    scene.camera.eyeposition[] = Vec3f(cam.eyeposition[])
+    scene.camera.upvector[] = upvector
+    scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
 end
 
 
@@ -758,14 +757,14 @@ end
 function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool = cam.settings.center[])
     bb = Rect3f(area3d)
     width = widths(bb)
-    center = maximum(bb) - 0.5f0 * width
-    radius = 0.5f0 * norm(width)
+    center = maximum(bb) - 0.5 * width
+    radius = 0.5 * norm(width)
     (isnan(radius) || (radius == 0)) && return
-    cam.bounding_sphere[] = Sphere(Point3f(center), radius)
+    cam.bounding_sphere[] = Sphere(Point3d(center), radius)
 
     old_dir = normalize(cam.eyeposition[] .- cam.lookat[])
     if cam.settings.projectiontype[] == Makie.Perspective
-        dist = radius / tand(0.5f0 * cam.fov[])
+        dist = radius / tand(0.5 * cam.fov[])
     else
         dist = radius
     end
@@ -777,11 +776,11 @@ function update_cam!(scene::Scene, cam::Camera3D, area3d::Rect, recenter::Bool =
     end
 
     if cam.settings.clipping_mode[] === :static
-        cam.near[] = 0.1f0 * dist
-        cam.far[] = 2f0 * dist
+        cam.near[] = 0.1 * dist
+        cam.far[] = 2.0 * dist
     elseif cam.settings.clipping_mode[] === :adaptive
-        cam.near[] = 0.1f0
-        cam.far[] = 2f0
+        cam.near[] = 0.1
+        cam.far[] = 2.0
     end
 
     update_cam!(scene, cam)
@@ -791,9 +790,9 @@ end
 
 # Update camera position via camera Position & Orientation
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition::VecTypes, lookat::VecTypes, up::VecTypes = camera.upvector[])
-    camera.lookat[]      = Vec3f(lookat)
-    camera.eyeposition[] = Vec3f(eyeposition)
-    camera.upvector[]    = Vec3f(up)
+    camera.lookat[]      = Vec3d(lookat)
+    camera.eyeposition[] = Vec3d(eyeposition)
+    camera.upvector[]    = Vec3d(up)
     update_cam!(scene, camera)
     return
 end
@@ -813,8 +812,8 @@ function update_cam!(
     )
     st, ct = sincos(theta)
     sp, cp = sincos(phi)
-    v = Vec3f(ct * cp, ct * sp, st)
-    u = Vec3f(-st * cp, -st * sp, ct)
+    v = Vec3d(ct * cp, ct * sp, st)
+    u = Vec3d(-st * cp, -st * sp, ct)
     camera.lookat[]      = center
     camera.eyeposition[] = center .+ radius * v
     camera.upvector[]    = u
