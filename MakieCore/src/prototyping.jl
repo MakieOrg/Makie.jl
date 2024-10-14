@@ -13,9 +13,11 @@ Backends:
 
 Passthrough - Backend interop:
 - parent update needs to be visible from primitives so backend knows something has/will change
-- shared_attributes could register:
-    - `on_update(() -> push!(child.updated, :parent), parent)`
-    - `on_update(() -> resolve_updates!(parent), child, :parent)`
+- shared_attributes could:
+    - register `on_update(() -> resolve_updates!(parent), child, :parent)`
+    - ~~register `on_update(() -> push!(child.updated, :parent), parent)`~~ this wouldn't run at setproperty-time
+    - parent needs to notify children immediately
+        - child could have multiple parent (e.g. recipe parent + parent scene) ... maybe?
 
 General:
 - some things should be getable only (converted, boundingbox, calculated_colors, ...?)
@@ -34,9 +36,14 @@ struct UpdatableAttributes
     data::Dict{Symbol, Any}        # Attributes, plot args
     updated::Set{Symbol}           # keys of changed data
     tasks::Vector{UpdateFunction}  # run these on update if necessary
+
     # maybe?
     protected::Set{Symbol} # can't set this key
     skipped::Set{Symbol}   # no update triggered for this key
+    
+    # for notifying children of parent updates and resolving parent updates
+    outdated_parents::Set{UpdatableAttributes}
+    child_updates::Vector{Function}
 end
 
 function (task::PlotUpdateTask)(attr::UpdateFunction)
@@ -54,6 +61,7 @@ function Base.setproperty!(attr::UpdatableAttributes, key::Symbol, value)
             attr.data[key] = value
             if !(key in attr.skipped)
                 push!(attr.updated, key)
+                foreach(f -> f(), attr.child_updates)
             end
         end
     else
@@ -62,23 +70,23 @@ function Base.setproperty!(attr::UpdatableAttributes, key::Symbol, value)
 end
 
 # run all the updates that need to run
-function resolve_updates!(plot::Plot)
-    isempty(plot.attributes.updated) && return
+function resolve_updates!(attr::UpdatableAttributes)
+    isempty(attr.updated) && return
 
-    if :parent in plot.attributes.updated
-        delete!(plot.attributes.updated, :parent)
-        resolve_updates!(parent(plot))
+    if !isempty(attr.outdated_parents)
+        resolve_updates!.(attr.outdated_parents)
+        empty!(attr.outdated_parents)
     end
     
-    isempty(plot.attributes.updated) && return
+    isempty(attr) && return
 
-    for task in plot.attributes.tasks
-        if any(name -> name in plot.attributes.updated, task.inputs)
-            task(plot.attributes)
+    for task in attr.tasks
+        if any(name -> name in attr.updated, task.inputs)
+            task(attr)
         end
     end
 
-    empty!(plot.attributes.updated)
+    empty!(attr.updated)
 
     return
 end
@@ -101,32 +109,35 @@ function on_update(f::Function, attr::UpdatableAttributes, inputs::Symbol...)
     return
 end
 
-# register on-any-change update (for propagating parent updates)
-function on_update(f::Function, attr::UpdatableAttributes)
-    push!(attr.tasks, UpdateFunction(Symbol[], f))
-    # maybe run task to initialize possible outputs
-    return
-end
 
-
-
+################################################################################
 # Sketching usage
+################################################################################
+
+# Attribute passthrough, recipes
 function shared_attributes(parent, TargetType; renamed...)
     valid_outputs = attribute_names(TargetType)
     valid_inputs = apply_renaming(parent.attributes, renamed)
     attr = UpdatableAttributes()
+
     # make parent notify child that updates are queued (maybe do in plot!(parent_plot)?)
-    on_update(() -> push!(attr.updated, :parent), parent)
+    # on_update(() -> push!(attr.updated, :parent), parent.attributes)
+    # This doesn't work because it wouldn't run immediately. This needs to be 
+    # separate from normal updates
+    push!(parent.attributes.children, () -> push!(attr.outdated_parents, parent.attributes))
+    push!(attr.parents, parent.attributes)
 
     # map parent update to child update
     # One Function with a check loop better than many without?
-    on_update(parent, valid_inputs...) do args...
+    on_update(parent.attributes, valid_inputs...) do args...
         for (src_name, trg_name, value) in zip(valid_inputs, valid_outputs, args)
-            if src_name in parent.changed
+            if src_name in parent.attributes.changed
                 setproperty!(attr, trg_name, value)
             end
         end
     end
+
+    return attr
 end
 
 function plot!(parent::MyPlot)
@@ -138,7 +149,16 @@ function plot!(parent::MyPlot)
     end
 
     scatter!(parent, attr)
+
+    # Could we have "second parent"?
+    attr2 = shared_attributes(parent, Text)
+    on_update(parent_scene(parent), :lookat, :eyeposition, :upvector) do args...
+        attr2.text = camera_data_string(args...)
+    end
+    text!(parent, attr)
 end
+
+# Backend
 
 function backend_draw_primitive(primitive)
     backend_data = Dict{Symbol, Any}()
