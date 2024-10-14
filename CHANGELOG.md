@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Improved performance of `record` by avoiding unnecessary copying in common cases [#4475](https://github.com/MakieOrg/Makie.jl/pull/4475).
+
 ## [0.21.14] - 2024-10-11
 
 - Fixed relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
