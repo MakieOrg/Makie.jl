@@ -184,23 +184,20 @@ mutable struct DataInspector
     root::Scene
     attributes::Attributes
 
-    temp_plots::Vector{AbstractPlot}
+    temp_plots::Vector{Plot}
     plot::Tooltip
-    selection::AbstractPlot
+    selection::Plot
 
     obsfuncs::Vector{Any}
-    lock::Threads.ReentrantLock
 end
 
 
 function DataInspector(scene::Scene, plot::AbstractPlot, attributes)
-    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[], Threads.ReentrantLock())
-    # finalizer(cleanup, x) # doesn't get triggered when this is dereferenced
-    x
+    return DataInspector(scene, attributes, Plot[], plot, plot, Any[])
 end
 
 function cleanup(inspector::DataInspector)
-    off.(inspector.obsfuncs)
+    foreach(off, inspector.obsfuncs)
     empty!(inspector.obsfuncs)
     delete!(inspector.root, inspector.plot)
     clear_temporary_plots!(inspector, inspector.selection)
@@ -281,9 +278,17 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     # We delegate the hover processing to another channel,
     # So that we can skip queued up updates with empty_channel!
     # And also not slow down the processing of e.mouseposition/e.scroll
+    was_open = false
     channel = Channel{Nothing}(Inf) do ch
         for _ in ch
-            on_hover(inspector)
+            if isopen(scene)
+                was_open = true
+                on_hover(inspector)
+            end
+            if !isopen(scene) && was_open
+                close(ch)
+                break
+            end
         end
     end
     listners = onany(e.mouseposition, e.scroll) do _, _
