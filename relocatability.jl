@@ -21,6 +21,9 @@ cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
+Pkg.add("GeometryBasics#ff/refactor")
+Pkg.add("MeshIO#ff/GeometryBasics_refactor")
+Pkg.add("ShaderAbstractions#ff/GeometryBasics_refactor")
 
 paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
 
