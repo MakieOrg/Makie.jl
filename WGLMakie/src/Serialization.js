@@ -41,9 +41,11 @@ class Plot {
     plot_data = {};
 
     constructor(scene, data) {
+
         this.plot_data = data;
+
         connect_plot(scene, this);
-        console.log(this.plot_data.uniforms);
+
         if (data.plot_type === "lines") {
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
@@ -57,6 +59,7 @@ class Plot {
 
         this.name = data.name;
         this.uuid = data.uuid;
+        this.mesh.plot_uuid = data.uuid;
 
         this.mesh.frustumCulled = false;
         this.mesh.matrixAutoUpdate = false;
@@ -76,8 +79,21 @@ class Plot {
         // Give mesh a reference to the plot object.
         this.mesh.plot_object = this;
         this.mesh.visible = data.visible.value;
-        data.visible.on(v=> this.mesh.visible = v);
+        data.visible.on(v=> {
+            this.mesh.visible = v;
+        });
 
+    }
+
+    move_to(scene) {
+        if (scene === this.parent) {
+            return
+        }
+        this.parent.remove(this.mesh)
+        connect_plot(scene, this)
+        scene.add(this.mesh)
+        this.parent = scene
+        return
     }
 
     update(attributes) {

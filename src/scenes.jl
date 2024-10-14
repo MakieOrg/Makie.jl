@@ -506,7 +506,6 @@ function free(plot::AbstractPlot)
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
-    len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -522,6 +521,24 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     end
     free(plot)
 end
+
+function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+    error("Not implemented for backend screen: $(screen)")
+end
+
+function move_to!(plot::Plot, scene::Scene)
+    if plot.parent === scene
+        return
+    end
+    filter!(x-> x === plot, plot.parent.plots)
+    push!(scene.plots, plot)
+    for screen in scene.current_screens
+        move_to!(screen, plot, scene)
+    end
+    plot.parent = scene
+    return
+end
+
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events

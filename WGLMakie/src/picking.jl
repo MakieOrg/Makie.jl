@@ -48,14 +48,16 @@ end
 
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
     session = get_screen_session(screen)
     # E.g. if websocket got closed
     isnothing(session) && return Tuple{Plot,Int}[]
     selection = Bonito.evaljs_value(session, js"""
-        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
+        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => {
+            const picked = WGL.pick_sorted(scene, $(xy_vec), $(range))
+            return picked
+        })
     """)
     isnothing(selection) && return Tuple{Plot,Int}[]
     lookup = plot_lookup(scene)
@@ -63,6 +65,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 end
 
 function Makie.pick(::Scene, screen::Screen, xy)
+
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     return plot_matrix[1, 1]
 end
