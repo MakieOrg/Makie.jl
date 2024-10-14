@@ -9,7 +9,7 @@ on:
       - '*'
     branches:
       - master
-      - breaking-0.22
+
   workflow_dispatch:
 
 concurrency:
