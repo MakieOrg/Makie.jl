@@ -2,17 +2,15 @@
 
 ## Issues
 
+Issues should be used to report bugs, regressions, missing documentation or other things we can act on. 
+For questions, feature requests, planning and other open ended posts, please use [Discussions](https://github.com/MakieOrg/Makie.jl/discussions).
+
 Before filing an issue please
-- check that there are no similar existing issues already
+- check that there are no similar existing issues already (feel free to bump an existing one)
 - check that your versions are up to date
   - you can do this by forcing the latest version using `]add Makie@newest-version`, where `newest-version` can be found on the [releases page](https://github.com/MakieOrg/Makie.jl/releases).
 
-If you want to report a bug, include your version and system information, as well as stack traces with all relevant information.
-If possible, condense your bug into the shortest example possible that the maintainers can replicate, a so called "minimal working example" or MWE.
-
-If you want to report a visual regression, include an image showing the faulty behavior.
-
-If you want to suggest a new feature, for example functionality that other plotting packages offer already, include supplementary material such as example images if possible, so it's clear what you are asking for.
+When filing an issue, please use one of the templates we provide and follow the given instructions.
 
 ## Pull requests
 
