@@ -14,7 +14,6 @@ end # module MakieApp
 """
 
 using Pkg, Test
-makie_dir = pwd()
 tmpdir = mktempdir()
 # create a temporary project
 cd(tmpdir)
@@ -25,9 +24,15 @@ Pkg.add("GeometryBasics#ff/refactor")
 Pkg.add("MeshIO#ff/GeometryBasics_refactor")
 Pkg.add("ShaderAbstractions#ff/GeometryBasics_refactor")
 
-paths = [makie_dir, joinpath(makie_dir, "MakieCore"), joinpath(makie_dir, "GLMakie")]
+makie_dir = @__DIR__
+commit = cd(makie_dir) do
+    chomp(read(`git rev-parse --verify HEAD`, String))
+end
 
-Pkg.develop(map(x-> (;path=x), paths))
+# Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
+# Since, package dir is much easier to move then the active project (on windows at least).
+paths = ["MakieCore", "Makie", "GLMakie"]
+Pkg.add(map(x -> (; name=x, rev=commit), paths))
 
 open("MakieApp/src/MakieApp.jl", "w") do io
     print(io, module_src)
@@ -40,14 +45,17 @@ using PackageCompiler
 
 create_app(joinpath(pwd(), "MakieApp"), "executable"; force=true, incremental=true, include_transitive_dependencies=false)
 exe = joinpath(pwd(), "executable", "bin", "MakieApp")
-@test success(`$(exe)`)
+# `run` allows to see potential informative printouts, `success` swallows those
+p = run(`$(exe)`)
+@test p.exitcode == 0
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
+mv(julia_pkg_dir, mvd_julia_pkg_dir, force = true)
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
-    mv(julia_pkg_dir, mvd_julia_pkg_dir)
-    @test success(`$(exe)`)
-catch e
+    p2 = run(`$(exe)`)
+    @test p2.exitcode == 0
+finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
 end
