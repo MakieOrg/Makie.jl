@@ -1558,6 +1558,32 @@ end
     f
 end
 
+@reference_test "Datashader AggCount" begin
+    data = [RNG.randn(Point2f, 10_000); (Ref(Point2f(1, 1)) .+ 0.3f0 .* RNG.randn(Point2f, 10_000))]
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data; async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data; async = false, binsize = 3)
+    ax3 = Axis(f[2, 1])
+    datashader!(ax3, data; async = false, operation = xs -> log10.(xs .+ 1))
+    ax4 = Axis(f[2, 2])
+    datashader!(ax4, data; async = false, point_transform = -)
+    f
+end
+
+@reference_test "Datashader AggMean" begin
+    with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
+    data2d = RNG.randn(Point2f, 100_000)
+    data3d = map(with_z, data2d)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data3d; agg = Makie.AggMean(), operation = identity, async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data3d; agg = Makie.AggMean(), operation = identity, async = false, binsize = 3)
+    f
+end
+
 @reference_test "Heatmap Shader" begin
     data = Makie.peaks(10_000)
     data2 = map(data) do x
