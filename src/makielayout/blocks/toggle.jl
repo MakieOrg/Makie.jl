@@ -48,7 +48,7 @@ function initialize_block!(t::Toggle)
 
     updatefunc = Ref{Any}(nothing)
 
-    onmouseleftdown(mouseevents) do event
+    onmouseleftclick(mouseevents) do event
         if animating[]
             return Consume(true)
         end
