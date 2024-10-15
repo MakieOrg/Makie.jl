@@ -12,9 +12,6 @@ scatter
 Scatters can be constructed by passing a list of x and y coordinates.
 
 ```@figure
-using CairoMakie
-
-
 xs = range(0, 10, length = 30)
 ys = 0.5 .* sin.(xs)
 
