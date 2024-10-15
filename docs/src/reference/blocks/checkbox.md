@@ -32,7 +32,7 @@ f
 nothing # hide
 ```
 
-```@setup intervalslider
+```@setup checkbox
 using ..FakeInteraction
 
 evts = [
