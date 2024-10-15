@@ -12,9 +12,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     draw_background(screen, scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
-    zvals = Makie.zvalue2d.(allplots)
-    permute!(allplots, sortperm(zvals))
-
+    sort!(allplots; by=Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
@@ -120,7 +118,7 @@ function draw_background(screen::Screen, scene::Scene, root_h)
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = viewport(scene)[]
-        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up, 
+        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up,
         # Cairo down. Negative height breaks other backgrounds
         x, y = origin(r); w, h = widths(r)
         Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
