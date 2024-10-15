@@ -595,7 +595,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
     elseif color isa AbstractVector{<: Colorant}
-        return FaceIterator(color, faces)
+        return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
         # let next level extend and fill with CairoPattern
         return color

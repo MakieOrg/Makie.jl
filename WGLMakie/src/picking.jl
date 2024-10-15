@@ -114,7 +114,7 @@ struct ToolTip
     end
 end
 
-const POPUP_CSS = Bonito.Asset(joinpath(@__DIR__, "popup.css"))
+const POPUP_CSS = Bonito.Asset(@path joinpath(@__DIR__, "popup.css"))
 
 function Bonito.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene

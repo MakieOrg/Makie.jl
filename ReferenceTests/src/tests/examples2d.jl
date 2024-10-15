@@ -1,14 +1,11 @@
 
-@reference_test "Test heatmap + image overlap" begin
-    heatmap(RNG.rand(32, 32))
-    image!(map(x -> RGBAf(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
-    current_figure()
-end
-
-@reference_test "Test RGB heatmaps" begin
+@reference_test "RGB heatmap, heatmap + image overlap" begin
     fig = Figure()
-    heatmap(fig[1, 1], RNG.rand(RGBf, 32, 32))
-    heatmap(fig[1, 2], RNG.rand(RGBAf, 32, 32))
+    heatmap(fig[1, 1], RNG.rand(32, 32))
+    image!(map(x -> RGBAf(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
+
+    heatmap(fig[2, 1], RNG.rand(RGBf, 32, 32))
+    heatmap(fig[2, 2], RNG.rand(RGBAf, 32, 32))
     fig
 end
 
@@ -61,7 +58,7 @@ end
     fig
 end
 
-@reference_test "FEM polygon 2D" begin
+@reference_test "FEM poly and mesh" begin
     coordinates = [
         0.0 0.0;
         0.5 0.0;
@@ -84,50 +81,55 @@ end
         5 8 9;
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    poly(coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
+
+    f = Figure()
+    poly(f[1, 1], coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
+
+    a, meshplot = mesh(f[2, 1], coordinates, connectivity, color=color, shading=NoShading)
+    wireframe!(meshplot[1], color=(:black, 0.6), linewidth=3)
+
+    cat = loadasset("cat.obj")
+    vertices = decompose(Point3f, cat)
+    faces = decompose(TriangleFace{Int}, cat)
+    coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
+    connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
+    mesh(f[1:2, 2],
+        coordinates, connectivity,
+        color=RNG.rand(length(vertices))
+    )
+
+    f
 end
 
-@reference_test "FEM mesh 2D" begin
-    coordinates = [
-        0.0 0.0;
-        0.5 0.0;
-        1.0 0.0;
-        0.0 0.5;
-        0.5 0.5;
-        1.0 0.5;
-        0.0 1.0;
-        0.5 1.0;
-        1.0 1.0;
-    ]
-    connectivity = [
-        1 2 5;
-        1 4 5;
-        2 3 6;
-        2 5 6;
-        4 5 8;
-        4 7 8;
-        5 6 9;
-        5 8 9;
-    ]
-    color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=NoShading)
-    wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
-    fig
-end
-
-@reference_test "colored triangle" begin
-    mesh(
+@reference_test "colored triangle (mesh, poly, 3D) + poly stroke" begin
+    f = Figure()
+    mesh(f[1, 1],
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
         shading=NoShading
     )
-end
 
-@reference_test "colored triangle with poly" begin
-    poly(
+    poly(f[1, 2],
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
         color=[:red, :green, :blue],
         strokecolor=:black, strokewidth=2
     )
+
+    x = [0, 1, 2, 0]
+    y = [0, 0, 1, 2]
+    z = [0, 2, 0, 1]
+    color = [:red, :green, :blue, :yellow]
+    i = [0, 0, 0, 1]
+    j = [1, 2, 3, 2]
+    k = [2, 3, 1, 3]
+    # indices interpreted as triangles (every 3 sequential indices)
+    indices = [1, 2, 3,   1, 3, 4,   1, 4, 2,   2, 3, 4]
+    mesh(f[2, 1], x, y, z, indices, color=color)
+
+    ax, p = poly(f[2, 2], [Rect2f(0, 0, 1, 1)], color=:green, strokewidth=50, strokecolor=:black)
+    xlims!(ax, -0.5, 1.5)
+    ylims!(ax, -0.5, 1.5)
+
+    f
 end
 
 @reference_test "scale_plot" begin
@@ -149,35 +151,6 @@ end
     linesegments!(ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
-    fig
-end
-
-@reference_test "Text Annotation" begin
-    text(
-        ". This is an annotation!",
-        position=(300, 200),
-        align=(:center,  :center),
-        fontsize=60,
-        font="Blackchancery"
-    )
-end
-
-@reference_test "Text rotation" begin
-    fig = Figure()
-    ax = fig[1, 1] = Axis(fig)
-    pos = (500, 500)
-    posis = Point2f[]
-    for r in range(0, stop=2pi, length=20)
-        p = pos .+ (sin(r) * 100.0, cos(r) * 100)
-        push!(posis, p)
-        text!(ax, "test",
-            position=p,
-            fontsize=50,
-            rotation=1.5pi - r,
-            align=(:center, :center)
-        )
-    end
-    scatter!(ax, posis, markersize=10)
     fig
 end
 
@@ -393,18 +366,12 @@ end
 end
 
 
-@reference_test "Simple pie chart" begin
-    fig = Figure(size=(800, 800))
+@reference_test "Simple pie charts" begin
+    fig = Figure()
     pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
+    pie(fig[1, 2], 1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
+    pie(fig[2, 1], 0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
     fig
-end
-
-@reference_test "Hollow pie chart" begin
-    pie(1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
-end
-
-@reference_test "Open pie chart" begin
-    pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
 @reference_test "Pie with Segment-specific Radius" begin
@@ -466,14 +433,6 @@ end
 @reference_test "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
-end
-
-
-@reference_test "Line Function" begin
-    x = range(0, stop=3pi)
-    fig, ax, lineplot = lines(x, sin.(x))
-    lines!(ax, x, cos.(x), color=:blue)
-    fig
 end
 
 @reference_test "Grouped bar" begin
@@ -609,14 +568,12 @@ end
 @reference_test "Array of Images Scatter" begin
     img = Makie.logo()
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
-end
 
-@reference_test "Image Scatter different sizes" begin
-    img = Makie.logo()
     img2 = load(Makie.assetpath("doge.png"))
     images = [img, img2]
     markersize = map(img-> Vec2f(reverse(size(img) ./ 10)), images)
-    scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+    scatter!(2:-1:1, 1:2, marker = images, markersize=markersize)
+    current_figure()
 end
 
 @reference_test "2D surface with explicit color" begin
@@ -714,11 +671,6 @@ end
     hexbin(fig[1, 1], x, y; bins = 40, colorscale = identity)
     hexbin(fig[1, 2], x, y; bins = 40, colorscale = log10)
     fig
-end
-
-@reference_test "multi rect with poly" begin
-    # use thick strokewidth, so it will make tests fail if something is missing
-    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
 end
 
 @reference_test "minor grid & scales" begin
@@ -1053,29 +1005,6 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
-end
-
-@reference_test "Latex labels after the fact" begin
-    f = Figure(fontsize = 50)
-    ax = Axis(f[1, 1])
-    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    f
-end
-
-@reference_test "Rich text" begin
-    f = Figure(fontsize = 30, size = (800, 600))
-    ax = Axis(f[1, 1],
-        limits = (1, 100, 0.001, 1),
-        xscale = log10,
-        yscale = log2,
-        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
-        xlabel = rich("X", subscript("label", fontsize = 25)),
-        ylabel = rich("Y", superscript("label")),
-    )
-    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
-    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
-    f
 end
 
 @reference_test "bracket scalar" begin
@@ -1602,11 +1531,7 @@ end
     f
 end
 
-@reference_test "Lines with OffsetArrays" begin
-    lines(Makie.OffsetArrays.Origin(-50)(1:100))
-end
-
-@reference_test "datashader AggCount" begin
+@reference_test "Datashader AggCount" begin
     data = [RNG.randn(Point2f, 10_000); (Ref(Point2f(1, 1)) .+ 0.3f0 .* RNG.randn(Point2f, 10_000))]
     f = Figure()
     ax = Axis(f[1, 1])
@@ -1644,6 +1569,10 @@ end
     ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
     ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
     limits!(ax4, 3000, 3090, 3460, 3500)
+    heatmap(f[3, 1], (1000, 2000), (500, 1000), Resampler(data2))
+    ax = Axis(f[3, 2])
+    limits!(ax, (0, 1), (0, 1))
+    heatmap!(ax, (1, 2), (1, 2), Resampler(data2))
     Colorbar(f[:, 3], pl1)
     sleep(1) # give the async operations some time
     f

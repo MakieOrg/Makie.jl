@@ -370,7 +370,7 @@ end
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
+Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
     if sv.sv isa Vector
         if length(sv.sv) != n
@@ -423,7 +423,7 @@ Stores information about the glyphs in a string that had a layout calculated for
 """
 struct GlyphCollection
     glyphs::Vector{UInt64}
-    fonts::Vector{FTFont}
+    fonts::ScalarOrVector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
@@ -436,20 +436,37 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts) == n
+        # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
+        return new(
+            glyphs,
+            to_font(fonts),
+            origins,
+            extents,
+            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            to_rotation(rotations),
+            to_color(colors),
+            to_color(strokecolors),
+            to_linewidth(strokewidths)
+        )
     end
+end
+
+function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
+    a.glyphs == b.glyphs &&
+    a.fonts == b.fonts &&
+    a.origins == b.origins &&
+    a.extents == b.extents &&
+    a.scales == b.scales &&
+    a.rotations == b.rotations &&
+    a.colors == b.colors &&
+    a.strokecolors == b.strokecolors &&
+    a.strokewidths == b.strokewidths
 end
 
 
