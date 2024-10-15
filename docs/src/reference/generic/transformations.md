@@ -60,7 +60,7 @@ Another option is to create the plot with an explicitly given `Transformation` o
 
 The Scene also holds onto a `Transformation` object.
 It's `transform_func` acts as a default for any plot added to the scene.
-Its `model` transformation acts as a secondary transformation to any plot, i.e. it is applied aftr the plots own model transformation `scene.transformation.model[] * plot.transformation.model[]`.
+Its `model` transformation acts as a secondary transformation to any plot, i.e. it is applied after the plots own model transformation `scene.transformation.model[] * plot.transformation.model[]`.
 The scene itself, i.e. its viewport, is not affected by the `Transformation` object.
 
 ## Constructors
@@ -75,7 +75,7 @@ If you want to remove only the `transform_func` but not model transformations, y
 You can also pass different starting values for `translation`, `scale` and `rotation` to these functions.
 This will not affect whether the parents model transformations are considered.
 
-As an example, here is a two arms on a cart raising a box with a rope.
+As an example, here are two arms on a cart raising a box with a rope.
 
 ```@figure backend=GLMakie
 using GLMakie
