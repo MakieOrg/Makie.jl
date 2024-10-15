@@ -91,6 +91,7 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniforms[:picking] = false
     uniforms[:object_id] = UInt32(0)
+    get!(uniforms, :PICKING_INDEX_FROM_UV, false)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
     mesh = GeometryBasics.Mesh(meta(pos; per_vertex...), faces)
