@@ -20,7 +20,7 @@ cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
-pkg"GeometryBasics#ff/refactor MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
+pkg"add GeometryBasics#ff/refactor MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
 
 makie_dir = @__DIR__
 commit = cd(makie_dir) do
