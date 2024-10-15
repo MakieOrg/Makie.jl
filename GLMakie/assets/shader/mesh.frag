@@ -132,8 +132,8 @@ void main(){
 #ifdef PICKING_INDEX_FROM_UV
     ivec2 size = textureSize(image, 0);
     ivec2 jl_idx = clamp(ivec2(o_uv * size), ivec2(0), size-1);
-    uint idx = jl_idx.x + jl_idx.y * size.x;
-    write2framebuffer(color, uvec2(o_id.x, 1 + idx));
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
+    write2framebuffer(color, uvec2(o_id.x, uint(1) + idx));
 #else
     write2framebuffer(color, o_id);
 #endif
