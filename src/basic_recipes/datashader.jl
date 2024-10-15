@@ -336,8 +336,11 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     show_timings = false
     """
     If the resulting image should be displayed interpolated.
+    Note that interpolation can make NaN-adjacent bins also NaN in some backends, for example
+    due to interpolation schemes used in GPU hardware. This can make it look
+    like there are more NaN bins than there actually are.
     """
-    interpolate = true
+    interpolate = false
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
