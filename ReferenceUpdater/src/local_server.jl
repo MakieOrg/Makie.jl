@@ -12,28 +12,42 @@ function serve_update_page_from_dir(folder)
 
     folder = realpath(folder)
     @assert isdir(folder) "$folder is not a valid directory."
-    
+    group_scores(folder)
+    group_files(folder, "new_files.txt", "new_files_grouped.txt")
+    group_files(folder, "missing_files.txt", "missing_files_grouped.txt")
+
     router = HTTP.Router()
 
     function receive_update(req)
         data = JSON3.read(req.body)
-        images = data["images"]
+        images_to_update = data["images_to_update"]
+        images_to_delete = data["images_to_delete"]
         tag = data["tag"]
 
-        tempdir = tempname()
         recorded_folder = joinpath(folder, "recorded")
-        reference_folder = joinpath(folder, "reference")
 
-        @info "Copying reference folder to \"$tempdir\""
-        cp(reference_folder, tempdir)
+        @info "Downloading latest reference folder for $tag"
+        tempdir = download_refimages(tag)
+        
+        @info "Updating files in $tempdir"
 
-        for image in images
-            @info "Overwriting \"$image\" in new reference folder"
+        for image in images_to_update
+            @info "Overwriting or adding $image"
             copy_filepath = joinpath(tempdir, image)
             copy_dir = splitdir(copy_filepath)[1]
             # make the path in case a new refimage is in a not yet existing folder
             mkpath(copy_dir)
             cp(joinpath(recorded_folder, image), copy_filepath, force = true)
+        end
+
+        for image in images_to_delete
+            @info "Deleting $image"
+            copy_filepath = joinpath(tempdir, image)
+            if isfile(copy_filepath)
+                rm(copy_filepath, recursive = true)
+            else
+                @warn "Cannot delete $image - it has already been deleted."
+            end
         end
 
         @info "Uploading updated reference images under tag \"$tag\""
@@ -106,7 +120,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
     checkruns = filter(checksinfo["check_runs"]) do checkrun
         name = checkrun["name"]
         id = checkrun["id"]
-    
+
         if name == "Merge artifacts"
             job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
@@ -120,14 +134,20 @@ function serve_update_page(; commit = nothing, pr = nothing)
             return false
         end
     end
+
     if isempty(checkruns)
         error("\"Merge artifacts\" run is not available.")
     end
     if length(checkruns) > 1
-        error("Found multiple checkruns for \"Merge artifacts\", this is unexpected.")
-    end
-
+        datetimes = map(checkruns) do checkrun
+            DateTime(checkrun["completed_at"], dateformat"y-m-dTH:M:SZ")
+        end
+        datetime, idx = findmax(datetimes)
+        @warn("Found multiple checkruns for \"Merge artifacts\". Using latest with timestamp: $datetime")
+        check = checkruns[idx]
+    else
     check = only(checkruns)
+    end
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
     run = JSON3.read(authget(job["run_url"]).body)
@@ -145,7 +165,6 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
                 rm(filepath)
-                split_scores(tmpdir)
                 URL_CACHE[download_url] = tmpdir
             else
                 tmpdir = URL_CACHE[download_url]
@@ -185,14 +204,16 @@ function unzip(file, exdir = "")
 end
 
 
-function split_scores(path)
+function group_scores(path)
+    isfile(joinpath(path, "scores_table.tsv")) && return
+
     # Load all refimg scores into a Dict
     # `filename => (score_glmakie, score_cairomakie, score_wglmakie)`
     data = Dict{String, Vector{Float64}}()
     open(joinpath(path, "scores.tsv"), "r") do file
         for line in eachline(file)
             score, filepath = split(line, '\t')
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             filename = join(pieces[2:end], '/')
 
@@ -208,7 +229,7 @@ function split_scores(path)
             end
         end
     end
-    
+
     # sort by max score across all backends so problem come first
     data_vec = collect(pairs(data))
     sort!(data_vec, by = x -> maximum(x[2]), rev = true)
@@ -227,4 +248,44 @@ function split_scores(path)
         end
     end
 
+    return
+end
+
+function group_files(path, input_filename, output_filename)
+    isfile(joinpath(path, output_filename)) && return
+    
+    # Group files in new_files/missing_files into a table like layout:
+    #  GLMakie  CairoMakie  WGLMakie
+
+    # collect refimg names and which backends they exist for
+    data = Dict{String, Vector{Bool}}()
+    open(joinpath(path, input_filename), "r") do file
+        for filepath in eachline(file)
+            pieces = split(filepath, '/')
+            backend = pieces[1]
+            if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
+                error("Failed to parse backend in \"$line\", got \"$backend\"")
+            end
+            
+            filename = join(pieces[2:end], '/')
+            exists = get!(data, filename, [false, false, false])
+
+            exists[1] |= backend == "GLMakie"
+            exists[2] |= backend == "CairoMakie"
+            exists[3] |= backend == "WGLMakie"
+        end
+    end
+
+    # generate new structed file
+    open(joinpath(path, output_filename), "w") do file
+        for (filename, valid) in data
+            println(file,
+                ifelse(valid[1], "GLMakie/$filename", "INVALID"), '\t',
+                ifelse(valid[2], "CairoMakie/$filename", "INVALID"), '\t',
+                ifelse(valid[3], "WGLMakie/$filename", "INVALID")
+            )
+        end
+    end
+
+    return
 end

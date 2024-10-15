@@ -152,7 +152,8 @@ function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
-lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
+const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
+lasset(paths...) = read(joinpath(ASSETS_DIR, paths...), String)
 
 isscalar(x::StaticVector) = true
 isscalar(x::Mat) = true
@@ -314,7 +315,7 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
