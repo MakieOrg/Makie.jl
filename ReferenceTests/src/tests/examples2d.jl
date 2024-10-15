@@ -1679,6 +1679,7 @@ end
 end
 
 @reference_test "rainclouds" begin
+    RAINCLOUD_RNG[] = RNG.STABLE_RNG
     data = RNG.randn(1000)
     data[1:200] .+= 3
     data[201:500] .-= 3
