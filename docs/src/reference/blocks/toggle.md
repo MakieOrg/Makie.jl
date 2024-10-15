@@ -33,7 +33,7 @@ fig
 nothing # hide
 ```
 
-```@setup intervalslider
+```@setup toggle
 using ..FakeInteraction
 
 events = [
