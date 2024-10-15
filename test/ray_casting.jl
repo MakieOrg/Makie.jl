@@ -213,7 +213,7 @@
             p = mesh!(scene, Rect3f(Point3f(0), Vec3f(1)), transformation = transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (172.0, 282.0))
-            pos = Makie.position_on_plot(p, 24, ray, apply_transform = true)
+            pos = Makie.position_on_plot(p, 15, ray, apply_transform = true)
             @test pos ≈ Point3f(0.7139215, 0.40438107, 1.344213)
 
             # Surface (3D)
