@@ -20,8 +20,7 @@ set_theme!(size=(800, 600))
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 display_time = @ctime colorbuffer(fig; px_per_unit=1)
 
-using BenchmarkTools
-using BenchmarkTools.JSON
+using JSON
 using Pkg
 
 project_name = basename(dirname(Pkg.project().path))
@@ -31,13 +30,31 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 @show [t_using, create_time, display_time]
 push!.(old[1:3], [t_using, create_time, display_time])
 
-b1 = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-b2 = @benchmark colorbuffer(fig; px_per_unit=1)
+macro simple_time(expr)
+    time_expr = quote
+        t1 = time_ns()
+        $expr
+        t2 = time_ns()
+        Float64(t2 - t1)
+    end
+
+    quote
+        times = Float64[]
+        for i in 1:101
+            t = Core.eval(Main, $(QuoteNode(time_expr)))
+            i > 1 && push!(times, t)
+        end
+        times
+    end
+end
+@time "time 1" figure_times = @simple_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+@time "benchmark 2" colorbuffer_times = @simple_time colorbuffer(fig; px_per_unit=1)
 
 using Statistics
 
-push!(old[4], mean(b1.times))
-push!(old[5], mean(b2.times))
+append!(old[4], figure_times)
+append!(old[5], colorbuffer_times)
 
 open(io-> JSON.print(io, old), result, "w")
 
