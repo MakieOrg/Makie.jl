@@ -257,6 +257,7 @@
 
             images_to_update = Array.from(document.querySelectorAll(".update-checkbox"))
                 .filter(inp => inp.checked)
+                .concat(Array.from(document.querySelectorAll(".add-checkbox")).filter(inp => inp.checked))
                 .map(inp => inp.dataset.image)
 
             images_to_delete = Array.from(document.querySelectorAll(".delete-checkbox"))
