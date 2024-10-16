@@ -47,9 +47,9 @@ macro simple_time(expr)
         times
     end
 end
-@time "time 1" figure_times = @simple_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+@time "creating figure" figure_times = @simple_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-@time "benchmark 2" colorbuffer_times = @simple_time colorbuffer(fig; px_per_unit=1)
+@time "colorbuffer" colorbuffer_times = @simple_time colorbuffer(fig; px_per_unit=1)
 
 using Statistics
 
