@@ -153,6 +153,7 @@ function draw_surface(screen, main, data::Dict)
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
                 "shading" => light_calc(shading),
+                "picking_mode" => "#define PICKING_INDEX_FROM_UV",
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),

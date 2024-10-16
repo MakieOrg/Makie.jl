@@ -344,8 +344,6 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     return robj
 end
 
-Base.insert!(::GLMakie.Screen, ::Scene, ::Makie.PlotList) = nothing
-
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
@@ -693,8 +691,8 @@ end
 function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
     return cached_robj!(screen, scene, plot) do gl_attributes
         position = lift(plot, plot[1], plot[2]) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = x
+            ymin, ymax = y
             rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
             return decompose(Point2d, rect)
         end
@@ -710,6 +708,7 @@ function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
         else
             gl_attributes[:image] = Texture(pop!(gl_attributes, :color); minfilter=interp)
         end
+        gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
         return draw_mesh(screen, gl_attributes)
     end
 end
@@ -893,7 +892,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
-            @assert modelinv[4, 4] == 1
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
@@ -967,7 +966,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
             modelinv = inv(model)
-            @assert modelinv[4, 4] == 1
+            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
