@@ -54,7 +54,7 @@ Settings include anything that isn't a mouse or keyboard button.
 - `mouse_translationspeed = 0.5` sets the speed of mouse translations.
 - `mouse_zoomspeed = 1.0` sets the speed of mouse zooming (mousewheel).
 
-- `circular_rotation = (true, true, true)` enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
+- `circular_rotation = (false, false, false)` enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
 
 ## Controls
 
@@ -159,7 +159,7 @@ function Camera3D(scene::Scene; kwargs...)
         mouse_zoomspeed = 1.0,
 
         projectiontype = Makie.Perspective,
-        circular_rotation = (true, true, true),
+        circular_rotation = (false, false, false),
         rotation_center = :lookat,
         zoom_shift_lookat = true,
         fixed_axis = true,
