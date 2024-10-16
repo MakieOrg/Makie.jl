@@ -628,18 +628,18 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    show_imagelike(inspector, plot, "H", true)
+    show_imagelike(inspector, plot, "H", idx, true)
 end
 
 function show_data(inspector::DataInspector, plot::Image, idx)
-    show_imagelike(inspector, plot, "img", false)
+    show_imagelike(inspector, plot, "img", idx, false)
 end
 
 _to_array(x::AbstractArray) = x
 _to_array(x::Resampler) = x.data
 
 
-function show_imagelike(inspector, plot, name, edge_based)
+function show_imagelike(inspector, plot, name, idx, edge_based)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
@@ -659,8 +659,9 @@ function show_imagelike(inspector, plot, name, edge_based)
         i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
-        i, j, z = _pixelated_getindex(xrange, yrange, zrange, pos, edge_based)
-        x = i; y = j
+        Nx = size(zrange, 1)
+        y, x = j, i = fldmod1(idx, Nx)
+        z = zrange[i, j]
     end
 
     # in case we hover over NaN values
@@ -971,7 +972,10 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         return true
     end
 
-    i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
+    zrange = child[3][]
+    Nx = size(zrange, 1)
+    j, i = fldmod1(idx, Nx)
+    val = zrange[i, j]
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
