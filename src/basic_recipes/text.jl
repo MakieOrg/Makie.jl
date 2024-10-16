@@ -585,7 +585,7 @@ _get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(at
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sup}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.75)
+    fontsize = _get_fontsize(att, gs.size * 0.70)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
@@ -611,7 +611,7 @@ end
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sub}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.75)
+    fontsize = _get_fontsize(att, gs.size * 0.70)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
@@ -624,7 +624,7 @@ end
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.75)
+    fontsize = _get_fontsize(att, gs.size * 0.70)
     GlyphState(
         gs.x,
         gs.baseline - 0.25 * gs.size[2],
@@ -635,7 +635,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
 end
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sup}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.75)
+    fontsize = _get_fontsize(att, gs.size * 0.70)
     GlyphState(
         gs.x,
         gs.baseline + 0.5 * gs.size[2],
