@@ -5,10 +5,9 @@ function ylims! end
 function zlims! end
 
 """
-    xlabel!([scene,] xlabel)
+    xlabel!(scene, xlabel)
 
 Set the x-axis label for the given Scene.
-Defaults to using the current Scene.
 """
 function xlabel!(scene, xlabel::AbstractString)
     axis = scene[OldAxis]
@@ -18,10 +17,9 @@ function xlabel!(scene, xlabel::AbstractString)
 end
 
 """
-    ylabel!([scene,] ylabel)
+    ylabel!(scene, ylabel)
 
 Set the y-axis label for the given Scene.
-Defaults to using the current Scene.
 """
 function ylabel!(scene, ylabel::AbstractString)
     axis = scene[OldAxis]
@@ -35,10 +33,10 @@ function ylabel!(scene, ylabel::AbstractString)
 end
 
 """
-    zlabel!([scene,] zlabel)
+    zlabel!(scene, zlabel)
 
 Set the z-axis label for the given Scene.
-Defaults to using the current Scene.
+
 !!! warning
     The Scene must have an Axis3D.  If not, then this function will error.
 """
