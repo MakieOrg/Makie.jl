@@ -1688,8 +1688,8 @@ end
     fig = Figure()
     xs = 2 .* RNG.randn(10) .+ 3
     qqnorm(fig[1, 1], xs, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
-    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
-    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqnorm(fig[2, 2], xs, qqline = :identity, color = :orange)
     fig
 end
@@ -1698,8 +1698,8 @@ end
     fig = Figure()
     xs = 2 .* RNG.randn(10) .+ 3; ys = RNG.randn(10)
     qqplot(fig[1, 1], xs, ys, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
-    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
-    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
     fig
 end
