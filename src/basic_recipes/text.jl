@@ -585,11 +585,11 @@ _get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(at
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sup}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.70)
+    fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
-        gs.baseline + 0.45 * gs.size[2] + offset[2],
+        gs.baseline + 0.4 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -611,11 +611,11 @@ end
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sub}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.70)
+    fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
-        gs.baseline - 0.3 * gs.size[2] + offset[2],
+        gs.baseline - 0.25 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -624,10 +624,10 @@ end
 
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.70)
+    fontsize = _get_fontsize(att, gs.size * 0.66)
     GlyphState(
         gs.x,
-        gs.baseline - 0.3 * gs.size[2],
+        gs.baseline - 0.25 * gs.size[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -635,10 +635,10 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
 end
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sup}, fonts)
     att = rt.attributes
-    fontsize = _get_fontsize(att, gs.size * 0.70)
+    fontsize = _get_fontsize(att, gs.size * 0.66)
     GlyphState(
         gs.x,
-        gs.baseline + 0.45 * gs.size[2],
+        gs.baseline + 0.4 * gs.size[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
