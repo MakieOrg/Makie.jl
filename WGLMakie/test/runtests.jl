@@ -39,8 +39,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
 
-include("picking.jl")
-
 @testset "memory leaks" begin
     Makie.CURRENT_FIGURE[] = nothing
     app = App(nothing)
