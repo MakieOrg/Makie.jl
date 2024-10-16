@@ -14,7 +14,7 @@ function pick_native(screen::Screen, rect::Rect2i)
     rw, rh = widths(rect)
     w, h = size(screen.root_scene)
     ppu = screen.px_per_unit[]
-    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
+    if rx >= 0 && ry >= 0 && rx + rw <= w && ry + rh <= h
         rx, ry, rw, rh = round.(Int, ppu .* (rx, ry, rw, rh))
         sid = zeros(SelectionID{UInt32}, rw, rh)
         glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
