@@ -30,7 +30,7 @@ function uniformfunc(typ::DataType, dims::Tuple{Int})
 end
 function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
     M, N = dims
-    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
+    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(N)x$(M)", opengl_postfix(typ)))
 end
 
 gluniform(location::Integer, x::Nothing) = nothing
@@ -105,7 +105,7 @@ end
 
 function glsl_typename(t::Type{T}) where T <: Mat
     M, N = size(t)
-    string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
+    string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(N, "x", M))
 end
 toglsltype_string(t::Observable) = toglsltype_string(to_value(t))
 toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"

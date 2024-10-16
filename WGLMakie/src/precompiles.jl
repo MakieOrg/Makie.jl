@@ -14,6 +14,10 @@ macro compile(block)
             Bonito.jsrender(session, figlike)
             s = serialize_scene(scene)
             Bonito.SerializedMessage(session, Dict(:data => s))
+            session = Session()
+            app = App(()-> DOM.div(figlike))
+            dom = Bonito.session_dom(session, app)
+            show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
             close(session)
             return nothing
         end
@@ -30,6 +34,16 @@ let
         Makie.CURRENT_FIGURE[] = nothing
         Observables.clear(TEXTURE_ATLAS)
         TEXTURE_ATLAS[] = Float32[]
+        # This should happen in atexit in Bonito, but on Julia versions below v1.11
+        # atexit isn't called
+        for (task, (task, close_ref)) in Bonito.SERVER_CLEANUP_TASKS
+            close_ref[] = false
+        end
+        Bonito.CURRENT_SESSION[] = nothing
+        if !isnothing(Bonito.GLOBAL_SERVER[])
+            close(Bonito.GLOBAL_SERVER[])
+        end
+        Bonito.GLOBAL_SERVER[] = nothing
         nothing
     end
 end

@@ -120,15 +120,25 @@ function push_build(;
             """)
         end
 
-        max_version = sort!(filter([x for x in readdir(dirname) if isdir(joinpath(dirname, x))]) do x
+        all_folders = [x for x in readdir(dirname) if isdir(joinpath(dirname, x))]
+        version_folders = filter(all_folders) do x
             tryparse(VersionNumber, x) !== nothing
-        end, by = VersionNumber)[end]
+        end
+        sort!(version_folders, by = VersionNumber, rev = true)
+
+        max_version = version_folders[begin]
 
         open(joinpath(dirname, "versions.js"), "w") do io
             println(io, """
             var DOCUMENTER_NEWEST = "$max_version";
             var DOCUMENTER_STABLE = "stable";
             """)
+
+            println(io, "var DOC_VERSIONS = [")
+            for folder in ["stable"; version_folders; "dev"]
+                println(io, "  \"", folder, "\",")
+            end
+            println(io, "];")
         end
 
         # generate the sitemap only for the highest version so google doesn't advertise old docs

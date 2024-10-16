@@ -199,6 +199,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
     drag_ongoing = Ref(false)
+    mouse_downed_at = Ref(Point2d(0, 0)) # store the position of mouse down so drags only start after some threshold
+    drag_threshold = 2.0 # mouse needs to move this distance before a drag starts, otherwise it's easy to drag instead of click on trackpads
     mouse_was_inside = Ref(false)
     prev_t = Ref(0.0)
     t_last_click = Ref(0.0)
@@ -231,7 +233,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
             else
                 # mouse was downed inside but no drag is ongoing
                 # that means a drag started
-                if mouse_downed_inside[]
+                if mouse_downed_inside[] && norm(mouse_downed_at[] - px) >= drag_threshold
                     drag_ongoing[] = true
                     event = to_drag_start_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
@@ -286,15 +288,15 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         # TODO: this could probably be simplified by just using event.button
         # though that would probably change the way this handles a bit
         pressed_buttons = events(scene).mousebuttonstate
-
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
-        if event.action == Mouse.press && _isstandardmousebutton(first(pressed_buttons))
+        if event.action == Mouse.press && !isempty(pressed_buttons) && _isstandardmousebutton(first(pressed_buttons))
             if length(pressed_buttons) == 1
                 button = first(pressed_buttons)
                 mouse_downed_button[] = button
 
                 if mouse_was_inside[]
+                    mouse_downed_at[] = px
                     event = to_down_event(mouse_downed_button[])
                     x = setindex!(mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])

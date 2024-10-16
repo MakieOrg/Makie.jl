@@ -112,13 +112,17 @@ struct ScreenConfig
     end
 end
 
+css_px_per_unit(pt_per_unit) = pt_per_unit / 0.75
+
 function device_scaling_factor(rendertype, sc::ScreenConfig)
-    isv = is_vector_backend(convert(RenderType, rendertype))
-    return isv ? sc.pt_per_unit : sc.px_per_unit
+    rt = convert(RenderType, rendertype)
+    isv = is_vector_backend(rt)
+    # from version 1.18 on, Cairo saves SVGs without the pt unit specified, so they are actually in CSS px now
+    return rt === SVG ? css_px_per_unit(sc.pt_per_unit) : isv ? sc.pt_per_unit : sc.px_per_unit
 end
 
 function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
-    return is_vector_backend(surface) ? sc.pt_per_unit : sc.px_per_unit
+    return device_scaling_factor(get_render_type(surface), sc)
 end
 
 const LAST_INLINE = Ref{Union{Makie.Automatic,Bool}}(Makie.automatic)
@@ -200,6 +204,7 @@ Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.he
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
 Base.insert!(screen::Screen, scene::Scene, plot) = nothing
+
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     # Currently, we rerender every time, so nothing needs
     # to happen here.  However, in the event that changes,

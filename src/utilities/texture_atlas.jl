@@ -458,7 +458,7 @@ function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
-_bcast(x::Vec) = (x,)
+_bcast(x::Vec) = Ref(x)
 _bcast(x) = x
 
 # Calculates the scaling factor from unpadded size -> padded size
@@ -534,7 +534,7 @@ function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
-    return offset_bezierpath.(Ref(atlas), bp, _bcast(scale), _bcast(offset))
+    return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)), Vec2d.(_bcast(offset)))
 end
 
 function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath

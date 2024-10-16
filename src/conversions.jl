@@ -47,10 +47,15 @@ function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT
     return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
 
-convert_single_argument(a::AbstractArray{Any}) = convert_single_argument([x for x in a])
+function convert_single_argument(a::AbstractArray{Any})
+    isempty(a) && return a
+    return convert_single_argument([x for x in a])
+end
+
 # Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
 convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
 convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
+convert_single_argument(a::OffsetArray{<:Point}) = OffsetArrays.no_offset_view(a)
 
 
 ################################################################################
@@ -82,6 +87,10 @@ function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N
         throw(ArgumentError("Only 2D and 3D points are supported."))
     end
     return (elconvert(Point{N, float_type(_T)}, positions),)
+end
+
+function convert_arguments(T::PointBased, positions::OffsetVector)
+   return convert_arguments(T, OffsetArrays.no_offset_view(positions))
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -352,30 +361,68 @@ function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::Abstract
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
+function convert_arguments(::VertexGrid, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
+end
+
+function to_endpoints(x::Tuple{<:Real,<:Real})
+    T = float_type(x...)
+    return EndPoints(T.(x))
+end
+to_endpoints(x::Interval) = to_endpoints(endpoints(x))
+to_endpoints(x::EndPoints) = x
+to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
+function to_endpoints(x, dim)
+    x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
+    return to_endpoints(x)
+end
+
+function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_endpoints(x), to_endpoints(y), el32convert(z))
+end
+
+function convert_arguments(::CellGrid, x::EndPoints, y::EndPoints,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (x, y, el32convert(z))
+end
+
+function get_step(x::EndPoints, n)
+    # length 1 step should be 1
+    x[1] == x[2] && n == 1 && return 1
+    return step(range(x...; length = n))
+end
+
+function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+
+    xe = to_endpoints(x)
+    ye = to_endpoints(y)
+    xstep = get_step(xe, size(z, 1)) / 2.0
+    ystep = get_step(ye, size(z, 2)) / 2.0
+
+    Tx = typeof(xe[1])
+    Ty = typeof(ye[1])
+    # heatmaps are centered on the edges, so we need to adjust the range
+    # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), whcih only substracts the step
+    # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
+    # If we return a different type with no conversion overload, it stops that recursion
+    return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
+end
+
 function print_range_warning(side::String, value)
     @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
         Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
         Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
 end
 
-to_interval(x::Tuple{<: Real, <: Real}) = float_convert(x[1]) .. float_convert(x[2])
-function to_interval(x::Union{Interval,AbstractVector,ClosedInterval})
-    return float_convert(minimum(x)) .. float_convert(maximum(x))
-end
-
-
-function to_interval(x, dim)
-    # having minimum and maximum here actually invites bugs
-    x isa AbstractVector && print_range_warning(dim, x)
-    return to_interval(x)
-end
-
-
 
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    x = to_interval(xs, "x")
-    y = to_interval(ys, "y")
+    x = to_endpoints(xs, "x")
+    y = to_endpoints(ys, "y")
     return (x, y, el32convert(data))
 end
 
@@ -424,7 +471,7 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(data))
+    return (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(data))
 end
 
 """
@@ -435,7 +482,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
-    (to_interval(x, "x"), to_interval(y, "y"), to_interval(z, "z"), el32convert(i))
+    (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(i))
 end
 
 ################################################################################
@@ -622,7 +669,7 @@ function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::Real
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
     # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
-    return (map(to_interval, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -632,6 +679,12 @@ end
 function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
+end
+
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
+    # f() returns interval for these plottypes
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
+    return convert_arguments(P, x, f.(x))
 end
 
 # OffsetArrays conversions
@@ -648,7 +701,8 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
 Converts the element array type to `T1` without making a copy if the element type matches
@@ -670,6 +724,7 @@ float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_ty
 float_type(a::Type, rest::Type...) = promote_type(map(float_type, (a, rest...))...)
 float_type(::Type{Float64}) = Float64
 float_type(::Type{Float32}) = Float32
+float_type(::Type{Bool}) = Float32
 float_type(::Type{<:Real}) = Float64
 float_type(::Type{<:Union{Int8,UInt8,Int16,UInt16}}) = Float32
 float_type(::Type{<:Union{Float16}}) = Float32
@@ -697,7 +752,9 @@ float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
 float32type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float32type(T)}
 
 # We may want to always use UInt8 for colors?
-float32type(::Type{<: RGB}) = RGB{Float32}
+float32type(::Type{<:RGB{N0f8}}) = RGB{N0f8}
+float32type(::Type{<:RGBA{N0f8}}) = RGBA{N0f8}
+float32type(::Type{<:RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
@@ -768,35 +825,27 @@ function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
     return map(Point{N, float_type(T)}, verts)
 end
 
-function to_vertices(verts::AbstractMatrix{<: Real})
+function to_vertices(verts::AbstractMatrix{T}) where {T<:Real}
+    T_out = float_type(T)
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val(1))
+        to_vertices(verts, T_out, Val(1), Val(size(verts, 1)))
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val(2))
+        to_vertices(verts, T_out, Val(2), Val(size(verts, 2)))
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Real
-    N = size(verts, 1)
-    if T == float_type(T) && N == 3
-        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{1}, ::Val{N}) where {T <: Real, Tout, N}
+    if T == Tout && N == 3
+        return reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
-        let N = Val(N); lverts = verts; T_out = float_type(T)
-            broadcast(1:size(verts, 2), N) do vidx, n
-                Point(ntuple(i-> T_out(lverts[i, vidx]), n))
-            end
-        end
+        return Point{N,Tout}[ntuple(j -> Tout(verts[j, i]), N) for i in 1:size(verts, 2)]
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Real
-    let N = Val(size(verts, 2));  lverts = verts; T_out = float_type(T)
-        broadcast(1:size(verts, 1), N) do vidx, n
-            Point(ntuple(i-> T_out(lverts[vidx, i]), n))
-        end
-    end
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{2}, ::Val{N}) where {T<:Real, Tout, N}
+    return Point{N, Tout}[ntuple(j-> Tout(verts[i, j]), N) for i in 1:size(verts, 1)]
 end
 
 
@@ -898,6 +947,116 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+
+## UV Transforms
+
+# defaults that place a cow image the same way as the image
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+
+# defaults matching master
+# Note - defaults with Patterns should be identity (handled in backends)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+
+convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
+convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
+convert_attribute(x::Nothing, ::key"uv_transform") = x
+
+function convert_attribute(angle::Real, ::key"uv_transform")
+    # To rotate an image with uvs in the 0..1 range we need to translate,
+    # rotate, translate back.
+    # For patterns and in terms of what's actually happening to the uvs we
+    # should not translate at all.
+    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+end
+
+"""
+    uv_transform(args::Tuple)
+    uv_transform(args...)
+
+Returns a 3x3 uv transformation matrix combinign all the given arguments. This
+lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
+like matrices `(op3, op2, op1)`.
+
+Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
+`uv_transform(translation, scale)` as a special case.
+"""
+uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
+uv_transform(packed...) = uv_transform(packed)
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+
+
+# prefer scale as single argument since it may be useful for patterns
+# while just translation is mostly useless
+"""
+    uv_transform(scale::VecTypes{2})
+    uv_transform(translation::VecTypes{2}, scale::VecTypes{2})
+    uv_transform(angle::Real)
+
+Creates a 3x3 uv transformation matrix based on the given translation and scale
+or rotation angle (around z axis).
+"""
+uv_transform(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}) = uv_transform(x[1], x[2])
+uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
+function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
+    return Mat3f(
+        scale[1], 0, 0,
+        0, scale[2], 0,
+        translation[1], translation[2], 1
+    )
+end
+function uv_transform(angle::Real)
+    return Mat3f(
+         cos(angle), sin(angle), 0,
+        -sin(angle), cos(angle), 0,
+        0, 0, 1
+    )
+end
+
+"""
+    uv_transform(action::Symbol)
+
+Creates a 3x3 uv transformation matrix from a given named action. They assume
+`0 < uv < 1` and thus may not work correctly with Patterns. The actions include
+- `:rotr90` corresponding to `rotr90(texture)`
+- `:rotl90` corresponding to `rotl90(texture)`
+- `:rot180` corresponding to `rot180(texture)`
+- `:swap_xy, :transpose` which corresponds to transposing the texture
+- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
+- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+"""
+function uv_transform(action::Symbol)
+    # TODO: do some explicitly named operations
+    if action == :rotr90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action == :rotl90
+        return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action == :rot180
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:swap_xy, :transpose)
+        return Mat3f(0,1,0, 1,0,0, 0,0,1)
+    elseif action in (:flip_x, :invert_x)
+        return Mat3f(-1,0,0, 0,1,0, 1,0,1)
+    elseif action in (:flip_y, :invert_y)
+        return Mat3f(1,0,0, 0,-1,0, 0,1,1)
+    elseif action in (:flip_xy, :invert_xy)
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:meshscatter, :mesh, :image, :surface)
+        M = convert_attribute(automatic, key"uv_transform"(), Key{action}())
+        return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
+    # elseif action == :surface
+        # return Mat3f(I)
+    else
+        error("Transformation :$action not recognized.")
+    end
+end
 
 convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
 convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
@@ -1713,7 +1872,10 @@ scatter(..., marker=FastPixel())
 For significantly faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
-struct FastPixel end
+struct FastPixel
+    marker_type::Cint
+end
+FastPixel() = FastPixel(1)
 
 """
 Vector of anything that is accepted as a single marker will give each point its own marker.

@@ -26,6 +26,8 @@ flat in int plane_front;
 uniform lowp usampler3D voxel_id;
 uniform uint objectid;
 uniform float gap;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 {{uv_map_type}} uv_map;
 {{color_map_type}} color_map;
@@ -81,6 +83,22 @@ vec4 get_color(sampler2D color, Nothing color_map, int id) {
     return get_color_from_texture(color, id);
 }
 
+bool is_clipped()
+{
+    float d;
+    // Center of voxel
+    ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);
+    vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
+    for (int i = 0; i < _num_clip_planes; i++) {
+        // distance between clip plane and center
+        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        if (d < 0.0) 
+            return true;
+    }
+
+    return false;
+}
 
 void write2framebuffer(vec4 color, uvec2 id);
 
@@ -90,6 +108,9 @@ vec3 illuminate(vec3 normal, vec3 base_color);
 
 void main()
 {
+    if (is_clipped())
+        discard;
+
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
     if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
         voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)
@@ -125,7 +146,7 @@ void main()
 
     // TODO: index into 3d array
     ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);
-    ivec3 idx = ivec3(o_uvw * size);
+    ivec3 idx = clamp(ivec3(o_uvw * size), ivec3(0), size-1);
     int lin = 1 + idx.x + size.x * (idx.y + size.y * idx.z);
 
     // draw

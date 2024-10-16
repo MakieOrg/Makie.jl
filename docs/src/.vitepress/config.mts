@@ -7,6 +7,17 @@ const baseTemp = {
   base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',// TODO: replace this in makedocs!
 }
 
+const navTemp = {
+  nav: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+}
+
+const nav = [
+  ...navTemp.nav,
+  {
+    component: 'VersionPicker'
+  }
+]
+
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: baseTemp.base,
@@ -18,7 +29,9 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
     ['script', {src: '/versions.js'}],
-    ['script', {src: `${baseTemp.base}siteinfo.js`}]
+    ['script', {src: `${baseTemp.base}siteinfo.js`}],
+    ['script', {async:'', defer:'', src:'https://api.makie.org/latest.js'}],
+    ['noscript', {}, '<img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/>'],
   ],
   ignoreDeadLinks: true,
 
@@ -42,7 +55,7 @@ export default defineConfig({
         detailedView: true
       }
     },
-    nav: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+    nav,
     sidebar: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
     editLink: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
     socialLinks: [

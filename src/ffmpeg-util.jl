@@ -177,11 +177,45 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
     return `$(ffmpeg_prefix) $(ffmpeg_options)`
 end
 
+mutable struct TickController
+    tick::Observable{Tick}
+    frame_counter::Int
+    frame_time::Float64
+    filter_ticks::Bool
+    filter_callback::Observables.ObserverFunction
+end
 
-struct VideoStream
+function TickController(figlike, frametime, filter = true)
+    tick = events(figlike).tick
+    cb = if filter
+        on(tick -> Consume(tick.state != OneTimeRenderTick), tick, priority = typemax(Int))
+    else
+        on(tick -> nothing, tick, priority = typemax(Int))
+    end
+    controller = TickController(tick, 0, frametime, filter, cb)
+    finalizer(stop!, controller)
+    next_tick!(controller)
+    return controller
+end
+
+function next_tick!(controller::TickController)
+    controller.tick[] = Tick(
+        OneTimeRenderTick, 
+        controller.frame_counter,
+        controller.frame_counter * controller.frame_time,
+        controller.frame_time
+    )
+    controller.frame_counter += 1
+    return
+end
+
+stop!(controller::TickController) = off(controller.filter_callback)
+
+mutable struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
     screen::MakieScreen
+    tick_controller::TickController
     buffer::Matrix{RGB{N0f8}}
     path::String
     options::VideoStreamOptions
@@ -190,7 +224,7 @@ end
 """
     VideoStream(fig::FigureLike;
             format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-            loglevel="quiet", visible=false, connect=false, backend=current_backend(),
+            loglevel="quiet", visible=false, connect=false, filter_ticks=true, backend=current_backend(),
             screen_config...)
 
 Returns a `VideoStream` which can pipe new frames into the ffmpeg process with few allocations via [`recordframe!(stream)`](@ref).
@@ -208,11 +242,15 @@ $(Base.doc(VideoStreamOptions))
 * `visible=false`: make window visible or not
 * `connect=false`: connect window events or not
 * `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
+
+## Other
+
+* `filter_ticks`: When true, tick events other than `tick.state = Makie.OneTimeRenderTick` are removed until `save()` is called or the VideoStream object gets deleted.
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-        loglevel="quiet", visible=false, update=true, backend=current_backend(),
-        screen_config...)
+        loglevel="quiet", visible=false, update=true, filter_ticks=true,
+        backend=current_backend(), screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
@@ -229,7 +267,13 @@ function VideoStream(fig::FigureLike;
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
-    return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+    tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
+    result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
+    finalizer(result) do x
+        @async rm(x.path; force=true)
+        stop!(x.tick_controller)
+    end
+    return result
 end
 
 """
@@ -242,8 +286,13 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
-    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-    write(io.io, io.buffer)
+    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+        write(io.io, glnative)
+    else
+        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+        write(io.io, io.buffer)
+    end
+    next_tick!(io.tick_controller)
     return
 end
 
@@ -267,7 +316,6 @@ function save(path::String, io::VideoStream; video_options...)
     else
         cp(io.path, path; force=true)
     end
-    rm(io.path)
     return path
 end
 

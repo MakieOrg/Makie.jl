@@ -323,7 +323,6 @@ end
     screen = display(GLMakie.Screen(visible = true, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 2f0  # inherited from scale factor
-    winscale = screen.scalefactor[] / (@static Sys.isapple() ? GLMakie.scale_factor(screen.glscreen) : 1)
     @test size(screen.framebuffer) == (2W, 2H)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
@@ -341,6 +340,11 @@ end
     picks = pick(ax.scene, quadrant)
     points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
     @test points == Set(((N+1)÷2):N)
+    # - pick sorted
+    xy_px = project_sp(ax.scene, Point2f(x[1], y[1]))
+    picks = GLMakie.Makie.pick_sorted(ax.scene, screen, xy_px, 50)
+    points = [i for (p, i) in picks if p == pl]
+    @test points == [1, 2, 3]
 
     # render at lower resolution
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)

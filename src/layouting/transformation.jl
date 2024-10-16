@@ -205,16 +205,17 @@ function apply_transform_and_model(plot::AbstractPlot, data, output_type = Point
     )
 end
 function apply_transform_and_model(model::Mat4, f, data, space = :data, output_type = Point3d)
-    transformed = apply_transform(f, data, space)
+    promoted = promote_geom(output_type, data)
+    transformed = apply_transform(f, promoted, space)
     world = apply_model(model, transformed, space)
     return promote_geom(output_type, world)
 end
 
-function unchecked_apply_model(model::Mat4, transformed::VecTypes)
+function unchecked_apply_model(model::Mat4, transformed::VecTypes{N, T}) where {N, T}
     p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
     p4d = model * p4d
     p4d = p4d ./ p4d[4]
-    return p4d
+    return to_ndim(Point{N, T}, p4d, NaN)
 end
 @inline function apply_model(model::Mat4, transformed::AbstractArray, space::Symbol)
     if space in (:data, :transformed)
@@ -233,17 +234,17 @@ end
 function apply_model(model::Mat4, transformed::Rect{N, T}, space::Symbol) where {N, T}
     if space in (:data, :transformed)
         bb = Rect{N, T}()
-        if !isfinite_rect(transformed) && is_translation_scale_matrix(model)
-            # Bbox contains NaN so matmult would make everything NaN, but model
-            # matrix doesn't actually mix dimensions (just translation + scaling)
+        if is_translation_scale_matrix(model)
+            # With no rotation in model we can safely treat NaNs like this.
+            # (And finite values as well, of course)
             scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
-            trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 1.0)
+            trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 0.0)
             mini = scale .* minimum(transformed) .+ trans
             maxi = scale .* maximum(transformed) .+ trans
             return Rect{N, T}(mini, maxi - mini)
         else
             for input in corners(transformed)
-                output = to_ndim(Point{N, T}, unchecked_apply_model(model, input), NaN)
+                output = unchecked_apply_model(model, input)
                 bb = update_boundingbox(bb, output)
             end
         end
@@ -253,7 +254,11 @@ function apply_model(model::Mat4, transformed::Rect{N, T}, space::Symbol) where 
     end
 end
 
-promote_geom(output_type::Type{<:VecTypes}, x::VecTypes) = to_ndim(output_type, x, NaN)
+promote_geom(::Type{<:VT}, x::VT) where {VT} = x
+promote_geom(::Type{<:VT}, x::AbstractArray{<: VT}) where {VT} = x
+promote_geom(::Type{<:VecTypes{N, T}}, x::Rect{N, T}) where {N, T} = x
+
+promote_geom(output_type::Type{<:VecTypes}, x::VecTypes) = to_ndim(output_type, x, 0)
 promote_geom(output_type::Type{<:VecTypes}, x::AbstractArray) = promote_geom.(output_type, x)
 function promote_geom(output_type::Type{<:VecTypes}, x::T) where {T <: Rect}
     return T(promote_geom(output_type, minimum(x)), promote_geom(output_type, widths(x)))
@@ -265,7 +270,7 @@ end
 Apply the data transform func to the data if the space matches one
 of the the transformation spaces (currently only :data is transformed)
 """
-apply_transform(f, data, space) = space === :data ? apply_transform(f, data) : data
+apply_transform(f, data, space) = to_value(space) === :data ? apply_transform(f, data) : data
 function apply_transform(f::Observable, data::Observable, space::Observable)
     return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
 end
@@ -412,15 +417,12 @@ function Symlog10(lo, hi)
     return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
 end
 
-inverse_transform(::typeof(identity)) = identity
-inverse_transform(::typeof(log10)) = exp10
-inverse_transform(::typeof(log2)) = exp2
-inverse_transform(::typeof(log)) = exp
-inverse_transform(::typeof(sqrt)) = x -> x ^ 2
+function inverse_transform(f)
+    f⁻¹ = InverseFunctions.inverse(f)
+    return f⁻¹ isa InverseFunctions.NoInverse ? nothing : f⁻¹  # nothing is for backwards compatibility
+end
 inverse_transform(F::Tuple) = map(inverse_transform, F)
-inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::ReversibleScale) = s.inverse
-inverse_transform(::Any) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)

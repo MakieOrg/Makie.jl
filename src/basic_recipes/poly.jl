@@ -20,6 +20,9 @@ function convert_arguments(::Type{<:Poly}, path::BezierPath)
     return convert_pointlike(path)
 end
 
+function convert_arguments(::Type{<:Poly}, path::AbstractMatrix{<:Number})
+    return convert_pointlike(path)
+end
 
 function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
     return convert_arguments(Mesh, vertices, indices)
@@ -44,15 +47,16 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         overdraw = plot.overdraw,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
-        space = plot.space
+        space = plot.space,
+        depth_shift = plot.depth_shift
     )
     wireframe!(
         plot, plot[1],
-        color = plot[:strokecolor], linestyle = plot[:linestyle], space = plot[:space],
-        linewidth = plot[:strokewidth], linecap = plot[:linecap],
-        visible = plot[:visible], overdraw = plot[:overdraw],
-        inspectable = plot[:inspectable], transparency = plot[:transparency],
-        colormap = plot[:strokecolormap]
+        color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
+        linewidth = plot.strokewidth, linecap = plot.linecap,
+        visible = plot.visible, overdraw = plot.overdraw,
+        inspectable = plot.inspectable, transparency = plot.transparency,
+        colormap = plot.strokecolormap, depth_shift=plot.stroke_depth_shift
     )
 end
 
@@ -135,7 +139,9 @@ end
 
 function to_lines(polygon::AbstractVector{<: VecTypes})
     result = Point2d.(polygon)
-    isempty(result) || push!(result, polygon[1])
+    if !isempty(result) && !(result[1] ≈ result[end])
+        push!(result, polygon[1])
+    end
     return result
 end
 
@@ -159,6 +165,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         transparency = plot.transparency,
         inspectable = plot.inspectable,
         space = plot.space,
+        depth_shift = plot.depth_shift
     )
 
     outline = lift(to_lines, plot, geometries)
@@ -175,7 +182,6 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
             return sc
         end
     end
-
     lines!(
         plot, outline, visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
@@ -184,7 +190,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
         space = plot.space,
         overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = -1f-5
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
     )
 end
 
@@ -194,13 +200,14 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
         inspectable = plot.inspectable, transparency = plot.transparency,
         space = plot.space, ssao = plot.ssao,
-        alpha=plot.alpha,
+        alpha = plot.alpha,
         lowclip = get(plot, :lowclip, automatic),
         highclip = get(plot, :highclip, automatic),
         nan_color = get(plot, :nan_color, :transparent),
         colormap = get(plot, :colormap, nothing),
         colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic)
+        colorrange = get(plot, :colorrange, automatic),
+        depth_shift = plot.depth_shift
     )
 
     num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
@@ -211,7 +218,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     interpolate_in_fragment_shader = Observable(false)
 
-    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
+    lift!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         if colors isa AbstractVector && length(colors) == length(num_meshes)
             ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)

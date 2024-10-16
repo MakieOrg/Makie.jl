@@ -145,14 +145,15 @@ function flatten_buffer(array::Buffer)
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
-    return reinterpret(UInt8, array)
+    return collect(reinterpret(UInt8, array))
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
-lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
+const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
+lasset(paths...) = read(joinpath(ASSETS_DIR, paths...), String)
 
 isscalar(x::StaticVector) = true
 isscalar(x::Mat) = true
@@ -170,8 +171,6 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
                                             t::Quaternion)
     return convert(Quaternion, t)
 end
-
-
 
 function wgl_convert(value, key1, key2...)
     val = Makie.convert_attribute(value, key1, key2...)
@@ -200,6 +199,7 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
+
                 # update to replace the whole buffer!
                 if f === ShaderAbstractions.update!
                     new_array = args[1]
@@ -287,7 +287,7 @@ function serialize_scene(scene::Scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
-        dict = Dict((f => lift(serialize_three, scene, getfield(cam_controls, f)) for f in fields))
+        dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
         dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution)
         dict
     else
@@ -315,9 +315,8 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
-        plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)
@@ -330,6 +329,7 @@ function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[
     return result
 end
 
+# TODO: lines overwrites this
 function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
@@ -338,6 +338,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     mesh[:uuid] = js_uuid(plot)
     mesh[:transparency] = plot.transparency
     mesh[:overdraw] = plot.overdraw
+    mesh[:zvalue] = Makie.zvalue2d(plot)
 
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
@@ -368,6 +369,113 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
+    # Handle clip planes
+    if plot isa Voxels
+
+        clip_planes = map(
+                plot, plot.converted..., plot.model, plot.clip_planes, plot.space
+            ) do xs, ys, zs, chunk, model, planes, space
+
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            mini = minimum.((xs, ys, zs))
+            width = maximum.((xs, ys, zs)) .- mini
+            _model = Mat4f(model) *
+                Makie.scalematrix(Vec3f(width ./ size(chunk))) *
+                Makie.translationmatrix(Vec3f(mini))
+            modelinv = inv(_model)
+            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
+    elseif plot isa Volume
+
+        # TODO: better solution (ShaderAbstractions doesn't like Vector uniforms)
+        model2 = lift(plot, plot.model, plot[1], plot[2], plot[3]) do m, xyz...
+            mi = minimum.(xyz)
+            maxi = maximum.(xyz)
+            w = maxi .- mi
+            m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
+            return convert(Mat4f, m) * m2
+        end
+
+        clip_planes = map(plot, model2, plot.clip_planes, plot.space) do model, planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            # model/modelinv has no perspective projection so we should be fine
+            # with just applying it to the plane origin and transpose(inv(modelinv))
+            # to plane.normal
+            modelinv = inv(model)
+            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+                normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
+                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3]))
+                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e9)
+            end
+
+            return output
+        end
+
+    else
+
+        clip_planes = map(plot, plot.clip_planes, plot.space) do planes, space
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            output = Vector{Vec4f}(undef, 8)
+            for i in 1:min(length(planes), 8)
+                output[i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(length(planes), 8)+1:8
+                output[i] = Vec4f(0, 0, 0, -1e10)
+            end
+
+            return output
+        end
+
+    end
+
+    uniforms[:clip_planes] = serialize_three(clip_planes[])
+    on(plot, clip_planes) do value
+        updater[] = [:clip_planes, serialize_three(value)]
+        return
+    end
+
+    uniforms[:num_clip_planes] = serialize_three(
+        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
+    )
+    onany(plot, plot.clip_planes, plot.space) do planes, space
+        N = Makie.is_data_space(space) ? length(planes) : 0
+        updater[] = [:num_clip_planes, serialize_three(N)]
+        return
+    end
+
     return mesh
 end
 
@@ -377,6 +485,6 @@ function serialize_camera(scene::Scene)
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        return [vec(collect(view)), vec(collect(proj)), Int32[res...], Float32[ep...]]
+        return [vec(collect(Mat4f(view))), vec(collect(Mat4f(proj))), Int32[res...], Float32[ep...]]
     end
 end

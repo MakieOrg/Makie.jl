@@ -57,8 +57,8 @@ with z-elevation for each level.
     MakieCore.documented_attributes(Contour)...
 end
 
-angle(p1::Union{Vec2f,Point2f}, p2::Union{Vec2f,Point2f})::Float32 =
-    atan(p2[2] - p1[2], p2[1] - p1[1])  # result in [-π, π]
+# result in [-π, π]
+angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
 
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
@@ -256,7 +256,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         transform_marker = false
     )
 
-    lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
+    lift(plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
@@ -287,7 +287,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return
     end
 
-    bboxes = lift(labels, texts.text; ignore_equal_values=true) do labels, _
+    bboxes = lift(plot, labels, texts.text; ignore_equal_values=true) do labels, _
         labels || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
@@ -298,7 +298,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
+    masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments

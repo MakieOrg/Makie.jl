@@ -11,22 +11,35 @@ datashader
 
 ```@figure backend=GLMakie
 using DelimitedFiles
-# For saving/showing/inlining into documentation we need to disable async calculation.
-Makie.set_theme!(DataShader = (; async=false))
+
 airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
 fig, ax, ds = datashader(airports,
     colormap=[:white, :black],
-    # use type=Axis, so that Makie doesn't need to infer
-    # the axis type, which can be expensive for a large amount of points
-    axis = (; type=Axis),
     # for documentation output we shouldn't calculate the image async,
     # since it won't wait for the render to finish and inline a blank image
     async = false,
-    figure = (; figurepadding=0, size=(360*2, 160*2))
+    figure = (; figure_padding=0, size=(360*2, 160*2))
 )
 Colorbar(fig[1, 2], ds, label="Number of airports")
 hidedecorations!(ax); hidespines!(ax)
 fig
+```
+
+### Mean aggregation
+
+The `AggMean` aggregation type requires `Point3`s where the mean is taken over the z values of all points that fall into the same x/y bin.
+
+```@figure backend=GLMakie
+with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
+points = randn(Point2f, 100_000)
+points_with_z = map(with_z, points)
+
+f = Figure()
+ax = Axis(f[1, 1], title = "AggMean")
+datashader!(ax, points_with_z, agg = Makie.AggMean(), operation = identity)
+ax2 = Axis(f[1, 2], title = "AggMean binsize = 3")
+datashader!(ax2, points_with_z, agg = Makie.AggMean(), operation = identity, binsize = 3)
+f
 ```
 
 ### Strange Attractors
@@ -74,7 +87,7 @@ let
         ax, plot = datashader(fig[r, c], points;
             colormap=cmap,
             async=false,
-            axis=(; type=Axis, title=join(string.(arg), ", ")))
+            axis=(; title=join(string.(arg), ", ")))
         hidedecorations!(ax)
         hidespines!(ax)
     end
@@ -120,6 +133,8 @@ end
         axis=(; type=Axis, autolimitaspect = 1),
         figure=(;figure_padding=0, size=(1200, 600))
     )
+    # Zoom into the hotspot
+    limits!(ax, Rect2f(-74.175, 40.619, 0.5, 0.25))
     # make image fill the whole screen
     hidedecorations!(ax)
     hidespines!(ax)
@@ -148,7 +163,7 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
         # For a big dataset its interesting to see how long each aggregation takes
         show_timings = true,
         # Use a local operation which is faster to calculate and looks good!
-        local_post=x-> log10(x + 1),
+        local_operation=x-> log10(x + 1),
         #=
             in the code we used to save the binary, we had the points in the wrong order.
             A good chance to demonstrate the `point_transform` argument,
@@ -194,7 +209,7 @@ Categories are currently aggregated in one Canvas per category, and then overlay
 normaldist = randn(Point2f, 1_000_000)
 ds1 = normaldist .+ (Point2f(-1, 0),)
 ds2 = normaldist .+ (Point2f(1, 0),)
-fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2))
+fig, ax, pl = datashader(Dict("a" => ds1, "b" => ds2); async = false)
 hidedecorations!(ax)
 fig
 ```

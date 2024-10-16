@@ -7,11 +7,15 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 // Sets which shading procedures to use
 {{shading}}
 
+// Selects what is used to calculate the picked index
+{{picking_mode}}
+
 in vec3 o_world_normal;
 in vec3 o_view_normal;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
+flat in int o_InstanceID;
 
 {{matcap_type}} matcap;
 {{image_type}} image;
@@ -79,18 +83,28 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
-uniform vec2 uv_scale;
+{{uv_transform_type}} uv_transform;
+vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3x2 transform;
+    transform[0] = texelFetch(transforms, 3 * index + 0).xy;
+    transform[1] = texelFetch(transforms, 3 * index + 1).xy;
+    transform[2] = texelFetch(transforms, 3 * index + 2).xy;
+    return transform * vec3(uv, 1);
+}
 
 vec4 get_pattern_color(sampler1D color) {
     int size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
     int idx = int(mod(pos.x, size));
     return texelFetch(color, idx, 0);
 }
 
 vec4 get_pattern_color(sampler2D color){
     ivec2 size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
 
@@ -114,5 +128,13 @@ void main(){
     #ifndef NO_SHADING
     color.rgb = illuminate(normalize(o_world_normal), color.rgb);
     #endif
+
+#ifdef PICKING_INDEX_FROM_UV
+    ivec2 size = textureSize(image, 0);
+    ivec2 jl_idx = clamp(ivec2(o_uv * size), ivec2(0), size-1);
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
+    write2framebuffer(color, uvec2(o_id.x, uint(1) + idx));
+#else
     write2framebuffer(color, o_id);
+#endif
 }

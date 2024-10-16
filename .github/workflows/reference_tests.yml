@@ -25,7 +25,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
         os:
           - ubuntu-20.04
         arch:
@@ -74,7 +74,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
         os:
           - ubuntu-20.04
         arch:
@@ -124,7 +124,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
         os:
           - ubuntu-20.04
         arch:
@@ -172,15 +172,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie_1
+          name: ReferenceImages_WGLMakie_1.10
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie_1
+          name: ReferenceImages_CairoMakie_1.10
           path: ./ReferenceImages/CairoMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_GLMakie_1
+          name: ReferenceImages_GLMakie_1.10
           path: ./ReferenceImages/GLMakie
       - name: Consolidate reference image folders
         run: |
@@ -198,9 +198,10 @@ jobs:
 
           # Loop through the directories and concatenate the files, and copy recorded folders
           for dir in WGLMakie CairoMakie GLMakie; do
-              # Concatenate scores.tsv and new_files.txt
+              # Concatenate scores.tsv, new_files.txt and missing_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
 
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"

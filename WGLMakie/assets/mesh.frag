@@ -1,9 +1,11 @@
 in vec2 frag_uv;
 in vec4 frag_color;
-flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;
+in float o_clip_distance[8];
+
+uniform int num_clip_planes;
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -107,7 +109,25 @@ vec4 pack_int(uint id, uint index) {
     return unpack;
 }
 
-void main() {
+// for picking indices in image, heatmap, surface
+uint picking_index_from_uv(sampler2D img, vec2 uv) {
+    ivec2 size = textureSize(img, 0);
+    ivec2 jl_idx = clamp(ivec2(uv * vec2(size)), ivec2(0), size-1);
+    uint idx = uint(jl_idx.y + jl_idx.x * size.y);
+    return idx;
+}
+
+// These should not get hit
+uint picking_index_from_uv(bool img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(vec3 img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
+
+void main()
+{
+    for (int i = 0; i < num_clip_planes; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.rgb;
 
@@ -118,10 +138,12 @@ void main() {
         shaded_color = get_ambient() * real_color.rgb + light;
     }
 
-    if (picking) {
-        if (real_color.a > 0.1) {
+    if (picking && (real_color.a > 0.1)) {
+        if (get_PICKING_INDEX_FROM_UV()) {
+            fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
+        } else
             fragment_color = pack_int(object_id, frag_instance_id);
-        }
+        
         return;
     }
 

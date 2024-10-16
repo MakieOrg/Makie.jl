@@ -17,6 +17,10 @@ in float frag_uvscale;
 in float frag_distancefield_scale;
 in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
+in float o_clip_distance[8];
+flat in vec2 f_sprite_scale;
+
+uniform int num_clip_planes;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -45,8 +49,9 @@ float circle(vec2 uv){
     return 0.5-length(uv-vec2(0.5));
 }
 
-float rectangle(vec2 uv){
-    vec2 d = max(-uv, uv-vec2(1));
+float rectangle(vec2 uv) {
+    vec2 s = f_sprite_scale / min(f_sprite_scale.x, f_sprite_scale.y);
+    vec2 d = s * max(-uv, uv - vec2(1));
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y))));
 }
 
@@ -55,14 +60,8 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
 
-void fill(bool image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
-    color = mix(color, fillcolor, infill);
-}
-
-void fill(sampler2D image, vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
-    vec4 im_color = texture(image, uv.yx);
-    color = mix(color, im_color, infill);
-}
+vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
+vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 
 void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
     if (width != 0.0){
@@ -103,6 +102,10 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
+    for (int i = 0; i < num_clip_planes; i++)
+        if (o_clip_distance[i] < 0.0)
+            discard;
+
     float signed_distance = 0.0;
 
     vec4 uv_off = frag_uv_offset_width;
@@ -123,7 +126,7 @@ void main() {
     } else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(frag_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
-        signed_distance = 1.0; // rectangle(f_uv);
+        signed_distance = rectangle(frag_uv); // rectangle(f_uv);
     else if(shape == TRIANGLE)
         signed_distance = triangle(frag_uv);
 
@@ -134,8 +137,9 @@ void main() {
     float inside_start = max(-stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
 
-    vec4 final_color = vec4(frag_color.xyz, 0);
-    fill(image, frag_color, frag_uv, inside, final_color);
+    vec4 final_color = fill(frag_color, image, frag_uv);
+    final_color.a = final_color.a * inside;
+
     stroke(get_strokecolor(), signed_distance, -stroke_width, final_color);
     glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance), final_color);
 
@@ -149,10 +153,11 @@ void main() {
     if (picking) {
         if (final_color.a > 0.1) {
             fragment_color = pack_int(object_id, frag_instance_id);
+        } else {
+            discard;
         }
         return;
     }
-
 
     if (final_color.a <= 0.0){
         discard;

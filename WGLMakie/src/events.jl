@@ -43,12 +43,16 @@ function code_to_keyboard(code::String)
         return Keyboard.caps_lock
     elseif sym === :contextmenu
         return Keyboard.menu
+    elseif sym === :left_meta
+        return Keyboard.left_super
+    elseif sym === :right_meta
+        return Keyboard.right_super
     else
         return Keyboard.unknown
     end
 end
 
-function connect_scene_events!(scene::Scene, comm::Observable)
+function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
@@ -85,11 +89,14 @@ function connect_scene_events!(scene::Scene, comm::Observable)
                 e.scroll[] = Float64.((sign.(scroll)...,))
             end
             @handle msg.keydown begin
-                button = code_to_keyboard(keydown)
+                button = code_to_keyboard(keydown[1])
                 # don't add unknown buttons...we can't work with them
                 # and they won't get removed
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
+                end
+                if length(keydown[2])==1 && isascii(keydown[2])
+                    e.unicode_input[] = keydown[2][1]
                 end
             end
             @handle msg.keyup begin
@@ -110,5 +117,17 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         end
         return
     end
+
+    tick_callback = Makie.TickCallback(e.tick)
+    Makie.start!(screen.tick_clock) do timer
+        if isopen(screen)
+            tick_callback(Makie.RegularRenderTick)
+            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
+        else
+            stop!(timer)
+        end
+        return
+    end
+
     return
 end

@@ -66,6 +66,7 @@ $(ATTRIBUTES)
         scale = Vec3f(1),
         padding = 0.1,
         inspectable = false,
+        clip_planes = Plane3f[],
         fonts = theme(scene, :fonts),
         names = Attributes(
             axisnames = ("x", "y", "z"),

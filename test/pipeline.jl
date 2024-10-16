@@ -148,8 +148,9 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
+import Makie.MakieCore: InvalidAttributeError
+
 @testset "validated attributes" begin
-    InvalidAttributeError = Makie.MakieCore.InvalidAttributeError
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
     @test_throws InvalidAttributeError image(zeros(10, 10); does_not_exist = 123)
     @test_throws InvalidAttributeError scatter(1:10; does_not_exist = 123)
@@ -160,4 +161,18 @@ end
     @test_throws InvalidAttributeError meshscatter(1:10; does_not_exist = 123)
     @test_throws InvalidAttributeError poly(Point2f[]; does_not_exist = 123)
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
+end
+
+
+@recipe(TestRecipe, x, y) do scene
+    Attributes()
+end
+
+function Makie.plot!(p::TestRecipe)
+    lines!(p, p.x, p.y; Makie.attributes(p)...)
+end
+
+@testset "recipe attribute checking" begin
+    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
+    @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
 end

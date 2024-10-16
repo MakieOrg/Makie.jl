@@ -106,12 +106,12 @@ const atomic_functions = (
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
 function get_kw_values(func, names, kw)
-    return NamedTuple([Pair{Symbol,Any}(k, func(kw[k]))
-            for k in names if haskey(kw, k)])
+    return [Pair{Symbol,Any}(k, func(kw[k]))
+            for k in names if haskey(kw, k)]
 end
 
 function get_kw_obs(names, kw)
-    isempty(names) && return Observable((;))
+    isempty(names) && return Observable(Pair{Symbol, Any}[])
     kw_copy = copy(kw)
     init = get_kw_values(to_value, names, kw_copy)
     obs = Observable(init; ignore_equal_values=true)
@@ -134,20 +134,23 @@ expand_dimensions(trait, args...) = nothing
 
 expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
+expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
+    (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))
 
-function expand_dimensions(::ImageLike, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
-    n, m = Float32.(size(data))
-    return (Float32(0) .. n, Float32(0) .. m, el32convert(data))
+function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    # Float32, because all ploteable sizes should fit into float32
+    x, y = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, data)
 end
 
-function expand_dimensions(::GridBased, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
-    n, m = Float32.(size(data))
-    return (1.0f0 .. n, 1.0f0 .. m, data)
+function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    x, y = map(x-> (1f0, Float32(x)), size(data))
+    return (x, y, data)
 end
 
 function expand_dimensions(::VolumeLike, data::RealArray{3})
-    n, m, k = Float32.(size(data))
-    return (0.0f0 .. n, 0.0f0 .. m, 0.0f0 .. k, data)
+    x, y, z = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, z, data)
 end
 
 function apply_expand_dimensions(trait, args, args_obs, deregister)
@@ -176,8 +179,10 @@ function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     new_args_obs = map(Observable, converted)
     fs = onany(kw_obs, args_obs...) do kw, args...
         conv = convert_arguments(P, args...; kw...)
-        if !(conv isa Tuple)
+        if conv isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
             conv = (conv,) # for PlotSpec
+        elseif !(conv isa Tuple)
+            error("Returned type of convert_arguments needs to be a PlotSpec or Tuple, got: $(typeof(conv))")
         end
         for (obs, arg) in zip(new_args_obs, conv)
             obs.val = arg
@@ -208,13 +213,13 @@ The main conversion pipeline for converting arguments for a plot type.
 Applies dim_converts, expand_dimensions (in `try_dim_convert`), convert_arguments and checks if the conversion was successful.
 """
 function conversion_pipeline(
-        P::Type{<:Plot}, used_attrs::Tuple, args::Tuple,
+        P::Type{<:Plot}, used_attrs::Tuple, args::Tuple, kw_obs,
         args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
     if recursion === 3
         error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
         return P, args_obs
     end
-    kw_obs = get_kw_obs(used_attrs, user_attributes)
+
     kw = to_value(kw_obs)
     PTrait = conversion_trait(P, args...)
     dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs, deregister)
@@ -230,7 +235,8 @@ function conversion_pipeline(
         # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
         # This is the case for e.g. convert_arguments returning types that need dim_convert
         new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
-        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), new_args_obs, user_attributes, deregister,
+        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
+                                   user_attributes, deregister,
                                    recursion + 1)
     elseif status === false && recursion === 2
         kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
@@ -268,13 +274,15 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     deregister = Observables.ObserverFunction[]
     PTrait = conversion_trait(P, args...)
     expanded_args_obs = apply_expand_dimensions(PTrait, args, args_obs, deregister)
-    converted_obs = conversion_pipeline(P, attr, args, expanded_args_obs, user_attributes, deregister)
+    kw_obs = get_kw_obs(attr, user_attributes)
+    converted_obs = conversion_pipeline(P, attr, args, kw_obs, expanded_args_obs, user_attributes, deregister)
     args2 = map(to_value, converted_obs)
     ArgTyp = MakieCore.argtypes(args2)
     FinalPlotFunc = plotfunc(plottype(P, args2...))
     foreach(x -> delete!(user_attributes, x), attr)
-    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], Observable[converted_obs...],
-                                      deregister)
+    return Plot{FinalPlotFunc,ArgTyp}(
+        user_attributes, kw_obs, Any[args_obs...],
+        Observable[converted_obs...], deregister)
 end
 
 """
@@ -344,6 +352,8 @@ plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 
+clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
+clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 
 # all the plotting functions that get a plot type
 const PlotFunc = Type{<:AbstractPlot}
@@ -362,7 +372,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     if t_user isa Transformation
         plot.transformation = t_user
     else
-        if t_user isa Automatic
+        if t_user isa Union{Nothing, Automatic}
             plot.transformation = Transformation()
         else
             t = Transformation()
@@ -377,10 +387,23 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.model = transformationmatrix(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
+
+    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
+        attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
+    end
+
     plot!(plot)
+
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
+    end
+    attr = used_attributes(plot)
+    used_attr_obs = map(k -> get!(plot.attributes, k, Observable{Any}(nothing)), attr)
+    onany(plot, used_attr_obs...) do args...
+        zipped = filter(((k, v),) -> !isnothing(v), collect(zip(attr, args)))
+        plot.kw_obs[] = map(x -> x[1] => x[2], zipped)
+        return
     end
     return plot
 end

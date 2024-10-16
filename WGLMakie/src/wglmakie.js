@@ -84,45 +84,6 @@ function start_renderloop(three_scene) {
     renderloop();
 }
 
-// from: https://www.geeksforgeeks.org/javascript-throttling/
-function throttle_function(func, delay) {
-    // Previously called time of the function
-    let prev = 0;
-    // ID of queued future update
-    let future_id = undefined;
-    function inner_throttle(...args) {
-        // Current called time of the function
-        const now = new Date().getTime();
-
-        // If we had a queued run, clear it now, we're
-        // either going to execute now, or queue a new run.
-        if (future_id !== undefined) {
-            clearTimeout(future_id);
-            future_id = undefined;
-        }
-
-        // If difference is greater than delay call
-        // the function again.
-        if (now - prev > delay) {
-            prev = now;
-            // "..." is the spread operator here
-            // returning the function with the
-            // array of arguments
-            return func(...args);
-        } else {
-            // Otherwise, we want to queue this function call
-            // to occur at some later later time, so that it
-            // does not get lost; we'll schedule it so that it
-            // fires just a bit after our choke ends.
-            future_id = setTimeout(
-                () => inner_throttle(...args),
-                now - prev + 1
-            );
-        }
-    }
-    return inner_throttle;
-}
-
 function get_body_size() {
     const bodyStyle = window.getComputedStyle(document.body);
     // Subtract padding that is added by VSCode
@@ -239,7 +200,7 @@ function add_canvas_events(screen, comm, resize_to) {
         comm.notify({ mouseposition: [x, y] });
     }
 
-    const notify_mouse_throttled = throttle_function(mouse_callback, 40);
+    const notify_mouse_throttled = Bonito.throttle_function(mouse_callback, 40);
 
     function mousemove(event) {
         notify_mouse_throttled(event);
@@ -275,8 +236,12 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("wheel", wheel);
 
     function keydown(event) {
+        // Prevent the default browser behavior for `Space`, which is to scroll.
+        if (event.code === "Space") {
+            event.preventDefault();
+        }
         comm.notify({
-            keydown: event.code,
+            keydown: [event.code, event.key],
         });
         return false;
     }
@@ -313,12 +278,28 @@ function add_canvas_events(screen, comm, resize_to) {
             [width, height] = get_body_size();
         } else if (resize_to == "parent") {
             [width, height] = get_parent_size(canvas);
+        } else if (resize_to.length == 2) {
+            [width, height] = get_parent_size(canvas);
+            const [_width, _height] = resize_to;
+            const [f_width, f_height] = [
+                screen.renderer._width,
+                screen.renderer._height,
+            ];
+            console.log(`rwidht: ${_width}, rheight: ${_height}`);
+            width = _width == "parent" ? width : f_width;
+            height = _height == "parent" ? height : f_height;
+            console.log(`widht: ${width}, height: ${height}`);
+        } else {
+            console.warn("Invalid resize_to option");
+            return;
         }
-        // Send the resize event to Julia
-        comm.notify({ resize: [width / winscale, height / winscale] });
+        if (height > 0 && width > 0) {
+            // Send the resize event to Julia
+            comm.notify({ resize: [width / winscale, height / winscale] });
+        }
     }
     if (resize_to) {
-        const resize_callback_throttled = throttle_function(
+        const resize_callback_throttled = Bonito.throttle_function(
             resize_callback,
             100
         );
@@ -326,7 +307,9 @@ function add_canvas_events(screen, comm, resize_to) {
             resize_callback_throttled()
         );
         // Fire the resize event once at the start to auto-size our window
-        resize_callback_throttled();
+        // Without setTimeout, the parent doesn't have the right size yet?
+        // TODO, there should be a way to do this cleanly
+        setTimeout(resize_callback, 50);
     }
 }
 
@@ -492,7 +475,9 @@ function set_picking_uniforms(
             // we also collect the picked/matched plots as part of the clean up
             const id = uniforms.object_id.value;
             if (id in picked_plots) {
-                plots.push([plot, picked_plots[id]]);
+                picked_plots[id].forEach(index => {
+                    plots.push([plot, index]);
+                });
                 id_to_plot[id] = plot; // create mapping from id to plot at the same time
             }
         }
@@ -520,9 +505,11 @@ function set_picking_uniforms(
  * @param {*} h in scene unitless pixel space
  * @returns
  */
-export function pick_native(scene, _x, _y, _w, _h) {
+export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
     const { renderer, picking_target, px_per_unit } = scene.screen;
-    [_x, _y, _w, _h] = [_x, _y, _w, _h].map((x) => Math.ceil(x * px_per_unit));
+    if (apply_ppu) {
+        [_x, _y, _w, _h] = [_x, _y, _w, _h].map((x) => Math.round(x * px_per_unit));
+    }
     const [x, y, w, h] = [_x, _y, _w, _h];
     // render the scene
     renderer.setRenderTarget(picking_target);
@@ -551,7 +538,14 @@ export function pick_native(scene, _x, _y, _w, _h) {
         const id = reinterpret_view.getUint16(i * 4);
         const index = reinterpret_view.getUint16(i * 4 + 2);
         picked_plots_array.push([id, index]);
-        picked_plots[id] = index;
+        if (!picked_plots[id]) {
+            picked_plots[id] = [];
+        }
+        // Assuming the number of indices per plot
+        // is less than ~100, linear search is fine.
+        if (!picked_plots[id].includes(index)) {
+            picked_plots[id].push(index);
+        }
     }
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
     const plots = [];
@@ -566,31 +560,61 @@ export function pick_native(scene, _x, _y, _w, _h) {
     return [plot_matrix, plots];
 }
 
+// For debugging the pixelbuffer
+export function get_picking_buffer(scene) {
+    const { renderer, picking_target } = scene.screen;
+    const [w, h] = [picking_target.width, picking_target.height];
+    // render the scene
+    renderer.setRenderTarget(picking_target);
+    set_picking_uniforms(scene, 1, true);
+    render_scene(scene, true);
+    renderer.setRenderTarget(null); // reset render target
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Uint8Array(nbytes);
+    //read the pixel
+    renderer.readRenderTargetPixels(
+        picking_target,
+        0, // x
+        0, // y
+        w, // width
+        h, // height
+        pixel_bytes
+    );
+    const reinterpret_view = new DataView(pixel_bytes.buffer);
+    const picked_plots_array = []
+    for (let i = 0; i < pixel_bytes.length / 4; i++) {
+        const id = reinterpret_view.getUint16(i * 4);
+        const index = reinterpret_view.getUint16(i * 4 + 2);
+        picked_plots_array.push([id, index]);
+    }
+    return {picked_plots_array, w, h};
+}
+
 export function pick_closest(scene, xy, range) {
-    const { renderer } = scene.screen;
+    const { canvas, px_per_unit, renderer} = scene.screen;
     const [ width, height ] = [renderer._width, renderer._height];
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return [null, 0];
     }
 
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
 
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
-    let min_dist = range ^ 2;
+    let min_dist = 1e30;
     let selection = [null, 0];
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
-        for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ (2 + (y - j)) ^ 2;
+        for (let j = 1; j <= dy; j++) {
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             if (d < min_dist && plot_uuid) {
@@ -603,40 +627,37 @@ export function pick_closest(scene, xy, range) {
 }
 
 export function pick_sorted(scene, xy, range) {
-    const { renderer } = scene.screen;
+    const { canvas, px_per_unit, renderer } = scene.screen;
     const [width, height] = [renderer._width, renderer._height];
 
     if (!(1.0 <= xy[0] <= width && 1.0 <= xy[1] <= height)) {
         return null;
     }
 
-    const x0 = Math.max(1, xy[0] - range);
-    const y0 = Math.max(1, xy[1] - range);
-    const x1 = Math.min(width, Math.floor(xy[0] + range));
-    const y1 = Math.min(height, Math.floor(xy[1] + range));
+    const x0 = Math.max(1, Math.floor(px_per_unit * (xy[0] - range)));
+    const y0 = Math.max(1, Math.floor(px_per_unit * (xy[1] - range)));
+    const x1 = Math.min(canvas.width, Math.ceil(px_per_unit * (xy[0] + range)));
+    const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
 
     const dx = x1 - x0;
     const dy = y1 - y0;
 
-    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy);
+    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy, false);
     if (selected.length == 0) {
         return null;
     }
     const plot_matrix = plot_data.data;
-    const distances = selected.map((x) => range ^ 2);
-    const x = xy[0] + 1 - x0;
-    const y = xy[1] + 1 - y0;
+    const distances = selected.map((x) => 1e30);
+    const x = xy[0] * px_per_unit + 1 - x0;
+    const y = xy[1] * px_per_unit + 1 - y0;
     let pindex = 0;
     for (let i = 1; i <= dx; i++) {
-        for (let j = 1; j <= dx; j++) {
-            const d = (x - i) ^ (2 + (y - j)) ^ 2;
-            if (plot_matrix.length <= pindex) {
-                continue;
-            }
+        for (let j = 1; j <= dy; j++) {
+            const d = Math.pow(x - i, 2) + Math.pow(y - j, 2);
             const [plot_uuid, index] = plot_matrix[pindex];
             pindex = pindex + 1;
             const plot_index = selected.findIndex(
-                (x) => x[0].plot_uuid == plot_uuid
+                (x) => x[0].plot_uuid == plot_uuid && x[1] == index
             );
             if (plot_index >= 0 && d < distances[plot_index]) {
                 distances[plot_index] = d;

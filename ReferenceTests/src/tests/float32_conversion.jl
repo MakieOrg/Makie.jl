@@ -98,3 +98,62 @@ end
     )
     fig
 end
+
+@reference_test "Float64 model" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    p = heatmap!(ax, -0.75 .. -0.25, -0.75 .. -0.25, [1 2; 3 4], colormap = [:lightblue, :yellow])
+    translate!(p, 1e9, 1e8, 0)
+    p = image!(ax, 0..1, 0..1, [1 2; 3 4], colormap = [:lightblue, :yellow])
+    translate!(p, 1e9, 1e8, 0)
+
+
+    ps = 0.5 .* Makie.Point2d[(-1, -1), (-1, 1), (1, 1), (1, -1)]
+    p = scatter!(ax, ps, marker = '+', markersize = 30)
+    translate!(p, 1e9, 1e8, 0)
+    p = text!(ax, ps, text = string.(1:4), fontsize = 20)
+    translate!(p, 1e9, 1e8, 0)
+
+    p = lines!(ax, [Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
+    translate!(p, 1e9, 1e8, 0)
+    p = linesegments!(ax, [0.9 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
+    translate!(p, 1e9, 1e8, 0)
+    p = lines!(ax, [0.8 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)], linestyle = :dash)
+    translate!(p, 1e9, 1e8, 0)
+
+    fig
+end
+
+@reference_test "Float64 model with rotation" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    # TODO: broken in GLMakie (bad placement), CairoMakie (not supported)
+    # p = heatmap!(ax, -0.75 .. -0.25, -0.75 .. -0.25, [1 2; 3 4], colormap = [:lightblue, :yellow])
+    # translate!(p, 1e9, 1e8, 0)
+    # rotate!(p, Vec3f(0,0,1), pi/4)
+    p = image!(ax, 0..1, 0..1, [1 2; 3 4], colormap = [:lightblue, :yellow])
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+
+    ps = 0.5 .* Makie.Point2d[(-1, -1), (-1, 1), (1, 1), (1, -1)]
+    p = scatter!(ax, ps, marker = '+', markersize = 30)
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+    p = text!(ax, ps, text = string.(1:4), fontsize = 20)
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+
+    p = lines!(ax, [Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+    p = linesegments!(ax, [0.9 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+    p = lines!(ax, [0.8 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)], linestyle = :dash)
+    translate!(p, 1e9, 1e8, 0)
+    rotate!(p, Vec3f(0,0,1), pi/4)
+
+    fig
+end

@@ -26,8 +26,8 @@ nothing # hide
 ```
 
 Our target type is the `MyHist`, which has two fields, as defined above. Roughly speaking, when we
-plot a histograms, we're talking about drawing a bar plot, where `barcenters` tells us where to draw
-these bars and `barcounts` tells us how high each bar is.
+plot a histograms, we're talking about drawing a bar plot, where `bincenters` tells us where to draw
+these bars and `bincounts` tells us how high each bar is.
 
 ## BarPlot recipe -- extend `Makie.convert_arguments`
 
