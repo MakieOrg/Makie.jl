@@ -20,6 +20,8 @@ cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
+pkg"add GeometryBasics#ff/refactor MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
+
 makie_dir = @__DIR__
 commit = cd(makie_dir) do
     chomp(read(`git rev-parse --verify HEAD`, String))

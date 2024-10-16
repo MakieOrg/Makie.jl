@@ -177,7 +177,9 @@ function glGenRenderbuffers(format::GLenum, attachment::GLenum, dimensions)
     return renderbuffer[1]
 end
 
-function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, h::Integer, d::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
+Makie.@noconstprop function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer,
+                                         h::Integer, d::Integer, border::Integer, format::GLenum,
+                                         datatype::GLenum, data)
     glTexImage3D(GL_PROXY_TEXTURE_3D, level, internalFormat, w, h, d, border, format, datatype, C_NULL)
     for l in  0:level
         result = glGetTexLevelParameteriv(GL_PROXY_TEXTURE_3D, l, GL_TEXTURE_WIDTH)
@@ -200,7 +202,8 @@ function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::In
     glTexImage3D(ttype, level, internalFormat, w, h, d, border, format, datatype, data)
 end
 
-function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, h::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
+Makie.@noconstprop function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer,
+                                         h::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
     maxsize = glGetIntegerv(GL_MAX_TEXTURE_SIZE)
     glTexImage2D(GL_PROXY_TEXTURE_2D, level, internalFormat, w, h, border, format, datatype, C_NULL)
     for l in 0:level
@@ -220,7 +223,8 @@ function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::In
     glTexImage2D(ttype, level, internalFormat, w, h, border, format, datatype, data)
 end
 
-function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
+Makie.@noconstprop function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer,
+                                         border::Integer, format::GLenum, datatype::GLenum, data)
     glTexImage1D(GL_PROXY_TEXTURE_1D, level, internalFormat, w, border, format, datatype, C_NULL)
     for l in 0:level
         result = glGetTexLevelParameteriv(GL_PROXY_TEXTURE_1D, l, GL_TEXTURE_WIDTH)

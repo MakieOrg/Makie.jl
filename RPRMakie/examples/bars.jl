@@ -9,7 +9,7 @@ lights = [EnvironmentLight(0.5, load(RPR.assetpath("studio026.exr"))),
           PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))]
 
 ax = LScene(fig[1, 1]; scenekw=(lights=lights, showaxis=false))
-rectMesh = FRect3D(Vec3f0(-0.5, -0.5, 0), Vec3f0(1))
+rectMesh = Rect(Vec3f(-0.5, -0.5, 0), Vec3f(1))
 recmesh = GeometryBasics.normal_mesh(rectMesh)
 n = 100
 pos = [Point3f(i, j, 0) ./ 10 for i in 1:n for j in 1:n]
