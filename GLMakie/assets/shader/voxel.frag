@@ -146,7 +146,7 @@ void main()
 
     // TODO: index into 3d array
     ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);
-    ivec3 idx = ivec3(o_uvw * size);
+    ivec3 idx = clamp(ivec3(o_uvw * size), ivec3(0), size-1);
     int lin = 1 + idx.x + size.x * (idx.y + size.y * idx.z);
 
     // draw
