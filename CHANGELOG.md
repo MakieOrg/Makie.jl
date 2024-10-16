@@ -5,6 +5,7 @@
 - Changed image, heatmap and surface picking indices to correctly index the relevant matrix arguments. [#4459](https://github.com/MakieOrg/Makie.jl/pull/4459)
 - Improved performance of `record` by avoiding unnecessary copying in common cases [#4475](https://github.com/MakieOrg/Makie.jl/pull/4475).
 - Fix usage of `AggMean()` and other aggregations operating on 3d data for `datashader` [#4346](https://github.com/MakieOrg/Makie.jl/pull/4346).
+- Fixed `pick(scene, rect2)` in WGLMakie [#4488](https://github.com/MakieOrg/Makie.jl/pull/4488)
 
 ## [0.21.14] - 2024-10-11
 
