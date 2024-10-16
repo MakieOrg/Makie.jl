@@ -1730,7 +1730,7 @@ end
         linewidth = 4, linestyle = :dot, markersize = 15, solid_color = :black)
     axislegend(ax, position = :lt)
 
-    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 5.0, 
+    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0, 
         marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black)
     axislegend(ax, position = :lt)
 
