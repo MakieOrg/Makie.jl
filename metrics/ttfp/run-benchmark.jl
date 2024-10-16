@@ -250,3 +250,10 @@ else
     @info("Not commenting, no PR found")
     println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
 end
+
+mkdir("json")
+for p in [project1, project2]
+    name = basename(p)
+    file = "$name-benchmark.json"
+    mv(file, joinpath("json", file))
+end
