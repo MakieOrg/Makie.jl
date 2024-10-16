@@ -182,9 +182,10 @@ using Random
 
 function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
-    for project in shuffle!(repeat(projects; outer=n))
+    # go A, B, A, B, A, etc.
+    for project in repeat(projects, n)
+        @show project
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
-        project_name = basename(project)
     end
     return
 end
