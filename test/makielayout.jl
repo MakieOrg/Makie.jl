@@ -479,6 +479,7 @@ end
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
+    @test ReversibleScale(cbrt).inverse(2) == 8
     @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
     @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
 end
