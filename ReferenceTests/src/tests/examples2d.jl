@@ -1487,12 +1487,12 @@ end
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
     ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
-    for (i, scale) in enumerate([:area, :count, :width])
-        ax = Axis(fig[i, 1])
-        violin!(ax, xs, ys; scale, show_median=true)
-        Makie.xlims!(0.2, 4.8)
-        ax.title = "scale=:$(scale)"
-    end
+    ax, p = violin(fig[1, 1], xs, ys; scale = :area, show_median=true)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:area"
+    ax, p = violin(fig[2, 1], xs, ys; scale = :count, mediancolor = :red, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:count"
+    ax, p = violin(fig[3, 1], xs, ys; scale = :width, show_median=true, mediancolor = :orange, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:width"
     fig
 end
 
