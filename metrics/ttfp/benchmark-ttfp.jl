@@ -26,35 +26,43 @@ using Pkg
 project_name = basename(dirname(Pkg.project().path))
 
 result = "$(project_name)-benchmark.json"
-old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
+old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], [], [], []]
 @show [t_using, create_time, display_time]
 push!.(old[1:3], [t_using, create_time, display_time])
 
 macro simple_time(expr)
     time_expr = quote
-        t1 = time_ns()
+        local elapsedtime = time_ns()
+        local stats = Base.gc_num()
         $expr
-        t2 = time_ns()
-        Float64(t2 - t1)
+        elapsedtime = time_ns() - elapsedtime
+        local diff = Base.GC_Diff(Base.gc_num(), stats)
+        Float64(elapsedtime), diff.total_time
     end
 
     quote
         times = Float64[]
+        gctimes = Float64[]
         for i in 1:101
-            t = Core.eval(Main, $(QuoteNode(time_expr)))
-            i > 1 && push!(times, t)
+            t, t_gc = Core.eval(Main, $(QuoteNode(time_expr)))
+            if i > 1
+                push!(times, t)
+                push!(gctimes, t_gc)
+            end
         end
-        times
+        times, gctimes
     end
 end
-@time "creating figure" figure_times = @simple_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+@time "creating figure" figure_times, figure_gctimes = @simple_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-@time "colorbuffer" colorbuffer_times = @simple_time colorbuffer(fig; px_per_unit=1)
+@time "colorbuffer" colorbuffer_times, colorbuffer_gctimes = @simple_time colorbuffer(fig; px_per_unit=1)
 
 using Statistics
 
 append!(old[4], figure_times)
-append!(old[5], colorbuffer_times)
+append!(old[5], figure_gctimes)
+append!(old[6], colorbuffer_times)
+append!(old[7], colorbuffer_gctimes)
 
 open(io-> JSON.print(io, old), result, "w")
 
