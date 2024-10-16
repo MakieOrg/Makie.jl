@@ -29,7 +29,9 @@
     # render one frame to generate picking texture
     colorbuffer(scene);
 
-    # TODO: Can we verify slow heatmap path somehow?
+    # verify that heatmap path is used for heatmaps
+    @test length(faces(WGLMakie.create_shader(scene, hm).vertexarray)) > 2
+    @test length(faces(WGLMakie.create_shader(scene, hm2).vertexarray)) > 2
     
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)
