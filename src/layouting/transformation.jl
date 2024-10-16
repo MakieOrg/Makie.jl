@@ -181,18 +181,18 @@ translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 GeometryBasics.origin(t::Transformable) = transformation(t).origin
 
 """
-    translate_origin!([mode = Absolute], t::Transformable, xyz...)
-    translate_origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
+    origin!([mode = Absolute], t::Transformable, xyz...)
+    origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
 
 Sets the origin of the transformable `t` to the given `xyz` value. This affects
 the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as 
 `Accum` the origin is translated by the given `xyz` instead.
 """
-translate_origin!(t::Transformable, xyz...) = translate_origin!(Absolute, t, xyz)
-translate_origin!(t::Transformable, xyz::VecTypes) = translate_origin!(Absolute, t, xyz)
-translate_origin!(::Type{T}, t::Transformable, xyz...) where {T} = translate_origin!(T, t, xyz)
+origin!(t::Transformable, xyz...) = origin!(Absolute, t, xyz)
+origin!(t::Transformable, xyz::VecTypes) = origin!(Absolute, t, xyz)
+origin!(::Type{T}, t::Transformable, xyz...) where {T} = origin!(T, t, xyz)
 
-function translate_origin!(::Type{T}, t::Transformable, xyz::VecTypes) where T
+function origin!(::Type{T}, t::Transformable, xyz::VecTypes) where T
     offset = to_ndim(Vec3d, xyz, 0)
     if T === Accum
         origin(t)[] = origin(t)[] + offset

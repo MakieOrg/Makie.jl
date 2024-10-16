@@ -6,7 +6,7 @@ Every plot and every scene contains a `Transformation` object which holds the `t
 
 The `model` matrix is composed of a translation, scaling and rotation, with the rotation acting first and the translation acting last.
 The translation is set by `translate!()`, the scaling by `scale!()` and the rotation by `rotate!()`.
-Furthermore you can change the origin used for scaling and rotating with `translate_origin!()`.
+Furthermore you can change the origin used for scaling and rotating with `origin!()`.
 
 ```@figure backend=GLMakie
 using GLMakie
@@ -23,7 +23,7 @@ scatterlines!(a, box, color = 1:4, markersize = 20, linewidth = 5)
 
 # Transformed plot
 p2 = scatterlines!(a, box, color = 1:4, markersize = 20, linewidth = 5)
-translate_origin!(p2, 1,0,0) # apply rotation & scaling relative to the center of the box
+origin!(p2, 1,0,0) # apply rotation & scaling relative to the center of the box
 scale!(p2, 2, 2)             # double x, y
 Makie.rotate!(p2, pi/2)      # 90° rotation
 translate!(p2, -0.5, 0.5)    # translate 0.5 left, 0.5 up
