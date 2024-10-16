@@ -1237,7 +1237,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = GeometryBasics.clear_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
 
 
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])

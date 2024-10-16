@@ -548,7 +548,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
     end
 
     mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
-    mesh = GeometryBasics.clear_faceviews(mesh) # TODO: can we do this (more) in-place?
+    mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
 
     return (mesh,)
 end
@@ -579,7 +579,7 @@ end
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.clear_faceviews(GeometryBasics.uv_normal_mesh(
+    m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
         geom; pointtype = Point{N, float_type(T)}, 
         uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
     ))
@@ -1937,7 +1937,7 @@ function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return GeometryBasics.clear_faceviews(normal_mesh(value))
+    return GeometryBasics.expand_faceviews(normal_mesh(value))
 end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
