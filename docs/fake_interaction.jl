@@ -129,8 +129,8 @@ function recordframe_with_cursor_overlay!(io, cursor_pos, viewport, cursor_img, 
     copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
 
     render_cursor!(io.buffer, (xdim, ydim), cursor_pos, viewport, cursor_img, cursor_tip_frac)
-
     write(io.io, io.buffer)
+    Makie.next_tick!(io.tick_controller)
     return
 end
 
