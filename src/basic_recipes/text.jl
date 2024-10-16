@@ -589,7 +589,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sup}, fonts)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
-        gs.baseline + 0.5 * gs.size[2] + offset[2],
+        gs.baseline + 0.45 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -615,7 +615,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sub}, fonts)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
-        gs.baseline - 0.25 * gs.size[2] + offset[2],
+        gs.baseline - 0.3 * gs.size[2] + offset[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -627,7 +627,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
     fontsize = _get_fontsize(att, gs.size * 0.70)
     GlyphState(
         gs.x,
-        gs.baseline - 0.25 * gs.size[2],
+        gs.baseline - 0.3 * gs.size[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
@@ -638,7 +638,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sup}, fonts)
     fontsize = _get_fontsize(att, gs.size * 0.70)
     GlyphState(
         gs.x,
-        gs.baseline + 0.5 * gs.size[2],
+        gs.baseline + 0.45 * gs.size[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
