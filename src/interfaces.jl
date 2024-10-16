@@ -261,7 +261,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
         attr = attributes(first(user_args))
-        merge!(user_attributes, attr)
+        # user_attributes should overwrite attr, but attr has the wrong type
+        foreach(kv -> get!(user_attributes, kv[1], kv[2]), pairs(attr))
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
     P = Plot{Func}

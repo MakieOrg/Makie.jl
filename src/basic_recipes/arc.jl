@@ -28,4 +28,6 @@ function plot!(p::Arc)
     attr = Attributes(p)
     delete!(attr, :resolution)
     lines!(p, attr, positions)
+
+    return p
 end

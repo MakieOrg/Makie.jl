@@ -48,6 +48,7 @@ Creates a tooltip pointing at `position` displaying the given `string
     outline_linestyle = nothing
 
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
     inspectable = false
 end
 
@@ -124,15 +125,12 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    tp = text!(
-        p, px_pos, text = p.text, justification = p.justification,
-        align = text_align, offset = text_offset, fontsize = p.fontsize,
-        color = p.textcolor, font = p.font, fxaa = false,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor,
-        transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable, space = :pixel, transformation = Transformation()
+    text_attr = shared_attributes(
+        p, Text,
+        align = text_align, offset = text_offset,
+        space = :pixel, transformation = Transformation()
     )
+    tp = text!(p, text_attr, px_pos)
     translate!(tp, 0, 0, 1)
 
     # TODO react to glyphcollection instead
@@ -146,13 +144,12 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Text background mesh
 
-    mesh!(
-        p, bbox, shading = NoShading, space = :pixel,
-        color = p.backgroundcolor, fxaa = false,
-        transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable, transformation = Transformation()
+    background_attr = shared_attributes(
+        p, Mesh, 
+        color = p.backgroundcolor, 
+        shading = NoShading, space = :pixel, transformation = Transformation()
     )
+    mesh!(p, background_attr, bbox)
 
     # Triangle mesh
 
@@ -161,13 +158,11 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         GLTriangleFace[(1,2,3)]
     )
 
-    mp = mesh!(
-        p, triangle, shading = NoShading, space = :pixel,
-        color = p.backgroundcolor,
-        transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable, transformation = Transformation()
-    )
+    triangle_attr = copy(background_attr)
+    # since this gets translated and rotated we cannot share a Transformation object
+    triangle_attr[:transformation] = Observable(Transformation()) 
+    mp = mesh!(p, triangle_attr, triangle)
+
     onany(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
         o = origin(bb); w = widths(bb)
         scale!(mp, s, s, s)
@@ -250,14 +245,13 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         return to_ndim.(Vec3f, shift, z)
     end
 
-    lines!(
-        p, outline,
-        color = p.outline_color, space = :pixel, miter_limit = pi/18,
+    outline_attr = shared_attributes(
+        p, Lines, 
+        color = p.outline_color, 
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
-        transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
-        inspectable = p.inspectable, transformation = Transformation()
+        space = :pixel, miter_limit = pi/18, transformation = Transformation()
     )
+    lines!(p, outline_attr, outline)
 
     notify(p[1])
 

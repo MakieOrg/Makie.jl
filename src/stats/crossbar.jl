@@ -103,28 +103,21 @@ function Makie.plot!(plot::CrossBar)
     end
     boxes = lift(s-> s[1], plot, signals)
     midlines = lift(s-> s[2], plot, signals)
-    poly!(
-        plot,
-        boxes,
-        color=plot.color,
-        colorrange=plot.colorrange,
-        colormap=plot.colormap,
-        colorscale=plot.colorscale,
-        strokecolor=plot.strokecolor,
-        strokewidth=plot.strokewidth,
-        inspectable = plot[:inspectable]
-    )
-    linesegments!(
-        plot,
-        color=lift(
+
+    poly!(plot, shared_attributes(plot, Poly), boxes)
+
+    line_attr = shared_attributes(
+        plot, LineSegments, 
+        color = lift(
             (mc, sc) -> mc === automatic ? sc : mc,
             plot,
             plot.midlinecolor,
             plot.strokecolor,
         ),
-        linewidth=plot[:midlinewidth],
-        visible=plot[:show_midline],
-        inspectable = plot[:inspectable],
-        midlines,
+        linewidth = plot[:midlinewidth],
+        visible = plot[:show_midline],
     )
+    linesegments!(plot, line_attr, midlines)
+
+    return plot
 end

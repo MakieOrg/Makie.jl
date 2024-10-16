@@ -82,12 +82,7 @@ function plot!(plot::Pie)
     end
 
     # plot pieces as polys
-    poly!(
-        plot, polys,
-        color = plot.color, strokewidth = plot.strokewidth,
-        strokecolor = plot.strokecolor, inspectable = plot.inspectable,
-        visible = plot.visible, transparency = plot.transparency
-    )
+    poly!(plot, shared_attributes(plot, Poly), polys)
 
-    plot
+    return plot
 end

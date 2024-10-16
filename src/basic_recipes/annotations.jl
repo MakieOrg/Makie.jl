@@ -18,5 +18,5 @@ end
 function plot!(plot::Annotations)
     # annotations are not necessary anymore with the different text behavior
     text!(plot, plot[1]; plot.attributes...)
-    plot
+    return plot
 end
