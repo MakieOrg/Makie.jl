@@ -30,12 +30,14 @@
     colorbuffer(scene);
 
     # verify that heatmap doesn't get optimized away
-    @test begin
+    let
         screen = scene.current_screens[1]
-        robj = screen.renderlist[11][3] # text generates a text + line plot
-        shaders = robj.vertexarray.program.shader
-        names = [string(shader.name) for shader in shaders]
-        any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
+        for plt in (hm, hm2)
+            robj = screen.cache[objectid(plt)]
+            shaders = robj.vertexarray.program.shader
+            names = [string(shader.name) for shader in shaders]
+            @test any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
+        end
     end
     
     @testset "scatter" begin
