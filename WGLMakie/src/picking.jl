@@ -72,6 +72,10 @@ function Makie.pick(::Scene, screen::Screen, xy)
     return plot_matrix[1, 1]
 end
 
+function Makie.pick(::Scene, screen::Screen, r::Rect2)
+    return pick_native(screen, Rect2i(round.(minimum(r)), round.(widths(r))))
+end
+
 """
     ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
 
