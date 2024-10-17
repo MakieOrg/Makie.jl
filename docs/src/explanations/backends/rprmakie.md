@@ -59,8 +59,8 @@ mesh!(ax, Sphere(Point3f(0), 1), material=mat)
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
 # Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
 using RPRMakie
-refres = Observable(nothing) # Optional observable that triggers
-RPRMakie.activate!(); display(fig) # Make sure to display scene first in RPRMakie
+refresh = Observable(nothing) # Optional observable that triggers rerendering
+display(ax.scene; backend=GLMakie) # Make sure to display scene first in GLMakie
 # Replace the scene with an interactively rendered RPR output.
 # See more about this in the RPRMakie interop example
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
@@ -105,7 +105,7 @@ materials = [glass chrome;
                 emissive plastic]
 
 mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
-palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+palette = reshape(Makie.wong_colors()[1:6], size(materials))
 
 for i in CartesianIndices(materials)
     x, y = Tuple(i)

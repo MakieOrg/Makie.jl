@@ -31,6 +31,7 @@ end
 include("figure_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
+include("fake_interaction.jl")
 
 docs_url = "docs.makie.org"
 repo = "github.com/MakieOrg/Makie.jl.git"

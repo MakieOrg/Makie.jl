@@ -144,7 +144,7 @@ void main()
 
     if (picking) {
         uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
-        uvec3 idx = uvec3(o_uvw * vec3(size));
+        uvec3 idx = clamp(uvec3(o_uvw * vec3(size)), uvec3(0), size - uvec3(1));
         uint lin = idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);
         return;
