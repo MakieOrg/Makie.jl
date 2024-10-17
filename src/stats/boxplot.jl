@@ -85,11 +85,10 @@ function Makie.plot!(plot::BoxPlot)
         plot[:color],
         args...,
     ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
-        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, widths = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f[]
         centers = Float32[]
         medians = Float32[]
@@ -99,8 +98,10 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f[]
         outlier_indices = Int[]
-        T = color isa AbstractVector ? eltype(color) : typeof(color)
-        boxcolor = T[]
+        CT = color isa AbstractVector ? eltype(color) : typeof(color)
+        boxcolor = CT[]
+        WT = widths isa AbstractVector ? eltype(widths) : typeof(widths)
+        boxwidth = WT[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -117,7 +118,7 @@ function Makie.plot!(plot::BoxPlot)
             end
 
             # outliers
-            if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
+            if !iszero(range)  # if the range is 0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
                 for (value, idx) in zip(values,idxs)
@@ -134,18 +135,19 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
-                # register boxcolor
-                push!(boxcolor, getuniquevalue(color, idxs))
             end
 
             # whiskers
-            HW = 0.5 * _cycle(ww, i) # Whisker width
-            lw, rw = center - HW, center + HW
+            bw = getuniquevalue(widths, idxs) # Box width
+            ww = whiskerwidth === :match ? bw : whiskerwidth * bw # Whisker width
+            lw, rw = center - ww/2, center + ww/2
             push!(t_segments, (center, q2), (center, q1), (lw, q1), (rw, q1)) # lower T
             push!(t_segments, (center, q4), (center, q5), (rw, q5), (lw, q5)) # upper T
 
             # box
+            push!(boxcolor, getuniquevalue(color, idxs))
             push!(centers, center)
+            push!(boxwidth, bw)
             push!(boxmin, q2)
             push!(medians, q3)
             push!(boxmax, q4)
