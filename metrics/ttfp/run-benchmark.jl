@@ -237,8 +237,8 @@ projects = [project1, project2]
 
 run_benchmarks(projects)
 
-results_pr = load_results(basename(project1))
-results_m = load_results(basename(project2))
+results_pr = load_results(basename(project1))[1:5]
+results_m = load_results(basename(project2))[1:5]
 benchmark_rows = get_row_values(results_pr, results_m)
 
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)

@@ -60,8 +60,8 @@ fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 using Statistics
 
 append!(old[4], figure_times)
-append!(old[5], figure_gctimes)
-append!(old[6], colorbuffer_times)
+append!(old[5], colorbuffer_times)
+append!(old[6], figure_gctimes)
 append!(old[7], colorbuffer_gctimes)
 
 open(io-> JSON.print(io, old), result, "w")
