@@ -26,6 +26,8 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
+    elseif color[] isa ShaderAbstractions.Sampler
+        uniforms[uniform_color_name] = to_value(color)
     elseif color[] isa AbstractVector
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
@@ -94,23 +96,22 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     get!(uniforms, :PICKING_INDEX_FROM_UV, false)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
-    mesh = GeometryBasics.Mesh(meta(pos; per_vertex...), faces)
+    mesh = GeometryBasics.Mesh(pos, faces; per_vertex...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
-    mattributes = GeometryBasics.attributes
     get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
-    data = mattributes(mesh_signal[])
+    data = GeometryBasics.vertex_attributes(mesh_signal[])
 
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
+    for (key, default) in (:uv => Vec2f(0), :normal => Vec3f(0))
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else
