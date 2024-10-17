@@ -184,7 +184,7 @@ function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
     # go A, B, A, B, A, etc.
     for project in repeat(projects, n)
-        @show project
+        println(basename(project))
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
     end
     return
@@ -237,8 +237,8 @@ projects = [project1, project2]
 
 run_benchmarks(projects)
 
-results_pr = load_results(basename(project1))[1:5]
-results_m = load_results(basename(project2))[1:5]
+results_pr = load_results(basename(project1))
+results_m = load_results(basename(project2))
 benchmark_rows = get_row_values(results_pr, results_m)
 
 pr_to_comment = get(ENV, "PR_NUMBER", nothing)
