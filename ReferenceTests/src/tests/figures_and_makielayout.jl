@@ -12,7 +12,7 @@ end
     ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, RNG.randn(100, 2) .+ 2, color = :red)
     ll = fig[1, 1][1, 2] = Legend(fig, [sc, sc2], ["Scatter", "Other"])
-    lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, adapted_grid_rng = RNG.STABLE_RNG, axis = (;title = "Exponential Sine"))
+    lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, axis = (;title = "Exponential Sine"))
     heatmap(fig[2, 1:2][1, 1], RNG.randn(30, 30))
     heatmap(fig[2, 1:2][1, 2], RNG.randn(30, 30), colormap = :grays)
     lines!(fig[2, 1:2][1, 2], cumsum(RNG.rand(30)), color = :red, linewidth = 10)

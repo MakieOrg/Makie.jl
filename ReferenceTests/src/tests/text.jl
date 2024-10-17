@@ -349,7 +349,7 @@ end
 end
 
 @reference_test "latex ticks" begin
-    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), adapted_grid_rng = RNG.STABLE_RNG, figure = (fontsize = 25,),
+    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), figure = (fontsize = 25,),
         axis = (
             xticks = (0:10:20, [L"10^{-3.5}", L"10^{-4.5}", L"10^{-5.5}"]),
             yticks = ([-1, 0, 1], [L"\sum_%$i{xy}" for i in 1:3]),
@@ -363,7 +363,7 @@ end
 
 
 @reference_test "dynamic latex ticks" begin
-    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4), adapted_grid_rng = RNG.STABLE_RNG,
+    lines(0..25, x -> 4 * sin(x) / (cos(3x) + 4),
         figure = (fontsize = 16,),
         axis = (xtickformat = (xs -> [L"e^{\sqrt{%$x}}+\sum" for x in xs]), ))
 end

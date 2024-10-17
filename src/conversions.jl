@@ -676,16 +676,14 @@ function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-used_attributes(::Type{<:Plot}, ::AbstractInterval, ::Function) = (:adapted_grid_rng,)
-
-function convert_arguments(P::Type{<:Plot}, i::AbstractInterval, f::Function; adapted_grid_rng = Xoshiro(123))
-    x, y = PlotUtils.adapted_grid(f, endpoints(i); rng = adapted_grid_rng)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
 
-function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function; adapted_grid_rng = Xoshiro(123))
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
     # f() returns interval for these plottypes
-    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i); rng = adapted_grid_rng)
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
     return convert_arguments(P, x, f.(x))
 end
 

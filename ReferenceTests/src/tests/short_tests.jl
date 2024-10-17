@@ -26,7 +26,7 @@ end
 @reference_test "lines inputs" begin
     f = Figure()
     lines(f[1, 1], Circle(Point2f(0), Float32(1)))
-    lines(f[1, 2], -1..1, x -> x^2, adapted_grid_rng = RNG.STABLE_RNG)
+    lines(f[1, 2], -1..1, x -> x^2)
     lines(f[2, 1], Makie.OffsetArrays.Origin(-50)(1:100))
     f
 end
@@ -38,7 +38,7 @@ end
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter!(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
     
-    scatter(f[2, 1], -1..1, x -> x^2, adapted_grid_rng = RNG.STABLE_RNG)
+    scatter(f[2, 1], -1..1, x -> x^2)
     scatter(f[2, 2], RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
     f
 end
