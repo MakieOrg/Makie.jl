@@ -1,4 +1,5 @@
 
+
 """
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 * `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
