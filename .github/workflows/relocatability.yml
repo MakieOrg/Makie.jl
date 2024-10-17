@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
+          - '1'
         os:
           - ubuntu-20.04
         arch:
