@@ -41,5 +41,5 @@ jobs:
       - name: Upload measurements as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JSON
+          name: ${{ matrix.package }}
           path: ./json
