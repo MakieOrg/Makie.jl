@@ -644,9 +644,22 @@ end
 """
     get_ticklabels(::Automatic, values)
 
-Gets tick labels by applying `showoff_minus` to `values`.
+Gets tick labels by applying `showoff_minus` to `values` for plain notation. Replace the unicode superscripts in scientific notation with RichText.
 """
-get_ticklabels(::Automatic, values) = showoff_minus(values)
+function get_ticklabels(::Automatic, values)
+    rawstrings = Showoff.showoff(values)
+    converted = Vector{Union{String, Makie.RichText}}(undef, length(rawstrings))
+    sci_notation_index = findfirst.("×10", rawstrings)
+    plain_notation = isnothing.(sci_notation_index)
+    sci_notation_index = sci_notation_index[.!(plain_notation)]
+    converted[plain_notation] = replace.(rawstrings[plain_notation], r"-(?=\d)" => MINUS_SIGN)
+    converted[.!(plain_notation)] = [
+        rich(str[1:sci_notation_index[i][end]],
+            superscript(replace(str[sci_notation_index[i][end]+1:end],
+            '⁻' => MINUS_SIGN, '⁰' => '0', '¹' => '1', '²' => '2', '³' => '3', '⁴' => '4', '⁵' => '5', '⁶' => '6', '⁷' => '7', '⁸' => '8', '⁹' => '9'), offset = Vec2f(0.1f0, 0f0)))
+        for (i, str) in enumerate(rawstrings[.!(plain_notation)])]
+    return converted
+end
 
 """
     get_ticklabels(formatfunction::Function, values)
