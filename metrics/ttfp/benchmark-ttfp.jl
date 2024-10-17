@@ -27,7 +27,7 @@ using Statistics: median
 project_name = basename(dirname(Pkg.project().path))
 
 result = "$(project_name)-benchmark.json"
-old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], [], [], []]
+old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 @show [t_using, create_time, display_time]
 push!.(old[1:3], [t_using, create_time, display_time])
 
