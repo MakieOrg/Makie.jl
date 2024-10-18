@@ -146,27 +146,14 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = copy(Attributes(plot))
-
-    attr[:colorrange] = cliprange
-    attr[:colormap] = cmap
-    attr[:algorithm] = 7
-    pop!(attr, :levels)
-    pop!(attr, :alpha) # don't apply alpha 2 times
-
-    # unused attributes
-    pop!(attr, :labels)
-    pop!(attr, :labelfont)
-    pop!(attr, :labelsize)
-    pop!(attr, :labelcolor)
-    pop!(attr, :labelformatter)
-    pop!(attr, :color)
-    pop!(attr, :linestyle)
-    pop!(attr, :linewidth)
-    pop!(attr, :linecap)
-    pop!(attr, :joinstyle)
-    pop!(attr, :miter_limit)
+    attr = shared_attributes(
+        plot, Volume, 
+        :levels, :alpha, # handled here explicitly
+        colorrange = cliprange, colormap = cmap, algorithm = 7
+    )
     volume!(plot, attr, x, y, z, volume)
+
+    return plot
 end
 
 color_per_level(color, args...) = color_per_level(to_color(color), args...)
@@ -223,7 +210,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     replace_automatic!(()-> zrange, plot, :colorrange)
 
-    @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
+    @extract plot (labels, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorscale, colorrange, alpha)
     level_colors = lift(color_per_level, plot, args..., levels)
     args = (x, y, z, levels, level_colors, labels)
@@ -244,17 +231,13 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     scene = parent_scene(plot)
     space = plot.space[]
 
-    texts = text!(
-        plot,
-        Observable(P[]);
-        color = Observable(RGBA{Float32}[]),
-        rotation = Observable(Float32[]),
-        text = Observable(String[]),
-        align = (:center, :center),
-        fontsize = labelsize,
-        font = labelfont,
-        transform_marker = false
+    text_attr = shared_attributes(
+        plot, Text, 
+        fontsize = plot.labelsize, font = plot.labelfont,
+        color = RGBA{Float32}[], rotation = Float32[], text = String[], 
+        align = (:center, :center), transform_marker = false, fxaa = false
     )
+    texts = text!(plot, text_attr, Observable(P[]))
 
     lift(plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
             labels, labelcolor, labelformatter, lev_pos_col
@@ -327,22 +310,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         masked
     end
 
-    lines!(
-        plot, masked_lines;
-        color = colors,
-        linewidth = plot.linewidth,
-        linestyle = plot.linestyle,
-        linecap = plot.linecap,
-        joinstyle = plot.joinstyle,
-        miter_limit = plot.miter_limit,
-        visible=plot.visible,
-        transparency=plot.transparency,
-        overdraw=plot.overdraw,
-        inspectable=plot.inspectable,
-        depth_shift=plot.depth_shift,
-        space=plot.space
-    )
-    plot
+    line_attr = shared_attributes(plot, Lines, color = colors, fxaa = false)
+    lines!(plot, line_attr, masked_lines)
+
+    return plot
 end
 
 function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}

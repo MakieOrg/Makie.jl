@@ -31,6 +31,7 @@ The conversion trait of `stem` is `PointBased`.
     strokecolor = @inherit markerstrokecolor
     strokewidth = @inherit markerstrokewidth
     MakieCore.mixin_generic_plot_attributes()...
+    fxaa = false
     cycle = [[:stemcolor, :color, :trunkcolor] => :color]
 end
 
@@ -53,34 +54,21 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
 
     trunkpoints = lift(st -> last.(st), s, stemtuples)
 
-    lines!(s, trunkpoints,
-        linewidth = s.trunkwidth,
-        color = s.trunkcolor,
-        colormap = s.trunkcolormap,
-        colorscale = s.colorscale,
-        colorrange = s.trunkcolorrange,
-        visible = s.visible,
-        linestyle = s.trunklinestyle,
-        inspectable = s.inspectable)
-    linesegments!(s, stemtuples,
-        linewidth = s.stemwidth,
-        color = s.stemcolor,
-        colormap = s.stemcolormap,
-        colorscale = s.colorscale,
-        colorrange = s.stemcolorrange,
-        visible = s.visible,
-        linestyle = s.stemlinestyle,
-        inspectable = s.inspectable)
-    scatter!(s, s[1],
-        color = s.color,
-        colormap = s.colormap,
-        colorscale = s.colorscale,
-        colorrange = s.colorrange,
-        markersize = s.markersize,
-        marker = s.marker,
-        strokecolor = s.strokecolor,
-        strokewidth = s.strokewidth,
-        visible = s.visible,
-        inspectable = s.inspectable)
-    s
+    trunk_attr = shared_attributes(
+        s, Lines, 
+        linewidth = s.trunkwidth, linestyle = s.trunklinestyle, color = s.trunkcolor, 
+        colormap = s.trunkcolormap, colorrange = s.trunkcolorrange, 
+    )
+    lines!(s, trunk_attr, trunkpoints)
+
+    stem_attr = shared_attributes(
+        s, LineSegments, 
+        linewidth = s.stemwidth, linestyle = s.stemlinestyle,
+        color = s.stemcolor, colormap = s.stemcolormap, colorrange = s.stemcolorrange
+    )
+    linesegments!(s, stem_attr, stemtuples)
+
+    scatter!(s, shared_attributes(s, Scatter), s[1])
+
+    return s
 end

@@ -117,7 +117,6 @@ used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 plottype(::Type{<:QQNorm}, args...) = QQPlot
 
 function Makie.plot!(p::QQPlot)
-
     points, line = p[1], p[2]
     real_markercolor = Observable{RGBColors}()
 
@@ -125,18 +124,8 @@ function Makie.plot!(p::QQPlot)
         return to_color(markercolor === automatic ? color : markercolor)
     end
 
-    scatter!(p, points;
-        color = real_markercolor,
-        strokecolor = p.strokecolor,
-        strokewidth = p.strokewidth,
-        marker = p.marker,
-        markersize = p.markersize,
-        inspectable = p.inspectable
-    )
-    linesegments!(p, line;
-        color = p.color,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        inspectable = p.inspectable
-    )
+    scatter!(p, shared_attributes(p, Scatter, color = real_markercolor), points)
+    linesegments!(p, shared_attributes(p, LineSegments), line)
+
+    return p
 end

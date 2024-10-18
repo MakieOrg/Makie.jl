@@ -38,7 +38,7 @@ function Makie.plot!(plot::TimeSeries)
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer = copy(points[])
-    lines!(plot, points)
+    lines!(plot, shared_attributes(plot, Lines), points)
     start = time()
     on(plot, plot.signal) do x
         points[][end] = signal2point(x, start)
@@ -47,5 +47,6 @@ function Makie.plot!(plot::TimeSeries)
         buffer = points[]
         points[] = buff_ref
     end
-    plot
+    
+    return plot
 end

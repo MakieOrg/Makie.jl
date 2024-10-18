@@ -151,7 +151,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
         end
     end
     attr[:transformation] = Transformation(p.transformation; transform_func=identity)
-    return voronoiplot!(p, attr, vorn)
+    voronoiplot!(p, attr, vorn)
+    return p
 end
 
 function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
@@ -202,23 +203,15 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly!(p, polygons;
-          strokecolor=p.strokecolor,
-          strokewidth=p.strokewidth,
-          color=p._calculated_colors,
-          colormap=p.colormap,
-          colorscale=p.colorscale,
-          colorrange=p.colorrange,
-          lowclip=p.lowclip,
-          highclip=p.highclip,
-          nan_color=p.nan_color)
-
-    scatter!(p, generators_2f;
-             markersize=p.markersize,
-             marker=p.marker,
-             color=p.markercolor,
-             visible=p.show_generators,
-             depth_shift=-2.0f-5)
+    poly_attr = shared_attributes(p, Poly, color = p._calculated_colors)
+    poly!(p, poly_attr, polygons)
+    
+    scatter_attr = shared_attributes(
+        p, Scatter, 
+        :strokecolor, :strokewidth,
+        color = p.markercolor, visible = p.show_generators, depth_shift = -2.0f-5
+    )
+    scatter!(p, scatter_attr, generators_2f)
 
     return p
 end

@@ -75,14 +75,10 @@ function Makie.plot!(plot::StepHist)
             return color
         end
     end
-    attr = copy(plot.attributes)
-    # Don't pass stephist attributes to the stairs primitive
-    pop!(attr, :weights)
-    pop!(attr, :normalization)
-    pop!(attr, :scale_to)
-    pop!(attr, :bins)
-    stairs!(plot, points; attr..., color=color)
-    plot
+
+    stairs!(plot, shared_attributes(plot, Stairs, color = color), points)
+    
+    return plot
 end
 
 """
@@ -186,16 +182,12 @@ function Makie.plot!(plot::Hist)
         x === :values ? :y : x
     end
 
-    bar_attrs = copy(plot.attributes)
-    delete!(bar_attrs, :over_background_color)
-    delete!(bar_attrs, :bins)
-    delete!(bar_attrs, :scale_to)
-    delete!(bar_attrs, :weights)
-    delete!(bar_attrs, :normalization)
-    delete!(bar_attrs, :over_bar_color)
-
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], gap = 0, bar_attrs..., fillto=plot.fillto, offset=plot.offset, bar_labels=bar_labels, color=color)
+    bar_attrs = shared_attributes(
+        plot, BarPlot, 
+        width = widths[], gap = 0, bar_labels = bar_labels, color = color
+    )
+    bp = barplot!(plot, bar_attrs, points[])
 
     # update the barplot points without triggering, then trigger with `width`
     on(plot, widths) do w
@@ -205,5 +197,6 @@ function Makie.plot!(plot::Hist)
     onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
         bp[1][] = points[]
     end
-    plot
+
+    return plot
 end

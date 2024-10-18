@@ -101,7 +101,8 @@ function plot!(plot::Text)
     pop!(t.attributes, :fonts)
     pop!(t.attributes, :text)
     linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-    plot
+    
+    return plot
 end
 
 to_offset(v::VecTypes) = Vec2f(v)
@@ -145,7 +146,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractString}})
     attrs = copy(plot.attributes)
     pop!(attrs, :calculated_colors)
     text!(plot, plot.position; attrs..., text = plot[1])
-    plot
+    return plot
 end
 
 
@@ -160,7 +161,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:AbstractString}}})
     attrs = copy(plot.attributes)
     pop!(attrs, :calculated_colors)
     text!(plot, plot.position; attrs..., text = plot[1])
-    plot
+    return plot
 end
 
 # overload text plotting for a vector of tuples of a string and a point each
@@ -195,7 +196,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
 
         return
     end
-    plot
+    return plot
 end
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,

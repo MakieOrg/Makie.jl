@@ -131,20 +131,16 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-    poly!(c,
-        polys,
-        colormap = c._computed_colormap,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
-        nan_color = c.nan_color,
-        color = colors,
-        strokewidth = 0,
-        strokecolor = :transparent,
-        shading = NoShading,
-        inspectable = c.inspectable,
-        transparency = c.transparency
+    attr = shared_attributes(
+        c, Poly, 
+        :colorscale, # TODO: Is this getting processed somewhere else?
+        colormap = c._computed_colormap, colorrange = colorrange, 
+        highclip = highcolor, lowclip = lowcolor, color = colors,
+        strokewidth = 0, strokecolor = :transparent, shading = NoShading
     )
+    poly!(c, attr, polys)
+
+    return c
 end
 
 """
@@ -217,5 +213,6 @@ function _group_polys(points, ids)
         unclassified_polyindices = unclassified_polyindices[to_keep]
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
-    groups
+    
+    return groups
 end

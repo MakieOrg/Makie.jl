@@ -60,8 +60,8 @@ function convert_arguments(::Type{<: Series}, arg::AbstractVector{<: AbstractVec
 end
 
 function plot!(plot::Series)
-    @extract plot (curves, labels, linewidth, linecap, joinstyle, miter_limit, color, solid_color, space, linestyle)
-    sargs = [:marker, :markersize, :strokecolor, :strokewidth]
+    @extract plot (curves, labels, color, solid_color, linestyle)
+    sargs = (:marker, :markersize, :strokecolor, :strokewidth)
     scatter = Dict((f => plot[f] for f in sargs if !isnothing(plot[f][])))
     nseries = length(curves[])
     colors = lift(plot, color, solid_color) do color, scolor
@@ -77,19 +77,27 @@ function plot!(plot::Series)
         positions = lift(c-> c[i], plot, curves)
         series_color = lift(c-> c isa AbstractVector ? c[i] : c, plot, colors)
         series_linestyle = lift(ls-> ls isa AbstractVector ? ls[i] : ls, plot, linestyle)
+
         if !isempty(scatter)
-            mcolor = plot.markercolor
-            markercolor = lift((mc, sc)-> mc == automatic ? sc : mc, plot, mcolor, series_color)
-            scatterlines!(plot, positions;
-                linewidth=linewidth, linecap = plot.linecap, joinstyle = joinstyle,
-                miter_limit = miter_limit, color=series_color, markercolor=series_color,
-                label=label[], scatter..., space = space, linestyle = series_linestyle)
+            # We don't want to pass sargs that are nothing so we avoid copying
+            # them from parent and only add them when they are not nothing
+            # TODO: This should probably be reworked to generate defaults instead?
+            attr = shared_attributes(
+                plot, ScatterLines,
+                sargs...,
+                label = label, color = series_color, linestyle = series_linestyle; scatter...
+            )
+            scatterlines!(plot, attr, positions)
         else
-            lines!(plot, positions; linewidth=linewidth, linecap = plot.linecap,
-                joinstyle = joinstyle, miter_limit = miter_limit, color=series_color,
-                label=label, space = space, linestyle = series_linestyle)
+            attr = shared_attributes(
+                plot, Lines,
+                label = label, color = series_color, linestyle = series_linestyle
+            )
+            lines!(plot, attr, positions)
         end
     end
+
+    return plot
 end
 
 function Makie.get_plots(plot::Series)

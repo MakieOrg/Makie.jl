@@ -149,19 +149,15 @@ function plot!(plot::Violin)
         return (vertices = vertices, lines = lines, colors = colors)
     end
 
-    poly!(
-        plot,
-        lift(s -> s.vertices, plot, signals);
-        color=lift(s -> s.colors, plot, signals),
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
-    )
-    linesegments!(
-        plot,
-        lift(s -> s.lines, plot, signals);
+    poly_attr = shared_attributes(plot, Poly, color = lift(s -> s.colors, plot, signals))
+    poly!(plot, poly_attr, lift(s -> s.vertices, plot, signals))
+
+    line_attr = shared_attributes(plot, LineSegments, 
         color = plot[:mediancolor],
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],
-        inspectable = plot[:inspectable]
     )
+    linesegments!(plot, line_attr, lift(s -> s.lines, plot, signals))
+
+    return plot
 end

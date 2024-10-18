@@ -66,6 +66,8 @@ function Makie.plot!(plot::Band)
     attr = Attributes(plot)
     attr[:color] = meshcolor
     mesh!(plot, attr, coordinates, connectivity)
+    
+    return plot
 end
 
 function fill_view(x, y1, y2, where::Nothing)
