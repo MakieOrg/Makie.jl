@@ -734,7 +734,7 @@ end
     f, a, p = surface(xs, ys, field; axis = (; type = LScene,), shading = NoShading)
     p.transformation.transform_func[] = SPHERICAL_TRANSFORM
     f
-end                                                                                                                             end
+end
 
 @reference_test "volumeslices" begin
     r = range(-1, 1, length = 10)
