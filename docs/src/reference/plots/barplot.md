@@ -113,16 +113,14 @@ barplot([-1, -0.5, 0.5, 1],
 ```
 
 ```@figure
-#Gantt data
 gantt = (
-    machine = [1,2,1,2],
-    job = [1,1,2,3],
-    task = [1,2,3,3],
+    machine = [1, 2, 1, 2],
+    job = [1, 1, 2, 3],
+    task = [1, 2, 3, 3],
     start = [1, 3, 3.5, 5],
     stop = [3, 4, 5, 6]
 )
 
-#Figure and axis
 fig = Figure()
 ax = Axis(
     fig[2,1],
@@ -132,35 +130,24 @@ ax = Axis(
 )
 xlims!(ax, 0, maximum(gantt.stop))
 
-#Colors
-colors = cgrad(:tab10)
+cmap = Makie.to_colormap(:tab10)
 
-#Plot bars
 barplot!(
     gantt.machine,
     gantt.stop,
     fillto = gantt.start,
     direction = :x,
-    color = colors[gantt.job],
-    gap = 0.5
+    color = gantt.job,
+    colormap = cmap,
+    colorrange = (1, length(cmap)),
+    gap = 0.5,
+    bar_labels = ["task #$i" for i in gantt.task],
+    label_position = :center,
+    label_color = :white,
+    label = ["job #$i" => (; color = i) for i in unique(gantt.job)]
 )
 
-#Add labels
-bar_labels = ["task #$i" for i in gantt.task]
-text!(
-    ["task #$i" for i in gantt.task],
-    position = Point2f.(
-        (gantt.start .+ gantt.stop) ./ 2,
-        gantt.machine
-    ),
-    color = :white,
-    align = (:center, :center)
-)
-
-#Add Legend
-labels = ["job #$i" for i in unique(gantt.job)]
-elements = [PolyElement(polycolor = colors[i]) for i in unique(gantt.job)]
-Legend(fig[1,1], elements, labels, "Jobs", orientation=:horizontal, tellwidth = false, tellheight = true)
+Legend(fig[1,1], ax, "Jobs", orientation=:horizontal, tellwidth = false, tellheight = true)
 
 fig
 ```

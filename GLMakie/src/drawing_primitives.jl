@@ -708,6 +708,7 @@ function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
         else
             gl_attributes[:image] = Texture(pop!(gl_attributes, :color); minfilter=interp)
         end
+        gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
         return draw_mesh(screen, gl_attributes)
     end
 end

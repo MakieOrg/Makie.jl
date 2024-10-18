@@ -417,15 +417,12 @@ function Symlog10(lo, hi)
     return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
 end
 
-inverse_transform(::typeof(identity)) = identity
-inverse_transform(::typeof(log10)) = exp10
-inverse_transform(::typeof(log2)) = exp2
-inverse_transform(::typeof(log)) = exp
-inverse_transform(::typeof(sqrt)) = x -> x ^ 2
+function inverse_transform(f)
+    f⁻¹ = InverseFunctions.inverse(f)
+    return f⁻¹ isa InverseFunctions.NoInverse ? nothing : f⁻¹  # nothing is for backwards compatibility
+end
 inverse_transform(F::Tuple) = map(inverse_transform, F)
-inverse_transform(::typeof(logit)) = logistic
 inverse_transform(s::ReversibleScale) = s.inverse
-inverse_transform(::Any) = nothing
 
 function is_identity_transform(t)
     return t === identity || t isa Tuple && all(x-> x === identity, t)

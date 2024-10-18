@@ -734,4 +734,18 @@ end
     f, a, p = surface(xs, ys, field; axis = (; type = LScene,), shading = NoShading)
     p.transformation.transform_func[] = SPHERICAL_TRANSFORM
     f
+end                                                                                                                             end
+
+@reference_test "volumeslices" begin
+    r = range(-1, 1, length = 10)
+    data = RNG.rand(10,10,10)
+    
+    fig = Figure()
+    volumeslices(fig[1, 1], r, r, r, data)
+    a, p = volumeslices(fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
+        colorrange = (0.2, 0.8), lowclip = :black, highclip = :green)
+    p.update_xz[](3)
+    p.update_yz[](4)
+    p.update_xy[](10)
+    fig
 end
