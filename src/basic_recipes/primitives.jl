@@ -202,3 +202,38 @@ function resolve_color_update!(plot)
 
     return
 end
+
+#=
+On `text!()`:
+
+Text is the most complicated primitive...
+
+Can act like recipe (linesegments + text)
+-> probably need a native_text()
+
+Multiple input types:
+- GlyphCollection -> converted    
+- text -> GlyphCollection -> converted
+- point-like -> position attribute
+- (x, y, z)-like -> point-like -> position attribute
+Maybe not a big problem?
+
+update!(::Text)
+    if any(in(flagged), (:x, :y, :z, :position))
+        plot.position.val = convert_arguments(Text, ...)[1]
+        if is_positional(plot.args)
+            plot.args[1].val = plot.position[]
+        end
+    end
+    if text in flagged
+        plot.text.val = convert_arguments(Text, kwargs[:text])[1]
+        if is_text_like(plot.args)
+            plot.args[1].val = plot.text[]
+        end
+    end
+
+resolve_update!()
+    plot.converted = layout_text(...)
+    plot.computed[:position] = plot.position[]
+
+=#
