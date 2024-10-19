@@ -76,8 +76,12 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     # Converted and processed arguments
     attributes::Attributes
 
+    # outputs of resolve_updates!(plot)
     computed::Dict{Symbol, Any}
+    # which args/attributes changed (triggers after update!(plot, ...))
     updated_inputs::Observable{Set{Symbol}}
+    # track changed computed outputs (e.g. for texture updates)
+    # Observable probably not needed (if backend calls resolve_updates!() it knows when that's done)
     updated_outputs::Observable{Set{Symbol}}
 
     plots::Vector{Plot}
