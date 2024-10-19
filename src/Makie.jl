@@ -88,7 +88,7 @@ using MakieCore: Pixel, px, Unit, Billboard
 using MakieCore: NoShading, FastShading, MultiLightShading
 using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-                  get_attribute, plotsym, plotkey, attributes, used_attributes
+                  get_attribute, plotsym, plotkey, attributes, used_attributes, update!, resolve_updates!
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
 import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
 import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
@@ -150,6 +150,7 @@ include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
 
 # basic recipes
+include("basic_recipes/primitives.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")

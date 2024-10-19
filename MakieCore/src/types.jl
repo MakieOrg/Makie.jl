@@ -76,6 +76,10 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     # Converted and processed arguments
     attributes::Attributes
 
+    computed::Dict{Symbol, Any}
+    updated_inputs::Observable{Set{Symbol}}
+    updated_outputs::Observable{Set{Symbol}}
+
     plots::Vector{Plot}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
@@ -85,7 +89,13 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
                 args::Vector{Any}, converted::Vector{Observable},
                 deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T}
-        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
+        return new{Typ,T}(
+            nothing, 
+            kw, kw_obs, args, 
+            converted, Attributes(), 
+            Dict{Symbol, Any}(), Observable(Set{Symbol}()), Observable(Set{Symbol}()),
+            Plot[], deregister_callbacks
+        )
     end
 end
 
@@ -95,7 +105,31 @@ end
 
 Base.parent(x::AbstractPlot) = x.parent
 
+"""
+TODO: docs
+
+updates multiple plot arg and attribute values, then triggers update resolution
+"""
+function update!(plot::Plot; kwargs...)
+    union!(plot.updated_inputs[], keys(kwargs))
+    foreach((k, v) -> plot[k].val = v, pairs(kwargs))
+    notify(plot.updated_inputs)
+    return
+end
+
+"""
+TODO: docs
+
+update resolution falls back to Observable triggers for compat
+"""
+function resolve_updates!(plot::Plot)
+    foreach(k -> notify(plot[k]), plot.updated_inputs[])
+    empty!(plot.updated_inputs[])
+    return
+end
+
 struct Key{K} end
+Key(name::Symbol) = Key{name}()
 macro key_str(arg)
     :(Key{$(QuoteNode(Symbol(arg)))})
 end
