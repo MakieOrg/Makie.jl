@@ -43,7 +43,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     )
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
-    done_init = Observable(false)
+    done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = Bonito.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
@@ -66,7 +66,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             $(done_init).notify(true)
         } catch (e) {
             Bonito.Connection.send_error("error initializing scene", e)
-            $(done_init).notify(false)
+            $(done_init).notify(e)
             return
         }
     })
@@ -74,6 +74,6 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     on(session, done_init) do val
         window_open[] = true
     end
-    connect_scene_events!(scene, comm)
+    connect_scene_events!(screen, scene, comm)
     return wrapper, done_init
 end

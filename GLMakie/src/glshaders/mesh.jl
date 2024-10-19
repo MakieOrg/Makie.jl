@@ -50,7 +50,7 @@ function draw_mesh(screen, data::Dict)
         color_norm = nothing
         fetch_pixel = false
         texturecoordinates = Vec2f(0) => GLBuffer
-        uv_scale = Vec2f(1)
+        uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
@@ -60,6 +60,7 @@ function draw_mesh(screen, data::Dict)
             "lighting.frag",
             view = Dict(
                 "shading" => light_calc(shading),
+                "picking_mode" => to_value(get(data, :picking_mode, "")),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),

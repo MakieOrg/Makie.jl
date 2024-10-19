@@ -11,6 +11,7 @@ using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
+using ReferenceTests.SparseArrays
 using Makie: Record, volume
 
 @testset "categorical" begin
@@ -48,4 +49,7 @@ end
 end
 @testset "updating_plots" begin
     include("updating.jl")
+end
+@testset "generic_components" begin
+    include("generic_components.jl")
 end

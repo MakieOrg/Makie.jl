@@ -218,6 +218,48 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
 end
 
 
+# used for lines in CairoMakie
+"""
+    broadcast_foreach_index(f, arg, indices, args...)
+
+Like broadcast_foreach but with indexing. The first arg is assumed to already
+have indices applied while the remaining ones use the given indices.
+
+Effectively calls:
+```
+for (raw_idx, idx) in enumerate(indices)
+    f(arg[raw_idx], attr_broadcast_getindex(args, idx)...)
+end
+```
+"""
+@generated function broadcast_foreach_index(f, arg1, indices, args...)
+    N = length(args)
+    quote
+        lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
+        maxlen = maximum(lengths)
+        any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
+        if any_wrong_length
+            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+        end
+        if (maxlen > 1) && (length(last(indices)) > maxlen) # assuming indices sorted
+            error("Indices must be in range. Found $(last(indices)) > $maxlen.")
+        end
+        if length(indices) != length(arg1)
+            error("First arg out of bounds.")
+        end
+        # skip if there's a zero length element (like an empty annotations collection, etc)
+        # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+        0 in lengths && return
+
+        for (raw, i) in enumerate(indices)
+            Base.Cartesian.@ncall $N f arg1[raw] (j -> attr_broadcast_getindex(args[j], i))
+        end
+
+        return
+    end
+end
+
+
 """
     from_dict(::Type{T}, dict)
 Creates the type `T` from the fields in dict.
@@ -396,7 +438,8 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
     return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
 end
@@ -413,14 +456,20 @@ Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    g = map(CartesianIndices(z)) do i
-        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
-    end
-    return vec(g)
+    return f(matrix_grid(x, y, z))
 end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
+    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
+    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    return vec(ps)
 end
 
 ############################################################
@@ -527,7 +576,7 @@ Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
     valid_attributes = attribute_names(target)
-    existing_attributes = attribute_names(typeof(plot))
+    existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)
     return drop_attributes(plot, to_drop)
 end

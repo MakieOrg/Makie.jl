@@ -5,6 +5,7 @@ flat out vec3 o_normal;
 out vec3 o_uvw;
 flat out int o_side;
 out vec2 o_tex_uv;
+out float o_clip_distance[8];
 
 #ifdef DEBUG_RENDER_ORDER
 flat out float plane_render_idx;

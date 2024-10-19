@@ -59,6 +59,45 @@ of results.
 
 GLMakie has experimental support for displaying multiple independent figures (or scenes). To open a new window, use `display(GLMakie.Screen(), figure_or_scene)`. To close all windows, use `GLMakie.closeall()`.
 
+## Embedding
+
+There's experimental support for embedding GLMakie by creating a custom 'window'
+type (analagous to the GLFW OS-level window) and grabbing GLMakie's framebuffers
+to display in your own GUI. Here's a high-level overview of what you'd need to
+do:
+
+1. Create a `MyWindow` type, which might represent a widget in your chosen GUI
+   framework. Pass an instance of this type to `GLMakie.Screen(;
+   window=my_window, start_renderloop=false)` to get a `Screen{MyWindow}`
+   object without the renderloop running in the background (optional, depends on
+   your application). This is the main object you'll need to work with.
+1. Define method specializations for the `MyWindow` type. Here's a
+   non-exhaustive list:
+
+   - `Base.isopen(::MyWindow)`
+   - `ShaderAbstractions.native_switch_context!(::MyWindow)` (switch to the
+     OpenGL context of the window)
+   - `ShaderAbstractions.native_context_alive(::MyWindow)` (check if the window
+     OpenGL context is still valid)
+   - `GLMakie.framebuffer_size(::MyWindow)` (get the size of the windows framebuffer)
+   - `GLMakie.connect_screen(::Scene, Screen{MyWindow})` (connect input signals
+     for e.g. the keyboard and mouse; you may want to implement the individual
+     connection methods instead).
+
+   The actual implementation of all these depends entirely on how you want to
+   embed GLMakie.
+1. A `Figure` can now be displayed in the new screen by calling `display(screen,
+   f)`. If you're not using GLMakie's own renderloop you'll need to take care of
+   calling `GLMakie.render_frame(screen)` whenever necessary (you can use
+   `GLMakie.requires_update(screen)`).
+1. `display(screen, f)` will only draw the figure to a framebuffer. You can get
+   the color texture attachement of the framebuffer with
+   `screen.framebuffer.buffers[:color]`, and display that color texture as an
+   image in your chosen GUI framework.
+1. If interactivity is desired, you will need to pass input events from the
+   keyboard and mouse to the events in `Makie.get_scene(f).events` ([The Events
+   struct](@ref)).
+
 ## Forcing Dedicated GPU Use In Linux
 
 Normally the dedicated GPU is used for rendering.

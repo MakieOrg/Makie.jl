@@ -31,9 +31,9 @@ end
 
     # data conversion pipeline
     @test p.args[1][] === data
-    @test p.converted[1][] ≈ -3.0..3.0
-    @test p.converted[2][] ≈ -2.5..2.5
-    @test p.converted[3][] ≈ -2.0..2.0
+    @test p.converted[1][] == (-3.0, 3.0)
+    @test p.converted[2][] == (-2.5, 2.5)
+    @test p.converted[3][] == (-2.0, 2.0)
 
     @test p.colorrange[] == Makie.automatic # otherwise no auto _limits
     @test all(p._limits[] .≈ (0.3, 1.8)) # controls conversion to voxel ids

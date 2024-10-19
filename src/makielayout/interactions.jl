@@ -123,7 +123,7 @@ end
 
 function _selection_vertices(ax_scene, outer, inner)
     _clamp(p, plow, phigh) = Point2(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.viewport[])
+    proj(point) = project(ax_scene, point)
     transf = Makie.transform_func(ax_scene)
     outer = positivize(Makie.apply_transform(transf, outer))
     inner = positivize(Makie.apply_transform(transf, inner))
@@ -237,9 +237,12 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     xzoomkey = ax.xzoomkey
     yzoomkey = ax.yzoomkey
 
+
     scene = ax.scene
     e = events(scene)
     cam = camera(scene)
+
+    ispressed(scene, ax.zoombutton[]) || return Consume(false)
 
     if zoom != 0
         pa = viewport(scene)[]
@@ -282,7 +285,6 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         else
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
-
         inv_transf = Makie.inverse_transform(transf)
         tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
     end

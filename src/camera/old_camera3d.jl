@@ -333,7 +333,8 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     proj = projection_switch(scene.viewport[], fov, near, far, projectiontype, zoom)
     view = Makie.lookat(eyeposition, lookat, upvector)
     set_proj_view!(camera(scene), proj, view)
-    scene.camera.eyeposition[]    = Vec3f(cam.eyeposition[])
+    scene.camera.eyeposition[] = Vec3f(cam.eyeposition[])
+    scene.camera.upvector[] = Vec3f(cam.upvector[])
     scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
 end
 

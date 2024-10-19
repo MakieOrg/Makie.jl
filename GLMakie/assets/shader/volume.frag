@@ -27,6 +27,8 @@ uniform float isovalue;
 uniform float isorange;
 
 uniform mat4 model, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 const float max_distance = 1.3;
 
@@ -299,6 +301,33 @@ void write2framebuffer(vec4 color, uvec2 id);
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
+
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < _num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+        
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
+
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
 }
@@ -342,6 +371,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / num_samples;
 
     float steps = 0.1;

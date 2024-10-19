@@ -61,7 +61,7 @@ end
 
 function string_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
     bb = unchecked_boundingbox(x, args...)
-    isfinite_rect(bb) || error("Invalid text boundingbox")
+    isfinite_rect(bb) || error("Invalid text boundingbox $bb")
     return bb
 end
 

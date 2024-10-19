@@ -30,7 +30,6 @@ uniform vec4 nan_color;
 vec4 color_lookup(float intensity, sampler1D color, vec2 norm);
 
 uniform vec3 scale;
-
 uniform mat4 view, model, projection;
 
 // See util.vert for implementations
@@ -41,6 +40,9 @@ vec2 linear_index(ivec2 dims, int index);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
 
+{{uv_transform_type}} uv_transform;
+vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, vec2 uv){ return transform * vec3(uv, 1); }
 
 // Normal generation
 
@@ -147,8 +149,8 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, ivec2 uv){
 }
 
 uniform uint objectid;
-uniform vec2 uv_scale;
 flat out uvec2 o_id;
+flat out int o_InstanceID; // dummy for compat with meshscatter in mesh.frag
 out vec4 o_color;
 out vec2 o_uv;
 
@@ -161,8 +163,10 @@ void main()
     vec3 pos;
     {{position_calc}}
 
-    o_id = uvec2(objectid, index1D+1);
-    o_uv = index01 * uv_scale;
+    o_id = uvec2(objectid, 0); // calculated from uv in mesh.frag
+    o_InstanceID = 0;
+    // match up with mesh
+    o_uv = apply_uv_transform(uv_transform, vec2(index01.x, 1 - index01.y));
     vec3 normalvec = {{normal_calc}};
 
     o_color = vec4(0.0);

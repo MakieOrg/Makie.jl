@@ -2,6 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
+using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion
@@ -13,6 +14,13 @@ using Makie:
         @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
     end
 
+end
+
+@testset "Heatmapshader with ranges" begin
+    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol,Any}())
+    hm.converted[1][] isa Makie.EndPoints{Float32}
+    hm.converted[2][] isa Makie.EndPoints{Float32}
+    hm.converted[3][].data == Resampler(zeros(4, 4)).data
 end
 
 @testset "changing input types" begin
@@ -312,6 +320,12 @@ end
     @test pl.plots[1][1][][1] == Makie.poly_convert(points)
 end
 
+@testset "Poly with matrix" begin
+    x1 = [0.0, 1, 1, 0, 0]
+    y1 = [0.0, 0, 1, 1, 0]
+    @test convert_arguments(Poly, hcat(x1, y1))[1] == Point.(x1, y1)
+end
+
 @testset "GridBased and ImageLike conversions" begin
     # type tree
     @test GridBased <: ConversionTrait
@@ -335,17 +349,22 @@ end
 
     v1 = collect(1:10)
     v2 = collect(1:6)
+    v3 = reverse(v1)
 
-    i1 = 1..10
-    i2 = 1..6
+    i1 = 1 .. 10
+    i2 = 1 .. 6
+    i3 = 10 .. 1
 
     o3 = Float32.(m3)
 
-    # Conversions
+    xx = convert_arguments(Image, m3)
+    xx == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
     @testset "ImageLike conversion" begin
-        @test convert_arguments(Image, m3)         == (0f0..10f0, 0f0..6f0, o3)
-        @test convert_arguments(Image, v1, r2, m3) == (1f0..10f0, 1f0..6f0, o3)
-        @test convert_arguments(Image, i1, v2, m3) == (1f0..10f0, 1f0..6f0, o3)
+        @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, v1, r2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, i1, v2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, v3, i1, m3) == ((10, 1), (1, 10), o3)
+        @test convert_arguments(Image, v1, i3, m3) == ((1, 10), (10, 1), o3)
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
@@ -355,26 +374,42 @@ end
         vo2 = Float32.(v2)
         mo1 = Float32.(m1)
         mo2 = Float32.(m2)
-        @test convert_arguments(Surface, m3)          == (vo1, vo2, o3)
-        @test convert_arguments(Contour, i1, v2, m3)  == (vo1, vo2, o3)
+        @test convert_arguments(Surface, m3) == (vo1, vo2, o3)
+        @test convert_arguments(Contour, i1, v2, m3) == (vo1, vo2, o3)
         @test convert_arguments(Contourf, v1, r2, m3) == (vo1, vo2, o3)
-        @test convert_arguments(Surface, m1, m2, m3)  == (mo1, mo2, o3)
-        @test convert_arguments(Surface, m1, m2)      == (mo1, mo2, zeros(Float32, size(o3)))
+        @test convert_arguments(Surface, m1, m2, m3) == (mo1, mo2, o3)
+        @test convert_arguments(Surface, m1, m2) == (mo1, mo2, zeros(Float32, size(o3)))
     end
 
     @testset "CellGrid conversion" begin
-        o1 = Float32.(0.5:1:10.5)
-        o2 = Float32.(0.5:1:6.5)
-        @test convert_arguments(Heatmap, m3)         == (o1, o2, o3)
-        @test convert_arguments(Heatmap, r1, i2, m3) == (o1, o2, o3)
-        @test convert_arguments(Heatmap, v1, r2, m3) == (o1, o2, o3)
-        @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0f0:10f0), o2, o3)
+        o1 = (0.5, 10.5)
+        o2 = (0.5, 6.5)
+        or1 = (0.5:1:10.5)
+        or2 = (0.5:1:6.5)
+        convert_arguments(Heatmap, m3)
+        Makie.expand_dimensions(CellGrid(), m3)
+        @test convert_arguments(Heatmap, m3) == (o1, o2, o3)
+        @test convert_arguments(Heatmap, r1, i2, m3) == (or1, or2, o3)
+        @test convert_arguments(Heatmap, v1, r2, m3) == (or1, or2, o3)
+        @test convert_arguments(Heatmap, 0:10, v2, m3) == (collect(0.0f0:10.0f0), or2, o3)
         # TODO, this throws ERROR: MethodError: no method matching adjust_axes(::CellGrid, ::Matrix{Int64}, ::Matrix{Int64}, ::Matrix{Float64})
         # Is this what we want to test for?
         @test_throws MethodError convert_arguments(Heatmap, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
         # https://github.com/MakieOrg/Makie.jl/issues/3515
-        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) == (0.5:8.5, 0.5:8.5, zeros(8, 8))
+        @test convert_arguments(Heatmap, 1:8, 1:8, Array{Union{Float64,Missing}}(zeros(8, 8))) ==
+            (0.5:8.5, 0.5:8.5, zeros(8, 8))
+    end
+    @testset "1 length arrays" begin
+        ranges = [((1, 1), (1, 3)) , ((1, 3), (1, 1)), ((1, 1), (1, 1))]
+        for (x, y) in ranges
+            data = zeros(x[2] - x[1] + 1, y[2] - y[1] + 1)
+            args = [(data,), (x, y, data), (x[1]..x[2], y[1]..y[2], data)]
+            res = ((x[1] - 0.5, x[2] + 0.5), (y[1] - 0.5, y[2] + 0.5), data)
+            for arg in args
+                @test convert_arguments(Heatmap, data) == res
+            end
+        end
     end
 end
 
@@ -457,4 +492,15 @@ end
     # sanity checks
     @test isapprox(Makie.angle2align(pi/4),  Vec2f(1, 1), atol = 1e-12)
     @test isapprox(Makie.angle2align(5pi/4), Vec2f(0, 0), atol = 1e-12)
+end
+
+@testset "func-Plot conversions" begin
+    @test plotfunc(scatter) === scatter
+    @test plotfunc(hist!) === hist
+    @test plotfunc(ScatterLines) === scatterlines
+    @test plotfunc!(mesh) === mesh!
+    @test plotfunc!(ablines!) === ablines!
+    @test plotfunc!(Image) === image!
+    @test func2type(lines) == Lines
+    @test func2type(hexbin!) == Hexbin
 end

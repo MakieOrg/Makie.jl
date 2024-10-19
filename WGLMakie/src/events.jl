@@ -52,7 +52,7 @@ function code_to_keyboard(code::String)
     end
 end
 
-function connect_scene_events!(scene::Scene, comm::Observable)
+function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
@@ -117,5 +117,17 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         end
         return
     end
+
+    tick_callback = Makie.TickCallback(e.tick)
+    Makie.start!(screen.tick_clock) do timer
+        if isopen(screen)
+            tick_callback(Makie.RegularRenderTick)
+            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
+        else
+            stop!(timer)
+        end
+        return
+    end
+
     return
 end

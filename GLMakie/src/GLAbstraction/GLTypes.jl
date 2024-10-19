@@ -392,7 +392,7 @@ function RenderObject(
             # Otherwise just let the value pass through
             # TODO: Is this ok/ever not filtered?
             else
-                # @debug "Passed on $k -> $(typeof(v)) without conversion."
+                @debug "Passed on $k -> $(typeof(v)) without conversion."
             end
         end
     end
@@ -403,7 +403,7 @@ function RenderObject(
 
     # remove all uniforms not occuring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
-    special = Set([:ssao, :transparency, :instances, :fxaa])
+    special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
     for k in setdiff(keys(data), keys(program.nametype))
         if !(k in special)
             delete!(data, k)

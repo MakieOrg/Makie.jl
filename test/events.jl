@@ -321,6 +321,8 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         for button in (:left, :middle, :right)
             # click
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mouseposition[] = (301, 301) # small mouse deviations with pressed button shouldn't register as a drag and prohibit a click
+            e.mouseposition[] = (300, 300)
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((
@@ -482,5 +484,40 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         blocked[] = true
         e.scroll[] = (0.0, 1.0)
         @test !blocked[]
+    end
+end
+
+@testset "Builtin interaction helpers" begin
+    f = Figure(size = (400, 400))
+    a = Axis(f[1, 1])
+    e = events(f)
+
+    @testset "select_point()" begin
+        point = select_point(a)
+        initial_pos = point[]
+
+        # Initialize the position in the axis
+        e.mouseposition[] = (200, 200)
+
+        # The point should only be updated when the user releases the mouse
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mouseposition[] = (100, 100)
+        @test point[] == initial_pos
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test point[] != initial_pos
+    end
+
+    @testset "select_rectangle()" begin
+        rect = select_rectangle(a)
+        initial_rect = rect[]
+
+        # Similarly to the select_point() test, we initialize the mouse position
+        # and check that the rect isn't updated until the mouse is released.
+        e.mouseposition[] = (200, 200)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mouseposition[] = (100, 100)
+        @test rect[] == initial_rect
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test rect[] != initial_rect
     end
 end

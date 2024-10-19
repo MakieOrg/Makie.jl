@@ -11,6 +11,8 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     RPR.rprCameraSetSensorSize(camera, res...)
     RPR.rprCameraSetFocusDistance(camera, wd)
     lookat!(camera, p, l, u)
+    far = wd * 10
+    near = wd * 0.001
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
     focal_length = res[2] / (2 * tand(fov / 2)) # fov is vertical
