@@ -1,4 +1,6 @@
-@testset "picking" begin
+# For things that aren't as plot related
+
+@reference_test "picking" begin
     scene = Scene(size = (230, 370))
     campixel!(scene)
     
@@ -18,29 +20,38 @@
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
     vx = voxels!(scene, [65, 155], [245, 305], [-1, 1], reshape([1,2,3,4,5,6], (3,2,1)), shading = NoShading)
     vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
-
+    
     # reversed axis
     i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
     s2 = surface!(scene, 210..180, 80..110, rand(2, 2))
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
-    scene
+    scene # for easy reviewing of the plot
 
     # render one frame to generate picking texture
-    colorbuffer(scene);
+    colorbuffer(scene, px_per_unit = 2);
 
-    # verify that heatmap doesn't get optimized away
-    @test begin
+    # verify that heatmap path is used for heatmaps
+    if Symbol(Makie.current_backend()) == :WGLMakie
+        @test length(faces(WGLMakie.create_shader(scene, hm).vertexarray)) > 2
+        @test length(faces(WGLMakie.create_shader(scene, hm2).vertexarray)) > 2
+    elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
-        robj = screen.renderlist[11][3] # text generates a text + line plot
-        shaders = robj.vertexarray.program.shader
-        names = [string(shader.name) for shader in shaders]
-        any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
+        for plt in (hm, hm2)
+            robj = screen.cache[objectid(plt)]
+            shaders = robj.vertexarray.program.shader
+            names = [string(shader.name) for shader in shaders]
+            @test any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
+        end
+    else
+        error("picking tests are only meant to run on GLMakie & WGLMakie")
     end
     
+    # raw picking tests
+
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)
-        @test pick(scene, Point2f(30, 60)) == (sc1, 3)
+        @test pick(scene, Point2f(29, 59)) == (sc1, 3)
         @test pick(scene, Point2f(57, 58)) == (nothing, 0) # maybe fragile
         @test pick(scene, Point2f(57, 13)) == (sc2, 1) # maybe fragile
         @test pick(scene, Point2f(20, 80)) == (nothing, 0)
@@ -66,11 +77,11 @@
 
         # more precise checks around borders (these maybe off by a pixel due to AA)
         @test pick(scene, 20, 200) == (l2, 2)
-        @test pick(scene, 30, 210) == (l2, 2)
+        @test pick(scene, 30, 209) == (l2, 2)
         @test pick(scene, 30, 211) == (nothing, 0)
-        @test pick(scene, 60, 200) == (l2, 2)
+        @test pick(scene, 59, 200) == (l2, 2)
         @test pick(scene, 61, 200) == (nothing, 0)
-        @test pick(scene, 57, 207) == (l2, 2)
+        @test pick(scene, 57, 206) == (l2, 2)
         @test pick(scene, 57, 208) == (nothing, 0)
         @test pick(scene, 40, 230) == (l2, 5) # nan handling
     end
@@ -78,16 +89,16 @@
     @testset "linesegments" begin
         @test pick(scene,  8, 260) == (nothing, 0) # off by a pixel due to AA
         @test pick(scene, 10, 260) == (ls, 2)
-        @test pick(scene, 30, 270) == (ls, 2)
+        @test pick(scene, 30, 269) == (ls, 2)
         @test pick(scene, 30, 271) == (nothing, 0)
-        @test pick(scene, 60, 260) == (ls, 2)
+        @test pick(scene, 59, 260) == (ls, 2)
         @test pick(scene, 61, 260) == (nothing, 0)
 
         @test pick(scene,  8, 290) == (nothing, 0) # off by a pixel due to AA
         @test pick(scene, 10, 290) == (ls, 6)
         @test pick(scene, 30, 280) == (ls, 6)
         @test pick(scene, 30, 278) == (nothing, 0) # off by a pixel due to AA
-        @test pick(scene, 60, 290) == (ls, 6)
+        @test pick(scene, 59, 290) == (ls, 6)
         @test pick(scene, 61, 290) == (nothing, 0)
     end
 
@@ -100,7 +111,7 @@
         @test pick(scene, 20, 333) == (nothing, 0)
         # space is counted
         @test pick(scene, 43, 320) == (t, 3)
-        @test pick(scene, 48, 325) == (t, 3)
+        @test pick(scene, 48, 324) == (t, 3)
         @test pick(scene, 49, 326) == (nothing, 0)
         # characters at nan position are counted
         @test pick(scene, 20, 350) == (t, 6)
@@ -269,4 +280,12 @@
         @test pick(scene, 111, 350) == (nothing, 0)
         @test pick(scene, 110, 351) == (nothing, 0)
     end
+
+    # grab all indices and generate a plot for them (w/ fixed px_per_unit)
+    full_screen = last.(pick(scene, scene.viewport[]))
+    
+    scene2 = Scene(size = 2.0 .* widths(scene.viewport[]))
+    campixel!(scene2)
+    image!(scene2, full_screen, colormap = :viridis)
+    scene2
 end
