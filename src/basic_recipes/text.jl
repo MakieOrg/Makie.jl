@@ -307,11 +307,40 @@ function Base.show(io::IO, ::MIME"text/plain", r::RichText)
     print(io, "RichText: \"$(String(r))\"")
 end
 
-rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
-subscript(args...; kwargs...) = RichText(:sub, args...; kwargs...)
-superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
+"""
+    rich(args...; kwargs...)
 
-export rich, subscript, superscript
+Create a `RichText` object containing all elements in `args`.
+"""
+rich(args...; kwargs...) = RichText(:span, args...; kwargs...)
+"""
+    subscript(args...; kwargs...)
+
+Create a `RichText` object representing a superscript containing all elements in `args`.
+"""
+subscript(args...; kwargs...) = RichText(:sub, args...; kwargs...)
+"""
+    superscript(args...; kwargs...)
+
+Create a `RichText` object representing a superscript containing all elements in `args`.
+"""
+superscript(args...; kwargs...) = RichText(:sup, args...; kwargs...)
+"""
+    subsup(subscript, superscript; kwargs...)
+
+Create a `RichText` object representing a right subscript/superscript combination,
+where both scripts are left-aligned against the preceding text.
+"""
+subsup(args...; kwargs...) = RichText(:subsup, args...; kwargs...)
+"""
+    left_subsup(subscript, superscript; kwargs...)
+
+Create a `RichText` object representing a left subscript/superscript combination,
+where both scripts are right-aligned against the following text.
+"""
+left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
+
+export rich, subscript, superscript, subsup, left_subsup
 
 function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
@@ -381,11 +410,11 @@ function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
 
     _f = to_font(fset, f)
 
-    stack = [GlyphState(0, 0, Vec2f(ts), _f, to_color(col))]
-
     lines = [GlyphInfo[]]
 
-    process_rt_node!(stack, lines, rt, fset)
+    gs = GlyphState(0, 0, Vec2f(ts), _f, to_color(col))
+
+    process_rt_node!(lines, gs, rt, fset)
 
     apply_lineheight!(lines, lh)
     apply_alignment_and_justification!(lines, jus, al)
@@ -463,23 +492,64 @@ function float_justification(ju, al)::Float32
     end
 end
 
-function process_rt_node!(stack, lines, rt::RichText, fonts)
-    _type(x) = nothing
-    _type(r::RichText) = r.type
+function process_rt_node!(lines, gs::GlyphState, rt::RichText, fonts)
+    T = Val(rt.type)
 
-    push!(stack, new_glyphstate(stack[end], rt, Val(rt.type), fonts))
-    for (i, c) in enumerate(rt.children)
-        process_rt_node!(stack, lines, c, fonts)
+    if T === Val(:subsup) || T === Val(:leftsubsup)
+        if length(rt.children) != 2
+            throw(ArgumentError("Found subsup rich text with $(length(rt.children)) which has to have exactly 2 children instead. The children were: $(rt.children)"))
+        end
+        sub, sup = rt.children
+        sub_lines = Vector{GlyphInfo}[[]]
+        new_gs_sub = new_glyphstate(gs, rt, Val(:subsup_sub), fonts)
+        new_gs_sub_post = process_rt_node!(sub_lines, new_gs_sub, sub, fonts)
+        sup_lines = Vector{GlyphInfo}[[]]
+        new_gs_sup = new_glyphstate(gs, rt, Val(:subsup_sup), fonts)
+        new_gs_sup_post = process_rt_node!(sup_lines, new_gs_sup, sup, fonts)
+        if length(sub_lines) != 1
+            error("It is not allowed to include linebreaks in a subsup rich text element, the invalid element was: $(repr(sub))")
+        end
+        if length(sup_lines) != 1
+            error("It is not allowed to include linebreaks in a subsup rich text element, the invalid element was: $(repr(sup))")
+        end
+        sub_line = only(sub_lines)
+        sup_line = only(sup_lines)
+        if T === Val(:leftsubsup)
+            right_align!(sub_line, sup_line)
+        end
+        append!(lines[end], sub_line)
+        append!(lines[end], sup_line)
+        x = max(new_gs_sub_post.x, new_gs_sup_post.x)
+    else
+        new_gs = new_glyphstate(gs, rt, T, fonts)
+        for (i, c) in enumerate(rt.children)
+            new_gs = process_rt_node!(lines, new_gs, c, fonts)
+        end
+        x = new_gs.x
     end
-    gs = pop!(stack)
-    gs_top = stack[end]
-    # x needs to continue even if going a level up
-    stack[end] = GlyphState(gs.x, gs_top.baseline, gs_top.size, gs_top.font, gs_top.color)
+
+    return GlyphState(x, gs.baseline, gs.size, gs.font, gs.color)
+end
+
+function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
+    isempty(line1) || isempty(line2) && return
+    xmax1, xmax2 = map((line1, line2)) do line
+        maximum(line; init = 0f0) do ginfo
+            GlyphInfo
+            ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
+        end
+    end
+    line_to_shift = xmax1 > xmax2 ? line2 : line1
+    for j in eachindex(line_to_shift)
+        l = line_to_shift[j]
+        o = l.origin
+        l = GlyphInfo(l; origin = o .+ Point2f(abs(xmax2 - xmax1), 0))
+        line_to_shift[j] = l
+    end
     return
 end
 
-function process_rt_node!(stack, lines, s::String, _)
-    gs = stack[end]
+function process_rt_node!(lines, gs::GlyphState, s::String, _)
     y = gs.baseline
     x = gs.x
     for char in s
@@ -505,12 +575,7 @@ function process_rt_node!(stack, lines, s::String, _)
             x = x + gext.hadvance * gs.size[1]
         end
     end
-    stack[end] = GlyphState(x, y, gs.size, gs.font, gs.color)
-    return
-end
-
-function new_glyphstate(gs::GlyphState, rt::RichText, val::Val, fonts)
-    gs
+    return GlyphState(x, y, gs.size, gs.font, gs.color)
 end
 
 _get_color(attributes, default)::RGBAf = haskey(attributes, :color) ? to_color(attributes[:color]) : default
@@ -518,7 +583,7 @@ _get_font(attributes, default::NativeFont, fonts)::NativeFont = haskey(attribute
 _get_fontsize(attributes, default)::Vec2f = haskey(attributes, :fontsize) ? Vec2f(to_fontsize(attributes[:fontsize])) : default
 _get_offset(attributes, default)::Vec2f = haskey(attributes, :offset) ? Vec2f(attributes[:offset]) : default
 
-function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sup}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sup}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
@@ -531,7 +596,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sup}, fonts)
     )
 end
 
-function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:span}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:span}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
@@ -544,13 +609,36 @@ function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:span}, fonts)
     )
 end
 
-function new_glyphstate(gs::GlyphState, rt::RichText, val::Val{:sub}, fonts)
+function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sub}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
     GlyphState(
         gs.x + offset[1],
-        gs.baseline - 0.15 * gs.size[2] + offset[2],
+        gs.baseline - 0.25 * gs.size[2] + offset[2],
+        fontsize,
+        _get_font(att, gs.font, fonts),
+        _get_color(att, gs.color),
+    )
+end
+
+function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
+    att = rt.attributes
+    fontsize = _get_fontsize(att, gs.size * 0.66)
+    GlyphState(
+        gs.x,
+        gs.baseline - 0.25 * gs.size[2],
+        fontsize,
+        _get_font(att, gs.font, fonts),
+        _get_color(att, gs.color),
+    )
+end
+function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sup}, fonts)
+    att = rt.attributes
+    fontsize = _get_fontsize(att, gs.size * 0.66)
+    GlyphState(
+        gs.x,
+        gs.baseline + 0.4 * gs.size[2],
         fontsize,
         _get_font(att, gs.font, fonts),
         _get_color(att, gs.color),
