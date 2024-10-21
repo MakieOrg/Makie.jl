@@ -1,7 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-pkg"add GeometryBasics#sd/simple-mesh ShaderAbstractions#ff/GeometryBasics_refactor MeshIO#ff/GeometryBasics_refactor"
+pkg"add GeometryBasics#master ShaderAbstractions#ff/GeometryBasics_refactor MeshIO#ff/GeometryBasics_refactor"
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
