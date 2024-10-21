@@ -1,3 +1,4 @@
+const SERIALIZATION_FORMAT_VERSION = "v7"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -70,12 +71,10 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
-const SERIALIZATION_FORMAT_VERSION = "v1"
-
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
     path = abspath(
-        first(Base.DEPOT_PATH), "makie",
+        makie_cache_dir,
         "$(SERIALIZATION_FORMAT_VERSION)_texture_atlas_$(resolution)_$(pix_per_glyph).bin"
     )
     if !ispath(dirname(path))
@@ -158,7 +157,7 @@ function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 64)
     end
 end
 
-const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.19.0/"
+const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.21.0/"
 
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
@@ -185,37 +184,41 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
     return atlas
 end
 
-const _default_font = NativeFont[]
-const _alternative_fonts = NativeFont[]
+const DEFAULT_FONT = NativeFont[]
+const ALTERNATIVE_FONTS = NativeFont[]
+const FONT_LOCK = Base.ReentrantLock()
 
 function defaultfont()
-    if isempty(_default_font)
-        push!(_default_font, to_font("TeX Gyre Heros Makie"))
+    lock(FONT_LOCK) do
+        if isempty(DEFAULT_FONT)
+            push!(DEFAULT_FONT, to_font("TeX Gyre Heros Makie"))
+        end
+        DEFAULT_FONT[]
     end
-    _default_font[]
 end
 
 function alternativefonts()
-    if isempty(_alternative_fonts)
-        alternatives = [
-            "TeXGyreHerosMakie-Regular.otf",
-            "DejaVuSans.ttf",
-            "NotoSansCJKkr-Regular.otf",
-            "NotoSansCuneiform-Regular.ttf",
-            "NotoSansSymbols-Regular.ttf",
-            "FiraMono-Medium.ttf"
-        ]
-        for font in alternatives
-            push!(_alternative_fonts, NativeFont(assetpath("fonts", font)))
+    lock(FONT_LOCK) do
+        if isempty(ALTERNATIVE_FONTS)
+            alternatives = [
+                "TeXGyreHerosMakie-Regular.otf",
+                "DejaVuSans.ttf",
+                "NotoSansCJKkr-Regular.otf",
+                "NotoSansCuneiform-Regular.ttf",
+                "NotoSansSymbols-Regular.ttf",
+                "FiraMono-Medium.ttf"
+            ]
+            for font in alternatives
+                push!(ALTERNATIVE_FONTS, NativeFont(assetpath("fonts", font)))
+            end
         end
+        return ALTERNATIVE_FONTS
     end
-    return _alternative_fonts
 end
 
 function render_default_glyphs!(atlas)
-    font = defaultfont()
-    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-']
-    fonts = to_font.(to_value.(values(Makie.minimal_default.fonts)))
+    chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-', MINUS_SIGN]
+    fonts = map(x-> to_font(to_value(x)), values(MAKIE_DEFAULT_THEME.fonts))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)
@@ -287,12 +290,12 @@ end
 
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
-    hash = StableHashTraits.stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
+    hash = fast_stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
     return insert_glyph!(atlas, hash, (glyphindex, font))
 end
 
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
-    return insert_glyph!(atlas, StableHashTraits.stable_hash(path), path)
+    return insert_glyph!(atlas, fast_stable_hash(path), path)
 end
 
 
@@ -426,6 +429,7 @@ function marker_to_sdf_shape(arr::AbstractVector)
     shape1 = marker_to_sdf_shape(first(arr))
     for elem in arr
         shape2 = marker_to_sdf_shape(elem)
+        shape2 isa Shape && shape1 isa Shape && continue
         shape1 !== shape2 && error("Can't use an array of markers that require different primitive_shapes $(typeof.(arr)).")
     end
     return shape1
@@ -454,13 +458,13 @@ function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
-_bcast(x::Vec) = (x,)
+_bcast(x::Vec) = Ref(x)
 _bcast(x) = x
 
 # Calculates the scaling factor from unpadded size -> padded size
 # Here we assume the glyph to be representative of pix_per_glyph
 # regardless of its true size.
-function marker_scale_factor(atlas::TextureAtlas, char::Char, font)
+function marker_scale_factor(atlas::TextureAtlas, char::Char, font)::Vec2f
     lbrt = glyph_uv_width!(atlas, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas))
@@ -473,14 +477,16 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     # left + right pad - cutoff from pixel centering
-    full_pad = 2f0 * atlas.glyph_padding - 1 
-    return full_pad ./ (full_pixel_size_in_atlas .- full_pad)
+    full_pad = 2f0 * atlas.glyph_padding - 1
+    # size without padding
+    unpadded_pixel_size = full_pixel_size_in_atlas .- full_pad
+    # See offset_bezierpath
+    return full_pixel_size_in_atlas ./ maximum(unpadded_pixel_size)
 end
 
-function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
-    # padded_width = (unpadded_target_width + unpadded_target_width * pad_per_unit)
-    path_width = widths(Makie.bbox(path))
-    return (1f0 .+ bezierpath_pad_scale_factor(atlas, path)) .* path_width
+function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)::Vec2f
+    # See offset_bezierpath
+    return bezierpath_pad_scale_factor(atlas, path) * maximum(widths(bbox(path)))
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, markersize)
@@ -503,14 +509,32 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     return markersize .* factor
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)::Vec2f
+    # - wh = widths(bbox(bp)) is the untouched size of the given bezierpath
+    # - full_pixel_size_in_atlas is the size of the signed distance field in the
+    #   texture atlas. This includes glyph padding
+    # - px_size is the size of signed distance field without padding
+    # To correct scaling on glow, stroke and AA widths in GLMakie we need to
+    # keep the aspect ratio of the aspect ratio (somewhat) correct when
+    # generating the sdf. This results in direct proportionality only for the
+    # longer dimension of wh and px_size. The shorter side becomes inaccurate
+    # due to integer rounding issues.
+    # 1. To calculate the width we can use the ratio of the proportional sides
+    #   scale = maximum(wh) / maximum(px_size)
+    # to scale the padded_size we need to display
+    #   scale * full_pixel_size_in_atlas
+    # (Part of this is moved to bezierpath_pad_scale_factor)
+    # 2. To calculate the offset we can simple move to the center of the bezier
+    #    path and consider that the center of the final marker. (From the center
+    #    scaling should be equal in ±x and ±y direction respectively.)
+
     bb = bbox(bp)
-    pad_offset = (origin(bb) .- 0.5f0 .* bezierpath_pad_scale_factor(atlas, bp) .* widths(bb))
-    return markersize .* pad_offset
+    scaled_size = bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
+    return markersize * (origin(bb) .+ 0.5f0 * widths(bb) .- 0.5f0 .* scaled_size)
 end
 
 function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
-    return offset_bezierpath.(Ref(atlas), bp, _bcast(scale), _bcast(offset))
+    return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)), Vec2d.(_bcast(offset)))
 end
 
 function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
@@ -523,10 +547,11 @@ end
 
 offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
 
-function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset, plot_object)
     atlas_obs = Observable(atlas) # for map to work
-    scale = map(rescale_marker, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, atlas_obs, marker, font, markersize, marker_offset; ignore_equal_values=true)
+    scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
+    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize, marker_offset;
+                      ignore_equal_values=true)
 
     return scale, quad_offset
 end

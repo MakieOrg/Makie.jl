@@ -16,7 +16,7 @@ end
     showgradients(
         cgrads::AbstractVector{Symbol};
         h = 0.0, offset = 0.2, fontsize = 0.7,
-        resolution = (800, length(cgrads) * 84)
+        size = (800, length(cgrads) * 84)
     )::Scene
 
 Plots the given colour gradients arranged as horizontal colourbars.
@@ -24,40 +24,25 @@ If you change the offsets or the font size, you may need to change the resolutio
 """
 function showgradients(
         cgrads::AbstractVector{Symbol};
-        h = 0.0,
-        offset = 0.4,
-        fontsize = 0.7,
-        resolution = (800, length(cgrads) * 84),
-        monospace = true
-    )::Scene
+        size = (800, length(cgrads) * 84),
+    )
 
-    scene = Scene(resolution = resolution)
+    f = Figure(; size=size)
+    ax = Axis(f[1, 1])
 
-    map(collect(cgrads)) do cmap
+    labels = map(enumerate(cgrads)) do (i, cmap)
         c = to_colormap(cmap)
-
-        cbar = image!(
-            scene,
-            range(0, stop = 10, length = length(c)),
-            range(0, stop = 1, length = length(c)),
+        image!(
+            ax,
+            0..10,
+            i..(i+1),
             reshape(c, (length(c),1))
-        )[end]
-
-        cmapstr = monospace ? UnicodeFun.to_latex("\\mono{$cmap}") : string(cmap, ":")
-
-        text!(
-            scene,
-            cmapstr,
-            position = Point2f(-0.1, 0.5 + h),
-            align = (:right, :center),
-            fontsize = fontsize
         )
 
-        translate!(cbar, 0, h, 0)
-
-        h -= (1 + offset)
+        cmapstr = string(cmap)
+        return ((i + (i + 1))/2, cmapstr)
     end
 
-    scene
-
+    ax.yticks = (first.(labels), last.(labels))
+    return f
 end

@@ -7,6 +7,8 @@
 using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
+pkg"registry up"
+Pkg.update()
 using Statistics, GitHub, Printf, BenchmarkTools, Markdown, HypothesisTests
 using BenchmarkTools.JSON
 Package = ARGS[1]
@@ -34,7 +36,7 @@ create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=2
 display_time = @ctime Makie.colorbuffer(display(fig))
 # Runtime
 create_time = @benchmark fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-display_time = @benchmark Makie.colorbuffer(display(fig))
+display_time = @benchmark Makie.colorbuffer(fig)
 ```
 
 |               | using     | create   | display  | create   | display  |
@@ -87,27 +89,28 @@ function analyze(pr, master)
     std_p = (std(pr) + std(master)) / 2
     m_pr = mean(pr)
     m_m = mean(master)
-    mean_diff = mean(m_pr) - mean(m_m)
-    percent = (1 - (m_m / m_pr)) * 100
+    mean_diff = m_pr - m_m
+    speedup = m_m / m_pr
     p = pvalue(tt)
     mean_diff_str = string(round(mean_diff; digits=2), unit)
-
+    percent_change = (speedup - 1) * 100
     result = if p < 0.05
         if abs(d) > 0.2
-            indicator = abs(percent) < 5 ? ["faster ✓", "slower X"] : ["**faster**✅", "**slower**❌"]
+            indicator = abs(percent_change) < 5 ? ["faster ✓", "slower X"] : ["**faster**✅", "**slower**❌"]
             indicator[d < 0 ? 1 : 2]
         else
             "*invariant*"
         end
     else
-        if abs(percent) < 5
+        if abs(percent_change) < 5
             "*invariant*"
         else
             "*noisy*🤷‍♀️"
         end
     end
 
-    return @sprintf("%s%.2f%s, %s %s (%.2fd, %.2fp, %.2fstd)", percent > 0 ? "+" : "-", abs(percent), "%", mean_diff_str, result, d, p, std_p)
+    return @sprintf("%.2fx %s, %s (%.2fd, %.2fp, %.2fstd)", speedup, result, mean_diff_str, d, p,
+                    std_p)
 end
 
 function summarize_stats(timings)
@@ -153,6 +156,9 @@ function update_comment(old_comment, package_name, (pr_bench, master_bench, eval
     for (i, value) in enumerate(evaluation)
         rows[idx + 2][i + 1] = [value]
     end
+    open("benchmark.md", "w") do io
+        return show(io, md)
+    end
     return sprint(show, md)
 end
 
@@ -171,11 +177,15 @@ function make_or_edit_comment(ctx, pr, package_name, benchmarks)
     end
 end
 
+
+using Random
+
 function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
-    for project in repeat(projects; outer=n)
+    # go A, B, A, B, A, etc.
+    for project in repeat(projects, n)
+        println(basename(project))
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
-        project_name = basename(project)
     end
     return
 end
@@ -207,18 +217,18 @@ ENV["JULIA_PKG_PRECOMPILE_AUTO"] = 0
 project1 = make_project_folder("current-pr")
 Pkg.activate(project1)
 if Package == "WGLMakie"
-    Pkg.add([(; name="Electron"), (; name="JSServe", rev="master")])
+    Pkg.add([(; name="Electron")])
 end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
-Pkg.add([(; name="BenchmarkTools")])
+Pkg.add([(; name="JSON")])
 
 @time Pkg.precompile()
 
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="BenchmarkTools")]
+pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="JSON")]
 Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 @time Pkg.precompile()
@@ -239,4 +249,11 @@ if !isnothing(pr_to_comment)
 else
     @info("Not commenting, no PR found")
     println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
+end
+
+mkdir("json")
+for p in [project1, project2]
+    name = basename(p)
+    file = "$name-benchmark.json"
+    mv(file, joinpath("json", file))
 end

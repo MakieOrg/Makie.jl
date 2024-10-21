@@ -1,7 +1,7 @@
 # TODO move to something like FFMPEGUtil.jl ?
 
 """
-- `format = "mkv"`: The format of the video. If a path is present, will be inferred form the file extension.
+- `format = "mkv"`: The format of the video. If a path is present, will be inferred from the file extension.
     Can be one of the following:
     * `"mkv"`  (open standard, the default)
     * `"mp4"`  (good for Web, most supported format)
@@ -13,25 +13,25 @@
     as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
 - `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
-    smaller numbers giving higher quality and larger file sizes (lower compression), and and
+    smaller numbers giving higher quality and larger file sizes (lower compression), and
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-    `profile = high444`.
+    `profile = "high444"`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
 you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-applies to `mp4`. Defaults to `yuv444p` for `profile = high444`.
-- `loop = 0`: Number of times the video is repeated, for a `gif`. Defaults to `0`, which
-means infinite looping. A value of `-1` turns off looping, and a value of `n > 0` and above 
-means `n` repetitions (i.e. the video is played `n+1` times).
+applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+- `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
+means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
+means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
     !!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
-    valid when `format` is `"mp4"` or `"webm"`, and `loop` is only valid when `format` is `"gif"`.
+    valid when `format` is `"mp4"` or `"webm"`.
 """
 struct VideoStreamOptions
     format::String
@@ -48,12 +48,12 @@ struct VideoStreamOptions
     function VideoStreamOptions(
             format::AbstractString, framerate::Real, compression, profile,
             pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
-        
+
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
             framerate = round(Int, framerate)
         end
-        
+
         if format == "mp4"
             (profile === nothing) && (profile = "high422")
             (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
@@ -62,16 +62,13 @@ struct VideoStreamOptions
         if format in ("mp4", "webm")
             (compression === nothing) && (compression = 20)
         end
-        
-        if format == "gif"
-            (loop === nothing) && (loop = 0)
-        end
+
+        (loop === nothing) && (loop = 0)
 
         # items are name, value, allowed_formats
         allowed_kwargs = [("compression", compression, ("mp4", "webm")),
                           ("profile", profile, ("mp4",)),
-                          ("pixel_format", pixel_format, ("mp4",)),
-                          ("loop", loop, ("gif",))]
+                          ("pixel_format", pixel_format, ("mp4",))]
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing
@@ -131,7 +128,6 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
 
     cpu_cores = length(Sys.cpu_info())
     ffmpeg_prefix = `
-        $(FFMPEG.ffmpeg)
         -y
         -loglevel $(vso.loglevel)
         -threads $(cpu_cores)`
@@ -181,11 +177,45 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0
     return `$(ffmpeg_prefix) $(ffmpeg_options)`
 end
 
+mutable struct TickController
+    tick::Observable{Tick}
+    frame_counter::Int
+    frame_time::Float64
+    filter_ticks::Bool
+    filter_callback::Observables.ObserverFunction
+end
 
-struct VideoStream
+function TickController(figlike, frametime, filter = true)
+    tick = events(figlike).tick
+    cb = if filter
+        on(tick -> Consume(tick.state != OneTimeRenderTick), tick, priority = typemax(Int))
+    else
+        on(tick -> nothing, tick, priority = typemax(Int))
+    end
+    controller = TickController(tick, 0, frametime, filter, cb)
+    finalizer(stop!, controller)
+    next_tick!(controller)
+    return controller
+end
+
+function next_tick!(controller::TickController)
+    controller.tick[] = Tick(
+        OneTimeRenderTick, 
+        controller.frame_counter,
+        controller.frame_counter * controller.frame_time,
+        controller.frame_time
+    )
+    controller.frame_counter += 1
+    return
+end
+
+stop!(controller::TickController) = off(controller.filter_callback)
+
+mutable struct VideoStream
     io::Base.PipeEndpoint
     process::Base.Process
     screen::MakieScreen
+    tick_controller::TickController
     buffer::Matrix{RGB{N0f8}}
     path::String
     options::VideoStreamOptions
@@ -194,7 +224,7 @@ end
 """
     VideoStream(fig::FigureLike;
             format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-            loglevel="quiet", visible=false, connect=false, backend=current_backend(),
+            loglevel="quiet", visible=false, connect=false, filter_ticks=true, backend=current_backend(),
             screen_config...)
 
 Returns a `VideoStream` which can pipe new frames into the ffmpeg process with few allocations via [`recordframe!(stream)`](@ref).
@@ -212,25 +242,38 @@ $(Base.doc(VideoStreamOptions))
 * `visible=false`: make window visible or not
 * `connect=false`: connect window events or not
 * `screen_config...`: See `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options that can be passed and forwarded to the backend.
+
+## Other
+
+* `filter_ticks`: When true, tick events other than `tick.state = Makie.OneTimeRenderTick` are removed until `save()` is called or the VideoStream object gets deleted.
 """
 function VideoStream(fig::FigureLike;
         format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-        loglevel="quiet", visible=false, connect=false, backend=current_backend(),
-        screen_config...)
+        loglevel="quiet", visible=false, update=true, filter_ticks=true,
+        backend=current_backend(), screen_config...)
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
-    update_state_before_display!(fig)
-    screen = getscreen(backend, scene, GLNative; visible=visible, start_renderloop=false, screen_config...)
+    update && update_state_before_display!(fig)
+    config = Dict{Symbol,Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, scene, config, GLNative)
     _xdim, _ydim = size(screen)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
-    process = @ffmpeg_env open(`$cmd $path`, "w")
-    return VideoStream(process.in, process, screen, buffer, abspath(path), vso)
+    process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
+    tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
+    result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
+    finalizer(result) do x
+        @async rm(x.path; force=true)
+        stop!(x.tick_controller)
+    end
+    return result
 end
 
 """
@@ -243,8 +286,13 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
-    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-    write(io.io, io.buffer)
+    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+        write(io.io, glnative)
+    else
+        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+        write(io.io, io.buffer)
+    end
+    next_tick!(io.tick_controller)
     return
 end
 
@@ -268,7 +316,6 @@ function save(path::String, io::VideoStream; video_options...)
     else
         cp(io.path, path; force=true)
     end
-    rm(io.path)
     return path
 end
 
@@ -277,10 +324,10 @@ function convert_video(input_path, output_path; video_options...)
     format = lstrip(typ, '.')
     vso = VideoStreamOptions(; format=format, input=input_path, rawvideo=false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
-    @ffmpeg_env run(`$cmd $output_path`)
+    return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
 end
 
 function extract_frames(video, frame_folder; loglevel="quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    FFMPEG.ffmpeg_exe(`-loglevel $(loglevel) -i $video -y $path`)
+    run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end

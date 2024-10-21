@@ -10,7 +10,7 @@ Returns true if the mouse currently hovers any of `plots`.
 mouseover(x, plots::AbstractPlot...) = mouseover(get_scene(x), plots...)
 function mouseover(scene::Scene, plots::AbstractPlot...)
     p, idx = pick(scene)
-    return p in flatten_plots(plots)
+    return p in collect_atomic_plots(plots)
 end
 
 """
@@ -22,40 +22,13 @@ hovered element
 """
 onpick(f, x, plots::AbstractPlot...; range=1) = onpick(f, get_scene(x), plots..., range = range)
 function onpick(f, scene::Scene, plots::AbstractPlot...; range=1)
-    fplots = flatten_plots(plots)
+    fplots = collect_atomic_plots(plots)
     args = range == 1 ? (scene,) : (scene, range)
     on(events(scene).mouseposition) do mp
         p, idx = pick(args...)
         (p in fplots) && f(p, idx)
         return Consume(false)
     end
-end
-
-@deprecate mouse_selection pick
-
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    if isempty(x.plots)
-        # Atomic plot!
-        push!(plots, x)
-    else
-        for elem in x.plots
-            flatten_plots(elem, plots)
-        end
-    end
-    return plots
-end
-
-function flatten_plots(array, plots = AbstractPlot[])
-    for elem in array
-        flatten_plots(elem, plots)
-    end
-    plots
-end
-
-function flatten_plots(scene::Scene, plots = AbstractPlot[])
-    flatten_plots(scene.plots, plots)
-    flatten_plots(scene.children, plots)
-    plots
 end
 
 """
@@ -69,7 +42,7 @@ function mouse_in_scene(scene::Scene; priority = 0)
     p = rootparent(scene)
     output = Observable(Vec2(0.0))
     on(events(scene).mouseposition, priority = priority) do mp
-        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
+        output[] = Vec(mp) .- minimum(viewport(scene)[])
         return Consume(false)
     end
     output
@@ -77,9 +50,25 @@ end
 
 
 """
-    pick(fig/ax/scene, x, y)
+    pick(fig/ax/scene, x, y[, range])
+    pick(fig/ax/scene, xy::VecLike[, range])
 
-Returns the plot under pixel position `(x, y)`.
+Returns the plot and element index under the given pixel position `xy = Vec(x, y)`.
+If `range` is given, the nearest plot up to a distance of `range` is returned instead.
+
+The `plot` returned by this function is always a primitive plot, i.e. one that 
+is not composed of other plot types.
+
+The index returned relates to the main input of the respective primitive plot.
+- For `scatter` and `meshscatter` it is an index into the positions given to the plot.
+- For `text` it is an index into the merged character array.
+- For `lines` and `linesegments` it is the end position of the selected line segment. 
+- For `image`, `heatmap` and `surface` it is the linear index into the matrix argument of the plot (i.e. the given image, value or z-value matrix) that is closest to the selected position.
+- For `voxels` it is the linear index into the given 3D Array.
+- For `mesh` it is the largest vertex index of the picked triangle face.
+- For `volume` it is always 0.
+
+See also: `pick_sorted`
 """
 pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
 function pick(scene::Scene, x::Number, y::Number)
@@ -87,11 +76,6 @@ function pick(scene::Scene, x::Number, y::Number)
 end
 
 
-"""
-    pick(fig/ax/scene, xy::VecLike)
-
-Return the plot under pixel position xy.
-"""
 pick(obj) = pick(get_scene(obj), events(obj).mouseposition[])
 pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
 function pick(scene::Scene, xy::VecTypes{2})
@@ -100,13 +84,9 @@ function pick(scene::Scene, xy::VecTypes{2})
     pick(scene, screen, Vec{2, Float64}(xy))
 end
 
-"""
-    pick(fig/ax/scene, xy::VecLike, range)
-
-Return the plot closest to xy within a given range.
-"""
 pick(obj, range::Real) = pick(get_scene(obj), events(obj).mouseposition[], range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
+pick(obj, x::Real, y::Real, range::Real) = pick(get_scene(obj), Vec2(x, y), range)
 function pick(scene::Scene, xy::VecTypes{2}, range::Real)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
@@ -143,7 +123,7 @@ using InteractiveUtils
     pick_sorted(fig/ax/scene, xy::VecLike, range)
 
 Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region
-sorted by distance to `xy`.
+sorted by distance to `xy`. See [`pick`](@ref) for more details.
 """
 function pick_sorted(scene::Scene, xy, range)
     screen = getscreen(scene)
@@ -200,7 +180,7 @@ Normalizes mouse position `pos` relative to the screen rectangle.
 """
 screen_relative(x, mpos) = screen_relative(get_scene(x), mpos)
 function screen_relative(scene::Scene, mpos)
-    return Point2f(mpos) .- Point2f(minimum(pixelarea(scene)[]))
+    return Point2f(mpos) .- Point2f(minimum(viewport(scene)[]))
 end
 
 """
@@ -374,13 +354,12 @@ The `kwargs...` are propagated into `scatter!` which plots the selected point.
 """
 function select_point(scene; blocking = false, priority=2, kwargs...)
     key = Mouse.left
-    pmarker = Circle(Point2f(0, 0), Float32(1))
     waspressed = Observable(false)
     point = Observable([Point2f(0,0)])
     point_ret = Observable(Point2f(0,0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
-        scene, point; visible = false, marker = pmarker, markersize = 20px,
+        scene, point; visible = false, marker = Circle, markersize = 20px,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 

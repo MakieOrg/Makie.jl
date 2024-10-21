@@ -43,7 +43,7 @@ end
 function generate_plot(N = 3)
     points = Observable(Point2f[])
     color = Observable(RGBAf[])
-    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(resolution=(800, 800),))
+    fig, ax, pl = scatter(points, color=color, markersize=1.0, marker=Circle, markerspace=:data, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(800, 800),))
     function update_func(ij)
         push!(points.val, Point2f(Tuple(ij)))
         push!(color.val, RGBAf((Tuple(ij)./N)..., 0, 1))
@@ -64,7 +64,7 @@ function load_frames(video, dir)
     mkdir(framedir)
     Makie.extract_frames(video, framedir)
     return map(readdir(framedir; join=true)) do path
-        return convert(Matrix{RGB{N0f8}}, FileIO.load(path))
+        return convert(Matrix{RGB{N0f8}}, load(path))
     end
 end
 
@@ -74,8 +74,8 @@ function compare_videos(reference, vpath, dir)
     @test n == length(reference)
 
     @test all(1:n) do i
-        v = ReferenceTests.compare_media(reference[i], to_compare[i])
-        return v < 0.02
+        v = ReferenceTests.compare_images(reference[i], to_compare[i])
+        return v < 0.2
     end
 end
 
@@ -121,9 +121,74 @@ end
     obs = Observable(1:5)
     f, ax, pl = scatter(obs; markersize=150)
     s = display(f)
-    @test length(obs.listeners) == 1
+    # So, for GLMakie it will be 2, since we register an additional listener for
+    # State changes for the on demand renderloop
+    @test length(obs.listeners) in (1, 2)
     delete!(ax, pl)
     @test length(obs.listeners) == 0
-    sleep(1.0)
+    # ugh, hard to synchronize this with WGLMakie, so, we need to sleep for now to make sure the change makes it to the browser
+    # TODO, add synchronization primitive?
+    sleep(1)
+    f
+end
+
+@reference_test "interactive colorscale - mesh" begin
+    brain = load(assetpath("brain.stl"))
+    color = [abs(tri[1][2]) for tri in brain for i in 1:3]
+    f, ax, m = mesh(brain; color, colorscale=identity)
+    mesh(f[1, 2], brain; color, colorscale=log10)
+    st = Stepper(f)
+    Makie.step!(st)
+    m.colorscale = log10
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - heatmap" begin
+    data = exp.(abs.(RNG.randn(20, 20)))
+    f, ax, hm = heatmap(data, colorscale=log10, axis=(; title="log10"))
+    Colorbar(f[1, 2], hm)
+    ax2, hm2 = heatmap(f[1, 3], data, colorscale=log10, axis=(; title="log10"))
+    st = Stepper(f)
+    Makie.step!(st)
+
+    hm2.colorscale = identity
+    ax2.title = "identity"
+    Makie.step!(st)
+
+    hm.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
+end
+
+@reference_test "interactive colorscale - hexbin" begin
+    x = RNG.randn(1_000)
+    y = RNG.randn(1_000)
+    f = Figure()
+    hexbin(f[1, 1], x, y; axis=(aspect=DataAspect(), title="identity"))
+    ax, hb = hexbin(f[1, 2], x, y; colorscale=log, axis=(aspect=DataAspect(), title="log"))
+    Colorbar(f[1, end+1], hb)
+    st = Stepper(f)
+    Makie.step!(st)
+    hb.colorscale = identity
+    ax.title = "identity"
+    Makie.step!(st)
+end
+
+
+@reference_test "event ticks in record" begin
+    # Checks whether record calculates and triggers event.tick by drawing a 
+    # Point at y = 1 for each frame where it does. The animation is irrelevant
+    # here, so we can just check the final image.
+    # The first point maybe at 0 depending on when the backend sets up it's
+    # reference time
+    ps = Observable(Point2f[])
+    f, a, p = scatter(ps)
+    xlims!(a, 0, 61)
+    ylims!(a, -0.1, 1.1)
+    Record(f, 1:60, framerate = 30) do i
+        push!(ps.val,  Point2f(i, f.scene.events.tick[].delta_time > 1e-6))
+        notify(ps)
+        f.scene.events.tick[] = Makie.Tick(Makie.UnknownTickState, 0, 0.0, 0.0)
+    end
     f
 end

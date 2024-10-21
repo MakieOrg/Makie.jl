@@ -1,41 +1,44 @@
 """
-    violin(x, y; kwargs...)
+    violin(x, y)
 Draw a violin plot.
-# Arguments
+## Arguments
 - `x`: positions of the categories
 - `y`: variables whose density is computed
-# Keywords
-- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
-- `orientation=:vertical`: orientation of the violins (`:vertical` or `:horizontal`)
-- `width=1`: width of the box before shrinking
-- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_median=false`: show median as midline
-- `side=:both`: specify `:left` or `:right` to only plot the violin on one side
-- `datalimits`: specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)
 """
-@recipe(Violin, x, y) do scene
-    Theme(;
-        default_theme(scene, Poly)...,
-        npoints = 200,
-        boundary = automatic,
-        bandwidth = automatic,
-        weights = automatic,
-        side = :both,
-        orientation = :vertical,
-        width = automatic,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        datalimits = (-Inf, Inf),
-        max_density = automatic,
-        show_median = false,
-        mediancolor = theme(scene, :linecolor),
-        medianlinewidth = theme(scene, :linewidth),
-    )
+@recipe Violin (x, y) begin
+    npoints = 200
+    boundary = automatic
+    bandwidth = automatic
+    "vector of statistical weights (length of data). By default, each observation has weight `1`."
+    weights = automatic
+    "Specify `:left` or `:right` to only plot the violin on one side."
+    side = :both
+    "Scale density by area (`:area`), count (`:count`), or width (`:width`)."
+    scale = :area
+    "Orientation of the violins (`:vertical` or `:horizontal`)"
+    orientation = :vertical
+    "Width of the box before shrinking."
+    width = automatic
+    dodge = automatic
+    n_dodge = automatic
+    "Shrinking factor, `width -> width * (1 - gap)`."
+    gap = 0.2
+    dodge_gap = 0.03
+    "Specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)."
+    datalimits = (-Inf, Inf)
+    max_density = automatic
+    "Show median as midline."
+    show_median = false
+    mediancolor = @inherit linecolor
+    medianlinewidth = @inherit linewidth
+    color = @inherit patchcolor
+    strokecolor = @inherit patchstrokecolor
+    strokewidth = @inherit patchstrokewidth
+    MakieCore.mixin_generic_plot_attributes()...
+    cycle = [:color => :patchcolor]
 end
 
-conversion_trait(x::Type{<:Violin}) = SampleBased()
+conversion_trait(::Type{<:Violin}) = SampleBased()
 
 getuniquevalue(v, idxs) = v
 
@@ -49,10 +52,10 @@ end
 
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
-    args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth, weights,
+    args = @extract plot (width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
         datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
     signals = lift(plot, x, y,
-                   args...) do x, y, width, vside, color, show_median, n, bound, bw, w, limits, max_density,
+                   args...) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
                                dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
@@ -81,13 +84,20 @@ function plot!(plot::Violin)
             i1, i2 = searchsortedfirst(k.x, l1), searchsortedlast(k.x, l2)
             kde = (x = view(k.x, i1:i2), density = view(k.density, i1:i2))
             c = getuniquevalue(color, idxs)
-            return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v))
+            return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v), amount = length(idxs))
         end
+
+        (scale_type ∈ [:area, :count, :width]) || error("Invalid scale type: $(scale_type)")
 
         max = if max_density === automatic
             maximum(specs) do spec
-                _, max = extrema_nan(spec.kde.density)
-                return max
+                if scale_type === :area
+                    return extrema_nan(spec.kde.density) |> last
+                elseif scale_type === :count
+                    return extrema_nan(spec.kde.density .* spec.amount) |> last
+                elseif scale_type === :width
+                    return NaN
+                end
             end
         else
             max_density
@@ -98,7 +108,14 @@ function plot!(plot::Violin)
         colors = RGBA{Float32}[]
 
         for spec in specs
-            scale = 0.5*violinwidth/max
+            scale = 0.5 * violinwidth
+            if scale_type === :area
+                scale = scale / max
+            elseif scale_type === :count
+                scale = scale / max * spec.amount
+            elseif scale_type === :width
+                scale = scale / (extrema_nan(spec.kde.density) |> last)
+            end
             xl = reverse(spec.x .- spec.kde.density .* scale)
             xr = spec.x .+ spec.kde.density .* scale
             yl = reverse(spec.kde.x)

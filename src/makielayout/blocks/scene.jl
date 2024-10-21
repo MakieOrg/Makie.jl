@@ -1,20 +1,9 @@
-function Makie.plot!(
-        lscene::LScene, P::Makie.PlotFunc,
-        attributes::Makie.Attributes, args...;
-        kw_attributes...)
-
-    plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
+function reset_limits!(lscene::LScene)
     notify(lscene.scene.theme.limits)
     center!(lscene.scene)
-    plot
+    return
 end
-
-function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
-    attributes = Makie.Attributes(kw_attributes)
-    _disallow_keyword(:axis, attributes)
-    _disallow_keyword(:figure, attributes)
-    Makie.plot!(ls, P, attributes, args...)
-end
+tightlimits!(::LScene) = nothing # TODO implement!?
 
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
@@ -30,9 +19,9 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 # update limits when scene limits change
                 limits = lift(blockscene, ls.scene.theme.limits) do lims
                     if lims === automatic
-                        dl = data_limits(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
+                        dl = boundingbox(ls.scene, p -> Makie.isaxis(p) || Makie.not_in_data_space(p))
                         if any(isinf, widths(dl)) || any(isinf, Makie.origin(dl))
-                            Rect3f((0f0, 0f0, 0f0), (1f0, 1f0, 1f0))
+                            Rect3d((0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
                         else
                             dl
                         end
@@ -60,8 +49,6 @@ function Base.delete!(ax::LScene, plot::AbstractPlot)
     delete!(ax.scene, plot)
     ax
 end
-
-can_be_current_axis(ls::LScene) = true
 
 Makie.cam2d!(ax::LScene; kwargs...) = Makie.cam2d!(ax.scene; kwargs...)
 Makie.campixel!(ax::LScene; kwargs...) = Makie.campixel!(ax.scene; kwargs...)

@@ -42,11 +42,11 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.attributes[:colorrange][] == Vec(-.5, .5)
+    @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
     @test cb.limits[] == Vec(-.5, .5)
 
-    hm.attributes[:colorrange][] = Float32.((-1, 1))
-    @test cb.limits[] == (-1, 1)
+    hm.colorrange = Float32.((-1, 1))
+    @test cb.limits[] == Vec(-1, 1)
 
     # TODO: This doesn't work anymore because colorbar doesn't use the same observable
     # cb.limits[] = Float32.((-2, 2))
@@ -113,6 +113,63 @@ end
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
+    @test_throws MethodError limits!(f[1,1], -1, 1, -1, 1)
+end
+
+# issue 3240
+@testset "Axis limits 4-tuple" begin
+    fig = Figure()
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    xlims!(ax,100,400)
+    @test ax.limits[] == ((100,400),(0,15))
+    xlims!()
+    @test ax.limits[] == ((nothing,nothing),(0,15))
+
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    ylims!(ax,1,13)
+    @test ax.limits[] == ((0,600),(1,13))
+    ylims!()
+    @test ax.limits[] == ((0,600),(nothing,nothing))
+
+    ax = Axis(fig[1,1],limits=(0,600,0,15))
+    limits!(ax,350,700,2,14)
+    @test ax.limits[] == ((350,700),(2,14))
+end
+
+@testset "Axis3 limits 6-tuple" begin
+    fig = Figure()
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    xlims!(ax,1,2)
+    @test ax.limits[] == ((1,2),(0,2),(0,3))
+    xlims!()
+    @test ax.limits[] == ((nothing,nothing),(0,2),(0,3))
+
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    ylims!(ax,1,3)
+    @test ax.limits[] == ((0,1),(1,3),(0,3))
+    ylims!()
+    @test ax.limits[] == ((0,1),(nothing,nothing),(0,3))
+
+    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
+    zlims!(ax,1,5)
+    @test ax.limits[] == ((0,1),(0,2),(1,5))
+    zlims!()
+    @test ax.limits[] == ((0,1),(0,2),(nothing,nothing))
+end
+
+@testset "Axis limits intervals" begin
+    fig = Figure()
+    ax = Axis(fig[1,1],limits=(0..600,0..15))
+    xlims!(ax, 100..400)
+    @test ax.limits[] == ((100,400),(0,15))
+    ylims!(ax, 1..13)
+    @test ax.limits[] == ((100,400),(1,13))
+    limits!(ax, 1..3, 1..2)
+    @test ax.limits[] == ((1,3),(1,2))
+    ax3 = Axis3(fig[1,1],limits=(0..1,0..2,0..3))
+    xlims!(ax3, 10..20)
+    zlims!(ax3, 1..2)
+    @test ax3.limits[] == ((10,20),(0,2),(1,2))
 end
 
 @testset "Colorbar plot object kwarg clash" begin
@@ -155,6 +212,18 @@ end
     end
 end
 
+@testset "MultiplesTicks strip_zero" begin
+    default = MultiplesTicks(5, pi, "π")
+    strip = MultiplesTicks(5, pi, "π"; strip_zero=true)
+    no_strip = MultiplesTicks(5, pi, "π"; strip_zero=false)
+
+    @test default == no_strip
+    zero_default = Makie.get_ticks(default, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_default == "0π"
+    zero_stripped = Makie.get_ticks(strip, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_stripped == "0"
+end
+
 @testset "Colorbars" begin
     fig = Figure()
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
@@ -167,6 +236,26 @@ end
         ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
+    end
+    @testset "errors" begin
+        f, ax, pl1 = scatter(rand(10))
+        pl2 = scatter!(ax, rand(10); color=rand(RGBf, 10))
+        pl3 = barplot!(ax, 1:3; colorrange=(0, 1))
+        @test_throws ErrorException Colorbar(f[1, 2], pl1)
+        @test_throws ErrorException Colorbar(f[1, 2], pl2)
+        @test_throws ErrorException Colorbar(f[1, 2], pl3)
+    end
+    @testset "Recipes" begin
+        f, ax, pl = barplot(1:3; color=1:3)
+        cbar = Colorbar(f[1, 2], pl)
+        @test cbar.limits[] == Vec(1.0, 3.0)
+
+        let data = fill(1.0, 2,2,2)
+            data[1] = 3.0
+            f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
+            cbar = Colorbar(f[1,2], pl)
+            @test cbar.limits[] == Vec(1.0, 3.0)
+        end
     end
 end
 
@@ -197,6 +286,7 @@ end
     leg = axislegend(ax, position = (0.4, 0.8))
     @test leg.halign[] == 0.4
     @test leg.valign[] == 0.8
+    @test_nowarn axislegend(ax, "foo")  # issue 2530
 end
 
 # issue 2005
@@ -344,7 +434,7 @@ end
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
                 (label = "Phase", range = 0:0.01:2pi,
                     format = x -> string(round(x/pi, digits = 2), "π"))
-            ) 
+            )
         end
         @test isempty(d)
     end
@@ -369,4 +459,86 @@ end
         [l1],
         [rich("some", subscript("entry"))],
         rich("title", color = :red, font = :bold_italic))
+end
+
+@testset "Legend for hist with labels" begin
+    f, ax, h = hist(randn(100), bar_labels = :y, label = "My histogram")
+    @test_nowarn axislegend()
+    f
+end
+
+@testset "Legend with plotlists" begin
+    Axis(Figure()[1, 1])
+    plotlist!([Makie.SpecApi.Scatter(1:10)], label="MyPlot 1")
+    @test_nowarn axislegend()
+
+    plotlist([Makie.SpecApi.Scatter(1:10)], label="MyPlot 2")
+    @test_nowarn axislegend()
+end
+
+@testset "ReversibleScale" begin
+    @test ReversibleScale(identity).inverse === identity
+    @test ReversibleScale(log).inverse === exp
+    @test ReversibleScale(cbrt).inverse(2) == 8
+    @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
+    @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
+end
+
+# @testset "Invalid inverse transform" begin
+#     f = Figure()
+#     @test_throws ArgumentError Colorbar(f[1, 1], limits = (1, 100), scale = x -> log10(x))
+# end
+
+@testset "Colorscales" begin
+    x = 10.0.^(1:0.1:4)
+    y = 1.0:0.1:5.0
+    z = broadcast((x, y) -> x, x, y')
+
+    scale = Makie.Symlog10(2)
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+
+    scale = Makie.pseudolog10
+    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+    Colorbar(fig[1, 2], hm)
+end
+
+@testset "Axis scale" begin
+    # This just shouldn't error
+    try
+        fig, ax, li = lines(1:10, 1:10)
+        vlines!(ax, 3)
+        hlines!(ax, 3)
+        bp = barplot!(ax, 1 .+ 5 .* rand(10))
+        vspan!(ax, 3, 4)
+        hspan!(ax, 3, 4)
+        bracket!(ax, 1, 1, 2, 2)
+        eb = errorbars!(ax, 1:10, 1:10, [0.3 for _ in 1:10], whiskerwidth = 5)
+        text!(ax, Point2f(2), text = "abba")
+        tooltip!(ax, Point2f(8), "baab")
+        tricontourf!(ax, 1 .+ 4 .* rand(5), 1 .+ 4 .* rand(5), rand(5))
+        qqplot!(ax, 5:10, 1:5)
+        ax.yscale = log10
+        ax.yscale = identity
+        ax.yscale = log10
+        ax.yscale = identity
+        @test true
+    catch e
+        @test false
+        rethrow(e)
+    end
+end
+
+@testset "Block attribute conversion observable cleanup" begin
+    limits = Observable((-1.0, 1.0, -1.0, 1.0))
+    for _ in 1:5
+        fig = Figure()
+        for i in 1:5
+            for j in 1:5
+                ax = Axis(fig[i, j]; limits)
+            end
+        end
+        empty!(fig)
+    end
+    @test isempty(limits.listeners)
 end

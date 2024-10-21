@@ -10,6 +10,7 @@ abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
+
 """
 Screen constructors implemented by all backends:
 
@@ -50,23 +51,45 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-struct Combined{Typ, T} <: ScenePlot{Typ}
-    parent::SceneLike
-    transformation::Transformable
+"""
+    Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
+
+Creates a Plot corresponding to the recipe function `PlotFunc`.
+Each recipe defines an alias for `Plot{PlotFunc}`.
+Example:
+```julia
+const Scatter = Plot{scatter} # defined in the scatter recipe
+Plot{scatter}((1:4,), Dict{Symbol, Any}(:color => :red)) isa Scatter
+# Same as:
+Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
+```
+"""
+mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
+    transformation::Union{Nothing, Transformable}
+
+    # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
+    kw::Dict{Symbol,Any}
+    kw_obs::Observable{Vector{Pair{Symbol,Any}}}
+    args::Vector{Any}
+
+    converted::Vector{Observable}
+    # Converted and processed arguments
     attributes::Attributes
-    input_args::Tuple
-    converted::Tuple
-    plots::Vector{AbstractPlot}
+
+    plots::Vector{Plot}
     deregister_callbacks::Vector{Observables.ObserverFunction}
-    function Combined{Typ, T}(
-        parent::SceneLike, transformation::Transformable, attributes::Attributes,
-        input_args::Tuple, converted::Tuple, plots::Vector{AbstractPlot}) where {Typ, T}
-        return new(parent, transformation, attributes, input_args, converted, plots,
-                   Observables.ObserverFunction[])
+    parent::Union{AbstractScene,Plot}
+
+    function Plot{Typ,T}(
+                kw::Dict{Symbol,Any}, kw_obs::Observable{Vector{Pair{Symbol,Any}}},
+                args::Vector{Any}, converted::Vector{Observable},
+                deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
+            ) where {Typ,T}
+        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 
-function Base.show(io::IO, plot::Combined)
+function Base.show(io::IO, plot::Plot)
     print(io, typeof(plot))
 end
 
@@ -117,3 +140,33 @@ end
 Billboard() = Billboard(0f0)
 Billboard(angle::Real) = Billboard(Float32(angle))
 Billboard(angles::Vector) = Billboard(Float32.(angles))
+
+@enum ShadingAlgorithm begin
+    NoShading
+    FastShading
+    MultiLightShading
+end
+
+const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
+const RealVector{T} = RealArray{1}
+const RealMatrix{T} = RealArray{2}
+const FloatType = Union{Float32,Float64}
+
+# This could be simply a tuple or ClosedInterval
+# But ClosedInterval doesn't support all operations/constructions we need
+# And a plain tuple does not work, since for heatmap we need a final type that spans the corners.
+# E.g. (0, 3) becomes (-0.5, 3.5) for a 3x3 heatmap, so if we have a tuple as input we need to do this calculation
+# And only if it's an EndPoint type, we can be sure its already in the correct format.
+struct EndPoints{T} <: AbstractVector{T}
+    data::NTuple{2,T}
+end
+EndPoints(a::Number, b::Number) = EndPoints((a, b))
+EndPoints{T}(a::Number, b::Number) where {T} = EndPoints{T}((T(a), T(b)))
+Base.size(::EndPoints) = (2,)
+Base.getindex(e::EndPoints, i::Int) = e.data[i]
+Base.broadcasted(f, e::EndPoints) = EndPoints(f.(e.data))
+Base.broadcasted(f, a::EndPoints, b) = EndPoints(f.(a.data, b))
+Base.broadcasted(f, a, b::EndPoints) = EndPoints(f.(a, b.data))
+Base.:(==)(a::EndPoints, b::NTuple{2}) = a.data == b
+# Something we can convert to an EndPoints type
+const EndPointsLike = Union{ClosedInterval,Tuple{Real,Real}}

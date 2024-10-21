@@ -28,7 +28,7 @@ function glow_material(data_normed)
 end
 
 RPRMakie.activate!(iterations=32, plugin=RPR.Northstar)
-fig = Figure(; resolution=(2000, 800))
+fig = Figure(; size=(2000, 800))
 radiance = 30000
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
             PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]

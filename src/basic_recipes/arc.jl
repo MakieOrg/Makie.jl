@@ -9,16 +9,13 @@ from `start_angle` to `stop_angle`.
 Examples:
 
 `arc(Point2f(0), 1, 0.0, π)`
-`arc(Point2f(1, 2), 0.3. π, -π)`
+`arc(Point2f(1, 2), 0.3, π, -π)`
 
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Arc, origin, radius, start_angle, stop_angle) do scene
-    Attributes(;
-        default_theme(scene, Lines)...,
-        resolution = 361,
-    )
+@recipe Arc (origin, radius, start_angle, stop_angle) begin
+    MakieCore.documented_attributes(Lines)...
+    "The number of line points approximating the arc."
+    resolution = 361
 end
 
 function plot!(p::Arc)

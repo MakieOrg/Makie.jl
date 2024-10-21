@@ -1,16 +1,16 @@
 name: Docs build and deploy
 on:
-  push:
-    branches:
-      - main
-      - master
-      - breaking-release
-    tags: '*'
   pull_request:
     branches:
-      - main
       - master
-      - breaking-release
+      - breaking-0.21
+  push:
+    tags:
+      - '*'
+    branches:
+      - master
+      - breaking-0.21
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         persist-credentials: false
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Install binary dependencies
@@ -35,9 +35,10 @@ jobs:
     # packages such as PyPlot.
     # - run: pip install matplotlib
     - name: Install Julia
-      uses: julia-actions/setup-julia@v1
+      uses: julia-actions/setup-julia@v2
       with:
         version: '1'
+    - uses: julia-actions/cache@v2
     - name: Build and deploy docs
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,7 +47,7 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes makedocs.jl
     - name: Upload site as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: Docs build
         path: ./docs/__site

@@ -108,22 +108,22 @@ end
 ############################################################################
 
 function _chosen_limits(rz, ax)
-    r = positivize(Rect2f(rz.from, rz.to .- rz.from))
+    r = positivize(Rect2(rz.from, rz.to .- rz.from))
     lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
-        r = Rect2f(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
+        r = Rect2(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
     end
     # restrict to x change
     if rz.restrict_y || !ax.yrectzoom[]
-        r = Rect2f(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
+        r = Rect2(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
     return r
 end
 
 function _selection_vertices(ax_scene, outer, inner)
-    _clamp(p, plow, phigh) = Point2f(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
-    proj(point) = project(ax_scene, point) .+ minimum(ax_scene.px_area[])
+    _clamp(p, plow, phigh) = Point2(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
+    proj(point) = project(ax_scene, point)
     transf = Makie.transform_func(ax_scene)
     outer = positivize(Makie.apply_transform(transf, outer))
     inner = positivize(Makie.apply_transform(transf, inner))
@@ -180,7 +180,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=e
+            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -237,16 +237,19 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     xzoomkey = ax.xzoomkey
     yzoomkey = ax.yzoomkey
 
+
     scene = ax.scene
     e = events(scene)
     cam = camera(scene)
 
+    ispressed(scene, ax.zoombutton[]) || return Consume(false)
+
     if zoom != 0
-        pa = pixelarea(scene)[]
+        pa = viewport(scene)[]
 
-        z = (1f0 - s.speed)^zoom
+        z = (1.0 - s.speed)^zoom
 
-        mp_axscene = Vec4f((e.mouseposition[] .- pa.origin)..., 0, 1)
+        mp_axscene = Vec4d((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
         mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
@@ -276,13 +279,12 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
-            Rectf(newxorigin, yorigin, newxwidth, ywidth)
+            Rectd(newxorigin, yorigin, newxwidth, ywidth)
         elseif ispressed(scene, yzoomkey[])
-            Rectf(xorigin, newyorigin, xwidth, newywidth)
+            Rectd(xorigin, newyorigin, xwidth, newywidth)
         else
-            Rectf(newxorigin, newyorigin, newxwidth, newywidth)
+            Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
-
         inv_transf = Makie.inverse_transform(transf)
         tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
     end
@@ -302,11 +304,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     ypanlock = ax.ypanlock
     xpankey = ax.xpankey
     ypankey = ax.ypankey
-    panbutton = ax.panbutton
 
     scene = ax.scene
     cam = camera(scene)
-    pa = pixelarea(scene)[]
+    pa = viewport(scene)[]
 
     mp_axscene = Vec4f((event.px .- pa.origin)..., 0, 1)
     mp_axscene_prev = Vec4f((event.prev_px .- pa.origin)..., 0, 1)
@@ -347,7 +348,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
     inv_transf = Makie.inverse_transform(transf)
-    newrect_trans = Rectf(Vec2f(xori, yori), widths(tlimits_trans))
+    newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
     tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
 
     return Consume(true)

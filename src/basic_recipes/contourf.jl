@@ -3,42 +3,43 @@
 
 Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
 and vertical grid positions `ys`.
-
-The attribute `levels` can be either
-- an `Int` that produces n equally wide levels or bands
-- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
-
-You can also set the `mode` attribute to `:relative`.
-In this mode you specify edges by the fraction between minimum and maximum value of `zs`.
-This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
-
-In :normal mode, if you want to show a band from `-Inf` to the low edge,
-set `extendlow` to `:auto` for the same color as the first level,
-or specify a different color (default `nothing` means no extended band)
-If you want to show a band from the high edge to `Inf`, set `extendhigh`
-to `:auto` for the same color as the last level, or specify a different color
-(default `nothing` means no extended band).
-
-If `levels` is an `Int`, the contour plot will be rectangular as all `zs` will be covered.
-This is why `Axis` defaults to tight limits for such contourf plots.
-If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
-You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Contourf) do scene
-    Theme(
-        levels = 10,
-        mode = :normal,
-        colormap = theme(scene, :colormap),
-        extendlow = nothing,
-        extendhigh = nothing,
-        # TODO, Isoband doesn't seem to support nans?
-        nan_color = :transparent,
-        inspectable = theme(scene, :inspectable),
-        transparency = false
-    )
+@recipe Contourf begin
+    """
+    Can be either
+    - an `Int` that produces n equally wide levels or bands
+    - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
+
+    If `levels` is an `Int`, the contourf plot will be rectangular as all `zs` values will be covered edge to edge.
+    This is why `Axis` defaults to tight limits for such contourf plots.
+    If you specify `levels` as an `AbstractVector{<:Real}`, however, note that the axis limits include the default margins because the contourf plot can have an irregular shape.
+    You can use `tightlimits!(ax)` to tighten the limits similar to the `Int` behavior.
+    """
+    levels = 10
+    """
+    Determines how the `levels` attribute is interpreted, either `:normal` or `:relative`.
+    In `:normal` mode, the levels correspond directly to the z values.
+    In `:relative` mode, you specify edges by the fraction between minimum and maximum value of `zs`.
+    This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.    
+    """
+    mode = :normal
+    colormap = @inherit colormap
+    colorscale = identity
+    """
+    In `:normal` mode, if you want to show a band from `-Inf` to the low edge,
+    set `extendlow` to `:auto` to give the extension the same color as the first level,
+    or specify a color directly (default `nothing` means no extended band).
+    """
+    extendlow = nothing
+    """
+    In `:normal` mode, if you want to show a band from the high edge to `Inf`, set `extendhigh`
+    to `:auto` to give the extension the same color as the last level, or specify a color directly
+    (default `nothing` means no extended band).
+    """
+    extendhigh = nothing
+    # TODO, Isoband doesn't seem to support nans?
+    nan_color = :transparent
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.
@@ -47,9 +48,7 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-function _get_isoband_levels(levels::Int, mi, ma)
-    edges = Float32.(LinRange(mi, ma, levels+1))
-end
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
@@ -57,17 +56,16 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
+conversion_trait(::Type{<:Contourf}) = VertexGrid()
 
 function _get_isoband_levels(::Val{:normal}, levels, values)
-    _get_isoband_levels(levels, extrema_nan(values)...)
+    return _get_isoband_levels(levels, extrema_nan(values)...)
 end
 
 function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     mi, ma = extrema_nan(values)
-    Float32.(levels .* (ma - mi) .+ mi)
+    return Float32.(levels .* (ma - mi) .+ mi)
 end
-
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
@@ -84,15 +82,14 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
-    map!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
+    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
     c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, lowcolor)
+    is_extended_low = lift(!isnothing, c, c.extendlow)
 
     highcolor = Observable{RGBAf}()
-    map!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
+    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
     c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, highcolor)
-
+    is_extended_high = lift(!isnothing, c, c.extendhigh)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
     polys = Observable(PolyType[])
@@ -144,7 +141,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading = false,
+        shading = NoShading,
         inspectable = c.inspectable,
         transparency = c.transparency
     )
@@ -160,9 +157,7 @@ inner polygons which are holes in the outer polygon. It is possible that one
 group has multiple outer polygons with multiple holes each.
 """
 function _group_polys(points, ids)
-
     polys = [points[ids .== i] for i in unique(ids)]
-    npolys = length(polys)
 
     polys_lastdouble = [push!(p, first(p)) for p in polys]
 

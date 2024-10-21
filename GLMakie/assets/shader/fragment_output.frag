@@ -13,7 +13,7 @@ layout(location=1) out uvec2 fragment_groupid;
 
 
 in vec3 o_view_pos;
-in vec3 o_normal;
+in vec3 o_view_normal;
 
 void write2framebuffer(vec4 color, uvec2 id){
     if(color.a <= 0.0)
@@ -34,7 +34,7 @@ void write2framebuffer(vec4 color, uvec2 id){
     // // if transparency == false && ssao = true
     // fragment_color = color;
     // fragment_position = o_view_pos;
-    // fragment_normal_occlusion.xyz = o_normal;
+    // fragment_normal_occlusion.xyz = o_view_normal;
 
     // // else
     // fragment_color = color;

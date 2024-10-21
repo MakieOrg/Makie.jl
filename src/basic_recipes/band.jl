@@ -1,23 +1,23 @@
 """
     band(x, ylower, yupper; kwargs...)
     band(lower, upper; kwargs...)
+    band(x, lowerupper; kwargs...)
 
 Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
 between the points in `lower` and `upper`.
-
-## Attributes
-$(ATTRIBUTES)
+Both bounds can be passed together as `lowerupper`, a vector of intervals.
 """
-@recipe(Band, lowerpoints, upperpoints) do scene
-    attr = Attributes(;
-        default_theme(scene, Mesh)...,
-        colorrange = automatic,
-    )
-    attr[:shading][] = false
-    attr
+@recipe Band (lowerpoints, upperpoints) begin
+    MakieCore.documented_attributes(Mesh)...
+    shading = NoShading
 end
 
-convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f.(x, ylower), Point2f.(x, yupper))
+function convert_arguments(::Type{<: Band}, x, ylower, yupper)
+    return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
+end
+
+convert_arguments(P::Type{<: Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
+    convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
 
 function band_connect(n)
     ns = 1:n-1
@@ -27,15 +27,26 @@ end
 
 function Makie.plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
+    nanpoint(::Type{<:Point3}) = Point3(NaN)
+    nanpoint(::Type{<:Point2}) = Point2(NaN)
     coordinates = lift(plot, lowerpoints, upperpoints) do lowerpoints, upperpoints
-        @assert length(lowerpoints) == length(upperpoints) "length of lower band is not equal to length of upper band!"
-        return [lowerpoints; upperpoints]
+        n = length(lowerpoints)
+        @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
+        concat = [lowerpoints; upperpoints]
+        # if either x, upper or lower is NaN, all of them should be NaN to cut out a whole band segment and not just a triangle
+        for i in 1:n
+            if isnan(lowerpoints[i]) || isnan(upperpoints[i])
+                concat[i] = nanpoint(eltype(concat))
+                concat[n + i] = nanpoint(eltype(concat))
+            end
+        end
+        return concat
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
     meshcolor = Observable{RGBColors}()
 
-    map!(plot, meshcolor, plot.color) do c
+    lift!(plot, meshcolor, plot.color) do c
         if c isa AbstractArray
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other

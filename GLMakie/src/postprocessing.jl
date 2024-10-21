@@ -163,6 +163,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         glDrawBuffer(normal_occ_id)  # occlusion buffer
         glViewport(0, 0, w, h)
         glEnable(GL_SCISSOR_TEST)
+        ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
@@ -170,8 +171,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
             # scenes. It should be a leaf scene to avoid repeatedly shading
             # the same region (though this is not guaranteed...)
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            a = viewport(scene)[]
+            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data1[:projection] = scene.camera.projection[]
             data1[:bias] = scene.ssao.bias[]
@@ -184,8 +185,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         for (screenid, scene) in screen.screens
             # Select the area of one leaf scene
             isempty(scene.children) || continue
-            a = pixelarea(scene)[]
-            glScissor(minimum(a)..., widths(a)...)
+            a = viewport(scene)[]
+            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
             data2[:blur_range] = scene.ssao.blur
             GLAbstraction.render(pass2)
@@ -285,14 +286,11 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
-
         # transfer everything to the screen
         default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
         glBindFramebuffer(GL_FRAMEBUFFER, default_id)
-        glViewport(0, 0, w, h)
+        glViewport(0, 0, framebuffer_size(screen.glscreen)...)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
     end

@@ -33,6 +33,30 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
+# For switching between ellipse method and faster circle method in shader
+is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
+is_all_equal_scale(::Real) = true
+is_all_equal_scale(::Vector{Real}) = true
+is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
+is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
+
+intensity_convert(intensity, verts) = intensity
+function intensity_convert(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        GLBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        TextureBuffer(intensity)
+    else
+        Texture(intensity)
+    end
+end
+
 
 
 @nospecialize
@@ -49,9 +73,28 @@ function draw_mesh_particle(screen, p, data)
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
-        shading = true
     end
 
+    # TODO: use instance attributes
+    if to_value(data[:uv_transform]) isa Vector
+        transforms = pop!(data, :uv_transform)
+        @gen_defaults! data begin
+            uv_transform = map(transforms) do transforms
+                # 3x Vec2 should match the element order of glsl mat3x2
+                output = Vector{Vec2f}(undef, 3 * length(transforms))
+                for i in eachindex(transforms)
+                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
+                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
+                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
+                end
+                return output
+            end => TextureBuffer
+        end
+    else 
+        # handled automatically
+    end
+
+    shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
@@ -62,17 +105,19 @@ function draw_mesh_particle(screen, p, data)
         matcap = nothing => Texture
         fetch_pixel = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1)
+        backlight = 0f0
 
         instances = const_lift(length, position)
-        shading = true
         transparency = false
         shader = GLVisualizeShader(
             screen,
-            "util.vert", "particles.vert", "mesh.frag", "fragment_output.frag",
+            "util.vert", "particles.vert",
+            "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
                 "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
-                "light_calc" => light_calc(shading),
+                "shading" => light_calc(shading),
+                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )
@@ -93,8 +138,8 @@ This is supposed to be the fastest way of displaying particles!
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
-        color        = (color_map === nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color_map    = nothing => Texture
+        color        = nothing => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -108,7 +153,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = PointSizeRender(data[:scale])
+    data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     return assemble_shader(data)
 end
 
@@ -165,6 +210,20 @@ function draw_scatter(screen, (marker, position), data)
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
 
+    if to_value(pop!(data, :depthsorting, false))
+        data[:indices] = map(
+            data[:projectionview], data[:preprojection], data[:model],
+            position
+        ) do pv, pp, m, pos
+            T = pv * pp * m
+            depth_vals = map(pos) do p
+                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+                p4d[3] / p4d[4]
+            end
+            UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        end |> indexbuffer
+    end
+
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
@@ -172,6 +231,16 @@ function draw_scatter(screen, (marker, position), data)
         scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture
+    end
+
+    data[:shape] = map(
+            convert(Observable{Int}, pop!(data, :shape)), data[:scale]
+        ) do shape, scale
+        if shape == 0 && !is_all_equal_scale(scale)
+            return Cint(5) # scaled CIRCLE -> ELLIPSE
+        else
+            return shape
+        end
     end
 
     @gen_defaults! data begin
@@ -206,10 +275,12 @@ function draw_scatter(screen, (marker, position), data)
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
+
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(intensity, position)
     data[:len] = const_lift(length, position)
+
     return assemble_shader(data)
 end
 

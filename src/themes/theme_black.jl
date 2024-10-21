@@ -16,7 +16,7 @@ function theme_black()
         ),
         Legend = (
             framecolor = :white,
-            bgcolor = :black,
+            backgroundcolor = :black,
         ),
         Axis3 = (
             xgridcolor = RGBAf(1, 1, 1, 0.16),

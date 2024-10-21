@@ -99,7 +99,26 @@ function initialize_block!(tbox::Textbox)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 2, inspectable = false)
+    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
+
+    on(cursorpoints) do cpts
+        typeof(tbox.width[]) <: Number || return
+
+        # translate scene to keep cursor within box
+        rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]
+        offset = if rel_cursor_pos <= 0
+            -rel_cursor_pos
+        elseif rel_cursor_pos < tbox.width[]
+            0
+        else
+            tbox.width[] - rel_cursor_pos
+        end
+        translate!(Accum, scene, offset, 0, 0)
+
+        # don't let right side of box be empty if length of text exceeds box width
+        offset = tbox.width[] - right(displayed_charbbs[][end])
+        scene.transformation.translation[][1] < offset < 0 && translate!(scene, offset, 0, 0)
+    end
 
     tbox.cursoranimtask = nothing
 
@@ -124,7 +143,11 @@ function initialize_block!(tbox::Textbox)
             return Consume(true)
         end
 
-        pos = state.data
+        if typeof(tbox.width[]) <: Number
+            pos = state.data .- scene.transformation.translation[][1:2]
+        else
+            pos = state.data
+        end
         closest_charindex = argmin(
             [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
         )
@@ -238,7 +261,7 @@ function initialize_block!(tbox::Textbox)
                     removechar!(cursorindex[])
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
-                elseif key == Keyboard.enter
+                elseif key == Keyboard.enter || key == Keyboard.kp_enter
                     # don't do anything for invalid input which should stay red
                     if displayed_is_valid[]
                         # submit the written text

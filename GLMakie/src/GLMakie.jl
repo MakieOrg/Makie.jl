@@ -16,6 +16,7 @@ using Makie: @get_attribute, to_value, to_colormap, extrema_nan
 using Makie: ClosedInterval, (..)
 using Makie: to_native
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
+using Makie: BudgetedTimer, reset!
 import Makie: to_font, el32convert, Shape, CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 import Makie: RelocatableFolders
 
@@ -41,20 +42,58 @@ end
 import ShaderAbstractions: Sampler, Buffer
 export Sampler, Buffer
 
-const GL_ASSET_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-const SHADER_DIR = RelocatableFolders.@path joinpath(GL_ASSET_DIR, "shader")
-loadshader(name) = joinpath(SHADER_DIR, name)
+struct ShaderSource
+    typ::GLenum
+    source::String
+    name::String
+end
+
+function ShaderSource(path)
+    typ = GLAbstraction.shadertype(splitext(path)[2])
+    source = read(path, String)
+    name = String(path)
+    return ShaderSource(typ, source, name)
+end
+
+const SHADER_DIR = normpath(joinpath(@__DIR__, "..", "assets", "shader"))
+const LOADED_SHADERS = Dict{String, ShaderSource}()
+const WARN_ON_LOAD = Ref(false)
+
+function loadshader(name)
+    return get!(LOADED_SHADERS, name) do
+        if WARN_ON_LOAD[]
+            @warn("Reloading shader")
+        end
+        return ShaderSource(joinpath(SHADER_DIR, name))
+    end
+end
+
+function load_all_shaders(folder)
+    for name in readdir(folder)
+        path = joinpath(folder, name)
+        if isdir(path)
+            load_all_shaders(path)
+        elseif any(x -> endswith(name, x), [".frag", ".vert", ".geom"])
+            path = relpath(path, SHADER_DIR)
+            loadshader(replace(path, "\\" => "/"))
+        end
+    end
+end
+
 
 gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
 
+# We load all shaders to compile them into the package Image
+# Making them relocatable
+load_all_shaders(SHADER_DIR)
+WARN_ON_LOAD[] = true
+
 function __init__()
     activate!()
 end
-
-Base.@deprecate set_window_config!(; screen_config...) GLMakie.activate!(; screen_config...)
 
 include("precompiles.jl")
 

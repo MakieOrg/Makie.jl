@@ -4,18 +4,18 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-uniform vec3 ambient;
-uniform vec3 diffuse;
-uniform vec3 specular;
-uniform float shininess;
-uniform float backlight;
+// Sets which shading procedures to use
+{{shading}}
 
-in vec3 o_normal;
-in vec3 o_lightdir;
-in vec3 o_camdir;
+// Selects what is used to calculate the picked index
+{{picking_mode}}
+
+in vec3 o_world_normal;
+in vec3 o_view_normal;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
+flat in int o_InstanceID;
 
 {{matcap_type}} matcap;
 {{image_type}} image;
@@ -68,7 +68,8 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
     return get_color_from_cmap(i, color_map, color_norm);
 }
 vec4 matcap_color(sampler2D matcap){
-    vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
+    // TODO should matcaps use view space normals?
+    vec2 muv = o_view_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 vec4 get_color(Nothing image, vec2 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
@@ -82,43 +83,39 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
-uniform vec2 uv_scale;
+{{uv_transform_type}} uv_transform;
+vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3x2 transform;
+    transform[0] = texelFetch(transforms, 3 * index + 0).xy;
+    transform[1] = texelFetch(transforms, 3 * index + 1).xy;
+    transform[2] = texelFetch(transforms, 3 * index + 2).xy;
+    return transform * vec3(uv, 1);
+}
 
 vec4 get_pattern_color(sampler1D color) {
     int size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
     int idx = int(mod(pos.x, size));
     return texelFetch(color, idx, 0);
 }
 
 vec4 get_pattern_color(sampler2D color){
     ivec2 size = textureSize(color, 0);
-    vec2 pos = gl_FragCoord.xy * uv_scale;
+    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
 
 // Needs to exist for opengl to be happy
 vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
-vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
-    float diff_coeff = max(dot(L, N), 0.0);
-
-    // specular coefficient
-    vec3 H = normalize(L + V);
-
-    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
-    if (diff_coeff <= 0.0 || isnan(spec_coeff))
-        spec_coeff = 0.0;
-
-    // final lighting model
-    return vec3(
-        diffuse * diff_coeff * color +
-        specular * spec_coeff
-    );
-}
-
 void write2framebuffer(vec4 color, uvec2 id);
 
+#ifndef NO_SHADING
+vec3 illuminate(vec3 normal, vec3 base_color);
+#endif
 
 void main(){
     vec4 color;
@@ -128,6 +125,16 @@ void main(){
     }else{
         color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
-    {{light_calc}}
+    #ifndef NO_SHADING
+    color.rgb = illuminate(normalize(o_world_normal), color.rgb);
+    #endif
+
+#ifdef PICKING_INDEX_FROM_UV
+    ivec2 size = textureSize(image, 0);
+    ivec2 jl_idx = clamp(ivec2(o_uv * size), ivec2(0), size-1);
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
+    write2framebuffer(color, uvec2(o_id.x, uint(1) + idx));
+#else
     write2framebuffer(color, o_id);
+#endif
 }

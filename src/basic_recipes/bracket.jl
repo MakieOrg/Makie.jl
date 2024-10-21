@@ -7,40 +7,49 @@
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text label at the midpoint.
 
 By default each label is rotated parallel to the line between the bracket points.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Bracket) do scene
-    Theme(
-        offset = 0,
-        width = 15,
-        text = "",
-        font = theme(scene, :font),
-        orientation = :up,
-        align = (:center, :center),
-        textoffset = automatic,
-        fontsize = theme(scene, :fontsize),
-        rotation = automatic,
-        color = theme(scene, :linecolor),
-        textcolor = theme(scene, :textcolor),
-        linewidth = theme(scene, :linewidth),
-        linestyle = :solid,
-        justification = automatic,
-        style = :curly,
-    )
+@recipe Bracket begin
+    "The offset of the bracket perpendicular to the line from start to end point in screen units.
+    The direction depends on the `orientation` attribute."
+    offset = 0
+    """
+    The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
+    """
+    width = 15
+    text = ""
+    font = @inherit font
+    "Which way the bracket extends relative to the line from start to end point. Can be `:up` or `:down`."
+    orientation = :up
+    align = (:center, :center)
+    textoffset = automatic
+    fontsize = @inherit fontsize
+    rotation = automatic
+    color = @inherit linecolor
+    textcolor = @inherit textcolor
+    linewidth = @inherit linewidth
+    linestyle = :solid
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
+    justification = automatic
+    style = :curly
 end
 
-Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)
-Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2f(x1, y1), Point2f(x2, y2))],)
-function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+    return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
+    return ([(Point2{float_type(x1, y1)}(x1, y1), Point2{float_type(x2, y2)}(x2, y2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+    T1 = float_type(x1, y1); T2 = float_type(x2, y2)
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
-        (Point2f(x1, y1), Point2f(x2, y2))
+        (Point2{T1}(x1, y1), Point2{T2}(x2, y2))
     end
-    (points,)
+    return (points,)
 end
 
-function Makie.plot!(pl::Bracket)
+function plot!(pl::Bracket)
 
     points = pl[1]
 
@@ -48,22 +57,23 @@ function Makie.plot!(pl::Bracket)
 
     textoffset_vec = Observable(Vec2f[])
     bp = Observable(BezierPath[])
-    textpoints = Observable(Point2f[])
+    text_tuples = Observable(Tuple{Any,Point2f}[])
 
     realtextoffset = lift(pl, pl.textoffset, pl.fontsize) do to, fs
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
     end
 
-    onany(pl, points, scene.camera.projectionview, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style) do points, pv, offset, width, orientation, textoff, style
+    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
+          scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
+          pl.style, pl.text) do points, _, _, _, _, offset, width, orientation, textoff, style, text
 
         empty!(bp[])
         empty!(textoffset_vec[])
-        empty!(textpoints[])
+        empty!(text_tuples[])
 
-        broadcast_foreach(points, offset, width, orientation, textoff, style) do (_p1, _p2), offset, width, orientation, textoff, style
-            p1 = scene_to_screen(_p1, scene)
-            p2 = scene_to_screen(_p2, scene)
+        broadcast_foreach(points, offset, width, orientation, textoff, style, text) do (_p1, _p2), offset, width, orientation, textoff, style, text
+            p1 = plot_to_screen(pl, _p1)
+            p2 = plot_to_screen(pl, _p2)
 
             v = p2 - p1
             d1 = normalize(v)
@@ -78,11 +88,12 @@ function Makie.plot!(pl::Bracket)
             push!(textoffset_vec[], d2 * textoff)
 
             b, textpoint = bracket_bezierpath(style, p1 + off, p2 + off, d2, width)
-            push!(textpoints[], textpoint)
+            push!(text_tuples[], (text, textpoint))
             push!(bp[], b)
         end
 
         notify(bp)
+        notify(text_tuples)
     end
 
     notify(points)
@@ -100,21 +111,18 @@ function Makie.plot!(pl::Bracket)
         return rots
     end
 
-    # TODO: this works around `text()` not being happy if text="xyz" comes with one-element vector attributes
-    texts = lift(pl, pl.text) do text
-        return text isa AbstractString ? [text] : text
-    end
-
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth, linestyle = pl.linestyle)
-    text!(pl, textpoints, text = texts, space = :pixel, align = pl.align, offset = textoffset_vec,
+    # Avoid scale!() / translate!() / rotate!() to affect these
+    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
+        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
+        miter_limit = pl.miter_limit, transformation = Transformation())
+    text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
-        justification = pl.justification)
+        justification = pl.justification, model = Mat4f(I))
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(union, pl[1][]) do points
-    Rect3f([points...])
-end
+data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])
+boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 

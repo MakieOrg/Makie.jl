@@ -81,6 +81,16 @@ function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
         (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]
     )
 end
+
+function Base.:(*)(quat::Quaternion, bb::Rect3{T}) where {T}
+    points = corners(bb)
+    bb = Rect3{T}()
+    for i in eachindex(points)
+        bb = update_boundingbox(bb, Point3{T}(quat * points[i]))
+    end
+    return bb
+end
+
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])
 
 function Base.:(*)(q::Quaternion, w::Quaternion)
@@ -124,7 +134,7 @@ end
 
 function orthogonal(v::T) where T <: StaticVector{3}
     x, y, z = abs.(v)
-    other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
+    other = x < y ? (x < z ? GeometryBasics.unit(T, 1) : GeometryBasics.unit(T, 3)) : (y < z ? GeometryBasics.unit(T, 2) : GeometryBasics.unit(T, 3))
     return cross(v, other)
 end
 

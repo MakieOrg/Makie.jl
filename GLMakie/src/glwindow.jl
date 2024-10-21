@@ -56,6 +56,36 @@ function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) w
     return next_color_id
 end
 
+function enum_to_error(s)
+    s == GL_FRAMEBUFFER_COMPLETE && return
+    s == GL_FRAMEBUFFER_UNDEFINED &&
+        error("GL_FRAMEBUFFER_UNDEFINED: The specified framebuffer is the default read or draw framebuffer, but the default framebuffer does not exist.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: At least one of the framebuffer attachment points is incomplete.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: The framebuffer does not have at least one image attached to it.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: The value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for any color attachment point(s) specified by GL_DRAW_BUFFERi.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: GL_READ_BUFFER is not GL_NONE and the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for the color attachment point specified by GL_READ_BUFFER.")
+    s == GL_FRAMEBUFFER_UNSUPPORTED &&
+        error("GL_FRAMEBUFFER_UNSUPPORTED: The combination of internal formats of the attached images violates a driver implementation-dependent set of restrictions. Check your OpenGL driver!")
+    s == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: The value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers;
+if the value of GL_TEXTURE_SAMPLES is not the same for all attached textures; or, if the attached images consist of a mix of renderbuffers and textures,
+    the value of GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES.
+    GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE is also returned if the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not consistent across all attached textures;
+        or, if the attached images include a mix of renderbuffers and textures, the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not set to GL_TRUE for all attached textures.")
+    s == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS &&
+        error("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Any framebuffer attachment is layered, and any populated attachment is not layered, or if all populated color attachments are not from textures of the same target.")
+    return error("Unknown framebuffer completion error code: $s")
+end
+
+function check_framebuffer()
+    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+    return enum_to_error(status)
+end
+
 function GLFramebuffer(fb_size::NTuple{2, Int})
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
@@ -92,15 +122,14 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    @assert status == GL_FRAMEBUFFER_COMPLETE
+    check_framebuffer()
 
     fb_size_node = Observable(fb_size)
 
     # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
-    buffer_ids = Dict(
+    buffer_ids = Dict{Symbol,GLuint}(
         :color    => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
         :HDR_color => GL_COLOR_ATTACHMENT2,
@@ -108,31 +137,29 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         :depth    => GL_DEPTH_ATTACHMENT,
         :stencil  => GL_STENCIL_ATTACHMENT,
     )
-    buffers = Dict(
-        :color    => color_buffer,
+    buffers = Dict{Symbol, Texture}(
+        :color => color_buffer,
         :objectid => objectid_buffer,
         :HDR_color => HDR_color_buffer,
         :OIT_weight => OIT_weight_buffer,
-        :depth    => depth_buffer,
-        :stencil  => depth_buffer
+        :depth => depth_buffer,
+        :stencil => depth_buffer
     )
 
     return GLFramebuffer(
         fb_size_node, frambuffer_id,
         buffer_ids, buffers,
         [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
-    )
+    )::GLFramebuffer
 end
 
-function Base.resize!(fb::GLFramebuffer, window_size)
-    ws = Int.((window_size[1], window_size[2]))
-    if ws != size(fb) && all(x-> x > 0, window_size)
-        for (name, buffer) in fb.buffers
-            resize_nocopy!(buffer, ws)
-        end
-        fb.resolution[] = ws
+function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
+    (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    for (name, buffer) in fb.buffers
+        resize_nocopy!(buffer, (w, h))
     end
-    nothing
+    fb.resolution[] = (w, h)
+    return nothing
 end
 
 
@@ -188,10 +215,21 @@ function destroy!(nw::GLFW.Window)
     was_current && ShaderAbstractions.switch_context!()
 end
 
-function windowsize(nw::GLFW.Window)
+function window_size(nw::GLFW.Window)
     was_destroyed(nw) && return (0, 0)
-    size = GLFW.GetFramebufferSize(nw)
-    return (size.width, size.height)
+    return Tuple(GLFW.GetWindowSize(nw))
+end
+function window_position(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetWindowPos(window))
+end
+function framebuffer_size(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    return Tuple(GLFW.GetFramebufferSize(nw))
+end
+function scale_factor(nw::GLFW.Window)
+    was_destroyed(nw) && return 1f0
+    return minimum(GLFW.GetWindowContentScale(nw))
 end
 
 function Base.isopen(window::GLFW.Window)

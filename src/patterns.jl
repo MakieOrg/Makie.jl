@@ -92,7 +92,7 @@ end
 
 Creates a line pattern based on the given argument. Available patterns are
 `'/'`, `'\\'`, `'-'`, `'|'`, `'x'`, and `'+'`. All keyword arguments correspond
-to the keyword arguments for [`LinePattern`](@ref).
+to the keyword arguments for `LinePattern`.
 """
 Pattern(style::String; kwargs...) = Pattern(style[1]; kwargs...)
 function Pattern(style::Char = '/'; kwargs...)

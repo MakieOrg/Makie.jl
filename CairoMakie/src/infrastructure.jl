@@ -11,7 +11,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     Cairo.save(screen.context)
     draw_background(screen, scene)
 
-    allplots = get_all_plots(scene)
+    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
     zvals = Makie.zvalue2d.(allplots)
     permute!(allplots, sortperm(zvals))
 
@@ -23,10 +23,12 @@ function cairo_draw(screen::Screen, scene::Scene)
 
     Cairo.save(screen.context)
     for p in allplots
-        to_value(get(p, :visible, true)) || continue
+        check_parent_plots(p) do plot
+            to_value(get(plot, :visible, true))
+        end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = p.parent::Scene
+        pparent = Makie.parent_scene(p)
         pparent.visible[] || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
@@ -36,8 +38,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         end
         Cairo.save(screen.context)
 
-        # When a plot is too large to save with a reasonable file size on a vector backend, 
-        # the user can choose to rasterize it when plotting to vector backends, by using the 
+        # When a plot is too large to save with a reasonable file size on a vector backend,
+        # the user can choose to rasterize it when plotting to vector backends, by using the
         # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
         # the density of rasterization (in terms of a direct scaling factor.)
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
@@ -54,21 +56,40 @@ function cairo_draw(screen::Screen, scene::Scene)
     return
 end
 
-function get_all_plots(scene, plots = AbstractPlot[])
-    append!(plots, scene.plots)
-    for c in scene.children
-        get_all_plots(c, plots)
+"""
+    is_cairomakie_atomic_plot(plot::Plot)::Bool
+
+Returns whether the plot is considered atomic for the CairoMakie backend.
+This is overridden for `Poly`, `Band`, and `Tricontourf` so we can apply
+CairoMakie can treat them as atomic plots and render them directly.
+
+Plots with children are by default recursed into.  This can be overridden
+by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
+"""
+is_cairomakie_atomic_plot(plot::Plot) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+
+"""
+    check_parent_plots(f, plot::Plot)::Bool
+Returns whether the plot's parent tree satisfies the predicate `f`.
+`f` must return a `Bool` and take a plot as its only argument.
+"""
+function check_parent_plots(f, plot::Plot)
+    if f(plot)
+        check_parent_plots(f, parent(plot))
+    else
+        return false
     end
-    plots
+end
+
+function check_parent_plots(f, scene::Scene)
+    return true
 end
 
 function prepare_for_scene(screen::Screen, scene::Scene)
 
-    # get the root area to correct for its pixel size when translating
-    root_area = Makie.root(scene).px_area[]
-
-    root_area_height = widths(root_area)[2]
-    scene_area = pixelarea(scene)[]
+    # get the root area to correct for its size when translating
+    root_area_height = widths(Makie.root(scene))[2]
+    scene_area = viewport(scene)[]
     scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
 
@@ -80,7 +101,7 @@ function prepare_for_scene(screen::Screen, scene::Scene)
     top_offset = root_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
 
-    # clip the scene to its pixelarea
+    # clip the scene to its viewport
     Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
     Cairo.clip(screen.context)
 
@@ -88,20 +109,28 @@ function prepare_for_scene(screen::Screen, scene::Scene)
 end
 
 function draw_background(screen::Screen, scene::Scene)
+    w, h = Makie.widths(viewport(Makie.root(scene))[])
+    return draw_background(screen, scene, h)
+end
+
+function draw_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
-        r = pixelarea(scene)[]
-        Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
+        r = viewport(scene)[]
+        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up, 
+        # Cairo down. Negative height breaks other backgrounds
+        x, y = origin(r); w, h = widths(r)
+        Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
         fill(cr)
     end
     Cairo.restore(cr)
-    foreach(child_scene-> draw_background(screen, child_scene), scene.children)
+    foreach(child_scene-> draw_background(screen, child_scene, root_h), scene.children)
 end
 
-function draw_plot(scene::Scene, screen::Screen, primitive::Combined)
+function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
     if to_value(get(primitive, :visible, true))
         if isempty(primitive.plots)
             Cairo.save(screen.context)
@@ -122,11 +151,11 @@ end
 #   instead of the whole Scene
 # - Recognize when a screen is an image surface, and set scale to render the plot
 #   at the scale of the device pixel
-function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Combined, scale::Number = 1)
+function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, scale::Number = 1) where RT
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
-    # Extract scene width in pixels
-    w, h = Int.(scene.px_area[].widths)
+    # Extract scene width in device indepentent units
+    w, h = size(scene)
     # Create a new Screen which renders directly to an image surface,
     # specifically for the plot's parent scene.
     scr = Screen(scene; px_per_unit = scale)
@@ -142,8 +171,11 @@ function draw_plot_as_image(scene::Scene, screen::Screen, primitive::Combined, s
     # Cairo.scale(screen.context, w / scr.surface.width, h / scr.surface.height)
     Cairo.set_source_surface(screen.context, scr.surface, 0, 0)
     p = Cairo.get_source(scr.context)
-    # this is needed to avoid blurry edges
-    Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    if RT !== SVG
+        # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+        # setting seems to create broken SVGs
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+    end
     # Set filter doesn't work!?
     Cairo.pattern_set_filter(p, Cairo.FILTER_BILINEAR)
     Cairo.fill(screen.context)

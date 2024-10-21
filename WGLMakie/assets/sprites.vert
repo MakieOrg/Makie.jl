@@ -1,5 +1,7 @@
 uniform mat4 projection;
 uniform mat4 view;
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 uniform float atlas_tex_dim;
 
@@ -8,6 +10,12 @@ out vec2 frag_uv;
 out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
+out float o_clip_distance[8];
+
+flat out uint frag_instance_id;
+flat out vec2 f_sprite_scale;
+
+#define ANTIALIAS_RADIUS 0.8
 
 
 mat4 qmat(vec4 quat){
@@ -54,22 +62,35 @@ float _determinant(mat2 m) {
   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
 }
 
-flat out uint frag_instance_id;
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
 
 void main(){
-    vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
-    vec2 sprite_bbox_centre = get_quad_offset() + bbox_signed_radius;
+    // get_pos() returns the position of the scatter marker
+    // get_position() returns the (relative) position of the current quad vertex
 
+    vec2 bbox_radius = 0.5 * get_markersize();
+    vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
+    f_sprite_scale = get_markersize();
     mat4 pview = projection * view;
-    // Compute transform for the offset vectors from the central point
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
 
+    vec4 position_world = model * vec4(tovec3(get_pos()), 1);
+    process_clip_planes(position_world.xyz);
+    
     // Compute centre of billboard in clipping coordinates
-    vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 data_point = get_preprojection() * model * vec4(tovec3(get_pos()), 1);
-    data_point = vec4(data_point.xyz / data_point.w + mat3(model) * tovec3(get_marker_offset()), 1);
+    // Always transform text/scatter position argument
+    vec4 data_point = get_preprojection() * position_world;
+    // maybe transform marker_offset + glyph offsets
+    data_point = vec4(data_point.xyz / data_point.w + mat3(trans) * tovec3(get_marker_offset()), 1);
     data_point = pview * data_point;
+
+    // Compute transform for the offset vectors from the central point
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotation()) * trans;
+    vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
+
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that
@@ -88,7 +109,7 @@ void main(){
         0.0,         0.0,         1.0/vclip.w, 0.0,
         -vclip.xyz/(vclip.w*vclip.w),          0.0
     );
-    mat2 dxyv_dxys = diagm(0.5 * get_resolution()) * mat2(d_ndc_d_clip*trans);
+    mat2 dxyv_dxys = diagm(0.5 * px_per_unit * get_resolution()) * mat2(d_ndc_d_clip*trans);
     // Now, our buffer size is expressed in viewport pixels but we get back to
     // the sprite coordinate system using the scale factor of the
     // transformation (for isotropic transformations). For anisotropic
@@ -107,14 +128,26 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = abs(get_markersize().x);
+    float sprite_from_u_scale = min(abs(get_markersize().x), abs(get_markersize().y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
+
+    // add padding for AA, stroke and glow (non native distancefields don't need
+    // AA padding but CIRCLE etc do)
+    float ppu = get_px_per_unit();
+    vec2 padded_bbox_size = bbox_radius + (
+        ANTIALIAS_RADIUS + max(0.0, get_strokewidth() * ppu) + max(0.0, get_glowwidth() * ppu)
+    ) / viewport_from_sprite_scale;
+    vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
+
     frag_color = tovec4(get_color());
-    frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
+    // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
+    // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
+    frag_uv = vec2(0.5) + (get_uv() - vec2(0.5)) * uv_pad_scale;
+
     // screen space coordinates of the position
-    vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
+    vec4 quad_vertex = (trans * vec4(2.0 * padded_bbox_size * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
     gl_Position.z += gl_Position.w * get_depth_shift();
 

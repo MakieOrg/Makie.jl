@@ -1,0 +1,45 @@
+name: Relocatability
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+    branches:
+      - master
+  push:
+    tags:
+      - '*'
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  glmakie:
+    name: GLMakie relocatability
+    env:
+      MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+        os:
+          - ubuntu-20.04
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      - name: Relocatability test
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia ./relocatability.jl

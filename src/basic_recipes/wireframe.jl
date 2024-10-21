@@ -1,20 +1,3 @@
-"""
-    wireframe(x, y, z)
-    wireframe(positions)
-    wireframe(mesh)
-
-Draws a wireframe, either interpreted as a surface or as a mesh.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-wireframe
-
-"""
-See [`wireframe`](@ref).
-"""
-wireframe!
-
 function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (ngrid(x, y)..., z)
 end

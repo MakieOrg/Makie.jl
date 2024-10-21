@@ -13,61 +13,58 @@ The boxplot has 3 components:
     median
 - an `errorbar` whose whiskers span `range * iqr`
 - points marking outliers, that is, data outside the whiskers
-# Arguments
+## Arguments
 - `x`: positions of the categories
 - `y`: variables within the boxes
-# Keywords
-- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
-- `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=1`: width of the box before shrinking
-- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_notch=false`: draw the notch
-- `notchwidth=0.5`: multiplier of `width` for narrowest width of notch
-- `show_median=true`: show median as midline
-- `range`: multiple of IQR controlling whisker length
-- `whiskerwidth`: multiplier of `width` for width of T's on whiskers, or
-    `:match` to match `width`
-- `show_outliers`: show outliers as points
-- `dodge`: vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
-- `dodge_gap = 0.03`: spacing between dodged boxes
 """
-@recipe(BoxPlot, x, y) do scene
-    Theme(
-        weights = automatic,
-        color = theme(scene, :patchcolor),
-        colormap = theme(scene, :colormap),
-        colorrange = automatic,
-        orientation = :vertical,
-        # box and dodging
-        width = automatic,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        strokecolor = theme(scene, :patchstrokecolor),
-        strokewidth = theme(scene, :patchstrokewidth),
-        # notch
-        show_notch = false,
-        notchwidth = 0.5,
-        # median line
-        show_median = true,
-        mediancolor = theme(scene, :linecolor),
-        medianlinewidth = theme(scene, :linewidth),
-        # whiskers
-        range = 1.5,
-        whiskerwidth = 0.0,
-        whiskercolor = theme(scene, :linecolor),
-        whiskerlinewidth = theme(scene, :linewidth),
-        # outliers points
-        show_outliers = true,
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-        outliercolor = automatic,
-        outlierstrokecolor = theme(scene, :markerstrokecolor),
-        outlierstrokewidth = theme(scene, :markerstrokewidth),
-        cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable)
-    )
+@recipe BoxPlot (x, y) begin
+    "Vector of statistical weights (length of data). By default, each observation has weight `1`."
+    weights = automatic
+    color = @inherit patchcolor
+    colormap = @inherit colormap
+    colorscale=identity
+    colorrange = automatic
+    "Orientation of box (`:vertical` or `:horizontal`)."
+    orientation = :vertical
+    # box and dodging
+    "Width of the box before shrinking."
+    width = automatic
+    "Vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position."
+    dodge = automatic
+    n_dodge = automatic
+    "Shrinking factor, `width -> width * (1 - gap)`."
+    gap = 0.2
+    "Spacing between dodged boxes."
+    dodge_gap = 0.03
+    strokecolor = @inherit patchstrokecolor
+    strokewidth = @inherit patchstrokewidth
+    # notch
+    "Draw the notch."
+    show_notch = false
+    "Multiplier of `width` for narrowest width of notch."
+    notchwidth = 0.5
+    # median line
+    "Show median as midline."
+    show_median = true
+    mediancolor = @inherit linecolor
+    medianlinewidth = @inherit linewidth
+    # whiskers
+    "Multiple of IQR controlling whisker length."
+    range = 1.5
+    "Multiplier of `width` for width of T's on whiskers, or `:match` to match `width`."
+    whiskerwidth = 0.0
+    whiskercolor = @inherit linecolor
+    whiskerlinewidth = @inherit linewidth
+    # outliers points
+    "Show outliers as points."
+    show_outliers = true
+    marker = @inherit marker
+    markersize = @inherit markersize
+    outliercolor = automatic
+    outlierstrokecolor = @inherit markerstrokecolor
+    outlierstrokewidth = @inherit markerstrokewidth
+    cycle = [:color => :patchcolor]
+    inspectable = @inherit inspectable
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
@@ -220,6 +217,7 @@ function Makie.plot!(plot::BoxPlot)
         color = boxcolor,
         colorrange = plot[:colorrange],
         colormap = plot[:colormap],
+        colorscale = plot[:colorscale],
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
         midlinecolor = plot[:mediancolor],

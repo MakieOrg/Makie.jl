@@ -1,0 +1,14 @@
+name: "Enforce changelog"
+on:
+  pull_request:
+      types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dangoslen/changelog-enforcer@v3
+      with:
+        changeLogPath: 'CHANGELOG.md'
+        skipLabels: 'skip-changelog'

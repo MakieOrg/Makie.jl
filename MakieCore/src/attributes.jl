@@ -26,11 +26,13 @@ node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_conv
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
+Attributes(pairs::Dict) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
+attributes(x::AbstractPlot) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 function Base.iterate(x::Attributes, state...)
@@ -57,7 +59,15 @@ function Base.deepcopy(attributes::Attributes)
 end
 
 Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
-Base.empty!(x::Attributes) = (empty!(attributes(x)); x)
+function Base.empty!(x::Attributes)
+    attr = attributes(x)
+    for (key, obs) in attr
+        Observables.clear(obs)
+    end
+    empty!(attr)
+    return x
+end
+
 Base.length(x::Attributes) = length(attributes(x))
 
 function Base.merge!(target::Attributes, args::Attributes...)
@@ -67,20 +77,25 @@ function Base.merge!(target::Attributes, args::Attributes...)
     return target
 end
 
-Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
+Base.merge(target::Attributes, args::Attributes...) = merge!(deepcopy(target), args...)
 
-@generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
-
-@inline function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
-    if hasfield(x, Val(key))
+function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
+    if hasfield(typeof(x), key)
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
 
-@inline function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
-    if hasfield(x, Val(key))
+function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value::NamedTuple)
+    x[key] = Attributes(value)
+end
+function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
+    return x[key] = Attributes(value)
+end
+
+function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
+    if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
         setindex!(x, value, key)
@@ -103,17 +118,7 @@ function Base.setindex!(x::Attributes, value, key::Symbol)
 end
 
 function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
-    if haskey(x, key)
-        # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-        # You can do this manually like this:
-        # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-        # ")
-        return x.attributes[key] = node_any(value)
-    else
-        #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = node_any(value)
-    end
-    return x
+    return x.attributes[key] = node_any(value)
 end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
@@ -172,21 +177,21 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
 # so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# Plot plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
-Base.getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
-Base.getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
-Base.setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
-Base.length(plot::AbstractPlot) = length(plot.converted)
+Base.getindex(plot::Plot, idx::Integer) = plot.converted[idx]
+Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+Base.setindex!(plot::Plot, value, idx::Integer) = (plot.args[idx][] = value)
+Base.length(plot::Plot) = length(plot.converted)
 
-function Base.getindex(x::AbstractPlot, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
+function Base.getindex(x::T, key::Symbol) where {T <: Plot}
+    argnames = argument_names(T, length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        return x.attributes[key]
+        return attributes(x)[key]
     else
-        x.converted[idx]
+        return x.converted[idx]
     end
 end
 
@@ -218,15 +223,7 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing
-        if haskey(x, key)
-            # error("You're trying to update an attribute Observable with a new Observable. This is not supported right now.
-            # You can do this manually like this:
-            # lift(val-> attributes[$key] = val, Observable::$(typeof(value)))
-            # ")
-            return x.attributes[key] = value
-        else
-            return x.attributes[key] = value
-        end
+        return attributes(x)[key] = value
     else
         return setindex!(x.converted[idx], value)
     end
@@ -237,21 +234,27 @@ function get_attribute(dict, key, default=nothing)
     if haskey(dict, key)
         value = to_value(dict[key])
         value isa Automatic && return default
-        return convert_attribute(to_value(dict[key]), Key{key}())
+        plot_k = plotkey(dict)
+        if isnothing(plot_k)
+            return convert_attribute(value, Key{key}())
+        else
+            return convert_attribute(value, Key{key}(), Key{plot_k}())
+        end
     else
         return default
     end
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)
-    for (key, value) in theme
+    for (key, value) in attributes(theme)
         if !haskey(input, key)
             input[key] = value
         else
             current_value = input[key]
-            if value isa Attributes && current_value isa Attributes
+            tvalue = to_value(value)
+            if tvalue isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
-                merge_attributes!(current_value, value)
+                merge_attributes!(current_value, tvalue)
             end
             # we're good! input already has a value, can ignore theme
         end

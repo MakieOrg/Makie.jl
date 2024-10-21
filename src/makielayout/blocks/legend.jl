@@ -1,6 +1,5 @@
-function initialize_block!(leg::Legend,
-        entry_groups::Observable{Vector{Tuple{Any, Vector{LegendEntry}}}})
-
+function initialize_block!(leg::Legend; entrygroups)
+    entry_groups = convert(Observable{Vector{Tuple{Any,Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
 
     # by default, `tellwidth = true` and `tellheight = false` for vertical legends
@@ -12,16 +11,23 @@ function initialize_block!(leg::Legend,
 
     legend_area = lift(round_to_IRect2D, blockscene, leg.layoutobservables.computedbbox)
 
-    scene = Scene(blockscene, blockscene.px_area, camera = campixel!)
-
+    scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
+    leg.scene = scene
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
+    backgroundcolor = if !isnothing(leg.bgcolor[])
+        @warn("Keyword argument `bgcolor` is deprecated, use `backgroundcolor` instead.")
+        leg.bgcolor
+    else
+        leg.backgroundcolor
+    end
+
     bg = poly!(scene,
         legendrect,
-        color = leg.bgcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
+        color = backgroundcolor, strokewidth = leg.framewidth, visible = leg.framevisible,
         strokecolor = leg.framecolor, inspectable = false)
     translate!(bg, 0, 0, -7) # bg behind patches but before content at 0 (legend is at +10)
 
@@ -243,6 +249,15 @@ function initialize_block!(leg::Legend,
     return
 end
 
+struct LegendOverride
+    overrides::Attributes
+    LegendOverride(attrs::Attributes) = new(attrs)
+    LegendOverride(l::LegendOverride) = l
+    LegendOverride(attrs) = new(Attributes(attrs))
+end
+
+LegendOverride(; kwargs...) = LegendOverride(Attributes(; kwargs...))
+
 function connect_block_layoutobservables!(leg::Legend, layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
     connect!(layout_width, leg.width)
     connect!(layout_height, leg.height)
@@ -257,16 +272,19 @@ function connect_block_layoutobservables!(leg::Legend, layout_width, layout_heig
 end
 
 
+
 function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
-
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     scat = scatter!(scene, points, color = attrs.markercolor, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.markerstrokecolor, inspectable = false)
+        strokecolor = attrs.markerstrokecolor, inspectable = false,
+        colormap = attrs.markercolormap,
+        colorrange = attrs.markercolorrange,
+    )
 
     return [scat]
 end
@@ -278,6 +296,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     fracpoints = attrs.linepoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
+        colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
         linestyle = attrs.linestyle, inspectable = false)
 
     return [lin]
@@ -289,7 +308,9 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
-        strokecolor = attrs.polystrokecolor, inspectable = false)
+        strokecolor = attrs.polystrokecolor, inspectable = false,
+        colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
+        linestyle = attrs.linestyle)
 
     return [pol]
 end
@@ -311,30 +332,83 @@ function Base.setproperty!(lentry::LegendEntry, s::Symbol, value)
 end
 
 function Base.propertynames(lentry::LegendEntry)
-    [fieldnames(T)..., keys(lentry.attributes)...]
+    return (fieldnames(LegendEntry)..., keys(lentry.attributes)...)
 end
 
 legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
 
+legendelements(p::Pair, legend) = legendelements(p[1], legend, LegendOverride(p[2]))
 
-function LegendEntry(label, contentelements::AbstractArray, legend; kwargs...)
-    attrs = Attributes(label = label)
+function legendelements(any, legend, override::LegendOverride)
+    les = legendelements(any, legend)
+    for le in les
+        apply_legend_override!(le, override)
+    end
+    return les
+end
+
+function apply_legend_override!(le::MarkerElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(MarkerElement, copy(override.overrides))
+    for sym in (:markerpoints, :markersize, :markercolor, :markerstrokewidth, :markerstrokecolor, :markercolormap, :markercolorrange)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
+function apply_legend_override!(le::LineElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
+    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
+function apply_legend_override!(le::PolyElement, override::LegendOverride)
+    renamed_attrs = _rename_attributes!(PolyElement, copy(override.overrides))
+    for sym in (:polypoints, :polycolor, :polystrokewidth, :polystrokecolor, :polycolormap, :polycolorrange, :polystrokestyle)
+        if haskey(renamed_attrs, sym)
+            le.attributes[sym] = renamed_attrs[sym]
+        end
+    end
+end
+
+function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
+    attrs = Attributes(; label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = vcat(legendelements.(contentelements, Ref(legend))...)
+    elems = legendelements(contentelement, legend, override)
+    if isempty(elems)
+        error("`legendelements` returned an empty list for content element of type $(typeof(contentelement)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+    end
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label, contentelement, legend; kwargs...)
+
+function LegendEntry(label, content, legend; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = legendelements(contentelement, legend)
+    if content isa AbstractArray
+        elems = vcat(legendelements.(content, Ref(legend))...)
+    elseif content isa Pair
+        if content[1] isa AbstractArray
+            elems = vcat(legendelements.(content[1] .=> Ref(content[2]), Ref(legend))...)
+        else
+            elems = legendelements(content, legend)
+        end
+    else
+        elems = legendelements(content, legend)
+    end
+    if isempty(elems)
+        error("`legendelements` returned an empty list for content element of type $(typeof(content)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
+    end
     LegendEntry(elems, attrs)
 end
 
@@ -359,18 +433,24 @@ end
 _renaming_mapping(::Type{LineElement}) = Dict(
     :points => :linepoints,
     :color => :linecolor,
+    :colormap => :linecolormap,
+    :colorrange => :linecolorrange,
 )
 _renaming_mapping(::Type{MarkerElement}) = Dict(
     :points => :markerpoints,
     :color => :markercolor,
     :strokewidth => :markerstrokewidth,
     :strokecolor => :markerstrokecolor,
+    :colormap => :markercolormap,
+    :colorrange => :markercolorrange,
 )
 _renaming_mapping(::Type{PolyElement}) = Dict(
     :points => :polypoints,
     :color => :polycolor,
     :strokewidth => :polystrokewidth,
     :strokecolor => :polystrokecolor,
+    :colormap => :polycolormap,
+    :colorrange => :polycolorrange,
 )
 
 function _rename_attributes!(T, a)
@@ -387,53 +467,84 @@ function _rename_attributes!(T, a)
     a
 end
 
+choose_scalar(attr, default) = is_scalar_attribute(to_value(attr)) ? attr : default
 
-function scalar_lift(plot, attr, default)
-    observable = Observable{Any}()
-    map!(plot, observable, attr, default) do at, def
-        Makie.is_scalar_attribute(at) ? at : def
-    end
-    return observable
+function extract_color(@nospecialize(plot), color_default)
+    color = haskey(plot, :calculated_color) ? plot.calculated_color : plot.color
+    color[] isa ColorMapping && return color_default
+    return choose_scalar(color, color_default)
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
-        color = scalar_lift(plot, plot.color, legend.linecolor),
-        linestyle = scalar_lift(plot, plot.linestyle, legend.linestyle),
-        linewidth = scalar_lift(plot, plot.linewidth, legend.linewidth))]
-end
-
-
-function legendelements(plot::Scatter, legend)
-    LegendElement[MarkerElement(
-        color = scalar_lift(plot, plot.color, legend.markercolor),
-        marker = scalar_lift(plot, plot.marker, legend.marker),
-        markersize = scalar_lift(plot, plot.markersize, legend.markersize),
-        strokewidth = scalar_lift(plot, plot.strokewidth, legend.markerstrokewidth),
-        strokecolor = scalar_lift(plot, plot.strokecolor, legend.markerstrokecolor),
+        color = extract_color(plot, legend[:linecolor]),
+        linestyle = choose_scalar(plot.linestyle, legend[:linestyle]),
+        linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
     )]
 end
 
-function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar, Density}, legend)
+function legendelements(plot::Scatter, legend)
+    LegendElement[MarkerElement(
+        color = extract_color(plot, legend[:markercolor]),
+        marker = choose_scalar(plot.marker, legend[:marker]),
+        markersize = choose_scalar(plot.markersize, legend[:markersize]),
+        strokewidth = choose_scalar(plot.strokewidth, legend[:markerstrokewidth]),
+        strokecolor = choose_scalar(plot.strokecolor, legend[:markerstrokecolor]),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+    )]
+end
+
+function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
+    color = extract_color(plot, legend[:polycolor])
     LegendElement[PolyElement(
-        color = scalar_lift(plot, plot.color, legend.polycolor),
-        strokecolor = scalar_lift(plot, plot.strokecolor, legend.polystrokecolor),
-        strokewidth = scalar_lift(plot, plot.strokewidth, legend.polystrokewidth),
+        color = color,
+        strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
+        strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
     )]
 end
 
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
-    LegendElement[PolyElement(polycolor = scalar_lift(plot, plot.color, legend.polystrokecolor), polystrokecolor = :transparent, polystrokewidth = 0)]
+    return LegendElement[PolyElement(;
+        polycolor = choose_scalar(
+            plot.color,
+            legend[:polystrokecolor]
+        ),
+        polystrokecolor = :transparent,
+        polystrokewidth = 0,
+        polycolormap = plot.colormap,
+        polycolorrange = plot.colorrange,
+    )]
 end
+
+function legendelements(plot::Union{Poly, Density}, legend)
+    color = Makie.extract_color(plot, legend[:polycolor])
+    LegendElement[Makie.PolyElement(
+        color = color,
+        strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
+        strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        linestyle = plot.linestyle,
+    )]
+end
+
 
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
 function legendelements(plot, legend)::Vector{LegendElement}
-    if isempty(plot.plots)
-        error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
-    end
-    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots])
+    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots], init = [])
+end
+
+# Text has no meaningful legend, but it contains a linesegments for latex applications
+# which can surface as a line in the final legend
+function legendelements(plot::Text, legend)::Vector{LegendElement}
+    []
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
@@ -456,7 +567,24 @@ function Base.propertynames(legendelement::T) where T <: LegendElement
     [fieldnames(T)..., keys(legendelement.attributes)...]
 end
 
+function to_entry_group(legend_defaults, contents::AbstractVector, labels::AbstractVector, title=nothing)
+    if length(contents) != length(labels)
+        error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
+    end
+    entries = [LegendEntry(label, content, legend_defaults) for (content, label) in zip(contents, labels)]
+    return [(title, entries)]
+end
 
+function to_entry_group(
+        legend_defaults, contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector}, titles::AbstractVector)
+    if !(length(titles) == length(contentgroups) == length(labelgroups))
+        error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
+    end
+    entries = [[LegendEntry(l, pg, legend_defaults) for (l, pg) in zip(labelgroup, contentgroup)]
+        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
+    return [(t, en) for (t, en) in zip(titles, entries)]
+end
 
 """
     Legend(
@@ -475,17 +603,15 @@ function Legend(fig_or_scene,
         contents::AbstractVector,
         labels::AbstractVector,
         title = nothing;
-        kwargs...)
+                bbox=nothing, kwargs...)
 
-    if length(contents) != length(labels)
-        error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
-    end
-
-    entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [LegendEntry(label, content, legend) for (content, label) in zip(contents, labels)]
-    entrygroups[] = [(title, entries)]
-    legend
+    scene = get_topscene(fig_or_scene)
+    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
+    entry_groups = to_entry_group(Attributes(legend_defaults), contents, labels, title)
+    entrygroups = Observable(entry_groups)
+    legend_defaults[:entrygroups] = entrygroups
+    # Use low-level constructor to not calculate legend_defaults a second time
+    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete=true)
 end
 
 
@@ -510,19 +636,14 @@ function Legend(fig_or_scene,
         contentgroups::AbstractVector{<:AbstractVector},
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector;
-        kwargs...)
+        bbox=nothing, kwargs...)
 
-    if !(length(titles) == length(contentgroups) == length(labelgroups))
-        error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
-    end
-
-
-    entrygroups = Observable{Vector{EntryGroup}}([])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
-    entries = [[LegendEntry(l, pg, legend) for (l, pg) in zip(labelgroup, contentgroup)]
-        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
-    entrygroups[] = [(t, en) for (t, en) in zip(titles, entries)]
-    legend
+    scene = get_scene(fig_or_scene)
+    legend_defaults = block_defaults(:Legend, Dict{Symbol,Any}(kwargs), scene)
+    entry_groups = to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
+    entrygroups = Observable(entry_groups)
+    legend_defaults[:entrygroups] = entrygroups
+    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete=true)
 end
 
 
@@ -549,6 +670,24 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         l.label[]
     end
 
+    if any(x -> x isa AbstractVector, labels)
+        _lplots = []
+        _labels = []
+        for (lplot, label) in zip(lplots, labels)
+            if label isa AbstractVector
+                for lab in label
+                    push!(_lplots, lplot)
+                    push!(_labels, lab)
+                end
+            else
+                push!(_lplots, lplot)
+                push!(_labels, label)
+            end
+        end
+        lplots = _lplots
+        labels = _labels
+    end
+
     # filter out plots with same plot type and label
     if unique
         plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
@@ -564,7 +703,16 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         lplots, labels = mergedplots, ulabels
     end
 
-    lplots, labels
+    lplots_with_overrides = map(lplots, labels) do plots, label
+        if label isa Pair
+            plots => LegendOverride(label[2])
+        else
+            plots
+        end
+    end
+    labels = [label isa Pair ? label[1] : label for label in labels]
+
+    lplots_with_overrides, labels
 end
 
 get_plots(p::AbstractPlot) = [p]
@@ -582,12 +730,14 @@ end
 axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
 
 axislegend(title::AbstractString; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
+axislegend(ax, title::AbstractString; kwargs...) = axislegend(ax, ax, title; kwargs...)
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
     axislegend(ax, args...; position = (1, 1), kwargs...)
     axislegend(ax = current_axis(); kwargs...)
     axislegend(title::AbstractString; kwargs...)
+    axislegend(ax, title::AbstractString; kwargs...)
 
 Create a legend that sits inside an Axis's plot area.
 
@@ -604,8 +754,8 @@ to one occurrence.
 """
 function axislegend(ax, args...; position = :rt, kwargs...)
     Legend(ax.parent, args...;
-        bbox = ax.scene.px_area,
-        margin = (10, 10, 10, 10),
+        bbox = ax.scene.viewport,
+        margin = (6, 6, 6, 6),
         legend_position_to_aligns(position)...,
         kwargs...)
 end
@@ -633,4 +783,150 @@ end
 
 function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
+end
+
+function attribute_examples(::Type{Legend})
+    Dict(
+        :colgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default", nbanks = 2)
+                    Legend(fig[1, 3], ax, "colgap = 40", nbanks = 2, colgap = 40)
+                    fig
+                    """
+            )
+        ],
+        :groupgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lin = lines!(ax, 1:10, linestyle = :dash)
+                    pol = poly!(ax, [(5, 0), (10, 0), (7.5, 5)])
+                    sca = scatter!(ax, 4:13)
+                    Legend(fig[1, 2],
+                        [[lin], [pol], [sca]],
+                        [["Line"], ["Poly"], ["Scatter"]],
+                        ["Default", "Group 2", "Group 3"];
+
+                    )
+                    Legend(fig[1, 3],
+                        [[lin], [pol], [sca]],
+                        [["Line"], ["Poly"], ["Scatter"]],
+                        ["groupgap = 30", "Group 2", "Group 3"];
+                        groupgap = 30,
+                    )
+                    fig
+                    """
+            )
+        ],
+        :patchsize => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "(40, 20)", patchsize = (40, 20))
+                    fig
+                    """
+            )
+        ],
+        :patchlabelgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "patchlabelgap\n= 20", patchlabelgap = 20)
+                    fig
+                    """
+            )
+        ],
+        :orientation => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[2, 1], ax, "orientation\n= :horizontal", orientation = :horizontal)
+                    Legend(fig[1, 2], ax, "orientation\n= :vertical", orientation = :vertical)
+                    fig
+                    """
+            )
+        ],
+        :nbanks => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    grid = GridLayout(fig[1, 2], tellheight = false)
+                    Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1, tellheight = true)
+                    Legend(grid[1, 2], ax, "nbanks = 2", nbanks = 2, tellheight = true)
+                    Legend(grid[2, :], ax, "nbanks = 3", nbanks = 3, tellheight = true)
+                    fig
+                    """
+            ),
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    grid = GridLayout(fig[2, 1], tellwidth = false)
+                    Legend(grid[1, 1], ax, "nbanks = 1", nbanks = 1,
+                        orientation = :horizontal, tellwidth = true)
+                    Legend(grid[2, 1], ax, "nbanks = 2", nbanks = 2,
+                        orientation = :horizontal, tellwidth = true)
+                    Legend(grid[:, 2], ax, "nbanks = 3", nbanks = 3,
+                        orientation = :horizontal, tellwidth = true)
+                    fig
+                    """
+            ),
+        ],
+        :titleposition => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "titleposition\n= :top", titleposition = :top)
+                    Legend(fig[1, 3], ax, "titleposition\n= :left", titleposition = :left)
+                    fig
+                    """
+            ),
+        ],
+        :rowgap => [
+            Example(
+                code = """
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    lines!(ax, 1:10, linestyle = :dash, label = "Line")
+                    poly!(ax, [(5, 0), (10, 0), (7.5, 5)], label = "Poly")
+                    scatter!(ax, 4:13, label = "Scatter")
+                    Legend(fig[1, 2], ax, "Default")
+                    Legend(fig[1, 3], ax, "rowgap = 10", rowgap = 10)
+                    fig
+                    """
+            ),
+        ],
+    )
 end

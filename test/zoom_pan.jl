@@ -4,7 +4,7 @@ using Observables
 function cleanaxes()
     fig = Figure()
     ax = Axis(fig[1, 1])
-    axbox = pixelarea(ax.scene)[]
+    axbox = viewport(ax.scene)[]
     lim = ax.finallimits[]
     e = events(ax.scene)
     return ax, axbox, lim, e
@@ -79,7 +79,7 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1])
     plot!(ax, [10, 15, 20])
-    axbox = pixelarea(ax.scene)[]
+    axbox = viewport(ax.scene)[]
     lim = ax.finallimits[]
     e = events(ax.scene)
 

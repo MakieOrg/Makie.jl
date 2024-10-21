@@ -17,7 +17,6 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     parameters      ::TextureParameters{NDIM}
     size            ::NTuple{NDIM, Int}
     context         ::GLContext
-    requires_update ::Observable{Bool}
     observers       ::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
             id              ::GLuint,
@@ -37,7 +36,6 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             parameters,
             size,
             current_context(),
-            Observable(true),
             Observables.ObserverFunction[]
         )
         finalizer(free, tex)
@@ -49,11 +47,8 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
-    requires_update::Observable{Bool}
-
     function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
-        x = map((_, _) -> true, buffer.requires_update, texture.requires_update)
-        new{T}(texture, buffer, x)
+        new{T}(texture, buffer)
     end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
@@ -72,7 +67,6 @@ ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture
 function unsafe_free(tb::TextureBuffer)
     unsafe_free(tb.texture)
     unsafe_free(tb.buffer)
-    Observables.clear(tb.requires_update)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -136,6 +130,9 @@ Colors from Colors.jl should mostly work as well
 """
 Texture(image::Array{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
     Texture(pointer(image), size(image); kw_args...)::Texture{T, NDim}
+
+Texture(image::AbstractArray{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
+    Texture(collect(image); kw_args...)
 
 function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
     tex = Texture(
@@ -348,14 +345,19 @@ function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     buff = similar(t.buffer, newdims...)
     return TextureBuffer(buff)
 end
+
 function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
-    Texture(
-        Ptr{T}(C_NULL),
-        newdims, t.texturetype,
+    id = glGenTextures()
+    glBindTexture(t.texturetype, id)
+    glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
+    return Texture{T, NDim}(
+        id,
+        t.texturetype,
         t.pixeltype,
         t.internalformat,
         t.format,
-        t.parameters
+        t.parameters,
+        newdims
     )
 end
 # Resize Texture
@@ -379,22 +381,25 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     return t
 end
 
-texsubimage(t::Texture{T, 1}, newvalue::Array{T, 1}, xrange::UnitRange, level=0) where {T} = glTexSubImage1D(
-    t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
-)
-function texsubimage(t::Texture{T, 2}, newvalue::Array{T, 2}, xrange::UnitRange, yrange::UnitRange, level=0) where T
+function texsubimage(t::Texture{T, 1}, newvalue::Array{T}, xrange::UnitRange, level=0) where {T}
+    glTexSubImage1D(
+        t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
+    )
+end
+function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, level=0) where T
     glTexSubImage2D(
         t.texturetype, level,
         first(xrange)-1, first(yrange)-1, length(xrange), length(yrange),
         t.format, t.pixeltype, newvalue
     )
 end
-texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T} = glTexSubImage3D(
-    t.texturetype, level,
-    first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
-    t.format, t.pixeltype, newvalue
-)
-
+function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T}
+    glTexSubImage3D(
+        t.texturetype, level,
+        first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
+        t.format, t.pixeltype, newvalue
+    )
+end
 
 Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
