@@ -61,8 +61,6 @@ cp(Makie.assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"), "./texgyre.otf")
 
 run(`$(Typst_jll.typst()) compile --font-path . document.typ output.svg`)
 
-mkpath("../public") # hide
-# mv("document.pdf", abspath("../public/matched-figure-size-font-size-dpi.pdf")) # hide
 nothing # hide
 ```
 
