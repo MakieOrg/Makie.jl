@@ -26,7 +26,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1.10'
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -78,7 +78,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1.10'
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -131,7 +131,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1.10'
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -182,15 +182,15 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_WGLMakie_1.10
+          name: ReferenceImages_WGLMakie_1
           path: ./ReferenceImages/WGLMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_CairoMakie_1.10
+          name: ReferenceImages_CairoMakie_1
           path: ./ReferenceImages/CairoMakie
       - uses: actions/download-artifact@v4
         with:
-          name: ReferenceImages_GLMakie_1.10
+          name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
       - name: Consolidate reference image folders
         run: |
