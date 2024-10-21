@@ -222,7 +222,7 @@ pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 Pkg.add([(; name="BenchmarkTools")])
-pkg"add GeometryBasics#sd/simple-mesh MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
+pkg"add GeometryBasics#master MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
 
 
 @time Pkg.precompile()
