@@ -148,7 +148,13 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie.MakieCore: InvalidAttributeError
+import Makie.MakieCore: 
+    __obj_name, 
+    __valid_attributes, 
+    __has_generic_attributes, 
+    InvalidAttributeError,
+    attribute_names
+import Makie: _attribute_docs
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -175,4 +181,41 @@ end
 @testset "recipe attribute checking" begin
     @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
     @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
+end
+
+@testset "validated attributes for blocks" begin 
+    @test __obj_name(Lines) == "plot"
+    @test __valid_attributes(Lines) == attribute_names(Lines)
+    @test __has_generic_attributes(Lines) 
+
+    @test __obj_name(Axis) == "block"
+    @test __valid_attributes(Axis3) == keys(_attribute_docs(Axis3))
+    @test !__has_generic_attributes(Axis3)
+
+    fig = Figure()
+    @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Axis3(fig[1, 1], does_not_exist = 123, does_not_exist2 = 123)
+    @test_throws InvalidAttributeError lines(1:10, axis = (does_not_exist = 123,))
+    @test_throws InvalidAttributeError Colorbar(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Label(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Box(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError SliderGrid(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError IntervalSlider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Button(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Toggle(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Menu(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Legend(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError LScene(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Textbox(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError PolarAxis(fig[1, 1], does_not_exist = 123)
+
+    @test Axis(fig[1, 1], palette = nothing) isa Axis # just checking that it doesn't error
+    @test Menu(fig[1, 2], default = nothing) isa Menu
+    @test Legend(fig[1, 3], entrygroups = []) isa Legend
+    @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
+    @test :palette in __valid_attributes(Axis)
+    @test :default in __valid_attributes(Menu)
+    @test :entrygroups in __valid_attributes(Legend)
+    @test :palette in __valid_attributes(PolarAxis)
 end
