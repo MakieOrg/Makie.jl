@@ -47,7 +47,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
-          pkg"add GeometryBasics#sd/simple-mesh"
+          pkg"add GeometryBasics#master"
           pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
@@ -100,7 +100,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
-          pkg"add GeometryBasics#sd/simple-mesh"
+          pkg"add GeometryBasics#master"
           pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
@@ -153,7 +153,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"add MeshIO#ff/GeometryBasics_refactor"
-          pkg"add GeometryBasics#sd/simple-mesh"
+          pkg"add GeometryBasics#master"
           pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests

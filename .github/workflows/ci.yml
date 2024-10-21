@@ -47,7 +47,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev . ./MakieCore"
-          pkg"add GeometryBasics#sd/simple-mesh"
+          pkg"add GeometryBasics#master"
           pkg"add MeshIO#ff/GeometryBasics_refactor"
           pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           Pkg.test("Makie"; coverage=true)
