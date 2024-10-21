@@ -4,7 +4,7 @@ macro compile(block)
     return quote
         let
             figlike = $(esc(block))
-            Makie.colorbuffer(figlike)
+            Makie.colorbuffer(figlike; px_per_unit=1)
             return nothing
         end
     end
@@ -36,7 +36,8 @@ let
             screen = empty_screen(false)
             close(screen)
             destroy!(screen)
-
+            screen = empty_screen(false, false, nothing)
+            destroy!(screen)
             config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}())
             screen = Screen(Scene(), config, nothing, MIME"image/png"(); visible=false, start_renderloop=false)
             close(screen)
