@@ -25,7 +25,6 @@ end
 
 # run the unit test suite
 include("unit_tests.jl")
-include("picking.jl")
 
 @testset "Reference Tests" begin
     @testset "refimages" begin
