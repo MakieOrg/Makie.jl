@@ -98,7 +98,7 @@ function serve_update_page_from_dir(folder)
     end
 end
 
-function serve_update_page(; commit = nothing, pr = nothing)
+function download_artifacts(; commit = nothing, pr = nothing)
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(github_token())"))
 
     commit !== nothing && pr !== nothing && error("Keyword arguments `commit` and `pr` can't be set at once.")
@@ -146,7 +146,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         @warn("Found multiple checkruns for \"Merge artifacts\". Using latest with timestamp: $datetime")
         check = checkruns[idx]
     else
-    check = only(checkruns)
+        check = only(checkruns)
     end
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
@@ -171,16 +171,83 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 @info "$download_url cached at $tmpdir"
             end
 
-            @info "Serving update page from folder $tmpdir."
-            serve_update_page_from_dir(tmpdir)
-            return
+            return tmpdir
         end
     end
+
     error("""
         No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
         This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
         Artifacts are only available for complete runs.
     """)
+end
+
+function serve_update_page(; commit = nothing, pr = nothing)
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+    @info "Serving update page from folder $tmpdir."
+    serve_update_page_from_dir(tmpdir)
+    return
+end
+
+function update_from_previous_version(; 
+        source_version::String, target_version::String = last_major_version(), 
+        commit = nothing, pr = nothing, score_threshold = 0.03)
+
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+
+    @info "Updating reference images in $target_version from $source_version"
+    @info "By score threshold:"
+    # missing & changed
+    folder = realpath(tmpdir)
+    changed_or_missing = open(joinpath(folder, "scores.tsv"), "r") do file
+        names = String[]
+        for line in eachline(file)
+            score_str, filename = split(line, '\t')
+            if parse(Float64, score_str) >= score_threshold
+                push!(names, filename)
+                @info "  $filename"
+            end
+        end
+        return names
+    end
+
+    @info "Missing:"
+    open(joinpath(folder, "new_files.txt"), "r") do file
+        for line in eachline(file)
+            if !isempty(line)
+                push!(changed_or_missing, line)
+                @info "  $line"
+            end
+        end
+    end
+
+    # Merge new and old
+    @info "Downloading new reference image set (target)"
+    new_version = download_refimages(target_version)
+    @info "Target path: $new_version"
+    @info "Downloading old reference image set (source)"
+    old_version = download_refimages(source_version)
+
+
+    @info "Replacing target with source files..."
+    for image in changed_or_missing
+        @info "Overwriting or adding $image"
+        cp(joinpath(old_version, image), joinpath(new_version, image), force = true)
+    end
+
+    rm(old_version, recursive = true)
+
+    @info "Uploading updated reference images under tag \"$target_version\""
+    try
+        upload_reference_images(new_version, target_version)
+        @info "Upload successful. You can ctrl+c out now."
+        HTTP.Response(200, "Upload successful")
+    catch e
+        showerror(stdout, e, catch_backtrace())
+        HTTP.Response(404)
+    end
+
+    return
 end
 
 function unzip(file, exdir = "")
