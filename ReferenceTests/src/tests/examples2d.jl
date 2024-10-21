@@ -1487,12 +1487,12 @@ end
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
     ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
-    for (i, scale) in enumerate([:area, :count, :width])
-        ax = Axis(fig[i, 1])
-        violin!(ax, xs, ys; scale, show_median=true)
-        Makie.xlims!(0.2, 4.8)
-        ax.title = "scale=:$(scale)"
-    end
+    ax, p = violin(fig[1, 1], xs, ys; scale = :area, show_median=true)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:area"
+    ax, p = violin(fig[2, 1], xs, ys; scale = :count, mediancolor = :red, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:count"
+    ax, p = violin(fig[3, 1], xs, ys; scale = :width, show_median=true, mediancolor = :orange, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:width"
     fig
 end
 
@@ -1688,8 +1688,8 @@ end
     fig = Figure()
     xs = 2 .* RNG.randn(10) .+ 3
     qqnorm(fig[1, 1], xs, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
-    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
-    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqnorm(fig[2, 2], xs, qqline = :identity, color = :orange)
     fig
 end
@@ -1698,8 +1698,8 @@ end
     fig = Figure()
     xs = 2 .* RNG.randn(10) .+ 3; ys = RNG.randn(10)
     qqplot(fig[1, 1], xs, ys, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
-    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 10, marker = Rect, markercolor = :red)
-    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 4)
+    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
     fig
 end
@@ -1730,7 +1730,7 @@ end
         linewidth = 4, linestyle = :dot, markersize = 15, solid_color = :black)
     axislegend(ax, position = :lt)
 
-    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 5.0, 
+    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0, 
         marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black)
     axislegend(ax, position = :lt)
 
