@@ -38,9 +38,22 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
                 tex = if haskey(x, "image")
                     x["image"]
                 elseif haskey(x, "filename")
-                    FileIO.load(x["filename"])
+                    if isfile(x["filename"])
+                        FileIO.load(x["filename"])
+                    else
+                        # try to match filename
+                        path, filename = splitdir(x["filename"])
+                        files = readdir(path)
+                        idx = findfirst(f -> lowercase(f) == lowercase(filename), files)
+                        if idx === nothing
+                            @error "Failed to load texture from material $name - File $filename not found in $path."
+                            fill(RGB{N0f8}(1,0,1), (1,1))
+                        else
+                            FileIO.load(joinpath(path, files[idx]))
+                        end
+                    end
                 else
-                    fill(RGB{N0f8}(1,0,1))
+                    fill(RGB{N0f8}(1,0,1), (1,1))
                 end
                 repeat = get(x, "clamp", false) ? (:clamp_to_edge) : (:repeat)
                 
