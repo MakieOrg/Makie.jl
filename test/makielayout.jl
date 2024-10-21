@@ -555,5 +555,5 @@ end
     a, s = scatter(f[1,2], [1,2,3])
     tooltip!(a, "I'm an Axis", placement = :center)
     b = Button(f[1,3])
-    tooltip!(b, "I'm a Button", placement = :qwerty)
+    tooltip!(b, "I'm a Button", placement = :prints_error_assume_above)
 end
