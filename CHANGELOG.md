@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
+- Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
 - For `Textbox`es in which a fixed width is specified, the text is now scrolled
   if the width is exceeded [#4293](https://github.com/MakieOrg/Makie.jl/pull/4293)
 - Changed image, heatmap and surface picking indices to correctly index the relevant matrix arguments. [#4459](https://github.com/MakieOrg/Makie.jl/pull/4459)

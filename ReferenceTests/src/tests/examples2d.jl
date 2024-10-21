@@ -1613,8 +1613,8 @@ end
     boxplot(fig[1, 1], categories, values)
 
     dodge = RNG.rand(1:2, 900)
-    boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true, 
-        color = map(d->d==1 ? :blue : :red, dodge), 
+    boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true,
+        color = map(d->d==1 ? :blue : :red, dodge),
         outliercolor = RNG.rand([:red, :green, :blue, :black, :orange], 900)
     )
 
@@ -1631,16 +1631,15 @@ end
 
     weights = 1.0 ./ (1.0 .+ abs.(values))
     boxplot!(ax_vert, categories, values, orientation=:vertical, weights = weights,
-        gap = 0.5, 
-        show_notch = true, notchwidth = 0.75, 
+        gap = 0.5,
+        show_notch = true, notchwidth = 0.75,
         markersize = 5, strokewidth = 2.0, strokecolor = :black,
         medianlinewidth = 5, mediancolor = :orange,
         whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
         outlierstrokewidth = 1.0, outlierstrokecolor = :red,
-        width = 1.5, 
-
+        width = 1.5,
     )
-    boxplot!(ax_horiz, categories, values; orientation=:horizontal)
+    boxplot!(ax_horiz, categories, values; orientation=:horizontal, width = categories ./ 3)
 
     fig
 end
