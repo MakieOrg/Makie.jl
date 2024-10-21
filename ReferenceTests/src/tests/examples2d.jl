@@ -692,8 +692,8 @@ end
 
 @reference_test "Tooltip" begin
     fig, ax, p = scatter(Point2f(0,0))
-    xlims!(ax, -10, 10)
-    ylims!(ax, -5, 5)
+    xlims!(ax, -15, 5)
+    ylims!(ax, -7, 3)
     tt = tooltip!(ax, Point2f(0), text = "left", placement = :left)
     tt.backgroundcolor[] = :red
     tooltip!(
@@ -706,6 +706,7 @@ end
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )
+    tooltip!(ax, "i'm an axis", placement=:center)
     fig
 end
 
