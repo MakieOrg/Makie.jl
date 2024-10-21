@@ -462,7 +462,11 @@ function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
 end
 
 function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
+        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[[1,2,2,1], [1,1,2,2]])
+    else
+        ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    end
     return vec(ps)
 end
 
