@@ -720,8 +720,9 @@ end
     p.update_xy[](10)
     fig
 end
+
 @reference_test "MetaMesh (Sponza)" begin
-    m = load(Makie.assetpath("sponza/sponza.obj"))
+    m = load(Makie.assetpath("sponza/sponza.obj"), uvtype = Vec2f)
     f, a, p = mesh(m)
     cameracontrols(a).settings.center[] = false
     cameracontrols(a).settings.fixed_axis[] = false # irrelevant here
