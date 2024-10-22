@@ -1,9 +1,9 @@
 @reference_test "thick arc" arc(Point2f(0), 10f0, 0f0, pi, linewidth=20)
 
-@reference_test "stroked rect poly" poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
-
-@reference_test "array of rects poly" begin
-    f, ax, pl = poly([Rect(0, 0, 20, 20)])
+@reference_test "poly stroke & array input" begin
+    f = Figure(size = (500, 300))
+    poly(f[1, 1], Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
+    poly(f[1, 2], [Rect(0, 0, 20, 20)])
     scatter!(Rect(0, 0, 20, 20), color=:red, markersize=20)
     f
 end
@@ -14,10 +14,34 @@ end
     f
 end
 
-@reference_test "lines number color" lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
-@reference_test "lines array of colors" lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), linewidth=10)
-@reference_test "scatter interval" scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
-@reference_test "scatter linrange" scatter(LinRange(0, 1, 10), RNG.rand(10))
+@reference_test "lines per element colors, OffsetArrays, #3704" begin
+    f = Figure()
+    lines(f[1, 1], RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
+    lines(f[1, 2], RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), linewidth=10)
+    # lines issue #3704
+    lines(f[2, 2], 1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+    f
+end
+
+@reference_test "lines inputs" begin
+    f = Figure()
+    lines(f[1, 1], Circle(Point2f(0), Float32(1)))
+    lines(f[1, 2], -1..1, x -> x^2)
+    lines(f[2, 1], Makie.OffsetArrays.Origin(-50)(1:100))
+    f
+end
+
+@reference_test "scatter inputs" begin
+    f = Figure()
+    scatter(f[1, 1], 0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
+    scatter(f[1, 2], LinRange(0, 1, 10), RNG.rand(10))
+    colors = Makie.resample(to_colormap(:Spectral), 20)
+    scatter!(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
+    
+    scatter(f[2, 1], -1..1, x -> x^2)
+    scatter(f[2, 2], RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
+    f
+end
 
 @reference_test "scatter rotation" begin
     angles = range(0, stop=2pi, length=20)
@@ -27,41 +51,46 @@ end
     f
 end
 
-@reference_test "heatmap transparent colormap" heatmap(RNG.rand(50, 50), colormap=(:RdBu, 0.2))
+@reference_test "heatmap log scale, transparent colormap" begin
+    f = Figure(size = (500, 250))
+    heatmap(f[1, 1], RNG.rand(10, 5), axis = (yscale = log10, xscale=log10))
+    heatmap(f[1, 2], RNG.rand(50, 50), colormap=(:RdBu, 0.2))
+    f
+end
 
-@reference_test "contour small x" contour(RNG.rand(10, 100))
-@reference_test "contour small y" contour(RNG.rand(100, 10))
-@reference_test "contour with levels" contour(RNG.randn(100, 90), levels=3)
+@reference_test "contour small x or y" begin 
+    f = Figure(size = (500, 300))
+    contour(f[1, 1], RNG.rand(10, 50))
+    contour(f[1, 2], RNG.rand(50, 10))
+    f
+end
 
-@reference_test "contour with levels array" contour(RNG.randn(100, 90), levels=[0.1, 0.5, 0.8])
-@reference_test "contour with color per level" contour(RNG.randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
-
-@reference_test "contour with colorrange" contour(
-    RNG.rand(33, 30) .* 6 .- 3, levels=[-2.5, 0.4, 0.5, 0.6, 2.5],
-    colormap=[(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
-    colorrange=(0.2, 0.8)
-)
-
-@reference_test "circle line" lines(Circle(Point2f(0), Float32(1)))
+@reference_test "contour levels and colors" begin
+    f = Figure()
+    contour(f[1, 1], RNG.randn(50, 40), levels=3)
+    contour(f[1, 2], RNG.randn(50, 40), levels=[0.1, 0.5, 0.8])
+    contour(f[2, 1], RNG.randn(33, 30),  levels=[0.1, 0.5, 0.9], 
+        color=[:black, :green, (:blue, 0.4)], linewidth=2)
+    contour(
+        f[2, 2], RNG.rand(33, 30) .* 6 .- 3, levels = [-2.5, 0.4, 0.5, 0.6, 2.5],
+        colormap = [(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
+        colorrange = (0.2, 0.8)
+    )
+    f
+end
 
 @reference_test "streamplot with func" begin
     v(x::Point2{T}) where T = Point2{T}(x[2], 4 * x[1])
     streamplot(v, -2..2, -2..2)
 end
 
-@reference_test "lines with func" lines(-1..1, x -> x^2)
-@reference_test "scatter with func" scatter(-1..1, x -> x^2)
-
-@reference_test "volume translated" begin
-    r = range(-3pi, stop=3pi, length=100)
-    fig, ax, vplot = Makie.volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
-    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, colorrange=(0, 1),
-                 transformation=(translation=Vec3f(6pi, 0, 0),))
-    fig
+@reference_test "meshscatter colors, Axis3" begin 
+    f = Figure()
+    meshscatter(f[1, 1], RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
+    meshscatter(f[1, 2], RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), transparency=true)
+    meshscatter(f[2, 1], RNG.rand(Point3f, 10), axis=(type=Axis3,))
+    f
 end
-
-@reference_test "meshscatter color numbers" meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
-@reference_test "meshscatter color array" meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), transparency=true)
 
 @reference_test "transparent mesh texture" begin
     s1 = uv_mesh(Sphere(Point3f(0), 1f0))
@@ -146,16 +175,6 @@ end
     fig
 end
 
-@reference_test "log10 heatmap" begin
-    heatmap(RNG.rand(10, 5), axis = (yscale = log10, xscale=log10))
-end
-
-@reference_test "reverse range heatmap" begin
-    x = [1 0
-         2 3]
-    heatmap(1:2, 1:-1:0, x)
-end
-
 @reference_test "lines linesegments width test" begin
     res = 200
     s = Scene(camera=campixel!, size=(res, res))
@@ -186,10 +205,6 @@ end
 
 @reference_test "fast pixel marker" begin
     scatter(RNG.rand(Point2f, 10000), marker=Makie.FastPixel())
-end
-
-@reference_test "axsi3" begin
-    meshscatter(RNG.rand(Point3f, 10), axis=(type=Axis3,))
 end
 
 @reference_test "pattern barplot" begin
@@ -280,6 +295,15 @@ end
     hidedecorations!(ax7)
     hidedecorations!(ax8)
     f
+end
+
+@reference_test "Scene backgroundcolor" begin
+    root = Scene(size = (500, 500))
+    Scene(root, viewport = Rect2f(0,0,250,250), backgroundcolor = :red, clear = true)
+    Scene(root, viewport = Rect2f(250,0,250,250), backgroundcolor = :blue, clear = true)
+    Scene(root, viewport = Rect2f(50,300,300,50), backgroundcolor = :cyan, clear = true)
+    Scene(root, viewport = Rect2f(350,400,50,200), backgroundcolor = :orange, clear = true)
+    root
 end
 
 

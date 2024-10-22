@@ -273,12 +273,11 @@ end
 function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
     point = plot[1][][idx]
     point3 = to_ndim(Point3d, point, 0)
-    point_t = if apply_transform && !isnan(point3)
-        apply_transform_and_model(plot, point3)
+    if apply_transform && !isnan(point3)
+        return apply_transform_and_model(plot, point3)
     else
-        point3
+        return point3
     end
-    return to_ndim(typeof(point), point_t, 0.0f0)
 end
 
 function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
@@ -288,14 +287,15 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
 
     pos = closest_point_on_line(f32_convert(plot, p0), f32_convert(plot, p1), ray)
-
+    
     if apply_transform
         return inv_f32_convert(plot, Point3d(pos))
     else
-        p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, pos), 1)
+        p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, Point3d(pos)), 1)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
-        return Makie.apply_transform(itf, p3d, get(plot, :space, :data))
+        out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
+        return out 
     end
 end
 
@@ -321,7 +321,7 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
-    positions = coordinates(plot.mesh[])
+    positions = decompose(Point3, plot.mesh[])
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
@@ -414,17 +414,52 @@ end
 
 function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     min, max = Point3d.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
+    space = to_value(get(plot, :space, :data))
+    tf = transform_func(plot)
 
-    if apply_transform
-        min = apply_transform_and_model(plot, min)
-        max = apply_transform_and_model(plot, max)
-        return ray_rect_intersection(Rect3(min, max .- min), ray)
-    else
-        min = Makie.apply_transform(transform_func(plot), min, get(plot, :space, :data))
-        max = Makie.apply_transform(transform_func(plot), max, get(plot, :space, :data))
+    if tf === nothing
+        
         ray = transform(inv(plot.model[]), ray)
         pos = ray_rect_intersection(Rect3(min, max .- min), ray)
-        return Makie.apply_transform(inverse_transform(plot), pos, get(plot, :space, :data))
+        if apply_transform
+            return to_ndim(Point3d, apply_model(transformationmatrix(plot), pos), NaN)
+        else
+            return pos
+        end
+
+    else # Note: volume doesn't actually support transform_func but this should work anyway
+
+        # TODO: After GeometryBasics refactor this can just use triangle_mesh(Rect3d(min, max - min))
+        w = max - min
+        ps = Point3d[min + (x, y, z) .* w for x in (0, 1) for y in (0, 1) for z in (0, 1)]
+        fs = decompose(GLTriangleFace, QuadFace{Int}[
+            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1), 
+            (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2)
+        ])
+
+        if apply_transform
+            ps = apply_transform_and_model(plot, ps)
+        else
+            ps = Makie.apply_transform(tf, ps, space)
+            ray = transform(inv(plot.model[]), ray)
+        end
+
+        for f in fs
+            p1, p2, p3 = ps[f]
+            pos = ray_triangle_intersection(p1, p2, p3, ray)
+            if !isnan(pos) # hit
+                n = GeometryBasics.orthogonal_vector(p1, p2, p3)
+                if dot(n, ray.direction) < 0.0 # front facing
+                    if apply_transform # already did
+                        return pos
+                    else # undo transform_func
+                        return Makie.apply_transform(inverse_transform(tf), pos, space)
+                    end
+                end
+            end
+        end
+
+        return Point3d(NaN)
     end
 end
 

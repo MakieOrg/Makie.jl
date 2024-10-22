@@ -321,6 +321,8 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
         for button in (:left, :middle, :right)
             # click
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mouseposition[] = (301, 301) # small mouse deviations with pressed button shouldn't register as a drag and prohibit a click
+            e.mouseposition[] = (300, 300)
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((

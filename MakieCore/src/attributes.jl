@@ -19,9 +19,33 @@ function apply_changes!(plot::Plot)
     return
 end
 
-function get_computed(plot::Plot, attribute::Symbol)
-    apply_changes!(plot)
-    return plot.computed[attribute]
+Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
+function Base.empty!(x::Attributes)
+    attr = attributes(x)
+    for (key, obs) in attr
+        Observables.clear(obs)
+    end
+    empty!(attr)
+    return x
+end
+
+Base.length(x::Attributes) = length(attributes(x))
+
+function Base.merge!(target::Attributes, args::Attributes...)
+    for elem in args
+        merge_attributes!(target, elem)
+    end
+    return target
+end
+
+Base.merge(target::Attributes, args::Attributes...) = merge!(deepcopy(target), args...)
+
+function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
+    if hasfield(typeof(x), key)
+        getfield(x, key)
+    else
+        getindex(x, key)
+    end
 end
 
 function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value::NamedTuple)

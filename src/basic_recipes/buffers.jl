@@ -86,7 +86,7 @@ function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...)
 end
 
 function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    text_positions = convert_argument(Annotations, text, positions)[1]
+    text_positions = convert_arguments(Annotations, text, positions)[1]
     append!(tb, text_positions; kw_args...)
     return
 end

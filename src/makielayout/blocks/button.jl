@@ -65,6 +65,10 @@ function initialize_block!(b::Button)
 
     onmouseleftdown(mouseevents) do _
         mousestate[] = :active
+        return Consume(true)
+    end
+
+    onmouseleftclick(mouseevents) do _
         b.clicks[] = b.clicks[] + 1
         return Consume(true)
     end

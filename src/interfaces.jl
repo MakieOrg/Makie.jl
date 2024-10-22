@@ -137,6 +137,8 @@ expand_dimensions(trait, args...) = nothing
 
 expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
+expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
+    (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))
 
 function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     # Float32, because all ploteable sizes should fit into float32
@@ -318,7 +320,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     if t_user isa Transformation
         plot.transformation = t_user
     else
-        if t_user isa Automatic
+        if t_user isa Union{Nothing, Automatic}
             plot.transformation = Transformation()
         else
             t = Transformation()

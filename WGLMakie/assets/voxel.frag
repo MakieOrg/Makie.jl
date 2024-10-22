@@ -85,18 +85,15 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 
 bool is_clipped()
 {
-    float d1, d2;
+    float d;
+    // get center pos of this voxel
     vec3 size = vec3(textureSize(voxel_id, 0).xyz);
-    vec3 xyz = vec3(ivec3(o_uvw * size));
+    vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
     for (int i = 0; i < num_clip_planes; i++) {
-        // distance from clip planes with negative clipped
-        d1 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
-
-        // both outside - clip everything
-        if (d1 < 0.0 || d2 < 0.0) {
+        // distance between clip plane and voxel center
+        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        if (d < 0.0)
             return true;
-        }
     }
 
     return false;
@@ -147,7 +144,7 @@ void main()
 
     if (picking) {
         uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
-        uvec3 idx = uvec3(o_uvw * vec3(size));
+        uvec3 idx = clamp(uvec3(o_uvw * vec3(size)), uvec3(0), size - uvec3(1));
         uint lin = idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);
         return;

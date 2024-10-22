@@ -16,6 +16,13 @@ using Makie.MakieCore: plotfunc, plotfunc!, func2type
 
 end
 
+@testset "Heatmapshader with ranges" begin
+    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol,Any}())
+    hm.converted[1][] isa Makie.EndPoints{Float32}
+    hm.converted[2][] isa Makie.EndPoints{Float32}
+    hm.converted[3][].data == Resampler(zeros(4, 4)).data
+end
+
 @testset "changing input types" begin
     input = Observable{Any}(decompose(Point2f, Circle(Point2f(0), 2f0)))
     f, ax, pl = mesh(input)
@@ -342,9 +349,11 @@ end
 
     v1 = collect(1:10)
     v2 = collect(1:6)
+    v3 = reverse(v1)
 
     i1 = 1 .. 10
     i2 = 1 .. 6
+    i3 = 10 .. 1
 
     o3 = Float32.(m3)
 
@@ -354,6 +363,8 @@ end
         @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
         @test convert_arguments(Image, v1, r2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
         @test convert_arguments(Image, i1, v2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
+        @test convert_arguments(Image, v3, i1, m3) == ((10, 1), (1, 10), o3)
+        @test convert_arguments(Image, v1, i3, m3) == ((1, 10), (10, 1), o3)
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
         @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end

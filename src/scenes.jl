@@ -72,7 +72,7 @@ mutable struct Scene <: AbstractScene
     float32convert::Union{Nothing, Float32Convert}
 
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{Plot}
 
     theme::Attributes
 
@@ -109,7 +109,8 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector
+            lights::Vector;
+            deregister_callbacks=Observables.ObserverFunction[]
         )
         scene = new(
             parent,
@@ -128,7 +129,7 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             convert(Vector{AbstractLight}, lights),
-            Observables.ObserverFunction[],
+            deregister_callbacks,
             Cycler(),
             DimConversions()
         )
@@ -213,6 +214,7 @@ function Scene(;
         ssao = SSAO(),
         lights = automatic,
         theme = Attributes(),
+        deregister_callbacks=Observables.ObserverFunction[],
         theme_kw...
     )
 
@@ -244,7 +246,8 @@ function Scene(;
     scene = Scene(
         parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights
+        children, current_screens, bg, visible, ssao, _lights;
+        deregister_callbacks=deregister_callbacks
     )
     camera isa Function && camera(scene)
 
@@ -292,6 +295,7 @@ function Scene(
         viewport=nothing,
         clear=false,
         camera=nothing,
+        visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         kw...
@@ -301,18 +305,35 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    deregister_callbacks = Observables.ObserverFunction[]
+    _visible = Observable(true)
+    if visible isa Observable
+        listener = on(visible; update=true) do v
+            _visible[] = v
+        end
+        push!(deregister_callbacks, listener)
+    elseif visible isa Bool
+        _visible[] = visible
+    else
+        error("Unsupported typer visible: $(typeof(visible))")
+    end
     child = Scene(;
         events=events,
         viewport=child_px_area,
         clear=convert(Observable{Bool}, clear),
         camera=camera,
+        visible=_visible,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
         current_screens=copy(parent.current_screens),
         theme=theme(parent),
+        deregister_callbacks=deregister_callbacks,
         kw...
     )
+    # if !isnothing(listener)
+    #     push!(child.deregister_callbacks, listener)
+    # end
     if isnothing(viewport)
         map!(identity, child, child_px_area, parent.viewport)
     elseif viewport isa Rect2

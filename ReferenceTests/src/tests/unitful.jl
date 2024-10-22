@@ -7,16 +7,12 @@ using Makie.Dates, Makie.Unitful, Test
     f
 end
 
-@reference_test "different units for x + y" begin
-    scatter(u"ns" .* (1:10), u"d" .* (1:10), markersize=20, color=1:10)
-end
-
-@reference_test "Nanoseconds on y" begin
-    linesegments(1:10, Nanosecond.(round.(LinRange(0, 4599800000000, 10))))
-end
-
-@reference_test "Meter & time on x, y" begin
-    scatter(u"cm" .* (1:10), u"d" .* (1:10))
+@reference_test "Basic units" begin
+    f = Figure()
+    scatter(f[1, 1], u"ns" .* (1:10), u"d" .* (1:10), markersize=20, color=1:10)
+    linesegments(f[1, 2], 1:10, Nanosecond.(round.(LinRange(0, 4599800000000, 10))))
+    scatter(f[2, 1], u"cm" .* (1:10), u"d" .* (1:10))
+    f
 end
 
 @reference_test "Auto units for observables" begin
