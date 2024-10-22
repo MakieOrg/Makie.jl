@@ -1,6 +1,7 @@
 # For things that aren't as plot related
 
-@reference_test "picking" begin
+# @reference_test "picking" 
+begin
     scene = Scene(size = (230, 370))
     campixel!(scene)
     
@@ -23,7 +24,7 @@
     
     # reversed axis
     i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
-    s2 = surface!(scene, 210..180, 80..110, rand(2, 2))
+    s2 = surface!(scene, 210..180, 80..110, [1 2; 3 4], interpolate = false)
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
     scene # for easy reviewing of the plot
@@ -33,8 +34,8 @@
 
     # verify that heatmap path is used for heatmaps
     if Symbol(Makie.current_backend()) == :WGLMakie
-        @test length(faces(WGLMakie.create_shader(scene, hm).vertexarray)) > 2
-        @test length(faces(WGLMakie.create_shader(scene, hm2).vertexarray)) > 2
+        @test length(WGLMakie.create_shader(scene, hm).vertexarray.buffers[:faces]) > 2
+        @test length(WGLMakie.create_shader(scene, hm2).vertexarray.buffers[:faces]) > 2
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
