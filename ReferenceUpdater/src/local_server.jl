@@ -283,7 +283,7 @@ function update_from_previous_version(
     @info "Uploading updated reference images under tag \"$target_version\""
     try
         upload_reference_images(new_version, target_version)
-        @info "Upload successful. You can ctrl+c out now."
+        @info "Upload successful."
         HTTP.Response(200, "Upload successful")
     catch e
         showerror(stdout, e, catch_backtrace())
