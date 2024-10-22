@@ -221,6 +221,17 @@ function update_from_previous_version(;
         end
     end
 
+    update_from_previous_version(changed_or_missing; 
+        source_version = source_version, target_version = target_version)
+
+    return
+end
+
+
+function update_from_previous_version(
+        changed_or_missing::Vector{String}; 
+        source_version::String, target_version::String)
+
     # Merge new and old
     @info "Downloading new reference image set (target)"
     new_version = download_refimages(target_version)
@@ -232,7 +243,10 @@ function update_from_previous_version(;
     @info "Replacing target with source files..."
     for image in changed_or_missing
         @info "Overwriting or adding $image"
-        cp(joinpath(old_version, image), joinpath(new_version, image), force = true)
+        src = joinpath(old_version, image)
+        isfile(src) || error("Failed to find file $image in $source_version.")
+        trg = joinpath(new_version, image)
+        cp(src, trg, force = true)
     end
 
     rm(old_version, recursive = true)
