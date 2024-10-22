@@ -432,7 +432,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
     end
 
     to_reset = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
-
+    filter!(x-> x != :cycle, to_reset) # dont reset cycle
     if !isempty(to_reset)
         theme = default_theme(scene, typeof(plot))
         for k in to_reset
