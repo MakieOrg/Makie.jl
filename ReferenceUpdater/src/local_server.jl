@@ -190,7 +190,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
 end
 
 function update_from_previous_version(; 
-        source_version::String, target_version::String = last_major_version(), 
+        source_version::String, target_version::String, 
         commit = nothing, pr = nothing, score_threshold = 0.03)
 
     tmpdir = download_artifacts(commit = commit, pr = pr)
