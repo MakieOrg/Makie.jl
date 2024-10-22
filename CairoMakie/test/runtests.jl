@@ -184,7 +184,8 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
-    "Scatter with FastPixel" # almost works, but scatter + markerspace=:data seems broken for 3D
+    "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
+    "picking", # Not implemented
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -193,7 +194,7 @@ functions = [:volume, :volume!, :uv_mesh]
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
     recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
-    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir, "CairoMakie")
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
 

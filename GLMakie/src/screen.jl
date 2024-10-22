@@ -677,10 +677,13 @@ function Base.close(screen::Screen; reuse=true)
     return
 end
 
-function closeall()
+function closeall(; empty_shader=true)
     # Since we call closeall to reload any shader
     # We empty the shader source cache here
-    empty!(LOADED_SHADERS)
+    if empty_shader
+        empty!(LOADED_SHADERS)
+        WARN_ON_LOAD[] = false
+    end
     while !isempty(SCREEN_REUSE_POOL)
         screen = pop!(SCREEN_REUSE_POOL)
         delete!(ALL_SCREENS, screen)
@@ -810,52 +813,6 @@ function Base.push!(screen::Screen, scene::Scene, robj)
 end
 
 Makie.to_native(x::Screen) = x.glscreen
-
-"""
-    get_loading_image(resolution)
-
-Loads the makie loading icon, embeds it in an image the size of `resolution`,
-and returns the image.
-"""
-function get_loading_image(resolution)
-    icon = Matrix{N0f8}(undef, 192, 192)
-    open(joinpath(GL_ASSET_DIR, "loading.bin")) do io
-        read!(io, icon)
-    end
-    img = zeros(RGBA{N0f8}, resolution...)
-    center = resolution .÷ 2
-    center_icon = size(icon) .÷ 2
-    start = CartesianIndex(max.(center .- center_icon, 1))
-    I1 = CartesianIndex(1, 1)
-    stop = min(start + CartesianIndex(size(icon)) - I1, CartesianIndex(resolution))
-    for idx in start:stop
-        gray = icon[idx - start + I1]
-        img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
-    end
-    return img
-end
-
-function display_loading_image(screen::Screen)
-    fb = screen.framebuffer
-    fbsize = size(fb)
-    image = get_loading_image(fbsize)
-    if size(image) == fbsize
-        nw = to_native(screen)
-        # transfer loading image to gpu framebuffer
-        fb.buffers[:color][1:size(image, 1), 1:size(image, 2)] = image
-        ShaderAbstractions.is_context_active(nw) || return
-        w, h = fbsize
-        glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
-        glViewport(0, 0, w, h)
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT)
-        # GLAbstraction.render(fb.postprocess[end]) # copy postprocess
-        GLAbstraction.render(screen.postprocessors[end].robjs[1])
-        GLFW.SwapBuffers(nw)
-    else
-        error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
-    end
-end
 
 function renderloop_running(screen::Screen)
     return !screen.stop_renderloop && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
