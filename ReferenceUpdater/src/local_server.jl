@@ -182,6 +182,12 @@ function download_artifacts(; commit = nothing, pr = nothing)
     """)
 end
 
+"""
+    serve_update_page(; commit, pr)
+
+Create a ReferenceUpdater page which shows the test differences from a CI run 
+of a given commit hash or pr.
+"""
 function serve_update_page(; commit = nothing, pr = nothing)
     tmpdir = download_artifacts(commit = commit, pr = pr)
     @info "Serving update page from folder $tmpdir."
@@ -189,6 +195,19 @@ function serve_update_page(; commit = nothing, pr = nothing)
     return
 end
 
+"""
+    update_from_previous_version(; source_version, target_version, commit, pr[, score_threshold = 0.03])
+
+Replaces every test that is failing (based on score_threshold) or missing in the 
+given commit or pr with the respective test from the given `source_version` and
+uploads the result to `target_version`.
+
+This is useful for breaking pull requests, where new or changed tests from master
+(previous version) should be added to the new, breaking verison. E.g.:
+```
+update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22.0", pr = 4477)
+```
+"""
 function update_from_previous_version(; 
         source_version::String, target_version::String, 
         commit = nothing, pr = nothing, score_threshold = 0.03)
@@ -227,7 +246,17 @@ function update_from_previous_version(;
     return
 end
 
+"""
+    update_from_previous_version(changed_or_missing::Vector{String}; source_version, target_version)
 
+Replaces every test in `changed_or_missing` with the respective test from the 
+given `source_version` and uploads the result to `target_version`. This is the 
+more manual version of the other method. 
+
+Tests should be given as `"backend/name-of-test.png"` in `changed_or_missing`.
+Source and target version are given as `"v0.00.0"` matching the respective 
+github release version.
+"""
 function update_from_previous_version(
         changed_or_missing::Vector{String}; 
         source_version::String, target_version::String)
