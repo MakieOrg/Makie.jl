@@ -994,3 +994,11 @@ function plot2robjs(screen::Screen, plot)
 end
 
 export plot2robjs
+
+function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
+    # TODO, move without deleting!
+    # Will be easier with Observable refactor
+    delete!(screen, scene, plot)
+    insert!(screen, scene, plot)
+    return
+end

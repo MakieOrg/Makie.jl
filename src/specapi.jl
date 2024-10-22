@@ -430,6 +430,23 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             push!(obs_to_notify, old_attr)
         end
     end
+
+    to_reset = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
+
+    if !isempty(to_reset)
+        theme = default_theme(scene, typeof(plot))
+        for k in to_reset
+            if haskey(theme, k)
+                old_attr = plot[k]
+                new_value = to_value(theme[k])
+                # only update if different
+                if is_different(old_attr[], new_value)
+                    old_attr.val = new_value
+                    push!(obs_to_notify, old_attr)
+                end
+            end
+        end
+    end
     # Cycling needs to be handled separately sadly,
     # since they're implicitely mutating attributes, e.g. if I re-use a plot
     # that has been on cycling position 2, and now I re-use it for the first plot in the list
@@ -444,7 +461,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 end
             end
         end
-
         if !isempty(uncycled)
             # remove all attributes that don't need cycling
             for (attr_vec, _) in cycle.cycle
@@ -587,11 +603,12 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
             delete!(reusable_plots, old_spec)
-            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
-            new_plots[plotspec] = reused_plot
             if reused_plot.parent !== scene
                 move_to!(reused_plot, scene)
             end
+            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+            new_plots[plotspec] = reused_plot
+
         end
     end
     return new_plots
@@ -631,6 +648,7 @@ function update_plotspecs!(
             @assert !any(x-> x in unused_plots, new_plots)
             empty!(unused_plots)
             merge!(unused_plots, new_plots)
+            empty!(new_plots)
             # finally, notify all changes at once
         end
         foreach(notify, obs_to_notify)
