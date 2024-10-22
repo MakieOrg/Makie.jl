@@ -10,7 +10,7 @@ IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 
 [compat]
-ColorTypes = "0.8, 0.9, 0.10, 0.11"
+ColorTypes = "0.8, 0.9, 0.10, 0.11, 0.12"
 GeometryBasics = "0.4.11"
 IntervalSets = "0.6, 0.7"
 Observables = "0.5.1"
