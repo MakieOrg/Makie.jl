@@ -523,8 +523,13 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
 end
 
 function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
-    error("Not implemented for backend screen: $(screen)")
+    # TODO, move without deleting!
+    # Will be easier with Observable refactor
+    delete!(screen, scene, plot)
+    insert!(screen, scene, plot)
+    return
 end
+
 
 function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
