@@ -188,7 +188,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -640,7 +640,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 

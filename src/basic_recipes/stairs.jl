@@ -59,6 +59,6 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where T <: Point2
         end
     end
 
-    lines!(p, steppoints; [x for x in pairs(p.attributes) if x[1] !== :step]...)
+    lines!(p, shared_attributes(p, Lines), steppoints)
     p
 end

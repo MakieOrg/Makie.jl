@@ -149,4 +149,28 @@
         ax = PolarAxis(fig[1, 1], radius_at_origin = -1.0, rlimits = (0, 10))
         @test ax.scene.transformation.transform_func[].r0 == -1.0
     end
+
+    @testset "PolarAxis fontsize from Figure()" begin
+        fig = Figure(fontsize = 50)
+        ax = PolarAxis(fig[1, 1])
+        @test ax.rticklabelsize[] == 50
+        @test ax.thetaticklabelsize[] == 50
+    end
+
+    @testset "PolarAxis fontsize from :Axis" begin
+        fig = Figure(; Axis = (; xticklabelsize = 35, yticklabelsize = 65))
+        ax = PolarAxis(fig[1, 1])
+        @test ax.thetaticklabelsize[] == 35
+        @test ax.rticklabelsize[] == 65
+    end
+
+    @testset "PolarAxis fontsize from Theme()" begin
+        fontsize_theme = Theme(fontsize = 10)
+        with_theme(fontsize_theme) do
+            fig = Figure()
+            ax = PolarAxis(fig[1, 1])
+            @test ax.rticklabelsize[] == 10
+            @test ax.thetaticklabelsize[] == 10
+        end
+    end
 end

@@ -180,10 +180,6 @@ end
     fig
 end
 
-@reference_test "lines issue #3704" begin
-    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
-end
-
 @reference_test "scatters" begin
     s = Scene(size = (800, 800), camera = campixel!)
 
@@ -816,5 +812,33 @@ end
                      strokewidth=2, strokecolor=:red, color=:transparent,)
         end
     end
+    f
+end
+
+@reference_test "Reverse image, heatmap and surface axes" begin
+    img = [2 0 0 3; 0 0 0 0; 1 1 0 0; 1 1 0 4]
+
+    f = Figure(size = (600, 400))
+
+    for (i, interp) in enumerate((true, false))
+        for (j, plot_func) in enumerate((
+            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading)
+        ))
+
+            gl = GridLayout(f[i, j])
+
+            a, p = plot_func(gl[1, 1], 1:4, 1:4, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 1], 1:4, 4..1, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[1, 2], 4:-1:1, 1:4, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 2], 4:-1:1, [4, 3, 2, 1], img, interp)
+            hidedecorations!(a)
+        end
+    end
+
     f
 end

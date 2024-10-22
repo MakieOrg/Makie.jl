@@ -145,14 +145,15 @@ function flatten_buffer(array::Buffer)
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
-    return reinterpret(UInt8, array)
+    return collect(reinterpret(UInt8, array))
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
-lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
+const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
+lasset(paths...) = read(joinpath(ASSETS_DIR, paths...), String)
 
 isscalar(x::StaticVector) = true
 isscalar(x::Mat) = true
@@ -170,8 +171,6 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
                                             t::Quaternion)
     return convert(Quaternion, t)
 end
-
-
 
 function wgl_convert(value, key1, key2...)
     val = Makie.convert_attribute(value, key1, key2...)
@@ -200,6 +199,7 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
     for (name, buffer) in _pairs(named_buffers)
         if buffer isa Buffer
             on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
+
                 # update to replace the whole buffer!
                 if f === ShaderAbstractions.update!
                     new_array = args[1]
@@ -315,9 +315,8 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, @nospecialize(plots::Vector{T}), result=[]) where {T<:AbstractPlot}
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
-        plot isa Makie.PlotList && continue
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)
@@ -388,7 +387,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
                 Makie.scalematrix(Vec3f(width ./ size(chunk))) *
                 Makie.translationmatrix(Vec3f(mini))
             modelinv = inv(_model)
-            @assert modelinv[4, 4] == 1
+            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
@@ -423,7 +422,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
             modelinv = inv(model)
-            @assert modelinv[4, 4] == 1
+            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)

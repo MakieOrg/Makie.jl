@@ -33,7 +33,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     # avoid them inverting.
     # TODO: If we have neither perspective projection not clip_planes we can
     #       use the normal projection_position() here
-    projected_positions, indices, color = project_line_points(scene, primitive, positions, color)
+    projected_positions, color, linewidth =
+        project_line_points(scene, primitive, positions, color, linewidth)
 
     # The linestyle can be set globally, as we do here.
     # However, there is a discrepancy between Makie
@@ -83,7 +84,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         draw_multi(
             primitive, ctx,
             projected_positions,
-            color, linewidth, indices,
+            color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
         )
     else
@@ -176,35 +177,27 @@ function draw_single(primitive::LineSegments, ctx, positions)
     Cairo.new_path(ctx)
 end
 
-# if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, indices, dash)
-    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], indices, dash)
-end
+# getindex if array, otherwise just return value
+using Makie: sv_getindex
 
-# if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, indices, dash)
-    draw_multi(primitive, ctx, positions, [color for _ in positions], linewidths, indices, dash)
-end
-
-function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
+function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, dash)
     @assert iseven(length(positions))
-    @assert length(positions) == length(colors)
-    @assert length(linewidths) == length(colors)
 
     for i in 1:2:length(positions)
         if isnan(positions[i+1]) || isnan(positions[i])
             continue
         end
-        if linewidths[i] != linewidths[i+1]
-            error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
+        lw = sv_getindex(linewidths, i)
+        if lw != sv_getindex(linewidths, i+1)
+            error("Cairo doesn't support two different line widths ($lw and $(sv_getindex(linewidths, i+1)) at the endpoints of a line.")
         end
         Cairo.move_to(ctx, positions[i]...)
         Cairo.line_to(ctx, positions[i+1]...)
-        Cairo.set_line_width(ctx, linewidths[i])
+        Cairo.set_line_width(ctx, lw)
 
-        !isnothing(dash) && Cairo.set_dash(ctx, dash .* linewidths[i])
-        c1 = colors[i]
-        c2 = colors[i+1]
+        !isnothing(dash) && Cairo.set_dash(ctx, dash .* lw)
+        c1 = sv_getindex(colors, i)
+        c2 = sv_getindex(colors, i+1)
         # we can avoid the more expensive gradient if the colors are the same
         # this happens if one color was given for each segment
         if c1 == c2
@@ -221,15 +214,14 @@ function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArr
     end
 end
 
-function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, indices, dash)
-    isempty(indices) && return
+function draw_multi(primitive::Lines, ctx, positions, colors, linewidths, dash)
+    isempty(positions) && return
 
-    linewidths = linewidths[indices]
-    @assert length(positions) == length(colors) "$(length(positions)) != $(length(colors))"
-    @assert length(linewidths) == length(colors) "$(length(linewidths)) != $(length(colors))"
+    @assert !(colors isa AbstractVector) || length(colors) == length(positions)
+    @assert !(linewidths isa AbstractVector) || length(linewidths) == length(positions)
 
-    prev_color = colors[begin]
-    prev_linewidth = linewidths[begin]
+    prev_color = sv_getindex(colors, 1)
+    prev_linewidth = sv_getindex(linewidths, 1)
     prev_position = positions[begin]
     prev_nan = isnan(prev_position)
     prev_continued = false
@@ -244,9 +236,9 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
 
     for i in eachindex(positions)[begin+1:end]
         this_position = positions[i]
-        this_color = colors[i]
+        this_color = sv_getindex(colors, i)
         this_nan = isnan(this_position)
-        this_linewidth = linewidths[i]
+        this_linewidth = sv_getindex(linewidths, i)
         if this_nan
             # this is nan
             if prev_continued
@@ -323,7 +315,7 @@ function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, lin
         end
         prev_nan = this_nan
         prev_color = this_color
-        prev_linewidth = linewidths[i]
+        prev_linewidth = this_linewidth
         prev_position = this_position
     end
 end
@@ -738,14 +730,14 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     if xs isa Makie.EndPoints
-        l, r = extrema(xs)
+        l, r = xs
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
     if ys isa Makie.EndPoints
-        l, r = extrema(ys)
+        l, r = ys
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
@@ -806,7 +798,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
 
         weird_cairo_limit = (2^15) - 23
         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
-            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with e.g. `ImageTransformations.imresize`")
+            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with heatmap(Resampler(data)).")
         end
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
@@ -916,11 +908,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
+    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -951,9 +943,9 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1...)
-        Cairo.mesh_pattern_line_to(pattern, t2...)
-        Cairo.mesh_pattern_line_to(pattern, t3...)
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -1261,7 +1253,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    
+    # Face culling
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
+        pos = pos[valid]
+        colors = colors[valid]
+    end
 
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(primitive.model[])
@@ -1279,7 +1278,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = Plane3f[]
     )
 
     for i in zorder

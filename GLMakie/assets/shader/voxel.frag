@@ -85,18 +85,16 @@ vec4 get_color(sampler2D color, Nothing color_map, int id) {
 
 bool is_clipped()
 {
-    float d1, d2;
+    float d;
+    // Center of voxel
     ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);
-    vec3 xyz = vec3(ivec3(o_uvw * size));
+    vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
     for (int i = 0; i < _num_clip_planes; i++) {
-        // distance from clip planes with negative clipped
-        d1 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        // distance between clip plane and center
+        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
 
-        // both outside - clip everything
-        if (d1 < 0.0 || d2 < 0.0) {
+        if (d < 0.0) 
             return true;
-        }
     }
 
     return false;
@@ -148,7 +146,7 @@ void main()
 
     // TODO: index into 3d array
     ivec3 size = ivec3(textureSize(voxel_id, 0).xyz);
-    ivec3 idx = ivec3(o_uvw * size);
+    ivec3 idx = clamp(ivec3(o_uvw * size), ivec3(0), size-1);
     int lin = 1 + idx.x + size.x * (idx.y + size.y * idx.z);
 
     // draw

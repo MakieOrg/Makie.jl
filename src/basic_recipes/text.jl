@@ -26,8 +26,10 @@ function plot!(plot::Text)
         attributes(plot)[:text] = plot[2]
     end
     calc_color = plot.calculated_colors[]
+
     color_scaled = calc_color isa ColorMapping ? calc_color.color_scaled : plot.color
     cmap = calc_color isa ColorMapping ? calc_color.colormap : plot.colormap
+
     onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
           plot.rotation, plot.justification, plot.lineheight, color_scaled, cmap,
             plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
@@ -63,6 +65,7 @@ function plot!(plot::Text)
             # glyph_collection as per character.
             push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
         end
+
         glyphcollections[] = gcs
         linewidths[] = lwidths
         linecolors[] = lcolors

@@ -45,21 +45,18 @@ function layout_text(
         font, fonts, align, rotation, justification, lineheight, color,
         strokecolor, strokewidth, word_wrap_width
     )
-
     ft_font = to_font(font)
+    # TODO, somehow some unicode symbols don't get rendered if we dont have one font per char
+    # Which is really odd
+    fontperchar = attribute_per_char(string, ft_font)
     rscale = to_fontsize(fontsize)
     rot = to_rotation(rotation)
 
-    fontperchar = attribute_per_char(string, ft_font)
-    fontsizeperchar = attribute_per_char(string, rscale)
-
-    glyphcollection = glyph_collection(
-        string, fontperchar, fontsizeperchar, align[1], align[2],
+    return glyph_collection(
+        string, fontperchar, rscale, align[1], align[2],
         lineheight, justification, rot, color,
         strokecolor, strokewidth, word_wrap_width
     )
-
-    return glyphcollection
 end
 
 """
@@ -76,8 +73,8 @@ function glyph_collection(
     )
 
     isempty(str) && return GlyphCollection(
-        [], [], Point3f[],FreeTypeAbstraction.FontExtent{Float32}[],
-        Vec2f[], Float32[], RGBAf[], RGBAf[], Float32[])
+        [], NativeFont[], Point3f[], FreeTypeAbstraction.FontExtent{Float32}[],
+        Vec2f[], Float32[], RGBAf[], RGBAf[], 0f0)
 
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
@@ -93,7 +90,8 @@ function glyph_collection(
     # split the character info vector into lines after every \n
     lineinfos, xs = let
         last_line_start = 1
-        lineinfos = typeof(view(charinfos, last_line_start:last_line_start))[]
+        ViewType = typeof(view(charinfos, last_line_start:last_line_start))
+        lineinfos = ViewType[]
 
         last_space_local_idx = 0
         last_space_global_idx = 0
@@ -231,17 +229,19 @@ function glyph_collection(
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
-    per_char(attr) = collect(attribute_per_char(str, attr)) # attribute_per_char returns generators
+    function scalar_or_vec(attr)
+        attr # attribute_per_char returns generators
+    end
     return GlyphCollection(
         [FreeTypeAbstraction.glyph_index(x.font, x.char) for x in charinfos],
-        [x.font for x in charinfos],
+        font_per_char,
         reduce(vcat, charorigins),
         [x.extent for x in charinfos],
-        [Vec2f(x.scale) for x in charinfos],
-        per_char(rotation), # rotations is used as one rotation per string above. TODO, allow one rotation per char
-        per_char(color),
-        per_char(strokecolor),
-        per_char(strokewidth)
+        fontscale_px,
+        scalar_or_vec(rotation), # rotations is used as one rotation per string above. TODO, allow one rotation per char
+        scalar_or_vec(color),
+        scalar_or_vec(strokecolor),
+        scalar_or_vec(strokewidth)
     )
 end
 

@@ -2,11 +2,63 @@
 
 ## [Unreleased]
 
-- Fix attribute updates for SpecApi and SpecPlots (e.g. ecdfplot) [#4265](https://github.com/MakieOrg/Makie.jl/pull/4265).
-- Bring back `poly` convert arguments for matrix with points as row [#4266](https://github.com/MakieOrg/Makie.jl/pull/4258).
+- Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
+- Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
+- For `Textbox`es in which a fixed width is specified, the text is now scrolled
+  if the width is exceeded [#4293](https://github.com/MakieOrg/Makie.jl/pull/4293)
+- Changed image, heatmap and surface picking indices to correctly index the relevant matrix arguments. [#4459](https://github.com/MakieOrg/Makie.jl/pull/4459)
+- Improved performance of `record` by avoiding unnecessary copying in common cases [#4475](https://github.com/MakieOrg/Makie.jl/pull/4475).
+- Fix usage of `AggMean()` and other aggregations operating on 3d data for `datashader` [#4346](https://github.com/MakieOrg/Makie.jl/pull/4346).
+- Use polys for axis3 [#4463](https://github.com/MakieOrg/Makie.jl/pull/4463).
+- Changed default for `circular_rotation` in Camera3D to false, so that the camera doesn't change rotation direction anymore [4492](https://github.com/MakieOrg/Makie.jl/pull/4492)
+- Fixed `pick(scene, rect2)` in WGLMakie [#4488](https://github.com/MakieOrg/Makie.jl/pull/4488)
 - Fix text layouting with empty lines [#4269](https://github.com/MakieOrg/Makie.jl/pull/4269).
-- Fix gl_ClipDistance related segfault on WSL with GLMakie [#4270](https://github.com/MakieOrg/Makie.jl/pull/4270)
+
+## [0.21.14] - 2024-10-11
+
+- Fixed relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
+- Fixed relocatability of WGLMakie [#4467](https://github.com/MakieOrg/Makie.jl/pull/4467).
+- Fixed `space` keyword for `barplot` [#4435](https://github.com/MakieOrg/Makie.jl/pull/4435).
+
+## [0.21.13] - 2024-10-07
+
+- Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
+- Fixed `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
+- Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
+- Fixed incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
+- Added new `Checkbox` block [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
+- Added ability to override legend element attributes by pairing labels or plots with override attributes [#4427](https://github.com/MakieOrg/Makie.jl/pull/4427).
+- Added threshold before a drag starts which improves false negative rates for clicks. `Button` can now trigger on click and not mouse-down which is the canonical behavior in other GUI systems [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
+- `PolarAxis` font size now defaults to global figure `fontsize` in the absence of specific `Axis` theming [#4314](https://github.com/MakieOrg/Makie.jl/pull/4314)
+- `MultiplesTicks` accepts new option `strip_zero=true`, allowing labels of the form `0x` to be `0` [#4372](https://github.com/MakieOrg/Makie.jl/pull/4372)
+- Make near/far of WGLMakie JS 3d camera dynamic, for better depth_shift scaling [#4430](https://github.com/MakieOrg/Makie.jl/pull/4430).
+
+## [0.21.12] - 2024-09-28
+
+- Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
+- Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
+- Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
+- Fix voxel clipping not being based on voxel centers [#4397](https://github.com/MakieOrg/Makie.jl/pull/4397)
+- Parsing `Q` and `q` commands in svg paths with `BezierPath` is now supported [#4413](https://github.com/MakieOrg/Makie.jl/pull/4413)
+
+## [0.21.11] - 2024-09-13
+
+- Hot fixes for 0.21.10 [#4356](https://github.com/MakieOrg/Makie.jl/pull/4356).
+- Set `Voronoiplot`'s preferred axis type to 2D in all cases [#4349](https://github.com/MakieOrg/Makie.jl/pull/4349)
+
+## [0.21.10] - 2024-09-12
+
+- Introduce `heatmap(Resampler(large_matrix))`, allowing to show big images interactively [#4317](https://github.com/MakieOrg/Makie.jl/pull/4317).
+- Make sure we wait for the screen session [#4316](https://github.com/MakieOrg/Makie.jl/pull/4316).
+- Fix for absrect [#4312](https://github.com/MakieOrg/Makie.jl/pull/4312).
+- Fix attribute updates for SpecApi and SpecPlots (e.g. ecdfplot) [#4265](https://github.com/MakieOrg/Makie.jl/pull/4265).
+- Bring back `poly` convert arguments for matrix with points as row [#4258](https://github.com/MakieOrg/Makie.jl/pull/4258).
+- Fix gl_ClipDistance related segfault on WSL with GLMakie [#4270](https://github.com/MakieOrg/Makie.jl/pull/4270).
 - Added option `label_position = :center` to place labels centered over each bar [#4274](https://github.com/MakieOrg/Makie.jl/pull/4274).
+- `plotfunc()` and `func2type()` support functions ending with `!` [#4275](https://github.com/MakieOrg/Makie.jl/pull/4275).
+- Fixed Boundserror in clipped multicolor lines in CairoMakie [#4313](https://github.com/MakieOrg/Makie.jl/pull/4313)
+- Fix float precision based assertions error in GLMakie.volume [#4311](https://github.com/MakieOrg/Makie.jl/pull/4311)
+- Support images with reversed axes [#4338](https://github.com/MakieOrg/Makie.jl/pull/4338)
 
 ## [0.21.9] - 2024-08-27
 
@@ -21,6 +73,7 @@
 - Reduce updates for image/heatmap, improving performance [#4130](https://github.com/MakieOrg/Makie.jl/pull/4130).
 - Add an informative error message to `save` when no backend is loaded [#4177](https://github.com/MakieOrg/Makie.jl/pull/4177)
 - Fix rendering of `band` with NaN values [#4178](https://github.com/MakieOrg/Makie.jl/pull/4178).
+- Fix plotting of lines with OffsetArrays across all backends [#4242](https://github.com/MakieOrg/Makie.jl/pull/4242).
 
 ## [0.21.7] - 2024-08-19
 
@@ -586,7 +639,12 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.14...HEAD
+[0.21.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...v0.21.14
+[0.21.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...v0.21.13
+[0.21.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...v0.21.12
+[0.21.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...v0.21.11
+[0.21.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.9...v0.21.10
 [0.21.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.8...v0.21.9
 [0.21.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.7...v0.21.8
 [0.21.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.6...v0.21.7

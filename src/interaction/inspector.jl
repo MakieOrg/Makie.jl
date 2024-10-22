@@ -278,11 +278,19 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     inspector = DataInspector(parent, plot, base_attrib)
 
     e = events(parent)
-    f1 = on(_ -> on_hover(inspector), e.mouseposition, priority = priority)
-    f2 = on(_ -> on_hover(inspector), e.scroll, priority = priority)
-
-    push!(inspector.obsfuncs, f1, f2)
-
+    # We delegate the hover processing to another channel,
+    # So that we can skip queued up updates with empty_channel!
+    # And also not slow down the processing of e.mouseposition/e.scroll
+    channel = Channel{Nothing}(Inf) do ch
+        for _ in ch
+            on_hover(inspector)
+        end
+    end
+    listners = onany(e.mouseposition, e.scroll) do _, _
+        empty_channel!(channel) # remove queued up hover requests
+        put!(channel, nothing)
+    end
+    append!(inspector.obsfuncs, listners)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()
@@ -620,20 +628,26 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    show_imagelike(inspector, plot, "H", true)
+    show_imagelike(inspector, plot, "H", idx, true)
 end
 
 function show_data(inspector::DataInspector, plot::Image, idx)
-    show_imagelike(inspector, plot, "img", false)
+    show_imagelike(inspector, plot, "img", idx, false)
 end
 
-function show_imagelike(inspector, plot, name, edge_based)
+_to_array(x::AbstractArray) = x
+_to_array(x::Resampler) = x.data
+
+
+function show_imagelike(inspector, plot, name, idx, edge_based)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
 
     pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
-
+    xrange = plot[1][]
+    yrange = plot[2][]
+    zrange = _to_array(plot[3][])
     # Not on image/heatmap
     if isnan(pos)
         a.indicator_visible[] = false
@@ -642,15 +656,16 @@ function show_imagelike(inspector, plot, name, edge_based)
     end
 
     if plot.interpolate[]
-        i, j, z = _interpolated_getindex(plot[1][], plot[2][], plot[3][], pos)
+        i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
-        i, j, z = _pixelated_getindex(plot[1][], plot[2][], plot[3][], pos, edge_based)
-        x = i; y = j
+        Nx = size(zrange, 1)
+        y, x = j, i = fldmod1(idx, Nx)
+        z = zrange[i, j]
     end
 
     # in case we hover over NaN values
-    if isnan(z)
+    if isnan(z) && alpha(to_color(to_value(plot.nan_color))) <= 0.0
         a.indicator_visible[] = false
         tt.visible[] = false
         return true
@@ -663,13 +678,12 @@ function show_imagelike(inspector, plot, name, edge_based)
         tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
     end
 
-    a._color[] = if z isa AbstractFloat
-        interpolated_getindex(
-            to_colormap(plot.colormap[]), z,
-            extract_colorrange(plot)
-        )
+    if z isa Real
+        if haskey(plot, :calculated_colors)
+            a._color[] = get(plot.calculated_colors[], z)
+        end
     else
-        z
+        a._color[] = z
     end
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
@@ -698,7 +712,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 notify(p[1])
             end
         else
-            bbox = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
+            bbox = _pixelated_image_bbox(xrange, yrange, zrange, i, j, edge_based)
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)
@@ -809,7 +823,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
 end
 
 
-
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.attributes
     tt = inspector.plot
@@ -859,6 +872,7 @@ end
 function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
+
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.attributes
     tt = inspector.plot
@@ -958,7 +972,10 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         return true
     end
 
-    i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
+    zrange = child[3][]
+    Nx = size(zrange, 1)
+    j, i = fldmod1(idx, Nx)
+    val = zrange[i, j]
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -1046,4 +1063,39 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
     end
 
     return true
+end
+
+function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
+    scatter = spy.plots[1]
+    if picked_plot != scatter
+        # we only pick the scatter subplot
+        return false
+    end
+    a = inspector.attributes
+    tt = inspector.plot
+    pos = position_on_plot(scatter, idx; apply_transform=false)
+    proj_pos = Point2f(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    if to_value(get(scatter, :inspector_label, automatic)) == automatic
+        tt.text[] = position2string(pos)
+    else
+        idx2d = spy._index_map[][idx]
+        tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
+    end
+    tt.offset[] = ifelse(a.apply_tooltip_offset[],
+                         0.5 * maximum(sv_getindex(scatter.markersize[], idx)) + 2,
+                         a.offset[])
+    tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
+
+    return true
+end
+
+
+function show_data(inspector::DataInspector, hs::HeatmapShader, idx, pp::Image)
+    # Simply force the hs recipe to be treated like a heatmap plot
+    # Indices get ignored anyways, since they're calculated from the mouse position + xrange/yrange of the heatmap
+    # If we don't overwrite this here, show_data will get called on `pp`, which will use the small resampled version
+    return show_data(inspector, hs, nothing)
 end
