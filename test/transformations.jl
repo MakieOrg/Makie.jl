@@ -205,17 +205,17 @@ end
         @test t1.scale[] ≈ Vec3d(2, 1, 1)
         @test t1.model[] ≈ model_from_parts(t1)
 
-        # translate_origin!
-        translate_origin!(t1, 1, 0, 1)
+        # origin!
+        origin!(t1, 1, 0, 1)
         @test t1.origin[] ≈ Vec3d(1,0,1)
         @test t1.model[] ≈ model_from_parts(t1)
-        translate_origin!(t1, 0.5)
+        origin!(t1, 0.5)
         @test t1.origin[] ≈ Vec3d(0.5, 0, 0)
         @test t1.model[] ≈ model_from_parts(t1)
-        translate_origin!(t1, Vec3(0.5))
+        origin!(t1, Vec3(0.5))
         @test t1.origin[] ≈ Vec3d(0.5)
         @test t1.model[] ≈ model_from_parts(t1)
-        translate_origin!(Accum, t1, 1, 1)
+        origin!(Accum, t1, 1, 1)
         @test t1.origin[] ≈ Vec3d(1.5, 1.5, 0.5)
         @test t1.model[] ≈ model_from_parts(t1)
     end
