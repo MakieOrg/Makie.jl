@@ -64,6 +64,8 @@ jobs:
           echo "GIST_URL=$gist_url" >> $GITHUB_ENV
 
       - name: Post workflow status with gist link
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gist_url=$GIST_URL
           gh api \
