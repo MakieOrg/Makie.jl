@@ -47,6 +47,9 @@ jobs:
     name: Post Benchmark Gist
     needs: benchmark  # Wait for all benchmark jobs to complete
     runs-on: ubuntu-20.04
+    permissions:
+      statuses: write       # Permission to post workflow status
+      contents: write       # Permission to create or update Gists (upload files)
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
