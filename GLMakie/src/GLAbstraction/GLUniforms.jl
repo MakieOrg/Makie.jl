@@ -76,6 +76,7 @@ function gluniform(loc::Integer, x::Observable{T}) where T
     gluniform(GLint(loc), to_value(x))
 end
 
+gluniform(location::Integer, x::Int64) = glUniform1i(GLint(location), GLint(x))
 gluniform(location::Integer, x::Union{GLubyte, GLushort, GLuint}) = glUniform1ui(GLint(location), x)
 gluniform(location::Integer, x::Union{GLbyte, GLshort, GLint, Bool}) = glUniform1i(GLint(location),  x)
 gluniform(location::Integer, x::GLfloat) = glUniform1f(GLint(location),  x)

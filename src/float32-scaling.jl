@@ -106,50 +106,57 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
     model_obs = Observable{Mat4f}(Mat4f(I), ignore_equal_values = true)
 
     onany(plot, f32c.scaling, model, update = true) do f32c, model
-        # Neutral f32c can mean that data and model cancel each other and we 
-        # still have Float32 preicsion issues inbetween.
-
-        # works with rotation component as well, but drops signs on scale
-        trans, scale = decompose_translation_scale_matrix(model)
-        is_rot_free = is_translation_scale_matrix(model)
-
-        if is_float_safe(scale, trans) && is_identity_transform(f32c)
-            # model should not have Float32 Problems and f32c can be skipped
-            # (model can have rotation here)
-            f32c_obs[] = f32c
-            model_obs[] = Mat4f(model)
-
-        elseif is_float_safe(scale, trans) && is_rot_free
-            # model can be applied on GPU and we can pull f32c through the 
-            # model matrix. This can be merged with the option below, but 
-            # keeping them separate improves compatability with transform_marker
-            scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
-            f32c_obs[] = Makie.LinearScaling(
-                f32c.scale, ((f32c.scale .- 1) .* trans .+ f32c.offset) ./ scale
-            )
-            model_obs[] = model
-        
-        elseif is_rot_free
-            # Model has no rotation so we can extract scale + translation and move 
-            # it to the f32c.
-            scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
-            f32c_obs[] = Makie.LinearScaling(
-                scale * f32c.scale, f32c.scale * trans + f32c.offset
-            )
-            model_obs[] = Mat4f(I)
-
-        else
-            # We have float32 Problems and the model matrix contains rotation,
-            # so we cannot pull f32c through it. Instead we must apply it on the
-            # CPU side
-            f32c_obs[] = f32c
-            model_obs[] = Mat4f(I)
-        end
-
-        return
+        patched_f32c, patched_model = _patch_model(f32c, model)
+        f32c_obs[] = patched_f32c
+        model_obs[] = patched_model
     end
 
     return f32c_obs, model_obs
+end
+
+# No Obs versions
+
+_patch_model(f32c::Nothing, model::Mat4) = nothing, Mat4f(model)
+_patch_model(f32c::Float32Convert, model::Mat4) = _patch_model(f32c.scaling[], model)
+
+function _patch_model(f32c::LinearScaling, model::Mat4)
+    # Neutral f32c can mean that data and model cancel each other and we 
+    # still have Float32 preicsion issues inbetween.
+
+    # works with rotation component as well, but drops signs on scale
+    trans, scale = decompose_translation_scale_matrix(model)
+    is_rot_free = is_translation_scale_matrix(model)
+
+    if is_float_safe(scale, trans) && is_identity_transform(f32c)
+        # model should not have Float32 Problems and f32c can be skipped
+        # (model can have rotation here)
+        return f32c, Mat4f(model)
+
+    elseif is_float_safe(scale, trans) && is_rot_free
+        # model can be applied on GPU and we can pull f32c through the 
+        # model matrix. This can be merged with the option below, but 
+        # keeping them separate improves compatability with transform_marker
+        scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
+        patched_f32c = Makie.LinearScaling(
+            f32c.scale, ((f32c.scale .- 1) .* trans .+ f32c.offset) ./ scale
+        )
+        return patched_f32c, Mat4f(model)
+        
+    elseif is_rot_free
+        # Model has no rotation so we can extract scale + translation and move 
+        # it to the f32c.
+        scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
+        patched_f32c = Makie.LinearScaling(
+            scale * f32c.scale, f32c.scale * trans + f32c.offset
+        )
+        return patched_f32c, Mat4f(I)
+
+    else
+        # We have float32 Problems and the model matrix contains rotation,
+        # so we cannot pull f32c through it. Instead we must apply it on the
+        # CPU side
+        return f32c, Mat4f(I)
+    end
 end
 
 

@@ -48,12 +48,14 @@ function resolve_updates!(plot::Scatter)
         push!(plot.updated_outputs[], :position)
     end
 
-
     # Attributes
     # Simple one arg conversions - convert_attribute
     for name in flagged
-        # TODO: skip color related attributes? (Do we need to?)
-        plot.computed[name] = convert_attribute(plot.attributes[name], Key(name), Key(scatter))
+        # TODO: these should probably not have convert_attribute methods anymore?
+        in(name, (:lowclip, :highclip, :colormap, :color, :colorrange)) && continue
+
+        plot.computed[name] = convert_attribute(
+            to_value(plot.attributes[name]), Key(name), Key(:scatter))
         push!(plot.updated_outputs[], name)
     end
 
@@ -162,7 +164,7 @@ function resolve_color_update!(plot)
             push!(plot.updated_outputs[], :color)
         end
                 
-        colors = plot.computed[:colors]
+        colors = plot.computed[:color]
 
         # TODO: Probably cheaper to merge the two colorrange steps
         # TODO: Do we need both outputs?
