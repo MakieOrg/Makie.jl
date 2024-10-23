@@ -55,6 +55,8 @@ jobs:
           merge-multiple: true
 
       - name: Create Gist with images
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Create a gist with the three images
           gist_url=$(gh gist create ./images/CairoMakie.png ./images/GLMakie.png ./images/WGLMakie.png | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
