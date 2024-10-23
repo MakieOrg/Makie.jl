@@ -1,16 +1,123 @@
+function init_color!(data, plot)
+    # Colormapping
+    if plot.computed[:color] isa Union{Real, Vector{<: Real}} # do colormapping
+        interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
+        @gen_defaults! data begin
+            intensity       = plot.computed[:color_scaled] => GLBuffer
+            color_map       = Texture(plot.computed[:colormap], minfilter = interp)
+            color_norm      = plot.computed[:colorrange_scaled]
+            color           = nothing
+        end
+    else # direct colors
+        @gen_defaults! data begin
+            intensity       = nothing
+            color_map       = nothing
+            color_norm      = nothing
+            color           = plot.computed[:color] => GLBuffer
+        end
+    end
+    return
+end
+
+function init_clip_planes!(data, plot)
+    @gen_defaults! data begin
+        num_clip_planes = 0
+        clip_planes     = fill(Vec4f(0,0,0,-1e9), 8)
+    end
+    push!(plot.updated_outputs[], :clip_planes) # trigger later updates
+    return
+end
+
+function update_clip_planes!(robj, plot)
+    if any(in(plot.updated_outputs[]), (:space, :clip_planes))
+        if Makie.is_data_space(plot.computed[:space])
+            robj[:num_clip_planes] = 0
+            robj[:clip_planes] .= Ref(Vec4f(0, 0, 0, -1e9))
+        else
+            planes = plot.computed[:clip_planes]
+            robj[:num_clip_planes] = N = min(length(planes), 8)
+            for i in 1:min(N, 8)
+                robj[:clip_planes][i] = Makie.gl_plane_format(planes[i])
+            end
+            for i in min(N, 8)+1:8
+                robj[:clip_planes][i] = Vec4f(0, 0, 0, -1e9)
+            end
+        end
+    end
+    delete!(plot.updated_outputs[], :clip_planes)
+    return
+end
+
+function init_camera!(data, scene, plot)
+    # TODO: Better solution
+    onany(plot, scene.camera.projectionview, scene.camera.resolution) do _, __
+        push!(plot.updated_outputs[], :camera)
+    end
+
+    # RenderObject constructor will cleanup unused ones
+    # Initializing update will set appropriate values
+    mat_keys = (:pixel_space, :view, :projection, :projectionview, :preprojection, :model)
+    foreach(k -> get!(data, k, Mat4f(I)), mat_keys)
+    foreach(k -> get!(data, k, Mat3f(I)), (:normal_matrix, :view_normalmatrix))
+    foreach(k -> get!(data, k, Vec3f(0)), (:eyeposition, :view_direction, :lookat))
+    get!(data, :resolution, Vec2f(0))
+
+    push!(plot.updated_outputs[], :camera)
+    return
+end
+
+set_existing!(robj, value, key) = haskey(robj.uniforms, key) && (robj[key] = value)
+
+function update_camera!(robj, screen, scene, plot, target_markerspace = false)
+    cam = scene.camera
+    needs_update = in(plot.updated_outputs[])
+    
+    if :camera in plot.updated_outputs[]
+        set_existing!(robj, Mat4f(cam.pixel_space[]),    :pixel_space)
+        set_existing!(robj, Vec3f(cam.eyeposition[]),    :eyeposition)
+        set_existing!(robj, Vec3f(cam.view_direction[]), :view_direction)
+        set_existing!(robj, Vec3f(cam.upvector[]),       :upvector)
+    end
+
+    # If we have markerspace we usually project from 
+    #       space  ->  markerspace  ->  clip        with
+    #         preprojection   projectionview
+    # otherwise projectionview goes from space -> clip directly
+    space_name = target_markerspace ? (:markerspace) : (:space)
+    if any(needs_update, (space_name, :camera))
+        _space = plot.computed[space_name]
+        set_existing!(robj, is_data_space(_space) ? Mat4f(cam.view[]) : Mat4f(I),   :view)
+        set_existing!(robj, Mat4f(Makie.space_to_clip(cam, _space, false)),         :projection)
+        set_existing!(robj, Mat4f(Makie.space_to_clip(cam, _space, true)),          :projectionview)
+    end
+
+    if target_markerspace && any(needs_update, (:space, :markerspace, :camera))
+        preprojection = Mat4f(
+            Makie.clip_to_space(cam, plot.computed[:markerspace]) * 
+            Makie.space_to_clip(cam, plot.computed[:space]))
+        set_existing!(robj, preprojection, :preprojection)
+    end
+
+    if any(needs_update, (:camera, :px_per_unit))
+        set_existing!(robj, Vec2f(screen.px_per_unit[] * scene.camera.resolution[]), :resolution)
+    end
+
+    # f32c can change model
+    if any(needs_update, (:model, :f32c)) && haskey(robj.uniforms, :world_normalmatrix)
+        i3 = Vec(1,2,3)
+        robj[:world_normalmatrix] = Mat4f(transpose(inv(robj[:model][i3, i3])))
+    end
+    
+    if any(needs_update, (:camera, :model, :f32c)) && haskey(robj.uniforms, :view_normalmatrix)
+        cam = scene.camera
+        robj[:view_normalmatrix]  = Mat4f(transpose(inv(cam.view[i3, i3] * robj[:model][i3, i3])))
+    end
+
+    return
+end
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # TODO: skipped fastpixel
-    # TODO: all the auto-converts... for maybe textures
-
-    # WHITELIST = Set([
-    #     :model, :transform_func, # TODO: add value in computed, tracking
-    #     :colormap, :lowclip, :highclip, :nan_color, :color, :colorrange, 
-    #     :glowwidth, :glowcolor, :strokecolor, :strokewidth,  
-    #     :depthsorting, :distancefield, :rotation,
-    #     :marker, :marker_offset, :markersize, :transform_marker, :uv_offset_width,
-    #     :space, :markerspace, 
-    #     :ssao, :fxaa, :overdraw, :visible, :depth_shift, :clip_planes, :transparency, 
-    # ])
     
     # TODO: maybe on plot init?
     # Prepare - force all computed to get calculated
@@ -21,9 +128,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
     # TODO: make these obsolete
     # Set up additional triggers
-    onany(plot, scene.camera.projectionview, scene.camera.resolution) do _, __
-        push!(plot.updated_outputs[], :camera)
-    end
+
     # TODO: Is this even dynamic?
     on(ppu -> push!(plot.updated_outputs[], :ppu), screen.px_per_unit)
     # f32c depend on projectionview so it doesn't need an explicit trigger (right?)
@@ -35,7 +140,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # Note: For initializing data via update routine (one time)
     push!(plot.updated_outputs[], :position)
     push!(plot.updated_outputs[], :marker)
-    push!(plot.updated_outputs[], :camera)
     
     data = Dict{Symbol, Any}()
 
@@ -120,28 +224,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             rotation        = rot => GLBuffer
             image           = nothing => Texture
             indices         = to_index_buffer(plot.computed[:depthsorting] ? UInt32[] : 0)
-            num_clip_planes = 0
-            clip_planes     = fill(Vec4f(0,0,0,-1e9), 8)
         end
 
-        # Colormapping
-        if plot.computed[:color] isa Union{Real, Vector{<: Real}} # do colormapping
-            interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
-            @gen_defaults! data begin
-                intensity       = plot.computed[:color_scaled] => GLBuffer
-                color_map       = Texture(plot.computed[:colormap], minfilter = interp)
-                color_norm      = plot.computed[:colorrange_scaled]
-                color           = nothing
-            end
-        else # direct colors
-            @gen_defaults! data begin
-                intensity       = nothing
-                color_map       = nothing
-                color_norm      = nothing
-                color           = plot.computed[:color] => GLBuffer
-            end
-        end
-
+        init_clip_planes!(data, plot)
+        init_color!(data, plot)
+        init_camera!(data, scene, plot)
 
         @gen_defaults! data begin
             quad_offset     = Vec2f(0) => GLBuffer
@@ -203,26 +290,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         atlas = gl_texture_atlas()
         font = get(plot.computed, :font, Makie.defaultfont())
 
-        # Camera
-        if needs_update(:camera)
-            cam = scene.camera
-            space = plot.computed[:space]
-            markerspace = plot.computed[:markerspace]
-
-            # robj[:pixel_space]    = Mat4f(cam.pixel_space[])
-            # robj[:eyeposition]    = Vec3f(cam.eyeposition[])
-            robj[:view]           = is_data_space(markerspace) ? Mat4f(cam.view[]) : Mat4f(I)
-            robj[:projection]     = Mat4f(Makie.space_to_clip(cam, markerspace, false))
-            # robj[:projectionview] = Mat4f(Makie.space_to_clip(cam, markerspace, true))
-            
-            robj[:preprojection]  = Mat4f(Makie.clip_to_space(cam, markerspace) * Makie.space_to_clip(cam, space))
-        end
-
-        # TODO: too much fragmentation?
-        if any(needs_update, (:camera, :px_per_unit))
-            robj[:resolution] = Vec2f(screen.px_per_unit[] * scene.camera.resolution[])
-        end
-
         if any(needs_update, (:f32c, :model))
             # TODO: without Observables
             f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model])
@@ -230,15 +297,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             # maybe do this in resolve? But CairoMakie doesn't need it...
             plot.computed[:f32c] = f32c
             robj[:model] = model
-            
-            # i3 = Vec(1,2,3)
-            # robj[:world_normalmatrix] = Mat4f(transpose(inv(plot.computed[:model][i3, i3])))
         end
         
-        # if any(needs_update, (:camera, :model, :f32c)) # because f32c can influence model
-            # cam = scene.camera
-            # robj[:view_normalmatrix]  = Mat4f(transpose(inv(cam.view[i3, i3] * robj[:model][i3, i3])))
-        # end
+        # Camera update - relies on up-to-date model
+        update_camera!(robj, screen, scene, plot, true)
 
         changed_length = false
         if any(needs_update, (:f32c, :model, :transform_func, :position))
@@ -273,28 +335,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 plot.computed[:marker_offset])
         end
 
-        if any(needs_update, (:space, :clip_planes))
-            if Makie.is_data_space(plot.computed[:space])
-                robj[:num_clip_planes] = 0
-                robj[:clip_planes] .= Ref(Vec4f(0, 0, 0, -1e9))
-            else
-                planes = plot.computed[:clip_planes]
-                robj[:num_clip_planes] = N = min(length(planes), 8)
-                for i in 1:min(N, 8)
-                    robj[:clip_planes][i] = Makie.gl_plane_format(planes[i])
-                end
-                for i in min(N, 8)+1:8
-                    robj[:clip_planes][i] = Vec4f(0, 0, 0, -1e9)
-                end
-            end
-        end
+        update_clip_planes!(robj, plot)
 
         # Clean up things we've already handled (and must not handle again)
         delete!(plot.updated_outputs[], :position)
         delete!(plot.updated_outputs[], :model)
         delete!(plot.updated_outputs[], :markersize)
         delete!(plot.updated_outputs[], :marker_offset)
-        delete!(plot.updated_outputs[], :clip_planes)
         
         # And that don't exist in computed
         delete!(plot.updated_outputs[], :camera)
