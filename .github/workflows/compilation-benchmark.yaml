@@ -12,92 +12,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-gist:
-    name: Test Gist
-    runs-on: ubuntu-latest
+  benchmark:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - CairoMakie
+          - GLMakie
+          - WGLMakie
     steps:
-      - name: Create file
-        run: echo "abc" > test.svg
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install xvfb
+        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+          arch: x64
+      - uses: julia-actions/cache@v2
+      - name: Benchmark
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 1 ${{ github.event.pull_request.base.ref }}
+      - name: Upload plots as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: ./benchmark_results
+  post-gist:
+    name: Post Benchmark Gist
+    needs: benchmark  # Wait for all benchmark jobs to complete
+    runs-on: ubuntu-20.04
+    permissions:
+      statuses: write       # Permission to post workflow status
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./images
+          merge-multiple: true
+
       - name: Create Gist with images
         env:
           GH_TOKEN: ${{ secrets.GIST_PAT }}
         run: |
           # Create a gist with the three images
-          gist_url=$(gh gist create ./test.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
+          gist_url=$(gh gist create ./images/CairoMakie.svg ./images/GLMakie.svg ./images/WGLMakie.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
           echo "Gist created: $gist_url"
 
           # Save the gist URL for later steps
           echo "GIST_URL=$gist_url" >> $GITHUB_ENV
-      
-# jobs:
-#   benchmark:
-#     name: ${{ matrix.package }}
-#     runs-on: ubuntu-20.04
-#     strategy:
-#       fail-fast: false
-#       matrix:
-#         package:
-#           - CairoMakie
-#           - GLMakie
-#           - WGLMakie
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
-#       - name: Install xvfb
-#         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
-#       - uses: julia-actions/setup-julia@v2
-#         with:
-#           version: '1'
-#           arch: x64
-#       - uses: julia-actions/cache@v2
-#       - name: Benchmark
-#         continue-on-error: true
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
-#           PR_NUMBER: ${{ github.event.number }}
-#         run: >
-#           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 1 ${{ github.event.pull_request.base.ref }}
-#       - name: Upload plots as artifact
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: ${{ matrix.package }}
-#           path: ./benchmark_results
-#   post-gist:
-#     name: Post Benchmark Gist
-#     needs: benchmark  # Wait for all benchmark jobs to complete
-#     runs-on: ubuntu-20.04
-#     permissions:
-#       statuses: write       # Permission to post workflow status
-#       contents: write       # Permission to create or update Gists (upload files)
-#     steps:
-#       - name: Download artifacts
-#         uses: actions/download-artifact@v4
-#         with:
-#           path: ./images
-#           merge-multiple: true
 
-#       - name: Create Gist with images
-#         env:
-#           GH_TOKEN: ${{ github.token }}
-#         run: |
-#           # Create a gist with the three images
-#           gist_url=$(gh gist create ./images/CairoMakie.svg ./images/GLMakie.svg ./images/WGLMakie.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
-#           echo "Gist created: $gist_url"
-
-#           # Save the gist URL for later steps
-#           echo "GIST_URL=$gist_url" >> $GITHUB_ENV
-
-#       - name: Post workflow status with gist link
-#         env:
-#           GH_TOKEN: ${{ github.token }}
-#         run: |
-#           gist_url=$GIST_URL
-#           gh api \
-#             -X POST \
-#             -H "Accept: application/vnd.github.v3+json" \
-#             /repos/${{ github.repository }}/statuses/${{ github.sha }} \
-#             -f state=success \
-#             -f context="Benchmark Results" \
-#             -f description="Benchmark results are available" \
-#             -f target_url="$gist_url"
+      - name: Post workflow status with gist link
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gist_url=$GIST_URL
+          gh api \
+            -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            /repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=success \
+            -f context="Benchmark Results" \
+            -f description="Benchmark results are available" \
+            -f target_url="$gist_url"
 
