@@ -25,8 +25,12 @@ function create_shader(mscene::Scene, plot::Surface)
     # https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
     uv = Buffer(lift(plot, rect) do r
         Nx, Ny = r.nvertices
-        f = Vec2f(1 / Nx, 1 / Ny)
-        [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+        if (Nx, Ny) == (2, 2)
+            Vec2f[(0,1), (1,1), (1,0), (0,0)]
+        else
+            f = Vec2f(1 / Nx, 1 / Ny)
+            [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+        end
     end)
     normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
         ns = Makie.nan_aware_normals(ps, fs)
