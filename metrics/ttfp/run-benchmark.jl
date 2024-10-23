@@ -92,4 +92,4 @@ plt = AlgebraOfGraphics.data(df) *
     )
 
 mkpath("benchmark_results")
-save(joinpath("benchmark_results", "$Package.png"), plt)
+save(joinpath("benchmark_results", "$Package.svg"), plt)
