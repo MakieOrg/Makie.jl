@@ -39,10 +39,13 @@ function theme_minimal()
             zticklabelpad = 6,
             xspinecolor_2 = :transparent,
             xspinecolor_3 = :transparent,
+            xspinecolor_4 = :transparent,
             yspinecolor_2 = :transparent,
             yspinecolor_3 = :transparent,
+            yspinecolor_4 = :transparent,
             zspinecolor_2 = :transparent,
             zspinecolor_3 = :transparent,
+            zspinecolor_4 = :transparent,
         ),
         Colorbar = (
             ticksvisible = false,

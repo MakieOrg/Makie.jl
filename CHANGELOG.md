@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added option to display the front spines in Axis3 to close the outline box [#2349](https://github.com/MakieOrg/Makie.jl/pull/4305)
 - Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
 - For `Textbox`es in which a fixed width is specified, the text is now scrolled
