@@ -286,8 +286,12 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
-    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-    write(io.io, io.buffer)
+    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+        write(io.io, glnative)
+    else
+        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+        write(io.io, io.buffer)
+    end
     next_tick!(io.tick_controller)
     return
 end
