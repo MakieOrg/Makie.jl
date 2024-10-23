@@ -13,7 +13,6 @@ concurrency:
 
 jobs:
   test-gist:
-    permissions: write-all
     name: Test Gist
     runs-on: ubuntu-latest
     steps:
@@ -21,7 +20,7 @@ jobs:
         run: echo "abc" > test.svg
       - name: Create Gist with images
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GIST_PAT }}
         run: |
           # Create a gist with the three images
           gist_url=$(gh gist create ./test.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
