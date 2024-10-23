@@ -59,7 +59,7 @@ jobs:
 
       - name: Create Gist with images
         env:
-          GH_TOKEN: ${{ secrets.GIST_PAT }}
+          GH_TOKEN: ${{ secrets.BENCHMARK_KEY }}
         run: |
           # Create a gist with the three images
           gist_url=$(gh gist create ./images/CairoMakie.svg ./images/GLMakie.svg ./images/WGLMakie.svg | grep -Eo 'https://gist.github.com[/a-zA-Z0-9]+')
