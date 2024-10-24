@@ -45,7 +45,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     lookup = plot_lookup(scene)
     !haskey(lookup, selection[1]) && return (nothing, 0)
     plt = lookup[selection[1]]
-    return (plt, selection[2] + !(plt isa Volume))
+    return (plt, Int(selection[2]) + !(plt isa Volume))
 end
 
 # Skips some allocations

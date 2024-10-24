@@ -26,6 +26,9 @@
     s2 = surface!(scene, 210..180, 80..110, rand(2, 2))
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
+    # for ranged picks
+    m2 = mesh!(scene, Rect2f(190, 330, 10, 10))
+
     scene # for easy reviewing of the plot
 
     # render one frame to generate picking texture
@@ -48,7 +51,7 @@
     end
     
     # raw picking tests
-
+    @testset "pick(scene, point)" begin
     @testset "scatter" begin
         @test pick(scene, Point2f(20, 20)) == (sc1, 1)
         @test pick(scene, Point2f(29, 59)) == (sc1, 3)
@@ -240,8 +243,8 @@
     @testset "voxel" begin
         # outside border
         for p in vcat(
-                [(x, y) for x in (64, 246) for y in (126, 184)],
-                [(x, y) for x in (66, 244) for y in (124, 186)]
+                    [(x, y) for x in (64, 156) for y in (246, 304)],
+                    [(x, y) for x in (66, 154) for y in (244, 306)]
             )
             @test pick(scene, p) == (nothing, 0)
         end
@@ -279,6 +282,91 @@
         @test pick(scene, 109, 349)[1] == vol
         @test pick(scene, 111, 350) == (nothing, 0)
         @test pick(scene, 110, 351) == (nothing, 0)
+    end
+    end
+
+
+    @testset "ranged pick/pick_sorted" begin
+        @testset "scatter" begin
+            @test pick(scene, Point2f(40, 60), 10) == (sc2, 2)
+        end
+        @testset "meshscatter" begin
+            @test pick(scene, (35, 117), 10) == (ms, 3)
+        end
+        @testset "lines" begin
+            @test pick(scene, 10, 160, 10) == (l1, 5)
+            @test pick(scene, 40, 218, 10) == (l2, 5)
+        end
+        @testset "linesegments" begin
+            @test pick(scene,  5, 280, 10) == (ls, 6)
+        end
+        @testset "text" begin        
+            @test pick(scene, 32, 320, 10) == (t, 1)
+            @test pick(scene, 35, 320, 10) == (t, 3)
+        end
+        @testset "image" begin
+            @test pick(scene,  98, 15, 10) == (i, 1)
+            @test pick(scene, 102, 15, 10) == (i, 2)
+            @test pick(scene, 200, 15, 10) == (i2, 1)
+            @test pick(scene, 190, 15, 10) == (i2, 2)
+        end
+        @testset "surface" begin
+            @test pick(scene,  93, 75, 10) == (s, 1)
+            @test pick(scene,  97, 75, 10) == (s, 2)
+            @test pick(scene, 200, 75, 10) == (s2, 1)
+            @test pick(scene, 190, 75, 10) == (s2, 2)
+        end
+        @testset "heatmap" begin
+            @test pick(scene,  93, 120, 10) == (hm, 1)
+            @test pick(scene,  97, 120, 10) == (hm, 2)
+            @test pick(scene, 200, 120, 10) == (hm2, 1)
+            @test pick(scene, 190, 120, 10) == (hm2, 2)
+        end
+        @testset "mesh" begin
+            @test pick(scene, 115, 230, 10) == (m, 4)
+        end
+        @testset "voxel" begin
+            @test pick(scene,  93, 240, 10) == (vx, 1)
+            @test pick(scene,  97, 240, 10) == (vx, 2)
+        end
+        @testset "volume" begin
+            @test pick(scene,  75, 320, 10) == (vol, 0)
+        end
+        @testset "range" begin
+            # mesh!(scene, Rect2f(200, 330, 10, 10))
+            # verify borders
+            @test pick(scene, 189, 331) == (nothing, 0)
+            @test pick(scene, 191, 329) == (nothing, 0)
+            @test pick(scene, 191, 331) == (m2, 4)
+            @test pick(scene, 199, 339) == (m2, 4)
+            @test pick(scene, 201, 339) == (nothing, 0)
+            @test pick(scene, 199, 341) == (nothing, 0)
+
+            @testset "horizontal" begin
+                @test pick(scene, 170, 335, 19) == (nothing, 0)
+                @test pick(scene, 170, 335, 21) == (m2, 3)
+                @test pick(scene, 220, 335, 19) == (nothing, 0)
+                @test pick(scene, 220, 335, 21) == (m2, 4)
+            end
+
+            @testset "vertical" begin
+                @test pick(scene, 205, 310, 19) == (nothing, 0)
+                @test pick(scene, 205, 310, 21) == (m2, 4)
+                @test pick(scene, 205, 360, 19) == (nothing, 0)
+                @test pick(scene, 205, 360, 22) == (m2, 4) # off by one?
+            end
+            @testset "diagonals" begin
+                # 190, 330
+                @test pick(scene, 180, 320, 14) == (nothing, 0)
+                @test pick(scene, 180, 320, 15) == (m2, 4)
+                @test pick(scene, 180, 350, 14) == (nothing, 0)
+                @test pick(scene, 180, 350, 15) == (m2, 3)
+                @test pick(scene, 210, 320, 14) == (nothing, 0)
+                @test pick(scene, 210, 320, 15) == (m2, 4)
+                @test pick(scene, 210, 350, 14) == (nothing, 0)
+                @test pick(scene, 210, 350, 16) == (m2, 4) # off by one?
+            end
+        end
     end
 
     # grab all indices and generate a plot for them (w/ fixed px_per_unit)
