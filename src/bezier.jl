@@ -642,7 +642,7 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for
+    # Minimal size that becomes integer when multiplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))

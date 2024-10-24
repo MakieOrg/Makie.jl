@@ -286,11 +286,11 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
             on_hover(inspector)
         end
     end
-    listners = onany(e.mouseposition, e.scroll) do _, _
+    listeners = onany(e.mouseposition, e.scroll) do _, _
         empty_channel!(channel) # remove queued up hover requests
         put!(channel, nothing)
     end
-    append!(inspector.obsfuncs, listners)
+    append!(inspector.obsfuncs, listeners)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()

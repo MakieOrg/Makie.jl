@@ -87,13 +87,13 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         if isready(screen.plot_initialized)
             # plot_initialized contains already an item
             # This should not happen, but lets check anyways, so it errors and doesn't hang forever
-            error("Plot inititalized multiple times?")
+            error("Plot initialized multiple times?")
         end
         if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
         else
-            # Will be an eror from WGLMakie.js
+            # Will be an error from WGLMakie.js
             put!(screen.plot_initialized, initialized)
         end
         return
@@ -230,7 +230,7 @@ function get_screen_session(screen::Screen; timeout=100,
     success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
     # Throw error if error message specified
     if success !== :success
-        throw_error("Timed out waiting $(timeout)s for session to get initilize")
+        throw_error("Timed out waiting $(timeout)s for session to get initialize")
         return nothing
     end
     value = fetch(screen.plot_initialized)
@@ -316,7 +316,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
-        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        err = "Can't find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(session, js"""
         $(WGL).then(WGL=> {
             const parent = WGL.find_scene($(parent_uuid));

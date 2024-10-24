@@ -573,7 +573,7 @@ end
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
-    # marker is in the background, so one shouldnt see a single pixel of the marker
+    # marker is in the background, so one shouldn't see a single pixel of the marker
     plot_row!(scene, 300, true)
 
     center = Point2f(size(scene) ./ 2)
