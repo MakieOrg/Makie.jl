@@ -615,3 +615,66 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
+
+"""
+    function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, depth=9e3, kwargs...)
+
+Adds a tooltip to a block.  `visible` can be `:always`, `:hover`, or `:never`.
+`depth` should be large to ensure that the tooltip is in front.  See `tooltip`
+for more details.
+
+# Examples
+```julia-repl
+julia> f = Figure()
+
+julia> t = Toggle(f[1,1])
+Toggle()
+
+julia> tooltip!(t, "I'm a Toggle", visible = :hover)
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> b = Button(f[2,1])
+Button()
+
+julia> v = Observable(:never)
+Observable(:never)
+
+julia> tt = tooltip!(b, "I'm a Button", placement = :below, visible = v)
+Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
+
+julia> v[] = :always
+:always
+```
+"""
+function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, depth=9e3, kwargs...)
+    position = lift(b.layoutobservables.computedbbox) do bbox
+        if placement == :above
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        elseif placement == :below
+            bbox.origin + Point2f((bbox.widths[1]/2, 0))
+        elseif placement == :left
+            bbox.origin + Point2f((0, bbox.widths[2]/2))
+        elseif placement == :right
+            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
+        elseif placement == :center
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
+        else
+            @error("invalid value for tooltip placement, using :above")
+            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
+        end
+    end
+    tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
+    translate!(tt, 0, 0, depth)
+    onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
+        tt.visible[] = if v == :never
+            false
+        elseif v == :hover
+            mp in bbox
+        else
+            v == :always || @error("invalid value for tooltip visible, using :always")
+            true
+        end
+    end
+    notify(b.blockscene.events.mouseposition)
+    return tt
+end
