@@ -50,7 +50,6 @@ end
 
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
     session = get_screen_session(screen)
@@ -61,9 +60,10 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     """)
     isnothing(selection) && return Tuple{Plot,Int}[]
     lookup = plot_lookup(scene)
-    return map(filter((id, idx) -> haskey(lookup, id), selection)) do (id, idx)
+    filter!(((id, idx),) -> haskey(lookup, id), selection)
+    return map(selection) do (id, idx)
         plt = lookup[id]
-        return (plt, index + !(plt isa Volume))
+        return (plt, idx + !(plt isa Volume))
     end
 end
 
