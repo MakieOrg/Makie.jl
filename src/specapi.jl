@@ -190,6 +190,43 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
+function get_numeric_colors(plot::PlotSpec)
+    if plot.type in [:Heatmap, :Image, :Surface]
+        z = plot.args[end]
+        if z isa AbstractMatrix{<: Real}
+            return z
+        end
+    else
+        if haskey(plot.kwargs, :color) && plot.kwargs[:color] isa AbstractArray{<:Real}
+            return plot.kwargs[:color]
+        end
+    end
+    return nothing
+end
+
+
+# TODO it's really hard to get from PlotSpec -> Plot object in the
+# Colorbar constructor (to_layoutable),
+# since the plot may not be created yet and may change when calling
+# update_layoutable!. So for now, we manually extract the Colorbar arguments from the spec
+# Which is a bit brittle and won't work for Recipes which overload the Colorbar api (extract_colormap)
+# We hope to improve the situation after the observable refactor, which may bring us a bit closer to
+# Being able to use the Plot object itself instead of a spec.
+function extract_colorbar_kw!(attr, plot::PlotSpec)
+    for k in [:colorrange, :colormap, :lowclip, :highclip, :nan_color]
+        if haskey(plot.kwargs, k)
+            attr[k] = plot.kwargs[k]
+        end
+    end
+    if !haskey(plot.kwargs, :colorrange)
+        color = get_numeric_colors(plot)
+        if !isnothing(color)
+            attr[:colorrange] = nan_extrema(color)
+        end
+    end
+    return attr
+end
+
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
@@ -201,8 +238,16 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
         attr[:entrygroups] = entrygroups
         return BlockSpec(typ, attr, plots)
     else
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                extract_colorbar_kw!(attr, args[1])
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for Colorbar. Found: $(args)")
+            end
+        end
         if !isempty(args)
-            error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
+            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
         end
         return BlockSpec(typ, attr, plots)
     end
