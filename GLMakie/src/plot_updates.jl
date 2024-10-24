@@ -116,6 +116,18 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     return
 end
 
+function init_generics!(data, plot)
+    @gen_defaults! data begin
+        fxaa          = get(plot.computed, :fxaa, false)
+        ssao          = get(plot.computed, :ssao, false)
+        transparency  = get(plot.computed, :transparency, false)
+        overdraw      = get(plot.computed, :overdraw, false)
+        px_per_unit   = 1f0
+        depth_shift   = get(plot.computed, :depth_shift, 0f0)
+    end
+    return
+end
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # TODO: skipped fastpixel
 
@@ -183,7 +195,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
     begin # draw_atomic
         if plot.computed[:marker] isa FastPixel
-            # TODO
+            # TODO: implement
         else
             Dim = length(eltype(plot.converted[1][]))
             N = length(plot.converted[1][])
@@ -226,6 +238,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         init_clip_planes!(data, plot)
         init_color!(data, plot)
         init_camera!(data, scene, plot)
+        init_generics!(data, plot)
 
         @gen_defaults! data begin
             quad_offset     = Vec2f(0) => GLBuffer
@@ -242,14 +255,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
             # rotation and billboard don't go along
             billboard       = (plot.computed[:rotation] isa Billboard) || (rotation == Vec4f(0,0,0,1))
-
             distancefield    = nothing => Texture
-            fxaa             = false
-            ssao             = false
-            transparency     = false
-            overdraw         = false
-            px_per_unit      = 1f0
-            depth_shift      = 0f0
             shader           = GLVisualizeShader(
                 screen,
                 "fragment_output.frag", "util.vert", "sprites.geom",
