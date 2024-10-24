@@ -39,7 +39,6 @@ end
 function resolve_updates!(plot::Scatter)
     flagged = plot.updated_inputs[]
 
-
     # Arguments
     # TODO: are these names already defined somewhere?
     if any(in(flagged), (:x, :y, :z, :position))
@@ -52,7 +51,7 @@ function resolve_updates!(plot::Scatter)
     # Simple one arg conversions - convert_attribute
     for name in flagged
         # TODO: these should probably not have convert_attribute methods anymore?
-        in(name, (:lowclip, :highclip, :colormap, :color, :colorrange)) && continue
+        in(name, (:lowclip, :highclip, :colormap, :color, :colorrange, :calculated_colors)) && continue
 
         plot.computed[name] = convert_attribute(
             to_value(plot.attributes[name]), Key(name), Key(:scatter))
@@ -74,7 +73,6 @@ function resolve_updates!(plot::Scatter)
     end
 
     # markerspace - why not just remove this? we don't auto it anyway?
-
 
     # Finally cleanup + trigger backend
     
@@ -109,15 +107,7 @@ function resolve_color_update!(plot)
     alpha_matters = alpha < 1.0
 
     # colors are values for colormap
-    if plot.color[] isa Union{Real, Vector{<: Real}}
-    
-        for k in (:lowclip, :highclip)
-            if (k in flagged) || (:alpha in flagged)
-                c = to_color(plot[k][])
-                plot.computed[k] = ifelse(alpha_matters, add_alpha(c), c)
-                push!(plot.updated_outputs[], k)
-            end
-        end
+    if plot.color[] isa Union{Real, AbstractVector{<: Real}}
 
         # TODO: Should nan_color consider alpha?
         if :nan_color in flagged
@@ -149,12 +139,23 @@ function resolve_color_update!(plot)
                 plot.computed[:raw_colormap] = raw_cmap
             end
 
-            if plot.colormap[] isa PlotUTils.ColorGradient
+            if plot.colormap[] isa PlotUtils.ColorGradient
                 plot.computed[:mapping] = plot.colormap[].values
                 push!(plot.updated_outputs[], :mapping)
             end
             push!(plot.updated_outputs[], :colormap)
             push!(plot.updated_outputs[], :raw_colormap)
+        end
+
+        for (k, default) in zip((:lowclip, :highclip), (first, last))
+            if (k in flagged)
+                plot.computed[k] = if plot[k][] === automatic
+                    default(plot.computed[:colormap])
+                else 
+                    to_color(plot[k][])
+                end
+                push!(plot.updated_outputs[], k)
+            end
         end
 
         if (:color in flagged)

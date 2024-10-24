@@ -1,6 +1,6 @@
 function init_color!(data, plot)
     # Colormapping
-    if plot.computed[:color] isa Union{Real, Vector{<: Real}} # do colormapping
+    if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
         interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
         @gen_defaults! data begin
             intensity       = plot.computed[:color_scaled] => GLBuffer
@@ -118,7 +118,9 @@ end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # TODO: skipped fastpixel
-    
+
+    @assert !haskey(screen.cache, objectid(plot))
+
     # TODO: maybe on plot init?
     # Prepare - force all computed to get calculated
     union!(plot.updated_inputs[], keys(plot.attributes))
@@ -190,8 +192,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             # TODO
         else
             Dim = length(eltype(plot.converted[1][]))
+            N = length(plot.converted[1][])
             @gen_defaults! data begin
-                position        = Point{Dim, Float32}[] => GLBuffer
+                position        = Vector{Point{Dim, Float32}}(undef, N) => GLBuffer
                 len             = 0 # should match length of position
                 distancefield   = get(plot.computed, :distancefield, nothing)
                 shape           = Cint(Makie.marker_to_sdf_shape(plot.computed[:marker]))
@@ -308,7 +311,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model], 
                 plot.converted[1][], plot.computed[:space]
             )
-            changed_length = length(positions) != length(robj.vertexarray.buffers["position"])
+            changed_length = length(positions) != robj[:len]
             robj[:len] = length(positions)
             update!(robj.vertexarray.buffers["position"], positions)
         end
@@ -409,6 +412,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     notify(plot.updated_inputs)
     
     screen.cache2plot[robj.id] = plot
+    screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
     
     # screen.requires_update = true
