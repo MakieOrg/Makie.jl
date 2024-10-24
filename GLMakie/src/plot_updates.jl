@@ -253,6 +253,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             fxaa             = false
             ssao             = false
             transparency     = false
+            overdraw         = false
             px_per_unit      = 1f0
             depth_shift      = 0f0
             shader           = GLVisualizeShader(
@@ -375,6 +376,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
             elseif key == :visible
                 robj.visible = val
+
+            elseif key == :overdraw
+                robj.prerenderfunction.overdraw[] = val
 
             # TODO: Don't let Vec4f(0) pass down here
             elseif key == :uv_offset_width
