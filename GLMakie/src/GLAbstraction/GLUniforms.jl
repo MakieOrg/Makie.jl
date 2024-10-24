@@ -108,13 +108,15 @@ function glsl_typename(t::Type{T}) where T <: Mat
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(N, "x", M))
 end
 toglsltype_string(t::Observable) = toglsltype_string(to_value(t))
-toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
+function toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}}
+    return "uniform $(glsl_typename(x))"
+end
 #Handle GLSL structs, which need to be addressed via single fields
 function toglsltype_string(x::T) where T
     if isa_gl_struct(x)
         string("uniform ", T.name.name)
     else
-        error("can't splice $T into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
+        error("can't splice $T into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true\n\n$x")
     end
 end
 toglsltype_string(t::Union{GLBuffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
@@ -237,7 +239,7 @@ gl_convert(a::T) where {T <: NATIVE_TYPES} = a
 gl_convert(s::Observable{T}) where {T <: NATIVE_TYPES} = s
 gl_convert(s::Observable{T}) where T = const_lift(gl_convert, s)
 gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
-gl_convert(x::Mat{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
+gl_convert(x::Mat{N, M, T}) where {N, M, T} = Mat{N, M, gl_promote(T)}(x)
 gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
 gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)

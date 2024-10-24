@@ -51,7 +51,7 @@ function _mantle(origin, extremity, r1, r2, N)
         faces[2i] = GLTriangleFace(mod1(2i+1, 2N), mod1(2i+2, 2N), 2i)
     end
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
 # GeometryBasics.Circle doesn't work with Point3f...
@@ -68,7 +68,7 @@ function _circle(origin, r, normal, N)
     end
     coords[N+1] = origin
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
 function convert_arguments(::Type{<: Arrows}, x, y, u, v)

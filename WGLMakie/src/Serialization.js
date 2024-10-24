@@ -66,6 +66,7 @@ export function delete_plots(plot_uuids) {
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
     tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
     tex.minFilter = THREE[data.minFilter];
     tex.magFilter = THREE[data.magFilter];
     tex.anisotropy = data.anisotropy;
@@ -266,12 +267,13 @@ function connect_uniforms(mesh, updater) {
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
     const rgbaArray = new rgbArray.constructor((length / 3) * 4);
+    const a = (rgbArray instanceof Uint8Array) ? 255 : 1.0;
 
     for (let i = 0, j = 0; i < length; i += 3, j += 4) {
         rgbaArray[j] = rgbArray[i]; // R
         rgbaArray[j + 1] = rgbArray[i + 1]; // G
         rgbaArray[j + 2] = rgbArray[i + 2]; // B
-        rgbaArray[j + 3] = 1.0; // A
+        rgbaArray[j + 3] = a; // A
     }
 
     return rgbaArray;

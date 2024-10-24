@@ -77,7 +77,7 @@ function plot!(pl::Bracket)
 
             v = p2 - p1
             d1 = normalize(v)
-            d2 = [0 -1; 1 0] * d1
+            d2 = Point2(-d1[2], d1[1])
             orientation in (:up, :down) || error("Orientation must be :up or :down but is $(repr(orientation)).")
             if (orientation == :up) != (d2[2] >= 0)
                 d2 = -d2

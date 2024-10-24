@@ -22,7 +22,7 @@ faces = [
 
 colors = [:red, :green, :blue, :orange]
 
-scene = mesh(vertices, faces, color = colors, shading = NoShading)
+mesh(vertices, faces, color = colors, shading = NoShading)
 ```
 
 ```@figure backend=GLMakie
@@ -37,9 +37,34 @@ mesh(
 )
 ```
 
+## Face colors and normals
+
+```@figure backend=GLMakie
+using GeometryBasics
+
+# Reduce quality of sphere 
+s = Tesselation(Sphere(Point3f(0), 1f0), 12)
+ps = coordinates(s)
+fs = faces(s)
+
+# Use a FaceView to with a new set of faces which refer to one color per face.
+# Each face must have the same length as the respective face in fs.
+# (Using the same face type guarantees this)
+FT = eltype(fs); N = length(fs)
+cs = FaceView(rand(RGBf, N), [FT(i) for i in 1:N])
+
+# generate normals per face (this creates a FaceView as well)
+ns = face_normals(ps, fs)
+
+# Create mesh
+m = GeometryBasics.mesh(ps, fs, normal = ns, color = cs)
+
+mesh(m)
+```
+
 ## Using GeometryBasics.Mesh and Buffer/Sampler type
 
-We can also create a mesh, to specify normals, uv coordinates:
+We can also create a mesh to specify normals, uv coordinates:
 
 ```@example sampler
 using GeometryBasics, LinearAlgebra, GLMakie, FileIO
@@ -58,9 +83,9 @@ points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(x2, y2, z2)])
 
 # The coordinates form a matrix, so to connect neighboring vertices with a face
 # we can just use the faces of a rectangle with the same dimension as the matrix:
-faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(z2)))
+_faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(z2)))
 # Normals of a centered sphere are easy, they're just the vertices normalized.
-normals = normalize.(points)
+_normals = normalize.(points)
 
 # Now we generate UV coordinates, which map the image (texture) to the vertices.
 # (0, 0) means lower left edge of the image, while (1, 1) means upper right corner.
@@ -76,7 +101,7 @@ uv = gen_uv(0.0)
 # We can use a Buffer to update single elements in an array directly on the GPU
 # with GLMakie. They work just like normal arrays, but forward any updates written to them directly to the GPU
 uv_buff = Buffer(uv)
-gb_mesh = GeometryBasics.Mesh(meta(points; uv=uv_buff, normals), faces)
+gb_mesh = GeometryBasics.Mesh(points, _faces; uv = uv_buff, normal = _normals)
 
 f, ax, pl = mesh(gb_mesh,  color = rand(100, 100), colormap=:blues)
 wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
