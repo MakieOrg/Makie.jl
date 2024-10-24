@@ -617,11 +617,11 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
 end
 
 """
-    function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
+    function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, depth=9e3, kwargs...)
 
-Adds a tooltip to a block.  See `tooltip` for more details.  To make it only
-appear when hovering, set the `visible` property of the tooltip to the
-`hovering` property of the block.
+Adds a tooltip to a block.  `visible` can be `:always`, `:hover`, or `:never`.
+`depth` should be large to ensure that the tooltip is in front.  See `tooltip`
+for more details.
 
 # Examples
 ```julia-repl
@@ -630,20 +630,23 @@ julia> f = Figure()
 julia> t = Toggle(f[1,1])
 Toggle()
 
-julia> tooltip!(t, "I'm a Toggle", visible = t.hovering)
+julia> tooltip!(t, "I'm a Toggle", visible = :hover)
 Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 
 julia> b = Button(f[2,1])
 Button()
 
-julia> tt = tooltip!(b, "I'm a Button", placement = :below)
+julia> v = Observable(:never)
+Observable(:never)
+
+julia> tt = tooltip!(b, "I'm a Button", placement = :below, visible = v)
 Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 
-julia> on(h -> tt.visible[]=h, b.hovering)
-ObserverFunction defined at REPL[7]:1 operating on Observable(false)
+julia> v[] = :always
+:always
 ```
 """
-function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
+function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, depth=9e3, kwargs...)
     position = lift(b.layoutobservables.computedbbox) do bbox
         if placement == :above
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
@@ -656,11 +659,21 @@ function tooltip!(b::Block, str::AbstractString; placement=:above, kwargs...)
         elseif placement == :center
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
         else
-            @error("invalid value for tooltip_placement, using :above")
+            @error("invalid value for tooltip placement, using :above")
             bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
         end
     end
     tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
-    translate!(tt, 0, 0, 9e3)
+    translate!(tt, 0, 0, depth)
+    onany(b.blockscene.events.mouseposition, visible) do mp, v
+        tt.visible[] = if v == :never
+            false
+        elseif v == :hover
+            mp in b.layoutobservables.computedbbox[]
+        else
+            v == :always || @error("invalid value for tooltip visible, using :always")
+            true
+        end
+    end
     return tt
 end
