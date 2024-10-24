@@ -176,7 +176,7 @@ end
 
 
 @reference_test "event ticks in record" begin
-    # Checks whether record calculates and triggers event.tick by drawing a 
+    # Checks whether record calculates and triggers event.tick by drawing a
     # Point at y = 1 for each frame where it does. The animation is irrelevant
     # here, so we can just check the final image.
     # The first point maybe at 0 depending on when the backend sets up it's
@@ -191,4 +191,54 @@ end
         f.scene.events.tick[] = Makie.Tick(Makie.UnknownTickState, 0, 0.0, 0.0)
     end
     f
+end
+
+import Makie.SpecApi as S
+
+@reference_test "Moving plots"
+    f, ax, pl1 = scatter(5:-1:1; markersize=20, axis=(; title="Axis 1"))
+    pl2 = poly!(ax, Rect2f(10, 10, 100, 100); color=:green, space=:pixel)
+    pl3 = scatter!(ax, 1:5; color=Float64[1:5;], markersize=0.5, colorrange=(1, 5), lowclip=:black, highclip=:red, markerspace=:data)
+    pl4 = poly!(ax, Rect2f(0, 0, 1, 1); color=(:green, 0.5), strokewidth=2, strokecolor=:black)
+    img1 = copy(colorbuffer(f; px_per_unit=1))
+    plots = [pl1, pl2, pl3, pl4]
+    get_listener_lengths() = map(plots) do x
+        arg_l = length(x[1].listeners)
+        attr_l = length(x.color.listeners)
+        return [arg_l, attr_l]
+    end
+    listener_lengths_1 = get_listener_lengths()
+
+    ax2 = Axis(f[1, 2]; title="Axis 2")
+    ls = LScene(f[2, :]; show_axis=false)
+    scene = Makie.camrelative(ls.scene)
+
+    Makie.move_to!(pl2, ax2.scene)
+    Makie.move_to!(pl3, ax2.scene)
+    Makie.move_to!(pl4, scene)
+    # Make sure updating still works for color
+    pl3.color = [-1, 2, 3, 4, 7]
+
+    @test listener_lengths_1 == get_listener_lengths()
+
+    img2 = copy(colorbuffer(f; px_per_unit=1))
+    @test length(ax.scene.plots) == 1
+    @test ax.scene.plots[1] === pl1
+    @test length(ax2.scene.plots) == 2
+    @test pl2 in ax2.scene.plots
+    @test pl3 in ax2.scene.plots
+    @test pl4 in scene.plots
+    @test length(scene) == 1
+
+    # Move everything back
+    Makie.move_to!(pl1, ax.scene)
+    Makie.move_to!(pl2, ax.scene)
+    Makie.move_to!(pl3, ax.scene)
+    Makie.move_to!(pl4, ax.scene)
+    img3 = copy(colorbuffer(f; px_per_unit=1))
+
+    @test listener_lengths_1 == get_listener_lengths()
+
+    imgs = hcat(rotr90.((img1, img2, img3))...)
+    s = Scene(size=size(imgs)); image!(s, imgs, space=:pixel); s
 end

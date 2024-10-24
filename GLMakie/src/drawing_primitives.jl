@@ -140,6 +140,20 @@ end
 
 function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
     # Overwrite these, user defined attributes shouldn't use those!
+    function clean_lift!(f, attr)
+        if haskey(gl_attributes, attr)
+            Observables.clear(gl_attributes[attr])
+        end
+        gl_attributes[attr] = f()
+    end
+    clean_lift!(:pixel_space) do
+        return lift(Mat4f, plot, cam.pixel_space)
+    end
+
+    clean_lift!(:pixel_space) do
+        return lift(Mat4f, plot, cam.pixel_space)
+    end
+
     gl_attributes[:pixel_space] = lift(Mat4f, plot, cam.pixel_space)
     gl_attributes[:eyeposition] = lift(identity, plot, cam.eyeposition)
 

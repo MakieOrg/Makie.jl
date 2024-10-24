@@ -498,9 +498,8 @@ function free(plot::AbstractPlot)
         Observables.off(f)
     end
     foreach(free, plot.plots)
-    empty!(plot.plots)
+    # empty!(plot.plots)
     empty!(plot.deregister_callbacks)
-    empty!(plot.attributes)
     free(plot.transformation)
     return
 end
@@ -535,7 +534,8 @@ function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
         return
     end
-    filter!(x-> x === plot, plot.parent.plots)
+    current_parent = parent_scene(plot)
+    filter!(x -> x !== plot, current_parent.plots)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         move_to!(screen, plot, scene)
