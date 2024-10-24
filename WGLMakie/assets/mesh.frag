@@ -109,6 +109,19 @@ vec4 pack_int(uint id, uint index) {
     return unpack;
 }
 
+// for picking indices in image, heatmap, surface
+uint picking_index_from_uv(sampler2D img, vec2 uv) {
+    ivec2 size = textureSize(img, 0);
+    ivec2 jl_idx = clamp(ivec2(uv * vec2(size)), ivec2(0), size-1);
+    uint idx = uint(jl_idx.y + jl_idx.x * size.y);
+    return idx;
+}
+
+// These should not get hit
+uint picking_index_from_uv(bool img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(vec3 img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
+
 void main()
 {
     for (int i = 0; i < num_clip_planes; i++)
@@ -125,10 +138,12 @@ void main()
         shaded_color = get_ambient() * real_color.rgb + light;
     }
 
-    if (picking) {
-        if (real_color.a > 0.1) {
+    if (picking && (real_color.a > 0.1)) {
+        if (get_PICKING_INDEX_FROM_UV()) {
+            fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
+        } else
             fragment_color = pack_int(object_id, frag_instance_id);
-        }
+        
         return;
     }
 

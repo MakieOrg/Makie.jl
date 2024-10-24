@@ -1487,12 +1487,39 @@ end
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
     ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
-    for (i, scale) in enumerate([:area, :count, :width])
-        ax = Axis(fig[i, 1])
-        violin!(ax, xs, ys; scale, show_median=true)
-        Makie.xlims!(0.2, 4.8)
-        ax.title = "scale=:$(scale)"
-    end
+    ax, p = violin(fig[1, 1], xs, ys; scale = :area, show_median=true)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:area"
+    ax, p = violin(fig[2, 1], xs, ys; scale = :count, mediancolor = :red, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:count"
+    ax, p = violin(fig[3, 1], xs, ys; scale = :width, show_median=true, mediancolor = :orange, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:width"
+    fig
+end
+
+@reference_test "Violin" begin
+    fig = Figure()
+    
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = vcat(RNG.randn(300), (1.5 .* RNG.rand(300)).^2, -(1.5 .* RNG.rand(300)).^2)
+    violin(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 900)
+    violin(fig[1, 2], categories, values, dodge = dodge, 
+        color = map(d->d==1 ? :yellow : :orange, dodge), 
+        strokewidth = 2, strokecolor = :black, gap = 0.1, dodge_gap = 0.5
+    )
+
+    violin(fig[2, 1], categories, values, orientation = :horizontal,
+        color = :gray, side = :left
+    )
+
+    violin!(categories, values, orientation = :horizontal, 
+        color = :yellow, side = :right, strokewidth = 2, strokecolor = :black,
+        weights = abs.(values)
+    )
+
+    # TODO: test bandwidth, boundary
+
     fig
 end
 
@@ -1531,6 +1558,32 @@ end
     f
 end
 
+@reference_test "Datashader AggCount" begin
+    data = [RNG.randn(Point2f, 10_000); (Ref(Point2f(1, 1)) .+ 0.3f0 .* RNG.randn(Point2f, 10_000))]
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data; async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data; async = false, binsize = 3)
+    ax3 = Axis(f[2, 1])
+    datashader!(ax3, data; async = false, operation = xs -> log10.(xs .+ 1))
+    ax4 = Axis(f[2, 2])
+    datashader!(ax4, data; async = false, point_transform = -)
+    f
+end
+
+@reference_test "Datashader AggMean" begin
+    with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
+    data2d = RNG.randn(Point2f, 100_000)
+    data3d = map(with_z, data2d)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data3d; agg = Makie.AggMean(), operation = identity, async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data3d; agg = Makie.AggMean(), operation = identity, async = false, binsize = 3)
+    f
+end
+
 @reference_test "Heatmap Shader" begin
     data = Makie.peaks(10_000)
     data2 = map(data) do x
@@ -1549,5 +1602,221 @@ end
     heatmap!(ax, (1, 2), (1, 2), Resampler(data2))
     Colorbar(f[:, 3], pl1)
     sleep(1) # give the async operations some time
+    f
+end
+
+@reference_test "boxplot" begin
+    fig = Figure()
+    
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = RNG.randn(900) .+ range(-1, 1, length=900)
+    boxplot(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 900)
+    boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true,
+        color = map(d->d==1 ? :blue : :red, dodge),
+        outliercolor = RNG.rand([:red, :green, :blue, :black, :orange], 900)
+    )
+
+    ax_vert = Axis(fig[2,1];
+        xlabel = "categories",
+        ylabel = "values",
+        xticks = (1:3, ["one", "two", "three"])
+    )
+    ax_horiz = Axis(fig[2,2];
+        xlabel="values",
+        ylabel="categories",
+        yticks=(1:3, ["one", "two", "three"])
+    )
+
+    weights = 1.0 ./ (1.0 .+ abs.(values))
+    boxplot!(ax_vert, categories, values, orientation=:vertical, weights = weights,
+        gap = 0.5,
+        show_notch = true, notchwidth = 0.75,
+        markersize = 5, strokewidth = 2.0, strokecolor = :black,
+        medianlinewidth = 5, mediancolor = :orange,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
+        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        width = 1.5,
+    )
+    boxplot!(ax_horiz, categories, values; orientation=:horizontal, width = categories ./ 3)
+
+    fig
+end
+
+@reference_test "crossbar" begin
+    fig = Figure()
+    
+    xs = [1, 1, 2, 2, 3, 3]
+    ys = RNG.rand(6)
+    ymins = ys .- 1
+    ymaxs = ys .+ 1
+    dodge = [1, 2, 1, 2, 1, 2]
+    
+    crossbar(fig[1, 1], xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
+    
+    crossbar(fig[1, 2], xs, ys, ymins, ymaxs, 
+        dodge = dodge, dodge_gap = 0.25,
+        gap = 0.05,
+        midlinecolor = :blue, midlinewidth = 5,
+        show_notch = true, notchwidth = 0.3,
+        notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
+        strokewidth = 2, strokecolor = :black,
+        orientation = :horizontal, color = :lightblue
+    )
+    fig
+end
+
+@reference_test "ecdfplot" begin
+    f = Figure(size = (500, 250))
+
+    x = RNG.randn(200)
+    ecdfplot(f[1, 1], x, color = (:blue, 0.3))
+    ecdfplot!(x, color = :red, npoints=10, step = :pre, linewidth = 3)
+    ecdfplot!(x, color = :orange, npoints=10, step = :center, linewidth = 3)
+    ecdfplot!(x, color = :green, npoints=10, step = :post, linewidth = 3)
+
+    w = @. x^2 * (1 - x)^2
+    ecdfplot(f[1, 2], x)
+    ecdfplot!(x; weights = w, color=:orange)
+    
+    f
+end
+
+@reference_test "qqnorm" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3
+    qqnorm(fig[1, 1], xs, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 6)
+    qqnorm(fig[2, 2], xs, qqline = :identity, color = :orange)
+    fig
+end
+
+@reference_test "qqplot" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3; ys = RNG.randn(10)
+    qqplot(fig[1, 1], xs, ys, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
+    qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
+    fig
+end
+
+@reference_test "rainclouds" begin
+    Makie.RAINCLOUD_RNG[] = RNG.STABLE_RNG
+    data = RNG.randn(1000)
+    data[1:200] .+= 3
+    data[201:500] .-= 3
+    data[501:end] .= 3 .* abs.(data[501:end]) .- 3
+    labels = vcat(fill("red", 500), fill("green", 500))
+    
+    fig = Figure()
+    rainclouds(fig[1, 1], labels, data, plot_boxplots = false, cloud_width = 2.0,
+        markersize = 5.0)
+    rainclouds(fig[1, 2], labels, data, color = labels, orientation = :horizontal, cloud_width = 2.0)
+    rainclouds(fig[2, 1], labels, data, clouds = hist, hist_bins = 30, boxplot_nudge = 0.1, 
+        center_boxplot = false, boxplot_width = 0.2, whiskerwidth = 1.0, strokewidth = 3.0)
+    rainclouds(fig[2, 2], labels, data, color = labels, side = :right, violin_limits = extrema)
+    fig
+end
+
+@reference_test "series" begin 
+    fig = Figure()
+    data = cumsum(RNG.randn(4, 21), dims = 2)
+
+    ax, sp = series(fig[1, 1], data, labels=["label $i" for i in 1:4],
+        linewidth = 4, linestyle = :dot, markersize = 15, solid_color = :black)
+    axislegend(ax, position = :lt)
+
+    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0, 
+        marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black)
+    axislegend(ax, position = :lt)
+
+    fig
+end
+
+@reference_test "stairs" begin
+    f = Figure()
+
+    xs = LinRange(0, 4pi, 21)
+    ys = sin.(xs)
+    
+    stairs(f[1, 1], xs, ys)
+    stairs(f[2, 1], xs, ys; step=:post, color=:blue, linestyle=:dash)
+    stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
+    
+    f
+end
+
+@reference_test "stem" begin
+    f = Figure()
+
+    xs = LinRange(0, 4pi, 30)
+    stem(f[1, 1], xs, sin.(xs))
+
+    stem(f[1, 2], xs, sin,
+        offset = 0.5, trunkcolor = :blue, marker = :rect,
+        stemcolor = :red, color = :orange,
+        markersize = 15, strokecolor = :red, strokewidth = 3,
+        trunklinestyle = :dash, stemlinestyle = :dashdot)
+    
+    stem(f[2, 1], xs, sin.(xs),
+        offset = LinRange(-0.5, 0.5, 30),
+        color = LinRange(0, 1, 30), colorrange = (0, 0.5),
+        trunkcolor = LinRange(0, 1, 30), trunkwidth = 5)
+
+    ax, p = stem(f[2, 2], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
+        offset = Point3f.(0.5xs, sin.(xs), cos.(xs)),
+        stemcolor = LinRange(0, 1, 30), stemcolormap = :Spectral, stemcolorrange = (0, 0.5))
+
+    center!(ax.scene)
+    zoom!(ax.scene, 0.8)
+    ax.scene.camera_controls.settings[:center] = false
+
+    f
+end
+
+@reference_test "waterfall" begin
+    y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
+
+    fig = Figure()
+    waterfall(fig[1, 1], y)
+    waterfall(fig[1, 2], y, show_direction = true, marker_pos = :cross, 
+        marker_neg = :hline, direction_color = :yellow)
+
+    colors = Makie.wong_colors()
+    x = repeat(1:2, inner=5)
+    group = repeat(1:5, outer=2)
+
+    waterfall(fig[2, 1], x, y, dodge = group, color = colors[group], 
+        show_direction = true, show_final = true, final_color=(colors[6], 1//3),
+        dodge_gap = 0.1, gap = 0.05)
+
+    x = repeat(1:5, outer=2)
+    group = repeat(1:2, inner=5)
+        
+    waterfall(fig[2, 2], x, y, dodge = group, color = colors[group], 
+        show_direction = true, stack = :x, show_final = true)
+
+    fig
+end
+
+@reference_test "ablines + hvlines + hvspan" begin
+    f = Figure()
+
+    ax = Axis(f[1, 1])
+    hspan!(ax, -1, -0.9, color = :lightblue, alpha = 0.5, strokewidth = 2, strokecolor = :black)
+    hspan!(ax, 0.9, 1, xmin = 0.2, xmax = 0.8)
+    vspan!(ax, -1, -0.9)
+    vspan!(ax, 0.9, 1, ymin = 0.2, ymax = 0.8, strokecolor = RGBf(0,1,0.1), strokewidth = 3)
+
+    ablines!([0.3, 0.7], [-0.2, 0.2], color = :orange, linewidth = 4, linestyle = :dash)
+
+    hlines!(ax, -0.8)
+    hlines!(ax, 0.8, xmin = 0.2, xmax = 0.8)
+    vlines!(ax, -0.8, color = :green, linewidth = 3)
+    vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
+
     f
 end

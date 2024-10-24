@@ -182,9 +182,10 @@ using Random
 
 function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
-    for project in shuffle!(repeat(projects; outer=n))
+    # go A, B, A, B, A, etc.
+    for project in repeat(projects, n)
+        println(basename(project))
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
-        project_name = basename(project)
     end
     return
 end
@@ -221,13 +222,13 @@ end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
-Pkg.add([(; name="BenchmarkTools")])
+Pkg.add([(; name="JSON")])
 
 @time Pkg.precompile()
 
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="BenchmarkTools")]
+pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="JSON")]
 Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 @time Pkg.precompile()
@@ -248,4 +249,11 @@ if !isnothing(pr_to_comment)
 else
     @info("Not commenting, no PR found")
     println(update_comment(COMMENT_TEMPLATE, Package, benchmark_rows))
+end
+
+mkdir("json")
+for p in [project1, project2]
+    name = basename(p)
+    file = "$name-benchmark.json"
+    mv(file, joinpath("json", file))
 end

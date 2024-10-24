@@ -8,7 +8,6 @@ struct Camera3D <: AbstractCamera3D
     controls::Attributes
 
     # Interactivity
-    pulser::Observable{Float64}
     selected::Observable{Bool}
 
     # view matrix
@@ -55,8 +54,7 @@ Settings include anything that isn't a mouse or keyboard button.
 - `mouse_translationspeed = 0.5` sets the speed of mouse translations.
 - `mouse_zoomspeed = 1.0` sets the speed of mouse zooming (mousewheel).
 
-- `update_rate = 1/30` sets the rate at which keyboard based camera updates are evaluated.
-- `circular_rotation = (true, true, true)` enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
+- `circular_rotation = (false, false, false)` enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
 
 ## Controls
 
@@ -161,9 +159,8 @@ function Camera3D(scene::Scene; kwargs...)
         mouse_zoomspeed = 1.0,
 
         projectiontype = Makie.Perspective,
-        circular_rotation = (true, true, true),
+        circular_rotation = (false, false, false),
         rotation_center = :lookat,
-        update_rate = 1/30,
         zoom_shift_lookat = true,
         fixed_axis = true,
         cad = false,
@@ -185,7 +182,6 @@ function Camera3D(scene::Scene; kwargs...)
         settings, controls,
 
         # Internals - controls
-        Observable(-1.0),
         Observable(true),
 
         # Semi-Internal - view matrix
@@ -204,32 +200,10 @@ function Camera3D(scene::Scene; kwargs...)
 
     # Keyboard controls
     # ticks every so often to get consistent position updates.
-    on(camera(scene), cam.pulser) do prev_time
-        current_time = time()
-        active = on_pulse(scene, cam, current_time - prev_time)
-        @async if active && cam.selected[]
-            sleep(settings.update_rate[])
-            cam.pulser[] = current_time
-        else
-            cam.pulser.val = -1.0
+    on(camera(scene), events(scene).tick) do tick
+        if cam.selected[]
+            on_pulse(scene, cam, tick.delta_time)
         end
-    end
-
-    keynames = (
-        :up_key, :down_key, :left_key, :right_key, :forward_key, :backward_key,
-        :zoom_in_key, :zoom_out_key, :increase_fov_key, :decrease_fov_key,
-        :pan_left_key, :pan_right_key, :tilt_up_key, :tilt_down_key,
-        :roll_clockwise_key, :roll_counterclockwise_key
-    )
-
-    # Start ticking if relevant keys are pressed
-    on(camera(scene), events(scene).keyboardbutton) do event
-        if event.action in (Keyboard.press, Keyboard.repeat) && cam.pulser[] == -1.0 &&
-            cam.selected[] && any(key -> ispressed(scene, controls[key][]), keynames)
-            cam.pulser[] = time()
-            return Consume(true)
-        end
-        return Consume(false)
     end
 
     # de/select plot on click outside/inside
@@ -320,6 +294,14 @@ function on_pulse(scene, cam::Camera3D, timestep)
         tilt_up_key, tilt_down_key, pan_left_key, pan_right_key, roll_counterclockwise_key, roll_clockwise_key,
         zoom_out_key, zoom_in_key, increase_fov_key, decrease_fov_key
     )
+
+    if !ispressed(scene, right_key | left_key | up_key | down_key | backward_key | forward_key |
+        tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key | 
+        roll_clockwise_key | zoom_out_key | zoom_in_key | increase_fov_key | decrease_fov_key)
+        
+        return
+    end
+
     @extractvalue cam.settings (
         keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed, projectiontype
     )

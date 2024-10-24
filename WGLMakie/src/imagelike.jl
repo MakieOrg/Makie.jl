@@ -34,7 +34,7 @@ function create_shader(mscene::Scene, plot::Surface)
     end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
-    uniforms = Dict(:uniform_color => color, :color => false, :model => model)
+    uniforms = Dict(:uniform_color => color, :color => false, :model => model, :PICKING_INDEX_FROM_UV => true)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
     uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
@@ -61,6 +61,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :shininess => 0.0f0,
         :backlight => 0.0f0,
         :model => model,
+        :PICKING_INDEX_FROM_UV => true
     )
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)

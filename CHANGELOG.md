@@ -2,15 +2,29 @@
 
 ## [Unreleased]
 
-- Fix relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
-- Fix relocatability of WGLMakie [#4467](https://github.com/MakieOrg/Makie.jl/pull/4467).
+- Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
+- Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
+- For `Textbox`es in which a fixed width is specified, the text is now scrolled
+  if the width is exceeded [#4293](https://github.com/MakieOrg/Makie.jl/pull/4293)
+- Changed image, heatmap and surface picking indices to correctly index the relevant matrix arguments. [#4459](https://github.com/MakieOrg/Makie.jl/pull/4459)
+- Improved performance of `record` by avoiding unnecessary copying in common cases [#4475](https://github.com/MakieOrg/Makie.jl/pull/4475).
+- Fix usage of `AggMean()` and other aggregations operating on 3d data for `datashader` [#4346](https://github.com/MakieOrg/Makie.jl/pull/4346).
+- Use polys for axis3 [#4463](https://github.com/MakieOrg/Makie.jl/pull/4463).
+- Changed default for `circular_rotation` in Camera3D to false, so that the camera doesn't change rotation direction anymore [4492](https://github.com/MakieOrg/Makie.jl/pull/4492)
+- Fixed `pick(scene, rect2)` in WGLMakie [#4488](https://github.com/MakieOrg/Makie.jl/pull/4488)
+
+## [0.21.14] - 2024-10-11
+
+- Fixed relocatability of GLMakie [#4461](https://github.com/MakieOrg/Makie.jl/pull/4461).
+- Fixed relocatability of WGLMakie [#4467](https://github.com/MakieOrg/Makie.jl/pull/4467).
+- Fixed `space` keyword for `barplot` [#4435](https://github.com/MakieOrg/Makie.jl/pull/4435).
 
 ## [0.21.13] - 2024-10-07
 
 - Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
-- Fix `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
+- Fixed `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
 - Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
-- Fix incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
+- Fixed incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
 - Added new `Checkbox` block [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
 - Added ability to override legend element attributes by pairing labels or plots with override attributes [#4427](https://github.com/MakieOrg/Makie.jl/pull/4427).
 - Added threshold before a drag starts which improves false negative rates for clicks. `Button` can now trigger on click and not mouse-down which is the canonical behavior in other GUI systems [#4336](https://github.com/MakieOrg/Makie.jl/pull/4336).
@@ -43,7 +57,7 @@
 - `plotfunc()` and `func2type()` support functions ending with `!` [#4275](https://github.com/MakieOrg/Makie.jl/pull/4275).
 - Fixed Boundserror in clipped multicolor lines in CairoMakie [#4313](https://github.com/MakieOrg/Makie.jl/pull/4313)
 - Fix float precision based assertions error in GLMakie.volume [#4311](https://github.com/MakieOrg/Makie.jl/pull/4311)
- - Support images with reversed axes [#4338](https://github.com/MakieOrg/Makie.jl/pull/4338)
+- Support images with reversed axes [#4338](https://github.com/MakieOrg/Makie.jl/pull/4338)
 
 ## [0.21.9] - 2024-08-27
 
@@ -624,7 +638,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.14...HEAD
+[0.21.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...v0.21.14
 [0.21.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...v0.21.13
 [0.21.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...v0.21.12
 [0.21.11]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.10...v0.21.11

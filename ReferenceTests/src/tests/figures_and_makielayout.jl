@@ -411,3 +411,77 @@ end
     Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
     f
 end
+
+@reference_test "Textbox" begin
+    f = Figure()
+
+    tb1 = Makie.Textbox(f[1,1])
+    Makie.set!(tb1, "1234567890qwertyuiop")
+    Makie.focus!(tb1)
+    f.scene.events.mouseposition[] = (297, 221)
+    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    Makie.defocus!(tb1)
+
+    tb2 = Makie.Textbox(f[2,1], width=100)
+    Makie.set!(tb2, "1234567890qwertyuiop")
+    tb2.cursorindex[] = 20
+    Makie.focus!(tb2)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    Makie.defocus!(tb2)
+
+    tb3 = Makie.Textbox(f[3,1], width=100)
+    Makie.set!(tb3, "1234567890qwertyuiop")
+    tb3.cursorindex[] = 20
+    Makie.focus!(tb3)
+    f.scene.events.mouseposition[] = (259, 173)  # between 7 and 8
+    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    Makie.defocus!(tb3)
+
+    tb4 = Makie.Textbox(f[4,1], width=100)
+    Makie.set!(tb4, "1234567890qwertyuiop")
+    tb4.cursorindex[] = 20
+    tb4.cursorindex[] = 10
+    Makie.focus!(tb4)
+    for _ in 1:8
+        f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    end
+    Makie.defocus!(tb4)
+
+    f
+end
+
+@reference_test "Button - Slider - Toggle - Textbox" begin
+    f = Figure(size = (500, 250))
+    Makie.Button(f[1, 1:2])
+    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20, 
+        strokecolor = :red, strokewidth = 2, # TODO: allocate space for this
+        fontsize = 16, labelcolor = :blue)
+
+    IntervalSlider(f[1, 3])
+    sl = IntervalSlider(f[2, 3], range = 0:100, linewidth = 20, 
+        color_inactive = :orange, color_active_dimmed = :lightgreen)
+    Makie.set_close_to!(sl, 30, 70)
+
+    Toggle(f[3, 1])
+    Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
+    Toggle(f[3, 2], active = true)
+    Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue, 
+        framecolor_active = :yellow, rimfraction = 0.6)
+
+    Makie.Slider(f[3, 3])
+    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan, 
+        color_active_dimmed = :lightgreen)
+    Makie.set_close_to!(sl, 30)
+
+    gl = GridLayout(f[5, 1:3])
+    Textbox(gl[1, 1])
+    Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0, 
+        placeholder = "test string", fontsize = 16, textcolor_placeholder = :blue)
+    tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20, 
+        fontsize =10, textcolor = :red, boxcolor = :lightblue)
+    Makie.set!(tb, "some string")
+
+    f
+end
