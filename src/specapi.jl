@@ -190,6 +190,35 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
+function get_num_color(plot::PlotSpec)
+    if plot.type in [:Heatmap, :Image, :Surface]
+        z = plot.args[end]
+        if z isa AbstractMatrix{<: Real}
+            return z
+        end
+    else
+        if haskey(plot.kwargs, :color) && plot.kwargs[:color] isa AbstractArray{<:Real}
+            return plot.kwargs[:color]
+        end
+    end
+    return nothing
+end
+
+function extract_colorbar_kw!(attr, plot::PlotSpec)
+    for k in [:colorrange, :colormap, :lowclip, :highclip, :nan_color]
+        if haskey(plot.kwargs, k)
+            attr[k] = plot.kwargs[k]
+        end
+    end
+    if !haskey(plot.kwargs, :colorrange)
+        color = get_num_color(plot)
+        if !isnothing(color)
+            attr[:colorrange] = nan_extrema(color)
+        end
+    end
+    return attr
+end
+
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
@@ -201,8 +230,16 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
         attr[:entrygroups] = entrygroups
         return BlockSpec(typ, attr, plots)
     else
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                extract_colorbar_kw!(attr, args[1])
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for Colorbar. Found: $(args)")
+            end
+        end
         if !isempty(args)
-            error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
+            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
         end
         return BlockSpec(typ, attr, plots)
     end
