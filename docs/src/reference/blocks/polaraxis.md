@@ -80,7 +80,7 @@ Note that by default translations in adjustments of rmin and thetalimits are blo
 These can be unblocked by calling `autolimits!(ax[, true])` which also tells the PolarAxis to derive r- and thetalimits freely from data, or by setting `ax.fixrmin[] = false` and `ax.thetazoomlock[] = false`.
 
 
-## Plot type compatability
+## Plot type compatibility
 
 Not every plot type is compatible with the polar transform.
 For example `image` is not as it expects to be drawn on a rectangle.

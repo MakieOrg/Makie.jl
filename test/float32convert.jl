@@ -16,7 +16,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
     f32min = Float64(floatmin(Float32)) * f32c.resolution
     f32eps = Float64(eps(Float32)) * f32c.resolution
 
-    @testset "Intialization" begin
+    @testset "Initialization" begin
         @test f32c.scaling[] == unit_scaling
         @test f32c.resolution == 1f4 # this may be subject to change
     end

@@ -8,7 +8,7 @@ scene = Scene(;
     clear = true,
     # the camera struct of the scene.
     visible = true,
-    # ssao and light are explained in more detail in `Documetation/Lighting`
+    # ssao and light are explained in more detail in `Documentation/Lighting`
     ssao = Makie.SSAO(),
     # Creates lights from theme, which right now defaults to `
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`

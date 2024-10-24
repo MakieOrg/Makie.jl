@@ -30,7 +30,7 @@ function (sp::StandardPrerender)()
         glDepthFunc(GL_LEQUAL)
     end
 
-    # Disable cullface for now, untill all rendering code is corrected!
+    # Disable cullface for now, until all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 

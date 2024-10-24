@@ -317,7 +317,7 @@ end
 
 function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
-        # if no plots inserted, this truely is an atomic
+        # if no plots inserted, this truly is an atomic
         if isempty(plot.plots)
             plot_data = serialize_three(scene, plot)
             plot_data[:uuid] = js_uuid(plot)

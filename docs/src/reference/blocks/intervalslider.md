@@ -16,7 +16,7 @@ If the mouse hovers over the central area of the interval and both buttons are e
 You can double-click the slider to reset it to the values present in `startvalues`.
 If `startvalues === Makie.automatic`, the full interval will be selected (this is the default).
 
-If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available values when releasing the mouse.
+If you set the attribute `snap = false`, the slider will move continuously while dragging and only jump to the closest available values when releasing the mouse.
 
 ```@example intervalslider
 using GLMakie

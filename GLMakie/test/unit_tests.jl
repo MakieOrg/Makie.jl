@@ -133,7 +133,7 @@ end
     end
 end
 
-@testset "emtpy!(fig)" begin
+@testset "empty!(fig)" begin
     GLMakie.closeall()
     fig = Figure()
     ax = Axis(fig[1,1])

@@ -126,7 +126,7 @@ setting the colorrange explicitly, so that it is independent of the data shown b
 that particular heatmap.
 
 Since the heatmaps in the example below have the same colorrange and colormap, any of them
-can be passed to `Colorbar` to give the colorbar the same attributes. Alternativly,
+can be passed to `Colorbar` to give the colorbar the same attributes. Alternatively,
 the colorbar attributes can be set explicitly.
 
 ```@figure

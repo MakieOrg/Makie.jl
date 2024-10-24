@@ -11,7 +11,7 @@ This is necessary to ensure the value is actually present in the `range` attribu
 
 You can double-click the slider to reset it (approximately) to the value present in `startvalue`.
 
-If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
+If you set the attribute `snap = false`, the slider will move continuously while dragging and only jump to the closest available value when releasing the mouse.
 
 ```@figure backend=GLMakie
 

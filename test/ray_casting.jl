@@ -276,7 +276,7 @@
         end
     end
 
-    # Optional - show selected positon
+    # Optional - show selected position
     # This may change the camera, so don't use it for test values
     # for apply_transform = false, add `transformation = transform`
     scatter!(scene, pos, color = :red, strokewidth = 1.0, strokecolor = :yellow, depth_shift = -1f-1)

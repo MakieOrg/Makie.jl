@@ -189,7 +189,7 @@ function plot!(plot::Text{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:Point}}}})
         pos_unequal = positions.val != poss
         strings_unequal && (strings.val = strs)
         pos_unequal && (positions.val = poss)
-        # Check for equality very imortant, otherwise we get an infinite loop
+        # Check for equality very important, otherwise we get an infinite loop
         strings_unequal && notify(strings)
         pos_unequal && notify(positions)
 

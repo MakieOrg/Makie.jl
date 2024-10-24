@@ -160,7 +160,7 @@ function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primi
 end
 
 """
-Renders `amount` instances of an not indexed geoemtry geometry
+Renders `amount` instances of an not indexed geometry geometry
 """
 function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)

@@ -61,7 +61,7 @@ end
     @test svg_isnt_rasterized(poly(MultiPolyWrapper([poly1, poly1]); color=[:red, :blue]))
 end
 
-@testset "reproducable svg ids" begin
+@testset "reproducible svg ids" begin
     # https://github.com/MakieOrg/Makie.jl/issues/2406
     f, ax, sc = scatter(1:10)
     save("test1.svg", f)

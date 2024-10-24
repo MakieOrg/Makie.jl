@@ -571,7 +571,7 @@ function destroy!(rob::RenderObject)
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 
             # TODO, refcounting, or leaving freeing to GC...
-            # GC is a bit tricky with active contexts, so immediate free is prefered.
+            # GC is a bit tricky with active contexts, so immediate free is preferred.
             # I guess as long as we make it hard for users to share buffers directly, this should be fine!
             GLAbstraction.free(v)
         end
@@ -978,7 +978,7 @@ function renderloop(screen)
     end
     if screen.close_after_renderloop
         try
-            @debug("Closing screen after quiting renderloop!")
+            @debug("Closing screen after quitting renderloop!")
             close(screen)
         catch e
             @warn "error closing screen" exception=(e, Base.catch_backtrace())

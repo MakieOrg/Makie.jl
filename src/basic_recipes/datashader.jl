@@ -15,10 +15,10 @@ abstract type AggOp end
 using Makie
 canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
 aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
-aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
-# Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
-image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
-surface!(canvas; operation=equalize_histogram, local_operation=identiy)
+aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
+# Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
+image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
+surface!(canvas; operation=equalize_histogram, local_operation=identity)
 ```
 """
 mutable struct Canvas
@@ -291,7 +291,7 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 @recipe DataShader (points,) begin
     """
     Can be `AggCount()`, `AggAny()` or `AggMean()`.
-    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accomodate the output of `local_operation`.
+    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accommodate the output of `local_operation`.
     User-extensible by overloading:
     ```julia
     struct MyAgg{T} <: Makie.AggOp end
@@ -500,7 +500,7 @@ function legendelements(plot::FakePlot, legend)
     return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
 end
 
-# Sadly we must define the colorbar here and cant use the default fallback,
+# Sadly we must define the colorbar here and can't use the default fallback,
 # Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?

@@ -177,7 +177,7 @@ rainclouds!(
     plot_boxplots = false,
     color = colors[indexin(category_labels, unique(category_labels))])
 
-# Plots wiht more categories
+# Plots with more categories
 # dist_between_categories (0.6, 1.0)
 # with and without clouds
 

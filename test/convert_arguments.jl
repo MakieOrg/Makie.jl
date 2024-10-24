@@ -68,7 +68,7 @@ end
     @test_throws ArgumentError heatmap(1im)
 end
 
-# custom vector type to ensure that the conversion can be overriden for vectors
+# custom vector type to ensure that the conversion can be overridden for vectors
 struct MyConvVector <: AbstractVector{Float64} end
 Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 

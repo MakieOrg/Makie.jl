@@ -276,7 +276,7 @@ function group_files(path, input_filename, output_filename)
         end
     end
 
-    # generate new structed file
+    # generate new structured file
     open(joinpath(path, output_filename), "w") do file
         for (filename, valid) in data
             println(file,

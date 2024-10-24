@@ -21,7 +21,7 @@ include("interaction/iodevices.jl")
 
 Identifies the source of a tick:
 - `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
-- `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
+- `UnknownTickState`: A tick from an uncategorized source (e.g. initialization of Events).
 - `PausedRenderTick`: A tick from a paused renderloop.
 - `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
 - `RegularRenderTick`: A tick from a running renderloop where a new image was produced.

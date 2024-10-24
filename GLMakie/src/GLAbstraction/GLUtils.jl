@@ -28,7 +28,7 @@ gen_defaults! dict begin
     a = 55
     b = a * 2 # variables, like a, will get made visible in local scope
     c::JuliaType = X # `c` needs to be of type JuliaType. `c` will be made available with it's original type and then converted to JuliaType when inserted into `dict`
-    d = x => GLType # OpenGL convert target. Get's only applied if `x` is convertible to GLType. Will only be converted when passed to RenderObject
+    d = x => GLType # OpenGL convert target. Gets only applied if `x` is convertible to GLType. Will only be converted when passed to RenderObject
     d = x => \"doc string\"
     d = x => (GLType, \"doc string and gl target\")
 end
@@ -39,12 +39,12 @@ macro gen_defaults!(dict, args)
         a = 55
         b = a * 2 # variables, like a, will get made visible in local scope
         c::JuliaType = X # c needs to be of type JuliaType. c will be made available with it's original type and then converted to JuliaType when inserted into data
-        d = x => GLType # OpenGL convert target. Get's only applied if x is convertible to GLType. Will only be converted when passed to RenderObject
+        d = x => GLType # OpenGL convert target. Gets only applied if x is convertible to GLType. Will only be converted when passed to RenderObject
     end")
     tuple_list = args.args
     dictsym = gensym()
     return_expression = Expr(:block)
-    push!(return_expression.args, :($dictsym = $dict)) # dict could also be an expression, so we need to asign it to a variable at the beginning
+    push!(return_expression.args, :($dictsym = $dict)) # dict could also be an expression, so we need to assign it to a variable at the beginning
     push!(return_expression.args, :(gl_convert_targets = get!($dictsym, :gl_convert_targets, Dict{Symbol, Any}()))) # exceptions for glconvert.
     push!(return_expression.args, :(doc_strings = get!($dictsym, :doc_string, Dict{Symbol, Any}()))) # exceptions for glconvert.
     # @gen_defaults can be used multiple times, so we need to reuse gl_convert_targets if already in here

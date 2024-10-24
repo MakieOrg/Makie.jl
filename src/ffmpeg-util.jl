@@ -50,7 +50,7 @@ struct VideoStreamOptions
             pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
 
         if !isa(framerate, Integer)
-            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
+            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
             framerate = round(Int, framerate)
         end
 

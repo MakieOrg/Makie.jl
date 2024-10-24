@@ -230,7 +230,7 @@ Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
 
 
-        # Reset state so this is indepentent from the last checks
+        # Reset state so this is independent from the last checks
         scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)

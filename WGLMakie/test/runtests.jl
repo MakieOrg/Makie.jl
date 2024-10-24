@@ -10,7 +10,7 @@ import Electron
     @testset for mime in Makie.WEB_MIMES
         @test showable(mime(), f)
     end
-    # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html
+    # I guess we explicitly don't say we can show those since it's highly Inefficient compared to html
     # See: https://github.com/MakieOrg/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
     @test !showable("image/png", f)
     @test !showable("image/jpeg", f)

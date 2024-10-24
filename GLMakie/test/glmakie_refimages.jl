@@ -10,7 +10,7 @@ using ReferenceTests.RNG
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
     scene = image(x)
-    # indexing will go straight to the GPU, while only transfering the changes
+    # indexing will go straight to the GPU, while only transferring the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)
     Makie.step!(st)
