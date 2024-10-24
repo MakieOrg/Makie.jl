@@ -63,7 +63,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     filter!(((id, idx),) -> haskey(lookup, id), selection)
     return map(selection) do (id, idx)
         plt = lookup[id]
-        return (plt, idx + !(plt isa Volume))
+        return (plt, Int(idx) + !(plt isa Volume))
     end
 end
 
