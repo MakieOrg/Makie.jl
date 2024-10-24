@@ -967,8 +967,8 @@ function autolimits(ax::Axis, dim::Integer)
     return lims
 end
 
-xautolimits(ax::Axis) = autolimits(ax, 1)
-yautolimits(ax::Axis) = autolimits(ax, 2)
+xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
+yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
 
 """
     linkaxes!(a::Axis, others...)
@@ -1101,7 +1101,7 @@ end
 Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hidexdecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     if label
         la.xlabelvisible = false
@@ -1130,7 +1130,7 @@ end
 Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hideydecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     if label
         la.ylabelvisible = false
@@ -1161,7 +1161,7 @@ Keyword arguments can be used to disable hiding of certain types of decorations.
 
 See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
-function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hidedecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
         minorgrid = minorgrid, minorticks = minorticks)
@@ -1191,13 +1191,14 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
         end
     end
 end
+hidespines!(spines::Symbol...) = hidespines!(current_axis(), spines...)
 
 """
     space = tight_yticklabel_spacing!(ax::Axis)
 
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_yticklabel_spacing!(ax::Axis)
+function tight_yticklabel_spacing!(ax::Axis = current_axis())
     space = tight_ticklabel_spacing!(ax.yaxis)
     return space
 end
@@ -1207,7 +1208,7 @@ end
 
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_xticklabel_spacing!(ax::Axis)
+function tight_xticklabel_spacing!(ax::Axis = current_axis())
     space = tight_ticklabel_spacing!(ax.xaxis)
     return space
 end
@@ -1217,7 +1218,7 @@ end
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
-function tight_ticklabel_spacing!(ax::Axis)
+function tight_ticklabel_spacing!(ax::Axis = current_axis())
     tight_xticklabel_spacing!(ax)
     tight_yticklabel_spacing!(ax)
     return
