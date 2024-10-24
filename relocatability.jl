@@ -41,7 +41,7 @@ end
 paths = ["MakieCore", "Makie", BACKEND]
 Pkg.add(map(x -> (; name=x, rev=commit), paths))
 if BACKEND == "WGLMakie"
-    Pkg.add("Electron")
+    pkg"add Electron@5.1"
 end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
