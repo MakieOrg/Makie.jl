@@ -32,14 +32,12 @@ Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
 makie_dir = @__DIR__
-commit = cd(makie_dir) do
-    chomp(read(`git rev-parse --verify HEAD`, String))
-end
 
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
 # Since, package dir is much easier to move then the active project (on windows at least).
-paths = ["MakieCore", "Makie", BACKEND]
-Pkg.add(map(x -> (; name=x, rev=commit), paths))
+paths = ["MakieCore", "", BACKEND]
+Pkg.develop(map(x -> (; path=joinpath(makie_dir, x)), paths))
+
 if BACKEND == "WGLMakie"
     pkg"add Electron@5.1"
 end
@@ -62,7 +60,9 @@ p = run(`$(exe)`)
 julia_pkg_dir = joinpath(Base.DEPOT_PATH[1], "packages")
 @test isdir(julia_pkg_dir)
 mvd_julia_pkg_dir = julia_pkg_dir * ".old"
-mv(julia_pkg_dir, mvd_julia_pkg_dir, force = true)
+new_makie_dir = makie_dir * ".old"
+mv(julia_pkg_dir, mvd_julia_pkg_dir; force=true)
+mv(makie_dir, new_makie_dir; force=true)
 # Move package dir so that we can test relocatability (hardcoded paths to package dir being invalid now)
 try
     @info "Running executable in relocated mode..."
@@ -70,4 +70,5 @@ try
     @test p2.exitcode == 0
 finally
     mv(mvd_julia_pkg_dir, julia_pkg_dir)
+    mv(new_makie_dir, makie_dir)
 end
