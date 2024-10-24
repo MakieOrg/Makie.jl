@@ -665,15 +665,16 @@ function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:alwa
     end
     tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
     translate!(tt, 0, 0, depth)
-    onany(b.blockscene.events.mouseposition, visible) do mp, v
+    onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
         tt.visible[] = if v == :never
             false
         elseif v == :hover
-            mp in b.layoutobservables.computedbbox[]
+            mp in bbox
         else
             v == :always || @error("invalid value for tooltip visible, using :always")
             true
         end
     end
+    notify(b.blockscene.events.mouseposition)
     return tt
 end
