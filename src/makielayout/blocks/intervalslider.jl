@@ -228,10 +228,7 @@ function initialize_block!(isl::IntervalSlider)
         return Consume(true)
     end
 
-    setfield!(isl, :hovering, Observable(false))
-
     onmouseover(mouseevents) do event
-        isl.hovering[] = true
         fraction = if isl.horizontal[]
             (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
@@ -253,7 +250,6 @@ function initialize_block!(isl::IntervalSlider)
     end
 
     onmouseout(mouseevents) do event
-        isl.hovering[] = false
         state[] = :none
         return Consume(false)
     end

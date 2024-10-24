@@ -28,10 +28,6 @@ function register_events!(ax, scene)
     setfield!(ax, :keysevents, keysevents)
     evs = events(scene)
 
-    setfield!(ax, :hovering, Observable(false))
-    onmouseover(_ -> ax.hovering[] = true, mouseeventhandle)
-    onmouseout(_ -> ax.hovering[] = false, mouseeventhandle)
-
     on(scene, evs.scroll) do s
         if is_mouseinside(scene)
             result = setindex!(scrollevents, ScrollEvent(s[1], s[2]))

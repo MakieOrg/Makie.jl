@@ -91,10 +91,6 @@ function initialize_block!(sl::Slider)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
-    setfield!(sl, :hovering, Observable(false))
-    onmouseover(_ -> sl.hovering[] = true, mouseevents)
-    onmouseout(_ -> sl.hovering[] = false, mouseevents)
-
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
         dif = event.px - event.prev_px
