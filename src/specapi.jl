@@ -190,7 +190,7 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
-function get_num_color(plot::PlotSpec)
+function get_numeric_colors(plot::PlotSpec)
     if plot.type in [:Heatmap, :Image, :Surface]
         z = plot.args[end]
         if z isa AbstractMatrix{<: Real}
@@ -204,6 +204,14 @@ function get_num_color(plot::PlotSpec)
     return nothing
 end
 
+
+# TODO it's really hard to get from PlotSpec -> Plot object in the
+# Colorbar constructor (to_layoutable),
+# since the plot may not be created yet and may change when calling
+# update_layoutable!. So for now, we manually extract the Colorbar arguments from the spec
+# Which is a bit brittle and won't work for Recipes which overload the Colorbar api (extract_colormap)
+# We hope to improve the situation after the observable refactor, which may bring us a bit closer to
+# Being able to use the Plot object itself instead of a spec.
 function extract_colorbar_kw!(attr, plot::PlotSpec)
     for k in [:colorrange, :colormap, :lowclip, :highclip, :nan_color]
         if haskey(plot.kwargs, k)
@@ -211,7 +219,7 @@ function extract_colorbar_kw!(attr, plot::PlotSpec)
         end
     end
     if !haskey(plot.kwargs, :colorrange)
-        color = get_num_color(plot)
+        color = get_numeric_colors(plot)
         if !isnothing(color)
             attr[:colorrange] = nan_extrema(color)
         end
