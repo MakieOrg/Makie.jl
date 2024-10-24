@@ -557,12 +557,17 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
+
+
 function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
     tex = get_texture!(gl_texture_atlas())
+
     for (k, v) in rob.uniforms
+        # we don't control these uniforms
+        GLAbstraction.is_camera_uniform(k) && continue
         if v isa Observable
             Observables.clear(v)
         elseif v isa GPUArray && v !== tex
@@ -1005,7 +1010,7 @@ function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
     for (i, (z, screen_id, robj)) in enumerate(screen.renderlist)
         if haskey(robj_to_plot, robj.id)
             plot_obj = robj_to_plot[robj.id]
-            connect_camera!(plot_obj, robj.uniforms, new_cam, plot_obj.space[])
+            connect_camera!(screen, plot_obj, robj.uniforms, new_cam, plot_obj.space[])
             screen.renderlist[i] = (z, scene_id, robj)
         end
     end

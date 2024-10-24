@@ -138,71 +138,33 @@ function to_glvisualize_key(k)
     return k
 end
 
-function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
+function connect_camera!(screen::Screen, plot::Plot, uniforms, cam::Camera, space = uniforms[:space])
     # Overwrite these, user defined attributes shouldn't use those!
-    function clean_lift!(f, attr)
-        if haskey(gl_attributes, attr)
-            Observables.clear(gl_attributes[attr])
-        end
-        gl_attributes[attr] = f()
-    end
-    clean_lift!(:pixel_space) do
-        return lift(Mat4f, plot, cam.pixel_space)
-    end
-
-    clean_lift!(:pixel_space) do
-        return lift(Mat4f, plot, cam.pixel_space)
-    end
-
-    gl_attributes[:pixel_space] = lift(Mat4f, plot, cam.pixel_space)
-    gl_attributes[:eyeposition] = lift(identity, plot, cam.eyeposition)
-
-    get!(gl_attributes, :view) do
-        # get!(cam.calculated_values, Symbol("view_$(space[])")) do
-            return lift(plot, cam.view, space) do view, space
-                return is_data_space(space) ? Mat4f(view) : Mat4f(I)
-            end
-        # end
-    end
+    uniforms[:eyeposition] = cam.eyeposition
+    uniforms[:px_per_unit] = screen.px_per_unit
+    uniforms[:pixel_space] = Makie.get_pixelspace(cam)
+    uniforms[:view] = Makie.get_view(cam, to_value(space))
+    uniforms[:projection] = Makie.get_projection(cam, to_value(space))
+    uniforms[:projectionview] = Makie.get_projectionview(cam, to_value(space))
+    # resolution in real hardware pixels, not scaled pixels/units
+    uniforms[:resolution] = Makie.get_ppu_resolution(cam, to_value(screen.px_per_unit))
 
     # for lighting
-    get!(gl_attributes, :world_normalmatrix) do
-        return lift(plot, gl_attributes[:model]) do m
+    get!(uniforms, :world_normalmatrix) do
+        return lift(plot, uniforms[:model]) do m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(m[i, i])))
         end
     end
-
     # for SSAO
-    get!(gl_attributes, :view_normalmatrix) do
-        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
+    get!(uniforms, :view_normalmatrix) do
+        return lift(plot, uniforms[:view], uniforms[:model]) do v, m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(v[i, i] * m[i, i])))
         end
     end
-    get!(gl_attributes, :projection) do
-        # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
-            return lift(plot, cam.projection, cam.pixel_space, space) do _, _, space
-                return Mat4f(Makie.space_to_clip(cam, space, false))
-            end
-        # end
-    end
-    get!(gl_attributes, :projectionview) do
-        # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
-            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
-                return Mat4f(Makie.space_to_clip(cam, space, true))
-            end
-        # end
-    end
-    # resolution in real hardware pixels, not scaled pixels/units
-    get!(gl_attributes, :resolution) do
-        # get!(cam.calculated_values, :resolution) do
-            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
-        # end
-    end
-
-    delete!(gl_attributes, :space)
-    delete!(gl_attributes, :markerspace)
+    delete!(uniforms, :space)
+    delete!(uniforms, :markerspace)
     return nothing
 end
 
@@ -284,7 +246,6 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             gl_attributes[:markerspace] = plot.markerspace
         end
         gl_attributes[:space] = plot.space
-        gl_attributes[:px_per_unit] = screen.px_per_unit
 
         # Handle clip planes
         # OpenGL supports up to 8
@@ -310,7 +271,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
 
         handle_intensities!(screen, gl_attributes, plot)
-        connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
+        connect_camera!(screen, plot, gl_attributes, scene.camera, get_space(plot))
 
         # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
