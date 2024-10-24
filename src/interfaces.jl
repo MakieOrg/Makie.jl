@@ -59,27 +59,27 @@ function calculated_attributes!(::Type{<:Text}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Scatter}, plot)
-    # calculate base case
-    color_and_colormap!(plot)
+# function calculated_attributes!(::Type{<: Scatter}, plot)
+#     # calculate base case
+#     color_and_colormap!(plot)
 
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        return lift(plot, plot[:markersize]) do msize
-            return to_2d_scale(map(x -> x .* -0.5f0, msize))
-        end
-    end
+#     replace_automatic!(plot, :marker_offset) do
+#         # default to middle
+#         return lift(plot, plot[:markersize]) do msize
+#             return to_2d_scale(map(x -> x .* -0.5f0, msize))
+#         end
+#     end
 
-    replace_automatic!(plot, :markerspace) do
-        lift(plot, plot.markersize) do ms
-            if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
-                return :pixel
-            else
-                return :data
-            end
-        end
-    end
-end
+#     replace_automatic!(plot, :markerspace) do
+#         lift(plot, plot.markersize) do ms
+#             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
+#                 return :pixel
+#             else
+#                 return :data
+#             end
+#         end
+#     end
+# end
 
 function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
     pos = plot[1][]
@@ -405,6 +405,11 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
         plot.kw_obs[] = map(x -> x[1] => x[2], zipped)
         return
     end
+
+    # Initialize - force all plot.computed to get calculated
+    union!(plot.updated_inputs[], keys(plot.attributes))
+    resolve_updates!(plot)
+
     return plot
 end
 

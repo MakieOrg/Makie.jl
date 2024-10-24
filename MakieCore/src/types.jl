@@ -121,13 +121,19 @@ function update!(plot::Plot; kwargs...)
     return
 end
 
+# TODO: maybe extra arg to do partial resolve
+# e.g. resolve_updates(plot, Set((:this_one, :that_one)))
 """
 TODO: docs
 
 update resolution falls back to Observable triggers for compat
 """
 function resolve_updates!(plot::Plot)
-    foreach(k -> notify(plot[k]), plot.updated_inputs[])
+    for k in plot.updated_inputs[]
+        if haskey(plot.attributes, k) && isa(plot.attributes[k], Observable)
+            notify(plot.attributes[k])
+        end
+    end
     empty!(plot.updated_inputs[])
     return
 end

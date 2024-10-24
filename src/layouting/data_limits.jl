@@ -85,21 +85,23 @@ end
 
 function data_limits(plot::Scatter)
     if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot.marker_offset[],
-            plot
-        )
-        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        # TODO: technically also args?
+        resolve_updates!(plot) 
+
+        atlas = get_texture_atlas()
+        font = get(plot.attributes, :font, defaultfont())
+        scale = Makie.rescale_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize])
+        offset = Makie.offset_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize], 
+            plot.computed[:marker_offset])
+        rotations = plot.computed[:rotation]
 
         bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
             marker_pos = to_ndim(Point3d, p, 0)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
+            quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotations, i)
 
             quad_origin = quad_rotation * quad_origin

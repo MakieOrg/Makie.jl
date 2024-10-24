@@ -121,12 +121,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
     @assert !haskey(screen.cache, objectid(plot))
 
-    # TODO: maybe on plot init?
-    # Prepare - force all computed to get calculated
-    union!(plot.updated_inputs[], keys(plot.attributes))
-    Makie.resolve_updates!(plot) # make sure we have computed values to set defaults
-
-
 
     # TODO: make these obsolete
     # Set up additional triggers
@@ -282,7 +276,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
         # Makie Update
         Makie.resolve_updates!(plot)
-        
+
+        @info "Triggered with $(plot.updated_outputs[])"
+
         if isempty(plot.updated_outputs[])
             return
         else
@@ -330,13 +326,22 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             robj.vertexarray.indices = length(positions)
         end
 
-        if any(needs_update, (:marker, :makersize, :marker_offset))
-            robj[:scale] = Makie.rescale_marker(
+        if any(needs_update, (:marker, :markersize, :marker_offset))
+            scale = Makie.rescale_marker(
                 atlas, plot.computed[:marker], font, plot.computed[:markersize])
-
-            robj[:quad_offset] = Makie.offset_marker(
+            quad_offset = Makie.offset_marker(
                 atlas, plot.computed[:marker], font, plot.computed[:markersize], 
                 plot.computed[:marker_offset])
+            
+            for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
+                if haskey(robj.uniforms, k)
+                    robj.uniforms[k] = scale
+                elseif haskey(robj.vertexarray.buffers, string(k))
+                    update!(robj.vertexarray.buffers[string(k)], scale)
+                else
+                    error("Did not find $k")
+                end
+            end
         end
 
         update_clip_planes!(robj, plot)
@@ -364,7 +369,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             # Specials
             if key == :marker
                 shape = Cint(Makie.marker_to_sdf_shape(val))
-                if shape == 0 && !is_all_equal_scale(robj[:scale]) # Note: scale set already
+                if shape == 0 && !is_all_equal_scale(plot.computed[:markersize])
                     robj[:shape] = Cint(5) # circle -> ellipse
                 else
                     robj[:shape] = shape
@@ -402,6 +407,12 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 else
                     update!(robj[glkey], val)
                 end
+
+            # TODO: colorrange should be colorrange_scaled
+            # has been tested as color -> color, but not color_scaled -> intensity
+            elseif (key == :color_scaled) && haskey(robj.vertexarray.buffers, "intensity")
+                update!(robj.vertexarray.buffers["intensity"], val)
+
             else
                 printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
             end

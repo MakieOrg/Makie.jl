@@ -68,15 +68,18 @@ end
 
 function boundingbox(plot::Scatter)
     if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot.marker_offset[],
-            plot
-        )
-        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        # TODO: technically also args?
+        resolve_updates!(plot) 
+
+        atlas = get_texture_atlas()
+        font = get(plot.attributes, :font, defaultfont())
+        scale = Makie.rescale_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize])
+        offset = Makie.offset_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize], 
+            plot.computed[:marker_offset])
+        rotations = plot.computed[:rotation]
+
         model = plot.model[]
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
         transform_marker = to_value(get(plot, :transform_marker, false))::Bool
@@ -89,8 +92,8 @@ function boundingbox(plot::Scatter)
                 continue
             end
 
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
+            quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotations, i)
 
             if transform_marker

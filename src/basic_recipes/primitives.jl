@@ -67,10 +67,12 @@ function resolve_updates!(plot::Scatter)
     if (plot.attributes[:marker_offset][] === automatic) &&
         (in(:marker_offset, flagged) || in(:markersize, flagged))
 
-        ms = plot.computed[:markersize][]
+        @info "triggered"
+        ms = plot.computed[:markersize]
         plot.computed[:marker_offset] = to_2d_scale(-0.5f0 .* ms)
         push!(plot.updated_outputs[], :marker_offset)
     end
+    @assert plot.computed[:marker_offset] !== automatic
 
     # markerspace - why not just remove this? we don't auto it anyway?
 
@@ -148,11 +150,11 @@ function resolve_color_update!(plot)
         end
 
         for (k, default) in zip((:lowclip, :highclip), (first, last))
-            if (k in flagged)
-                plot.computed[k] = if plot[k][] === automatic
-                    default(plot.computed[:colormap])
-                else 
-                    to_color(plot[k][])
+            if (k in flagged) || (:colormap in flagged)
+                if plot[k][] === automatic
+                    plot.computed[k] = default(plot.computed[:colormap])
+                elseif k in flagged
+                    plot.computed[k] = to_color(plot[k][])
                 end
                 push!(plot.updated_outputs[], k)
             end
