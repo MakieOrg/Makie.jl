@@ -48,17 +48,13 @@ function initialize_block!(b::Button)
 
     mouseevents = addmouseevents!(scene, b.layoutobservables.computedbbox)
 
-    setfield!(b, :hovering, Observable(false))
-
     onmouseover(mouseevents) do _
         mousestate[] = :hover
-        b.hovering[] = true
         return Consume(false)
     end
 
     onmouseout(mouseevents) do _
         mousestate[] = :out
-        b.hovering[] = false
         return Consume(false)
     end
 

@@ -132,10 +132,6 @@ function initialize_block!(ax::Axis3)
         return Consume(false)
     end
 
-    setfield!(ax, :hovering, Observable(false))
-    onmouseover(_ -> ax.hovering[] = true, ax.mouseeventhandle)
-    onmouseout(_ -> ax.hovering[] = false, ax.mouseeventhandle)
-
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
     on(scene, ax.limits) do lims

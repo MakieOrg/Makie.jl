@@ -11,11 +11,6 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
     scenekw = merge((clear = false, camera=cam3d!), scenekw)
     ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); scenekw...)
 
-    setfield!(ls, :hovering, Observable(false))
-    mouseeventhandle = addmouseevents!(ls.scene)
-    onmouseover(_ -> ls.hovering[] = true, mouseeventhandle)
-    onmouseout(_ -> ls.hovering[] = false, mouseeventhandle)
-
     on(blockscene, ls.show_axis) do show_axis
         ax = ls.scene[OldAxis]
         if show_axis

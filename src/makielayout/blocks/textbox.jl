@@ -25,7 +25,6 @@ function initialize_block!(tbox::Textbox)
     end
 
     hovering = Observable(false)
-    setfield!(tbox, :hovering, hovering)
     realbordercolor = Observable{RGBAf}()
 
     map!(topscene, realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,

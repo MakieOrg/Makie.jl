@@ -226,7 +226,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     xaxis::LineAxis
     yaxis::LineAxis
     elements::Dict{Symbol, Any}
-    hovering::Observable{Bool}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -917,7 +916,6 @@ end
 
 @Block Slider begin
     selected_index::Observable{Int}
-    hovering::Observable{Bool}
     @attributes begin
         "The horizontal alignment of the element in its suggested bounding box."
         halign = :center
@@ -1018,7 +1016,6 @@ end
 @Block IntervalSlider begin
     selected_indices::Observable{Tuple{Int, Int}}
     displayed_sliderfractions::Observable{Tuple{Float64, Float64}}
-    hovering::Observable{Bool}
     @attributes begin
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
@@ -1056,7 +1053,6 @@ end
 end
 
 @Block Button begin
-    hovering::Observable{Bool}
     @attributes begin
         "The horizontal alignment of the button in its suggested boundingbox"
         halign = :center
@@ -1157,7 +1153,6 @@ const CHECKMARK_BEZIER = scale(BezierPath(
 end
 
 @Block Toggle begin
-    hovering::Observable{Bool}
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
@@ -1240,7 +1235,6 @@ end
 ```
 """
 @Block Menu begin
-    hovering::Observable{Bool}
     @attributes begin
         "The height setting of the menu."
         height = Auto()
@@ -1449,7 +1443,6 @@ end
 
 @Block LScene <: AbstractAxis begin
     scene::Scene
-    hovering::Observable{Bool}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -1486,7 +1479,6 @@ end
 @Block Textbox begin
     cursorindex::Observable{Int}
     cursoranimtask
-    hovering::Observable{Bool}
     @attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -1562,7 +1554,6 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    hovering::Observable{Bool}
     @attributes begin
         """
         Global state for the x dimension conversion.

@@ -171,8 +171,6 @@ function initialize_block!(m::Menu; default = 1)
         return false
     end
 
-    setfield!(m, :hovering, Observable(false))
-
     onany(blockscene, e.mouseposition, e.mousebutton; priority=64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
@@ -213,12 +211,10 @@ function initialize_block!(m::Menu; default = 1)
                     end
                     return Consume(true)
                 else # HOVER
-                    m.hovering[] = true
                     selectionpoly.color = m.cell_color_hover[]
                 end
             else
                 # If not inside anymore, invalidate was_pressed
-                m.hovering[] = false
                 was_pressed_button[] = false
             end
         end
