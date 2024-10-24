@@ -333,18 +333,23 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
+    @assert !haskey(plot, :__wgl_session)
     plot_data = serialize_plots(scene, Plot[plot])
     plot_sub = Session(session)
     Bonito.init_session(plot_sub)
-    plot.__wgl_session = plot_sub
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
     Bonito.evaljs_value(plot_sub, js; timeout=50)
+    @assert !haskey(plot.attributes, :__wgl_session)
+    plot.attributes[:__wgl_session] = plot_sub
     return
 end
 
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::PlotList))
+    return nothing
+end
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes

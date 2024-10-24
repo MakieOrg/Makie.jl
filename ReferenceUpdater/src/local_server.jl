@@ -28,7 +28,7 @@ function serve_update_page_from_dir(folder)
 
         @info "Downloading latest reference folder for $tag"
         tempdir = download_refimages(tag)
-        
+
         @info "Updating files in $tempdir"
 
         for image in images_to_update
@@ -253,7 +253,7 @@ end
 
 function group_files(path, input_filename, output_filename)
     isfile(joinpath(path, output_filename)) && return
-    
+
     # Group files in new_files/missing_files into a table like layout:
     #  GLMakie  CairoMakie  WGLMakie
 
@@ -261,12 +261,12 @@ function group_files(path, input_filename, output_filename)
     data = Dict{String, Vector{Bool}}()
     open(joinpath(path, input_filename), "r") do file
         for filepath in eachline(file)
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
-                error("Failed to parse backend in \"$line\", got \"$backend\"")
+                error("Failed to parse backend in \"$pieces\", got \"$backend\"")
             end
-            
+
             filename = join(pieces[2:end], '/')
             exists = get!(data, filename, [false, false, false])
 

@@ -337,6 +337,10 @@ mutable struct RenderObject{Pre}
     end
 end
 
+function is_camera_uniform(k)
+    return k in (:eyeposition, :pixel_space, :view, :projection, :projectionview, :resolution)
+end
+
 function RenderObject(
         data::Dict{Symbol,Any}, program,
         pre::Pre, post,
@@ -364,7 +368,7 @@ function RenderObject(
     _keys = collect(keys(data))
     for k in _keys
         v = data[k]
-        v isa Observable && push!(observables, v)
+        v isa Observable && !is_camera_uniform(k) && push!(observables, v)
 
         if haskey(targets, k)
             # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes

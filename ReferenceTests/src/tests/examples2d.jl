@@ -1498,14 +1498,14 @@ end
 
 @reference_test "Violin" begin
     fig = Figure()
-    
+
     categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
     values = vcat(RNG.randn(300), (1.5 .* RNG.rand(300)).^2, -(1.5 .* RNG.rand(300)).^2)
     violin(fig[1, 1], categories, values)
 
     dodge = RNG.rand(1:2, 900)
-    violin(fig[1, 2], categories, values, dodge = dodge, 
-        color = map(d->d==1 ? :yellow : :orange, dodge), 
+    violin(fig[1, 2], categories, values, dodge = dodge,
+        color = map(d->d==1 ? :yellow : :orange, dodge),
         strokewidth = 2, strokecolor = :black, gap = 0.1, dodge_gap = 0.5
     )
 
@@ -1513,7 +1513,7 @@ end
         color = :gray, side = :left
     )
 
-    violin!(categories, values, orientation = :horizontal, 
+    violin!(categories, values, orientation = :horizontal,
         color = :yellow, side = :right, strokewidth = 2, strokecolor = :black,
         weights = abs.(values)
     )
@@ -1607,7 +1607,7 @@ end
 
 @reference_test "boxplot" begin
     fig = Figure()
-    
+
     categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
     values = RNG.randn(900) .+ range(-1, 1, length=900)
     boxplot(fig[1, 1], categories, values)
@@ -1646,16 +1646,16 @@ end
 
 @reference_test "crossbar" begin
     fig = Figure()
-    
+
     xs = [1, 1, 2, 2, 3, 3]
     ys = RNG.rand(6)
     ymins = ys .- 1
     ymaxs = ys .+ 1
     dodge = [1, 2, 1, 2, 1, 2]
-    
+
     crossbar(fig[1, 1], xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
-    
-    crossbar(fig[1, 2], xs, ys, ymins, ymaxs, 
+
+    crossbar(fig[1, 2], xs, ys, ymins, ymaxs,
         dodge = dodge, dodge_gap = 0.25,
         gap = 0.05,
         midlinecolor = :blue, midlinewidth = 5,
@@ -1679,7 +1679,7 @@ end
     w = @. x^2 * (1 - x)^2
     ecdfplot(f[1, 2], x)
     ecdfplot!(x; weights = w, color=:orange)
-    
+
     f
 end
 
@@ -1710,18 +1710,18 @@ end
     data[201:500] .-= 3
     data[501:end] .= 3 .* abs.(data[501:end]) .- 3
     labels = vcat(fill("red", 500), fill("green", 500))
-    
+
     fig = Figure()
     rainclouds(fig[1, 1], labels, data, plot_boxplots = false, cloud_width = 2.0,
         markersize = 5.0)
     rainclouds(fig[1, 2], labels, data, color = labels, orientation = :horizontal, cloud_width = 2.0)
-    rainclouds(fig[2, 1], labels, data, clouds = hist, hist_bins = 30, boxplot_nudge = 0.1, 
+    rainclouds(fig[2, 1], labels, data, clouds = hist, hist_bins = 30, boxplot_nudge = 0.1,
         center_boxplot = false, boxplot_width = 0.2, whiskerwidth = 1.0, strokewidth = 3.0)
     rainclouds(fig[2, 2], labels, data, color = labels, side = :right, violin_limits = extrema)
     fig
 end
 
-@reference_test "series" begin 
+@reference_test "series" begin
     fig = Figure()
     data = cumsum(RNG.randn(4, 21), dims = 2)
 
@@ -1729,7 +1729,7 @@ end
         linewidth = 4, linestyle = :dot, markersize = 15, solid_color = :black)
     axislegend(ax, position = :lt)
 
-    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0, 
+    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0,
         marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black)
     axislegend(ax, position = :lt)
 
@@ -1741,11 +1741,11 @@ end
 
     xs = LinRange(0, 4pi, 21)
     ys = sin.(xs)
-    
+
     stairs(f[1, 1], xs, ys)
     stairs(f[2, 1], xs, ys; step=:post, color=:blue, linestyle=:dash)
     stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
-    
+
     f
 end
 
@@ -1760,7 +1760,7 @@ end
         stemcolor = :red, color = :orange,
         markersize = 15, strokecolor = :red, strokewidth = 3,
         trunklinestyle = :dash, stemlinestyle = :dashdot)
-    
+
     stem(f[2, 1], xs, sin.(xs),
         offset = LinRange(-0.5, 0.5, 30),
         color = LinRange(0, 1, 30), colorrange = (0, 0.5),
@@ -1782,21 +1782,21 @@ end
 
     fig = Figure()
     waterfall(fig[1, 1], y)
-    waterfall(fig[1, 2], y, show_direction = true, marker_pos = :cross, 
+    waterfall(fig[1, 2], y, show_direction = true, marker_pos = :cross,
         marker_neg = :hline, direction_color = :yellow)
 
     colors = Makie.wong_colors()
     x = repeat(1:2, inner=5)
     group = repeat(1:5, outer=2)
 
-    waterfall(fig[2, 1], x, y, dodge = group, color = colors[group], 
+    waterfall(fig[2, 1], x, y, dodge = group, color = colors[group],
         show_direction = true, show_final = true, final_color=(colors[6], 1//3),
         dodge_gap = 0.1, gap = 0.05)
 
     x = repeat(1:5, outer=2)
     group = repeat(1:2, inner=5)
-        
-    waterfall(fig[2, 2], x, y, dodge = group, color = colors[group], 
+
+    waterfall(fig[2, 2], x, y, dodge = group, color = colors[group],
         show_direction = true, stack = :x, show_final = true)
 
     fig
