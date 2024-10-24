@@ -84,7 +84,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     sids = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sids)
 
-    min_dist = floatmax(Float32)
+    min_dist = ppu * ppu * range * range
     id = SelectionID{Int}(0, 0)
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
