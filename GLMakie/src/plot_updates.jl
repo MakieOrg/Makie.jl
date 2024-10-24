@@ -1,4 +1,9 @@
 function init_color!(data, plot)
+    # TODO: This switches between GLBuffer and Texture
+    # # Exception for intensity, to make it possible to handle intensity with a
+    # # different length compared to position. Intensities will be interpolated in that case
+    # data[:intensity] = intensity_convert(intensity, position)
+
     # Colormapping
     if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
         interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
@@ -16,6 +21,13 @@ function init_color!(data, plot)
             color           = plot.computed[:color] => GLBuffer
         end
     end
+
+    @gen_defaults! data begin
+        lowclip         = get(plot.computed, :lowclip,   RGBAf(0,1,0,1))
+        highclip        = get(plot.computed, :highclip,  RGBAf(0,1,1,1))
+        nan_color       = get(plot.computed, :nan_color, RGBAf(1,0,1,1))
+    end
+
     return
 end
 
@@ -117,14 +129,12 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
 end
 
 function init_generics!(data, plot)
-    @gen_defaults! data begin
-        fxaa          = get(plot.computed, :fxaa, false)
-        ssao          = get(plot.computed, :ssao, false)
-        transparency  = get(plot.computed, :transparency, false)
-        overdraw      = get(plot.computed, :overdraw, false)
-        px_per_unit   = 1f0
-        depth_shift   = get(plot.computed, :depth_shift, 0f0)
-    end
+    data[:fxaa]         = get(plot.computed, :fxaa, false)
+    data[:ssao]         = get(plot.computed, :ssao, false)
+    data[:transparency] = get(plot.computed, :transparency, false)
+    data[:overdraw]     = get(plot.computed, :overdraw, false)
+    data[:px_per_unit]  = 1f0
+    data[:depth_shift]  = get(plot.computed, :depth_shift, 0f0)
     return
 end
 
@@ -243,10 +253,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         @gen_defaults! data begin
             quad_offset     = Vec2f(0) => GLBuffer
 
-            lowclip         = get(plot.computed, :lowclip, Vec3f(0))
-            highclip        = get(plot.computed, :highclip, Vec3f(0))
-            nan_color       = get(plot.computed, :nan_color, Vec3f(0))
-
             glow_color      = plot.computed[:glowcolor] => GLBuffer
             stroke_color    = plot.computed[:strokecolor] => GLBuffer
             stroke_width    = 0f0
@@ -262,18 +268,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 "sprites.vert", "distance_shape.frag",
                 view = Dict(
                     "position_calc" => position_calc(position, nothing, nothing, nothing, GLBuffer),
-                    "buffers" => output_buffers(screen, to_value(transparency)),
-                    "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                    "buffers" => output_buffers(screen, data[:transparency]),
+                    "buffer_writes" => output_buffer_writes(screen, data[:transparency])
                 )
             )
             scale_primitive = true
             gl_primitive = GL_POINTS
         end
-
-        # TODO:
-        # # Exception for intensity, to make it possible to handle intensity with a
-        # # different length compared to position. Intensities will be interpolated in that case
-        # data[:intensity] = intensity_convert(intensity, position)
 
         robj = assemble_shader(data)
     end
