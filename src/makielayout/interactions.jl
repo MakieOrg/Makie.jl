@@ -54,11 +54,11 @@ function deregister_interaction!(parent, name::Symbol)
 end
 
 function registration_setup!(parent, interaction)
-    # do nothing in the default case
+    return parent # do nothing in the default case
 end
 
 function deregistration_cleanup!(parent, interaction)
-    # do nothing in the default case
+    return parent # do nothing in the default case
 end
 
 """
@@ -177,10 +177,9 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdragstop
-        try
-            r.callback(r.rectnode[])
-        catch e
-            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
+        newlims = r.rectnode[]
+        if !(0 in widths(newlims))
+            ax.targetlimits[] = newlims
         end
         r.active[] = false
         return Consume(true)

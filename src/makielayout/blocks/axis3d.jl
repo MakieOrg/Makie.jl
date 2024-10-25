@@ -1,3 +1,7 @@
+const DEFAULT_AXIS_3D_INTERACTIONS = Dict(
+    :dragrotate => DragRotate(),
+)
+
 struct OrthographicCamera <: AbstractCamera end
 
 function initialize_block!(ax::Axis3)
@@ -158,10 +162,9 @@ function initialize_block!(ax::Axis3)
     on(process_event, scene, ax.scrollevents)
     on(process_event, scene, ax.keysevents)
 
-    register_interaction!(ax,
-        :dragrotate,
-        DragRotate())
-
+    for (name, interaction) in DEFAULT_AXIS_3D_INTERACTIONS
+        register_interaction!(ax, name, interaction)
+    end
 
     # in case the user set limits already
     notify(ax.limits)
