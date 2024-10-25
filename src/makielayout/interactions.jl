@@ -199,6 +199,12 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_x = Keyboard.y in event.keys
     r.active[] || return Consume(false)
 
+    # Deactivate when modifier is released before the mouse.
+    if r.modifier !== true && r.modifier ∉ event.keys
+        r.active[] = false
+        return Consume(true)
+    end
+
     r.rectnode[] = _chosen_limits(r, ax)
     return Consume(true)
 end
