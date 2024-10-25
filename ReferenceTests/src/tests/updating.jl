@@ -174,7 +174,6 @@ end
     Makie.step!(st)
 end
 
-
 @reference_test "event ticks in record" begin
     # Checks whether record calculates and triggers event.tick by drawing a 
     # Point at y = 1 for each frame where it does. The animation is irrelevant
@@ -191,4 +190,29 @@ end
         f.scene.events.tick[] = Makie.Tick(Makie.UnknownTickState, 0, 0.0, 0.0)
     end
     f
+end
+
+@reference_test "updating surface size" begin
+	X = Observable(-5:5)
+	Y = Observable(-5:5)
+    Z = Observable([0.01 * x*x * y*y for x in X.val, y in Y.val])
+
+	f = Figure(size = (800, 400))
+    surface(f[1, 1], X, Y, Z)
+	surface(f[1, 2], map(collect, X), map(collect, Y), Z)
+	surface(f[1, 3], 
+        map((X, Y) -> [x for x in X, y in Y], X, Y), 
+        map((X, Y) -> [y for x in X, y in Y], X, Y), Z)
+    st = Stepper(f)
+    Makie.step!(f)
+
+    X.val = -5:0
+    Z.val = Z.val[1:6, :]
+    notify(Z)
+    Makie.step!(f)
+
+    X.val = -5:5
+    Z.val = [0.01 * x*x * y*y for x in X.val, y in Y.val]
+    notify(Z)
+    Makie.step!(f)
 end
