@@ -1,8 +1,8 @@
 const DEFAULT_AXIS_INTERACTIONS = Dict(
-    :rectanglezoom => RectangleZoom(),
-    :limitreset => LimitReset(),
-    :scrollzoom => ScrollZoom(0.1, 0.2),
-    :dragpan => DragPan(0.2),
+    :rectanglezoom => () -> RectangleZoom(),
+    :limitreset => () -> LimitReset(),
+    :scrollzoom => () -> ScrollZoom(0.1, 0.2),
+    :dragpan => () -> DragPan(0.2),
 )
 
 function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
@@ -56,8 +56,8 @@ function register_events!(ax, scene)
     onany(process_axis_event, scene, ax, scrollevents)
     onany(process_axis_event, scene, ax, keysevents)
 
-    for (name, interaction) in DEFAULT_AXIS_INTERACTIONS
-        register_interaction!(ax, name, interaction)
+    for (name, fn) in DEFAULT_AXIS_INTERACTIONS
+        register_interaction!(ax, name, fn())
     end
 
     return
