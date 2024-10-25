@@ -64,6 +64,8 @@ function init_camera!(data, scene, plot)
     # TODO: Better solution
     onany(plot, scene.camera.projectionview, scene.camera.resolution) do _, __
         push!(plot.updated_outputs[], :camera)
+        notify(plot.updated_inputs)
+        return
     end
 
     # RenderObject constructor will cleanup unused ones
@@ -148,10 +150,18 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # Set up additional triggers
 
     # TODO: Is this even dynamic?
-    on(ppu -> push!(plot.updated_outputs[], :ppu), screen.px_per_unit)
+    on(screen.px_per_unit) do ppu
+        push!(plot.updated_outputs[], :ppu)
+        notify(plot.updated_inputs)
+        return
+    end
     # f32c depend on projectionview so it doesn't need an explicit trigger (right?)
     if scene.float32convert !== nothing
-        on(_ -> push!(plot.updated_outputs[], :f32c), scene.float32convert.scaling)
+        on(scene.float32convert.scaling) do _
+            push!(plot.updated_outputs[], :f32c)
+            notify(plot.updated_inputs)
+            return
+        end
     end
 
 
@@ -284,7 +294,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         # Makie Update
         Makie.resolve_updates!(plot)
 
-        @info "Triggered with $(plot.updated_outputs[])"
+        # @info "Triggered with $(plot.updated_outputs[])"
 
         if isempty(plot.updated_outputs[])
             return
@@ -421,7 +431,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 update!(robj.vertexarray.buffers["intensity"], val)
 
             else
-                printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
+                # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
             end
         end
 

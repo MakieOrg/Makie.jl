@@ -67,7 +67,7 @@ function resolve_updates!(plot::Scatter)
     if (plot.attributes[:marker_offset][] === automatic) &&
         (in(:marker_offset, flagged) || in(:markersize, flagged))
 
-        @info "triggered"
+        # @info "triggered"
         ms = plot.computed[:markersize]
         plot.computed[:marker_offset] = to_2d_scale(-0.5f0 .* ms)
         push!(plot.updated_outputs[], :marker_offset)
