@@ -204,15 +204,15 @@ end
         map((X, Y) -> [x for x in X, y in Y], X, Y), 
         map((X, Y) -> [y for x in X, y in Y], X, Y), Z)
     st = Stepper(f)
-    Makie.step!(f)
+    Makie.step!(st)
 
     X.val = -5:0
     Z.val = Z.val[1:6, :]
     notify(Z)
-    Makie.step!(f)
+    Makie.step!(st)
 
     X.val = -5:5
     Z.val = [0.01 * x*x * y*y for x in X.val, y in Y.val]
     notify(Z)
-    Makie.step!(f)
+    Makie.step!(st)
 end
