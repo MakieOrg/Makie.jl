@@ -216,11 +216,11 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            if ispressed(ax.scene, Keyboard.left_shift)
+    if event.type === l.mouseevent
+        if ispressed(ax.scene, l.modifier1)
+            if ispressed(ax.scene, l.modifier2)
                 autolimits!(ax)
             else
                 reset_limits!(ax)

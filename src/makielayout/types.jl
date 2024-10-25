@@ -150,7 +150,19 @@ mutable struct LineAxis
 end
 
 
-struct LimitReset end
+struct LimitReset
+    mouseevent::MouseEventTypes.MouseEventType # e.g. MouseEventTypes.leftclick, or some other mouse event to start limit reset.
+    modifier1::Optional{Keyboard.Button} # e.g. Keyboard.left_control, or some other keyboard button to reset limits.
+    modifier2::Optional{Keyboard.Button} # e.g. Keyboard.left_shift, or some other keyboard button to auto limits.
+
+    function LimitReset(
+        mouseevent = MouseEventTypes.leftclick,
+        modifier1 = Keyboard.left_control,
+        modifier2 = Keyboard.left_shift,
+    )
+        new(mouseevent, modifier1, modifier2)
+    end
+end
 
 mutable struct RectangleZoom
     active::Observable{Bool}
