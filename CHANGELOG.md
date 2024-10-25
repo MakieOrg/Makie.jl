@@ -15,6 +15,7 @@
 - Fixed forced rasterization when rendering figures with `Axis3` to svg [#4463](https://github.com/MakieOrg/Makie.jl/pull/4463).
 - Changed default for `circular_rotation` in Camera3D to false, so that the camera doesn't change rotation direction anymore [4492](https://github.com/MakieOrg/Makie.jl/pull/4492)
 - Fixed `pick(scene, rect2)` in WGLMakie [#4488](https://github.com/MakieOrg/Makie.jl/pull/4488)
+- Fixed resizing of `surface` data not working correctly. (I.e. drawing out-of-bounds data or only drawing part of the data.) [#4529](https://github.com/MakieOrg/Makie.jl/pull/4529)
 
 ## [0.21.14] - 2024-10-11
 
