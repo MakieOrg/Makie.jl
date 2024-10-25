@@ -658,7 +658,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
         return true
     end
 
-    if plot.interpolate[]
+    if plot.interpolate[] || isnothing(idx)
         i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
@@ -715,7 +715,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
                 notify(p[1])
             end
         else
-            bbox = _pixelated_image_bbox(xrange, yrange, zrange, i, j, edge_based)
+            bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)

@@ -45,7 +45,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     lookup = plot_lookup(scene)
     !haskey(lookup, selection[1]) && return (nothing, 0)
     plt = lookup[selection[1]]
-    return (plt, selection[2] + !(plt isa Volume))
+    return (plt, Int(selection[2]) + !(plt isa Volume))
 end
 
 # Skips some allocations
@@ -63,9 +63,10 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     """)
     isnothing(selection) && return Tuple{Plot,Int}[]
     lookup = plot_lookup(scene)
-    return map(filter((id, idx) -> haskey(lookup, id), selection)) do (id, idx)
+    filter!(((id, idx),) -> haskey(lookup, id), selection)
+    return map(selection) do (id, idx)
         plt = lookup[id]
-        return (plt, index + !(plt isa Volume))
+        return (plt, Int(idx) + !(plt isa Volume))
     end
 end
 
