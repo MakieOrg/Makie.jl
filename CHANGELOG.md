@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add a global Axis/Axis3D registry for default interactions [#4531](https://github.com/MakieOrg/Makie.jl/pull/4531).
 - Allowed creation of `Legend` with entries that have no legend elements [#4526](https://github.com/MakieOrg/Makie.jl/pull/4526).
 - Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
