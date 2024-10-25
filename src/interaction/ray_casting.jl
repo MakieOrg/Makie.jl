@@ -287,7 +287,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
 
     pos = closest_point_on_line(f32_convert(plot, p0), f32_convert(plot, p1), ray)
-    
+
     if apply_transform
         return inv_f32_convert(plot, Point3d(pos))
     else
@@ -295,7 +295,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
         out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
-        return out 
+        return out
     end
 end
 
@@ -342,7 +342,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
         end
     end
 
-    @debug "Did not find intersection for index = $idx when casting a ray on mesh."
+    @_debug "Did not find intersection for index = $idx when casting a ray on mesh."
 
     return Point3d(NaN)
 end
@@ -418,7 +418,7 @@ function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     tf = transform_func(plot)
 
     if tf === nothing
-        
+
         ray = transform(inv(plot.model[]), ray)
         pos = ray_rect_intersection(Rect3(min, max .- min), ray)
         if apply_transform
@@ -433,7 +433,7 @@ function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
         w = max - min
         ps = Point3d[min + (x, y, z) .* w for x in (0, 1) for y in (0, 1) for z in (0, 1)]
         fs = decompose(GLTriangleFace, QuadFace{Int}[
-            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1), 
+            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1),
             (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2)
         ])
 

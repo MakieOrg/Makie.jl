@@ -101,7 +101,7 @@ function makie_args(::PointBased, plotattributes)
     x, y = (plotattributes[:x], plotattributes[:y])
 
     if isempty(x) && isempty(y)
-        @debug "Encountered an empty series of seriestype $(plotattributes[:seriestype])"
+        Makie.@_debug "Encountered an empty series of seriestype $(plotattributes[:seriestype])"
         return
     end
 
@@ -254,7 +254,7 @@ function set_series_color!(scene, st, plotattributes)
         end
         if has_seriescolor
             if plotattributes[:seriescolor] ∈ (:match, :auto)
-                @debug "Assigning new seriescolor from automatic"
+                Makie.@_debug "Assigning new seriescolor from automatic"
                 delete!(plotattributes, :seriescolor)
                 # printstyled(st, color=:yellow)
                 # println()
@@ -308,7 +308,7 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     fontsize = sa[3]
 
-    @debug("Series annotations say hi")
+    Makie.@_debug("Series annotations say hi")
 
     annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
@@ -324,7 +324,7 @@ function plot_annotations!(plt, args, pt, plotattributes)
 
     fontsizes = Float32.(getindex.(sa, 4))
 
-    @debug("Annotations say hi")
+    Makie.@_debug("Annotations say hi")
 
     annotations!(plt, strs, positions; fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
@@ -373,7 +373,7 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
     # @infiltrate
 
     if args === nothing
-        @debug "Found an empty series with type $(plotattributes[:seriestype])."
+        Makie.@_debug "Found an empty series with type $(plotattributes[:seriestype])."
         return plt
     end
 

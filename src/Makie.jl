@@ -109,6 +109,16 @@ const NativeFont = FreeTypeAbstraction.FTFont
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
+const ENABLE_DEBUG = Ref{Bool}(false)
+# CoreLogging 1.1.0 seems to be _really_ slow when using @debug
+macro _debug(args...)
+    return quote
+        if ENABLE_DEBUG[]
+            Core.println(Core.stderr, $(args...))
+        end
+    end
+end
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")

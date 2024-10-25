@@ -172,7 +172,7 @@ function Record(func, figlike, iter; kw_args...)
     for i in iter
         func(i)
         recordframe!(io)
-        @debug "Recording" progress=i/length(iter)
+        @_debug "Recording" progress=i/length(iter)
         yield()
     end
     return io

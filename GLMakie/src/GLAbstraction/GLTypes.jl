@@ -392,7 +392,7 @@ function RenderObject(
             # Otherwise just let the value pass through
             # TODO: Is this ok/ever not filtered?
             else
-                @debug "Passed on $k -> $(typeof(v)) without conversion."
+                Makie.@_debug "Passed on $k -> $(typeof(v)) without conversion."
             end
         end
     end

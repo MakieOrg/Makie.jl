@@ -417,7 +417,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             if new_value isa Cycled
                 old_attr.val = to_color(scene, attribute, new_value)
             else
-                @debug("updating kw $attribute")
+                @_debug("updating kw $attribute")
                 old_attr.val = new_value
             end
             push!(obs_to_notify, old_attr)
@@ -554,7 +554,7 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
         reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots, scores)
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
-            @debug("Creating new plot for spec")
+            @_debug("Creating new plot for spec")
             # Forward kw arguments from Plotlist
             if !isnothing(plotlist)
                 merge!(plotspec.kwargs, plotlist.kw)
@@ -574,7 +574,7 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             push_without_add!(scene, plot_obj)
             new_plots[plotspec] = plot_obj
         else
-            @debug("updating old plot with spec")
+            @_debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
             delete!(reusable_plots, old_spec)
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
@@ -775,7 +775,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @debug("Creating new content for spec")
+            @_debug("Creating new content for spec")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
@@ -794,7 +794,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
-            @debug("updating old block with spec")
+            @_debug("updating old block with spec")
             # Make sure we don't double re-use a layoutable
             splice!(previous_contents, idx)
             (_, _, old_spec) = old_key

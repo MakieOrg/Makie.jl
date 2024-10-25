@@ -145,6 +145,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add Bonito#sd/fix-debug"
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true

@@ -24,7 +24,7 @@ function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
         @print_error begin
-            @debug("Closing event from GLFW")
+            Makie.@_debug("Closing event from GLFW")
             event[] = false
         end
     end
@@ -298,7 +298,7 @@ end
 
 function Makie.frame_tick(scene::Scene, screen::Screen)
     # Separating screen ticks from event ticks allows us to sanitize:
-    # Internal on-tick event updates happen first (mouseposition), 
+    # Internal on-tick event updates happen first (mouseposition),
     # consuming in event.tick listeners doesn't affect backend ticks,
     # more control/consistent order
     on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
