@@ -290,7 +290,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     end
 
     on(plot, plot.updated_inputs) do _
-
         # Makie Update
         Makie.resolve_updates!(plot)
 
@@ -302,138 +301,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             screen.requires_update = true
         end
 
-        # Backend Update
-        needs_update = in(plot.updated_outputs[])
-        atlas = gl_texture_atlas()
-        font = get(plot.computed, :font, Makie.defaultfont())
-
-        if any(needs_update, (:f32c, :model))
-            # TODO: without Observables
-            f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model])
-            # TODO: This should be rare so we want to cache it
-            # maybe do this in resolve? But CairoMakie doesn't need it...
-            plot.computed[:f32c] = f32c
-            robj[:model] = model
-        end
-        
-        # Camera update - relies on up-to-date model
-        update_camera!(robj, screen, scene, plot, true)
-
-        changed_length = false
-        if any(needs_update, (:f32c, :model, :transform_func, :position))
-            positions = apply_transform_and_f32_conversion(
-                plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model], 
-                plot.converted[1][], plot.computed[:space]
-            )
-            changed_length = length(positions) != robj[:len]
-            robj[:len] = length(positions)
-            update!(robj.vertexarray.buffers["position"], positions)
-        end
-
-        # Handle indices
-        if get(plot.computed, :depthsorting, false) && any(needs_update, (:f32c, :model, :transform_func, :position, :camera))
-            T = Mat4f(robj[:projectionview] * robj[:preprojection] * robj[:model])
-            depth_vals = map(robj.vertexarray.buffers["position"]) do p  # TODO: does this have CPU data?
-                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
-                p4d[3] / p4d[4]
-            end
-            indices = UInt32.(sortperm(depth_vals, rev = true) .- 1)
-            update!(robj.vertexarray.indices, indices)
-        elseif changed_length
-            robj.vertexarray.indices = length(positions)
-        end
-
-        if any(needs_update, (:marker, :markersize, :marker_offset))
-            scale = Makie.rescale_marker(
-                atlas, plot.computed[:marker], font, plot.computed[:markersize])
-            quad_offset = Makie.offset_marker(
-                atlas, plot.computed[:marker], font, plot.computed[:markersize], 
-                plot.computed[:marker_offset])
-            
-            for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
-                if haskey(robj.uniforms, k)
-                    robj.uniforms[k] = scale
-                elseif haskey(robj.vertexarray.buffers, string(k))
-                    update!(robj.vertexarray.buffers[string(k)], scale)
-                else
-                    error("Did not find $k")
-                end
-            end
-        end
-
-        update_clip_planes!(robj, plot)
-
-        # Clean up things we've already handled (and must not handle again)
-        delete!(plot.updated_outputs[], :position)
-        delete!(plot.updated_outputs[], :model)
-        delete!(plot.updated_outputs[], :markersize)
-        delete!(plot.updated_outputs[], :marker_offset)
-        
-        # And that don't exist in computed
-        delete!(plot.updated_outputs[], :camera)
-
-        # TODO: Don't break stuff :(
-        if isnothing(plot.computed[:distancefield])
-            delete!(plot.updated_outputs[], :distancefield)
-        end
-
-        for key in plot.updated_outputs[]
-            glkey = to_glvisualize_key(key)
-            val = plot.computed[key]
-            
-            # Could also check `val isa AbstractArray` + whitelist buffers
-
-            # Specials
-            if key == :marker
-                shape = Cint(Makie.marker_to_sdf_shape(val))
-                if shape == 0 && !is_all_equal_scale(plot.computed[:markersize])
-                    robj[:shape] = Cint(5) # circle -> ellipse
-                else
-                    robj[:shape] = shape
-                end
-
-                if plot.computed[:uv_offset_width] == Vec4f(0)
-                    robj[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, val, font)
-                end
-
-            elseif key == :visible
-                robj.visible = val
-
-            elseif key == :overdraw
-                robj.prerenderfunction.overdraw[] = val
-
-            # TODO: Don't let Vec4f(0) pass down here
-            elseif key == :uv_offset_width
-                if plot.computed[:uv_offset_width] != Vec4f(0)
-                    robj[:uv_offset_width] = plot.computed[:uv_offset_width]
-                end
-
-            # Handle vertex buffers
-            elseif haskey(robj.vertexarray.buffers, string(glkey))
-                if robj.vertexarray.buffers[string(glkey)] isa GLBuffer
-                    update!(robj.vertexarray.buffers[string(glkey)], val)
-                else
-                    robj.vertexarray.buffers[string(glkey)] = val
-                end
-            
-            # Handle uniforms
-            elseif haskey(robj.uniforms, glkey)
-                # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
-                if val isa Union{Real, StaticVector, Mat, Colorant, Nothing, Quaternion}
-                    robj[glkey] = GLAbstraction.gl_convert(val)
-                else
-                    update!(robj[glkey], val)
-                end
-
-            # TODO: colorrange should be colorrange_scaled
-            # has been tested as color -> color, but not color_scaled -> intensity
-            elseif (key == :color_scaled) && haskey(robj.vertexarray.buffers, "intensity")
-                update!(robj.vertexarray.buffers["intensity"], val)
-
-            else
-                # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
-            end
-        end
+        update_robj!(screen, robj, scene, plot)
 
         empty!(plot.updated_outputs[])
 
@@ -449,4 +317,137 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     
     # screen.requires_update = true
     return robj
+end
+
+function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Scatter)
+    # Backend Update
+    needs_update = in(plot.updated_outputs[])
+    atlas = gl_texture_atlas()
+    font = get(plot.computed, :font, Makie.defaultfont())
+
+    if any(needs_update, (:f32c, :model))
+        # TODO: without Observables
+        f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model]::Mat4d)
+        # TODO: This should be rare so we want to cache it
+        # maybe do this in resolve? But CairoMakie doesn't need it...
+        plot.computed[:f32c] = f32c
+        robj[:model] = model
+    end
+    
+    # Camera update - relies on up-to-date model
+    update_camera!(robj, screen, scene, plot, true)
+
+    if any(needs_update, (:f32c, :model, :transform_func, :position))
+        positions = apply_transform_and_f32_conversion(
+            plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model]::Mat4d, 
+            plot.converted[1][], plot.computed[:space]::Symbol
+        )
+        haskey(robj.uniforms, :len) && (robj[:len] = length(positions))
+        update!(robj.vertexarray.buffers["position"], positions)
+    end
+
+    # Handle indices
+    if get(plot.computed, :depthsorting, false) && any(needs_update, (:f32c, :model, :transform_func, :position, :camera))
+        T = Mat4f(robj[:projectionview] * robj[:preprojection] * robj[:model])
+        depth_vals = map(robj.vertexarray.buffers["position"]::Vector) do p  # TODO: does this have CPU data?
+            p4d::Point4f = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+            return p4d[3] / p4d[4]
+        end
+        indices = UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        update!(robj.vertexarray.indices, indices)
+    else # this only sets an int, basically free?
+        robj.vertexarray.indices = length(robj.vertexarray.buffers["position"])
+    end
+
+    if any(needs_update, (:marker, :markersize, :marker_offset))
+        scale = Makie.rescale_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize])
+        quad_offset = Makie.offset_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize], 
+            plot.computed[:marker_offset])
+        
+        for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
+            if haskey(robj.uniforms, k)
+                robj.uniforms[k] = scale
+            elseif haskey(robj.vertexarray.buffers, string(k))
+                update!(robj.vertexarray.buffers[string(k)], scale)
+            else
+                error("Did not find $k")
+            end
+        end
+    end
+
+    update_clip_planes!(robj, plot)
+
+    # Clean up things we've already handled (and must not handle again)
+    delete!(plot.updated_outputs[], :position)
+    delete!(plot.updated_outputs[], :model)
+    delete!(plot.updated_outputs[], :markersize)
+    delete!(plot.updated_outputs[], :marker_offset)
+    
+    # And that don't exist in computed
+    delete!(plot.updated_outputs[], :camera)
+
+    # TODO: Don't break stuff :(
+    if isnothing(plot.computed[:distancefield])
+        delete!(plot.updated_outputs[], :distancefield)
+    end
+
+    for key in plot.updated_outputs[]
+        glkey = to_glvisualize_key(key)
+        val = plot.computed[key]
+        
+        # Could also check `val isa AbstractArray` + whitelist buffers
+
+        # Specials
+        if key == :marker
+            shape = Cint(Makie.marker_to_sdf_shape(val))
+            if shape == 0 && !is_all_equal_scale(plot.computed[:markersize])
+                robj[:shape] = Cint(5) # circle -> ellipse
+            else
+                robj[:shape] = shape
+            end
+
+            if plot.computed[:uv_offset_width] == Vec4f(0)
+                robj[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, val, font)
+            end
+
+        elseif key == :visible
+            robj.visible = val::Bool
+
+        elseif key == :overdraw
+            robj.prerenderfunction.overdraw[] = val::Bool
+
+        # TODO: Don't let Vec4f(0) pass down here
+        elseif key == :uv_offset_width
+            if plot.computed[:uv_offset_width] != Vec4f(0)
+                robj[:uv_offset_width] = plot.computed[:uv_offset_width]
+            end
+
+        # Handle vertex buffers
+        elseif haskey(robj.vertexarray.buffers, string(glkey))
+            if robj.vertexarray.buffers[string(glkey)] isa GLBuffer
+                update!(robj.vertexarray.buffers[string(glkey)], val)
+            else
+                robj.vertexarray.buffers[string(glkey)] = val
+            end
+        
+        # Handle uniforms
+        elseif haskey(robj.uniforms, glkey)
+            # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
+            if val isa Union{Real, StaticVector, Mat, Colorant, Nothing, Quaternion}
+                robj[glkey] = GLAbstraction.gl_convert(val)
+            else
+                update!(robj[glkey], val)
+            end
+
+        # TODO: colorrange should be colorrange_scaled
+        # has been tested as color -> color, but not color_scaled -> intensity
+        elseif (key == :color_scaled) && haskey(robj.vertexarray.buffers, "intensity")
+            update!(robj.vertexarray.buffers["intensity"], val)
+
+        else
+            # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
+        end
+    end
 end

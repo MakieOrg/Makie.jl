@@ -14,7 +14,7 @@ function update!(plot::Scatter; kwargs...)
 
     if :position in kwarg_keys
         length(plot.args) == 1 || error("Cannot set position with x, y[, z]-like plot arguments")
-        plot.args[1] = kwargs[:position]
+        plot.args[1].val = kwargs[:position]
     end
 
     # Handle Attributes
@@ -54,7 +54,7 @@ function resolve_updates!(plot::Scatter)
         in(name, (:lowclip, :highclip, :colormap, :color, :colorrange, :calculated_colors)) && continue
 
         plot.computed[name] = convert_attribute(
-            to_value(plot.attributes[name]), Key(name), Key(:scatter))
+            to_value(plot.attributes[name]), Key{name}(), Key{:scatter}())
         push!(plot.updated_outputs[], name)
     end
 
@@ -68,7 +68,7 @@ function resolve_updates!(plot::Scatter)
         (in(:marker_offset, flagged) || in(:markersize, flagged))
 
         # @info "triggered"
-        ms = plot.computed[:markersize]
+        ms = plot.computed[:markersize]::Union{Vec2f, Vector{Vec2f}}
         plot.computed[:marker_offset] = to_2d_scale(-0.5f0 .* ms)
         push!(plot.updated_outputs[], :marker_offset)
     end
@@ -105,7 +105,7 @@ function resolve_color_update!(plot)
     end
     
     flagged = plot.updated_inputs[]
-    alpha = plot.alpha[]
+    alpha::Float64 = plot.alpha[]
     alpha_matters = alpha < 1.0
 
     # colors are values for colormap
@@ -131,8 +131,8 @@ function resolve_color_update!(plot)
 
         # TODO: Do we use both?
         if (:colormap in flagged) || (:colorscale in flagged) || (:alpha in flagged)
-            cmap = to_colormap(plot.colormap[])
-            raw_cmap = to_colormap(plot.colormap[])
+            cmap = to_colormap(plot.colormap[])::Vector{RGBAf}
+            raw_cmap = to_colormap(plot.colormap[])::Vector{RGBAf}
             if alpha_matters
                 plot.computed[:colormap] = add_alpha.(cmap)
                 plot.computed[:raw_colormap] = add_alpha.(raw_cmap)
@@ -152,7 +152,7 @@ function resolve_color_update!(plot)
         for (k, default) in zip((:lowclip, :highclip), (first, last))
             if (k in flagged) || (:colormap in flagged)
                 if plot[k][] === automatic
-                    plot.computed[k] = default(plot.computed[:colormap])
+                    plot.computed[k] = default(plot.computed[:colormap]::Vector{RGBAf})
                 elseif k in flagged
                     plot.computed[k] = to_color(plot[k][])
                 end
@@ -161,13 +161,13 @@ function resolve_color_update!(plot)
         end
 
         if (:color in flagged)
-            cs = ifelse(plot.color[] isa Real, [plot.color[]], plot.color[])
+            cs = ifelse(plot.color[] isa Real, [plot.color[]], plot.color[])::AbstractVector
             # TODO: Can't this be a collect(cs)?
-            plot.computed[:color] = _array_value_type(cs)(cs)
+            plot.computed[:color] = Vector{Float64}(cs) # TODO: is this ok? replacing _array_value_type
             push!(plot.updated_outputs[], :color)
         end
                 
-        colors = plot.computed[:color]
+        colors = plot.computed[:color]::Vector{Float64}
 
         # TODO: Probably cheaper to merge the two colorrange steps
         # TODO: Do we need both outputs?
