@@ -295,7 +295,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
         # @info "Triggered with $(plot.updated_outputs[])"
 
-        if isempty(plot.updated_outputs[])
+        if isempty(plot.updated_outputs[]) || !isopen(screen)
             return
         else
             screen.requires_update = true
@@ -450,4 +450,23 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
         end
     end
+end
+
+render_asap(screen::Screen, N::Integer) = render_asap(() -> nothing, screen, N)
+function render_asap(f::Function, screen::Screen, N::Integer)
+    screen.close_after_renderloop = false
+    stop_renderloop!(screen)
+    yield()
+    GLFW.SwapInterval(0)
+    
+    for _ in 1:N
+        pollevents(screen, Makie.PausedRenderTick)
+        f()
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        GC.safepoint()
+    end
+    
+    screen.close_after_renderloop = true
+    start_renderloop!(screen)
 end
