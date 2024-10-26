@@ -187,6 +187,7 @@ pages = [
         "explanations/transparency.md",
     ],
     "How-Tos" => [
+        "how-to/match-figure-size-font-sizes-and-dpi.md",
         "how-to/draw-boxes-around-subfigures.md",
         "how-to/save-figure-with-transparency.md",
     ],
@@ -197,25 +198,29 @@ pages = [
     ]
 ]
 
-empty!(MakieDocsHelpers.FIGURES)
+function make_docs(; pages)
+    empty!(MakieDocsHelpers.FIGURES)
 
-# filter pages here when working on docs interactively
-# pages = nested_filter(pages, r"reference/blocks/(axis|axis3|overview)")
+    Documenter.makedocs(;
+        sitename="Makie",
+        format=DocumenterVitepress.MarkdownVitepress(;
+            repo = "github.com/MakieOrg/Makie.jl",
+            devurl = "dev",
+            devbranch = "master",
+            deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
+            description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
+            deploy_decision,
+        ),
+        pages,
+        expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
+        warnonly = get(ENV, "CI", "false") != "true",
+        pagesonly = true,
+    )
+end
 
-Documenter.makedocs(;
-    sitename="Makie",
-    format=DocumenterVitepress.MarkdownVitepress(;
-        repo = "github.com/MakieOrg/Makie.jl",
-        devurl = "dev",
-        devbranch = "master",
-        deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
-        description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
-        deploy_decision,
-    ),
-    pages,
-    expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
-    warnonly = get(ENV, "CI", "false") != "true",
-    pagesonly = true,
+make_docs(;
+    # filter pages here when working on docs interactively
+    pages # = nested_filter(pages, r"explanations/figure|match-figure"),
 )
 
 ##
