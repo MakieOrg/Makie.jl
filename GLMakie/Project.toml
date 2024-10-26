@@ -22,8 +22,8 @@ ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-ColorTypes = "0.9, 0.10, 0.11"
-Colors = "0.11, 0.12"
+ColorTypes = "0.9, 0.10, 0.11, 0.12"
+Colors = "0.11, 0.12, 0.13"
 FileIO = "1.6"
 FixedPointNumbers = "0.7, 0.8"
 FreeTypeAbstraction = "0.10"
