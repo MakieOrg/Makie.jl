@@ -92,8 +92,9 @@ jobs:
             message: |
               # Benchmark Results
 
-              These results are subject to substantial noise because GitHub's CI runs on shared machines that
-              are not ideally suited for benchmarking.
+              > [!WARNING]
+              > These results are subject to substantial noise because GitHub's CI runs on shared machines that
+              > are not ideally suited for benchmarking.
 
               ![GLMakie](https://gist.githubusercontent.com/MakieBot/${{ env.GIST_ID }}/raw/GLMakie.svg)
               ![CairoMakie](https://gist.githubusercontent.com/MakieBot/${{ env.GIST_ID }}/raw/CairoMakie.svg)
