@@ -92,6 +92,8 @@ jobs:
             message: |
               # Benchmark Results
 
+              SHA: [${{ github.event.pull_request.head.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
+
               > [!WARNING]
               > These results are subject to substantial noise because GitHub's CI runs on shared machines that
               > are not ideally suited for benchmarking.
