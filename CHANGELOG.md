@@ -3,16 +3,21 @@
 ## [Unreleased]
 
 - Added `origin!()` to transformation so that the reference point of `rotate!()` and `scale!()` can be modified [#4472](https://github.com/MakieOrg/Makie.jl/pull/4472)
+
+## [0.21.15] - 2024-10-25
+
+- Allowed creation of `Legend` with entries that have no legend elements [#4526](https://github.com/MakieOrg/Makie.jl/pull/4526).
 - Improved CairoMakie's 2D mesh drawing performance by ~30% [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Allow `width` to be set per box in `boxplot` [#4447](https://github.com/MakieOrg/Makie.jl/pull/4447).
 - For `Textbox`es in which a fixed width is specified, the text is now scrolled
   if the width is exceeded [#4293](https://github.com/MakieOrg/Makie.jl/pull/4293)
 - Changed image, heatmap and surface picking indices to correctly index the relevant matrix arguments. [#4459](https://github.com/MakieOrg/Makie.jl/pull/4459)
 - Improved performance of `record` by avoiding unnecessary copying in common cases [#4475](https://github.com/MakieOrg/Makie.jl/pull/4475).
-- Fix usage of `AggMean()` and other aggregations operating on 3d data for `datashader` [#4346](https://github.com/MakieOrg/Makie.jl/pull/4346).
-- Use polys for axis3 [#4463](https://github.com/MakieOrg/Makie.jl/pull/4463).
+- Fixed usage of `AggMean()` and other aggregations operating on 3d data for `datashader` [#4346](https://github.com/MakieOrg/Makie.jl/pull/4346).
+- Fixed forced rasterization when rendering figures with `Axis3` to svg [#4463](https://github.com/MakieOrg/Makie.jl/pull/4463).
 - Changed default for `circular_rotation` in Camera3D to false, so that the camera doesn't change rotation direction anymore [4492](https://github.com/MakieOrg/Makie.jl/pull/4492)
 - Fixed `pick(scene, rect2)` in WGLMakie [#4488](https://github.com/MakieOrg/Makie.jl/pull/4488)
+- Fixed resizing of `surface` data not working correctly. (I.e. drawing out-of-bounds data or only drawing part of the data.) [#4529](https://github.com/MakieOrg/Makie.jl/pull/4529)
 
 ## [0.21.14] - 2024-10-11
 
@@ -639,7 +644,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.14...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...HEAD
+[0.21.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.14...v0.21.15
 [0.21.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...v0.21.14
 [0.21.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...v0.21.13
 [0.21.12]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.11...v0.21.12
