@@ -237,14 +237,14 @@ end
         translate!(t2, 1,2,3)
         scale!(t2, 2)
         Makie.rotate!(t2, pi)
-        translate_origin!(t2, -1,0,1)
+        origin!(t2, -1,0,1)
         @test t2.model[] ≈ t1.model[] * model_from_parts(t2)
 
         # transform parent
         translate!(t1, 0)
         scale!(t1, 1)
         Makie.rotate!(t1, 0)
-        translate_origin!(t1, 0)
+        origin!(t1, 0)
         @test t2.model[] ≈ model_from_parts(t2)
     end
 
