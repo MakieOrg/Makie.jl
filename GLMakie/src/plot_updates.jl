@@ -85,7 +85,7 @@ set_existing!(robj, value, key) = haskey(robj.uniforms, key) && (robj[key] = val
 function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     cam = scene.camera
     needs_update = in(plot.updated_outputs[])
-    
+
     if :camera in plot.updated_outputs[]
         set_existing!(robj, Mat4f(cam.pixel_space[]),    :pixel_space)
         set_existing!(robj, Vec3f(cam.eyeposition[]),    :eyeposition)
@@ -93,7 +93,7 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
         set_existing!(robj, Vec3f(cam.upvector[]),       :upvector)
     end
 
-    # If we have markerspace we usually project from 
+    # If we have markerspace we usually project from
     #       space  ->  markerspace  ->  clip        with
     #         preprojection   projectionview
     # otherwise projectionview goes from space -> clip directly
@@ -107,7 +107,7 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
 
     if target_markerspace && any(needs_update, (:space, :markerspace, :camera))
         preprojection = Mat4f(
-            Makie.clip_to_space(cam, plot.computed[:markerspace]) * 
+            Makie.clip_to_space(cam, plot.computed[:markerspace]) *
             Makie.space_to_clip(cam, plot.computed[:space]))
         set_existing!(robj, preprojection, :preprojection)
     end
@@ -121,7 +121,7 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
         i3 = Vec(1,2,3)
         robj[:world_normalmatrix] = Mat4f(transpose(inv(robj[:model][i3, i3])))
     end
-    
+
     if any(needs_update, (:camera, :model, :f32c)) && haskey(robj.uniforms, :view_normalmatrix)
         cam = scene.camera
         robj[:view_normalmatrix]  = Mat4f(transpose(inv(cam.view[i3, i3] * robj[:model][i3, i3])))
@@ -168,7 +168,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # Note: For initializing data via update routine (one time)
     push!(plot.updated_outputs[], :position)
     push!(plot.updated_outputs[], :marker)
-    
+
     data = Dict{Symbol, Any}()
 
     begin # cached_robj pre
@@ -244,7 +244,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             atlas, plot.computed[:marker], font, plot.computed[:markersize])
 
         data[:quad_offset] = Makie.offset_marker(
-            atlas, plot.computed[:marker], font, plot.computed[:markersize], 
+            atlas, plot.computed[:marker], font, plot.computed[:markersize],
             plot.computed[:marker_offset])
 
         @gen_defaults! data begin
@@ -290,10 +290,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     end
 
     on(plot, plot.updated_inputs) do _
+
         # Makie Update
         Makie.resolve_updates!(plot)
 
-        # @info "Triggered with $(plot.updated_outputs[])"
+        @info "Triggered with $(plot.updated_outputs[])"
 
         if isempty(plot.updated_outputs[]) || !isopen(screen)
             return
@@ -308,13 +309,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         return
     end
 
-    
+
     notify(plot.updated_inputs)
-    
+
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
-    
+
     # screen.requires_update = true
     return robj
 end
@@ -333,13 +334,13 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
         plot.computed[:f32c] = f32c
         robj[:model] = model
     end
-    
+
     # Camera update - relies on up-to-date model
     update_camera!(robj, screen, scene, plot, true)
 
     if any(needs_update, (:f32c, :model, :transform_func, :position))
         positions = apply_transform_and_f32_conversion(
-            plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model]::Mat4d, 
+            plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model]::Mat4d,
             plot.converted[1][], plot.computed[:space]::Symbol
         )
         haskey(robj.uniforms, :len) && (robj[:len] = length(positions))
@@ -363,9 +364,9 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
         scale = Makie.rescale_marker(
             atlas, plot.computed[:marker], font, plot.computed[:markersize])
         quad_offset = Makie.offset_marker(
-            atlas, plot.computed[:marker], font, plot.computed[:markersize], 
+            atlas, plot.computed[:marker], font, plot.computed[:markersize],
             plot.computed[:marker_offset])
-        
+
         for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
             if haskey(robj.uniforms, k)
                 robj.uniforms[k] = scale
@@ -384,7 +385,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     delete!(plot.updated_outputs[], :model)
     delete!(plot.updated_outputs[], :markersize)
     delete!(plot.updated_outputs[], :marker_offset)
-    
+
     # And that don't exist in computed
     delete!(plot.updated_outputs[], :camera)
 
@@ -396,7 +397,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     for key in plot.updated_outputs[]
         glkey = to_glvisualize_key(key)
         val = plot.computed[key]
-        
+
         # Could also check `val isa AbstractArray` + whitelist buffers
 
         # Specials
@@ -431,7 +432,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             else
                 robj.vertexarray.buffers[string(glkey)] = val
             end
-        
+
         # Handle uniforms
         elseif haskey(robj.uniforms, glkey)
             # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
@@ -458,7 +459,7 @@ function render_asap(f::Function, screen::Screen, N::Integer)
     stop_renderloop!(screen)
     yield()
     GLFW.SwapInterval(0)
-    
+
     for _ in 1:N
         pollevents(screen, Makie.PausedRenderTick)
         f()
@@ -466,7 +467,7 @@ function render_asap(f::Function, screen::Screen, N::Integer)
         GLFW.SwapBuffers(to_native(screen))
         GC.safepoint()
     end
-    
+
     screen.close_after_renderloop = true
     start_renderloop!(screen)
 end

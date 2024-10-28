@@ -4,6 +4,7 @@ function update!(plot::Scatter; kwargs...)
 
     # TODO: Args make this plot specific. Can we avoid that?
     # Handle args
+    # argument_names(), x/y/z, image, position, arg<i>, args
     if any(in(kwarg_keys), (:x, :y, :z))
         # TODO: How should we verify these, especially in recipes with more
         #       variations? (E.g. text with text vs position vs GlyphCollection)
@@ -77,20 +78,20 @@ function resolve_updates!(plot::Scatter)
     # markerspace - why not just remove this? we don't auto it anyway?
 
     # Finally cleanup + trigger backend
-    
+
     # TODO:
     # If we let tasks do this we could skip work e.g. if the plot is invisible.
-    # BUT if multiple tasks work on the same inputs we could run into issues 
+    # BUT if multiple tasks work on the same inputs we could run into issues
     # with who gets to clear.
     empty!(plot.updated_inputs[])
 
     # TODO: testing only?
-    foreach(notify, plot.converted) 
+    foreach(notify, plot.converted)
 
-    # TODO: 
+    # TODO:
     # For a select few attributes (Textures) the backend needs to know that they
     # changed so the changes can propagate to GPU memory.
-    # This probably doesn't need to be an Observable though. (The backend 
+    # This probably doesn't need to be an Observable though. (The backend
     # probably calls this function, so it knows when it's done.)
     notify(plot.updated_outputs)
 
@@ -103,7 +104,7 @@ function resolve_color_update!(plot)
     @inline function add_alpha(color, alpha)
         return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
     end
-    
+
     flagged = plot.updated_inputs[]
     alpha::Float64 = plot.alpha[]
     alpha_matters = alpha < 1.0
@@ -166,7 +167,7 @@ function resolve_color_update!(plot)
             plot.computed[:color] = Vector{Float64}(cs) # TODO: is this ok? replacing _array_value_type
             push!(plot.updated_outputs[], :color)
         end
-                
+
         colors = plot.computed[:color]::Vector{Float64}
 
         # TODO: Probably cheaper to merge the two colorrange steps
@@ -217,7 +218,7 @@ Can act like recipe (linesegments + text)
 -> probably need a native_text()
 
 Multiple input types:
-- GlyphCollection -> converted    
+- GlyphCollection -> converted
 - text -> GlyphCollection -> converted
 - point-like -> position attribute
 - (x, y, z)-like -> point-like -> position attribute
