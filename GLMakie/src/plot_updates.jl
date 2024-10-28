@@ -1,14 +1,14 @@
 function init_color!(data, plot)
-    # TODO: This switches between GLBuffer and Texture
-    # # Exception for intensity, to make it possible to handle intensity with a
-    # # different length compared to position. Intensities will be interpolated in that case
-    # data[:intensity] = intensity_convert(intensity, position)
-
     # Colormapping
     if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
         interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
+        # Allow missmatch between length of value colors and positions
+        if length(plot.converted[1][]) == length(plot.computed[:color_scaled])
+            data[:intensity] = GLBuffer(plot.computed[:color_scaled])
+        else
+            data[:intensity] = Texture(plot.computed[:color_scaled])
+        end
         @gen_defaults! data begin
-            intensity       = plot.computed[:color_scaled] => GLBuffer
             color_map       = Texture(plot.computed[:colormap], minfilter = interp)
             color_norm      = plot.computed[:colorrange_scaled]
             color           = nothing
@@ -323,6 +323,7 @@ end
 function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Scatter)
     # Backend Update
     needs_update = in(plot.updated_outputs[])
+    length_changed = false
     atlas = gl_texture_atlas()
     font = get(plot.computed, :font, Makie.defaultfont())
 
@@ -355,8 +356,10 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             return p4d[3] / p4d[4]
         end
         indices = UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        length_changed = length(indices) != length(robj.vertexarray.indices)
         update!(robj.vertexarray.indices, indices)
     else # this only sets an int, basically free?
+        length_changed = length(robj.vertexarray.buffers["position"]) != robj.vertexarray.indices
         robj.vertexarray.indices = length(robj.vertexarray.buffers["position"])
     end
 
@@ -375,6 +378,14 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             else
                 error("Did not find $k")
             end
+        end
+    end
+
+    if needs_update(:color_scaled) || length_changed
+        if haskey(robj.vertexarray.buffers, "intensity")
+            update!(robj.vertexarray.buffers["intensity"], plot.computed[:color_scaled])
+        elseif haskey(robj.uniforms, :intensity)
+            update!(robj[:intensity], plot.computed[:color_scaled])
         end
     end
 
@@ -446,11 +457,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             else
                 robj[glkey] = GLAbstraction.gl_convert(val)
             end
-
-        # TODO: colorrange should be colorrange_scaled
-        # has been tested as color -> color, but not color_scaled -> intensity
-        elseif (key == :color_scaled) && haskey(robj.vertexarray.buffers, "intensity")
-            update!(robj.vertexarray.buffers["intensity"], val)
 
         else
             # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
