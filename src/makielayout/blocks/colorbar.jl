@@ -29,6 +29,19 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
             get(plot, :lowclip, Observable(automatic)),
             get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
         )
+    elseif all(k -> haskey(plot, k), (:colorrange, :colormap, :color))
+        # TODO: rework
+        return ColorMapping(
+            plot.computed[:color],
+            map(_ -> plot.computed[:color], plot.updated_inputs),
+            map(_ -> plot.computed[:colormap], plot.updated_inputs),
+            map(_ -> plot.computed[:colorrange], plot.updated_inputs),
+            map(_ -> plot.computed[:colorscale], plot.updated_inputs),
+            map(_ -> plot.computed[:alpha], plot.updated_inputs),
+            map(_ -> plot.computed[:highclip], plot.updated_inputs),
+            map(_ -> plot.computed[:lowclip], plot.updated_inputs),
+            map(_ -> plot.computed[:nan_color], plot.updated_inputs),
+        )
     else
         return nothing
     end
