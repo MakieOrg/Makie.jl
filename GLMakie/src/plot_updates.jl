@@ -296,7 +296,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
         @info "Triggered with $(plot.updated_outputs[])"
 
-        if isempty(plot.updated_outputs[]) || !isopen(screen)
+        if isempty(plot.updated_outputs[]) || !isopen(screen) || (robj.id == 0) ||
+                any(buffer -> buffer.id == 0, values(robj.vertexarray.buffers))
             return
         else
             screen.requires_update = true
@@ -399,6 +400,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
 
     # And that don't exist in computed
     delete!(plot.updated_outputs[], :camera)
+    delete!(plot.updated_outputs[], :px_per_unit)
 
     # TODO: Don't break stuff :(
     if isnothing(plot.computed[:distancefield])
