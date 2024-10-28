@@ -1,3 +1,7 @@
+################################################################################
+### Generics
+################################################################################
+
 function init_color!(data, plot)
     # Colormapping
     if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
@@ -140,6 +144,74 @@ function init_generics!(data, plot)
     return
 end
 
+################################################################################
+### Scatter specifics
+################################################################################
+
+function init_scatter_marker!(data, plot)
+    # Image packing
+    marker = plot.computed[:marker]
+    if marker isa VectorTypes{<: Matrix{<: Colorant}}
+        # TODO: extract this to Makie side as a SpriteSheet generator
+        # TODO: make this dynamic
+        images = map(el32convert, marker)
+        isempty(images) && error("Can not display empty vector of images as primitive")
+        sizes = map(size, images)
+        if !all(x-> x == sizes[1], sizes) # if differently sized
+            # create texture atlas
+            maxdims = sum(map(Vec{2, Int}, sizes))
+            rectangles = map(x -> Rect2(0, 0, x...), sizes)
+            rpack = RectanglePacker(Rect2(0, 0, maxdims...))
+            uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
+            max_xy = mapreduce(maximum, (a,b) -> max.(a, b), uv_coordinates)
+            texture_atlas = Texture(eltype(images[1]), (max_xy...,))
+            for (area, img) in zip(uv_coordinates, images)
+                texture_atlas[area] = img # transfer to texture atlas
+            end
+            data[:uv_offset_width] = map(uv_coordinates) do uv
+                m = max_xy .- 1
+                mini = reverse((minimum(uv)) ./ m)
+                maxi = reverse((maximum(uv) .- 1) ./ m)
+                return Vec4f(mini..., maxi...)
+            end
+            images = texture_atlas
+        else
+            data[:uv_offset_width] = Vec4f(0,0,1,1)
+        end
+        data[:image] = images # we don't want this to be overwritten by user
+        @gen_defaults! data begin
+            shape = RECTANGLE
+        end
+
+    # single image
+    elseif marker isa Matrix{<: Colorant}
+        data[:image] = marker
+        @gen_defaults! data begin
+            image = marker => Texture
+            scale = lift(x-> Vec2f(size(x)), p[1])
+            offset = Vec2f(0)
+        end
+
+    # TODO: FastPixel
+    elseif marker isa FastPixel
+
+
+    # shape or Signed Distance field
+    else
+        shape = Makie.marker_to_sdf_shape(plot.computed[:marker])
+        data[:shape] = Cint(shape)
+        data[:distancefield] = get(plot.computed, :distancefield, nothing)
+        if (data[:distancefield] === nothing) && (shape === DISTANCEFIELD)
+            atlas = gl_texture_atlas()
+            data[:distancefield] = get_texture!(atlas)
+        end
+    end
+
+
+
+
+end
+
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # TODO: skipped fastpixel
 
@@ -213,27 +285,9 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         # end
     end
 
-    begin # draw_atomic
-        if plot.computed[:marker] isa FastPixel
-            # TODO: implement
-        else
-            Dim = length(eltype(plot.converted[1][]))
-            N = length(plot.converted[1][])
-            @gen_defaults! data begin
-                position        = Vector{Point{Dim, Float32}}(undef, N) => GLBuffer
-                len             = 0 # should match length of position
-                distancefield   = get(plot.computed, :distancefield, nothing)
-                shape           = Cint(Makie.marker_to_sdf_shape(plot.computed[:marker]))
-            end
-
-            atlas = gl_texture_atlas()
-            if (data[:distancefield] === nothing) && (data[:shape] === Cint(DISTANCEFIELD))
-                data[:distancefield] = get_texture!(atlas)
-            end
-        end
-    end
-
     begin # draw_scatter()
+        Dim = length(eltype(plot.converted[1][]))
+        N = length(plot.converted[1][])
         rot = vec2quaternion(get(plot.computed, :rotation, Vec4f(0, 0, 0, 1)))
 
         # TODO: infer type (Vector vs value), set data with initial resolve run
@@ -248,26 +302,29 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             plot.computed[:marker_offset])
 
         @gen_defaults! data begin
+            position        = Vector{Point{Dim, Float32}}(undef, N) => GLBuffer
+            len             = 0 # should match length of position
             marker_offset   = Vec3f(0) => GLBuffer # Note: currently unused for Scatter
             scale           = Vec2f(0) => GLBuffer
             rotation        = rot => GLBuffer
-            image           = nothing => Texture
             indices         = to_index_buffer(plot.computed[:depthsorting] ? UInt32[] : 0)
         end
 
+        init_generics!(data, plot)
+        init_camera!(data, scene, plot)
         init_clip_planes!(data, plot)
         init_color!(data, plot)
-        init_camera!(data, scene, plot)
-        init_generics!(data, plot)
+        init_scatter_marker!(data, plot)
 
         @gen_defaults! data begin
+            image           = nothing => Texture
             quad_offset     = Vec2f(0) => GLBuffer
 
             glow_color      = plot.computed[:glowcolor] => GLBuffer
             stroke_color    = plot.computed[:strokecolor] => GLBuffer
             stroke_width    = 0f0
             glow_width      = 0f0
-            uv_offset_width = ifelse(plot.computed[:marker] isa Vector, Vec4f[], Vec4f(0)) => GLBuffer
+            uv_offset_width = ifelse(plot.computed[:marker] isa Vector, Vector{Vec4f}(undef, N), Vec4f(0)) => GLBuffer
 
             # rotation and billboard don't go along
             billboard       = (plot.computed[:rotation] isa Billboard) || (rotation == Vec4f(0,0,0,1))
@@ -427,8 +484,14 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
                 robj[:shape] = shape
             end
 
-            if plot.computed[:uv_offset_width] == Vec4f(0)
-                robj[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, val, font)
+            if (plot.computed[:uv_offset_width] == Vec4f(0)) &&
+                    isnothing(get(robj.uniforms, :image, nothing))
+                x = Makie.primitive_uv_offset_width(atlas, val, font)
+                if haskey(robj.uniforms, :uv_offset_width)
+                    robj[:uv_offset_width] = x
+                else
+                    update!(robj.vertexarray.buffers["uv_offset_width"], x)
+                end
             end
 
         elseif key == :visible
@@ -440,7 +503,11 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
         # TODO: Don't let Vec4f(0) pass down here
         elseif key == :uv_offset_width
             if plot.computed[:uv_offset_width] != Vec4f(0)
-                robj[:uv_offset_width] = plot.computed[:uv_offset_width]
+                if haskey(robj.uniforms, :uv_offset_width)
+                    robj[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, val, font)
+                else
+                    update!(robj.vertexarray.buffer["uv_offset_width"], Makie.primitive_uv_offset_width(atlas, val, font))
+                end
             end
 
         # Handle vertex buffers
