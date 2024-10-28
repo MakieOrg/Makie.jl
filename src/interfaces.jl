@@ -430,6 +430,12 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
     for (k, v) in plot.kw
         if v isa NamedTuple
             raw_attr[k] = Attributes(v)
+        elseif v isa Observable # plot update compat
+            raw_attr[k] = convert(Observable{Any}, v)
+            on(plot, raw_attr[k]) do _
+                push!(plot.updated_inputs[], k)
+                notify(plot.updated_inputs)
+            end
         else
             raw_attr[k] = convert(Observable{Any}, v)
         end
