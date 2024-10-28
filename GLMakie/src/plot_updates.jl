@@ -151,7 +151,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
     # TODO: Is this even dynamic?
     on(screen.px_per_unit) do ppu
-        push!(plot.updated_outputs[], :ppu)
+        push!(plot.updated_outputs[], :px_per_unit)
         notify(plot.updated_inputs)
         return
     end
@@ -234,7 +234,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     end
 
     begin # draw_scatter()
-        rot = vec2quaternion(get(data, :rotation, Vec4f(0, 0, 0, 1)))
+        rot = vec2quaternion(get(plot.computed, :rotation, Vec4f(0, 0, 0, 1)))
 
         # TODO: infer type (Vector vs value), set data with initial resolve run
         atlas = gl_texture_atlas()
@@ -369,9 +369,9 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
 
         for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
             if haskey(robj.uniforms, k)
-                robj.uniforms[k] = scale
+                robj.uniforms[k] = v
             elseif haskey(robj.vertexarray.buffers, string(k))
-                update!(robj.vertexarray.buffers[string(k)], scale)
+                update!(robj.vertexarray.buffers[string(k)], v)
             else
                 error("Did not find $k")
             end
@@ -397,6 +397,11 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     for key in plot.updated_outputs[]
         glkey = to_glvisualize_key(key)
         val = plot.computed[key]
+
+        if key == :rotation
+            # TODO: Don't make this an observable and also can we just skip this?
+            val = to_value(vec2quaternion(val))
+        end
 
         # Could also check `val isa AbstractArray` + whitelist buffers
 
@@ -436,10 +441,10 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
         # Handle uniforms
         elseif haskey(robj.uniforms, glkey)
             # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
-            if val isa Union{Real, StaticVector, Mat, Colorant, Nothing, Quaternion}
-                robj[glkey] = GLAbstraction.gl_convert(val)
-            else
+            if robj[glkey] isa GPUArray
                 update!(robj[glkey], val)
+            else
+                robj[glkey] = GLAbstraction.gl_convert(val)
             end
 
         # TODO: colorrange should be colorrange_scaled
