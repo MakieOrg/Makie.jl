@@ -4,7 +4,7 @@
 # - image marker feels like something for Makie to handle, maybe?
 
 # LOC:
-# this: ~515
+# this: ~505
 # equivalent before:
 #   65 draw_atomic
 #   12 handle_view
@@ -211,6 +211,7 @@ function init_scatter_marker!(data, plot, screen)
             image = marker => Texture
             scale = lift(x-> Vec2f(size(x)), p[1])
             offset = Vec2f(0)
+            uv_offset_width = Vec4f(0,0,1,1)
         end
 
     # TODO: FastPixel
@@ -384,10 +385,33 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         robj = assemble_shader(data)
     end
 
+    # We could try pulling out some "constants"
+    HAS_IMAGE = get(robj.uniforms, :image, nothing) !== nothing
+    ISFASTPIXEL = plot.computed[:marker] isa FastPixel
+
     on(plot, plot.updated_inputs) do _
 
         # Makie Update
         Makie.resolve_updates!(plot)
+
+        # More convenient as extension to resolve_updates!()
+        # Note marker_size should probably split from this
+        if any(in(plot.updated_outputs[]), (:marker_offset, :marker, :markersize))
+            atlas = gl_texture_atlas()
+            font = get(plot.computed, :font, Makie.defaultfont())
+            plot.computed[:scale] = Makie.rescale_marker(
+                atlas, plot.computed[:marker], font, plot.computed[:markersize])
+            plot.computed[:quad_offset] = Makie.offset_marker(
+                atlas, plot.computed[:marker], font, plot.computed[:markersize],
+                plot.computed[:marker_offset])
+            push!(plot.updated_outputs[], :scale, :quad_offset)
+        end
+
+        if (plot[:uv_offset_width] == Vec4f(0) || in(:marker, plot.updated_outputs[])) && 
+                !HAS_IMAGE && !ISFASTPIXEL
+            plot.computed[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, plot.computed[:marker], font)
+            push!(plot.updated_outputs[], :uv_offset_width)
+        end
 
         @info "Triggered with $(plot.updated_outputs[])"
 
@@ -420,9 +444,8 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     # Backend Update
     needs_update = in(plot.updated_outputs[])
     length_changed = false
-    atlas = gl_texture_atlas()
-    font = get(plot.computed, :font, Makie.defaultfont())
     isfastpixel = plot.computed[:marker] isa FastPixel
+    hasimage = get(robj.uniforms, :image, nothing) !== nothing
 
     if any(needs_update, (:f32c, :model))
         # TODO: without Observables
@@ -448,7 +471,8 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     # Handle indices
     if get(plot.computed, :depthsorting, false) && any(needs_update, (:f32c, :model, :transform_func, :position, :camera))
         T = Mat4f(robj[:projectionview] * robj[:preprojection] * robj[:model])
-        depth_vals = map(robj.vertexarray.buffers["position"]::Vector) do p  # TODO: does this have CPU data?
+        # TODO: does this have CPU data? Otherwise we should cache this in computed
+        depth_vals = map(robj.vertexarray.buffers["position"]::Vector) do p
             p4d::Point4f = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
             return p4d[3] / p4d[4]
         end
@@ -458,22 +482,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     else # this only sets an int, basically free?
         length_changed = length(robj.vertexarray.buffers["position"]) != robj.vertexarray.indices
         robj.vertexarray.indices = length(robj.vertexarray.buffers["position"])
-    end
-
-    if any(needs_update, (:marker, :markersize, :marker_offset))
-        scale = Makie.rescale_marker(
-            atlas, plot.computed[:marker], font, plot.computed[:markersize])
-        quad_offset = Makie.offset_marker(
-            atlas, plot.computed[:marker], font, plot.computed[:markersize],
-            plot.computed[:marker_offset])
-
-        for (k, v) in ((:scale, scale), (:quad_offset, quad_offset))
-            if haskey(robj.uniforms, k)
-                robj.uniforms[k] = v
-            elseif haskey(robj.vertexarray.buffers, string(k))
-                update!(robj.vertexarray.buffers[string(k)], v)
-            end
-        end
     end
 
     if needs_update(:color_scaled) || length_changed
@@ -496,6 +504,9 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     delete!(plot.updated_outputs[], :camera)
     delete!(plot.updated_outputs[], :px_per_unit)
 
+    # special restrictions
+    (isfastpixel || hasimage) && delete!(plot.updated_outputs[], :uv_offset_width)
+
     # TODO: Don't break stuff :(
     if isnothing(plot.computed[:distancefield])
         delete!(plot.updated_outputs[], :distancefield)
@@ -510,8 +521,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             val = to_value(vec2quaternion(val))
         end
 
-        # Could also check `val isa AbstractArray` + whitelist buffers
-
         # Specials
         if key == :marker
             if isfastpixel
@@ -522,16 +531,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
                     robj[:shape] = Cint(5) # circle -> ellipse
                 else
                     robj[:shape] = shape
-                end
-
-                if (plot.computed[:uv_offset_width] == Vec4f(0)) &&
-                        isnothing(get(robj.uniforms, :image, nothing))
-                    x = Makie.primitive_uv_offset_width(atlas, val, font)
-                    if haskey(robj.uniforms, :uv_offset_width)
-                        robj[:uv_offset_width] = x
-                    elseif haskey(robj.vertexarray.buffers, "uv_offset_width")
-                        update!(robj.vertexarray.buffers["uv_offset_width"], x)
-                    end
                 end
             end
 
@@ -547,16 +546,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             if val == :pixel;       robj[:markerspace] = gl_convert(Int32(0))
             elseif val == :data;    robj[:markerspace] = gl_convert(Int32(1))
             else                    error("Unsupported markerspace for FastPixel marker: $val")
-            end
-
-        # TODO: Don't let Vec4f(0) pass down here
-        elseif key == :uv_offset_width
-            if plot.computed[:uv_offset_width] != Vec4f(0)
-                if haskey(robj.uniforms, :uv_offset_width)
-                    robj[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, val, font)
-                else
-                    update!(robj.vertexarray.buffer["uv_offset_width"], Makie.primitive_uv_offset_width(atlas, val, font))
-                end
             end
 
         # Handle vertex buffers
