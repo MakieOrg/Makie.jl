@@ -464,13 +464,16 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
         )
         haskey(robj.uniforms, :len) && (robj[:len] = length(positions))
         update!(robj.vertexarray.buffers["position"], positions)
+        if get(plot.computed, :depthsorting, false)
+            plot.computed[:backend_positions] = positions
+        end
     end
 
     # Handle indices
     if get(plot.computed, :depthsorting, false) && any(needs_update, (:f32c, :model, :transform_func, :position, :camera))
-        T = Mat4f(robj[:projectionview] * robj[:preprojection] * robj[:model])
+        T = Mat4f(robj[:projection] * robj[:view] * robj[:preprojection] * robj[:model])
         # TODO: does this have CPU data? Otherwise we should cache this in computed
-        depth_vals = map(robj.vertexarray.buffers["position"]::Vector) do p
+        depth_vals = map(plot.computed[:backend_positions]::Vector) do p
             p4d::Point4f = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
             return p4d[3] / p4d[4]
         end
