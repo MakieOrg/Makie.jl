@@ -112,7 +112,7 @@ function resolve_updates!(plot::Scatter)
     
     # Sanity checks
     @assert plot.computed[:marker_offset] !== automatic
-    @assert plot.computed[:rotation] isa Union{Quaternionf, Vector{Quaternionf}}
+    @assert plot.computed[:rotation] isa Union{Quaternionf, Vector{<:Quaternionf}} "$(plot.computed[:rotation])::$(typeof(plot.computed[:rotation]))"
     
     # Finally cleanup + trigger backend
 

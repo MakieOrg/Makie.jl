@@ -128,12 +128,12 @@ end
 ########################################################################################
 # OpenGL Arrays
 
-const GLArrayEltypes = Union{StaticVector,Real,Colorant}
+const GLArrayEltypes = Union{StaticVector,Quaternion,Real,Colorant}
 """
 Transform julia datatypes to opengl enum type
 """
 julia2glenum(x::Type{T}) where {T <: FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
-julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
+julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant,Quaternion}} = julia2glenum(eltype(x))
 julia2glenum(::Type{OffsetInteger{O,T}}) where {O,T} = julia2glenum(T)
 julia2glenum(::Type{GLubyte})  = GL_UNSIGNED_BYTE
 julia2glenum(::Type{GLbyte})   = GL_BYTE

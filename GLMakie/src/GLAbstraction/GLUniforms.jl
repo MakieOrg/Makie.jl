@@ -5,7 +5,7 @@
 
 const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
-    StaticVector, Mat, Quaternionf, GLSL_COMPATIBLE_NUMBER_TYPES...,
+    StaticVector, Mat, Quaternion, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
     GLBuffer, GPUArray, Shader, GLProgram
 }
@@ -35,7 +35,7 @@ end
 
 gluniform(location::Integer, x::Nothing) = nothing
 
-function gluniform(location::Integer, x::Union{StaticVector, Mat, Colorant, Quaternionf})
+function gluniform(location::Integer, x::Union{StaticVector, Mat, Colorant, Quaternion})
     xref = [x]
     gluniform(location, xref)
 end
@@ -48,7 +48,7 @@ _ndims(p) = ndims(p)
 _ndims(p::Type{T}) where {T <: Colorant} = 1
 _ndims(p::Type{T}) where {T <: Quaternion} = 1
 
-@generated function gluniform(location::Integer, x::Vector{FSA}) where FSA <: Union{Mat, Colorant, StaticVector, Quaternionf}
+@generated function gluniform(location::Integer, x::Vector{FSA}) where FSA <: Union{Mat, Colorant, StaticVector, Quaternion}
     func = uniformfunc(eltype(FSA), _size(FSA))
     callexpr = if _ndims(FSA) == 2
         :($func(location, length(x), GL_FALSE, x))
@@ -97,7 +97,7 @@ glsl_typename(t::Type{GLfloat}) = "float"
 glsl_typename(t::Type{GLdouble}) = "double"
 glsl_typename(t::Type{GLuint}) = "uint"
 glsl_typename(t::Type{GLint}) = "int"
-glsl_typename(t::Type{T}) where {T <: Union{StaticVector, Colorant}} = string(opengl_prefix(eltype(T)), "vec", length(T))
+glsl_typename(t::Type{T}) where {T <: Union{StaticVector, Colorant, Quaternion}} = string(opengl_prefix(eltype(T)), "vec", length(T))
 glsl_typename(t::Type{TextureBuffer{T}}) where {T} = string(opengl_prefix(eltype(T)), "samplerBuffer")
 
 function glsl_typename(t::Texture{T, D}) where {T, D}
@@ -111,8 +111,9 @@ function glsl_typename(t::Type{T}) where T <: Mat
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(N, "x", M))
 end
 toglsltype_string(t::Observable) = toglsltype_string(to_value(t))
-toglsltype_string(x::Quaternionf) = "uniform vec4"
-toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
+function toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Quaternion, Texture, Colorant, TextureBuffer, Nothing}}
+    return "uniform $(glsl_typename(x))"
+end
 #Handle GLSL structs, which need to be addressed via single fields
 function toglsltype_string(x::T) where T
     if isa_gl_struct(x)
@@ -191,6 +192,7 @@ gl_promote(x::Type{T}) where {T <: BGR} = BGR{gl_promote(eltype(T))}
 
 gl_promote(x::Type{Vec{N, T}}) where {N, T} = Vec{N, gl_promote(T)}
 gl_promote(x::Type{Point{N, T}}) where {N, T} = Point{N, gl_promote(T)}
+gl_promote(x::Type{Quaternion{T}}) where {T} = Quaternion{gl_promote(T)}
 
 gl_convert(x::AbstractVector{Vec3f}) = x
 
@@ -241,6 +243,7 @@ gl_convert(a::T) where {T <: NATIVE_TYPES} = a
 gl_convert(s::Observable{T}) where {T <: NATIVE_TYPES} = s
 gl_convert(s::Observable{T}) where T = const_lift(gl_convert, s)
 gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
+gl_convert(x::Quaternion{T}) where {T} = convert(Quaternion{gl_promote(T)}, x)
 gl_convert(x::Mat{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a

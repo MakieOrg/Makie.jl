@@ -1416,8 +1416,8 @@ function to_rotation(s::VecTypes{N}) where N
     end
 end
 
-to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s[2])
-to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
+to_rotation(s::Tuple{VecTypes, Number}) = convert(Quaternionf, qrotation(to_ndim(Vec3f, s[1], 0.0), s[2]))
+to_rotation(angle::Number) = convert(Quaternionf, qrotation(Vec3f(0, 0, 1), angle))
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
