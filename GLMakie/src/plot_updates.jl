@@ -77,7 +77,7 @@ function init_camera!(data, scene, plot)
     mat_keys = (:pixel_space, :view, :projection, :projectionview, :preprojection, :model)
     foreach(k -> get!(data, k, Mat4f(I)), mat_keys)
     foreach(k -> get!(data, k, Mat3f(I)), (:normal_matrix, :view_normalmatrix))
-    foreach(k -> get!(data, k, Vec3f(0)), (:eyeposition, :view_direction, :lookat))
+    foreach(k -> get!(data, k, Vec3f(0)), (:eyeposition, :view_direction, :lookat, :upvector))
     get!(data, :resolution, Vec2f(0))
 
     push!(plot.updated_outputs[], :camera)
@@ -148,7 +148,7 @@ end
 ### Scatter specifics
 ################################################################################
 
-function init_scatter_marker!(data, plot)
+function init_scatter_marker!(data, plot, screen)
     # Image packing
     marker = plot.computed[:marker]
     if marker isa VectorTypes{<: Matrix{<: Colorant}}
@@ -194,7 +194,27 @@ function init_scatter_marker!(data, plot)
 
     # TODO: FastPixel
     elseif marker isa FastPixel
+        if !isnothing(get(data, :intensity, nothing))
+            data[:color] = pop!(data, :intensity)
+        end
+        # to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
+        #                  :projectionview, :projection, :view, :visible, :resolution, :transparency])
+        # filter!(gl_attributes) do (k, v,)
+        #     return (k in to_keep)
+        # end
+        data[:markerspace] = Int32(0)
+        push!(plot.updated_outputs[], :markerspace)
+        data[:marker_shape] = plot.computed[:marker].marker_type
 
+        data[:shader] = GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "dots.vert", "dots.frag",
+            view = Dict(
+                "buffers" => output_buffers(screen, plot.computed[:transparency]),
+                "buffer_writes" => output_buffer_writes(screen, plot.computed[:transparency])
+            )
+        )
+        data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
 
     # shape or Signed Distance field
     else
@@ -206,10 +226,7 @@ function init_scatter_marker!(data, plot)
             data[:distancefield] = get_texture!(atlas)
         end
     end
-
-
-
-
+    return
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
@@ -314,7 +331,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         init_camera!(data, scene, plot)
         init_clip_planes!(data, plot)
         init_color!(data, plot)
-        init_scatter_marker!(data, plot)
+        init_scatter_marker!(data, plot, screen)
 
         @gen_defaults! data begin
             image           = nothing => Texture
@@ -384,6 +401,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     length_changed = false
     atlas = gl_texture_atlas()
     font = get(plot.computed, :font, Makie.defaultfont())
+    isfastpixel = plot.computed[:marker] isa FastPixel
 
     if any(needs_update, (:f32c, :model))
         # TODO: without Observables
@@ -395,7 +413,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     end
 
     # Camera update - relies on up-to-date model
-    update_camera!(robj, screen, scene, plot, true)
+    update_camera!(robj, screen, scene, plot, !isfastpixel)
 
     if any(needs_update, (:f32c, :model, :transform_func, :position))
         positions = apply_transform_and_f32_conversion(
@@ -433,8 +451,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
                 robj.uniforms[k] = v
             elseif haskey(robj.vertexarray.buffers, string(k))
                 update!(robj.vertexarray.buffers[string(k)], v)
-            else
-                error("Did not find $k")
             end
         end
     end
@@ -477,28 +493,40 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
 
         # Specials
         if key == :marker
-            shape = Cint(Makie.marker_to_sdf_shape(val))
-            if shape == 0 && !is_all_equal_scale(plot.computed[:markersize])
-                robj[:shape] = Cint(5) # circle -> ellipse
+            if isfastpixel
+                robj[:marker_shape] = gl_convert(val.marker_type)
             else
-                robj[:shape] = shape
-            end
-
-            if (plot.computed[:uv_offset_width] == Vec4f(0)) &&
-                    isnothing(get(robj.uniforms, :image, nothing))
-                x = Makie.primitive_uv_offset_width(atlas, val, font)
-                if haskey(robj.uniforms, :uv_offset_width)
-                    robj[:uv_offset_width] = x
+                shape = Cint(Makie.marker_to_sdf_shape(val))
+                if shape == 0 && !is_all_equal_scale(plot.computed[:markersize])
+                    robj[:shape] = Cint(5) # circle -> ellipse
                 else
-                    update!(robj.vertexarray.buffers["uv_offset_width"], x)
+                    robj[:shape] = shape
+                end
+
+                if (plot.computed[:uv_offset_width] == Vec4f(0)) &&
+                        isnothing(get(robj.uniforms, :image, nothing))
+                    x = Makie.primitive_uv_offset_width(atlas, val, font)
+                    if haskey(robj.uniforms, :uv_offset_width)
+                        robj[:uv_offset_width] = x
+                    elseif haskey(robj.vertexarray.buffers, "uv_offset_width")
+                        update!(robj.vertexarray.buffers["uv_offset_width"], x)
+                    end
                 end
             end
 
         elseif key == :visible
             robj.visible = val::Bool
 
-        elseif key == :overdraw
+        # NOT FastPixel
+        elseif (key == :overdraw) && !isfastpixel
             robj.prerenderfunction.overdraw[] = val::Bool
+
+        # ONLY FastPixel
+        elseif (key == :markerspace) && isfastpixel
+            if val == :pixel;       robj[:markerspace] = gl_convert(Int32(0))
+            elseif val == :data;    robj[:markerspace] = gl_convert(Int32(1))
+            else                    error("Unsupported markerspace for FastPixel marker: $val")
+            end
 
         # TODO: Don't let Vec4f(0) pass down here
         elseif key == :uv_offset_width

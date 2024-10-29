@@ -4,7 +4,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
-{{vertex_type}}     vertex;
+{{position_type}}   position;
 {{color_type}}      color;
 {{color_norm_type}} color_norm;
 {{color_map_type}}  color_map;
@@ -56,7 +56,7 @@ uniform float px_per_unit;
 uniform vec3 upvector;
 
 void main(){
-    vec4 world_position = model * _position(vertex);
+    vec4 world_position = model * _position(position);
     process_clip_planes(world_position.xyz);
     vec4 clip_pos = projectionview * world_position;
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
