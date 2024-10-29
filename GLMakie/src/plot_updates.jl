@@ -507,6 +507,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
 
     # special restrictions
     (isfastpixel || hasimage) && delete!(plot.updated_outputs[], :uv_offset_width)
+    delete!(plot.updated_outputs[], :colorrange) # replaced by colorrange_scaled
 
     # TODO: Don't break stuff :(
     isnothing(plot.computed[:distancefield]) && delete!(plot.updated_outputs[], :distancefield)
@@ -541,6 +542,10 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             elseif val == :data;    robj[:markerspace] = gl_convert(Int32(1))
             else                    error("Unsupported markerspace for FastPixel marker: $val")
             end
+
+        # TODO: do we even need unscaled colorrange for anything?
+        elseif key == :colorrange_scaled
+            robj[:color_norm] = gl_convert(val)
 
         # Handle vertex buffers
         elseif haskey(robj.vertexarray.buffers, string(glkey))
