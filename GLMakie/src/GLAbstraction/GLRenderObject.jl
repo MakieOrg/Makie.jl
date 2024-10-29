@@ -4,6 +4,7 @@ end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
 Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
+Base.haskey(obj::RenderObject, symbol::Symbol) = haskey(obj.uniforms, symbol)
 
 Base.getindex(obj::RenderObject, symbol::Symbol, x::Function) = getindex(obj, Val(symbol), x)
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x]

@@ -105,17 +105,15 @@ function init_camera!(data, scene, plot)
     return
 end
 
-set_existing!(robj, value, key) = haskey(robj.uniforms, key) && (robj[key] = value)
-
 function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     cam = scene.camera
     needs_update = in(plot.updated_outputs[])
 
     if :camera in plot.updated_outputs[]
-        set_existing!(robj, Mat4f(cam.pixel_space[]),    :pixel_space)
-        set_existing!(robj, Vec3f(cam.eyeposition[]),    :eyeposition)
-        set_existing!(robj, Vec3f(cam.view_direction[]), :view_direction)
-        set_existing!(robj, Vec3f(cam.upvector[]),       :upvector)
+        haskey(robj, :pixel_space)     && (robj[:pixel_space] = Mat4f(cam.pixel_space[]))
+        haskey(robj, :eyeposition)     && (robj[:eyeposition] = Vec3f(cam.eyeposition[]))
+        haskey(robj, :view_direction)  && (robj[:view_direction] = Vec3f(cam.view_direction[]))
+        haskey(robj, :upvector)        && (robj[:upvector] = Vec3f(cam.upvector[]))
     end
 
     # If we have markerspace we usually project from
@@ -125,29 +123,32 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     space_name = target_markerspace ? (:markerspace) : (:space)
     if any(needs_update, (space_name, :camera))
         _space = plot.computed[space_name]
-        set_existing!(robj, is_data_space(_space) ? Mat4f(cam.view[]) : Mat4f(I),   :view)
-        set_existing!(robj, Mat4f(Makie.space_to_clip(cam, _space, false)),         :projection)
-        set_existing!(robj, Mat4f(Makie.space_to_clip(cam, _space, true)),          :projectionview)
+        haskey(robj, :view)             && (robj[:view] = is_data_space(_space) ? Mat4f(cam.view[]) : Mat4f(I))
+        haskey(robj, :projection)       && (robj[:projection] = Mat4f(Makie.space_to_clip(cam, _space, false)))
+        haskey(robj, :projectionview)   && (robj[:projectionview] = Mat4f(Makie.space_to_clip(cam, _space, true)))
     end
 
-    if target_markerspace && any(needs_update, (:space, :markerspace, :camera))
+    if target_markerspace && any(needs_update, (:space, :markerspace, :camera)) && haskey(robj, :preprojection)
         preprojection = Mat4f(
             Makie.clip_to_space(cam, plot.computed[:markerspace]) *
             Makie.space_to_clip(cam, plot.computed[:space]))
-        set_existing!(robj, preprojection, :preprojection)
+        robj[:preprojection] = preprojection
     end
 
-    if any(needs_update, (:camera, :px_per_unit))
-        set_existing!(robj, Vec2f(screen.px_per_unit[] * scene.camera.resolution[]), :resolution)
+    if needs_update(:px_per_unit) && haskey(robj, :px_per_unit)
+        robj[:px_per_unit] = screen.px_per_unit[]
+    end
+    if any(needs_update, (:camera, :px_per_unit)) && haskey(robj, :resolution)
+        robj[:resolution] = Vec2f(screen.px_per_unit[] * scene.camera.resolution[])
     end
 
     # f32c can change model
-    if any(needs_update, (:model, :f32c)) && haskey(robj.uniforms, :world_normalmatrix)
+    if any(needs_update, (:model, :f32c)) && haskey(robj, :world_normalmatrix)
         i3 = Vec(1,2,3)
         robj[:world_normalmatrix] = Mat4f(transpose(inv(robj[:model][i3, i3])))
     end
 
-    if any(needs_update, (:camera, :model, :f32c)) && haskey(robj.uniforms, :view_normalmatrix)
+    if any(needs_update, (:camera, :model, :f32c)) && haskey(robj, :view_normalmatrix)
         cam = scene.camera
         robj[:view_normalmatrix]  = Mat4f(transpose(inv(cam.view[i3, i3] * robj[:model][i3, i3])))
     end
@@ -155,12 +156,12 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     return
 end
 
-function init_generics!(data, plot)
+function init_generics!(data, plot, screen)
     data[:fxaa]         = get(plot.computed, :fxaa, false)
     data[:ssao]         = get(plot.computed, :ssao, false)
     data[:transparency] = get(plot.computed, :transparency, false)
     data[:overdraw]     = get(plot.computed, :overdraw, false)
-    data[:px_per_unit]  = 1f0
+    data[:px_per_unit]  = screen.px_per_unit[]
     data[:depth_shift]  = get(plot.computed, :depth_shift, 0f0)
     return
 end
@@ -348,7 +349,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             indices         = to_index_buffer(plot.computed[:depthsorting] ? UInt32[] : 0)
         end
 
-        init_generics!(data, plot)
+        init_generics!(data, plot, screen)
         init_camera!(data, scene, plot)
         init_clip_planes!(data, plot)
         init_color!(data, plot)
@@ -462,7 +463,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model]::Mat4d,
             plot.converted[1][], plot.computed[:space]::Symbol
         )
-        haskey(robj.uniforms, :len) && (robj[:len] = length(positions))
+        haskey(robj, :len) && (robj[:len] = length(positions))
         update!(robj.vertexarray.buffers["position"], positions)
         if get(plot.computed, :depthsorting, false)
             plot.computed[:backend_positions] = positions
@@ -488,7 +489,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     if needs_update(:color_scaled) || length_changed
         if haskey(robj.vertexarray.buffers, "intensity")
             update!(robj.vertexarray.buffers["intensity"], plot.computed[:color_scaled])
-        elseif haskey(robj.uniforms, :intensity)
+        elseif haskey(robj, :intensity)
             update!(robj[:intensity], plot.computed[:color_scaled])
         end
     end
@@ -556,7 +557,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             end
 
         # Handle uniforms
-        elseif haskey(robj.uniforms, glkey)
+        elseif haskey(robj, glkey)
             # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
             if robj[glkey] isa GPUArray
                 update!(robj[glkey], val)
