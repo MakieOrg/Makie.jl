@@ -129,10 +129,9 @@ function update_camera!(robj, screen, scene, plot, target_markerspace = false)
     end
 
     if target_markerspace && any(needs_update, (:space, :markerspace, :camera)) && haskey(robj, :preprojection)
-        preprojection = Mat4f(
+        robj[:preprojection] = Mat4f(
             Makie.clip_to_space(cam, plot.computed[:markerspace]) *
             Makie.space_to_clip(cam, plot.computed[:space]))
-        robj[:preprojection] = preprojection
     end
 
     if needs_update(:px_per_unit) && haskey(robj, :px_per_unit)
@@ -421,12 +420,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
                 any(buffer -> buffer.id == 0, values(robj.vertexarray.buffers))
             return
         else
+            update_robj!(screen, robj, scene, plot)
+            empty!(plot.updated_outputs[])
             screen.requires_update = true
         end
-
-        update_robj!(screen, robj, scene, plot)
-
-        empty!(plot.updated_outputs[])
 
         return
     end

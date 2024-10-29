@@ -385,6 +385,12 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
         end
     end
     plot.model = transformationmatrix(plot)
+    # TODO: This could double with user given model
+    on(plot, plot.model) do _
+        push!(plot.updated_inputs[], :model)
+        notify(plot.updated_inputs)
+    end
+
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
 

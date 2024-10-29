@@ -472,6 +472,16 @@ function extract_color(@nospecialize(plot), color_default)
     return choose_scalar(color, color_default)
 end
 
+function extract_color(@nospecialize(plot::Scatter), color_default)
+    # TODO: is this static or observable?
+    color = plot.computed[:color]
+    if to_value(color) isa Colorant
+        return map(_ -> plot.computed[:color], plot.updated_inputs, priority = -1)
+    else # colormapping, image, color vector
+        return color_default
+    end
+end
+
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         color = extract_color(plot, legend[:linecolor]),
