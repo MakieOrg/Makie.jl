@@ -39,10 +39,10 @@ function Makie.plot!(p::Waterfall)
         final = similar(xy)
         groupby = StructArray(; grp=i_group)
         for (grp, inds) in StructArrays.finduniquesorted(groupby)
-            fromto = stack_from_to_final(i_stack[inds], y[inds])
-            fillto[inds] .= fromto.from
-            xy[inds] .= Point2f.(x[inds], fromto.to)
-            final[inds] .= Point2f.(x[inds], fromto.final)
+            _fromto = stack_from_to_final(i_stack[inds], y[inds])
+            fillto[inds] .= _fromto.from
+            xy[inds] .= Point2f.(x[inds], _fromto.to)
+            final[inds] .= Point2f.(x[inds], _fromto.final)
         end
         return (xy=xy, fillto=fillto, final=final)
     end
