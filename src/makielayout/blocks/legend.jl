@@ -474,9 +474,13 @@ end
 
 function extract_color(@nospecialize(plot::Scatter), color_default)
     # TODO: is this static or observable?
-    color = plot.computed[:color]
+    color = plot[:color]
     if to_value(color) isa Colorant
         return map(_ -> plot.computed[:color], plot.updated_inputs, priority = -1)
+    elseif to_value(color) isa Real
+        return map(plot.updated_inputs, priority = -1) do _
+            interpolated_getindex(plot.computed[:colormap], plot.computed[:color_scaled][1], plot.computed[:colorrange_scaled])
+        end
     else # colormapping, image, color vector
         return color_default
     end
