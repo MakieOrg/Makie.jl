@@ -38,8 +38,8 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
             map!(_ -> plot.computed[:colorrange], Observable{Any}(), plot.updated_inputs, priority = -1),
             map!(_ -> plot.computed[:colorscale], Observable{Any}(), plot.updated_inputs, priority = -1),
             map!(_ -> plot.computed[:alpha],      Observable{Any}(), plot.updated_inputs, priority = -1),
-            map!(_ -> plot.computed[:highclip],   Observable{Any}(), plot.updated_inputs, priority = -1),
-            map!(_ -> plot.computed[:lowclip],    Observable{Any}(), plot.updated_inputs, priority = -1),
+            get(plot.attributes, :highclip, automatic),
+            get(plot.attributes, :lowclip, automatic),
             map!(_ -> plot.computed[:nan_color],  Observable{Any}(), plot.updated_inputs, priority = -1),
         )
         return cm
