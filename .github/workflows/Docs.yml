@@ -37,7 +37,7 @@ jobs:
     - name: Install Julia
       uses: julia-actions/setup-julia@v2
       with:
-        version: '1.10'
+        version: '1'
     - uses: julia-actions/cache@v2
     - name: Build and deploy docs
       env:
@@ -50,4 +50,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Docs build
-        path: ./docs/__site
+        path: ./docs/build
