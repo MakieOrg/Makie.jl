@@ -410,6 +410,19 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     union!(plot.updated_inputs[], keys(plot.attributes))
     resolve_updates!(plot)
 
+    # glue code to propagate connections from input args
+    # TODO: rework
+    # - no observables as converted
+    # - if args are observables, make them trigger update!()
+    foreach(plot.args) do x
+        if x isa Observable
+            on(plot, x) do _
+                push!(plot.updated_outputs[], :position) # TODO: not generic?
+                notify(plot.updated_inputs)
+            end
+        end
+    end
+
     return plot
 end
 

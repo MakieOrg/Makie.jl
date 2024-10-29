@@ -67,7 +67,6 @@ end
 
 function update_clip_planes!(robj, plot)
     if any(in(plot.updated_outputs[]), (:space, :clip_planes))
-        @info "clip planes"
         if !Makie.is_data_space(plot.computed[:space])
             robj[:num_clip_planes] = 0
             robj[:clip_planes] .= Ref(Vec4f(0, 0, 0, -1e9))
@@ -81,8 +80,6 @@ function update_clip_planes!(robj, plot)
                 robj[:clip_planes][i] = Vec4f(0, 0, 0, -1e9)
             end
         end
-        @info robj[:num_clip_planes]
-        @info robj[:clip_planes]
     end
     delete!(plot.updated_outputs[], :clip_planes)
     return
@@ -417,7 +414,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             push!(plot.updated_outputs[], :uv_offset_width)
         end
 
-        @info "Triggered with $(plot.updated_outputs[])"
+        # @info "Triggered with $(plot.updated_outputs[])"
 
         if isempty(plot.updated_outputs[]) || !isopen(screen) || (robj.id == 0) ||
                 any(buffer -> buffer.id == 0, values(robj.vertexarray.buffers))
