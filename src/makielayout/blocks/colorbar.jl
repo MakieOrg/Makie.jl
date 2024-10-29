@@ -29,8 +29,8 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
             get(plot, :lowclip, Observable(automatic)),
             get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
         )
-    elseif all(k -> haskey(plot, k), (:colorrange, :colormap, :color))
-        # TODO: rework
+    # TODO: rework
+    elseif plot isa Scatter # all(k -> haskey(plot, k), (:colorrange, :colormap, :color))
         return ColorMapping(
             plot.computed[:color],
             map(_ -> plot.computed[:color], plot.updated_inputs),
