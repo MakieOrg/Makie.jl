@@ -4,7 +4,7 @@
 # - image marker feels like something for Makie to handle, maybe?
 
 # LOC:
-# this: ~505
+# this: ~500
 # equivalent before:
 #   65 draw_atomic
 #   12 handle_view
@@ -394,6 +394,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
         Makie.resolve_updates!(plot)
 
         # More convenient as extension to resolve_updates!()
+        # But other backends may not need these or do these slightly different
+        # (e.g. smaller texture atlas for WGLMakie, different handling of markersize etc in CairoMakie)
         # Note marker_size should probably split from this
         if any(in(plot.updated_outputs[]), (:marker_offset, :marker, :markersize))
             atlas = gl_texture_atlas()
@@ -445,12 +447,9 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     length_changed = false
     isfastpixel = plot.computed[:marker] isa FastPixel
     hasimage = get(robj.uniforms, :image, nothing) !== nothing
-
+        
     if any(needs_update, (:f32c, :model))
-        # TODO: without Observables
         f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model]::Mat4d)
-        # TODO: This should be rare so we want to cache it
-        # maybe do this in resolve? But CairoMakie doesn't need it...
         plot.computed[:f32c] = f32c
         robj[:model] = model
     end
@@ -507,9 +506,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     (isfastpixel || hasimage) && delete!(plot.updated_outputs[], :uv_offset_width)
 
     # TODO: Don't break stuff :(
-    if isnothing(plot.computed[:distancefield])
-        delete!(plot.updated_outputs[], :distancefield)
-    end
+    isnothing(plot.computed[:distancefield]) && delete!(plot.updated_outputs[], :distancefield)
 
     for key in plot.updated_outputs[]
         glkey = to_glvisualize_key(key)
