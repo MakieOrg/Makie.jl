@@ -18,7 +18,7 @@ function create_shader(mscene::Scene, plot::Surface)
     positions = Buffer(ps)
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
-    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
+    fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
     # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
     # the center of a texture pixel rather than the edge, fixing

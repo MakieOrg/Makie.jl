@@ -350,6 +350,14 @@ function get_ppu_resolution(camera::Camera, px_per_unit::Real)
     end
 end
 
+function get_preprojection(camera::Camera, space::Symbol, markerspace::Symbol)
+    return get!(camera.calculated_matrices, Symbol("$(space)_$(markerspace)")) do
+        return lift(camera.projectionview, camera.resolution) do _, _
+            return Mat4f(Makie.clip_to_space(camera, markerspace) * Makie.space_to_clip(camera, space))
+        end
+    end
+end
+
 """
 Holds the transformations for Scenes.
 ## Fields
@@ -567,14 +575,3 @@ struct Cycler
 end
 
 Cycler() = Cycler(IdDict{Type,Int}())
-
-
-# Float32 conversions
-struct LinearScaling
-    scale::Vec{3, Float64}
-    offset::Vec{3, Float64}
-end
-struct Float32Convert
-    scaling::Observable{LinearScaling}
-    resolution::Float32
-end

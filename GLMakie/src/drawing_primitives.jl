@@ -149,6 +149,9 @@ function connect_camera!(screen::Screen, plot::Plot, uniforms, cam::Camera, spac
     # resolution in real hardware pixels, not scaled pixels/units
     uniforms[:resolution] = Makie.get_ppu_resolution(cam, to_value(screen.px_per_unit))
 
+    if haskey(plot, :markerspace)
+        uniforms[:preprojection] = Makie.get_preprojection(cam, plot.space[], plot.markerspace[])
+    end
     # for lighting
     get!(uniforms, :world_normalmatrix) do
         return lift(plot, uniforms[:model]) do m
@@ -392,11 +395,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         cam = scene.camera
 
         if plot isa Scatter
-            mspace = plot.markerspace
-            gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
-                                                 cam.resolution) do space, mspace, _, _
-                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
-            end
+
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
                 gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
@@ -605,11 +604,6 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:visible] = plot.visible
         gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
         gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
-        cam = scene.camera
-        # gl_attributes[:preprojection] = Observable(Mat4f(I))
-        gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
-            Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
-        end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
@@ -789,6 +783,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         gl_attributes[:image] = Texture(img; minfilter=interp)
 
         @assert to_value(plot[3]) isa AbstractMatrix
+        gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
         types = map(v -> typeof(to_value(v)), plot[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)

@@ -1010,7 +1010,8 @@ function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
     for (i, (z, screen_id, robj)) in enumerate(screen.renderlist)
         if haskey(robj_to_plot, robj.id)
             plot_obj = robj_to_plot[robj.id]
-            connect_camera!(screen, plot_obj, robj.uniforms, new_cam, plot_obj.space[])
+            connect_camera!(screen, plot_obj, robj.uniforms, new_cam, get_space(plot_obj))
+            robj.uniforms[:model] = Makie.patch_model(plot)[2]
             screen.renderlist[i] = (z, scene_id, robj)
         end
     end

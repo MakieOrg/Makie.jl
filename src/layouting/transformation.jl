@@ -15,11 +15,13 @@ end
 
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
+    # Observables.clear(child.parent_model)
     obsfunc = on(parent.model; update=true) do m
         return child.parent_model[] = m
     end
     push!(tfuncs, obsfunc)
     if connect_func
+        # Observables.clear(child.transform_func)
         t2 = on(parent.transform_func; update=true) do f
             child.transform_func[] = f
             return
