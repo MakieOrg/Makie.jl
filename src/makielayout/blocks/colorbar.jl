@@ -31,17 +31,18 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
         )
     # TODO: rework
     elseif plot isa Scatter # all(k -> haskey(plot, k), (:colorrange, :colormap, :color))
-        return ColorMapping(
+        cm = ColorMapping(
             plot.computed[:color],
-            map(_ -> plot.computed[:color],      plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:colormap],   plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:colorrange], plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:colorscale], plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:alpha],      plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:highclip],   plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:lowclip],    plot.updated_inputs, priority = -1),
-            map(_ -> plot.computed[:nan_color],  plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:color],      Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:colormap],   Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:colorrange], Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:colorscale], Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:alpha],      Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:highclip],   Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:lowclip],    Observable{Any}(), plot.updated_inputs, priority = -1),
+            map!(_ -> plot.computed[:nan_color],  Observable{Any}(), plot.updated_inputs, priority = -1),
         )
+        return cm
     else
         return nothing
     end
