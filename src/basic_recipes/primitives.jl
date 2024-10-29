@@ -107,10 +107,13 @@ function resolve_updates!(plot::Scatter)
         plot.computed[:marker_offset] = to_2d_scale(-0.5f0 .* ms)
         push!(plot.updated_outputs[], :marker_offset)
     end
-    @assert plot.computed[:marker_offset] !== automatic
-
+    
     # markerspace - why not just remove this? we don't auto it anyway?
-
+    
+    # Sanity checks
+    @assert plot.computed[:marker_offset] !== automatic
+    @assert plot.computed[:rotation] isa Union{Quaternionf, Vector{Quaternionf}}
+    
     # Finally cleanup + trigger backend
 
     # TODO:

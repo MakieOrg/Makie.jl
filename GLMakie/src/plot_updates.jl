@@ -327,7 +327,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     begin # draw_scatter()
         Dim = length(eltype(plot.converted[1][]))
         N = length(plot.converted[1][])
-        rot = vec2quaternion(get(plot.computed, :rotation, Vec4f(0, 0, 0, 1)))
 
         # TODO: infer type (Vector vs value), set data with initial resolve run
         atlas = gl_texture_atlas()
@@ -345,7 +344,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             len             = 0 # should match length of position
             marker_offset   = Vec3f(0) => GLBuffer # Note: currently unused for Scatter
             scale           = Vec2f(0) => GLBuffer
-            rotation        = rot => GLBuffer
+            rotation        = plot.computed[:rotation] => GLBuffer
             indices         = to_index_buffer(plot.computed[:depthsorting] ? UInt32[] : 0)
         end
 
@@ -366,7 +365,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             uv_offset_width = ifelse(plot.computed[:marker] isa Vector, Vector{Vec4f}(undef, N), Vec4f(0)) => GLBuffer
 
             # rotation and billboard don't go along
-            billboard       = (plot.computed[:rotation] isa Billboard) || (rotation == Vec4f(0,0,0,1))
+            billboard       = (plot[:rotation] isa Billboard) || (rotation == Vec4f(0,0,0,1))
             distancefield    = nothing => Texture
             shader           = GLVisualizeShader(
                 screen,
@@ -515,11 +514,6 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     for key in plot.updated_outputs[]
         glkey = to_glvisualize_key(key)
         val = plot.computed[key]
-
-        if key == :rotation
-            # TODO: Don't make this an observable and also can we just skip this?
-            val = to_value(vec2quaternion(val))
-        end
 
         # Specials
         if key == :marker
