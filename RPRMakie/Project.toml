@@ -13,7 +13,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 RadeonProRender = "27029320-176d-4a42-b57d-56729d2ad457"
 
 [compat]
-Colors = "0.9, 0.10, 0.11, 0.12"
+Colors = "0.9, 0.10, 0.11, 0.12, 0.13"
 FileIO = "1.6"
 GeometryBasics = "0.4.11"
 LinearAlgebra = "1.0, 1.6"
