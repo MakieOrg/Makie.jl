@@ -365,7 +365,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             uv_offset_width = ifelse(plot.computed[:marker] isa Vector, Vector{Vec4f}(undef, N), Vec4f(0)) => GLBuffer
 
             # rotation and billboard don't go along
-            billboard       = (plot[:rotation] isa Billboard) || (rotation == Vec4f(0,0,0,1))
+            billboard       = (plot[:rotation][] isa Billboard) || (rotation == Vec4f(0,0,0,1))
             distancefield    = nothing => Texture
             shader           = GLVisualizeShader(
                 screen,
