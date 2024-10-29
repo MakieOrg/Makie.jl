@@ -1,3 +1,24 @@
+# Notes:
+# - Handling FastPixel here feels pretty messy, shoudl extract
+#   - generally, different shader = different primitive plot type?
+# - image marker feels like something for Makie to handle, maybe?
+
+# LOC:
+# this: ~515
+# equivalent before:
+#   65 draw_atomic
+#   12 handle_view
+#   90 cached_robj w/o lighting
+#   55 connect_camera + get_space
+#   20 handle_intensities
+#   20 draw_pixel_scatter
+#   10 draw_scatter (image)
+#   30 draw_scatter (images)
+#   75 draw_scatter (general)
+#    5 intensity_convert
+# ----------------------
+#  382
+
 ################################################################################
 ### Generics
 ################################################################################
