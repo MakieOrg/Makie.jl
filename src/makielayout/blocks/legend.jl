@@ -664,7 +664,8 @@ end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
     lplots = filter(get_plots(ax)) do plot
-        haskey(plot.attributes, :label)
+        haskey(plot.attributes, :label) ||
+        plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
     labels = map(lplots) do l
         l.label[]
@@ -716,6 +717,11 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 end
 
 get_plots(p::AbstractPlot) = [p]
+# NOTE: this is important, since we know that `get_plots` is only ever called on the toplevel, 
+# we can assume that any plotlist on the toplevel should be decomposed into individual plots.
+# However, if the user passes a label argument with a legend override, what do we do?
+get_plots(p::PlotList) = haskey(p.attributes, :label) && p.attributes[:label] isa Pair ? [p] : p.plots
+
 get_plots(ax::Union{Axis, Axis3}) = get_plots(ax.scene)
 get_plots(lscene::LScene) = get_plots(lscene.scene)
 function get_plots(scene::Scene)
