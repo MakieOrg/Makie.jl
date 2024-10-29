@@ -414,11 +414,15 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     # TODO: rework
     # - no observables as converted
     # - if args are observables, make them trigger update!()
-    foreach(plot.args) do x
-        if x isa Observable
-            on(plot, x) do _
-                push!(plot.updated_outputs[], :position) # TODO: not generic?
-                notify(plot.updated_inputs)
+    # - this breaks layouting when used for all plots (maybe due to text using position as attribute?)
+    if plot isa Scatter
+        foreach(plot.args) do x
+            if x isa Observable
+                on(plot, x) do _
+                    push!(plot.updated_outputs[], :position)
+                    notify(plot.updated_inputs)
+                    return
+                end
             end
         end
     end

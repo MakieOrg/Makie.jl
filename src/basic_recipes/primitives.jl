@@ -32,7 +32,6 @@ function Base.setindex!(x::Scatter, value::Observable, key::Symbol)
 end
 
 function update!(plot::Scatter; kwargs...)
-    @info "update"
     kwarg_keys = Set(keys(kwargs))
     union!(plot.updated_inputs[], kwarg_keys)
 
