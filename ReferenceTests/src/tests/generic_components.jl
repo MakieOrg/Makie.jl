@@ -27,7 +27,10 @@
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
     # for ranged picks
-    m2 = mesh!(scene, Rect2f(190, 330, 10, 10))
+    m2 = mesh!(scene, 
+        Point2f[(190, 330), (200, 330), (190, 340), (200, 340)],
+        [1 2 4; 1 4 3]
+    )
 
     scene # for easy reviewing of the plot
 
