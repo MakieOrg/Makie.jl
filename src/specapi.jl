@@ -579,6 +579,11 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             delete!(reusable_plots, old_spec)
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
+
+            # TODO: better solution (would be nice to have names_to_notify?)
+            # trigger full update so everything makes its way to the backend
+            union!(reused_plot.updated_inputs[], keys(reused_plot.attributes))
+            notify(reused_plot.updated_inputs)
         end
     end
     return new_plots
