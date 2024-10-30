@@ -406,9 +406,6 @@ function LegendEntry(label, content, legend; kwargs...)
     else
         elems = legendelements(content, legend)
     end
-    if isempty(elems)
-        error("`legendelements` returned an empty list for content element of type $(typeof(content)). That could mean that neither this object nor any possible child objects had a method for `legendelements` defined that returned a non-empty result.")
-    end
     LegendEntry(elems, attrs)
 end
 
