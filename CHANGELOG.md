@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added `subsup` and `left_subsup` functions that offer stacked sub- and superscripts for `rich` text which means this style can be used with arbitrary fonts and is not limited to fonts supported by MathTeXEngine.jl [#4489](https://github.com/MakieOrg/Makie.jl/pull/4489).
+- Expand PlotList plots to expose their child plots to the legend interface, allowing `axislegend` to once again show plots within PlotSpecs as individual entries. [#4546](https://github.com/MakieOrg/Makie.jl/pull/4546)
 
 ## [0.21.15] - 2024-10-25
 
