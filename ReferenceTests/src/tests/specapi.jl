@@ -116,3 +116,43 @@ end
     sync_step!(st)
     st
 end
+
+function to_plot(plots)
+    axes = map(permutedims(plots)) do plot
+        ax = S.Axis(;
+                    plots=[plot], xticksvisible=false,
+                    yticksvisible=false, yticklabelsvisible=false,
+                    xticklabelsvisible=false)
+        return S.GridLayout([ax S.Colorbar(plot)])
+    end
+    return S.GridLayout(axes)
+end
+
+@reference_test "Colorbar from Plots" begin
+    data = vcat((1:4)', (4:-1:1)')
+    plots = [S.Heatmap(data),
+             S.Image(data),
+             S.Lines(1:4; linewidth=4, color=1:4),
+             S.Scatter(1:4; markersize=20, color=1:4)]
+    obs = Observable(to_plot(plots))
+    fig = plot(obs; figure=(; size=(700, 150)))
+    img1 = copy(colorbuffer(fig))
+    plots = [S.Heatmap(data; colormap=:inferno),
+             S.Image(data; colormap=:inferno),
+             S.Lines(1:4; linewidth=4, color=1:4, colormap=:inferno),
+             S.Scatter(1:4; markersize=20, color=1:4, colormap=:inferno)]
+    obs[] = to_plot(plots)
+    img2 = copy(colorbuffer(fig))
+
+    plots = [S.Heatmap(data; colorrange=(2, 3)),
+             S.Image(data; colorrange=(2, 3)),
+             S.Lines(1:4; linewidth=4, color=1:4, colorrange=(2, 3)),
+             S.Scatter(1:4; markersize=20, color=1:4, colorrange=(2, 3))]
+    obs[] = to_plot(plots)
+    img3 = copy(colorbuffer(fig))
+
+    imgs = hcat(rotr90.((img3, img2, img1))...)
+    s = Scene(; size=size(imgs))
+    image!(s, imgs; space=:pixel)
+    s
+end
