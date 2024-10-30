@@ -275,6 +275,8 @@ function update_from_previous_version(
         src = joinpath(old_version, image)
         isfile(src) || error("Failed to find file $image in $source_version.")
         trg = joinpath(new_version, image)
+        dir, _ = splitdir(trg)
+        isdir(dir) || mkdir(dir)
         cp(src, trg, force = true)
     end
 
