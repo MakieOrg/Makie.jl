@@ -387,6 +387,14 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
     # We could try pulling out some "constants"
     HAS_IMAGE = get(robj.uniforms, :image, nothing) !== nothing
     ISFASTPIXEL = plot.computed[:marker] isa FastPixel
+    # TODO: We could pre-filter updated_outputs to skip more backend updates
+    #       With all the renames this will probably take some time to get right though
+    # APPLICABLE_NAMES = union!(
+    #     Set([:camera, :px_per_unit, :f32c, :transform_func, :color_scaled, :marker, 
+    #         :visible, :colorrange_scaled, :glowwidth, :glowcolor, :strokewidth, 
+    #         :strokecolor, :colormap, :transform_marker]), 
+    #     keys(robj.uniforms), Symbol.(keys(robj.vertexarray.buffers))
+    # )
 
     on(plot, plot.updated_inputs) do _
 
@@ -413,6 +421,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             plot.computed[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, plot.computed[:marker], font)
             push!(plot.updated_outputs[], :uv_offset_width)
         end
+
+        # intersect!(plot.updated_outputs[], APPLICABLE_NAMES)
 
         # @info "Triggered with $(plot.updated_outputs[])"
 
