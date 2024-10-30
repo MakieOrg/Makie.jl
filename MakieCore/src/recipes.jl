@@ -417,7 +417,11 @@ function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
             return to_value(overwrite[attribute])
         end
     end
-    return lookup_default(metas[attribute], thm)
+    if haskey(metas, attribute)
+        return lookup_default(metas[attribute], thm)
+    else
+        return nothing
+    end
 end
 
 function default_theme(scene, T::Type{<: Plot})

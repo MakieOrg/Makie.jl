@@ -432,12 +432,14 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         end
     end
 
-    to_reset = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
-    filter!(x -> x != :cycle, to_reset) # dont reset cycle
-    if !isempty(to_reset)
-        for k in to_reset
+    reset_to_default = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
+    filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
+    if !isempty(reset_to_default)
+        for k in reset_to_default
             old_attr = plot[k]
             new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
+            # In case of e.g. dim_conversions
+            isnothing(new_value) && continue
             # only update if different
             if is_different(old_attr[], new_value)
                 old_attr.val = new_value
