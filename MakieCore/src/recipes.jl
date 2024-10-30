@@ -435,6 +435,14 @@ function default_theme(scene, T::Type{<: Plot})
     end
     return attr
 end
+      
+function extract_docstring(str)
+    if VERSION >= v"1.11" && str isa Base.Docs.DocStr
+        return only(str.text::Core.SimpleVector)
+    else
+        return str
+    end
+end
 
 function create_recipe_expr(Tsym, args, attrblock)
     funcname_sym = to_func_name(Tsym)
@@ -465,7 +473,7 @@ function create_recipe_expr(Tsym, args, attrblock)
         Core.@__doc__ $(esc(docs_placeholder)) = nothing
         binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
         user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
-            _docstring = @doc($docs_placeholder)
+            _docstring = extract_docstring(@doc($docs_placeholder))
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
@@ -499,7 +507,7 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
+        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
         @doc docstring_modified $funcname_sym
         @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
