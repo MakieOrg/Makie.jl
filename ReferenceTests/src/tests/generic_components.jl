@@ -1,7 +1,6 @@
 # For things that aren't as plot related
 
-# @reference_test "picking" 
-begin
+@reference_test "picking" begin
     scene = Scene(size = (230, 370))
     campixel!(scene)
     
