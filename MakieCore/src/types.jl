@@ -115,9 +115,13 @@ TODO: docs
 updates multiple plot arg and attribute values, then triggers update resolution
 """
 function update!(plot::Plot; kwargs...)
+    # The default for plots that don't implement this infrastructure is to just
+    # do val updates and trigger observables afterwards.
+    # This needs to be separate from resolve_updates!() because that maybe called
+    # for initialization
     union!(plot.updated_inputs[], keys(kwargs))
     foreach((k, v) -> plot[k].val = v, pairs(kwargs))
-    notify(plot.updated_inputs)
+    foreach(k -> notify(plot[k]), keys(kwargs))
     return
 end
 
@@ -129,13 +133,7 @@ TODO: docs
 update resolution falls back to Observable triggers for compat
 """
 function resolve_updates!(plot::Plot)
-    for k in plot.updated_inputs[]
-        if haskey(plot.attributes, k) && isa(plot.attributes[k], Observable)
-            notify(plot.attributes[k])
-        end
-    end
-    empty!(plot.updated_inputs[])
-    return
+    # Defaults to no-op if plot doesn't use new infrastructure
 end
 
 struct Key{K} end
