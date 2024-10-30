@@ -50,4 +50,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Docs build
-        path: ./docs/__site
+        path: ./docs/build
