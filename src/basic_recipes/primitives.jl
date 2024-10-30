@@ -1,10 +1,8 @@
 # TODO: Adjust generic versions
 
-# TODO: Needs a better name to update!() args.
-#   Maybe just update!(plot, arg<i> = ...)
-#   update!(plot, idx, val), update!(plot, idx => val) since just args forces you to resubmit?
+# TODO: Is NamedTuple even better tham just Dict?
 function Base.setindex!(plot::Scatter, value, idx::Integer)
-    update!(plot; NamedTuple{((:x, :y, :z)[idx],)}((value,))...)
+    update!(plot; NamedTuple{(Symbol(:arg, idx),)}((value,))...)
     return value
 end
 
@@ -14,46 +12,56 @@ function Base.setindex!(x::Scatter, value, key::Symbol)
     if idx === nothing && !haskey(x.attributes, key)
         # update always does .val sets
         x.attributes[key] = convert(Observable, value)
+    elseif idx === nothing
+        update!(x; NamedTuple{(key,)}((value,))...)
+    else
+        update!(x; NamedTuple{(Symbol(:arg, idx),)}((value,))...)
     end
-    update!(x; NamedTuple{(key,)}((value,))...)
     return value
 end
 
-function Base.setindex!(x::Scatter, value::Observable, key::Symbol)
+function Base.setindex!(x::Scatter, obs::Observable, key::Symbol)
     argnames = MakieCore.argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
+    # Old version also did attr_or_arg[] = obs[]
     if idx === nothing
-        return attributes(x)[key] = value
+        attributes(x)[key] = obs
+    else
+        update!(x; NamedTuple{(Symbol(:arg, idx),)}((obs[],))...)
     end
-    update!(x; NamedTuple{(key,)}((value,))...)
-    # no on(update!(), value) here because these are user added observables?
+    # no on(update!(), obs) here because these are user added observables?
     # i.e. they can't be relevant to visualization w/o triggering something else that is
-    return value
+    return obs
 end
 
+# This is generic but collides with the fallback which needs to notify 
+# Observables to pass on updates
 function update!(plot::Scatter; kwargs...)
     kwarg_keys = Set(keys(kwargs))
     union!(plot.updated_inputs[], kwarg_keys)
 
-    # TODO: Args make this plot specific. Can we avoid that?
     # Handle args
-    # argument_names(), x/y/z, image, position, arg<i>, args
-    if any(in(kwarg_keys), (:x, :y, :z))
-        # TODO: How should we verify these, especially in recipes with more
-        #       variations? (E.g. text with text vs position vs GlyphCollection)
-        in(:x, kwarg_keys) && (plot.args[1].val = kwargs[:x])
-        in(:y, kwarg_keys) && (plot.args[2].val = kwargs[:y])
-        in(:z, kwarg_keys) && (plot.args[3].val = kwargs[:z])
+    # For a generic method we probably want a few extra (i.e. for recipes)
+    arg_names = (:arg1, :arg2, :arg3, :arg4, :arg5, :arg6, :arg7, :arg8)
+
+    for i in eachindex(plot.args)
+        if in(arg_names[i], kwarg_keys)
+            plot.args[i].val = kwargs[arg_names[i]]
+        end
     end
 
-    if :position in kwarg_keys
-        length(plot.args) == 1 || error("Cannot set position with x, y[, z]-like plot arguments")
-        plot.args[1].val = kwargs[:position]
+    if :args in kwarg_keys
+        if length(kwargs[:args]) != length(kwargs.args)
+            error("Given args are a different size than `plot.args`: $(length(kwargs[:args])) != $(length(kwargs.args))")
+        end
+        for i in eachindex(plot.args)
+            plot.args[i].val = kwargs[:args][i]
+        end
     end
 
     # Handle Attributes
     for (k, v) in pairs(kwargs)
-        in(k, (:x, :y, :z, :position)) && continue
+        (in(k, arg_names) || (k == :args)) && continue
         plot[k].val = v
     end
 
@@ -71,13 +79,14 @@ function convert_arguments!(::Type{T}, output, args) where {T}
 end
 
 function resolve_updates!(plot::Scatter)
+    arg_names = (:arg1, :arg2, :arg3, :arg4, :arg5, :arg6, :arg7, :arg8, :args)
     flagged = plot.updated_inputs[]
 
     # Arguments
     # TODO: are these names already defined somewhere?
-    if any(in(flagged), (:x, :y, :z, :position))
+    if any(in(flagged), arg_names)
         convert_arguments!(Scatter, plot.converted, plot.args)
-        foreach(k -> delete!(flagged, k), (:x, :y, :z, :position))
+        setdiff!(flagged, arg_names)
         push!(plot.updated_outputs[], :position)
     end
 
