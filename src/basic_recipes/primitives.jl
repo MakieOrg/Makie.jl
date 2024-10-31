@@ -65,6 +65,32 @@ function update!(plot::Scatter; kwargs...)
         plot[k].val = v
     end
 
+    #=
+    # Generic Version
+    Requirements:
+    if resolve_update() is used/implemented:
+      update()    must mark, must notify updated_inputs and must set values
+      obs-update  must mark, must notify updated_inputs
+    else
+      update()    must trigger obs
+      obs-update  must not trigger obs
+    A possible solution is to trigger observables here, rather than only setting
+    values, and have observable inputs mark + notify manually.
+    Another possible solution is to have different update() methods for the two
+    cases. (current solution)
+
+    if in(:args, kwarg_keys) || any(in(kwarg_keys), arg_names)
+        # args update together
+        # TODO: also remove convert_arguments from resolve
+        notify(plot.args[1])
+    end
+
+    for k in kwarg_keys
+        (in(k, arg_names) || (k == :args)) && continue
+        notify(plot[k])
+    end
+    =#
+
     notify(plot.updated_inputs)
     return
 end
