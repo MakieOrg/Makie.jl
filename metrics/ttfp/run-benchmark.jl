@@ -113,7 +113,6 @@ AlgebraOfGraphics.draw!(fgrid.figure[2, 3], specmedians, axis = (;
     yaxisposition = :right,
     xticklabelrotation = pi/4,
     title = "Bootstrapped median ratios",
-    yticks = 0:0.05:2,
 ))
 
 resize_to_layout!(fgrid.figure)
