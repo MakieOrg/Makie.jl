@@ -14,7 +14,7 @@ concurrency:
 jobs:
   benchmark:
     name: ${{ matrix.package }}
-    runs-on: ubuntu-20.04
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -25,8 +25,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install xvfb
-        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
@@ -38,7 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 20 ${{ github.event.pull_request.base.ref }}
+          julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 20 ${{ github.event.pull_request.base.ref }}
       - name: Upload plots as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -99,5 +97,3 @@ jobs:
             ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
             ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
             ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
-
-
