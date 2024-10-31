@@ -426,16 +426,15 @@ end
 
 function default_theme(scene, T::Type{<: Plot})
     metas = documented_attributes(T)
-    attr = Attributes()
+    attr = Dict{Symbol, Any}()
     isnothing(metas) && return attr
     thm = theme(scene)
-    _attr = attr.attributes
     for (k, meta) in metas.d
-        _attr[k] = lookup_default(meta, thm)
+        attr[k] = lookup_default(meta, thm)
     end
     return attr
 end
-      
+
 function extract_docstring(str)
     if VERSION >= v"1.11" && str isa Base.Docs.DocStr
         return only(str.text::Core.SimpleVector)

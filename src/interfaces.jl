@@ -429,5 +429,5 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
             raw_attr[k] = convert(Observable{Any}, v)
         end
     end
-    return merge!(plot.attributes, plot_theme)
+    return merge_without_obs!(plot.attributes, plot_theme)
 end
