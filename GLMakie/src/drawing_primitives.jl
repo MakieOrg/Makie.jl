@@ -138,36 +138,57 @@ function to_glvisualize_key(k)
     return k
 end
 
-function connect_camera!(screen::Screen, plot::Plot, uniforms, cam::Camera, space = uniforms[:space])
+function connect_camera!(plot, gl_attributes, cam, space = gl_attributes[:space])
     # Overwrite these, user defined attributes shouldn't use those!
-    uniforms[:eyeposition] = cam.eyeposition
-    uniforms[:px_per_unit] = screen.px_per_unit
-    uniforms[:pixel_space] = Makie.get_pixelspace(cam)
-    uniforms[:view] = Makie.get_view(cam, to_value(space))
-    uniforms[:projection] = Makie.get_projection(cam, to_value(space))
-    uniforms[:projectionview] = Makie.get_projectionview(cam, to_value(space))
-    # resolution in real hardware pixels, not scaled pixels/units
-    uniforms[:resolution] = Makie.get_ppu_resolution(cam, to_value(screen.px_per_unit))
+    gl_attributes[:pixel_space] = lift(Mat4f, plot, cam.pixel_space)
+    gl_attributes[:eyeposition] = lift(identity, plot, cam.eyeposition)
 
-    if haskey(plot, :markerspace)
-        uniforms[:preprojection] = Makie.get_preprojection(cam, plot.space[], plot.markerspace[])
+    get!(gl_attributes, :view) do
+        # get!(cam.calculated_values, Symbol("view_$(space[])")) do
+            return lift(plot, cam.view, space) do view, space
+                return is_data_space(space) ? Mat4f(view) : Mat4f(I)
+            end
+        # end
     end
+
     # for lighting
-    get!(uniforms, :world_normalmatrix) do
-        return lift(plot, uniforms[:model]) do m
+    get!(gl_attributes, :world_normalmatrix) do
+        return lift(plot, gl_attributes[:model]) do m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(m[i, i])))
         end
     end
+
     # for SSAO
-    get!(uniforms, :view_normalmatrix) do
-        return lift(plot, uniforms[:view], uniforms[:model]) do v, m
+    get!(gl_attributes, :view_normalmatrix) do
+        return lift(plot, gl_attributes[:view], gl_attributes[:model]) do v, m
             i = Vec(1, 2, 3)
             return Mat3f(transpose(inv(v[i, i] * m[i, i])))
         end
     end
-    delete!(uniforms, :space)
-    delete!(uniforms, :markerspace)
+    get!(gl_attributes, :projection) do
+        # return get!(cam.calculated_values, Symbol("projection_$(space[])")) do
+            return lift(plot, cam.projection, cam.pixel_space, space) do _, _, space
+                return Mat4f(Makie.space_to_clip(cam, space, false))
+            end
+        # end
+    end
+    get!(gl_attributes, :projectionview) do
+        # get!(cam.calculated_values, Symbol("projectionview_$(space[])")) do
+            return lift(plot, cam.projectionview, cam.pixel_space, space) do _, _, space
+                return Mat4f(Makie.space_to_clip(cam, space, true))
+            end
+        # end
+    end
+    # resolution in real hardware pixels, not scaled pixels/units
+    get!(gl_attributes, :resolution) do
+        # get!(cam.calculated_values, :resolution) do
+            return lift(*, plot, gl_attributes[:px_per_unit], cam.resolution)
+        # end
+    end
+
+    delete!(gl_attributes, :space)
+    delete!(gl_attributes, :markerspace)
     return nothing
 end
 
@@ -249,6 +270,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             gl_attributes[:markerspace] = plot.markerspace
         end
         gl_attributes[:space] = plot.space
+        gl_attributes[:px_per_unit] = screen.px_per_unit
 
         # Handle clip planes
         # OpenGL supports up to 8
@@ -274,7 +296,7 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
         end
 
         handle_intensities!(screen, gl_attributes, plot)
-        connect_camera!(screen, plot, gl_attributes, scene.camera, get_space(plot))
+        connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
 
         # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
@@ -395,7 +417,11 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         cam = scene.camera
 
         if plot isa Scatter
-
+            mspace = plot.markerspace
+            gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
+                                                 cam.resolution) do space, mspace, _, _
+                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
+            end
             # fast pixel does its own setup
             if !(marker[] isa FastPixel)
                 gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
@@ -604,6 +630,11 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:visible] = plot.visible
         gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
         gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
+        cam = scene.camera
+        # gl_attributes[:preprojection] = Observable(Mat4f(I))
+        gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
+            Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
+        end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end

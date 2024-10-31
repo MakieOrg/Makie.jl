@@ -494,7 +494,7 @@ Base.isopen(x::Screen) = isopen(x.glscreen)
 Base.size(x::Screen) = size(x.framebuffer)
 
 function add_scene!(screen::Screen, scene::Scene)
-    return get!(screen.screen2scene, WeakRef(scene)) do
+    get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
         screen.requires_update = true
@@ -505,6 +505,7 @@ function add_scene!(screen::Screen, scene::Scene)
               scene.camera.resolution)
         return id
     end
+    return
 end
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
@@ -557,17 +558,12 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-
-
 function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
     tex = get_texture!(gl_texture_atlas())
-
     for (k, v) in rob.uniforms
-        # we don't control these uniforms
-        GLAbstraction.is_camera_uniform(k) && continue
         if v isa Observable
             Observables.clear(v)
         elseif v isa GPUArray && v !== tex
@@ -998,21 +994,3 @@ function plot2robjs(screen::Screen, plot)
 end
 
 export plot2robjs
-
-# function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
-#     # TODO, move without deleting!
-#     # Will be easier with Observable refactor
-#     scene_id = add_scene!(screen, scene)
-#     plots = Makie.collect_atomic_plots(plot)
-#     robj_to_plot = Dict((screen.cache[objectid(x)].id => x for x in plots))
-#     new_cam = scene.camera
-#     for (i, (z, screen_id, robj)) in enumerate(screen.renderlist)
-#         if haskey(robj_to_plot, robj.id)
-#             plot_obj = robj_to_plot[robj.id]
-#             connect_camera!(screen, plot_obj, robj.uniforms, new_cam, get_space(plot_obj))
-#             robj.uniforms[:model] = Makie.patch_model(plot)[2]
-#             screen.renderlist[i] = (z, scene_id, robj)
-#         end
-#     end
-#     return
-# end
