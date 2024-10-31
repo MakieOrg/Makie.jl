@@ -308,54 +308,7 @@ struct Camera
     """
     steering_nodes::Vector{ObserverFunction}
 
-    calculated_matrices::Dict{Symbol,Observable{Mat4f}}
-    resolution_ppu::Dict{Float64,Observable{Vec2f}}
-end
-
-function get_projection(camera::Camera, space::Symbol)::Observable{Mat4f}
-    return get!(camera.calculated_matrices, Symbol("projection_$(space)")) do
-        return lift(camera.projection, camera.pixel_space) do _, _
-            return Mat4f(Makie.space_to_clip(camera, space, false))
-        end
-    end
-end
-
-function get_projectionview(camera::Camera, space::Symbol)::Observable{Mat4f}
-    return get!(camera.calculated_matrices, Symbol("projection_view_$(space)")) do
-        return lift(camera.projectionview, camera.pixel_space) do _, _
-            return Mat4f(Makie.space_to_clip(camera, space, true))
-        end
-    end
-end
-
-function get_view(camera::Camera, space::Symbol)::Observable{Mat4f}
-    return get!(camera.calculated_matrices, Symbol("view_$(space)")) do
-        return lift(camera.view) do view
-            return is_data_space(space) ? Mat4f(view) : Mat4f(I)
-        end
-    end
-end
-
-function get_pixelspace(camera::Camera)::Observable{Mat4f}
-    return get!(camera.calculated_matrices, :pixel_space) do
-        return lift(Mat4f, camera.pixel_space)
-    end
-end
-
-function get_ppu_resolution(camera::Camera, px_per_unit::Real)
-    return get!(camera.resolution_ppu, Float64(px_per_unit)) do
-        return lift(camera.resolution) do res
-            return Vec2f(px_per_unit .* res)
-        end
-    end
-end
-
-function get_preprojection(camera::Camera, space::Symbol, markerspace::Symbol)
-    return get!(camera.calculated_matrices, Symbol("$(space)_$(markerspace)")) do
-        return lift(camera.projectionview, camera.resolution) do _, _
-            return Mat4f(Makie.clip_to_space(camera, markerspace) * Makie.space_to_clip(camera, space))
-        end
-    end
+    calculated_values::Dict{Symbol, Observable}
 end
 
 """
@@ -575,3 +528,14 @@ struct Cycler
 end
 
 Cycler() = Cycler(IdDict{Type,Int}())
+
+
+# Float32 conversions
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
+end
+struct Float32Convert
+    scaling::Observable{LinearScaling}
+    resolution::Float32
+end

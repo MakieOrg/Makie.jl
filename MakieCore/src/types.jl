@@ -51,19 +51,6 @@ struct Attributes
     attributes::Dict{Symbol, Observable}
 end
 
-
-# Float32 conversions
-struct LinearScaling
-    scale::Vec{3,Float64}
-    offset::Vec{3,Float64}
-end
-
-struct Float32Convert
-    scaling::Observable{LinearScaling}
-    resolution::Float32
-end
-
-
 """
     Plot{PlotFunc}(args::Tuple, kw::Dict{Symbol, Any})
 
@@ -79,8 +66,7 @@ Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
 """
 mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     transformation::Union{Nothing, Transformable}
-    model::Observable{Mat4f}
-    f32_conversion::Observable{Union{Float32Convert,Nothing}}
+
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
     kw_obs::Observable{Vector{Pair{Symbol,Any}}}
@@ -99,7 +85,7 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
                 args::Vector{Any}, converted::Vector{Observable},
                 deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T}
-        return new{Typ,T}(nothing, Observable(Mat4f(I)), kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
+        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 
