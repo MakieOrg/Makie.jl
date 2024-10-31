@@ -44,7 +44,7 @@ jobs:
   post-gist:
     name: Post Benchmark Gist
     needs: benchmark  # Wait for all benchmark jobs to complete
-    runs-on: ubuntu-20.04
+    runs-on: self-hosted
     permissions:
       statuses: write       # Permission to post workflow status
     steps:
