@@ -359,7 +359,8 @@ function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{Plot
         # penalize plots with different parents
         # needs to be implemented via this penalty function, since parent scenes arent part of the spec
         plot = plots[key]
-        norm(Float64[plot.parent !== scene, score])
+        move_to_penalty = ((!Makie.supports_move_to(plot)) * 100) + 1
+        return norm(Float64[plot.parent !== scene, score]) * move_to_penalty
     end
     idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores, penalty)
     idx == -1 && return nothing, nothing
@@ -612,6 +613,7 @@ function diff_plotlist!(
             # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
             delete!(reusable_plots, old_spec)
             if reused_plot.parent !== scene
+                @assert Makie.supports_move_to(reused_plot)
                 move_to!(reused_plot, scene)
             end
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)

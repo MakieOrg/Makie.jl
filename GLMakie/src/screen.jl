@@ -999,21 +999,20 @@ end
 
 export plot2robjs
 
-
-function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
-    # TODO, move without deleting!
-    # Will be easier with Observable refactor
-    scene_id = add_scene!(screen, scene)
-    plots = Makie.collect_atomic_plots(plot)
-    robj_to_plot = Dict((screen.cache[objectid(x)].id => x for x in plots))
-    new_cam = scene.camera
-    for (i, (z, screen_id, robj)) in enumerate(screen.renderlist)
-        if haskey(robj_to_plot, robj.id)
-            plot_obj = robj_to_plot[robj.id]
-            connect_camera!(screen, plot_obj, robj.uniforms, new_cam, get_space(plot_obj))
-            robj.uniforms[:model] = Makie.patch_model(plot)[2]
-            screen.renderlist[i] = (z, scene_id, robj)
-        end
-    end
-    return
-end
+# function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
+#     # TODO, move without deleting!
+#     # Will be easier with Observable refactor
+#     scene_id = add_scene!(screen, scene)
+#     plots = Makie.collect_atomic_plots(plot)
+#     robj_to_plot = Dict((screen.cache[objectid(x)].id => x for x in plots))
+#     new_cam = scene.camera
+#     for (i, (z, screen_id, robj)) in enumerate(screen.renderlist)
+#         if haskey(robj_to_plot, robj.id)
+#             plot_obj = robj_to_plot[robj.id]
+#             connect_camera!(screen, plot_obj, robj.uniforms, new_cam, get_space(plot_obj))
+#             robj.uniforms[:model] = Makie.patch_model(plot)[2]
+#             screen.renderlist[i] = (z, scene_id, robj)
+#         end
+#     end
+#     return
+# end

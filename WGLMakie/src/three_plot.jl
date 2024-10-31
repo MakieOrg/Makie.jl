@@ -73,6 +73,8 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     return wrapper, done_init
 end
 
+Makie.supports_move_to(::Screen) = true
+
 function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
     session = get_screen_session(screen)
     return evaljs(session, js"""

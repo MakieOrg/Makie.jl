@@ -521,13 +521,22 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     free(plot)
 end
 
-function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
-    # TODO, move without deleting!
-    # Will be easier with Observable refactor
-    delete!(screen, scene, plot)
-    insert!(screen, scene, plot)
-    return
+supports_move_to(::MakieScreen) = false
+
+function supports_move_to(plot::Plot)
+    scene = get_scene(plot)
+    return all(scene.current_screens) do screen
+        return supports_move_to(screen)
+    end
 end
+
+# function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+#     # TODO, move without deleting!
+#     # Will be easier with Observable refactor
+#     delete!(screen, scene, plot)
+#     insert!(screen, scene, plot)
+#     return
+# end
 
 
 function move_to!(plot::Plot, scene::Scene)
@@ -542,7 +551,9 @@ function move_to!(plot::Plot, scene::Scene)
         append!(plot.deregister_callbacks, obsfunc)
     end
     for screen in scene.current_screens
-        move_to!(screen, plot, scene)
+        if supports_move_to(screen)
+            move_to!(screen, plot, scene)
+        end
     end
     plot.parent = scene
     return
