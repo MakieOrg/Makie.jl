@@ -617,7 +617,7 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
 end
 
 """
-    function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, delay=0, depth=9e3, kwargs...)
+    function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth=9e3, kwargs...)
 
 Adds a tooltip to a block.  `visible` can be `:always`, `:hover`, or `:never`.
 `delay` specifies the interval in seconds before the tooltip appears if
@@ -647,24 +647,8 @@ julia> v[] = :always
 :always
 ```
 """
-function tooltip!(b::Block, str::AbstractString; placement=:above, visible=:always, delay=0, depth=9e3, kwargs...)
-    position = lift(b.layoutobservables.computedbbox) do bbox
-        if placement == :above
-            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
-        elseif placement == :below
-            bbox.origin + Point2f((bbox.widths[1]/2, 0))
-        elseif placement == :left
-            bbox.origin + Point2f((0, bbox.widths[2]/2))
-        elseif placement == :right
-            bbox.origin + Point2f((bbox.widths[1], bbox.widths[2]/2))
-        elseif placement == :center
-            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]/2))
-        else
-            @error("invalid value for tooltip placement, using :above")
-            bbox.origin + Point2f((bbox.widths[1]/2, bbox.widths[2]))
-        end
-    end
-    tt = tooltip!(b.blockscene, position, str; placement, kwargs...)
+function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth=9e3, kwargs...)
+    tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str; kwargs...)
     translate!(tt, 0, 0, depth)
     t0 = time()
     onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
