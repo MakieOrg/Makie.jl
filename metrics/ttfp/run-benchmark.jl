@@ -109,10 +109,19 @@ end |> DataFrame
 specmedians = AlgebraOfGraphics.data(stack(medians_df)) *
     mapping(:variable => presorted => "", :value => "Ratios of medians\n$(projnames[1]) / $(projnames[2])") * visual(Violin, show_median = true)
 
-AlgebraOfGraphics.draw!(fgrid.figure[2, 3], specmedians, axis = (;
+background_bands = AlgebraOfGraphics.pregrouped([0.75:0.05:1.20], [0.8:0.05:1.25]) *
+    AlgebraOfGraphics.visual(HSpan, color = range(-1, 1, length = 10), colormap = [:green, :white, :tomato], alpha = 0.5)
+
+zeroline = AlgebraOfGraphics.pregrouped([1]) * AlgebraOfGraphics.visual(HLines, color = :gray60)
+
+spec = background_bands + zeroline + specmedians
+
+AlgebraOfGraphics.draw!(fgrid.figure[2, 3], spec, axis = (;
     yaxisposition = :right,
     xticklabelrotation = pi/4,
     title = "Bootstrapped median ratios",
+    yautolimitmargin = (0, 0),
+    yticks = WilkinsonTicks(7, k_min = 5),
 ))
 
 resize_to_layout!(fgrid.figure)
