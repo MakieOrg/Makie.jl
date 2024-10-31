@@ -42,16 +42,19 @@ end
 test_figure(n) = simple_median_time(n) do
     return scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 end
-test_figure(1)
+
 function test_colorbuffer(n)
     fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
     return simple_median_time(n) do
         return colorbuffer(fig; px_per_unit=1)
     end
 end
-test_colorbuffer(1)
 
+@time "first run figure" test_figure(1)
 @time "creating figure" figure_time = test_figure(100)
+
+@time "first run colorbuffer" test_colorbuffer(2)
+@time "first run colorbuffer" test_colorbuffer(2) # second call will compile additional functions like `delete!(screen)`
 @time "colorbuffer" colorbuffer_time = test_colorbuffer(100)
 
 using Statistics
