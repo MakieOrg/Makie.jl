@@ -24,28 +24,35 @@ old = isfile(result) ? JSON.parse(read(result, String)) : [[], [], [], [], []]
 @show [t_using, create_time, display_time]
 push!.(old[1:3], [t_using, create_time, display_time])
 
-macro simple_median_time(expr)
-    time_expr = quote
+function simple_median_time(f, n=100)
+    function time_f()
         local elapsedtime = time_ns()
-        $expr
+        f()
         elapsedtime = time_ns() - elapsedtime
-        Float64(elapsedtime)
+        return Float64(elapsedtime)
     end
+    times = Float64[]
+    for i in 1:n
+        t = time_f()
+        push!(times, t)
+    end
+    return median(times)
+end
 
-    quote
-        times = Float64[]
-        for i in 1:101
-            t = Core.eval(Main, $(QuoteNode(time_expr)))
-            if i > 1
-                push!(times, t)
-            end
-        end
-        median(times)
+test_figure(n) = simple_median_time(n) do
+    return scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+end
+test_figure(1)
+function test_colorbuffer(n)
+    fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+    return simple_median_time(n) do
+        return colorbuffer(fig; px_per_unit=1)
     end
 end
-@time "creating figure" figure_time = @simple_median_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-@time "colorbuffer" colorbuffer_time = @simple_median_time colorbuffer(fig; px_per_unit=1)
+test_colorbuffer(1)
+
+@time "creating figure" figure_time = test_figure(100)
+@time "colorbuffer" colorbuffer_time = test_colorbuffer(100)
 
 using Statistics
 
