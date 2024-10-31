@@ -100,8 +100,8 @@ df_base_branch = df[df.name .== projnames[2], :]
 medians_df = map(names(df_current_pr, Not(:name))) do colname
     col_base = df_base_branch[!, colname]
     col_pr = df_current_pr[!, colname]
-    medians_base = bootstrap(median, col_base, Bootstrap.BasicSampling(10_000))
-    medians_pr = bootstrap(median, col_pr, Bootstrap.BasicSampling(10_000))
+    medians_base = bootstrap(median, col_base, Bootstrap.BasicSampling(1000))
+    medians_pr = bootstrap(median, col_pr, Bootstrap.BasicSampling(1000))
     ratios = Bootstrap.straps(medians_pr)[1] ./ Bootstrap.straps(medians_base)[1]
     colname => ratios
 end |> DataFrame
