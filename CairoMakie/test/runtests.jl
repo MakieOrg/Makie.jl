@@ -186,6 +186,7 @@ excludes = Set([
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
     "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
     "picking", # Not implemented
+    "MetaMesh (Sponza)", # makes little sense without per pixel depth order
 ])
 
 functions = [:volume, :volume!, :uv_mesh]

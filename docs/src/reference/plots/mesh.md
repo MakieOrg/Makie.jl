@@ -140,6 +140,31 @@ nothing # hide
 <video autoplay loop muted playsinline controls src="./uv_mesh_mirror.mp4" />
 ```
 
+## Complex Meshes (Experimental)
+
+```@figure backend=GLMakie
+using FileIO
+
+# Load a mesh with material information. This will produce a GeometryBasics.MetaMesh
+sponza = load(assetpath("sponza/sponza.obj"))
+
+# The MetaMesh contains a standard GeometryBasics.Mesh in `sponza.mesh` with
+# `mesh.views` defining the different sub-meshes, and material metadata in the
+# `sponza.meta` Dict. The metadata includes:
+# - meta[:material_names] which maps each view in `mesh.views` to a material name
+# - meta[:materials] which maps a material name to a nested Dict of the loaded properties
+# When a MetaMesh is given to Makie.mesh(), it will look for these entries and
+# try to build a plot accordingly.
+f, a, p = mesh(sponza)
+
+# Set up camera
+update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
+cameracontrols(a).settings.center[] = false # don't recenter on display
+cameracontrols(a).settings.fixed_axis[] = false # rotate freely
+
+f
+```
+
 ## Attributes
 
 ```@attrdocs
