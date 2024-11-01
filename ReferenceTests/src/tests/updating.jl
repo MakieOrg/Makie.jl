@@ -192,7 +192,7 @@ end
     f
 end
 
-@reference_test "Moving plots" begin
+@reference_test "Moving plots with move_to" begin
     f, ax, pl1 = scatter(5:-1:1; markersize=20, axis=(; title="Axis 1"))
     pl2 = poly!(ax, Rect2f(10, 10, 100, 100); color=:green, space=:pixel)
     pl3 = scatter!(ax, 1:5; color=Float64[1:5;], markersize=0.5, colorrange=(1, 5), lowclip=:black,

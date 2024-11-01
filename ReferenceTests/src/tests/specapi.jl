@@ -118,18 +118,27 @@ end
 end
 
 @reference_test "Moving Plots in SpecApi" begin
-    pl1 = S.Heatmap(Makie.peaks(50))
-    ax1 = S.Axis(plots=[pl1])
-    ax2 = S.GridLayout(S.Axis(), S.Axis())
-    f, _, pl = plot(S.GridLayout(ax1, ax2))
-    cb1 = colorbuffer(f)
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
+    pl2 = S.Scatter(1:4; color=1:4, markersize=30, strokewidth=1, strokecolor=:black)
+    ax1 = S.Axis(; plots=[pl1, pl2])
+    grid = S.GridLayout(S.Axis(), S.Axis())
+    f, _, pl = plot(S.GridLayout(ax1, grid))
+    cb1 = copy(colorbuffer(f))
 
-    pl1 = S.Heatmap(Makie.peaks(50), colormap=:inferno)
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50); colormap=:inferno)
     ax1 = S.Axis()
-    ax2 = S.GridLayout(S.Axis(), S.Axis(; plots=[pl1]))
+    grid = S.GridLayout(S.Axis(), S.Axis(; plots=[pl1, pl2]))
+    pl[1] = S.GridLayout(ax1, grid)
+    cb2 = copy(colorbuffer(f))
+
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
+    ax1 = S.Axis(; plots=[pl1])
+    ax2 = S.GridLayout(S.Axis(; plots=[pl2]), S.Axis(; plots=[pl2]))
     pl[1] = S.GridLayout(ax1, ax2)
-    cb2 = colorbuffer(f)
-    imgs = hcat(rotr90.((cb1, cb2))...)
+    cb2 = copy(colorbuffer(f))
+
+    cb3 = copy(colorbuffer(f))
+    imgs = hcat(rotr90.((cb1, cb2, cb3))...)
     s = Scene(; size=size(imgs))
     image!(s, imgs; space=:pixel)
     s
