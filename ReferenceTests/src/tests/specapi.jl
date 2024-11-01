@@ -117,27 +117,30 @@ end
     st
 end
 
+AxNoTicks(;kw...) = S.Axis(; xticksvisible=false,
+                    yticksvisible=false, yticklabelsvisible=false,
+                    xticklabelsvisible=false, kw...)
+
 @reference_test "Moving Plots in SpecApi" begin
     pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
     pl2 = S.Scatter(1:4; color=1:4, markersize=30, strokewidth=1, strokecolor=:black)
-    ax1 = S.Axis(; plots=[pl1, pl2])
-    grid = S.GridLayout(S.Axis(), S.Axis())
-    f, _, pl = plot(S.GridLayout(ax1, grid))
+    ax1 = AxNoTicks(; plots=[pl1, pl2])
+    grid = S.GridLayout(AxNoTicks())
+    f, _, pl = plot(S.GridLayout([ax1 grid]; colgaps=Fixed(4)); figure=(; figure_padding=2, size=(500, 100)))
     cb1 = copy(colorbuffer(f))
 
     pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50); colormap=:inferno)
-    ax1 = S.Axis()
-    grid = S.GridLayout(S.Axis(), S.Axis(; plots=[pl1, pl2]))
-    pl[1] = S.GridLayout(ax1, grid)
+    ax1 = AxNoTicks()
+    grid = S.GridLayout(AxNoTicks(; plots=[pl1, pl2]))
+    pl[1] = S.GridLayout([ax1 grid]; colgaps=Fixed(4))
     cb2 = copy(colorbuffer(f))
 
     pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
-    ax1 = S.Axis(; plots=[pl1])
-    ax2 = S.GridLayout(S.Axis(; plots=[pl2]), S.Axis(; plots=[pl2]))
-    pl[1] = S.GridLayout(ax1, ax2)
-    cb2 = copy(colorbuffer(f))
-
+    ax1 = AxNoTicks(; plots=[pl1])
+    ax2 = S.GridLayout(AxNoTicks(; plots=[pl2]))
+    pl[1] = S.GridLayout([ax1 ax2]; colgaps=Fixed(4))
     cb3 = copy(colorbuffer(f))
+
     imgs = hcat(rotr90.((cb1, cb2, cb3))...)
     s = Scene(; size=size(imgs))
     image!(s, imgs; space=:pixel)
@@ -146,10 +149,7 @@ end
 
 function to_plot(plots)
     axes = map(permutedims(plots)) do plot
-        ax = S.Axis(;
-                    plots=[plot], xticksvisible=false,
-                    yticksvisible=false, yticklabelsvisible=false,
-                    xticklabelsvisible=false)
+        ax = AxNoTicks(; plots=[plot])
         return S.GridLayout([ax S.Colorbar(plot)])
     end
     return S.GridLayout(axes)
