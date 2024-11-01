@@ -619,7 +619,7 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 
 ## [0.15.2] - 2021-08-26
 
-- Reenabled Julia 1.3 support.
+- Re-enabled Julia 1.3 support.
 - Use [MathTexEngine v0.2](https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0).
 - Depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. For example, `Vec2f0` is changed to `Vec2f`. Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit [GeometryBasics#97](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97).
 - Added `hspan!` and `vspan!` functions [#1264](https://github.com/MakieOrg/Makie.jl/pull/1264).

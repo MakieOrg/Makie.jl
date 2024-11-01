@@ -228,7 +228,7 @@ You can check which interactions are currently active by calling `interactions(a
 
 #### Activating and deactivating interactions
 
-Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
+Often, you don't want to remove an interaction entirely but only disable it for a moment, then re-enable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
 
 #### `Function` interaction
