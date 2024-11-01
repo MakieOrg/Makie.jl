@@ -75,7 +75,7 @@ end
 
 
 # Recursively gets the dim convert from the plot
-# This needs to be recursive to allow recipes to use dim converst
+# This needs to be recursive to allow recipes to use dim convert
 # TODO, should a recipe always set the dim convert to it's parent?
 get_conversions(any) = nothing
 

@@ -105,7 +105,7 @@ Bonito allows to record a statemap for all widgets, that satisfy the following i
 ```julia
 # must be true to be found inside the DOM
 is_widget(x) = true
-# Updating the widget isn't dependant on any other state (only thing supported right now)
+# Updating the widget isn't dependent on any other state (only thing supported right now)
 is_independant(x) = true
 # The values a widget can iterate
 function value_range end

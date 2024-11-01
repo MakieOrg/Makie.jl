@@ -25,8 +25,16 @@ base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
 
 function run_benchmarks(projects; n=n_samples)
     benchmark_file = joinpath(@__DIR__, "benchmark-ttfp.jl")
-    # go A, B, A, B, A, etc.
-    for project in repeat(projects, n)
+    # go A, A, B, B, A, A, B, B, etc. because if A or B have some effect on their
+    # subsequent run, then we distribute those more evenly. If we used A, B, A, B then
+    # B would always influence A and A always B which might bias the results (something
+    # that can carry over separate processes like thermal throttling or so)
+
+    A, B = projects
+    As = Iterators.partition(fill(A, n), 2)
+    Bs = Iterators.partition(fill(B, n), 2)
+
+    for project in Iterators.flatten(Iterators.flatten(zip(As, Bs)))
         println(basename(project))
         run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $benchmark_file $Package`)
     end
@@ -109,10 +117,19 @@ end |> DataFrame
 specmedians = AlgebraOfGraphics.data(stack(medians_df)) *
     mapping(:variable => presorted => "", :value => "Ratios of medians\n$(projnames[1]) / $(projnames[2])") * visual(Violin, show_median = true)
 
-AlgebraOfGraphics.draw!(fgrid.figure[2, 3], specmedians, axis = (;
+background_bands = AlgebraOfGraphics.pregrouped([0.75:0.05:1.20], [0.8:0.05:1.25]) *
+    AlgebraOfGraphics.visual(HSpan, color = range(-1, 1, length = 10), colormap = [:green, :white, :tomato], alpha = 0.5)
+
+zeroline = AlgebraOfGraphics.pregrouped([1]) * AlgebraOfGraphics.visual(HLines, color = :gray60)
+
+spec = background_bands + zeroline + specmedians
+
+AlgebraOfGraphics.draw!(fgrid.figure[2, 3], spec, axis = (;
     yaxisposition = :right,
     xticklabelrotation = pi/4,
     title = "Bootstrapped median ratios",
+    yautolimitmargin = (0, 0),
+    yticks = WilkinsonTicks(7, k_min = 5),
 ))
 
 resize_to_layout!(fgrid.figure)

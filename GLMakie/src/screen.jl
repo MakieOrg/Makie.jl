@@ -164,7 +164,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     config::Union{Nothing, ScreenConfig}
-    stop_renderloop::Bool
+    stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
     timer::BudgetedTimer
     px_per_unit::Observable{Float32}
@@ -207,7 +207,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
         s = size(framebuffer)
         screen = new{GLWindow}(
             glscreen, owns_glscreen, shader_cache, framebuffer,
-            config, stop_renderloop, rendertask, BudgetedTimer(1.0 / 30.0),
+            config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
@@ -571,7 +571,7 @@ function destroy!(rob::RenderObject)
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 
             # TODO, refcounting, or leaving freeing to GC...
-            # GC is a bit tricky with active contexts, so immediate free is prefered.
+            # GC is a bit tricky with active contexts, so immediate free is preferred.
             # I guess as long as we make it hard for users to share buffers directly, this should be fine!
             GLAbstraction.free(v)
         end
@@ -661,11 +661,12 @@ Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=t
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
     set_screen_visibility!(screen, false)
-    stop_renderloop!(screen; close_after_renderloop=false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
         screen.window_open[] = false
     end
     empty!(screen)
+    stop_renderloop!(screen; close_after_renderloop=false)
+
     if reuse && screen.reuse
         @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
@@ -684,20 +685,13 @@ function closeall(; empty_shader=true)
         empty!(LOADED_SHADERS)
         WARN_ON_LOAD[] = false
     end
-    while !isempty(SCREEN_REUSE_POOL)
-        screen = pop!(SCREEN_REUSE_POOL)
-        delete!(ALL_SCREENS, screen)
-        destroy!(screen)
-    end
-    if !isempty(SINGLETON_SCREEN)
-        screen = pop!(SINGLETON_SCREEN)
-        delete!(ALL_SCREENS, screen)
-        destroy!(screen)
-    end
+
     while !isempty(ALL_SCREENS)
         screen = pop!(ALL_SCREENS)
         destroy!(screen)
     end
+    empty!(SINGLETON_SCREEN)
+    empty!(SCREEN_REUSE_POOL)
     return
 end
 
@@ -815,7 +809,7 @@ end
 Makie.to_native(x::Screen) = x.glscreen
 
 function renderloop_running(screen::Screen)
-    return !screen.stop_renderloop && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
+    return !screen.stop_renderloop[] && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
 end
 
 function start_renderloop!(screen::Screen)
@@ -823,7 +817,7 @@ function start_renderloop!(screen::Screen)
         screen.config.pause_renderloop = false
         return
     else
-        screen.stop_renderloop = false
+        screen.stop_renderloop[] = false
         task = @async screen.config.renderloop(screen)
         yield()
         if istaskstarted(task)
@@ -844,7 +838,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     # don't double close when stopping renderloop
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
-    screen.stop_renderloop = true
+    screen.stop_renderloop[] = true
     screen.close_after_renderloop = c
 
     # stop_renderloop! may be called inside renderloop as part of close
@@ -890,7 +884,7 @@ scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
 
 
 function vsynced_renderloop(screen)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         if screen.config.pause_renderloop
             pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
             continue
@@ -905,7 +899,7 @@ end
 
 function fps_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         if screen.config.pause_renderloop
             pollevents(screen, Makie.PausedRenderTick)
         else
@@ -935,7 +929,7 @@ function on_demand_renderloop(screen::Screen)
     tick_state = Makie.UnknownTickState
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         pollevents(screen, tick_state) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
@@ -953,7 +947,7 @@ function on_demand_renderloop(screen::Screen)
         # push!(time_record, 1e-9 * (t - last_time))
         # last_time = t
     end
-    cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
+    cause = screen.stop_renderloop[] ? "stopped renderloop" : "closing window"
     @debug("Leaving renderloop, cause: $(cause)")
 end
 
@@ -978,7 +972,7 @@ function renderloop(screen)
     end
     if screen.close_after_renderloop
         try
-            @debug("Closing screen after quiting renderloop!")
+            @debug("Closing screen after quitting renderloop!")
             close(screen)
         catch e
             @warn "error closing screen" exception=(e, Base.catch_backtrace())
