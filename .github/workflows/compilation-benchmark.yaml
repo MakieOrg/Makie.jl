@@ -27,17 +27,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           set-safe-directory: false
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: '1'
-          arch: x64
       - name: Benchmark
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}
         run: >
-          DISPLAY=:0 julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 20 ${{ github.event.pull_request.base.ref }}
+          julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 20 ${{ github.event.pull_request.base.ref }}
       - name: Upload plots as artifact
         uses: actions/upload-artifact@v4
         with:
