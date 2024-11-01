@@ -543,18 +543,19 @@ function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
         return
     end
-    current_parent = parent_scene(plot)
-    filter!(x -> x !== plot, current_parent.plots)
-    push!(scene.plots, plot)
+
     if is_space_compatible(plot, scene)
         obsfunc = connect!(transformation(scene), transformation(plot))
         append!(plot.deregister_callbacks, obsfunc)
     end
-    for screen in scene.current_screens
+    for screen in root(scene).current_screens
         if supports_move_to(screen)
             move_to!(screen, plot, scene)
         end
     end
+    current_parent = parent_scene(plot)
+    filter!(x -> x !== plot, current_parent.plots)
+    push!(scene.plots, plot)
     plot.parent = scene
     return
 end

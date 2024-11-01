@@ -195,8 +195,10 @@ end
 @reference_test "Moving plots" begin
     f, ax, pl1 = scatter(5:-1:1; markersize=20, axis=(; title="Axis 1"))
     pl2 = poly!(ax, Rect2f(10, 10, 100, 100); color=:green, space=:pixel)
-    pl3 = scatter!(ax, 1:5; color=Float64[1:5;], markersize=0.5, colorrange=(1, 5), lowclip=:black, highclip=:red, markerspace=:data)
+    pl3 = scatter!(ax, 1:5; color=Float64[1:5;], markersize=0.5, colorrange=(1, 5), lowclip=:black,
+                   highclip=:red, markerspace=:data)
     pl4 = poly!(ax, Rect2f(0, 0, 1, 1); color=(:green, 0.5), strokewidth=2, strokecolor=:black)
+    f
     img1 = copy(colorbuffer(f; px_per_unit=1))
     plots = [pl1, pl2, pl3, pl4]
     get_listener_lengths() = map(plots) do x
@@ -215,6 +217,8 @@ end
     Makie.move_to!(pl4, scene)
     # Make sure updating still works for color
     pl3.color = [-1, 2, 3, 4, 7]
+    pl3.colormap = :inferno
+    pl3.markersize = 1
 
     @test listener_lengths_1 == get_listener_lengths()
 
@@ -228,16 +232,26 @@ end
     @test length(scene) == 1
 
     # Move everything back
+    pl3.color = Float64[1:5;]
+    pl3.colormap = :viridis
+    pl3.markersize = 0.5
     Makie.move_to!(pl1, ax.scene)
     Makie.move_to!(pl2, ax.scene)
     Makie.move_to!(pl3, ax.scene)
     Makie.move_to!(pl4, ax.scene)
+    # Make it easier to see similarity to first plot, by removing new scenes
+    delete!(ls)
+    delete!(ax2)
+    trim!(f.layout)
+
     img3 = copy(colorbuffer(f; px_per_unit=1))
 
     @test listener_lengths_1 == get_listener_lengths()
 
     imgs = hcat(rotr90.((img1, img2, img3))...)
-    s = Scene(size=size(imgs)); image!(s, imgs, space=:pixel); s
+    s = Scene(; size=size(imgs))
+    image!(s, imgs; space=:pixel)
+    s
 end
 
 @reference_test "updating surface size" begin
