@@ -9,7 +9,8 @@ concurrency:
 
 jobs:
   codepsell:
-    uses: codespell-project/actions-codespell@v2
-    with:
-  skip: '*.js,*.vert,*.ai,*.frag,*.geom'
-  only_warn: 1
+    steps:
+    - uses: codespell-project/actions-codespell@v2
+      with:
+        skip: '*.js,*.vert,*.ai,*.frag,*.geom'
+        only_warn: 1
