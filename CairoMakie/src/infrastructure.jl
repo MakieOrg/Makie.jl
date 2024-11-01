@@ -154,7 +154,7 @@ end
 function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, scale::Number = 1) where RT
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
-    # Extract scene width in device indepentent units
+    # Extract scene width in device independent units
     w, h = size(scene)
     # Create a new Screen which renders directly to an image surface,
     # specifically for the plot's parent scene.

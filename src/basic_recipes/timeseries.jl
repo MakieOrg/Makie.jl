@@ -10,7 +10,7 @@ scene = timeseries(signal)
 display(scene)
 # @async is optional, but helps to continue evaluating more code
 @async while isopen(scene)
-    # aquire data from e.g. a sensor:
+    # acquire data from e.g. a sensor:
     data = rand()
     # update the signal
     signal[] = data

@@ -288,7 +288,7 @@ end
 
 function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     a === b && return 0.0
-    (a.type !== b.type) && return 100.0 # Cant update when types dont match
+    (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
         scores = Float64[
             distance_score(a.kwargs, b.kwargs, scores_dict),
@@ -448,7 +448,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         end
     end
     # Cycling needs to be handled separately sadly,
-    # since they're implicitely mutating attributes, e.g. if I re-use a plot
+    # since they're implicitly mutating attributes, e.g. if I re-use a plot
     # that has been on cycling position 2, and now I re-use it for the first plot in the list
     # it will need to change to the color of cycling position 1
     if haskey(plot, :cycle)
