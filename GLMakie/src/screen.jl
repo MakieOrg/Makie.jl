@@ -346,7 +346,7 @@ function singleton_screen(debugging::Bool)
         close(screen; reuse=false)
     else
         @debug("new singleton screen")
-        # reuse=false, because we "manually" re-use the singleton screen!
+        # reuse=false, because we "manually" reuse the singleton screen!
         screen = empty_screen(debugging; reuse=false)
         push!(SINGLETON_SCREEN, screen)
     end
@@ -656,7 +656,7 @@ end
     close(screen::Screen; reuse=true)
 
 Closes screen and empties it.
-Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=true`.
+Doesn't destroy the screen and instead frees it to be reused again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")

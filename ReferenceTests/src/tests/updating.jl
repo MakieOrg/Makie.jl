@@ -97,7 +97,7 @@ end
             save(path, vso)
             compare_videos(reference, path, dir)
         end
-        # We re-use ramstepper, to add our array of frames to the reference image comparison
+        # We reuse ramstepper, to add our array of frames to the reference image comparison
         return Makie.RamStepper(fig, Makie.current_backend().Screen(fig.scene), reference, :png)
     end
 end

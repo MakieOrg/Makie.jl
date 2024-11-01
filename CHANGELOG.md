@@ -29,7 +29,7 @@
 
 ## [0.21.13] - 2024-10-07
 
-- Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
+- Optimize SpecApi, reuse Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
 - Fixed `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
 - Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
 - Fixed incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
@@ -243,7 +243,7 @@
 
 ## [0.20.5] - 2024-01-25
 
-- Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
+- Use plot plot instead of scene transform functions in CairoMakie, fixing misplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
 - Fix error printing on shader error [#3530](https://github.com/MakieOrg/Makie.jl/pull/3530).
 - Update pagefind to 1.0.4 for better headline search [#3534](https://github.com/MakieOrg/Makie.jl/pull/3534).
 - Remove unnecessary deps, e.g. Setfield [3546](https://github.com/MakieOrg/Makie.jl/pull/3546).

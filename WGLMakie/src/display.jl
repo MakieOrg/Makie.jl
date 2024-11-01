@@ -77,7 +77,7 @@ end
 
 function render_with_init(screen::Screen, session::Session, scene::Scene)
     # Reference to three object which gets set once we serve this to a browser
-    # Make sure it's a new Channel, since we may re-use the screen.
+    # Make sure it's a new Channel, since we may reuse the screen.
     screen.plot_initialized = Channel{Any}(1)
     screen.session = session
     Makie.push_screen!(scene, screen)

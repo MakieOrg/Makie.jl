@@ -144,12 +144,12 @@ end
     @test first(ax.then_observers).f === println
 
     pl[1] = S.GridLayout(S.Axis(title="interaction"))
-    @test real_ax === f.content[1] # re-use axis
+    @test real_ax === f.content[1] # reuse axis
     @test length(mpos.listeners) == 1
     @test mpos.listeners[1][2] !== println
 end
 
-@testset "Blockspec re-use" begin
+@testset "Blockspec reuse" begin
     ax1 = S.Axis(; title="Title 1")
     ax2 = S.Axis(; title="Title 2")
     ax3 = S.Axis(; title="Title 3")
