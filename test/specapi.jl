@@ -170,3 +170,20 @@ end
     @test isempty(f.content)
     @test isempty(f.layout.content)
 end
+
+@testset "Legend construction" begin
+    f, ax, pl = plotlist([S.Scatter(1:4, 1:4; marker = :circle, label="A"), S.Scatter(1:6, 1:6; marker = :rect, label="B")])
+    leg = axislegend(ax)
+    # Test that the legend has two scatter plots
+    @test count(x -> x isa Makie.Scatter, leg.scene.plots) == 2
+
+    # Test that the scatter plots have the correct markers
+    # This is too internal and fragile, so we won't actually test this
+    # @test leg.scene.plots[2].marker[] == :circle
+    # @test leg.scene.plots[3].marker[] == :rect
+    
+    # Test that the legend has the correct labels.
+    # Again, I consider this too fragile to work with!
+    # @test contents(contents(leg.grid)[1])[2].text[] == "A"
+    # @test contents(contents(leg.grid)[2])[4].text[] == "B"
+end

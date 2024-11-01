@@ -192,7 +192,7 @@ end
 
 function ungroup_labels(category_labels, data_array)
     if eltype(data_array) <: AbstractVector
-        @warn "Using a nested array for raincloud is deprected. Read raincloud's documentation and update your usage accordingly."
+        @warn "Using a nested array for raincloud is deprecated. Read raincloud's documentation and update your usage accordingly."
         data_array_ = reduce(vcat, data_array)
         category_labels_ = similar(category_labels, length(data_array_))
         ix = 0

@@ -190,6 +190,7 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
+
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
@@ -201,8 +202,16 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
         attr[:entrygroups] = entrygroups
         return BlockSpec(typ, attr, plots)
     else
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                attr[:plotspec] = args[1]
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
+            end
+        end
         if !isempty(args)
-            error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
+            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
         end
         return BlockSpec(typ, attr, plots)
     end
@@ -279,7 +288,7 @@ end
 
 function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     a === b && return 0.0
-    (a.type !== b.type) && return 100.0 # Cant update when types dont match
+    (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
         scores = Float64[
             distance_score(a.kwargs, b.kwargs, scores_dict),
@@ -395,7 +404,6 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-
 function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
     for i in eachindex(spec.args)
@@ -423,8 +431,24 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             push!(obs_to_notify, old_attr)
         end
     end
+
+    reset_to_default = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
+    filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
+    if !isempty(reset_to_default)
+        for k in reset_to_default
+            old_attr = plot[k]
+            new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
+            # In case of e.g. dim_conversions
+            isnothing(new_value) && continue
+            # only update if different
+            if is_different(old_attr[], new_value)
+                old_attr.val = new_value
+                push!(obs_to_notify, old_attr)
+            end
+        end
+    end
     # Cycling needs to be handled separately sadly,
-    # since they're implicitely mutating attributes, e.g. if I re-use a plot
+    # since they're implicitly mutating attributes, e.g. if I re-use a plot
     # that has been on cycling position 2, and now I re-use it for the first plot in the list
     # it will need to change to the color of cycling position 1
     if haskey(plot, :cycle)
@@ -437,7 +461,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 end
             end
         end
-
         if !isempty(uncycled)
             # remove all attributes that don't need cycling
             for (attr_vec, _) in cycle.cycle
@@ -449,6 +472,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
     end
     return
 end
+
 
 """
     plotlist!(
@@ -645,10 +669,64 @@ function add_observer!(block::BlockSpec, obs::AbstractVector{<:ObserverFunction}
     return
 end
 
+function get_numeric_colors(plot::PlotSpec)
+    if plot.type in [:Heatmap, :Image, :Surface]
+        z = plot.args[end]
+        if z isa AbstractMatrix{<:Real}
+            return z
+        end
+    else
+        if haskey(plot.kwargs, :color) && plot.kwargs[:color] isa AbstractArray{<:Real}
+            return plot.kwargs[:color]
+        end
+    end
+    return nothing
+end
+
+# TODO it's really hard to get from PlotSpec -> Plot object in the
+# Colorbar constructor (to_layoutable),
+# since the plot may not be created yet and may change when calling
+# update_layoutable!. So for now, we manually extract the Colorbar arguments from the spec
+# Which is a bit brittle and won't work for Recipes which overload the Colorbar api (extract_colormap)
+# We hope to improve the situation after the observable refactor, which may bring us a bit closer to
+# Being able to use the Plot object itself instead of a spec.
+function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
+    if haskey(legend.kwargs, :plotspec)
+        kw = copy(legend.kwargs)
+        spec = pop!(kw, :plotspec)
+        pt = plottype(spec)
+        for k in [:colorrange, :colormap, :lowclip, :highclip]
+            get!(kw, k) do
+                haskey(spec.kwargs, k) && return spec.kwargs[k]
+                if k === :colorrange
+                    color = get_numeric_colors(spec)
+                    if !isnothing(color)
+                        return nan_extrema(color)
+                    end
+                else
+                    MakieCore.lookup_default(pt, scene, k)
+                end
+            end
+        end
+        return kw
+    else
+        return legend.kwargs
+    end
+end
+
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
     BType = getfield(Makie, spec.type)
-    # TODO forward kw
-    block = BType(get_top_parent(parent); spec.kwargs...)
+    fig = get_top_parent(parent)
+
+    block = if spec.type === :Colorbar
+        # We use the root scene to extract any theming
+        # This means, we dont support a separate theme per scene
+        # Which I think has been bitrotting anyways.
+        kw = extract_colorbar_kw(spec, root(get_scene(fig)))
+        BType(fig; kw...)
+    else
+        BType(fig; spec.kwargs...)
+    end
     parent[position...] = block
     for func in spec.then_funcs
         observers = func(block)
@@ -675,8 +753,17 @@ end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
     unhide!(block)
-    old_attr = keys(old_spec.kwargs)
-    new_attr = keys(spec.kwargs)
+    if spec.type === :Colorbar
+        # To get plot defaults for Colorbar(specapi), we need a theme / scene
+        # So we have to look up the kwargs here instead of the BlockSpec constructor.
+        old_kw = extract_colorbar_kw(old_spec, root(block.blockscene))
+        new_kw = extract_colorbar_kw(spec, root(block.blockscene))
+    else
+        old_kw = old_spec.kwargs
+        new_kw = spec.kwargs
+    end
+    old_attr = keys(old_kw)
+    new_attr = keys(new_kw)
     # attributes that have been set previously and need to get unset now
     reset_to_defaults = setdiff(old_attr, new_attr)
     if !isempty(reset_to_defaults)
@@ -688,7 +775,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     # Attributes needing an update
     to_update = setdiff(new_attr, reset_to_defaults)
     for key in to_update
-        val = spec.kwargs[key]
+        val = new_kw[key]
         prev_val = to_value(getproperty(block, key))
         if is_different(val, prev_val)
             setproperty!(block, key, val)
@@ -816,7 +903,6 @@ get_layout!(fig::Figure) = fig.layout
 get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
 
 
-
 delete_layoutable!(block::Block) = delete!(block)
 function delete_layoutable!(grid::GridLayout)
     gc = grid.layoutobservables.gridcontent[]
@@ -836,7 +922,9 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
     update_gridlayout!(target_layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
     foreach(unused_layoutables) do (p, (block, obs))
         # disconnect! all unused layoutables, so they dont show up anymore
-        disconnect!(block)
+        if block isa Block
+            disconnect!(block)
+        end
         return
     end
     layouts_to_update = Set{GridLayout}([target_layout])
