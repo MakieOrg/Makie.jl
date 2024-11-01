@@ -244,7 +244,7 @@ function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
     throw(MethodError(show, io, m, fig))
 end
 
-function Base.show(io::IO, m::MIME, figlike::FigureLike)
+function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backend())
     if ALWAYS_INLINE_PLOTS[] == false && m isa MIME_TO_TRICK_VSCODE
         # We use this mime to display the figure in a window here.
         # See declaration of MIME_TO_TRICK_VSCODE for more info
@@ -252,7 +252,6 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
         return () # this is a diagnostic vscode mime, so we can just return nothing
     end
     scene = get_scene(figlike)
-    backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
     update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
