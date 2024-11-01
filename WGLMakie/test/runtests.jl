@@ -22,7 +22,7 @@ excludes = Set([
     "Image on Surface Sphere", # TODO: texture rotated 180°
     # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Array of Images Scatter", # scatter does not support texture images
-    
+
     "Order Independent Transparency",
     "fast pixel marker",
     "Textured meshscatter", # not yet implemented
@@ -45,18 +45,36 @@ end
     display(edisplay, app)
     GC.gc(true);
     # Somehow this may take a while to get emptied completely
-    Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=20)
+    value = @time "waiting for plot_cache" Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=100)
+    @test value == :success
+
+    s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
+    value = @time "waiting for sessions" Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=100)
+    @test value == :success
+
     wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
     @test isempty(wgl_plots)
 
     session = edisplay.browserdisplay.handler.session
     session_size = Base.summarysize(session) / 10^6
     texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
+
+    @test length(WGLMakie.TEXTURE_ATLAS.listeners) == 1 # Only one from permanent Retain
+    @test length(session.session_objects) == 1 # Also texture atlas because of Retain
+    @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
+        @test isempty(getfield(session, field))
+    end
+    server = session.connection.server
+    @test length(server.websocket_routes.table) == 1
+    @test server.websocket_routes.table[1][2] == session.connection
+    @test length(server.routes.table) == 2
+    @test server.routes.table[1][1] == "/browser-display"
+    @test server.routes.table[2][2] isa HTTPAssetServer
     @show session_size texture_atlas_size
-    @test session_size / 10^6 < 6
+
+    @test session_size < 6
     @test texture_atlas_size < 6
-    s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-    Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=30)
+
     js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
     js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
     # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
@@ -91,7 +109,7 @@ end
         rm(filename)
     end
 
-    
+
     f, a, p = scatter(rand(10));
     filename = "$(tempname()).mp4"
     try
