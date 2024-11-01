@@ -45,11 +45,11 @@ end
     display(edisplay, app)
     GC.gc(true);
     # Somehow this may take a while to get emptied completely
-    value = @time "waiting for plot_cache" Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=100)
+    value = @time Bonito.wait_for(() -> (GC.gc(true);isempty(run(edisplay.window, "Object.keys(WGL.plot_cache)")));timeout=100)
     @test value == :success
 
     s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-    value = @time "waiting for sessions" Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=100)
+    value = @time Bonito.wait_for(() -> (GC.gc(true); 2 == length(run(edisplay.window, s_keys))); timeout=100)
     @test value == :success
 
     wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
