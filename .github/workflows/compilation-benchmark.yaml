@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          set-safe-directory: false
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
