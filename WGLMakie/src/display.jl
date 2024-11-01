@@ -316,7 +316,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
-        err = "Can't find scene js_uuid(scene) == $(parent_uuid)"
+        err = "Cannot find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(session, js"""
         $(WGL).then(WGL=> {
             const parent = WGL.find_scene($(parent_uuid));
