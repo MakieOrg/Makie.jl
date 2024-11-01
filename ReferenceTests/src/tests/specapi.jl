@@ -117,7 +117,7 @@ end
     st
 end
 
-@reference_test "Moving Plots" begin
+@reference_test "Moving Plots in SpecApi" begin
     pl1 = S.Heatmap(Makie.peaks(50))
     ax1 = S.Axis(plots=[pl1])
     ax2 = S.GridLayout(S.Axis(), S.Axis())
