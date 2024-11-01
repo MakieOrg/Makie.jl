@@ -139,7 +139,7 @@ to be overloaded for DimConversions, e.g. for CategoricalConversion:
 `has_typed_convert(plot_or_trait)` and `should_dim_convert(get_element_type(args))`
  are true. The former is defined as true by `@convert_target`, i.e. when
 `convert_arguments_typed` is defined for the given plot type or conversion trait.
-The latter marks specific types as convertable.
+The latter marks specific types as convertible.
 
 If a recipe wants to use dim conversions, it should overload this function:
 ```julia

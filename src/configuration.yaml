@@ -18,7 +18,7 @@ theme:
 
   SSAO:
     enable: false
-    bias: 0.025 # z threshhold for occlusion
+    bias: 0.025 # z threshold for occlusion
     radius: 0.5 # range of sample positions (in world space)
     blur: 2 # A (2blur+1) by (2blur+1) range is used for blurring
     N_samples: 64 # number of samples (requires shader reload)

@@ -36,7 +36,7 @@ end
 # if no specific conversion is defined, we don't convert
 convert_single_argument(@nospecialize(x)) = x
 
-# replace missings with NaNs
+# replace `missing`s with `NaN`s
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
     return float_convert(a)
 end
@@ -195,7 +195,7 @@ end
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
     points = unique(decompose(PT, rect))
-    push!(points, PT(NaN)) # use to seperate linesegments
+    push!(points, PT(NaN)) # use to separate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -406,7 +406,7 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     Ty = typeof(ye[1])
     # heatmaps are centered on the edges, so we need to adjust the range
     # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
-    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), whcih only substracts the step
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), which only subtracts the step
     # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
     # If we return a different type with no conversion overload, it stops that recursion
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
@@ -1136,7 +1136,7 @@ function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     else
         error(
             """
-            Unkown line style: $ls. Available linestyles are:
+            Unknown line style: $ls. Available linestyles are:
             :solid, :dash, :dot, :dashdot, :dashdotdot
             or a sequence of numbers enumerating the next transparent/opaque region.
             This sequence of numbers must be cumulative; 1 unit corresponds to 1 line width.
@@ -1463,7 +1463,7 @@ function available_gradients()
 end
 
 
-to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
     categorical_colors(colormaplike, categories::Integer)
