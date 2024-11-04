@@ -37,7 +37,9 @@ function Base.display(screen::Screen, scene::Scene; connect=false)
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false, screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(screen_config))
+    screen = Makie.apply_screen_config!(screen, config, scene)
     path = joinpath(mktempdir(), "display.png")
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)

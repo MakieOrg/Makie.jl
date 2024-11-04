@@ -430,7 +430,7 @@ default_colorformat_sym(::Type{T}) where {T <: Colorant} = default_colorformat_s
 @generated function default_colorformat(::Type{T}) where T
     sym = default_colorformat_sym(T)
     if !isdefined(ModernGL, sym)
-        error("$T doesn't have a propper mapping to an OpenGL format")
+        error("$T doesn't have a proper mapping to an OpenGL format")
     end
     :($sym)
 end
@@ -462,7 +462,7 @@ end
 @generated function default_internalcolorformat(::Type{T}) where T
     sym = default_internalcolorformat_sym(T)
     if !isdefined(ModernGL, sym)
-        error("$T doesn't have a propper mapping to an OpenGL format")
+        error("$T doesn't have a proper mapping to an OpenGL format")
     end
     :($sym)
 end

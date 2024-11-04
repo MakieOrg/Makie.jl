@@ -912,7 +912,7 @@ end
 function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
 
     ctx = screen.context
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
@@ -968,7 +968,7 @@ function draw_mesh3D(
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 

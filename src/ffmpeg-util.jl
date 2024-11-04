@@ -50,7 +50,7 @@ struct VideoStreamOptions
             pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
 
         if !isa(framerate, Integer)
-            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
+            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
             framerate = round(Int, framerate)
         end
 
@@ -266,7 +266,9 @@ function VideoStream(fig::FigureLike;
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
-    process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
+    # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
+    # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
+    process = open(pipeline(`$(FFMPEG_jll.ffmpeg()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
     result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
     finalizer(result) do x

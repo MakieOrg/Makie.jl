@@ -122,7 +122,9 @@ end
 @testset "VideoStream & screen options" begin
     N = 3
     points = Observable(Point2f[])
-    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
+    width = 600
+    height = 800
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(width, height),))
 
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
     tmp_path = vio.path
@@ -132,6 +134,11 @@ end
     @test vio.screen.device_scaling_factor == 2.0
 
     Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
+
     save("test.mp4", vio)
     save("test_2.mkv", vio)
     save("test_3.mp4", vio)

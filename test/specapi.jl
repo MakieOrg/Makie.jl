@@ -50,19 +50,19 @@ import Makie.SpecApi as S
         plotspecs = [S.Scatter(1:4; color=:red), S.Scatter(1:4; color=:red)]
         reusable_plots = IdDict{PlotSpec,Plot}()
         obs_to_notify = Observable[]
-        new_plots = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, reusable_plots)
+        new_plots = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, reusable_plots)
         @test length(new_plots) == 2
         @test Set(scene.plots) == Set(values(new_plots))
         @test isempty(obs_to_notify)
 
-        new_plots2 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, new_plots)
+        new_plots2 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, new_plots)
 
         @test isempty(new_plots) # they got all used up
         @test Set(scene.plots) == Set(values(new_plots2))
         @test isempty(obs_to_notify)
 
         plotspecs = [S.Scatter(1:4; color=:yellow), S.Scatter(1:4; color=:green)]
-        new_plots3 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, new_plots2)
+        new_plots3 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, new_plots2)
 
         @test isempty(new_plots) # they got all used up
         @test Set(scene.plots) == Set(values(new_plots3))
@@ -169,4 +169,21 @@ end
     pl[1] =  S.GridLayout()
     @test isempty(f.content)
     @test isempty(f.layout.content)
+end
+
+@testset "Legend construction" begin
+    f, ax, pl = plotlist([S.Scatter(1:4, 1:4; marker = :circle, label="A"), S.Scatter(1:6, 1:6; marker = :rect, label="B")])
+    leg = axislegend(ax)
+    # Test that the legend has two scatter plots
+    @test count(x -> x isa Makie.Scatter, leg.scene.plots) == 2
+
+    # Test that the scatter plots have the correct markers
+    # This is too internal and fragile, so we won't actually test this
+    # @test leg.scene.plots[2].marker[] == :circle
+    # @test leg.scene.plots[3].marker[] == :rect
+    
+    # Test that the legend has the correct labels.
+    # Again, I consider this too fragile to work with!
+    # @test contents(contents(leg.grid)[1])[2].text[] == "A"
+    # @test contents(contents(leg.grid)[2])[4].text[] == "B"
 end

@@ -2,6 +2,144 @@ import * as THREE from "./THREE.js";
 import * as Camera from "./Camera.js";
 import { create_line, create_linesegments } from "./Lines.js";
 
+
+/**
+ * Updates the value of a given uniform with a new value.
+ *
+ * @param {THREE.Uniform} uniform - The uniform to update.
+ * @param {Object|Array} new_value - The new value to set for the uniform. If the uniform is a texture, this should be an array containing the size and texture data.
+ */
+function update_uniform(uniform, new_value) {
+    if (uniform.value.isTexture) {
+        const im_data = uniform.value.image;
+        const [size, tex_data] = new_value;
+        if (tex_data.length == im_data.data.length) {
+            im_data.data.set(tex_data);
+        } else {
+            const old_texture = uniform.value;
+            uniform.value = re_create_texture(old_texture, tex_data, size);
+            old_texture.dispose();
+        }
+        uniform.value.needsUpdate = true;
+    } else {
+        if (is_three_fixed_array(uniform.value)) {
+            uniform.value.fromArray(new_value);
+        } else {
+            uniform.value = new_value;
+        }
+    }
+}
+
+
+class Plot {
+    mesh = undefined;
+    parent = undefined;
+    uuid = "";
+    name = "";
+    is_instanced = false;
+    geometry_needs_recreation = false;
+    plot_data = {};
+
+    constructor(scene, data) {
+
+        this.plot_data = data;
+
+        connect_plot(scene, this);
+
+        if (data.plot_type === "lines") {
+            this.mesh = create_line(scene, this.plot_data);
+        } else if (data.plot_type === "linesegments") {
+            this.mesh = create_linesegments(scene, this.plot_data);
+        } else if ("instance_attributes" in data) {
+            this.is_instanced = true
+            this.mesh = create_instanced_mesh(scene, this.plot_data);
+        } else {
+            this.mesh = create_mesh(scene, this.plot_data);
+        }
+
+        this.name = data.name;
+        this.uuid = data.uuid;
+        this.mesh.plot_uuid = data.uuid;
+
+        this.mesh.frustumCulled = false;
+        this.mesh.matrixAutoUpdate = false;
+        this.mesh.renderOrder = data.zvalue;
+
+
+        data.uniform_updater.on(([name, data]) => {
+            this.update_uniform(name, data);
+        });
+
+        if (
+            !(data.plot_type === "lines" || data.plot_type === "linesegments")
+        ) {
+            connect_attributes(this.mesh, data.attribute_updater);
+        }
+        this.parent = scene;
+        // Give mesh a reference to the plot object.
+        this.mesh.plot_object = this;
+        this.mesh.visible = data.visible.value;
+        data.visible.on(v=> {
+            this.mesh.visible = v;
+        });
+
+    }
+
+    move_to(scene) {
+        if (scene === this.parent) {
+            return
+        }
+        this.parent.remove(this.mesh)
+        connect_plot(scene, this)
+        scene.add(this.mesh)
+        this.parent = scene
+        return
+    }
+
+    update(attributes) {
+        attributes.keys().forEach(key=> {
+            const value = attributes[key]
+            if (value.type == "uniform") {
+                this.update_uniform(key, value.data);
+            } else if (value.type === "geometry") {
+                this.update_geometries(value.data)
+            } else if (value.type === "faces") {
+                this.update_faces(value.data)
+            }
+        })
+        // For e.g. when we need to re-create the geometry
+        this.apply_updates()
+    }
+
+    update_uniform(name, new_data) {
+        const uniform = this.mesh.material.uniforms[name];
+        if (!uniform) {
+            throw new Error(`Uniform ${name} doesn't exist in Plot: ${this.name}`)
+        }
+        update_uniform(uniform, new_data);
+    }
+
+    update_geometry(name, new_data) {
+        buffer = this.mesh.geometry.attributes[name];
+        if (!buffer) {
+            throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`)
+        }
+        const old_length = buffer.count
+        if (new_data.length <= old_length) {
+            buffer.set(new_data.data);
+            buffer.needsUpdate = true;
+        } else {
+            // if we have a larger size we need resizing + recreation of the buffer geometry
+            buffer.to_update = new_data.data;
+            this.geometry_needs_recreation = true;
+        }
+    }
+
+    update_faces(face_data) {
+        this.mesh.geometry.setIndex(new THREE.BufferAttribute(face_data, 1));
+    }
+}
+
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
 const scene_cache = {};
@@ -140,128 +278,69 @@ export function deserialize_uniforms(scene, data) {
     return result;
 }
 
-export function deserialize_plot(scene, data) {
-    let mesh;
-    const update_visible = (v) => {
-        mesh.visible = v;
-        // don't return anything, since that will disable on_update callback
-        return;
-    };
-    if (data.plot_type === "lines") {
-        mesh = create_line(scene, data);
-    } else if (data.plot_type === "linesegments") {
-        mesh = create_linesegments(scene, data);
-    } else if ("instance_attributes" in data) {
-        mesh = create_instanced_mesh(scene, data);
-    } else {
-        mesh = create_mesh(scene, data);
-    }
-    mesh.name = data.name;
-    mesh.frustumCulled = false;
-    mesh.matrixAutoUpdate = false;
-    mesh.plot_uuid = data.uuid;
-    mesh.renderOrder = data.zvalue;
-    update_visible(data.visible.value);
-    data.visible.on(update_visible);
-    connect_uniforms(mesh, data.uniform_updater);
-    if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
-        connect_attributes(mesh, data.attribute_updater);
-    }
-    return mesh;
-}
-
 const ON_NEXT_INSERT = new Set();
 
 export function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
 
-export function add_plot(scene, plot_data) {
+/**
+ * Connects a plot to a scene by setting up the necessary camera uniforms.
+ *
+ * @param {THREE.Scene} scene - The scene object containing the camera and screen information.
+ * @param {Plot} plot - The plot object to be connected to the scene.
+ */
+function connect_plot(scene, plot) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-    if (plot_data.cam_space == "data") {
-        plot_data.uniforms.view = cam.view;
-        plot_data.uniforms.projection = cam.projection;
-        plot_data.uniforms.projectionview = cam.projectionview;
-        plot_data.uniforms.eyeposition = cam.eyeposition;
-    } else if (plot_data.cam_space == "pixel") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.pixel_space;
-        plot_data.uniforms.projectionview = cam.pixel_space;
-    } else if (plot_data.cam_space == "relative") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.relative_space;
-        plot_data.uniforms.projectionview = cam.relative_space;
-    } else {
+    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+    const space = plot.plot_data.cam_space;
+    if (space == "data") {
+        uniforms.view = cam.view;
+        uniforms.projection = cam.projection;
+        uniforms.projectionview = cam.projectionview;
+        uniforms.eyeposition = cam.eyeposition;
+    } else if (space == "pixel") {
+        uniforms.view = identity;
+        uniforms.projection = cam.pixel_space;
+        uniforms.projectionview = cam.pixel_space;
+    } else if (space == "relative") {
+        uniforms.view = identity;
+        uniforms.projection = cam.relative_space;
+        uniforms.projectionview = cam.relative_space;
+    } else if (space == "clip") {
         // clip space
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = identity;
-        plot_data.uniforms.projectionview = identity;
+        uniforms.view = identity;
+        uniforms.projection = identity;
+        uniforms.projectionview = identity;
+    } else {
+        throw new Error(`Space ${space} not supported!`)
     }
     const { px_per_unit } = scene.screen;
-    plot_data.uniforms.resolution = cam.resolution;
-    plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
+    uniforms.resolution = cam.resolution;
+    uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
-    if (plot_data.uniforms.preprojection) {
-        const { space, markerspace } = plot_data;
-        plot_data.uniforms.preprojection = cam.preprojection_matrix(
+    if (plot.plot_data.uniforms.preprojection) {
+        const { space, markerspace } = plot.plot_data;
+        uniforms.preprojection = cam.preprojection_matrix(
             space.value,
             markerspace.value
         );
     }
 
-    if (scene.camera_relative_light) {
-        plot_data.uniforms.light_direction = cam.light_direction;
-        scene.light_direction.on((value) => {
-            cam.update_light_dir(value);
-        });
-    } else {
-        // TODO how update?
-        const light_dir = new THREE.Vector3().fromArray(
-            scene.light_direction.value
-        );
-        plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
-        scene.light_direction.on((value) => {
-            plot_data.uniforms.light_direction.value.fromArray(value);
-        });
-    }
+    uniforms.light_direction = scene.light_direction;
+}
 
-    const p = deserialize_plot(scene, plot_data);
-    plot_cache[p.plot_uuid] = p;
-    scene.add(p);
+
+export function add_plot(scene, plot_data) {
+    // fill in the camera uniforms, that we don't sent in serialization per plot
+    const p = new Plot(scene, plot_data);
+    plot_cache[p.uuid] = p.mesh;
+    scene.add(p.mesh);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
     next_insert.forEach((f) => f());
-}
-
-function connect_uniforms(mesh, updater) {
-    updater.on(([name, data]) => {
-        // this is the initial value, which shouldn't end up getting updated -
-        // TODO, figure out why this gets pushed!!
-        if (name === "none") {
-            return;
-        }
-        const uniform = mesh.material.uniforms[name];
-        if (uniform.value.isTexture) {
-            const im_data = uniform.value.image;
-            const [size, tex_data] = data;
-            if (tex_data.length == im_data.data.length) {
-                im_data.data.set(tex_data);
-            } else {
-                const old_texture = uniform.value;
-                uniform.value = re_create_texture(old_texture, tex_data, size);
-                old_texture.dispose();
-            }
-            uniform.value.needsUpdate = true;
-        } else {
-            if (is_three_fixed_array(uniform.value)) {
-                uniform.value.fromArray(data);
-            } else {
-                uniform.value = data;
-            }
-        }
-    });
 }
 
 function convert_RGB_to_RGBA(rgbArray) {
@@ -367,6 +446,8 @@ function re_create_texture(old_texture, buffer, size) {
     }
     return tex;
 }
+
+
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
     jsbuff.setUsage(THREE.DynamicDrawUsage);
@@ -579,8 +660,6 @@ export function deserialize_scene(data, screen) {
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
-    scene.camera_relative_light = data.camera_relative_light;
-    scene.light_direction = data.light_direction;
 
     const camera = new Camera.MakieCamera();
 
@@ -609,8 +688,22 @@ export function deserialize_scene(data, screen) {
     }
 
     update_cam(data.camera.value, true); // force update on first call
+
     camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
+
+    if (data.camera_relative_light) {
+        scene.light_direction = camera.light_direction;
+    } else {
+        const light_dir = new THREE.Vector3().fromArray(
+            data.light_direction.value
+        );
+        scene.light_direction = new THREE.Uniform(light_dir);
+        data.light_direction.on((value) => {
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
+
 
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
