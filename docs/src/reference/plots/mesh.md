@@ -43,7 +43,7 @@ mesh(
 using GeometryBasics
 
 # Reduce quality of sphere 
-s = Tesselation(Sphere(Point3f(0), 1f0), 12)
+s = Tessellation(Sphere(Point3f(0), 1f0), 12)
 ps = coordinates(s)
 fs = faces(s)
 
@@ -83,7 +83,7 @@ points = vec([Point3f(xv, yv, zv) for (xv, yv, zv) in zip(x2, y2, z2)])
 
 # The coordinates form a matrix, so to connect neighboring vertices with a face
 # we can just use the faces of a rectangle with the same dimension as the matrix:
-_faces = decompose(QuadFace{GLIndex}, Tesselation(Rect(0, 0, 1, 1), size(z2)))
+_faces = decompose(QuadFace{GLIndex}, Tessellation(Rect(0, 0, 1, 1), size(z2)))
 # Normals of a centered sphere are easy, they're just the vertices normalized.
 _normals = normalize.(points)
 
