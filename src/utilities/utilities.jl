@@ -426,7 +426,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
-    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
     # we use quad faces so that color handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles

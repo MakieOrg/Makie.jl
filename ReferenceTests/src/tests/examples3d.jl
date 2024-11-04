@@ -9,7 +9,7 @@
     cameracontrols(ax).settings.center[] = false # avoid recenter on display
 
     earth = loadasset("earth.png")
-    m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
+    m = uv_mesh(Tessellation(Sphere(Point3f(0), 1f0), 60))
     mesh(f[1, 2], m, color=earth, shading=NoShading)
 
     catmesh = loadasset("cat.obj")
@@ -315,7 +315,7 @@ end
     N = 3; nbfacese = 30; radius = 0.02
 
     large_sphere = Sphere(Point3f(0), 1f0)
-    positions = decompose(Point3f, Tesselation(large_sphere, 30))
+    positions = decompose(Point3f, Tessellation(large_sphere, 30))
     np = length(positions)
     pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
     pts = vcat(pts, 1.1 .* pts + RNG.randn(size(pts)) / perturbfactor) # light position influence ?
@@ -323,8 +323,8 @@ end
     ne = size(edges, 1); np = size(pts, 1)
     cylinder = Cylinder(Point3f(0), Point3f(0, 0, 1.0), 1f0)
     # define markers meshes
-    meshC = normal_mesh(Tesselation(cylinder, nbfacese))
-    meshS = normal_mesh(Tesselation(large_sphere, 20))
+    meshC = normal_mesh(Tessellation(cylinder, nbfacese))
+    meshS = normal_mesh(Tessellation(large_sphere, 20))
     # define colors, markersizes and rotations
     pG = [Point3f(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
     lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]).^2, dims=2))

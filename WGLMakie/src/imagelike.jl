@@ -16,7 +16,7 @@ function create_shader(mscene::Scene, plot::Surface)
         apply_transform_and_f32_conversion(plot, f32c, grid_ps)
     end
     positions = Buffer(ps)
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    rect = lift(z -> Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
     fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
