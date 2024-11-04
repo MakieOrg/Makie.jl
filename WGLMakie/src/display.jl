@@ -66,6 +66,12 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+function Screen(; config...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(config))
+    return Screen(nothing, config)
+end
+
+
 function scene_already_displayed(screen::Screen, scene=screen.scene)
     scene === nothing && return false
     screen.scene === scene || return false
