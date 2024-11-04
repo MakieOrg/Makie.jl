@@ -486,6 +486,7 @@ end
     tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20, 
         fontsize =10, textcolor = :red, boxcolor = :lightblue)
     Makie.set!(tb, "some string")
+end
 
 @reference_test "Toggle" begin
     f = Figure()
