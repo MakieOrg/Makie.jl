@@ -31,7 +31,12 @@ function render_frame(screen::Screen; resize_buffers=true)
     ShaderAbstractions.switch_context!(nw)
 
     function sortby(x)
-        return x[3][:model][][3, 4]
+        robj = x[3]
+        plot = screen.cache2plot[robj.id]
+        # TODO, use actual boundingbox
+        # ~7% faster than calling zvalue2d doing the same thing?
+        return Makie.transformationmatrix(plot)[][3, 4]
+        # return Makie.zvalue2d(plot)
     end
 
     sort!(screen.renderlist; by=sortby)
