@@ -22441,6 +22441,7 @@ function delete_plots(plot_uuids) {
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
     tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
     tex.minFilter = mod[data.minFilter];
     tex.magFilter = mod[data.magFilter];
     tex.anisotropy = data.anisotropy;
