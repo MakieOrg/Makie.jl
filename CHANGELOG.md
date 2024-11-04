@@ -7,6 +7,7 @@
 - Added the `jitter_width` and `side_nudge` attributes to the `raincloud` plot definition, so that they can be used as kwargs [#4517]https://github.com/MakieOrg/Makie.jl/pull/4517)
 - Expand PlotList plots to expose their child plots to the legend interface, allowing `axislegend`show plots within PlotSpecs as individual entries. [#4546](https://github.com/MakieOrg/Makie.jl/pull/4546)
 - Implement S.Colorbar(plotspec) [#4520](https://github.com/MakieOrg/Makie.jl/pull/4520).
+- Fixed a hang when `Record` was created inside a closure passed to `IOCapture.capture` [#4562](https://github.com/MakieOrg/Makie.jl/pull/4562).
 
 ## [0.21.15] - 2024-10-25
 
