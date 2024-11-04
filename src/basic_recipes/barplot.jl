@@ -21,7 +21,7 @@ function bar_default_fillto(tf, ys, offset, in_y_direction)
     return ys, offset
 end
 
-# `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
+# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
     _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
     if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
