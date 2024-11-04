@@ -139,7 +139,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     bbox = map(
             p, px_pos, p.text, text_align, text_offset, textpadding, p.align
         ) do p, s, _, o, pad, align
-        bb = boundingbox(tp, :pixel) + to_ndim(Vec3f, o, 0)
+        bb = string_boundingbox(tp) + to_ndim(Vec3f, o, 0)
         l, r, b, t = pad
         return Rect3f(origin(bb) .- (l, b, 0), widths(bb) .+ (l+r, b+t, 0))
     end
