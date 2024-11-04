@@ -498,15 +498,13 @@ function free(plot::AbstractPlot)
         Observables.off(f)
     end
     foreach(free, plot.plots)
-    empty!(plot.plots)
+    # empty!(plot.plots)
     empty!(plot.deregister_callbacks)
-    empty!(plot.attributes)
     free(plot.transformation)
     return
 end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
-    len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -522,6 +520,46 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     end
     free(plot)
 end
+
+supports_move_to(::MakieScreen) = false
+
+function supports_move_to(plot::Plot)
+    scene = get_scene(plot)
+    return all(scene.current_screens) do screen
+        return supports_move_to(screen)
+    end
+end
+
+# function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+#     # TODO, move without deleting!
+#     # Will be easier with Observable refactor
+#     delete!(screen, scene, plot)
+#     insert!(screen, scene, plot)
+#     return
+# end
+
+
+function move_to!(plot::Plot, scene::Scene)
+    if plot.parent === scene
+        return
+    end
+
+    if is_space_compatible(plot, scene)
+        obsfunc = connect!(transformation(scene), transformation(plot))
+        append!(plot.deregister_callbacks, obsfunc)
+    end
+    for screen in root(scene).current_screens
+        if supports_move_to(screen)
+            move_to!(screen, plot, scene)
+        end
+    end
+    current_parent = parent_scene(plot)
+    filter!(x -> x !== plot, current_parent.plots)
+    push!(scene.plots, plot)
+    plot.parent = scene
+    return
+end
+
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events

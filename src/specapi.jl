@@ -326,12 +326,13 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
     end
 end
 
-function find_min_distance(f, to_compare, list, scores)
+function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> score)
     isempty(list) && return -1
     minscore = 2.0
     idx = -1
     for key in keys(list)
         score = distance_score(to_compare, f(list[key], key), scores)
+        score = penalty(key, score) # apply custom penalty
         if score ≈ 0.0 # shortcuircit for exact matches
             return key
         end
@@ -353,8 +354,15 @@ function find_layoutable(
     return (idx, layoutables[idx]...)
 end
 
-function find_reusable_plot(plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
-    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
+function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
+    function penalty(key, score)
+        # penalize plots with different parents
+        # needs to be implemented via this penalty function, since parent scenes arent part of the spec
+        plot = plots[key]
+        move_to_penalty = ((!Makie.supports_move_to(plot)) * 100) + 1
+        return norm(Float64[plot.parent !== scene, score]) * move_to_penalty
+    end
+    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores, penalty)
     idx == -1 && return nothing, nothing
     return plots[idx], idx
 end
@@ -564,18 +572,21 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
-function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify, reusable_plots,
-                        plotlist::Union{Nothing,PlotList}=nothing)
-    new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
+function diff_plotlist!(
+        scene::Scene, plotspecs::Vector{PlotSpec},
+        obs_to_notify,
+        plotlist::Union{Nothing,PlotList}=nothing,
+        reusable_plots = IdDict{PlotSpec, Plot}(),
+        new_plots = IdDict{PlotSpec,Plot}())
+     # needed to be mutated
     empty!(scene.cycler.counters)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
-    empty!(obs_to_notify)
     scores = IdDict{Any, Float64}()
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots, scores)
+        reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
@@ -601,45 +612,57 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
+            if reused_plot.parent !== scene
+                @assert Makie.supports_move_to(reused_plot)
+                move_to!(reused_plot, scene)
+            end
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
+
         end
     end
     return new_plots
 end
 
-function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing, PlotList}=nothing)
+function update_plotspecs!(
+        scene::Scene, list_of_plotspecs::Observable,
+        plotlist::Union{Nothing,PlotList}=nothing,
+        unused_plots=IdDict{PlotSpec,Plot}(),
+        new_plots=IdDict{PlotSpec,Plot}(),
+        own_plots=true
+    )
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    unused_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
-
     update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
-        empty!(obs_to_notify)
         empty!(scene.cycler.counters) # Reset Cycler
         # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
-        new_plots = diff_plotlist!(scene, plotspecs, obs_to_notify, unused_plots, plotlist)
+        diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for (_, plot) in unused_plots
-            if !isnothing(plotlist)
-                filter!(x -> x !== plot, plotlist.plots)
+        if own_plots
+            for (_, plot) in unused_plots
+                if !isnothing(plotlist)
+                    filter!(x -> x !== plot, plotlist.plots)
+                end
+                delete!(scene, plot)
             end
-            delete!(scene, plot)
+            # Transfer all new plots into unused_plots for the next update!
+            @assert !any(x-> x in unused_plots, new_plots)
+            empty!(unused_plots)
+            merge!(unused_plots, new_plots)
+            empty!(new_plots)
+            # finally, notify all changes at once
         end
-        # Transfer all new plots into unused_plots for the next update!
-        @assert !any(x-> x in unused_plots, new_plots)
-        empty!(unused_plots)
-        merge!(unused_plots, new_plots)
-        # finally, notify all changes at once
         foreach(notify, obs_to_notify)
+        empty!(obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
@@ -786,9 +809,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
-        if plot_obs[] != spec.plots
-            plot_obs[] = spec.plots
-        end
+        plot_obs[] = spec.plots
         scene = get_scene(block)
         if any(needs_tight_limits, scene.plots)
             tightlimits!(block)
@@ -853,7 +874,7 @@ end
 
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, previous_contents, new_layoutables)
+                            gridspec::GridLayoutSpec, previous_contents, new_layoutables, global_unused_plots, new_plots)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
     scores = IdDict{Any, Float64}()
@@ -869,7 +890,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             if new_layoutable isa AbstractAxis
                 obs = Observable(spec.plots)
                 scene = get_scene(new_layoutable)
-                update_plotspecs!(scene, obs)
+                update_plotspecs!(scene, obs, nothing, global_unused_plots, new_plots, false)
                 if any(needs_tight_limits, scene.plots)
                     tightlimits!(new_layoutable)
                 end
@@ -877,7 +898,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             elseif new_layoutable isa GridLayout
                 # Make sure all plots & blocks are inserted
                 update_gridlayout!(new_layoutable, nesting + 1, spec, spec, previous_contents,
-                                   new_layoutables)
+                                   new_layoutables, global_unused_plots, new_plots)
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
@@ -888,7 +909,8 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             (layoutable, plot_obs) = layoutable_obs
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout
-                update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents, new_layoutables)
+                update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents,
+                                   new_layoutables, global_unused_plots, new_plots)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
                 update_state_before_display!(layoutable)
@@ -913,13 +935,16 @@ function delete_layoutable!(grid::GridLayout)
 end
 
 function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
-                            new_layoutables)
+                            new_layoutables, unused_plots, new_plots)
     # For each update we look into `unused_layoutables` to see if we can reuse a layoutable (GridLayout/Block).
     # Every reused layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
+    update_gridlayout!(
+        target_layout, 1, nothing, layout_spec, unused_layoutables,
+        new_layoutables, unused_plots, new_plots
+    )
 
-    update_gridlayout!(target_layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
     foreach(unused_layoutables) do (p, (block, obs))
         # disconnect! all unused layoutables, so they dont show up anymore
         if block isa Block
@@ -940,6 +965,16 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
         l.block_updates = false
         GridLayoutBase.update!(l)
     end
+
+    for (_, plot) in unused_plots
+        delete!(plot.parent, plot)
+    end
+    # Transfer all new plots into unused_plots for the next update!
+    @assert isempty(unused_plots) || !any(x -> x in unused_plots, new_plots)
+    empty!(unused_plots)
+    merge!(unused_plots, new_plots)
+    empty!(new_plots)
+    # finally, notify all changes at once
 
     # foreach(unused_layoutables) do (p, (block, obs))
     #     # Finally, disconnect all blocks that haven't been used!
@@ -962,9 +997,12 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
+    unused_plots = IdDict{PlotSpec,Plot}()
+    new_plots = IdDict{PlotSpec,Plot}()
     on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
-            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
+            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables,
+                               unused_plots, new_plots)
             return
         end
     end

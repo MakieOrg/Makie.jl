@@ -300,18 +300,20 @@ function serialize_scene(scene::Scene)
     light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
     cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
 
-    serialized = Dict(:viewport => pixel_area,
-                      :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
-                      :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
-                      :clearscene => scene.clear,
-                      :camera => serialize_camera(scene),
-                      :light_direction => light_dir,
-                      :camera_relative_light => cam_rel,
-                      :plots => serialize_plots(scene, scene.plots),
-                      :cam3d_state => cam3d_state,
-                      :visible => scene.visible,
-                      :uuid => js_uuid(scene),
-                      :children => children)
+    serialized = Dict(
+        :viewport => pixel_area,
+        :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
+        :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
+        :clearscene => scene.clear,
+        :camera => serialize_camera(scene),
+        :light_direction => light_dir,
+        :camera_relative_light => cam_rel,
+        :plots => serialize_plots(scene, scene.plots),
+        :cam3d_state => cam3d_state,
+        :visible => scene.visible,
+        :uuid => js_uuid(scene),
+        :children => children
+    )
     return serialized
 end
 

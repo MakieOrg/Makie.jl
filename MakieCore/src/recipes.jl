@@ -435,7 +435,7 @@ function default_theme(scene, T::Type{<: Plot})
     end
     return attr
 end
-      
+
 function extract_docstring(str)
     if VERSION >= v"1.11" && str isa Base.Docs.DocStr
         return only(str.text::Core.SimpleVector)
@@ -502,7 +502,7 @@ function create_recipe_expr(Tsym, args, attrblock)
         end
         function ($funcname!)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
-             _create_plot!($funcname, kwdict, args...)
+            _create_plot!($funcname, kwdict, args...)
         end
 
         $(arg_type_func)
