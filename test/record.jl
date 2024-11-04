@@ -78,7 +78,6 @@ mktempdir() do tempdir
         end
     end
 end
-Makie.set_active_backend!(missing)
 
 @testset "No hang when closing IOCapture.capture over VideoStream" begin
     @test_nowarn IOCapture.capture() do
@@ -86,3 +85,5 @@ Makie.set_active_backend!(missing)
         Makie.VideoStream(f)
     end
 end
+
+Makie.set_active_backend!(missing)
