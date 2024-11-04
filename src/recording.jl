@@ -183,7 +183,7 @@ function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     if !(scene isa Scene)
         error("Expected Screen to hold a reference to a Scene but got $(repr(scene))")
     end
-    w, h = scene.viewport[].widths
+    w, h = size(scene)
     mktempdir() do dir
         path = save(joinpath(dir, "video.mp4"), vs)
         # <video> only supports infinite looping, so we loop forever even when a finite number is requested
