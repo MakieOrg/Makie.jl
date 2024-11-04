@@ -180,7 +180,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
-    root_scene::Union{Scene, Nothing}
+    scene::Union{Scene, Nothing}
     reuse::Bool
     close_after_renderloop::Bool
     # To trigger rerenders that aren't related to an existing renderobject.
@@ -400,8 +400,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     else
         stop_renderloop!(screen)
     end
-    if !isnothing(screen.root_scene)
-        resize!(screen, size(screen.root_scene)...)
+    if !isnothing(screen.scene)
+        resize!(screen, size(screen.scene)...)
     end
     set_screen_visibility!(screen, config.visible)
     return screen
@@ -442,7 +442,7 @@ function display_scene!(screen::Screen, scene::Scene)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
-    screen.root_scene = scene
+    screen.scene = scene
     return
 end
 
@@ -612,10 +612,10 @@ function Base.empty!(screen::Screen)
         delete!(screen, Makie.rootparent(plot), plot)
     end
 
-    if !isnothing(screen.root_scene)
-        Makie.disconnect_screen(screen.root_scene, screen)
-        delete!(screen, screen.root_scene)
-        screen.root_scene = nothing
+    if !isnothing(screen.scene)
+        Makie.disconnect_screen(screen.scene, screen)
+        delete!(screen, screen.scene)
+        screen.scene = nothing
     end
 
     @assert isempty(screen.renderlist)
@@ -875,8 +875,8 @@ end
 scalechangecb(screen) = (window, xscale, yscale) -> scalechangecb(screen, window, xscale, yscale)
 
 function scalechangeobs(screen, _)
-    if !isnothing(screen.root_scene)
-        resize!(screen, size(screen.root_scene)...)
+    if !isnothing(screen.scene)
+        resize!(screen, size(screen.scene)...)
     end
     return nothing
 end
