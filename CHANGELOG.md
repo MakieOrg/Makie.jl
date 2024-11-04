@@ -8,6 +8,7 @@
 - Expand PlotList plots to expose their child plots to the legend interface, allowing `axislegend`show plots within PlotSpecs as individual entries. [#4546](https://github.com/MakieOrg/Makie.jl/pull/4546)
 - Implement S.Colorbar(plotspec) [#4520](https://github.com/MakieOrg/Makie.jl/pull/4520).
 - Fixed a hang when `Record` was created inside a closure passed to `IOCapture.capture` [#4562](https://github.com/MakieOrg/Makie.jl/pull/4562).
+- Added logical size annotation to `text/html` inline videos so that sizes are appropriate independent of the current `px_per_unit` value [#4563](https://github.com/MakieOrg/Makie.jl/pull/4563).
 
 ## [0.21.15] - 2024-10-25
 
