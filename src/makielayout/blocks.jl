@@ -650,15 +650,17 @@ julia> v[] = :always
 function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth=9e3, kwargs...)
     tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str; kwargs...)
     translate!(tt, 0, 0, depth)
-    t0 = time()
+    t0, last_mp = time(), b.blockscene.events.mouseposition[]
     onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
         tt.visible[] = if v == :never
             false
         elseif v == :hover
             if mp in bbox
-                time() > t0 + delay
+                last_mp in bbox || (t0 = time())
+                last_mp = mp
+                delay == 0 || time() > t0 + delay
             else
-                t0 = time()
+                last_mp = mp
                 false
             end
         else
