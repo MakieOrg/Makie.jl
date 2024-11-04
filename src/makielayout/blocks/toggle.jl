@@ -2,25 +2,33 @@ function initialize_block!(t::Toggle)
 
     topscene = t.blockscene
 
-    markersize = lift(topscene, t.layoutobservables.computedbbox) do bbox
-        min(width(bbox), height(bbox))
+    onany(topscene, t.orientation, t.length, t.markersize) do or, len, ms
+        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
+        t.width[] = (len - ms) * cos(theta) + ms
+        t.height[] = (len - ms)  * sin(theta) + ms
     end
 
-    button_endpoint_inactive = lift(topscene, markersize) do ms
-        bbox = t.layoutobservables.computedbbox[]
+    button_endpoint_inactive = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
+        
         Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
     end
 
-    button_endpoint_active = lift(topscene, markersize) do ms
-        bbox = t.layoutobservables.computedbbox[]
-        Point2f(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
+    button_endpoint_active = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
+        Point2f(right(bbox) - ms / 2, top(bbox) - ms / 2)
     end
 
-    buttonvertices = lift(topscene, markersize, t.cornersegments) do ms, cs
-        roundedrectvertices(t.layoutobservables.computedbbox[], ms * 0.499, cs)
+    buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments, t.orientation, t.layoutobservables.computedbbox) do len, ms, cs, or, bbox
+        rect0 = GeometryBasics.HyperRectangle(-ms/2, -ms/2, len, ms)
+        rrv = roundedrectvertices(rect0, ms * 0.499, cs)
+        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
+        costheta, sintheta = cos(theta), sin(theta)
+        rotmatrix = GeometryBasics.@SMatrix [costheta -sintheta
+                                             sintheta  costheta]
+        Ref(rotmatrix) .* rrv .+ Ref(GeometryBasics.@SVector [left(bbox)+ms/2, bottom(bbox)+ms/2])
     end
 
     # trigger bbox
+    notify(t.length)
     notify(t.layoutobservables.suggestedbbox)
 
     framecolor = Observable{Any}(t.active[] ? t.framecolor_active[] : t.framecolor_inactive[])
@@ -37,21 +45,12 @@ function initialize_block!(t::Toggle)
     end
 
     buttonfactor = Observable(1.0)
-    buttonsize = lift(topscene, markersize, t.rimfraction, buttonfactor) do ms, rf, bf
+    buttonsize = lift(topscene, t.markersize, t.rimfraction, buttonfactor) do ms, rf, bf
         ms * (1 - rf) * bf
     end
 
     button = scatter!(topscene, buttonpos, markersize = buttonsize,
         color = t.buttoncolor, strokewidth = 0, inspectable = false, marker = Circle)
-
-    onany(topscene, t.orientation, t.layoutobservables.computedbbox) do or, bbox
-        angle_rad = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
-        center = Vec3f(bbox.origin[1]+bbox.widths[1]/2, bbox.origin[2]+bbox.widths[2]/2, 0)
-        R = Makie.rotationmatrix_z(angle_rad)
-        T = Makie.translationmatrix(-center)
-        Tinv = Makie.translationmatrix(center)
-        topscene.transformation.model[] = Tinv * R * T
-    end
 
     mouseevents = addmouseevents!(topscene, t.layoutobservables.computedbbox)
 

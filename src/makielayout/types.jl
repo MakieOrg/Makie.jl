@@ -1179,10 +1179,10 @@ end
         halign = :center
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
-        "The width (ie longitudinal length) of the toggle."
-        width = 32
-        "The height (ie transverse length) of the toggle."
-        height = 18
+        "The width of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        width = Auto()
+        "The height of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1208,6 +1208,10 @@ end
         alignmode = Inside()
         "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
         orientation = :horizontal
+        "The length of the toggle."
+        length = 32
+        "The size of the button."
+        markersize = 18
     end
 end
 
