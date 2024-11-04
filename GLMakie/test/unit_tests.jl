@@ -288,7 +288,7 @@ end
         @test isempty(screen.px_per_unit.listeners)
         @test isempty(screen.scalefactor.listeners)
 
-        @test screen.root_scene === nothing
+        @test screen.scene === nothing
         @test screen.rendertask === nothing
         @test (Base.summarysize(screen) / 10^6) < 1.4
     end
@@ -436,6 +436,22 @@ end
     end
 
     GLMakie.closeall()
+end
+
+@testset "html video size annotation" begin
+    width = 600
+    height = 800
+    f = Figure(; size = (width, height))
+
+    vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=GLMakie)
+
+    @test size(vio.screen) == size(f.scene) .* 2
+
+    Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
 end
 
 @testset "image size changes" begin
