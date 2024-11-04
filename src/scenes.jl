@@ -584,8 +584,8 @@ end
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
-    padd = w .* padding
-    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
+    pad = w .* padding
+    bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
     scene
 end

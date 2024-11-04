@@ -240,7 +240,7 @@ The viewers position and orientation is set by either the the camera controller 
 ## Coordinate spaces
 
 Currently `Makie` defines 4 coordinate spaces: :data, :clip, :relative and :pixel.
-The example above shows te conversion pipeline for `space = :data`.
+The example above shows the conversion pipeline for `space = :data`.
 
 For `space = :clip` we consider `plot.converted` to be in clip space, meaning that `transform_func`, `model`, `view` and `projection` can be skipped, and `Float32Convert` only does a cast to Float32.
 The x and y direction correspond to right and up, with z increasing towards the viewer.
