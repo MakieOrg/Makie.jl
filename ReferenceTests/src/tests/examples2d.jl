@@ -707,10 +707,10 @@ end
         strokewidth = 2f0, strokecolor = :cyan
     )
     # Test depth (this part is expected to fail in CairoMakie)
-    p = tooltip!(ax, -5, -1, "test line\ntest line", backgroundcolor = :lightblue)
+    p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
     translate!(p, 0, 0, 100)
     mesh!(ax, 
-        Point3f.([-7, -7, -3, -3], [-1, 1, -1, 1], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
         shading = NoShading, color = :orange)
     fig
 end
