@@ -1,5 +1,19 @@
 # Changelog
 
+## [Breaking]
+
+- Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)
+  - Removed `meta` infrastructure. Vertex attributes are now passed as kwargs.
+  - Simplified GeometryBasics Mesh type, improving compile times
+  - Added `FaceView` to allow different vertex attributes to use different indices for specifying data of the same vertex. This can be used to specify per-face data.
+  - Added `GeometryBasics.face_normals(points, faces)`
+  - Changed the order of `Rect2` coordinates to be counter-clockwise.
+  - Updated `Cylinder` to avoid visually rounding off the top and bottom.
+  - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
+  - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
+- Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
+
+
 ## [Unreleased]
 
 - Allow plots to move between scenes in SpecApi [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
