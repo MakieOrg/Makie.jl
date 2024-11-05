@@ -536,5 +536,6 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
-zvalue2d(::Nothing)::Float32 = 0f0
+# zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
+@inline zvalue2d(x)::Float32 = Float32(transformationmatrix(x)[][3, 4])
+@inline zvalue2d(::Nothing)::Float32 = 0f0

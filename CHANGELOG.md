@@ -10,6 +10,7 @@
 - Implement S.Colorbar(plotspec) [#4520](https://github.com/MakieOrg/Makie.jl/pull/4520).
 - Fixed a hang when `Record` was created inside a closure passed to `IOCapture.capture` [#4562](https://github.com/MakieOrg/Makie.jl/pull/4562).
 - Added `linestyle = :solid_pattern` to allow switching between non-solid and (effectively) solid linestyles. [#4570](https://github.com/MakieOrg/Makie.jl/pull/4570)
+- Added logical size annotation to `text/html` inline videos so that sizes are appropriate independent of the current `px_per_unit` value [#4563](https://github.com/MakieOrg/Makie.jl/pull/4563).
 
 ## [0.21.15] - 2024-10-25
 
