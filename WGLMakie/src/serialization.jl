@@ -222,12 +222,13 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
 end
 
 function uniform_updater(@nospecialize(plot), uniforms::Dict)
-    updater = Observable(Any[:none, []])
+    updater = Observable{Any}(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
             on(plot, ShaderAbstractions.updater(value).update) do (f, args)
                 if f === ShaderAbstractions.update!
-                    updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    update = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    updater[] = isdefined(Bonito, :LargeUpdate) ? Bonito.LargeUpdate(update) : update
                 end
                 return
             end
@@ -300,18 +301,20 @@ function serialize_scene(scene::Scene)
     light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
     cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
 
-    serialized = Dict(:viewport => pixel_area,
-                      :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
-                      :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
-                      :clearscene => scene.clear,
-                      :camera => serialize_camera(scene),
-                      :light_direction => light_dir,
-                      :camera_relative_light => cam_rel,
-                      :plots => serialize_plots(scene, scene.plots),
-                      :cam3d_state => cam3d_state,
-                      :visible => scene.visible,
-                      :uuid => js_uuid(scene),
-                      :children => children)
+    serialized = Dict(
+        :viewport => pixel_area,
+        :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor),
+        :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor),
+        :clearscene => scene.clear,
+        :camera => serialize_camera(scene),
+        :light_direction => light_dir,
+        :camera_relative_light => cam_rel,
+        :plots => serialize_plots(scene, scene.plots),
+        :cam3d_state => cam3d_state,
+        :visible => scene.visible,
+        :uuid => js_uuid(scene),
+        :children => children
+    )
     return serialized
 end
 

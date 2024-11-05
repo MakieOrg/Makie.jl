@@ -70,6 +70,8 @@ end
     @test length(server.routes.table) == 2
     @test server.routes.table[1][1] == "/browser-display"
     @test server.routes.table[2][2] isa HTTPAssetServer
+    @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
+    @show length(WGLMakie.TEXTURE_ATLAS.listeners)
     @show session_size texture_atlas_size
 
     @test session_size < 6
