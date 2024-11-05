@@ -93,6 +93,7 @@ mutable struct Scene <: AbstractScene
     cycler::Cycler
 
     conversions::DimConversions
+    isclosed::Bool
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -131,12 +132,20 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
             Cycler(),
-            DimConversions()
+            DimConversions(),
+            false
         )
+        on(scene, events.window_open) do open
+            if !open
+                scene.isclosed = true
+            end
+        end
         finalizer(free, scene)
         return scene
     end
 end
+
+isclosed(scene::Scene) = scene.isclosed
 
 # on & map versions that deregister when scene closes!
 function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
@@ -537,7 +546,6 @@ end
 #     insert!(screen, scene, plot)
 #     return
 # end
-
 
 function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
