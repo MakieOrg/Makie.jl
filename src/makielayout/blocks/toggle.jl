@@ -24,7 +24,8 @@ function initialize_block!(t::Toggle)
         costheta, sintheta = cos(theta), sin(theta)
         rotmatrix = GeometryBasics.@SMatrix [costheta -sintheta
                                              sintheta  costheta]
-        Ref(rotmatrix) .* rrv .+ Ref(GeometryBasics.@SVector [left(bbox)+ms/2, bottom(bbox)+ms/2])
+        tranvector = Ref(GeometryBasics.@SVector [left(bbox)+ms/2, bottom(bbox)+ms/2])
+        Ref(rotmatrix) .* rrv .+ tranvector
     end
 
     # trigger bbox
