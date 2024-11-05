@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Introduce `isclosed(scene)`, conditionally use `Bonito.LargeUpdate` [#4569](https://github.com/MakieOrg/Makie.jl/pull/4569).
 - Allow plots to move between scenes in SpecApi [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Added empty constructor to all backends for `Screen` allowing `display(Makie.current_backend().Screen(), fig)` [#4561](https://github.com/MakieOrg/Makie.jl/pull/4561).
 - Added `subsup` and `left_subsup` functions that offer stacked sub- and superscripts for `rich` text which means this style can be used with arbitrary fonts and is not limited to fonts supported by MathTeXEngine.jl [#4489](https://github.com/MakieOrg/Makie.jl/pull/4489).
