@@ -227,7 +227,8 @@ function uniform_updater(@nospecialize(plot), uniforms::Dict)
         if value isa Sampler
             on(plot, ShaderAbstractions.updater(value).update) do (f, args)
                 if f === ShaderAbstractions.update!
-                    updater[] = Bonito.LargeUpdate([name, [Int32[size(value.data)...], serialize_three(args[1])]])
+                    update = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    updater[] = isdefined(Bonito, :LargeUpdate) ? Bonito.LargeUpdate(update) : update
                 end
                 return
             end
