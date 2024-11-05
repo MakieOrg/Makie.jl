@@ -351,7 +351,7 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     "Sets the width of the line in screen units"
     linewidth = @inherit linewidth
     """
-    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:solid_pattern` (can change to non-solid linestyles), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
 
@@ -392,7 +392,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     "Sets the width of the line in pixel units"
     linewidth = @inherit linewidth
     """
-    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:solid_pattern` (can change to non-solid linestyles), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
 
