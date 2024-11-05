@@ -174,7 +174,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
-    cache2plot::Dict{UInt32, AbstractPlot}
+    cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
     render_tick::Observable{Makie.TickState} # listeners must not Consume(true)
     window_open::Observable{Bool}
@@ -217,6 +217,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
         return screen
     end
 end
+
+framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
 
 Makie.isvisible(screen::Screen) = screen.config.visible
 
