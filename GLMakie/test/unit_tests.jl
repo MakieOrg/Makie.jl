@@ -89,6 +89,9 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
+        # Because of on(scene.events.window_open) in scene, we need to free all scenes first
+        # to have 0 listeners
+        empty!(fig)
         @test isempty(events(ax.scene).window_open.listeners)
 
         # Test singleton screen replacement
