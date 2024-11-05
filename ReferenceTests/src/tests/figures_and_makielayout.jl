@@ -490,9 +490,10 @@ end
 
 @reference_test "Toggle" begin
     f = Figure()
-    th = Makie.Toggle(f[1,1])
+    scatter(f[1,1], [1,2,3], axis = (; height=200))
+    th = Makie.Toggle(f[1,2], valign=:top)
     th.orientation[] = pi/2
-    tv = Makie.Toggle(f[2,1], orientation=pi/2)
+    tv = Makie.Toggle(f[1,3], valign=:top, orientation=pi/2)
     tv.orientation[] = 0
     f
 end
