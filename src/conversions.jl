@@ -1125,6 +1125,8 @@ end
 function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
         return nothing
+    elseif ls === :solid_pattern
+        return Float64[]
     elseif ls === :dash
         return line_diff_pattern("-", gaps)
     elseif ls === :dot
