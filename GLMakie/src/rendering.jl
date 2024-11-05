@@ -29,14 +29,17 @@ Renders a single frame of a `window`
 function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
+
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
         # TODO, use actual boundingbox
-        return Makie.zvalue2d(plot)
+        # ~7% faster than calling zvalue2d doing the same thing?
+        return Makie.transformationmatrix(plot)[][3, 4]
+        # return Makie.zvalue2d(plot)
     end
-    zvals = sortby.(screen.renderlist)
-    permute!(screen.renderlist, sortperm(zvals))
+
+    sort!(screen.renderlist; by=sortby)
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the

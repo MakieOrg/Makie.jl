@@ -216,12 +216,13 @@ function register_geometry_updates(@nospecialize(plot), update_buffer::Observabl
 end
 
 function uniform_updater(@nospecialize(plot), uniforms::Dict)
-    updater = Observable(Any[:none, []])
+    updater = Observable{Any}(Any[:none, []])
     for (name, value) in uniforms
         if value isa Sampler
             on(plot, ShaderAbstractions.updater(value).update) do (f, args)
                 if f === ShaderAbstractions.update!
-                    updater[] = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    update = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
+                    updater[] = isdefined(Bonito, :LargeUpdate) ? Bonito.LargeUpdate(update) : update
                 end
                 return
             end
