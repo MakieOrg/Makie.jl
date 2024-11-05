@@ -278,3 +278,22 @@ end
     notify(Z)
     Makie.step!(st)
 end
+
+@reference_test "updating linestyles" begin
+    scene = Scene(size = (300, 100))
+    p1 = lines!(scene, [-0.8, 0.8], [0.4, 0.4], linestyle = :solid_pattern, linewidth = 10)
+    p2 = lines!(scene, [-0.8, 0.8], [0, 0], linestyle = :dash, linewidth = 10)
+    p3 = linesegments!(scene, [-0.8, -0.25, 0.25, 0.8], [-0.5, -0.5, -0.5, -0.5], linestyle = :solid_pattern, linewidth = 10)
+    p4 = lines!(scene, Point2f[(-0.95, 0.9), (-0.9, -0.9), (-0.85, 0.8), (0.9, 0.8), (0.9, -0.9)], linestyle = :solid_pattern, linewidth = 10)
+    scene
+
+    st = Stepper(scene)
+    Makie.step!(st)
+
+    p1.linestyle[] = :dashdot
+    p2.linestyle[] = :solid_pattern
+    p3.linestyle[] = :dot
+    p4.linestyle[] = Linestyle([0.0, 1.0, 2.0])
+    
+    Makie.step!(st)
+end
