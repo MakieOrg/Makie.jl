@@ -10,7 +10,7 @@ import Electron
     @testset for mime in Makie.WEB_MIMES
         @test showable(mime(), f)
     end
-    # I guess we explicitely don't say we can show those since it's highly Inefficient compared to html
+    # I guess we explicitly don't say we can show those since it's highly Inefficient compared to html
     # See: https://github.com/MakieOrg/Makie.jl/blob/master/WGLMakie/src/display.jl#L66-L68=
     @test !showable("image/png", f)
     @test !showable("image/jpeg", f)
@@ -22,7 +22,7 @@ excludes = Set([
     "Image on Surface Sphere", # TODO: texture rotated 180°
     # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Array of Images Scatter", # scatter does not support texture images
-    
+
     "Order Independent Transparency",
     "fast pixel marker",
     "Textured meshscatter", # not yet implemented
@@ -52,6 +52,8 @@ end
     session = edisplay.browserdisplay.handler.session
     session_size = Base.summarysize(session) / 10^6
     texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
+    @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
+    @show length(WGLMakie.TEXTURE_ATLAS.listeners)
     @show session_size texture_atlas_size
     @test session_size / 10^6 < 6
     @test texture_atlas_size < 6
@@ -91,7 +93,7 @@ end
         rm(filename)
     end
 
-    
+
     f, a, p = scatter(rand(10));
     filename = "$(tempname()).mp4"
     try
