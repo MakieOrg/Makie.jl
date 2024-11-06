@@ -1,23 +1,16 @@
-# Notes:
-# - Handling FastPixel here feels pretty messy, shoudl extract
-#   - generally, different shader = different primitive plot type?
-# - image marker feels like something for Makie to handle, maybe?
-
-# LOC:
-# this: ~500
-# equivalent before:
-#   65 draw_atomic
-#   12 handle_view
-#   90 cached_robj w/o lighting
-#   55 connect_camera + get_space
-#   20 handle_intensities
-#   20 draw_pixel_scatter
-#   10 draw_scatter (image)
-#   30 draw_scatter (images)
-#   75 draw_scatter (general)
-#    5 intensity_convert
-# ----------------------
-#  382
+#=
+cached_robj!() does:
+- excludes          -> skipped by white-listing
+- update tracking   -> set in update call
+- key name convert  -> explicit
+- convert_attribute -> semi automatic, mostly in update call
+- patch_model       -> update call
+- clip_planes       -> init_clip_planes, update_clip_planes
+- handle_intensities -> init_color
+- connect_camera    -> init_camera, update_camera
+- shading           -> TODO
+- SSAO              -> init_generics
+=#
 
 ################################################################################
 ### Generics
@@ -165,6 +158,126 @@ function init_generics!(data, plot, screen)
     return
 end
 
+function new_cached_robj!(setup_func, screen::Screen, scene::Scene, @nospecialize(plot::Plot))
+    @assert !haskey(screen.cache, objectid(plot))
+
+    # TODO: make these obsolete
+    # Set up additional triggers
+
+    # TODO: Is this even dynamic?
+    on(screen.px_per_unit) do _
+        push!(plot.updated_outputs[], :px_per_unit)
+        notify(plot.updated_inputs)
+        return
+    end
+    # TODO: maybe want ignores for e.g. volume?
+    # f32c depend on projectionview so it doesn't need an explicit trigger (right?)
+    if scene.float32convert !== nothing
+        on(scene.float32convert.scaling) do _
+            push!(plot.updated_outputs[], :f32c)
+            notify(plot.updated_inputs)
+            return
+        end
+    end
+
+    data = Dict{Symbol, Any}()
+
+    # TODO: lighting
+    begin # cached_robj pre
+        # TODO: this should be resolve_updates! job
+        # # TODO: remove depwarn & conversion after some time
+        # if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
+        #     @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+        #     gl_attributes[:shading] = ifelse(gl_attributes[:shading][], FastShading, NoShading)
+        # elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
+        #     gl_attributes[:shading] = gl_attributes[:shading][]
+        # end
+
+        # shading = to_value(get(gl_attributes, :shading, NoShading))
+
+        # if shading == FastShading
+        #     dirlight = Makie.get_directional_light(scene)
+        #     if !isnothing(dirlight)
+        #         gl_attributes[:light_direction] = if dirlight.camera_relative
+        #             map(gl_attributes[:view], dirlight.direction) do view, dir
+        #                 return  normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
+        #             end
+        #         else
+        #             map(normalize, dirlight.direction)
+        #         end
+
+        #         gl_attributes[:light_color] = dirlight.color
+        #     else
+        #         gl_attributes[:light_direction] = Observable(Vec3f(0))
+        #         gl_attributes[:light_color] = Observable(RGBf(0,0,0))
+        #     end
+
+        #     ambientlight = Makie.get_ambient_light(scene)
+        #     if !isnothing(ambientlight)
+        #         gl_attributes[:ambient] = ambientlight.color
+        #     else
+        #         gl_attributes[:ambient] = Observable(RGBf(0,0,0))
+        #     end
+        # elseif shading == MultiLightShading
+        #     handle_lights(gl_attributes, screen, scene.lights)
+        # end
+    end
+
+    init_generics!(data, plot, screen)
+    init_camera!(data, scene, plot)
+    init_clip_planes!(data, plot) # TODO: differences between plots (world space, model space, skipped)
+    init_color!(data, plot)
+
+    setup_func(data)
+
+    robj = assemble_shader(data)
+
+    # TODO: We could pre-filter updated_outputs to skip more backend updates
+    #       With all the renames this will probably take some time to get right though
+    # APPLICABLE_NAMES = union!(
+    #     Set([:camera, :px_per_unit, :f32c, :transform_func, :color_scaled, :marker,
+    #         :visible, :colorrange_scaled, :glowwidth, :glowcolor, :strokewidth,
+    #         :strokecolor, :colormap, :transform_marker]),
+    #     keys(robj.uniforms), Symbol.(keys(robj.vertexarray.buffers))
+    # )
+
+    on(plot, plot.updated_inputs) do _
+        # Makie Update
+        Makie.resolve_updates!(plot)
+
+        # Update of things the backend caches in plot.updated_outputs
+        update_plot_cache!(plot, robj)
+
+        # TODO: possible optimization
+        # intersect!(plot.updated_outputs[], APPLICABLE_NAMES)
+
+        # @info "Triggered with $(plot.updated_outputs[])"
+
+        # nothing to do, screen closed, robj dead -> no update
+        if isempty(plot.updated_outputs[]) || !isopen(screen) || (robj.id == 0) ||
+                any(buffer -> buffer.id == 0, values(robj.vertexarray.buffers))
+            return
+        else
+            # Update of values in the render object
+            update_robj!(screen, robj, scene, plot)
+            empty!(plot.updated_outputs[])
+            screen.requires_update = true
+        end
+
+        return
+    end
+
+    # trigger update pipeline once to intialize robj
+    notify(plot.updated_inputs)
+
+    # could also go back to get(screen.cache, objectid(plot)) do ... end
+    screen.cache2plot[robj.id] = plot
+    screen.cache[objectid(plot)] = robj
+    push!(screen, scene, robj)
+
+    return robj
+end
+
 ################################################################################
 ### Scatter specifics
 ################################################################################
@@ -206,7 +319,6 @@ function init_scatter_marker!(data, plot, screen)
 
     # single image
     elseif marker isa Matrix{<: Colorant}
-        data[:image] = marker
         @gen_defaults! data begin
             image = marker => Texture
             scale = lift(x-> Vec2f(size(x)), p[1])
@@ -252,79 +364,12 @@ function init_scatter_marker!(data, plot, screen)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
-    # TODO: skipped fastpixel
-
-    @assert !haskey(screen.cache, objectid(plot))
-
-
-    # TODO: make these obsolete
-    # Set up additional triggers
-
-    # TODO: Is this even dynamic?
-    on(screen.px_per_unit) do ppu
-        push!(plot.updated_outputs[], :px_per_unit)
-        notify(plot.updated_inputs)
-        return
-    end
-    # f32c depend on projectionview so it doesn't need an explicit trigger (right?)
-    if scene.float32convert !== nothing
-        on(scene.float32convert.scaling) do _
-            push!(plot.updated_outputs[], :f32c)
-            notify(plot.updated_inputs)
-            return
-        end
-    end
-
 
     # Note: For initializing data via update routine (one time)
     push!(plot.updated_outputs[], :position)
     push!(plot.updated_outputs[], :marker)
 
-    data = Dict{Symbol, Any}()
-
-    begin # cached_robj pre
-        # TODO: lighting
-
-        # TODO: this should be resolve_updates! job
-        # # TODO: remove depwarn & conversion after some time
-        # if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
-        #     @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
-        #     gl_attributes[:shading] = ifelse(gl_attributes[:shading][], FastShading, NoShading)
-        # elseif haskey(gl_attributes, :shading) && gl_attributes[:shading] isa Observable
-        #     gl_attributes[:shading] = gl_attributes[:shading][]
-        # end
-
-        # shading = to_value(get(gl_attributes, :shading, NoShading))
-
-        # if shading == FastShading
-        #     dirlight = Makie.get_directional_light(scene)
-        #     if !isnothing(dirlight)
-        #         gl_attributes[:light_direction] = if dirlight.camera_relative
-        #             map(gl_attributes[:view], dirlight.direction) do view, dir
-        #                 return  normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
-        #             end
-        #         else
-        #             map(normalize, dirlight.direction)
-        #         end
-
-        #         gl_attributes[:light_color] = dirlight.color
-        #     else
-        #         gl_attributes[:light_direction] = Observable(Vec3f(0))
-        #         gl_attributes[:light_color] = Observable(RGBf(0,0,0))
-        #     end
-
-        #     ambientlight = Makie.get_ambient_light(scene)
-        #     if !isnothing(ambientlight)
-        #         gl_attributes[:ambient] = ambientlight.color
-        #     else
-        #         gl_attributes[:ambient] = Observable(RGBf(0,0,0))
-        #     end
-        # elseif shading == MultiLightShading
-        #     handle_lights(gl_attributes, screen, scene.lights)
-        # end
-    end
-
-    begin # draw_scatter()
+    return new_cached_robj!(screen, scene, plot) do data
         Dim = length(eltype(plot.converted[1][]))
         N = length(plot.converted[1][])
 
@@ -348,10 +393,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             indices         = to_index_buffer(plot.computed[:depthsorting] ? UInt32[] : 0)
         end
 
-        init_generics!(data, plot, screen)
-        init_camera!(data, scene, plot)
-        init_clip_planes!(data, plot)
-        init_color!(data, plot)
         init_scatter_marker!(data, plot, screen)
 
         @gen_defaults! data begin
@@ -381,25 +422,14 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             gl_primitive = GL_POINTS
         end
 
-        robj = assemble_shader(data)
+        return
+    end
     end
 
-    # We could try pulling out some "constants"
+function update_plot_cache!(@nospecialize(plot::Scatter), @nospecialize(robj::RenderObject))
+    # TODO: technically constants
     HAS_IMAGE = get(robj.uniforms, :image, nothing) !== nothing
     ISFASTPIXEL = plot.computed[:marker] isa FastPixel
-    # TODO: We could pre-filter updated_outputs to skip more backend updates
-    #       With all the renames this will probably take some time to get right though
-    # APPLICABLE_NAMES = union!(
-    #     Set([:camera, :px_per_unit, :f32c, :transform_func, :color_scaled, :marker, 
-    #         :visible, :colorrange_scaled, :glowwidth, :glowcolor, :strokewidth, 
-    #         :strokecolor, :colormap, :transform_marker]), 
-    #     keys(robj.uniforms), Symbol.(keys(robj.vertexarray.buffers))
-    # )
-
-    on(plot, plot.updated_inputs) do _
-
-        # Makie Update
-        Makie.resolve_updates!(plot)
 
         # More convenient as extension to resolve_updates!()
         # But other backends may not need these or do these slightly different
@@ -422,31 +452,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
             push!(plot.updated_outputs[], :uv_offset_width)
         end
 
-        # intersect!(plot.updated_outputs[], APPLICABLE_NAMES)
-
-        # @info "Triggered with $(plot.updated_outputs[])"
-
-        if isempty(plot.updated_outputs[]) || !isopen(screen) || (robj.id == 0) ||
-                any(buffer -> buffer.id == 0, values(robj.vertexarray.buffers))
-            return
-        else
-            update_robj!(screen, robj, scene, plot)
-            empty!(plot.updated_outputs[])
-            screen.requires_update = true
-        end
-
         return
-    end
-
-
-    notify(plot.updated_inputs)
-
-    screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
-
-    # screen.requires_update = true
-    return robj
 end
 
 function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Scatter)
