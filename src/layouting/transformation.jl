@@ -15,11 +15,13 @@ end
 
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
+    # Observables.clear(child.parent_model)
     obsfunc = on(parent.model; update=true) do m
         return child.parent_model[] = m
     end
     push!(tfuncs, obsfunc)
     if connect_func
+        # Observables.clear(child.transform_func)
         t2 = on(parent.transform_func; update=true) do f
             child.transform_func[] = f
             return
@@ -534,5 +536,6 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
-zvalue2d(::Nothing)::Float32 = 0f0
+# zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
+@inline zvalue2d(x)::Float32 = Float32(transformationmatrix(x)[][3, 4])
+@inline zvalue2d(::Nothing)::Float32 = 0f0
