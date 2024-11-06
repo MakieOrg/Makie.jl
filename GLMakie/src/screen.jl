@@ -990,3 +990,39 @@ function plot2robjs(screen::Screen, plot)
 end
 
 export plot2robjs
+
+"""
+    render_asap([callback::Function, ]screen, N)
+
+Renders N frames as fast as possible, calling `callback` before each frame if
+defined. This will stop the existing rendertask and disable vsync before
+running, and recreate the rendertask once it is done. This is meant for
+benchmarking.
+
+Hot loop for reference:
+```
+pollevents(screen, Makie.RegularRenderTick)
+callback()
+render_frame(screen)
+GLFW.SwapBuffers(to_native(screen))
+GC.safepoint()
+```
+"""
+render_asap(screen::Screen, N::Integer) = render_asap(() -> nothing, screen, N)
+function render_asap(f::Function, screen::Screen, N::Integer)
+    screen.close_after_renderloop = false
+    stop_renderloop!(screen)
+    yield()
+    GLFW.SwapInterval(0)
+
+    for _ in 1:N
+        pollevents(screen, Makie.RegularRenderTick)
+        f()
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        GC.safepoint()
+    end
+
+    screen.close_after_renderloop = true
+    start_renderloop!(screen)
+end

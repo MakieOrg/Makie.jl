@@ -424,35 +424,35 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Scatter))
 
         return
     end
-    end
+end
 
 function update_plot_cache!(@nospecialize(plot::Scatter), @nospecialize(robj::RenderObject))
     # TODO: technically constants
     HAS_IMAGE = get(robj.uniforms, :image, nothing) !== nothing
     ISFASTPIXEL = plot.computed[:marker] isa FastPixel
 
-        # More convenient as extension to resolve_updates!()
-        # But other backends may not need these or do these slightly different
-        # (e.g. smaller texture atlas for WGLMakie, different handling of markersize etc in CairoMakie)
-        # Note marker_size should probably split from this
-        if any(in(plot.updated_outputs[]), (:marker_offset, :marker, :markersize))
-            atlas = gl_texture_atlas()
-            font = get(plot.computed, :font, Makie.defaultfont())
-            plot.computed[:scale] = Makie.rescale_marker(
-                atlas, plot.computed[:marker], font, plot.computed[:markersize])
-            plot.computed[:quad_offset] = Makie.offset_marker(
-                atlas, plot.computed[:marker], font, plot.computed[:markersize],
-                plot.computed[:marker_offset])
-            push!(plot.updated_outputs[], :scale, :quad_offset)
-        end
+    # More convenient as extension to resolve_updates!()
+    # But other backends may not need these or do these slightly different
+    # (e.g. smaller texture atlas for WGLMakie, different handling of markersize etc in CairoMakie)
+    # Note marker_size should probably split from this
+    if any(in(plot.updated_outputs[]), (:marker_offset, :marker, :markersize))
+        atlas = gl_texture_atlas()
+        font = get(plot.computed, :font, Makie.defaultfont())
+        plot.computed[:scale] = Makie.rescale_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize])
+        plot.computed[:quad_offset] = Makie.offset_marker(
+            atlas, plot.computed[:marker], font, plot.computed[:markersize],
+            plot.computed[:marker_offset])
+        push!(plot.updated_outputs[], :scale, :quad_offset)
+    end
 
-        if (plot[:uv_offset_width] == Vec4f(0) || in(:marker, plot.updated_outputs[])) && 
-                !HAS_IMAGE && !ISFASTPIXEL
-            plot.computed[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, plot.computed[:marker], font)
-            push!(plot.updated_outputs[], :uv_offset_width)
-        end
+    if (plot[:uv_offset_width] == Vec4f(0) || in(:marker, plot.updated_outputs[])) &&
+            !HAS_IMAGE && !ISFASTPIXEL
+        plot.computed[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, plot.computed[:marker], font)
+        push!(plot.updated_outputs[], :uv_offset_width)
+    end
 
-        return
+    return
 end
 
 function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Scatter)
@@ -461,7 +461,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
     length_changed = false
     isfastpixel = plot.computed[:marker] isa FastPixel
     hasimage = get(robj.uniforms, :image, nothing) !== nothing
-        
+
     if any(needs_update, (:f32c, :model))
         f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model]::Mat4d)
         plot.computed[:f32c] = f32c
@@ -582,23 +582,4 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
             # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
         end
     end
-end
-
-render_asap(screen::Screen, N::Integer) = render_asap(() -> nothing, screen, N)
-function render_asap(f::Function, screen::Screen, N::Integer)
-    screen.close_after_renderloop = false
-    stop_renderloop!(screen)
-    yield()
-    GLFW.SwapInterval(0)
-
-    for _ in 1:N
-        pollevents(screen, Makie.PausedRenderTick)
-        f()
-        render_frame(screen)
-        GLFW.SwapBuffers(to_native(screen))
-        GC.safepoint()
-    end
-
-    screen.close_after_renderloop = true
-    start_renderloop!(screen)
 end
