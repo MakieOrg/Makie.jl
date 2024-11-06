@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Correctly render the tooltip triangle [#4560](https://github.com/MakieOrg/Makie.jl/pull/4560).
 - Introduce `isclosed(scene)`, conditionally use `Bonito.LargeUpdate` [#4569](https://github.com/MakieOrg/Makie.jl/pull/4569).
 - Allow plots to move between scenes in SpecApi [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Added empty constructor to all backends for `Screen` allowing `display(Makie.current_backend().Screen(), fig)` [#4561](https://github.com/MakieOrg/Makie.jl/pull/4561).
