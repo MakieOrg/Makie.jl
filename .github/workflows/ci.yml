@@ -19,15 +19,13 @@ concurrency:
 jobs:
   makie:
     name: Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
         version:
           - '1.6'
           - '1'
-        os:
-          - ubuntu-20.04
         arch:
           - x64
     steps:
