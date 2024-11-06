@@ -19,7 +19,7 @@ concurrency:
 jobs:
   cairomakie:
     name: CairoMakie Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, ubuntu-20.04]
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +68,7 @@ jobs:
     name: GLMakie Julia ${{ matrix.version }}
     env:
       MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, ubuntu-20.04]
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +118,7 @@ jobs:
 
   wglmakie:
     name: WGLMakie Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, ubuntu-20.04]
     strategy:
       fail-fast: false
       matrix:
@@ -166,7 +166,7 @@ jobs:
 
   consolidation:
     name: Merge artifacts
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, ubuntu-20.04]
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:
