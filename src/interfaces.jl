@@ -419,7 +419,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     # - no observables as converted
     # - if args are observables, make them trigger update!()
     # - this breaks layouting when used for all plots (maybe due to text using position as attribute?)
-    if plot isa Scatter
+    if plot isa Union{Scatter, Lines}
         foreach(plot.args) do x
             if x isa Observable
                 on(plot, x) do _

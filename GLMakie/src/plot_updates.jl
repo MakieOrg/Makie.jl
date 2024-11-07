@@ -17,6 +17,12 @@ cached_robj!() does:
 ################################################################################
 
 function init_color!(data, plot, allow_intensity_texture = true)
+    #=
+    Requirements:
+    Scatter: intensity can be texture
+    Lines:   intensity can't be texture, can be value, renamed to color
+    =#
+
     # Colormapping
     if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
         interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
@@ -822,10 +828,14 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
 
     # TODO: maybe change this?
     # Needs to be handled separately because color and color_scaled can exist simulaneously atm
-    if needs_update(:color_scaled) && !isnothing(plot.computed[:color_scaled]) &&
-            haskey(robj.vertexarray.buffers, "color")
-        update!(robj.vertexarray.buffers["color"], plot.computed[:color_scaled])
-        delete!(plot.updated_outputs[], :color)
+    if needs_update(:color_scaled) && !isnothing(plot.computed[:color_scaled])
+        if haskey(robj.vertexarray.buffers, "color")
+            update!(robj.vertexarray.buffers["color"], plot.computed[:color_scaled])
+            delete!(plot.updated_outputs[], :color)
+        elseif haskey(robj.uniforms, :color)
+            robj[:color] = GLAbstraction.gl_convert(plot.computed[:color_scaled])
+            delete!(plot.updated_outputs[], :color)
+        end
     end
 
     # Clean up things we've already handled (and must not handle again)
