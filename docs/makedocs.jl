@@ -139,11 +139,14 @@ pages = [
             "reference/plots/waterfall.md",
             "reference/plots/wireframe.md",  
         ],
+        "Generic Concepts" => [
+            "reference/generic/clip_planes.md",
+            "reference/generic/transformations.md"
+        ],
         "Scene" => [
             "reference/scene/lighting.md",
             "reference/scene/matcap.md",
             "reference/scene/SSAO.md",
-            "reference/scene/clip_planes.md",
         ]
     ],
     "Tutorials" => [

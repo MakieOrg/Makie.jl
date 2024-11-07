@@ -2,12 +2,16 @@
 
 ## [Unreleased]
 
+
+## [0.21.16] - 2024-11-06
+
+- Added `origin!()` to transformation so that the reference point of `rotate!()` and `scale!()` can be modified [#4472](https://github.com/MakieOrg/Makie.jl/pull/4472)
 - Correctly render the tooltip triangle [#4560](https://github.com/MakieOrg/Makie.jl/pull/4560).
 - Introduce `isclosed(scene)`, conditionally use `Bonito.LargeUpdate` [#4569](https://github.com/MakieOrg/Makie.jl/pull/4569).
 - Allow plots to move between scenes in SpecApi [#4132](https://github.com/MakieOrg/Makie.jl/pull/4132).
 - Added empty constructor to all backends for `Screen` allowing `display(Makie.current_backend().Screen(), fig)` [#4561](https://github.com/MakieOrg/Makie.jl/pull/4561).
 - Added `subsup` and `left_subsup` functions that offer stacked sub- and superscripts for `rich` text which means this style can be used with arbitrary fonts and is not limited to fonts supported by MathTeXEngine.jl [#4489](https://github.com/MakieOrg/Makie.jl/pull/4489).
-- Added the `jitter_width` and `side_nudge` attributes to the `raincloud` plot definition, so that they can be used as kwargs [#4517]https://github.com/MakieOrg/Makie.jl/pull/4517)
+- Added the `jitter_width` and `side_nudge` attributes to the `raincloud` plot definition, so that they can be used as kwargs [#4517](https://github.com/MakieOrg/Makie.jl/pull/4517)
 - Expand PlotList plots to expose their child plots to the legend interface, allowing `axislegend`show plots within PlotSpecs as individual entries. [#4546](https://github.com/MakieOrg/Makie.jl/pull/4546)
 - Implement S.Colorbar(plotspec) [#4520](https://github.com/MakieOrg/Makie.jl/pull/4520).
 - Fixed a hang when `Record` was created inside a closure passed to `IOCapture.capture` [#4562](https://github.com/MakieOrg/Makie.jl/pull/4562).
@@ -653,7 +657,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...HEAD
+[0.21.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...v0.21.16
 [0.21.15]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.14...v0.21.15
 [0.21.14]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.13...v0.21.14
 [0.21.13]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.12...v0.21.13
