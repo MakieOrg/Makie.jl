@@ -1850,13 +1850,18 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
     if update
         update_state_before_display!(ax)
     end
+    root_scene = root(ax.scene)
+    img = colorbuffer(root_scene; update=false, colorbuffer_kws...)
+    scale_factor = first(size(img) ./ reverse(size(root_scene)))
     bb = if include_decorations
         bb = axis_bounds_with_decoration(ax)
-        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+        Rect2{Int}(round.(Int, minimum(bb) .* scale_factor) .+ 1, round.(Int, widths(bb) .* scale_factor))
     else
-        viewport(ax.scene)[]
+        vp = viewport(ax.scene)[]
+        @show vp
+        mini, wh = minimum(vp), widths(vp)
+        Rect2(round.(Int, mini .* scale_factor), round.(Int, wh .* scale_factor))
     end
-
-    img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)
+    @show bb
     return get_sub_picture(img, JuliaNative, bb)
 end
