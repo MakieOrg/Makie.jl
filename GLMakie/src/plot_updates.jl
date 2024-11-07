@@ -825,6 +825,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
     if needs_update(:color_scaled) && !isnothing(plot.computed[:color_scaled]) &&
             haskey(robj.vertexarray.buffers, "color")
         update!(robj.vertexarray.buffers["color"], plot.computed[:color_scaled])
+        delete!(plot.updated_outputs[], :color)
     end
 
     # Clean up things we've already handled (and must not handle again)
