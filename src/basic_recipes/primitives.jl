@@ -34,9 +34,9 @@ function Base.setindex!(x::Scatter, obs::Observable, key::Symbol)
     return obs
 end
 
-# This is generic but collides with the fallback which needs to notify 
+# This is generic but collides with the fallback which needs to notify
 # Observables to pass on updates
-function update!(plot::Scatter; kwargs...)
+function update!(plot::Union{Scatter, Lines}; kwargs...)
     kwarg_keys = Set(keys(kwargs))
     union!(plot.updated_inputs[], kwarg_keys)
 
@@ -141,13 +141,13 @@ function resolve_updates!(plot::Scatter)
         plot.computed[:marker_offset] = to_2d_scale(-0.5f0 .* ms)
         push!(plot.updated_outputs[], :marker_offset)
     end
-    
+
     # markerspace - why not just remove this? we don't auto it anyway?
-    
+
     # Sanity checks
     @assert plot.computed[:marker_offset] !== automatic
     @assert plot.computed[:rotation] isa Union{Quaternionf, Vector{<:Quaternionf}} "$(plot.computed[:rotation])::$(typeof(plot.computed[:rotation]))"
-    
+
     # Finally cleanup + trigger backend
 
     # TODO:
@@ -315,3 +315,39 @@ resolve_update!()
     plot.computed[:position] = plot.position[]
 
 =#
+
+function resolve_updates!(plot::Lines)
+    arg_names = (:arg1, :arg2, :arg3, :arg4, :arg5, :arg6, :arg7, :arg8, :args)
+    flagged = plot.updated_inputs[]
+
+    # Arguments
+    # TODO: are these names already defined somewhere?
+    if any(in(flagged), arg_names)
+        convert_arguments!(Lines, plot.converted, plot.args)
+        setdiff!(flagged, arg_names)
+        push!(plot.updated_outputs[], :position)
+    end
+
+    # Attributes
+    # Simple one arg conversions - convert_attribute
+    for name in flagged
+        # TODO: these should probably not have convert_attribute methods anymore?
+        in(name, (:lowclip, :highclip, :colormap, :color, :colorrange, :calculated_colors)) && continue
+
+        plot.computed[name] = convert_attribute(
+            to_value(plot.attributes[name]), Key{name}(), Key{:scatter}())
+        push!(plot.updated_outputs[], name)
+    end
+
+
+    # Multi arg conversions - calculated_attributes
+    # color
+    resolve_color_update!(plot)
+
+    # Finally cleanup + trigger backend
+    empty!(plot.updated_inputs[])
+    foreach(notify, plot.converted)
+    notify(plot.updated_outputs)
+
+    return
+end

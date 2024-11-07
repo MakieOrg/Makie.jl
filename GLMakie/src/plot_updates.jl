@@ -16,15 +16,18 @@ cached_robj!() does:
 ### Generics
 ################################################################################
 
-function init_color!(data, plot)
+function init_color!(data, plot, allow_intensity_texture = true)
     # Colormapping
     if plot.computed[:color] isa Union{Real, AbstractVector{<: Real}} # do colormapping
         interp = plot.computed[:color_mapping_type] === Makie.continuous ? :linear : :nearest
+        intensity = plot.computed[:color_scaled]
         # Allow missmatch between length of value colors and positions
-        if length(plot.converted[1][]) == length(plot.computed[:color_scaled])
-            data[:intensity] = GLBuffer(plot.computed[:color_scaled])
+        if allow_intensity_texture && (length(plot.converted[1][]) != length(intensity))
+            data[:intensity] = Texture(intensity)
+        elseif !allow_intensity_texture && (to_value(plot.color) isa Real) # TODO: maybe don't generate Vector?
+            data[:intensity] = first(intensity)
         else
-            data[:intensity] = Texture(plot.computed[:color_scaled])
+            data[:intensity] = GLBuffer(intensity)
         end
         @gen_defaults! data begin
             color_map       = Texture(plot.computed[:colormap], minfilter = interp)
@@ -58,20 +61,31 @@ function init_clip_planes!(data, plot)
     return
 end
 
-function update_clip_planes!(robj, plot)
-    if any(in(plot.updated_outputs[]), (:space, :clip_planes))
+function update_clip_planes!(robj::RenderObject, plot::Plot, target_space::Symbol = :world, private_count::Bool = false)
+    if any(in(plot.updated_outputs[]), (:space, :clip_planes)) ||
+            ((target_space == :clip) && (:camera in plot.updated_outputs[]))
+
         if !Makie.is_data_space(plot.computed[:space])
-            robj[:num_clip_planes] = 0
+            N = 0
             robj[:clip_planes] .= Ref(Vec4f(0, 0, 0, -1e9))
         else
             planes = plot.computed[:clip_planes]
-            robj[:num_clip_planes] = N = min(length(planes), 8)
+            if target_space == :clip
+                scene = Makie.parent_scene(plot)
+                planes = Makie.to_clip_space(scene.camera.projectionview[], planes)
+            end
+            N = min(length(planes), 8)
             for i in 1:min(N, 8)
                 robj[:clip_planes][i] = Makie.gl_plane_format(planes[i])
             end
             for i in min(N, 8)+1:8
                 robj[:clip_planes][i] = Vec4f(0, 0, 0, -1e9)
             end
+        end
+        if private_count
+            robj[:_num_clip_planes] = N
+        else
+            robj[:num_clip_planes] = N
         end
     end
     delete!(plot.updated_outputs[], :clip_planes)
@@ -158,7 +172,10 @@ function init_generics!(data, plot, screen)
     return
 end
 
-function new_cached_robj!(setup_func, screen::Screen, scene::Scene, @nospecialize(plot::Plot))
+function new_cached_robj!(
+        setup_func, screen::Screen, scene::Scene, @nospecialize(plot::Plot);
+        allow_intensity_texture::Bool = true
+    )
     @assert !haskey(screen.cache, objectid(plot))
 
     # TODO: make these obsolete
@@ -179,6 +196,12 @@ function new_cached_robj!(setup_func, screen::Screen, scene::Scene, @nospecializ
             return
         end
     end
+
+    # Make sure plot attributes are as up-to-date as possible. They can be
+    # outdated from this:
+    # p = plot!(...)       <-- triggers resolve
+    # p.something = ...    <-- does not until robj is created
+    Makie.resolve_updates!(plot)
 
     data = Dict{Symbol, Any}()
 
@@ -226,7 +249,7 @@ function new_cached_robj!(setup_func, screen::Screen, scene::Scene, @nospecializ
     init_generics!(data, plot, screen)
     init_camera!(data, scene, plot)
     init_clip_planes!(data, plot) # TODO: differences between plots (world space, model space, skipped)
-    init_color!(data, plot)
+    init_color!(data, plot, allow_intensity_texture)
 
     setup_func(data)
 
@@ -559,6 +582,286 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Sc
 
         # TODO: do we even need unscaled colorrange for anything?
         elseif key == :colorrange_scaled
+            robj[:color_norm] = gl_convert(val)
+
+        # Handle vertex buffers
+        elseif haskey(robj.vertexarray.buffers, string(glkey))
+            if robj.vertexarray.buffers[string(glkey)] isa GLBuffer
+                update!(robj.vertexarray.buffers[string(glkey)], val)
+            else
+                robj.vertexarray.buffers[string(glkey)] = val
+            end
+
+        # Handle uniforms
+        elseif haskey(robj, glkey)
+            # TODO: Should this force matching types (E.g. mutable struct Uniform{T}; x::T; end wrapper?)
+            if robj[glkey] isa GPUArray
+                update!(robj[glkey], val)
+            else
+                robj[glkey] = GLAbstraction.gl_convert(val)
+            end
+
+        else
+            # printstyled("Discarded backend update $key -> $glkey. (does not exist)\n", color = :light_black)
+        end
+    end
+end
+
+
+################################################################################
+### Lines
+################################################################################
+
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
+    robj = new_cached_robj!(screen, scene, plot, allow_intensity_texture = false) do gl_attributes
+
+        # Trigger updates for...
+        union!(plot.updated_outputs[], (:position,))
+        union!(plot.updated_outputs[], keys(plot.computed))
+
+        has_linestyle = !isnothing(plot.computed[:linestyle])
+        Dim = has_linestyle ? 4 : length(eltype(plot.converted[1][]))
+        N = length(plot.converted[1][])
+        transparency = plot.computed[:transparency]
+
+        # Nonstandard stuff
+        if get(gl_attributes, :intensity, nothing) !== nothing
+            gl_attributes[:color] = pop!(gl_attributes, :intensity)
+            color_type = "float"
+        else
+            color_type = "vec4" # because alpha gets added
+        end
+        gl_attributes[:num_clip_planes] = 0 # TODO: Don't update num, do update clip_planes
+
+        @gen_defaults! gl_attributes begin
+            # Definitely
+            vertex       = Vector{Point{Dim, Float32}}(undef, N) => GLBuffer
+            indices      = to_index_buffer(UInt32[])
+            valid_vertex = Vector{Float32}(undef, N) => GLBuffer # Why Float32?
+            thickness    = plot.computed[:linewidth] => GLBuffer
+            lastlen      = Vector{Float32}(undef, N) => GLBuffer
+            total_length = Int32(0)
+
+            miter_limit = Float32(cos(pi - plot.computed[:miter_limit]))
+            joinstyle   = 0
+            linecap     = 0
+            pattern_length = 1f0
+            scene_origin = Vec2f(screen.px_per_unit[] * origin(scene.viewport[]))
+
+            shader      = GLVisualizeShader(
+                screen,
+                "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
+                view = Dict(
+                    "buffers" => output_buffers(screen, transparency),
+                    "buffer_writes" => output_buffer_writes(screen, transparency),
+                    "define_fast_path" => has_linestyle ? "" : "#define FAST_PATH",
+                    "stripped_color_type" => color_type
+                )
+            )
+            gl_primitive = GL_LINE_STRIP_ADJACENCY
+            debug        = false
+        end
+
+        # only needed for :repeat setting in Texture...
+        if has_linestyle
+            gl_attributes[:pattern] = GLAbstraction.Texture([0f0], x_repeat = :repeat)
+        else
+            gl_attributes[:pattern] = nothing
+        end
+
+        # GLBuffers need persitent Julia arrays backing them (no temp arrays)
+        # Or is that just printing?
+        plot.computed[:backend_vertex] = Point{Dim, Float32}[]
+        plot.computed[:backend_indices] = Cuint[]
+        plot.computed[:backend_valid_vertex] = Float32[]
+        plot.computed[:backend_lastlen] = Float32[]
+
+        return gl_attributes
+    end
+
+    return robj
+end
+
+# generate_indices with slight modifications
+# TODO: probably cache indices and valid in computed to avoid allocations?
+function calculate_indices!(plot, ps::AbstractVector{PT} = plot.converted[1][]) where {PT <: VecTypes}
+    valid = resize!(plot.computed[:backend_valid_vertex], length(ps)) # Why Float32?
+    indices = sizehint!(plot.computed[:backend_indices], length(ps)+2)
+
+    # This loop identifies sections of line points A B C D E F bounded by
+    # the start/end of the list ps or by NaN and generates indices for them:
+    # if A == F (loop):      E A B C D E F B 0
+    # if A != F (no loop):   0 A B C D E F 0
+    # where 0 is NaN
+    # It marks vertices as invalid (0) if they are NaN, valid (1) if they
+    # are part of a continuous line section, or as ghost edges (2) used to
+    # cleanly close a loop. The shader detects successive vertices with
+    # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
+    # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
+
+    last_start_pos = PT(NaN)
+    last_start_idx = -1
+
+    for (i, p) in enumerate(ps)
+        not_nan = isfinite(p)
+        valid[i] = not_nan
+
+        if not_nan
+            if last_start_idx == -1
+                # place nan before section of line vertices
+                # (or duplicate ps[1])
+                push!(indices, max(1, i-1))
+                last_start_idx = length(indices) + 1
+                last_start_pos = p
+            end
+            # add line vertex
+            push!(indices, i)
+
+        # case loop (loop index set, loop contains at least 3 segments, start == end)
+        elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+                (ps[max(1, i-1)] ≈ last_start_pos)
+
+            # add ghost vertices before an after the loop to cleanly connect line
+            indices[last_start_idx-1] = max(1, i-2)
+            push!(indices, indices[last_start_idx+1], i)
+            # mark the ghost vertices
+            valid[i-2] = 2
+            valid[indices[last_start_idx+1]] = 2
+            # not in loop anymore
+            last_start_idx = -1
+
+        # non-looping line end
+        elseif (last_start_idx != -1) # effective "last index not NaN"
+            push!(indices, i)
+            last_start_idx = -1
+        # else: we don't need to push repeated NaNs
+        end
+    end
+
+    # treat ps[end+1] as NaN to correctly finish the line
+    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+            (ps[end] ≈ last_start_pos)
+
+        indices[last_start_idx-1] = length(ps) - 1
+        push!(indices, indices[last_start_idx+1])
+        valid[end-1] = 2
+        valid[indices[last_start_idx+1]] = 2
+    elseif last_start_idx != -1
+        push!(indices, length(ps))
+    end
+
+    indices .-= Cuint(1)
+
+    return indices, valid
+end
+
+update_plot_cache!(@nospecialize(::Lines), @nospecialize(::RenderObject)) = nothing
+
+function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Lines)
+    # Backend Update
+    needs_update = in(plot.updated_outputs[])
+
+    if any(needs_update, (:f32c, :model))
+        f32c, model = Makie._patch_model(scene.float32convert, plot.computed[:model]::Mat4d)
+        plot.computed[:f32c] = f32c
+        robj[:model] = model
+    end
+
+    # Camera update - relies on up-to-date model
+    update_camera!(robj, screen, scene, plot)
+
+    # TODO: camera includes resolution, but is that enough here?
+    if any(needs_update, (:px_per_unit, :camera))
+        robj[:scene_origin] = Vec2f(screen.px_per_unit[] * origin(scene.viewport[]))
+    end
+
+    if isnothing(plot.computed[:linestyle]) &&
+            any(needs_update, (:f32c, :model, :transform_func, :position))
+
+        # TODO: patch_model, camera only relevant here
+
+        plot.computed[:backend_vertex] = apply_transform_and_f32_conversion(
+            plot.computed[:f32c], Makie.transform_func(plot), plot.computed[:model]::Mat4d,
+            plot.converted[1][], plot.computed[:space]::Symbol
+        )
+        update!(robj.vertexarray.buffers["vertex"], plot.computed[:backend_vertex])
+
+    elseif !isnothing(plot.computed[:linestyle]) &&
+            any(needs_update, (:f32c, :model, :transform_func, :camera, :position))
+
+        space = plot.computed[:space]::Symbol
+        tf = Makie.transform_func(plot)
+        transform = Makie.space_to_clip(scene.camera, space, true)
+            Makie.f32_convert_matrix(scene.float32convert, space) *
+            plot.computed[:model]
+
+        resize!(plot.computed[:backend_vertex], length(plot.converted[1][]))
+        map!(plot.computed[:backend_vertex], plot.converted[1][]) do pos
+            transformed = apply_transform(tf, pos, space)
+            p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+            return Point4f(transform * p4d)
+        end
+
+        update!(robj.vertexarray.buffers["vertex"], plot.computed[:backend_vertex])
+
+        # TODO: avoid replacing
+        # lastlen is only needed for patterned lines
+        plot.computed[:backend_lastlen] = sumlengths(plot.computed[:backend_vertex], scene.camera.resolution[])
+        update!(robj.vertexarray.buffers["lastlen"], plot.computed[:backend_lastlen])
+    end
+
+    # Thsi shouldn't care about projections etc...
+    if needs_update(:position)
+        calculate_indices!(plot) # TODO: maybe move to update_plot_cache!()
+        update!(robj.vertexarray.indices, plot.computed[:backend_indices])
+        robj[:total_length] = Int32(length(plot.computed[:backend_indices]) - 2)
+        update!(robj.vertexarray.buffers["valid_vertex"], plot.computed[:backend_valid_vertex])
+    end
+
+    update_clip_planes!(robj, plot, :clip, true)
+
+    # TODO: maybe change this?
+    # Needs to be handled separately because color and color_scaled can exist simulaneously atm
+    if needs_update(:color_scaled) && !isnothing(plot.computed[:color_scaled]) &&
+            haskey(robj.vertexarray.buffers, "color")
+        update!(robj.vertexarray.buffers["color"], plot.computed[:color_scaled])
+    end
+
+    # Clean up things we've already handled (and must not handle again)
+    delete!(plot.updated_outputs[], :position)
+    delete!(plot.updated_outputs[], :model)
+    delete!(plot.updated_outputs[], :color_scaled)
+    # And that don't exist in computed
+    delete!(plot.updated_outputs[], :camera)
+    delete!(plot.updated_outputs[], :px_per_unit)
+
+    # special restrictions
+    delete!(plot.updated_outputs[], :colorrange) # replaced by colorrange_scaled
+
+    for key in plot.updated_outputs[]
+        glkey = to_glvisualize_key(key)
+        val = plot.computed[key]
+
+        # Specials
+        if (glkey == :linestyle) && (val !== nothing)
+            sdf = Makie.linestyle_to_sdf(val)
+            update!(robj[:pattern], sdf)
+            robj[:pattern_length] = Float32(last(val) - first(val))
+
+        elseif (glkey == :miter_limit)
+            robj[:miter_limit] = Float32(cos(pi - val))
+
+        # TODO: v- all the other branches could probably be generic?
+        #          earlier branches can overwrite if needed
+        elseif glkey == :visible
+            robj.visible = val::Bool
+
+        # NOT FastPixel
+        elseif glkey == :overdraw
+            robj.prerenderfunction.overdraw[] = val::Bool
+
+        # TODO: do we even need unscaled colorrange for anything?
+        elseif glkey == :colorrange_scaled
             robj[:color_norm] = gl_convert(val)
 
         # Handle vertex buffers

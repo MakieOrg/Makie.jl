@@ -478,6 +478,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
     end
 end
 
+#=
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
     return cached_robj!(screen, scene, plot) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
@@ -541,6 +542,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
         return draw_lines(screen, positions, data)
     end
 end
+=#
 
 function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
     return cached_robj!(screen, scene, plot) do gl_attributes

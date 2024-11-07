@@ -483,6 +483,6 @@ end
     robj = filter(x -> !(x.id in ids), last.(screen.renderlist))[1]
     cam = ax.scene.camera
 
-    @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
-    @test robj.uniforms[:projectionview][] == cam.projectionview[]
+    @test to_value(robj.uniforms[:resolution])     == screen.px_per_unit[] * cam.resolution[]
+    @test to_value(robj.uniforms[:projectionview]) == cam.projectionview[]
 end

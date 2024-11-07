@@ -285,7 +285,7 @@ function Base.show(io::IO, vao::GLVertexArray)
     println(io, "GLVertexArray $(vao.id):")
     print(io, "buffers: ")
     show(io, MIME("text/plain"), vao.buffers)
-    println(io, "\nindices: ", vao.indices)
+    println(io, "\nindices: ", Int64.(vao.indices))
 end
 
 ##################################################################################
