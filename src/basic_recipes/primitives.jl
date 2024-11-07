@@ -1,12 +1,15 @@
-# TODO: Adjust generic versions
+# TODO: Make this more generic
+
+# Also check interfaces.jl for args triggering update!()
+const SupportedPlots = Union{Scatter, Lines}
 
 # TODO: Is NamedTuple even better tham just Dict?
-function Base.setindex!(plot::Scatter, value, idx::Integer)
+function Base.setindex!(plot::SupportedPlots, value, idx::Integer)
     update!(plot; NamedTuple{(Symbol(:arg, idx),)}((value,))...)
     return value
 end
 
-function Base.setindex!(x::Scatter, value, key::Symbol)
+function Base.setindex!(x::SupportedPlots, value, key::Symbol)
     argnames = MakieCore.argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     if idx === nothing && !haskey(x.attributes, key)
@@ -20,7 +23,7 @@ function Base.setindex!(x::Scatter, value, key::Symbol)
     return value
 end
 
-function Base.setindex!(x::Scatter, obs::Observable, key::Symbol)
+function Base.setindex!(x::SupportedPlots, obs::Observable, key::Symbol)
     argnames = MakieCore.argument_names(typeof(x), length(x.converted))
     idx = findfirst(isequal(key), argnames)
     # Old version also did attr_or_arg[] = obs[]
@@ -36,7 +39,7 @@ end
 
 # This is generic but collides with the fallback which needs to notify
 # Observables to pass on updates
-function update!(plot::Union{Scatter, Lines}; kwargs...)
+function update!(plot::SupportedPlots; kwargs...)
     kwarg_keys = Set(keys(kwargs))
     union!(plot.updated_inputs[], kwarg_keys)
 

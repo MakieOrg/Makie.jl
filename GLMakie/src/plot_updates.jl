@@ -797,7 +797,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
 
         space = plot.computed[:space]::Symbol
         tf = Makie.transform_func(plot)
-        transform = Makie.space_to_clip(scene.camera, space, true)
+        transform = Makie.space_to_clip(scene.camera, space, true) *
             Makie.f32_convert_matrix(scene.float32convert, space) *
             plot.computed[:model]
 
