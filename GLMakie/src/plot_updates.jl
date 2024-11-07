@@ -691,8 +691,10 @@ end
 # generate_indices with slight modifications
 # TODO: probably cache indices and valid in computed to avoid allocations?
 function calculate_indices!(plot, ps::AbstractVector{PT} = plot.converted[1][]) where {PT <: VecTypes}
-    valid = resize!(plot.computed[:backend_valid_vertex], length(ps)) # Why Float32?
-    indices = sizehint!(empty!(plot.computed[:backend_indices]), length(ps)+2)
+    valid = plot.computed[:backend_valid_vertex]::Vector{Float32} # Why Float32?
+    resize!(valid, length(ps))
+    indices = plot.computed[:backend_indices]::Vector{Cuint}
+    sizehint!(empty!(indices), length(ps)+2)
 
     # This loop identifies sections of line points A B C D E F bounded by
     # the start/end of the list ps or by NaN and generates indices for them:
@@ -799,7 +801,7 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
         tf = Makie.transform_func(plot)
         transform = Makie.space_to_clip(scene.camera, space, true) *
             Makie.f32_convert_matrix(scene.float32convert, space) *
-            plot.computed[:model]
+            plot.computed[:model]::Mat4d
 
         resize!(plot.computed[:backend_vertex], length(plot.converted[1][]))
         map!(plot.computed[:backend_vertex], plot.converted[1][]) do pos
@@ -850,14 +852,16 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
     delete!(plot.updated_outputs[], :colorrange) # replaced by colorrange_scaled
 
     for key in plot.updated_outputs[]
-        glkey = to_glvisualize_key(key)
+        glkey = to_glvisualize_key(key)::Symbol
+        skey = string(glkey)::String
         val = plot.computed[key]
 
         # Specials
         if (glkey == :linestyle) && (val !== nothing)
-            sdf = Makie.linestyle_to_sdf(val)
-            update!(robj[:pattern], sdf)
-            robj[:pattern_length] = Float32(last(val) - first(val))
+            ls = val::Vector{Float32}
+            sdf = Makie.linestyle_to_sdf(ls)
+            update!(robj[:pattern]::Texture, sdf)
+            robj[:pattern_length] = Float32(last(ls) - first(ls))
 
         elseif (glkey == :miter_limit)
             robj[:miter_limit] = Float32(cos(pi - val))
@@ -876,11 +880,11 @@ function update_robj!(screen::Screen, robj::RenderObject, scene::Scene, plot::Li
             robj[:color_norm] = gl_convert(val)
 
         # Handle vertex buffers
-        elseif haskey(robj.vertexarray.buffers, string(glkey))
-            if robj.vertexarray.buffers[string(glkey)] isa GLBuffer
-                update!(robj.vertexarray.buffers[string(glkey)], val)
+        elseif haskey(robj.vertexarray.buffers, skey)
+            if robj.vertexarray.buffers[skey] isa GLBuffer
+                update!(robj.vertexarray.buffers[skey], val)
             else
-                robj.vertexarray.buffers[string(glkey)] = val
+                robj.vertexarray.buffers[skey] = val
             end
 
         # Handle uniforms
