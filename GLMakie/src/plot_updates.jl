@@ -692,7 +692,7 @@ end
 # TODO: probably cache indices and valid in computed to avoid allocations?
 function calculate_indices!(plot, ps::AbstractVector{PT} = plot.converted[1][]) where {PT <: VecTypes}
     valid = resize!(plot.computed[:backend_valid_vertex], length(ps)) # Why Float32?
-    indices = sizehint!(plot.computed[:backend_indices], length(ps)+2)
+    indices = sizehint!(empty!(plot.computed[:backend_indices]), length(ps)+2)
 
     # This loop identifies sections of line points A B C D E F bounded by
     # the start/end of the list ps or by NaN and generates indices for them:
