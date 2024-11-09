@@ -44,7 +44,7 @@ b = Box(
     f[1:2, 1:3, Makie.GridLayoutBase.Outer()],
     alignmode = Outside(-5, -12, -8, -5),
     cornerradius = 4,
-    color = :transparent,
+    color = (:tomato, 0.1),
     strokecolor = :tomato,
     strokewidth = 2,
 )
@@ -54,7 +54,7 @@ b2 = Box(
     f[2:3, 3:4, Makie.GridLayoutBase.Outer()],
     alignmode = Outside(-5, -12, -8, -5),
     cornerradius = 4,
-    color = :transparent,
+    color = (:teal, 0.1),
     strokecolor = :teal,
     strokewidth = 2,
 )
