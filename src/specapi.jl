@@ -152,7 +152,11 @@ const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
 PlotSpec(::Type{P}, args...; kwargs...) where {P <: Plot} = PlotSpec(plotsym(P), args...; kwargs...)
 Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
 Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
-
+Base.haskey(p::PlotSpec, key::Symbol) = haskey(p.kwargs, key)
+function Base.getproperty(p::PlotSpec, k::Symbol)
+    k in fieldnames(PlotSpec) && return getfield(p, k)
+    return p.kwargs[k]
+end
 to_plotspec(::Type{P}, args; kwargs...) where {P} = PlotSpec(plotsym(P), args...; kwargs...)
 function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     S = plottype(p)
@@ -160,6 +164,7 @@ function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
 end
 
 plottype(p::PlotSpec) = getfield(Makie, p.type)
+
 
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
@@ -189,6 +194,26 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
     return p.kwargs[k]
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
+
+
+get_plots(spec::BlockSpec) = spec.plots
+get_plots(spec::Tuple{BlockSpec,Scene}) = SpecPlotThemed.(spec[1].plots, spec[2])
+
+
+struct SpecPlotThemed <: AbstractPlot{Any}
+    spec::PlotSpec
+    scene::Scene
+end
+function legendelements(plot::SpecPlotThemed, legend)
+    return legendelements(plottype(getfield(plot, :spec)), plot, legend)
+end
+Base.haskey(p::SpecPlotThemed, field::Symbol) = haskey(getfield(p, :spec), field)
+function Base.getproperty(p::SpecPlotThemed, field::Symbol)
+    spec = getfield(p, :spec)
+    haskey(spec, field) && return getproperty(spec, field)
+    scene = getfield(p, :scene)
+    return MakieCore.lookup_default(plottype(spec), scene, field)
+end
 
 
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)

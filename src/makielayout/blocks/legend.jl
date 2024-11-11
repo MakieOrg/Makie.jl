@@ -468,11 +468,11 @@ choose_scalar(attr, default) = is_scalar_attribute(to_value(attr)) ? attr : defa
 
 function extract_color(@nospecialize(plot), color_default)
     color = haskey(plot, :calculated_color) ? plot.calculated_color : plot.color
-    color[] isa ColorMapping && return color_default
+    to_value(color) isa ColorMapping && return color_default
     return choose_scalar(color, color_default)
 end
 
-function legendelements(plot::Union{Lines, LineSegments}, legend)
+function legendelements(::Type{<:Union{Lines,LineSegments}}, plot, legend)
     LegendElement[LineElement(
         color = extract_color(plot, legend[:linecolor]),
         linestyle = choose_scalar(plot.linestyle, legend[:linestyle]),
@@ -482,7 +482,7 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
     )]
 end
 
-function legendelements(plot::Scatter, legend)
+function legendelements(::Type{<:Scatter}, plot, legend)
     LegendElement[MarkerElement(
         color = extract_color(plot, legend[:markercolor]),
         marker = choose_scalar(plot.marker, legend[:marker]),
@@ -494,7 +494,7 @@ function legendelements(plot::Scatter, legend)
     )]
 end
 
-function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
+function legendelements(::Type{<:Union{Violin,BoxPlot,CrossBar}}, plot, legend)
     color = extract_color(plot, legend[:polycolor])
     LegendElement[PolyElement(
         color = color,
@@ -505,7 +505,7 @@ function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
     )]
 end
 
-function legendelements(plot::Band, legend)
+function legendelements(::Type{<:Band}, plot, legend)
     # there seems to be no stroke for Band, so we set it invisible
     return LegendElement[PolyElement(;
         polycolor = choose_scalar(
@@ -519,30 +519,35 @@ function legendelements(plot::Band, legend)
     )]
 end
 
-function legendelements(plot::Union{Poly, Density}, legend)
-    color = Makie.extract_color(plot, legend[:polycolor])
-    LegendElement[Makie.PolyElement(
+function legendelements(::Type{<:Union{Poly, Density}}, plot, legend)
+    color = extract_color(plot, legend[:polycolor])
+    LegendElement[PolyElement(
         color = color,
-        strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
-        strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
+        strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
+        strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
         linestyle = plot.linestyle,
     )]
 end
 
-
 # if there is no specific overload available, we go through the child plots and just stack
 # those together as a simple fallback
+function legendelements(::Type{<:Plot}, plot, legend)::Vector{LegendElement}
+    if plot isa PlotSpec
+        return LegendElement[]
+    else
+        return reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots]; init=[])
+    end
+end
+
 function legendelements(plot, legend)::Vector{LegendElement}
-    reduce(vcat, [legendelements(childplot, legend) for childplot in plot.plots], init = [])
+    return legendelements(typeof(plot), plot, legend)
 end
 
 # Text has no meaningful legend, but it contains a linesegments for latex applications
 # which can surface as a line in the final legend
-function legendelements(plot::Text, legend)::Vector{LegendElement}
-    []
-end
+legendelements(::Text, plot, legend) = LegendElement[]
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
     if s in fieldnames(T)
@@ -653,7 +658,7 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene, BlockSpec}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     Legend(fig_or_scene, plots, labels, title; kwargs...)
@@ -661,11 +666,10 @@ end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
     lplots = filter(get_plots(ax)) do plot
-        haskey(plot.attributes, :label) ||
-        plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
+        haskey(plot, :label) || plot isa PlotList && any(x -> haskey(x, :label), plot.plots)
     end
     labels = map(lplots) do l
-        l.label[]
+        to_value(l.label)
     end
 
     if any(x -> x isa AbstractVector, labels)
@@ -714,7 +718,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 end
 
 get_plots(p::AbstractPlot) = [p]
-# NOTE: this is important, since we know that `get_plots` is only ever called on the toplevel, 
+# NOTE: this is important, since we know that `get_plots` is only ever called on the toplevel,
 # we can assume that any plotlist on the toplevel should be decomposed into individual plots.
 # However, if the user passes a label argument with a legend override, what do we do?
 get_plots(p::PlotList) = haskey(p.attributes, :label) && p.attributes[:label] isa Pair ? [p] : p.plots
