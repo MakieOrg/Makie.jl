@@ -1858,10 +1858,8 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
         Rect2{Int}(round.(Int, minimum(bb) .* scale_factor) .+ 1, round.(Int, widths(bb) .* scale_factor))
     else
         vp = viewport(ax.scene)[]
-        @show vp
         mini, wh = minimum(vp), widths(vp)
         Rect2(round.(Int, mini .* scale_factor), round.(Int, wh .* scale_factor))
     end
-    @show bb
     return get_sub_picture(img, JuliaNative, bb)
 end
