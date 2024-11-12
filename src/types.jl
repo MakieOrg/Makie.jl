@@ -21,7 +21,7 @@ include("interaction/iodevices.jl")
 
 Identifies the source of a tick:
 - `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
-- `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
+- `UnknownTickState`: A tick from an uncategorized source (e.g. initialization of Events).
 - `PausedRenderTick`: A tick from a paused renderloop.
 - `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
 - `RegularRenderTick`: A tick from a running renderloop where a new image was produced.
@@ -321,36 +321,41 @@ struct Transformation <: Transformable
     translation::Observable{Vec3d}
     scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
+    origin::Observable{Vec3d}
     model::Observable{Mat4d}
     parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
 
-    function Transformation(translation, scale, rotation, transform_func)
+    function Transformation(translation, scale, rotation, transform_func, origin = Vec3d(0))
         translation_o = convert(Observable{Vec3d}, translation)
         scale_o = convert(Observable{Vec3d}, scale)
         rotation_o = convert(Observable{Quaternionf}, rotation)
+        origin_o = convert(Observable{Vec3d}, origin)
         parent_model = Observable(Mat4d(I))
-        model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
-            return p * transformationmatrix(t, s, r)
+        model = map(translation_o, scale_o, rotation_o, origin_o, parent_model) do t, s, r, o, p
+            # Order: translation * scale * rotation
+            return p * transformationmatrix(t + o - s .* (r * o), s, r)
         end
         transform_func_o = convert(Observable{Any}, transform_func)
         return new(RefValue{Transformation}(),
-                   translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
+                   translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o)
     end
 end
 
 function Transformation(transform_func=identity;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation, scale, rotation, transform_func)
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0))
+    return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
 function Transformation(parent::Transformable;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
@@ -358,7 +363,8 @@ function Transformation(parent::Transformable;
     trans = Transformation(translation,
                            scale,
                            rotation,
-                           trans)
+                           trans,
+                           origin)
     connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
 end
@@ -370,7 +376,7 @@ end
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
+Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
     if sv.sv isa Vector
         if length(sv.sv) != n
@@ -423,7 +429,7 @@ Stores information about the glyphs in a string that had a layout calculated for
 """
 struct GlyphCollection
     glyphs::Vector{UInt64}
-    fonts::Vector{FTFont}
+    fonts::ScalarOrVector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
@@ -436,20 +442,37 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts) == n
+        # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
+        return new(
+            glyphs,
+            to_font(fonts),
+            origins,
+            extents,
+            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            to_rotation(rotations),
+            to_color(colors),
+            to_color(strokecolors),
+            to_linewidth(strokewidths)
+        )
     end
+end
+
+function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
+    a.glyphs == b.glyphs &&
+    a.fonts == b.fonts &&
+    a.origins == b.origins &&
+    a.extents == b.extents &&
+    a.scales == b.scales &&
+    a.rotations == b.rotations &&
+    a.colors == b.colors &&
+    a.strokecolors == b.strokecolors &&
+    a.strokewidths == b.strokewidths
 end
 
 

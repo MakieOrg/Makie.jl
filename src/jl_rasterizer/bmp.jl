@@ -24,8 +24,8 @@ function writebmp(io, img)
     write(io, UInt32(0)) # image bits size
     write(io, Int32(0)) # horz resoluition in pixel / m
     write(io, Int32(0)) # vert resolutions (0x03C3 = 96 dpi, 0x0B13 = 72 dpi)
-    write(io, Int32(0)) #colors in pallete
-    write(io, Int32(0)) #important colors
+    write(io, Int32(0)) # colors in palette
+    write(io, Int32(0)) # important colors
 
     for i in h:-1:1
         for j in 1:w

@@ -25,7 +25,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:

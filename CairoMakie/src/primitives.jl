@@ -908,11 +908,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
+    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -928,7 +928,7 @@ end
 function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
 
     ctx = screen.context
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
@@ -943,9 +943,9 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1...)
-        Cairo.mesh_pattern_line_to(pattern, t2...)
-        Cairo.mesh_pattern_line_to(pattern, t3...)
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -984,7 +984,7 @@ function draw_mesh3D(
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 

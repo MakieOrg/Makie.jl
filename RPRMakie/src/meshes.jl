@@ -167,7 +167,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     positions = lift(grid, x, y, z, Makie.transform_func_obs(plot))
     r = Tesselation(Rect2f((0, 0), (1, 1)), size(z[]))
     # decomposing a rectangle into uv and triangles is what we need to map the z coordinates on
-    # since the xyz data assumes the coordinates to have the same neighouring relations
+    # since the xyz data assumes the coordinates to have the same neighbouring relations
     # like a grid
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)

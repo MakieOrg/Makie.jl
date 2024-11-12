@@ -11,7 +11,7 @@ using RadeonProRender
 RadeonProRender.Context()
 ```
 
-To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x84 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
+To use RPRMakie on a Mac with an M-series chip, for now, you need to use the x86_64 build of Julia (not the ARM build, you may have to download this manually).  RadeonProRender does not distribute binaries built for the ARM architecture of the M-series processors yet.
 
 ## Activation and screen config
 
@@ -36,7 +36,7 @@ lights = [
 ]
 
 # Only LScene is supported right now,
-# since the other projections don't map to the pysical acurate Camera in RPR.
+# since the other projections don't map to the physical accurate Camera in RPR.
 ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
 # Note that since RPRMakie doesn't yet support text (this is being worked on!),
 # you can't show a 3d axis yet.
@@ -59,8 +59,8 @@ mesh!(ax, Sphere(Point3f(0), 1), material=mat)
 image = colorbuffer(screen)::Matrix{RGB{N0f8}}
 # Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
 using RPRMakie
-refres = Observable(nothing) # Optional observable that triggers
-RPRMakie.activate!(); display(fig) # Make sure to display scene first in RPRMakie
+refresh = Observable(nothing) # Optional observable that triggers rerendering
+display(ax.scene; backend=GLMakie) # Make sure to display scene first in GLMakie
 # Replace the scene with an interactively rendered RPR output.
 # See more about this in the RPRMakie interop example
 context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
@@ -105,7 +105,7 @@ materials = [glass chrome;
                 emissive plastic]
 
 mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
-palette = reshape(Makie.default_palettes.color[][1:6], size(materials))
+palette = reshape(Makie.wong_colors()[1:6], size(materials))
 
 for i in CartesianIndices(materials)
     x, y = Tuple(i)

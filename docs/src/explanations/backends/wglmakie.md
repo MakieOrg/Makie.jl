@@ -1,7 +1,7 @@
 # WGLMakie
 
 [WGLMakie](https://github.com/MakieOrg/Makie.jl/tree/master/WGLMakie) is the web-based backend, which is mostly implemented in Julia right now.
-WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://de.wikipedia.org/wiki/WebGL) to render the plots.
+WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://en.wikipedia.org/wiki/WebGL) to render the plots.
 Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
 
@@ -105,7 +105,7 @@ Bonito allows to record a statemap for all widgets, that satisfy the following i
 ```julia
 # must be true to be found inside the DOM
 is_widget(x) = true
-# Updating the widget isn't dependant on any other state (only thing supported right now)
+# Updating the widget isn't dependent on any other state (only thing supported right now)
 is_independant(x) = true
 # The values a widget can iterate
 function value_range end

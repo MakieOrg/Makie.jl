@@ -1,16 +1,23 @@
 
-@reference_test "Image on Geometry (Moon)" begin
+@reference_test "mesh textured and loaded" begin
+    f = Figure(size = (600, 600))
+    
     moon = loadasset("moon.png")
-    fig, ax, meshplot = mesh(Sphere(Point3f(0), 1f0), color=moon, shading=NoShading, axis = (;show_axis=false))
+    ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon, 
+        shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     cameracontrols(ax).settings.center[] = false # avoid recenter on display
-    fig
-end
-
-@reference_test "Image on Geometry (Earth)" begin
+    
     earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
-    mesh(m, color=earth, shading=NoShading)
+    mesh(f[1, 2], m, color=earth, shading=NoShading)
+
+    catmesh = loadasset("cat.obj")
+    mesh(f[2, 1], catmesh, color=loadasset("diffusemap.png"))
+
+    mesh(f[2, 2], loadasset("cat.obj"); color=:black)
+
+    f
 end
 
 @reference_test "Orthographic Camera" begin
@@ -40,13 +47,34 @@ end
     fig
 end
 
-@reference_test "Volume Function" begin
-    volume(RNG.rand(32, 32, 32), algorithm=:mip)
-end
+@reference_test "simple volumes" begin
+    f = Figure()
+    r = range(-1, stop=1, length=100)
+    matr = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
+    volume(f[1, 1], matr .* (matr .> 1.4), algorithm=:iso, isorange=0.05, isovalue=1.7, colorrange=(0, 1))
+    
+    volume(f[1, 2], RNG.rand(32, 32, 32), algorithm=:mip)
 
-@reference_test "Textured Mesh" begin
-    catmesh = loadasset("cat.obj")
-    mesh(catmesh, color=loadasset("diffusemap.png"))
+    r = LinRange(-3, 3, 100);  # our value range
+    ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
+    ax, pl = volume(f[2, 1],
+        r, r, r,          # coordinates to plot on
+        ρ,                # charge density (functions as colorant)
+        algorithm=:mip,  # maximum-intensity-projection
+        colorrange=(0, 1),
+    )
+    ax.scene[OldAxis].names.textcolor = :lightgray # let axis labels be seen on dark background
+    ax.scene[OldAxis].ticks.textcolor = :gray # let axis ticks be seen on dark background
+    ax.scene.backgroundcolor[] = to_color(:black)
+    ax.scene.clear[] = true
+
+    r = range(-3pi, stop=3pi, length=100)
+    volume(f[2, 2], r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), 
+        colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
+    volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, 
+        colorrange=(0, 1), transformation=(translation=Vec3f(6pi, 0, 0),))
+
+    f
 end
 
 @reference_test "Textured meshscatter" begin
@@ -60,32 +88,11 @@ end
     )
 end
 
-@reference_test "Load Mesh" begin
-    mesh(loadasset("cat.obj"); color=:black)
-end
+@reference_test "Wireframe of mesh, GeoemtryPrimitive and Surface" begin
+    f = Figure()
 
-@reference_test "Colored Mesh" begin
-    x = [0, 1, 2, 0]
-    y = [0, 0, 1, 2]
-    z = [0, 2, 0, 1]
-    color = [:red, :green, :blue, :yellow]
-    i = [0, 0, 0, 1]
-    j = [1, 2, 3, 2]
-    k = [2, 3, 1, 3]
-    # indices interpreted as triangles (every 3 sequential indices)
-    indices = [1, 2, 3,   1, 3, 4,   1, 4, 2,   2, 3, 4]
-    mesh(x, y, z, indices, color=color)
-end
+    wireframe(f[1, 1], Sphere(Point3f(0), 1f0))
 
-@reference_test "Wireframe of a Mesh" begin
-    wireframe(loadasset("cat.obj"))
-end
-
-@reference_test "Wireframe of Sphere" begin
-    wireframe(Sphere(Point3f(0), 1f0))
-end
-
-@reference_test "Wireframe of a Surface" begin
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -94,7 +101,11 @@ end
     lspace = range(-10, stop=10, length=N)
     z = Float32[xy_data(x, y) for x in lspace, y in lspace]
     r = range(0, stop=3, length=N)
-    wireframe(r, r, z)
+    wireframe(f[2, 1], r, r, z)
+
+    wireframe(f[1:2, 2], loadasset("cat.obj"))
+
+    f
 end
 
 @reference_test "Surface with image" begin
@@ -119,20 +130,18 @@ end
     meshscatter(positions, color=colS, markersize=sizesS)
 end
 
-@reference_test "scatter" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=10)
-end
+@reference_test "Basic Shading" begin
+    f = Figure(size = (500, 300))
 
-@reference_test "Marker sizes" begin
-    colors = Makie.resample(to_colormap(:Spectral), 20)
-    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
-end
-
-@reference_test "Ellipsoid marker sizes" begin # see PR #3722
+    # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
+    meshscatter(f[1, 1], pts; markersize, rotation, color=:white, diffuse=Vec3f(-2, 0, 4), specular=Vec3f(4, 0, -2))
+
+    mesh(f[1, 2], Sphere(Point3f(0), 1f0), color=:orange, shading=NoShading)
+
+    f
 end
 
 @reference_test "Record Video" begin
@@ -232,21 +241,21 @@ end
     vx = -1:0.01:1
     vy = -1:0.01:1
 
-    f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
+    foo(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     fig = Figure()
     ax1 = fig[1, 1] = Axis(fig, title = "surface")
     ax2 = fig[1, 2] = Axis(fig, title = "contour3d")
-    surface!(ax1, vx, vy, f)
-    contour3d!(ax2, vx, vy, (x, y) -> f(x, y), levels=15, linewidth=3)
+    surface!(ax1, vx, vy, foo)
+    contour3d!(ax2, vx, vy, (x, y) -> foo(x, y), levels=15, linewidth=3)
     fig
 end
 
 @reference_test "colorscale (surface)" begin
     x = y = range(-1, 1; length = 20)
-    f(x, y) = exp(-(x^2 + y^2)^2)
+    foo(x, y) = exp(-(x^2 + y^2)^2)
     fig = Figure()
-    surface(fig[1, 1], x, y, f; colorscale = identity)
-    surface(fig[1, 2], x, y, f; colorscale = log10)
+    surface(fig[1, 1], x, y, foo; colorscale = identity)
+    surface(fig[1, 2], x, y, foo; colorscale = log10)
     fig
 end
 
@@ -263,18 +272,6 @@ end
     poly!(Axis3(fig[1, 1]), vertices, indices; color=C[:], colorscale=identity)
     poly!(Axis3(fig[1, 2]), vertices, indices; color=C[:], colorscale=log10)
     fig
-end
-
-@reference_test "FEM mesh 3D" begin
-    cat = loadasset("cat.obj")
-    vertices = decompose(Point3f, cat)
-    faces = decompose(TriangleFace{Int}, cat)
-    coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
-    connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
-    mesh(
-        coordinates, connectivity,
-        color=RNG.rand(length(vertices))
-    )
 end
 
 @reference_test "OldAxis + Surface" begin
@@ -392,15 +389,6 @@ end
     large_sphere = Sphere(Point3f(0), 1f0)
     positions = decompose(Point3f, large_sphere)
     meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
-end
-
-@reference_test "Text glow and overdraw" begin
-    p1 = Point3f(0,0,0)
-    p2 = Point3f(1,0,0)
-    f, ax, pl = meshscatter([p1, p2]; markersize=0.3, color=[:purple, :yellow])
-    text!(ax, p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
-    text!(ax, p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
-    f
 end
 
 @reference_test "Animated surface and wireframe" begin
@@ -523,22 +511,6 @@ let
         f(x) = f(x, P)
         streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap=:magma, gridsize=(10, 10), arrow_size=0.1, transparency=true)
     end
-end
-
-@reference_test "Volume on black background" begin
-    r = LinRange(-3, 3, 100);  # our value range
-
-    ρ(x, y, z) = exp(-(abs(x))) # function (charge density)
-
-    fig, ax, pl = volume(
-        r, r, r,          # coordinates to plot on
-        ρ,                # charge density (functions as colorant)
-        algorithm=:mip,  # maximum-intensity-projection
-        colorrange=(0, 1),
-    )
-    ax.scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
-    fig.scene.backgroundcolor[] = to_color(:black)
-    fig
 end
 
 @reference_test "Depth Shift" begin
@@ -733,4 +705,18 @@ end
     f, ls1, pl = surface(Makie.peaks(20); interpolate=true, axis=(; show_axis=false))
     ls2, pl = surface(f[1, 2], Makie.peaks(20); interpolate=false, axis=(; show_axis=false))
     f
+end
+
+@reference_test "volumeslices" begin
+    r = range(-1, 1, length = 10)
+    data = RNG.rand(10,10,10)
+    
+    fig = Figure()
+    volumeslices(fig[1, 1], r, r, r, data)
+    a, p = volumeslices(fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
+        colorrange = (0.2, 0.8), lowclip = :black, highclip = :green)
+    p.update_xz[](3)
+    p.update_yz[](4)
+    p.update_xy[](10)
+    fig
 end

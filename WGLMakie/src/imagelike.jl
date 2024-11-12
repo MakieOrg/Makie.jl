@@ -18,7 +18,7 @@ function create_shader(mscene::Scene, plot::Surface)
     positions = Buffer(ps)
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
-    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
+    fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
     # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
     # the center of a texture pixel rather than the edge, fixing
@@ -34,7 +34,7 @@ function create_shader(mscene::Scene, plot::Surface)
     end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
-    uniforms = Dict(:uniform_color => color, :color => false, :model => model)
+    uniforms = Dict(:uniform_color => color, :color => false, :model => model, :PICKING_INDEX_FROM_UV => true)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
     uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
@@ -61,6 +61,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :shininess => 0.0f0,
         :backlight => 0.0f0,
         :model => model,
+        :PICKING_INDEX_FROM_UV => true
     )
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
