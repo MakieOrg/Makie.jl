@@ -56,4 +56,13 @@ Base.cos(θ::Degree) = cos(θ.θ * π/180)
     @test to_rotation((v, π)) == to_rotation((v, 1.0π))
     @test to_rotation(Degree(90)) == to_rotation(π/2)
     @test to_rotation((v, Degree(90))) == to_rotation((v, π/2))
+
+    for _ in 1:10
+        v = 2 .* rand(Vec3f) .+ 1
+        while norm(v) < 0.1
+            v = 2 .* rand(Vec3f) .+ 1
+        end
+        q = qrotation(normalize(v), 2pi * rand())
+        @test q * inv(q) ≈ Quaternion{Float64}(0,0,0,1) atol = 1e-15
+    end
 end
