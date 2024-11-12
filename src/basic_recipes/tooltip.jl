@@ -133,13 +133,13 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable, space = :pixel, transformation = Transformation()
     )
-    translate!(tp, 0, 0, 1)
+    translate!(tp, 0, 0, 0.01) # must be larger than eps(1f4) to prevent float precision issues
 
     # TODO react to glyphcollection instead
     bbox = map(
             p, px_pos, p.text, text_align, text_offset, textpadding, p.align
         ) do p, s, _, o, pad, align
-        bb = boundingbox(tp, :pixel) + to_ndim(Vec3f, o, 0)
+        bb = string_boundingbox(tp) + to_ndim(Vec3f, o, 0)
         l, r, b, t = pad
         return Rect3f(origin(bb) .- (l, b, 0), widths(bb) .+ (l+r, b+t, 0))
     end
@@ -156,41 +156,50 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Triangle mesh
 
-    triangle = GeometryBasics.Mesh(
-        Point2f[(-0.5, 0), (0.5, 0), (0, -1)],
-        GLTriangleFace[(1,2,3)]
-    )
+    tri_points = map(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
+        l, b, z = origin(bb); w, h, _ = widths(bb)
+        r, t = (l, b) .+ (w, h)
+        if placement === :left
+            return Point3f[
+                (r,     b + align * h + 0.5s, z),
+                (r + s, b + align * h,        z),
+                (r,     b + align * h - 0.5s, z),
+            ]
+        elseif placement === :right
+            return Point3f[
+                (l,   b + align * h - 0.5s, z),
+                (l-s, b + align * h,        z),
+                (l,   b + align * h + 0.5s, z),
+            ]
+        elseif placement in (:below, :down, :bottom)
+            return Point3f[
+                (l + align * w - 0.5s, t,   z),
+                (l + align * w,        t+s, z),
+                (l + align * w + 0.5s, t,   z),
+            ]
+        elseif placement in (:above, :up, :top)
+            return Point3f[
+                (l + align * w + 0.5s, b,   z),
+                (l + align * w,        b-s, z),
+                (l + align * w - 0.5s, b,   z),
+            ]
+        else
+            @error "Tooltip placement $placement invalid. Assuming :above"
+            return Point3f[
+                (l + align * w + 0.5s, b,   z),
+                (l + align * w,        b-s, z),
+                (l + align * w - 0.5s, b,   z),
+            ]
+        end
+    end
 
-    mp = mesh!(
-        p, triangle, shading = NoShading, space = :pixel,
-        color = p.backgroundcolor,
+    mesh!(
+        p, tri_points, [1 2 3], shading = NoShading, space = :pixel,
+        color = p.backgroundcolor, fxaa = false, 
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable, transformation = Transformation()
     )
-    onany(p, bbox, p.triangle_size, p.placement, p.align) do bb, s, placement, align
-        o = origin(bb); w = widths(bb)
-        scale!(mp, s, s, s)
-
-        if placement === :left
-            translate!(mp, Vec3f(o[1] + w[1], o[2] + align * w[2], o[3]))
-            rotate!(mp, qrotation(Vec3f(0,0,1), 0.5pi))
-        elseif placement === :right
-            translate!(mp, Vec3f(o[1], o[2] + align * w[2], o[3]))
-            rotate!(mp, qrotation(Vec3f(0,0,1), -0.5pi))
-        elseif placement in (:below, :down, :bottom)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2] + w[2], o[3]))
-            rotate!(mp, Quaternionf(0,0,1,0)) # pi
-        elseif placement in (:above, :up, :top)
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
-            rotate!(mp, Quaternionf(0,0,0,1)) # 0
-        else
-            @error "Tooltip placement $placement invalid. Assuming :above"
-            translate!(mp, Vec3f(o[1] + align * w[1], o[2], o[3]))
-            rotate!(mp, Quaternionf(0,0,0,1))
-        end
-        return
-    end
 
     # Outline
 
@@ -250,7 +259,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         return to_ndim.(Vec3f, shift, z)
     end
 
-    lines!(
+    lp = lines!(
         p, outline,
         color = p.outline_color, space = :pixel, miter_limit = pi/18,
         linewidth = p.outline_linewidth, linestyle = p.outline_linestyle,
@@ -258,6 +267,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable, transformation = Transformation()
     )
+    translate!(lp, 0, 0, 0.01)
 
     notify(p[1])
 

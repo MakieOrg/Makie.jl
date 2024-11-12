@@ -12,9 +12,9 @@ function pick_native(screen::Screen, rect::Rect2i)
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
-    w, h = size(screen.root_scene)
+    w, h = size(screen.scene)
     ppu = screen.px_per_unit[]
-    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
+    if rx >= 0 && ry >= 0 && rx + rw <= w && ry + rh <= h
         rx, ry, rw, rh = round.(Int, ppu .* (rx, ry, rw, rh))
         sid = zeros(SelectionID{UInt32}, rw, rh)
         glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
@@ -32,7 +32,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
-    w, h = size(screen.root_scene)
+    w, h = size(screen.scene)
     ppu = screen.px_per_unit[]
     if x > 0 && y > 0 && x <= w && y <= h
         x, y = round.(Int, ppu .* (x, y))
@@ -67,7 +67,7 @@ end
 # Skips one set of allocations
 function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return (nothing, 0)
-    w, h = size(screen.root_scene) # unitless dimensions
+    w, h = size(screen.scene) # unitless dimensions
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     fb = screen.framebuffer
@@ -84,7 +84,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     sids = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sids)
 
-    min_dist = floatmax(Float32)
+    min_dist = ppu * ppu * range * range
     id = SelectionID{Int}(0, 0)
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
@@ -106,7 +106,7 @@ end
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     isopen(screen) || return Tuple{AbstractPlot, Int}[]
-    w, h = size(screen.root_scene) # unitless dimensions
+    w, h = size(screen.scene) # unitless dimensions
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
     end

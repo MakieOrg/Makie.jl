@@ -11,7 +11,7 @@ using Makie: Categorical
 end
 
 @reference_test "different types without sorting function" begin
-    # If we set the ticks explicitely, with sortby defaulting to nothing,
+    # If we set the ticks explicitly, with sortby defaulting to nothing,
     # we can combine all objects:
     f = Figure()
     ax = Axis(f[1, 1];
@@ -42,7 +42,7 @@ end
     f
 end
 
-@reference_test "new categories, inbetween old values" begin
+@reference_test "new categories, in between old values" begin
     obs = Observable(Categorical(["a", "c", "e", "g"]))
     f, ax, p = scatter(1:4, obs, markersize=20, color=1:4, colormap=:viridis)
     obs[] = Categorical(["b", "d", "f", "h"])

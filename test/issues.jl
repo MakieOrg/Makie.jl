@@ -20,4 +20,14 @@
         M = Makie.clip_to_space(a.scene.camera, :data) * Makie.space_to_clip(a.scene.camera, :data)
         @test M ≈ I atol = 1e-4
     end
+    
+    @testset "#4416 Merging attributes" begin
+        # See https://github.com/MakieOrg/Makie.jl/pull/4416
+        theme1 = Theme(Axis = (; titlesize = 10))
+        theme2 = Theme(Axis = (; xgridvisible = false))
+        merged_theme = merge(theme1, theme2)
+        # Test that merging themes does not modify leftmost argument
+        @test !haskey(theme1.Axis, :xgridvisible)
+        @test !haskey(theme2.Axis, :titlesize)  # sanity check other argument
+    end
 end

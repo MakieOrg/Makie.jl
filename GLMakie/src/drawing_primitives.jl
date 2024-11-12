@@ -708,6 +708,7 @@ function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
         else
             gl_attributes[:image] = Texture(pop!(gl_attributes, :color); minfilter=interp)
         end
+        gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
         return draw_mesh(screen, gl_attributes)
     end
 end
@@ -813,6 +814,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         gl_attributes[:image] = Texture(img; minfilter=interp)
 
         @assert to_value(plot[3]) isa AbstractMatrix
+        gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
         types = map(v -> typeof(to_value(v)), plot[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)

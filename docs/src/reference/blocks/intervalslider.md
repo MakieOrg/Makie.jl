@@ -16,9 +16,11 @@ If the mouse hovers over the central area of the interval and both buttons are e
 You can double-click the slider to reset it to the values present in `startvalues`.
 If `startvalues === Makie.automatic`, the full interval will be selected (this is the default).
 
-If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available values when releasing the mouse.
+If you set the attribute `snap = false`, the slider will move continuously while dragging and only jump to the closest available values when releasing the mouse.
 
-```@figure
+```@example intervalslider
+using GLMakie
+GLMakie.activate!() # hide
 
 f = Figure()
 Axis(f[1, 1], limits = (0, 1, 0, 1))
@@ -50,6 +52,64 @@ end
 scatter!(points, color = colors, colormap = [:gray90, :dodgerblue], strokewidth = 0)
 
 f
+nothing # hide
+```
+
+```@setup intervalslider
+using ..FakeInteraction
+
+events = [
+    Wait(1),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_h, (0.2, 0.5)))
+    end,
+    Wait(0.2),
+    LeftDown(),
+    Wait(0.3),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_h, (0.5, 0.6)))
+    end,
+    Wait(0.2),
+    LeftUp(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_h, (0.625, 0.4)))
+    end,
+    Wait(0.2),
+    LeftDown(),
+    Wait(0.3),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_h, (0.375, 0.5)))
+    end,
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_h, (0.8, 0.5)))
+    end,
+    LeftUp(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_v, (0.5, 0.66)))
+    end,
+    Wait(0.3),
+    LeftDown(),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_v, (0.5, 0.33)))
+    end,
+    LeftUp(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(rs_v, (0.5, 0.8)))
+    end,
+    Wait(0.3),
+    LeftClick(),
+    Wait(2),
+]
+
+interaction_record(f, "intervalslider_example.mp4", events)
+```
+
+```@raw html
+<video autoplay loop muted playsinline src="./intervalslider_example.mp4" width="600"/>
 ```
 
 ## Attributes

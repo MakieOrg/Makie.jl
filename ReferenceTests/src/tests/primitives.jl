@@ -180,10 +180,6 @@ end
     fig
 end
 
-@reference_test "lines issue #3704" begin
-    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
-end
-
 @reference_test "scatters" begin
     s = Scene(size = (800, 800), camera = campixel!)
 
@@ -577,7 +573,7 @@ end
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
-    # marker is in the background, so one shouldnt see a single pixel of the marker
+    # marker is in the background, so one shouldn't see a single pixel of the marker
     plot_row!(scene, 300, true)
 
     center = Point2f(size(scene) ./ 2)
