@@ -11,9 +11,21 @@ MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
-unit_string(unit::Unitful.FreeUnits) = string(unit)
+base_unit(q::Quantity) = base_unit(typeof(q))
+base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
+base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
+base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
+base_unit(x::Unitful.Unit) = x
+base_unit(x::Period) = base_unit(Quantity(x))
+
+unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
+unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
+unit_string(unit::Unitful.FreeUnits) = unit_string(base_unit(unit))
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
+
+unit_string_long(unit) = unit_string_long(base_unit(unit))
+unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -29,6 +41,22 @@ function eltype_extrema(values)
     return new_eltype, (new_min, new_max)
 end
 
+function new_unit(unit, values)
+    new_eltype, extrema = eltype_extrema(values)
+    # empty vector case:
+    isnothing(extrema) && return nothing
+    new_min, new_max = extrema
+    if new_eltype <: Union{Quantity, Period}
+        qmin = Quantity(new_min)
+        qmax = Quantity(new_max)
+        return best_unit(qmin, qmax)
+    end
+
+    new_eltype <: Number && isnothing(unit) && return nothing
+
+    error("Plotting $(new_eltype) into an axis set to: $(unit_string(unit)). Please convert the data to $(unit_string(unit))")
+end
+
 to_free_unit(unit::Unitful.FreeUnits, _) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity{T, Dim, Unitful.FreeUnits{U, Dim, nothing}}) where {T, Dim, U} = unit
@@ -39,6 +67,35 @@ end
 to_free_unit(unit::Unitful.FreeUnits) = unit
 function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
+end
+
+get_all_base10_units(value) = get_all_base10_units(base_unit(value))
+
+function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
+    return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
+end
+
+function get_all_base10_units(value::Unitful.Unit)
+    # TODO, why does nothing work in a generic way in Unitful!?
+    # By only returning this one value, we simply don't chose any different unit as a fallback
+    return [value]
+end
+
+function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
+    return getfield.((Unitful,), TIME_UNIT_NAMES)
+end
+
+function best_unit(min, max)
+    middle = (min + max) / 2.0
+    all_units = get_all_base10_units(middle)
+    _, index = findmin(all_units) do unit
+        raw_value = abs(unit_convert(unit, middle))
+        # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
+        # So, for fractions between 0..1, we use inv to penalize really small fractions
+        positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
+        return positive
+    end
+    return all_units[index]
 end
 
 unit_convert(::Automatic, x) = x
@@ -96,21 +153,13 @@ end
 function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     conversion.automatic_units || return
     eltype, extrema = eltype_extrema(value_obs[])
-
-    # convert to initial unit (that isn't automatic/unset)
-    if (conversion.unit[] != automatic) && (Unitful.dimension(extrema[1]) == Unitful.dimension(conversion.unit[]))
-        pextrema = uconvert.(conversion.unit[], extrema)
-    else
-        pextrema = promote(Quantity.(extrema)...)
-    end
-
-    conversion.extrema[value_obs.id] = pextrema
+    conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
     imini, imaxi = extrema
     for (mini, maxi) in values(conversion.extrema)
         imini = min(imini, mini)
         imaxi = max(imaxi, maxi)
     end
-    new_unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
+    new_unit = best_unit(imini, imaxi)
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
     end
