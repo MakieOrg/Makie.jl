@@ -94,6 +94,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     get!(uniform_dict, :shininess, 8f0)
     get!(uniform_dict, :light_direction, Vec3f(1))
     get!(uniform_dict, :light_color, Vec3f(1))
+    get!(uniform_dict, :PICKING_INDEX_FROM_UV, false)
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
@@ -179,7 +180,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     per_instance = filter(attributes) do (k, v)
-        return k in per_instance_keys && !(isscalar(v[]))
+        return k in per_instance_keys && !(isscalar(to_value(v)))
     end
 
     for (k, v) in per_instance
@@ -218,7 +219,6 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     handle_color!(plot, uniform_dict, per_instance, :color)
     handle_color_getter!(uniform_dict, per_instance)
-
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
         to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
@@ -238,14 +238,23 @@ function scatter_shader(scene::Scene, attributes, plot)
     get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
     get!(uniform_dict, :glowwidth, 0f0)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
-
+    _, arr = first(per_instance)
+    if any(v-> length(arr) != length(v), values(per_instance))
+        lens = [k => length(v) for (k, v) in per_instance]
+        error("Not all have the same length: $(lens)")
+    end
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
-    attributes = copy(plot.attributes.attributes)
+    # create new dict so we don't automatically convert to observables
+    # Which is the case for Dict{Symbol, Observable}
+    attributes = Dict{Symbol, Any}()
+    for (k, v) in plot.attributes.attributes
+        attributes[k] = v
+    end
     space = get(attributes, :space, :data)
     attributes[:preprojection] = Mat4f(I) # calculate this in JS
     f32c, model = Makie.patch_model(plot)
@@ -272,7 +281,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     glyphcollection = plot[1]
     f32c, model = Makie.patch_model(plot)
     pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
-    space = plot.space
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
@@ -282,24 +290,23 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     # unpack values from the one signal:
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        return lift(getindex, plot, glyph_data, i)
+        return lift(getindex, plot, glyph_data, i; ignore_equal_values=true)
     end
 
-    uniform_color = lift(plot, glyphcollection) do gc
+    uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc),
-                init = RGBAf[])
+            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
+                    init=RGBAf[])
         else
-            Makie.collect_vector(gc.colors, length(gc.glyphs))
+            gc.colors.sv
         end
     end
-
-    uniform_rotation = lift(plot, glyphcollection) do gc
+    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc),
-                init = Quaternionf[])
+            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
+                    init=Quaternionf[])
         else
-            Makie.collect_vector(gc.rotations, length(gc.glyphs))
+            gc.rotations.sv
         end
     end
 
@@ -321,6 +328,5 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :glowwidth => plot.glowwidth,
         :glowcolor => plot.glowcolor,
     )
-
     return scatter_shader(scene, uniforms, plot_attributes)
 end

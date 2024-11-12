@@ -20,7 +20,8 @@ function pick_native(screen::Screen, rect::Rect2i)
         lookup = plot_lookup(scene)
         return map(matrix) do (uuid, index)
             !haskey(lookup, uuid) && return (nothing, 0)
-            return (lookup[uuid], Int(index) + 1)
+            plt = lookup[uuid]
+            return (plt, Int(index) + !(plt isa Volume))
         end
     end
 end
@@ -43,28 +44,40 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range::Integer)
     """)
     lookup = plot_lookup(scene)
     !haskey(lookup, selection[1]) && return (nothing, 0)
-    return (lookup[selection[1]], selection[2] + 1)
+    plt = lookup[selection[1]]
+    return (plt, Int(selection[2]) + !(plt isa Volume))
 end
 
 # Skips some allocations
 function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
-
     xy_vec = Cint[round.(Cint, xy)...]
     range = round(Int, range)
     session = get_screen_session(screen)
     # E.g. if websocket got closed
     isnothing(session) && return Tuple{Plot,Int}[]
     selection = Bonito.evaljs_value(session, js"""
-        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => WGL.pick_sorted(scene, $(xy_vec), $(range)))
+        Promise.all([$(WGL), $(scene)]).then(([WGL, scene]) => {
+            const picked = WGL.pick_sorted(scene, $(xy_vec), $(range))
+            return picked
+        })
     """)
     isnothing(selection) && return Tuple{Plot,Int}[]
     lookup = plot_lookup(scene)
-    return [(lookup[plot_id], index + 1) for (plot_id, index) in selection if haskey(lookup, plot_id)]
+    filter!(((id, idx),) -> haskey(lookup, id), selection)
+    return map(selection) do (id, idx)
+        plt = lookup[id]
+        return (plt, Int(idx) + !(plt isa Volume))
+    end
 end
 
 function Makie.pick(::Scene, screen::Screen, xy)
+
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     return plot_matrix[1, 1]
+end
+
+function Makie.pick(::Scene, screen::Screen, r::Rect2)
+    return pick_native(screen, Rect2i(round.(minimum(r)), round.(widths(r))))
 end
 
 """
@@ -114,7 +127,7 @@ struct ToolTip
     end
 end
 
-const POPUP_CSS = Bonito.Asset(joinpath(@__DIR__, "popup.css"))
+const POPUP_CSS = Bonito.Asset(@path joinpath(@__DIR__, "popup.css"))
 
 function Bonito.jsrender(session::Session, tt::ToolTip)
     scene = tt.scene

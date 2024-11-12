@@ -5,7 +5,6 @@ using GeometryBasics
 
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 
-@compile scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 @compile scatter(0..1, rand(10), markersize=rand(10) .* 20)
 @compile scatter(LinRange(0, 1, 10), rand(10))
 @compile scatter(-1..1, x -> x^2)
@@ -86,4 +85,25 @@ end
 
 @compile begin
     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+end
+
+@compile begin
+    f = Figure()
+    ax = Makie.Axis(f)
+    Makie.Toggle(f)
+    Makie.Slider(f)
+    Makie.LScene(f)
+    Makie.PolarAxis(f)
+    Makie.IntervalSlider(f)
+    lines!(ax, 1:2, label = "Line")
+    Makie.Legend(f, ax, "Default", nbanks = 2)
+    Makie.Box(f)
+    Makie.Label(f)
+    Makie.Textbox(f)
+    Makie.Axis3(f)
+    Makie.Colorbar(f)
+    Makie.Button(f)
+    Makie.Menu(f, options=["one"])
+    Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
+    f
 end

@@ -27,3 +27,44 @@ Label(f[0, :], "Two boxes indicate groups of axes that belong together")
 
 f
 ```
+
+In other situations you may simply want to encircle parts of an existing layout without otherwise changing it. You can use the `Outer` side to position the boxes at the outer edge of their neighbors, in combination with a slightly negative `Outside(...)` alignmode (what margins look good here needs to be adjusted to taste).
+
+```@figure
+using Random # hide
+Random.seed!(1234) # hide
+f = Figure()
+
+for i in 1:3, j in 1:4
+    Axis(f[i, j], title = "$i & $j")
+    lines!(cumsum(randn(100)), color = :gray80)
+end
+
+b = Box(
+    f[1:2, 1:3, Makie.GridLayoutBase.Outer()],
+    alignmode = Outside(-5, -12, -8, -5),
+    cornerradius = 4,
+    color = (:tomato, 0.1),
+    strokecolor = :tomato,
+    strokewidth = 2,
+)
+translate!(b.blockscene, 0, 0, -200)
+
+b2 = Box(
+    f[2:3, 3:4, Makie.GridLayoutBase.Outer()],
+    alignmode = Outside(-5, -12, -8, -5),
+    cornerradius = 4,
+    color = (:teal, 0.1),
+    strokecolor = :teal,
+    strokewidth = 2,
+)
+translate!(b2.blockscene, 0, 0, -200)
+
+Legend(
+    f[end+1, :],
+    [LineElement(color = :tomato), LineElement(color = :teal)],
+    ["Group 1", "Group 2"],
+    framevisible = false,
+    orientation = :horizontal)
+f
+```

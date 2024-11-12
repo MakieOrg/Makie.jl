@@ -4,7 +4,10 @@ The column with the value labels is automatically set to a fixed width, so that 
 This width is chosen by setting each slider to a few values and recording the maximum label width.
 Alternatively, you can set the width manually with attribute `value_column_width`.
 
-```@figure backend=GLMakie
+```@example slidergrid
+using GLMakie
+GLMakie.activate!() # hide
+
 
 fig = Figure()
 
@@ -27,6 +30,45 @@ barplot!(ax, bars, color = [:yellow, :orange, :red])
 ylims!(ax, 0, 30)
 
 fig
+nothing # hide
+```
+
+```@setup slidergrid
+using ..FakeInteraction
+
+events = [
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(sg.sliders[1], (0.1, 0.5)))
+    end,
+    LeftDown(),
+    Wait(0.2),
+    Lazy() do fig
+        MouseTo(relative_pos(sg.sliders[1], (0.8, 0.5)))
+    end,
+    Wait(0.2),
+    LeftUp(),
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(sg.sliders[3], (0.5, 0.5)))
+    end,
+    LeftDown(),
+    Wait(0.3),
+    Lazy() do fig
+        MouseTo(relative_pos(sg.sliders[3], (1, 0.6)))
+    end,
+    Wait(0.3),
+    Lazy() do fig
+        MouseTo(relative_pos(sg.sliders[3], (0.1, 0.3)))
+    end,
+    Wait(0.5),
+]
+
+interaction_record(fig, "slidergrid_example.mp4", events)
+```
+
+```@raw html
+<video autoplay loop muted playsinline src="./slidergrid_example.mp4" width="600"/>
 ```
 
 ## Attributes

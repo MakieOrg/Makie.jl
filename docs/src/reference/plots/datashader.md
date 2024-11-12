@@ -25,6 +25,23 @@ hidedecorations!(ax); hidespines!(ax)
 fig
 ```
 
+### Mean aggregation
+
+The `AggMean` aggregation type requires `Point3`s where the mean is taken over the z values of all points that fall into the same x/y bin.
+
+```@figure backend=GLMakie
+with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
+points = randn(Point2f, 100_000)
+points_with_z = map(with_z, points)
+
+f = Figure()
+ax = Axis(f[1, 1], title = "AggMean")
+datashader!(ax, points_with_z, agg = Makie.AggMean(), operation = identity)
+ax2 = Axis(f[1, 2], title = "AggMean binsize = 3")
+datashader!(ax2, points_with_z, agg = Makie.AggMean(), operation = identity, binsize = 3)
+f
+```
+
 ### Strange Attractors
 
 ```@figure backend=GLMakie
@@ -186,7 +203,7 @@ datashader(Dict(:category_a => all_points_a, :category_b => all_points_b))
 ```
 
 The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend.
-Categories are currently aggregated in one Canvas per category, and then overlayed with alpha blending.
+Categories are currently aggregated in one Canvas per category, and then overlaid with alpha blending.
 
 ```@figure backend=GLMakie
 normaldist = randn(Point2f, 1_000_000)

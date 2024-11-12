@@ -212,6 +212,18 @@ end
     end
 end
 
+@testset "MultiplesTicks strip_zero" begin
+    default = MultiplesTicks(5, pi, "π")
+    strip = MultiplesTicks(5, pi, "π"; strip_zero=true)
+    no_strip = MultiplesTicks(5, pi, "π"; strip_zero=false)
+
+    @test default == no_strip
+    zero_default = Makie.get_ticks(default, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_default == "0π"
+    zero_stripped = Makie.get_ticks(strip, nothing, Makie.Automatic(), -7, 7)[2][3]
+    @test zero_stripped == "0"
+end
+
 @testset "Colorbars" begin
     fig = Figure()
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
@@ -464,9 +476,15 @@ end
     @test_nowarn axislegend()
 end
 
+@testset "Legend with empty element" begin
+    f = Figure()
+    @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
+    @test ReversibleScale(cbrt).inverse(2) == 8
     @test_throws ArgumentError ReversibleScale(x -> log10(x))  # missing inverse scale
     @test_throws ArgumentError ReversibleScale(sqrt, exp10)  # incorrect inverse scale
 end
