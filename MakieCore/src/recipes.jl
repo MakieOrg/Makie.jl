@@ -670,8 +670,12 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 deprecated_attributes(_) = ()
 
 struct InvalidAttributeError <: Exception
-    plottype::Type
+    type::Type
+    object_name::String # Generic name like plot, block
     attributes::Set{Symbol}
+end
+function InvalidAttributeError(::Type{PT}, attributes::Set{Symbol}) where {PT <: Plot}
+    return InvalidAttributeError(PT, "plot", attributes)
 end
 
 function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true, cols = displaysize(io)[2])
@@ -718,26 +722,22 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     return
 end
 
-__obj_name(_) = "plot" 
-__valid_attributes(p) = attribute_names(p) 
-__has_generic_attributes(_) = true 
-
-function Base.showerror(io::IO, i::InvalidAttributeError)
-    n = length(i.attributes)
+function Base.showerror(io::IO, err::InvalidAttributeError)
+    n = length(err.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
-    for (j, att) in enumerate(i.attributes)
-        j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
+    for (j, att) in enumerate(err.attributes)
+        j > 1 && print(io, j == length(err.attributes) ? " and " : ", ")
         printstyled(io, att; color = :red, bold = true)
     end
-    print(io, " for $(__obj_name(i.plottype)) type ")
-    printstyled(io, i.plottype; color = :blue, bold = true)
+    print(io, " for $(err.object_name) type ")
+    printstyled(io, err.type; color = :blue, bold = true)
     println(io, ".")
-    nameset = sort(string.(collect(__valid_attributes(i.plottype))))
+    nameset = sort(string.(collect(attribute_names(err.type))))
     println(io)
-    println(io, "The available $(__obj_name(i.plottype)) attributes for $(i.plottype) are:")
+    println(io, "The available $(err.object_name) attributes for $(err.type) are:")
     println(io)
     print_columns(io, nameset; cols = displaysize(stderr)[2], rows_first = true)
-    if __has_generic_attributes(i.plottype)
+    if err.type isa Plot
         allowlist = attribute_name_allowlist()
         println(io)
         println(io)

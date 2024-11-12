@@ -288,21 +288,23 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
-MakieCore.__obj_name(::Type{<:Block}) = "block"
-function MakieCore.__valid_attributes(T::Type{S}) where {S<:Block}
+function MakieCore.InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
+    return MakieCore.InvalidAttributeError(BT, "block", attributes)
+end
+
+function MakieCore.attribute_names(::Type{T}) where {T <: Block}
     attrs = _attribute_docs(T)
     # Some blocks have keyword arguments that are not attributes.
     # TODO: Refactor intiailize_block! to just not use kwargs?
-    (S <: Axis || S <: PolarAxis) && (attrs[:palette] = "")
-    S <: Legend && (attrs[:entrygroups] = "")
-    S <: Menu && (attrs[:default] = "")
-    S <: LScene && (attrs[:scenekw] = "")
+    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
+    T <: Legend && (attrs[:entrygroups] = "")
+    T <: Menu && (attrs[:default] = "")
+    T <: LScene && (attrs[:scenekw] = "")
     return keys(attrs)
 end
-MakieCore.__has_generic_attributes(::Type{<:Block}) = false
 
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
-    badnames = setdiff(keys(kwdict), MakieCore.__valid_attributes(T))
+    badnames = setdiff(keys(kwdict), MakieCore.attribute_names(T))
     if !isempty(badnames)
         throw(MakieCore.InvalidAttributeError(T, badnames))
     end

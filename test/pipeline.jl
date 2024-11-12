@@ -148,10 +148,7 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie.MakieCore: 
-    __obj_name, 
-    __valid_attributes, 
-    __has_generic_attributes, 
+import Makie.MakieCore:
     InvalidAttributeError,
     attribute_names
 import Makie: _attribute_docs
@@ -183,14 +180,13 @@ end
     @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
 end
 
-@testset "validated attributes for blocks" begin 
-    @test __obj_name(Lines) == "plot"
-    @test __valid_attributes(Lines) == attribute_names(Lines)
-    @test __has_generic_attributes(Lines) 
+@testset "validated attributes for blocks" begin
+    err = InvalidAttributeError(Lines, Set{Symbol}())
+    @test err.object_name == "plot"
 
-    @test __obj_name(Axis) == "block"
-    @test __valid_attributes(Axis3) == keys(_attribute_docs(Axis3))
-    @test !__has_generic_attributes(Axis3)
+    err = InvalidAttributeError(Axis, Set{Symbol}())
+    @test err.object_name == "block"
+    @test attribute_names(Axis3) == keys(_attribute_docs(Axis3))
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
@@ -214,8 +210,8 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test :palette in __valid_attributes(Axis)
-    @test :default in __valid_attributes(Menu)
-    @test :entrygroups in __valid_attributes(Legend)
-    @test :palette in __valid_attributes(PolarAxis)
+    @test :palette in attribute_names(Axis)
+    @test :default in attribute_names(Menu)
+    @test :entrygroups in attribute_names(Legend)
+    @test :palette in attribute_names(PolarAxis)
 end
