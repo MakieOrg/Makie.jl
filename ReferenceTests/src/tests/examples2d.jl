@@ -1668,7 +1668,7 @@ end
         show_notch = true, notchwidth = 0.3,
         notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
         strokewidth = 2, strokecolor = :black,
-        orientation = :horizontal, color = :lightblue
+        orientation = :horizontal, color = (:gray, 0.5)
     )
     fig
 end
