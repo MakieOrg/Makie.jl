@@ -36,10 +36,10 @@ end
     f, a, p = scatter((1:10) .* u"J/s")
     # Don't simplify (assume the user knows better)
     scatter(f[1, 2], (1:10) .* u"K", exp.(1:10) .* u"mm/m^2")
-    # Don't change prefixes (assume the user knows better)
-    scatter(f[2, 1], 10 .^ (1:6) .* u"meV", (1:6) .* 1000 .* u"nm")
-    # Don't change units/prefixes when adding more plots
-    scatter(f[2, 2], (1:10) .* u"mm", (1:10) .* u"g")
-    scatter!((1:10) .* u"m", (1:10) .* u"kg")
+    # Only change prefixes of simple units, not compound units
+    scatter(f[2, 1], 10 .^ (1:6) .* u"W/m^2", (1:6) .* 1000 .* u"nm")
+    # Only change units/prefixes for simple units when adding more plots
+    scatter(f[2, 2], (0:10) .* u"W/m^2", (0:10) .* u"g")
+    scatter!((0:10) .* u"kW/m^2", (0:10) .* u"kg")
     f
 end
