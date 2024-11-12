@@ -174,18 +174,32 @@ function needs_tick_update_observable(conversion::Observable)
     end
 end
 
+"""
+    plot_argument_dimension(::Type{<: Plot}, idx::Int)
+
+Returns an integer representing the dimension of `plot.args[idx]`. This is used
+for to get the relevant dim_converts for plot arguments.
+
+Returns -1 for arguments that do not represent a dimension, 1 for x, 2 for y,
+3 for z.
+"""
+plot_argument_dimension(::Type{<: Plot}, idx::Int) = ifelse(1 <= idx <= 3, idx, -1)
+
+plot_argument_dimension(::Type{<: VLines}, idx::Int) = ifelse(idx == 1, 1, -1)
+plot_argument_dimension(::Type{<: HLines}, idx::Int) = ifelse(idx == 1, 2, -1)
+
 function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
-    # Only 2 and 3d conversions are supported, and only
-    if !(length(args_obs) in (2, 3))
+    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
+    if converts === :already_converted
         return args_obs
     end
-    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
     return ntuple(length(args_obs)) do i
         arg = args_obs[i]
         argval = to_value(arg)
         # We only convert if we have a conversion struct (which isn't NoDimConversion),
         # or if we we should dim_convert
-        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
+        dim_idx = plot_argument_dimension(P, i)
+        if (dim_idx != -1) && (!isnothing(converts[dim_idx]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval))
             return convert_dim_observable(converts, i, arg, deregister)
         end
         return arg

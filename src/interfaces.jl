@@ -395,7 +395,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot!(plot)
 
     conversions = get_conversions(plot)
-    if !isnothing(conversions)
+    if !isnothing(conversions) && (conversions !== :already_converted)
         connect_conversions!(scene.conversions, conversions)
     end
     attr = used_attributes(plot)
