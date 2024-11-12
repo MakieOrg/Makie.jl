@@ -20,12 +20,17 @@ base_unit(x::Period) = base_unit(Quantity(x))
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
 unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
-unit_string(unit::Unitful.FreeUnits) = unit_string(base_unit(unit))
+unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
+
+is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
+is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
+is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
+is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -159,7 +164,18 @@ function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
         imini = min(imini, mini)
         imaxi = max(imaxi, maxi)
     end
-    new_unit = best_unit(imini, imaxi)
+    # If a unit only consists off of one element, e.g. "mm" or "J", try to find
+    # the best prefix. Otherwise (e.g. "kg/m^3") use the unit as is and don't
+    # change it.
+    if is_compound_unit(imini)
+        if conversion.unit[] === automatic
+            new_unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
+        else
+            return
+        end
+    else
+        new_unit = best_unit(imini, imaxi)
+    end
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
     end
@@ -170,6 +186,7 @@ needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
+    # TODO: convert this to a nicer rich text string
     unit_str = unit_string(unit)
     tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
