@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
+- Fix `colorbuffer(axis)` for `px_per_unit != 1` [#4574](https://github.com/MakieOrg/Makie.jl/pull/4574).
 
 ## [0.21.16] - 2024-11-06
 
