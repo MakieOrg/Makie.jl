@@ -183,15 +183,28 @@ end
 
 needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
 
+# TODO: Convert the unit to rich text arguments instead of parsing the string
+# TODO: Could also consider UnitfulLatexify?
+function unit_string_to_rich(str::String)
+    chunks = split(str, '^')
+    output = Any[string(chunks[1])]
+    for chunk in chunks[2:end] # each chunk starts after a ^
+        pieces = split(chunk, ' ')
+        push!(output, superscript(string(pieces[1]))) # pieces[1] is immediately after ^
+        push!(output, join(pieces[2:end])) # rest is before the next ^
+    end
+    return rich(output...)
+end
+
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
-    # TODO: convert this to a nicer rich text string
     unit_str = unit_string(unit)
+    rich_unit_str = unit_string_to_rich(unit_str)
     tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
     if conversion.units_in_label[]
-        labels = labels .* unit_str
+        labels = map(lbl -> rich(lbl, rich_unit_str), labels)
     end
     return tick_vals, labels
 end
