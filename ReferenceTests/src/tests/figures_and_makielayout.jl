@@ -306,19 +306,19 @@ end
     f
 end
 
-@reference_test "Axis3 viewmode x xreversed x aspect" begin
-    fig = Figure(size = (1200, 900))
+@reference_test "Axis3 viewmodes * xreversed * aspect * perspectiveness" begin
+    fig = Figure(size = (800, 1200))
 
     protrusions = (40, 30, 20, 10)
-    perspectiveness = 0.0
+    perspectiveness = Observable(0.0)
     m = load(Makie.assetpath("cat.obj"))
     cs = 1:length(Makie.coordinates(m))
 
     for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
         gl = GridLayout(fig[by, bx])
-        Label(gl[0, 1:3], "viewmode = $viewmode")
-        for (x, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
-            for (y, rev) in enumerate((true, false))
+        Label(gl[0, 1:2], "viewmode = $viewmode")
+        for (x, rev) in enumerate((true, false))
+            for (y, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
                 ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
                     protrusions = protrusions, perspectiveness = perspectiveness)
                 mesh!(ax, m, color = cs)
@@ -338,6 +338,12 @@ end
     end
 
     fig
+
+    st = Stepper(fig)
+    Makie.step!(st)
+
+    perspectiveness[] = 1.0
+    Makie.step!(st)
 end
 
 @reference_test "Colorbar for recipes" begin
