@@ -211,7 +211,7 @@ function positivize(r::Rect2)
     return Rect2(newori, newwidths)
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Union{Axis, Axis3})
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -389,33 +389,41 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     else
         xyz_translate = (x_translate, y_translate, z_translate)
     end
-    
-    #=
-    # Faster but less acurate (dependent on aspect ratio)
-    scene_area = viewport(ax.scene)[]
-    relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
-
-    # Get u_x (screen right direction) and u_y (screen up direction)
-    u_z = ax.scene.camera.view_direction[]
-    u_y = ax.scene.camera.upvector[]
-    u_x = cross(u_z, u_y)
-
-    translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
-    =#
-
-    # Slower but more accurate
-    model = ax.scene.transformation.model[]
-    world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
-    # make plane_normal perpendicular to the allowed trnaslation directions
-    allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
-    plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
-    p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
-    p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
-    delta = p1 - p0
-    translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
 
     # Perform translation
-    tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    if ax.viewmode[] == :free
+
+        ws = widths(ax.layoutobservables.computedbbox[])
+        ax.lookat[] -= to_ndim(Vec3d, 2 .* (event.px - event.prev_px) ./ ws, 0) .* xyz_translate
+
+    else
+        #=
+        # Faster but less acurate (dependent on aspect ratio)
+        scene_area = viewport(ax.scene)[]
+        relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
+
+        # Get u_x (screen right direction) and u_y (screen up direction)
+        u_z = ax.scene.camera.view_direction[]
+        u_y = ax.scene.camera.upvector[]
+        u_x = cross(u_z, u_y)
+
+        translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+        =#
+
+        # Slower but more accurate
+        model = ax.scene.transformation.model[]
+        world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
+        # make plane_normal perpendicular to the allowed trnaslation directions
+        # allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+        # plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+        plane = Plane3f(world_center, ax.scene.camera.view_direction[])
+        p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
+        p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
+        delta = p1 - p0
+
+        translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+        tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    end
 
     return Consume(true)
 end
@@ -459,7 +467,7 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
         if plot !== nothing
             n = findfirst(==(plot), ax.scene.plots)
             if !isnothing(n) && (n > 9) # user plot
-                pos = position_on_plot(plot, idx, ray, apply_transform = true) 
+                pos = position_on_plot(plot, idx, ray, apply_transform = true)
                 # ^ applying transform also applies model transform so we stay in world space for this
             end
         end
@@ -481,10 +489,31 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 
     # Perform zoom
     zoom_mult = (1f0 - interaction.speed)^zoom
-    mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
-    maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
-    tlimits[] = Rect3f(mini, maxi - mini)
+
+    if ax.viewmode[] == :free
+        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+    else
+        mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+        maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+        tlimits[] = Rect3f(mini, maxi - mini)
+    end
 
     # NOTE this might be problematic if we add scrolling to something like Menu
     return Consume(true)
+end
+
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
+
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            ax.zoom_mult[] = 1.0
+            ax.lookat[] = Vec3d(0)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            end
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
 end

@@ -130,6 +130,9 @@ from `eyeposition` to `lookat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
 function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+    return lookat_basis(eyePos, lookAt, up) * translationmatrix(-eyePos)
+end
+function lookat_basis(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
     zaxis  = normalize(eyePos-lookAt)
     xaxis  = normalize(cross(up,    zaxis))
     yaxis  = normalize(cross(zaxis, xaxis))
@@ -139,7 +142,7 @@ function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
         T0,       T0,       T0,       T1
-    ) * translationmatrix(-eyePos)
+    )
 end
 
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
@@ -240,8 +243,8 @@ end
 
 Decomposes a transformation matrix into a translation vector, scale vector and
 rotation Quaternion. Note that this is only valid for a transformation matrix
-created with matching order, i.e. 
-`transform = translation_matrix * scale_matrix * rotation_matrix`. The model 
+created with matching order, i.e.
+`transform = translation_matrix * scale_matrix * rotation_matrix`. The model
 matrix created by `Transformation` is one such matrix.
 """
 function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
@@ -285,9 +288,9 @@ end
 """
     decompose_translation_scale_matrix(transform::Mat4)
 
-Like `decompose_translation_scale_rotation_matrix(transform)` but skips the 
+Like `decompose_translation_scale_rotation_matrix(transform)` but skips the
 extraction of the rotation component. This still works if a rotation is involved
-and requires the same order of operations, i.e. 
+and requires the same order of operations, i.e.
 `transform = translation_matrix * scale_matrix * rotation_matrix`.
 """
 function decompose_translation_scale_matrix(model::Mat4{T}) where T

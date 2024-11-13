@@ -306,6 +306,40 @@ end
     f
 end
 
+@reference_test "Axis3 viewmode x xreversed x aspect" begin
+    fig = Figure(size = (1200, 900))
+
+    protrusions = (40, 30, 20, 10)
+    perspectiveness = 0.0
+    m = load(Makie.assetpath("cat.obj"))
+    cs = 1:length(Makie.coordinates(m))
+
+    for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
+        gl = GridLayout(fig[by, bx])
+        Label(gl[0, 1:3], "viewmode = $viewmode")
+        for (x, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
+            for (y, rev) in enumerate((true, false))
+                ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
+                    protrusions = protrusions, perspectiveness = perspectiveness)
+                mesh!(ax, m, color = cs)
+
+                # for debug purposes
+                ax.scene.clear = true
+                ax.scene.backgroundcolor[] = RGBAf(1,0.8,0.6, 1.0)
+                lines!(fig.scene, ax.layoutobservables.computedbbox, color = (:blue, 0.5), linestyle = :dash)
+                fullarea = lift(ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+                    mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+                    maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+                    return Rect2f(mini, maxi - mini)
+                end
+                lines!(fig.scene, fullarea, color = :red)
+            end
+        end
+    end
+
+    fig
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)
@@ -459,31 +493,31 @@ end
 @reference_test "Button - Slider - Toggle - Textbox" begin
     f = Figure(size = (500, 250))
     Makie.Button(f[1, 1:2])
-    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20, 
+    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20,
         strokecolor = :red, strokewidth = 2, # TODO: allocate space for this
         fontsize = 16, labelcolor = :blue)
 
     IntervalSlider(f[1, 3])
-    sl = IntervalSlider(f[2, 3], range = 0:100, linewidth = 20, 
+    sl = IntervalSlider(f[2, 3], range = 0:100, linewidth = 20,
         color_inactive = :orange, color_active_dimmed = :lightgreen)
     Makie.set_close_to!(sl, 30, 70)
 
     Toggle(f[3, 1])
     Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
     Toggle(f[3, 2], active = true)
-    Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue, 
+    Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue,
         framecolor_active = :yellow, rimfraction = 0.6)
 
     Makie.Slider(f[3, 3])
-    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan, 
+    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan,
         color_active_dimmed = :lightgreen)
     Makie.set_close_to!(sl, 30)
 
     gl = GridLayout(f[5, 1:3])
     Textbox(gl[1, 1])
-    Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0, 
+    Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0,
         placeholder = "test string", fontsize = 16, textcolor_placeholder = :blue)
-    tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20, 
+    tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20,
         fontsize =10, textcolor = :red, boxcolor = :lightblue)
     Makie.set!(tb, "some string")
 

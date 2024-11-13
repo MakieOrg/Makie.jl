@@ -1554,6 +1554,8 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
+    lookat::Observable{Vec3d}
+    zoom_mult::Observable{Float64}
     @attributes begin
         """
         Global state for the x dimension conversion.

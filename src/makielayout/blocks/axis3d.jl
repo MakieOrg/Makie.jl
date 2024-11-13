@@ -12,29 +12,19 @@ function initialize_block!(ax::Axis3)
     finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
     setfield!(ax, :finallimits, finallimits)
 
-    scenearea = lift(round_to_IRect2D, blockscene, ax.layoutobservables.computedbbox)
+    scenearea = lift(blockscene, ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+        mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+        maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+        return round_to_IRect2D(Rect2f(mini, maxi - mini))
+    end
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
     cam = Axis3Camera()
     cameracontrols!(scene, cam)
-    scene.theme.clip_planes = map(
-            scene, scene.transformation.model, ax.finallimits,
-            ax.xreversed, ax.yreversed, ax.zreversed
-            ) do model, lims, xrev, yrev, zrev
-        mini = Point3f(model * to_ndim(Point4f, minimum(lims), 1))
-        maxi = Point3f(model * to_ndim(Point4f, maximum(lims), 1))
-        x = ifelse(xrev, -1f0, 1f0)
-        y = ifelse(yrev, -1f0, 1f0)
-        z = ifelse(zrev, -1f0, 1f0)
-        return [
-            Plane3f(Vec3f( x,  0,  0),  x * mini[1]),
-            Plane3f(Vec3f( 0,  y,  0),  y * mini[2]),
-            Plane3f(Vec3f( 0,  0,  z),  z * mini[3]),
-            Plane3f(Vec3f(-x,  0,  0), -x * maxi[1]),
-            Plane3f(Vec3f( 0, -y,  0), -y * maxi[2]),
-            Plane3f(Vec3f( 0,  0, -z), -z * maxi[3])
-        ]
+    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
+        _planes = planes(lims)
+        return apply_transform.(Ref(model), _planes)
     end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
@@ -56,19 +46,23 @@ function initialize_block!(ax::Axis3)
         return
     end
 
-    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed)
+    setfield!(ax, :lookat, Observable(Vec3d(0)))
+    setfield!(ax, :zoom_mult, Observable(1.0))
 
-    on(scene, matrices) do (model, view, proj, eyepos)
+    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions, ax.elevation, ax.azimuth,
+                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
+                    ax.zoom_mult, ax.lookat)
+
+    on(scene, matrices) do (model, view, proj, lookat, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
-        cam.eyeposition[] = eyepos
-        viewdir = -normalize(eyepos)
+
+        viewdir = normalize(lookat - eyepos)
         up = Vec3d(0, 0, 1)
-        lookat = Vec3d(0)
-        u_z = normalize(eyepos .- lookat)
+        u_z = -viewdir
         u_x = normalize(cross(up, u_z))
+        cam.eyeposition[] = eyepos
         cam.upvector[] = cross(u_z, u_x)
         cam.view_direction[] = viewdir
     end
@@ -106,7 +100,7 @@ function initialize_block!(ax::Axis3)
     zticks, zticklabels, zlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
-    titlepos = lift(scene, scene.viewport, ax.titlegap, ax.titlealign) do a, titlegap, align
+    titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
@@ -189,8 +183,8 @@ function initialize_block!(ax::Axis3)
     return
 end
 
-function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed)
+function calculate_matrices(limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
+    viewmode, xreversed, yreversed, zreversed, zoom_mult, offset)
 
     ori = limits.origin
     ws = widths(limits)
@@ -210,84 +204,112 @@ function calculate_matrices(limits, viewport, elev, azim, perspectiveness, aspec
 
     ws = widths(limits)
 
-    t = Makie.translationmatrix(-Float64.(limits.origin))
-    s = if aspect === :equal
+    if aspect === :equal
         scales = 2 ./ Float64.(ws)
     elseif aspect === :data
-        scales = 2 ./ max.(maximum(ws), Float64.(ws))
+        scales = 2 .* sign.(ws) ./ max.(maximum(ws), Float64.(ws))
     elseif aspect isa VecTypes{3}
         scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
     else
         error("Invalid aspect $aspect")
-    end |> Makie.scalematrix
+    end
 
-    t2 = Makie.translationmatrix(-0.5 .* ws .* scales)
-    model = t2 * s * t
+    # center and scale axis bbox so that the longest side is -1..1
+    # then rotate (and permute axes) according to azimuth and elevation
+    model =
+        translationmatrix(-0.5 .* ws .* scales) *
+        scalematrix(scales) *
+        translationmatrix(-Float64.(limits.origin))
 
     ang_max = 90
     ang_min = 0.5
 
     @assert 0 <= perspectiveness <= 1
 
-    angle = ang_min + (ang_max - ang_min) * perspectiveness
+    fov = ang_min + (ang_max - ang_min) * perspectiveness
 
     # vFOV = 2 * Math.asin(sphereRadius / distance);
     # distance = sphere_radius / Math.sin(vFov / 2)
 
-    # radius = sqrt(3) / tand(angle / 2)
-    radius = sqrt(3) / sind(angle / 2)
+    radius = zoom_mult * sqrt(3) / sind(fov / 2)
 
-    x = radius * cos(elev) * cos(azim)
-    y = radius * cos(elev) * sin(azim)
-    z = radius * sin(elev)
+    camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
+    eyepos = radius * camdir
 
-    eyepos = Vec3{Float64}(x, y, z)
+    if viewmode == :free
+        up = Vec3d(0, 0, 1)
+        u_z = camdir
+        u_x = normalize(cross(up, u_z))
+        u_y = cross(u_z, u_x)
 
-    lookat_matrix = lookat(eyepos, Vec3{Float64}(0), Vec3{Float64}(0, 0, 1))
+        lookat = zoom_mult * sqrt(3) * (offset[1] * u_x + offset[2] * u_y)
+        eyepos += lookat
+        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
+    else
+        lookat = Vec3d(0)
+        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
+    end
 
     w = width(viewport)
     h = height(viewport)
 
     projection_matrix = projectionmatrix(
-        lookat_matrix * model, limits, eyepos, radius, azim, elev, angle,
-        w, h, scales, viewmode)
+        lookat_matrix * model, limits, radius, fov,
+        w, h, to_protrusions(protrusions), viewmode)
 
-    return model, lookat_matrix, projection_matrix, eyepos
+    return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, eyepos, radius, azim, elev, angle, width, height, scales, viewmode)
-    near = 0.5 * (radius - sqrt(3))
-    far = radius + 2 * sqrt(3)
+function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode)
+    # model normalizes the the longest axis of the axis bbox to -1..1, so its
+    # bounding sphere has a radius of sqrt(3)
+    # The distance of the camera to the center of the bounding sphere is "radius"
+    near = max(1e-9,              radius - sqrt(3))
+    far  = max((1 + 1e-4) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
 
-    projection_matrix = if viewmode in (:fit, :fitzoom, :stretch)
+    projection_matrix = if viewmode in (:free, :fit, :fitzoom, :stretch)
         if height > width
-            angle = angle / aspect_ratio
+            fov = fov / aspect_ratio
         end
 
-        pm = Makie.perspectiveprojection(Float64, angle, aspect_ratio, near, far)
+        # this transforms w.r.t scene viewport, i.e. protrusions are not yet
+        # included
+        pm = Makie.perspectiveprojection(Float64, fov, aspect_ratio, near, far)
+
+        # protrusions shrink the effective viewport which causes clip space
+        # coordinates in the real viewport to grow
+        dx = (protrusions.left - protrusions.right) / width
+        dy = (protrusions.bottom - protrusions.top) / height
+        w = (width - protrusions.left - protrusions.right)
+        h = (height - protrusions.bottom - protrusions.top)
 
         if viewmode in (:fitzoom, :stretch)
+            # coordinates of axis rect w.r.t real viewport
             points = decompose(Point3f, limits)
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
 
-            maxx = maximum(x -> abs(x[1] / x[4]), projpoints)
-            maxy = maximum(x -> abs(x[2] / x[4]), projpoints)
+            # convert to effective viewport
+            w = w/width; h = h/height
+            maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
+            maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
 
-            ratio_x = maxx
-            ratio_y = maxy
+            # normalization to map max x/y to 1 in effective viewport
+            ratio_x = 1.0 / maxx
+            ratio_y = 1.0 / maxy
 
             if viewmode === :fitzoom
-                if ratio_y > ratio_x
-                    pm = Makie.scalematrix(Vec3(1/ratio_y, 1/ratio_y, 1)) * pm
-                else
-                    pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_x, 1)) * pm
-                end
+                s = min(ratio_x, ratio_y)
+                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(s, s, 1)) * pm
             else
-                pm = Makie.scalematrix(Vec3(1/ratio_x, 1/ratio_y, 1)) * pm
+                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3(ratio_x, ratio_y, 1)) * pm
             end
+        else
+            wh = min(w, h) / min(width, height) # works for :fit
+            pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(wh, wh, 1)) * pm
         end
+
         pm
     else
         error("Invalid viewmode $viewmode")
@@ -444,16 +466,17 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
-        # we are going to transform the 3d frame points into 2d of the topscene
-        # because otherwise the frame lines can
-        # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        # Not projecting here causes alignment (and render order?) issues with
+        # ticks, probably due to float precision differences.
+        map([p1, p2, p3, p4, p5, p6]) do p
+            return Point3f(project(scene, p)..., -10_000)
+        end
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
-        # transparency = true,
-        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false)
+    framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        xautolimits = false, yautolimits = false, zautolimits = false, transparency = false,
+        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false, space = :pixel)
 
     return gridline1, gridline2, framelines
 end
@@ -484,7 +507,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     ticksize = attr(:ticksize)
 
-    tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
+    tick_segments = lift(scene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
                 pview, pxa, tsize, xrev, yrev, zrev
 
@@ -500,8 +523,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        o = pxa.origin
-
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
@@ -515,35 +536,22 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
                 dpoint(t, f1 + diff_f1, f2)
             end
 
-            pp1 = Point2f(o + Makie.project(scene, p1))
-            pp2 = Point2f(o + Makie.project(scene, p2))
+            pp1 = Point2f(Makie.project(scene, p1))
+            pp2 = Point2f(Makie.project(scene, p2))
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
          end
     end
-    # we are going to transform the 3d tick segments into 2d of the topscene
-    # because otherwise they
-    # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.viewport) do ts, _, _
-        map(ts) do p1_p2
-            to_topscene_z_2d.(p1_p2, Ref(scene))
-        end
-    end
 
-    ticks = linesegments!(topscene, tick_segments,
+    ticks = linesegments!(scene, tick_segments, space = :pixel,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false, clip_planes = Plane3f[],
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
-    translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
-    map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
+    map!(scene, labels_positions, scene.viewport, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
-
-        o = pxa.origin
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -564,7 +572,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels_text = text!(topscene, labels_positions, align = align,
+    ticklabels_text = text!(scene, labels_positions, align = align, space = :pixel,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize), clip_planes = Plane3f[],
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
@@ -579,8 +587,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
-
-        o = pxa.origin
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -597,8 +603,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(o + Makie.project(scene, p1))
-        pp2 = Point2f(o + Makie.project(scene, p2))
+        pp1 = Point2f(Makie.project(scene, p1))
+        pp2 = Point2f(Makie.project(scene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
@@ -652,8 +658,10 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(topscene, label_position,
-        text = attr(:label), clip_planes = Plane3f[],
+    label = text!(scene, label_position,
+        space = :pixel, clip_planes = Plane3f[],
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        text = attr(:label),
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
