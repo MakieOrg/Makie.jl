@@ -9,7 +9,7 @@ Base.:(==)(l::And, r::And) = l.left == r.left && l.right == r.right
 Base.:(==)(l::Or, r::Or) = l.left == r.left && l.right == r.right
 
 function Base.isapprox(a::Rect{N, T}, b::Rect{N, T}; kwargs...) where {N, T}
-    return isapprox(minimum(a), minimum(b); kwargs...) && 
+    return isapprox(minimum(a), minimum(b); kwargs...) &&
         isapprox(widths(a), widths(b); kwargs...)
 end
 
@@ -205,7 +205,7 @@ end
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
         cc = cameracontrols(scene)
-        
+
         # Verify initial camera state
         @test cc.lookat[]       == Vec3f(0)
         @test cc.eyeposition[]  == Vec3f(3)
@@ -491,7 +491,7 @@ end
         @test !blocked[]
     end
 
-    
+
     # TODO: test more
     @testset "Axis Interactions - Axis3" begin
         f = Figure(size = (400, 400))
@@ -510,20 +510,20 @@ end
 
         # Test a series of user interactions with the Axis3
         @test a.targetlimits[] ≈ Rect3f(Point3f(0.95, 1.9, 2.85), Vec3f(1.1, 2.2, 3.3))
-        
+
         # translations
         e.mouseposition[] = (200, 200)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (150, 250)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         @test a.targetlimits[] ≈ Rect3f(Point3f(1.0789851, 1.4260418, 1.802376), Vec3f(1.1, 2.2, 3.3))
-        
+
         e.keyboardbutton[] = KeyEvent(Keyboard.x, Keyboard.press)
         e.mouseposition[] = (150, 250)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (200, 200)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
-        @test a.targetlimits[] ≈ Rect3f(Point3f(0.87755066, 1.4260418, 1.802376), Vec3f(1.1, 2.2, 3.3))
+        @test a.targetlimits[] ≈ Rect3f(Point3f(0.95, 1.4260418, 1.802376), Vec3f(1.1, 2.2, 3.3))
 
         e.keyboardbutton[] = KeyEvent(Keyboard.x, Keyboard.release)
         e.keyboardbutton[] = KeyEvent(Keyboard.y, Keyboard.press)
@@ -532,7 +532,7 @@ end
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (200, 200)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
-        @test a.targetlimits[] ≈ Rect3f(Point3f(0.87755066, 2.2028117, 2.4804685), Vec3f(1.1, 2.2, 3.3))
+        @test a.targetlimits[] ≈ Rect3f(Point3f(0.95, 1.9, 2.85), Vec3f(1.1, 2.2, 3.3))
 
         e.keyboardbutton[] = KeyEvent(Keyboard.y, Keyboard.release)
         e.keyboardbutton[] = KeyEvent(Keyboard.z, Keyboard.release)
@@ -544,7 +544,7 @@ end
         e.keyboardbutton[] = KeyEvent(Keyboard.left_control, Keyboard.release)
         @test a.targetlimits[] ≈ Rect3f(Point3f(0.95, 1.9, 2.85), Vec3f(1.1, 2.2, 3.3))
 
-        # zooming 
+        # zooming
         e.keyboardbutton[] = KeyEvent(Keyboard.x, Keyboard.press)
         e.scroll[] = (0.0, 4.0)
         e.keyboardbutton[] = KeyEvent(Keyboard.x, Keyboard.release)

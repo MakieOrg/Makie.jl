@@ -548,6 +548,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false, clip_planes = Plane3f[],
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
+    # move ticks behind plots
+    translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
     map!(scene, labels_positions, scene.viewport, scene.camera.projectionview,

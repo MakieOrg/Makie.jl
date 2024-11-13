@@ -306,7 +306,7 @@ end
     f
 end
 
-@reference_test "Axis3 viewmodes * xreversed * aspect * perspectiveness" begin
+@reference_test "Axis3 viewmodes, xreversed, aspect, perspectiveness" begin
     fig = Figure(size = (800, 1200))
 
     protrusions = (40, 30, 20, 10)
