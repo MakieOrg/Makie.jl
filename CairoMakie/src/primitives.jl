@@ -730,14 +730,14 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
     if xs isa Makie.EndPoints
-        l, r = extrema(xs)
+        l, r = xs
         N = size(image, 1)
         xs = range(l, r, length = N+1)
     else
         xs = regularly_spaced_array_to_range(xs)
     end
     if ys isa Makie.EndPoints
-        l, r = extrema(ys)
+        l, r = ys
         N = size(image, 2)
         ys = range(l, r, length = N+1)
     else
@@ -908,11 +908,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
+    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -928,7 +928,7 @@ end
 function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
 
     ctx = screen.context
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
@@ -943,9 +943,9 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1...)
-        Cairo.mesh_pattern_line_to(pattern, t2...)
-        Cairo.mesh_pattern_line_to(pattern, t3...)
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -984,7 +984,7 @@ function draw_mesh3D(
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
@@ -1253,7 +1253,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    
+    # Face culling
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
+        pos = pos[valid]
+        colors = colors[valid]
+    end
 
     # For correct z-ordering we need to be in view/camera or screen space
     model = copy(primitive.model[])
@@ -1271,7 +1278,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = Plane3f[]
     )
 
     for i in zorder

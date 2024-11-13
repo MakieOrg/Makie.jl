@@ -29,12 +29,6 @@ between each.
 
 # Keywords
 
-## Violin/Histogram Plot Specific Keywords
-
-## Scatter Plot Specific Keywords
-- `side_nudge`: Default value is 0.02 if `plot_boxplots` is true, otherwise `0.075` default.
-- `jitter_width=0.05`: Determines the width of the scatter-plot bar in category x-axis
-  absolute terms.
 """
 @recipe RainClouds (category_labels, data_array) begin
     """
@@ -116,6 +110,14 @@ between each.
     If `clouds=hist`, this passes down the number of bins to the histogram call.
     """
     hist_bins = 30
+    """
+    Scatter plot specific.  Default value is 0.02 if `plot_boxplots` is true, otherwise `0.075` default.
+    """
+    side_nudge = automatic
+    """
+     Determines the width of the scatter-plot bar in category x-axis absolute terms.
+    """
+    jitter_width = 0.05
 
     """
     A single color, or a vector of colors, one for each point.
@@ -190,7 +192,7 @@ end
 
 function ungroup_labels(category_labels, data_array)
     if eltype(data_array) <: AbstractVector
-        @warn "Using a nested array for raincloud is deprected. Read raincloud's documentation and update your usage accordingly."
+        @warn "Using a nested array for raincloud is deprecated. Read raincloud's documentation and update your usage accordingly."
         data_array_ = reduce(vcat, data_array)
         category_labels_ = similar(category_labels, length(data_array_))
         ix = 0
@@ -246,12 +248,11 @@ function plot!(plot::RainClouds)
 
     # Scatter Plot defaults dependent on if there is a boxplot
     side_scatter_nudge_default = plot_boxplots ? 0.2 : 0.075
-    jitter_width_default = 0.05
 
     # Scatter Plot Settings
-    side_scatter_nudge = to_value(get(plot, :side_nudge, side_scatter_nudge_default))
+    side_scatter_nudge = plot.side_nudge[] isa Makie.Automatic ? side_scatter_nudge_default : plot.side_nudge[]
     side_scatter_nudge < 0 && ArgumentError("`side_nudge` should be positive. Change `side` to :left, :right if you wish.")
-    jitter_width = abs(to_value(get(plot, :jitter_width, jitter_width_default)))
+    jitter_width = plot.jitter_width[]
     jitter_width < 0 && ArgumentError("`jitter_width` should be positive.")
     markersize = plot.markersize[]
 

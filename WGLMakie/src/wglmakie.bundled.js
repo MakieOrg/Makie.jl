@@ -20196,14 +20196,24 @@ function getErrorMessage(version) {
     return element;
 }
 function typedarray_to_vectype(typedArray, ndim) {
-    if (ndim === 1) {
-        return "float";
-    } else if (typedArray instanceof Float32Array) {
-        return "vec" + ndim;
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
     } else if (typedArray instanceof Int32Array) {
-        return "ivec" + ndim;
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
     } else if (typedArray instanceof Uint32Array) {
-        return "uvec" + ndim;
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
     } else {
         return;
     }
@@ -21022,13 +21032,18 @@ function attach_3d_camera(canvas, makie_camera, cam3d, light_dir, scene) {
     controls.target0 = center.clone();
     scene.orbitcontrols = controls;
     controls.addEventListener("change", (e)=>{
-        const view = camera.matrixWorldInverse;
-        const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
-        const [x, y, z] = camera.position;
+        const position = camera.position;
+        const lookat = controls.target;
+        const [x, y, z] = position;
+        const dist = position.distanceTo(lookat);
         camera.aspect = width / height;
+        camera.near = dist * 0.1;
+        camera.far = dist * 5;
         camera.updateProjectionMatrix();
         camera.updateWorldMatrix();
+        const view = camera.matrixWorldInverse;
+        const projection = camera.projectionMatrix;
         makie_camera.update_matrices(view.elements, projection.elements, [
             width,
             height
@@ -21195,7 +21210,26 @@ class MakieCamera {
         }
     }
 }
-const scene_cache = {};
+function update_uniform(uniform, new_value) {
+    if (uniform.value.isTexture) {
+        const im_data = uniform.value.image;
+        const [size, tex_data] = new_value;
+        if (tex_data.length == im_data.data.length) {
+            im_data.data.set(tex_data);
+        } else {
+            const old_texture = uniform.value;
+            uniform.value = re_create_texture(old_texture, tex_data, size);
+            old_texture.dispose();
+        }
+        uniform.value.needsUpdate = true;
+    } else {
+        if (is_three_fixed_array(uniform.value)) {
+            uniform.value.fromArray(new_value);
+        } else {
+            uniform.value = new_value;
+        }
+    }
+}
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
     keys.forEach((key)=>{
@@ -21206,117 +21240,6 @@ function filter_by_key(dict, keys, default_value = false) {
             result[key] = default_value;
         }
     });
-    return result;
-}
-const plot_cache = {};
-const TEXTURE_ATLAS = [
-    undefined
-];
-function add_scene(scene_id, three_scene) {
-    scene_cache[scene_id] = three_scene;
-}
-function find_scene(scene_id) {
-    return scene_cache[scene_id];
-}
-function delete_scene(scene_id) {
-    const scene = scene_cache[scene_id];
-    if (!scene) {
-        return;
-    }
-    delete_three_scene(scene);
-    while(scene.children.length > 0){
-        scene.remove(scene.children[0]);
-    }
-    delete scene_cache[scene_id];
-}
-function find_plots(plot_uuids) {
-    const plots = [];
-    plot_uuids.forEach((id)=>{
-        const plot = plot_cache[id];
-        if (plot) {
-            plots.push(plot);
-        }
-    });
-    return plots;
-}
-function delete_scenes(scene_uuids, plot_uuids) {
-    plot_uuids.forEach((plot_id)=>{
-        const plot = plot_cache[plot_id];
-        if (plot) {
-            delete_plot(plot);
-        }
-    });
-    scene_uuids.forEach((scene_id)=>{
-        delete_scene(scene_id);
-    });
-}
-function insert_plot(scene_id, plot_data) {
-    const scene = find_scene(scene_id);
-    plot_data.forEach((plot)=>{
-        add_plot(scene, plot);
-    });
-}
-function delete_plots(plot_uuids) {
-    const plots = find_plots(plot_uuids);
-    plots.forEach(delete_plot);
-}
-function convert_texture(scene, data) {
-    const tex = create_texture(scene, data);
-    tex.needsUpdate = true;
-    tex.minFilter = mod[data.minFilter];
-    tex.magFilter = mod[data.magFilter];
-    tex.anisotropy = data.anisotropy;
-    tex.wrapS = mod[data.wrapS];
-    if (data.size.length > 1) {
-        tex.wrapT = mod[data.wrapT];
-    }
-    if (data.size.length > 2) {
-        tex.wrapR = mod[data.wrapR];
-    }
-    return tex;
-}
-function is_three_fixed_array(value) {
-    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
-}
-function to_uniform(scene, data) {
-    if (data.type !== undefined) {
-        if (data.type == "Sampler") {
-            return convert_texture(scene, data);
-        }
-        throw new Error(`Type ${data.type} not known`);
-    }
-    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
-        if (!data.every((x)=>typeof x === "number")) {
-            return data;
-        }
-        if (data.length == 2) {
-            return new mod.Vector2().fromArray(data);
-        }
-        if (data.length == 3) {
-            return new mod.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new mod.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new mod.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
-    }
-    return data;
-}
-function deserialize_uniforms(scene, data) {
-    const result = {};
-    for(const name in data){
-        const value = data[name];
-        if (value instanceof mod.Uniform) {
-            result[name] = value;
-        } else {
-            const ser = to_uniform(scene, value);
-            result[name] = new mod.Uniform(ser);
-        }
-    }
     return result;
 }
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
@@ -21473,7 +21396,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -21920,7 +21843,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -22286,37 +22209,20 @@ function lines_fragment_shader(uniforms, attributes) {
     }
     `;
 }
-function create_line_material(scene, uniforms, attributes, is_linesegments) {
-    const uniforms_des = deserialize_uniforms(scene, uniforms);
-    const mat = new THREE.RawShaderMaterial({
-        uniforms: uniforms_des,
-        glslVersion: THREE.GLSL3,
-        vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
-        fragmentShader: lines_fragment_shader(uniforms_des, attributes),
-        transparent: true,
-        blending: THREE.CustomBlending,
-        blendSrc: THREE.SrcAlphaFactor,
-        blendDst: THREE.OneMinusSrcAlphaFactor,
-        blendSrcAlpha: THREE.ZeroFactor,
-        blendDstAlpha: THREE.OneFactor,
-        blendEquation: THREE.AddEquation
-    });
-    mat.uniforms.object_id = {
-        value: 1
-    };
-    return mat;
+function create_line(scene, line_data) {
+    return _create_line(scene, line_data, false);
 }
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
-    const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
-    buffer.count = Math.max(0, is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3);
-    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
-    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim));
+    const buffer1 = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
+    buffer1.count = Math.max(0, is_segments ? Math.floor(buffer1.count - 1) : buffer1.count - 3);
+    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer1, ndim, ndim));
+    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer1, ndim, 2 * ndim));
     if (is_position) {
-        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
-        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim));
+        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer1, ndim, 0));
+        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer1, ndim, 3 * ndim));
     }
-    return buffer;
+    return buffer1;
 }
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
@@ -22388,115 +22294,273 @@ function _create_line(scene, line_data, is_segments) {
     attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
-function create_line(scene, line_data) {
-    return _create_line(scene, line_data, false);
-}
 function create_linesegments(scene, line_data) {
     return _create_line(scene, line_data, true);
 }
-function deserialize_plot(scene, data) {
-    let mesh;
-    const update_visible = (v)=>{
-        mesh.visible = v;
+class Plot {
+    mesh = undefined;
+    parent = undefined;
+    uuid = "";
+    name = "";
+    is_instanced = false;
+    geometry_needs_recreation = false;
+    plot_data = {};
+    constructor(scene, data){
+        this.plot_data = data;
+        connect_plot(scene, this);
+        if (data.plot_type === "lines") {
+            this.mesh = create_line(scene, this.plot_data);
+        } else if (data.plot_type === "linesegments") {
+            this.mesh = create_linesegments(scene, this.plot_data);
+        } else if ("instance_attributes" in data) {
+            this.is_instanced = true;
+            this.mesh = create_instanced_mesh(scene, this.plot_data);
+        } else {
+            this.mesh = create_mesh(scene, this.plot_data);
+        }
+        this.name = data.name;
+        this.uuid = data.uuid;
+        this.mesh.plot_uuid = data.uuid;
+        this.mesh.frustumCulled = false;
+        this.mesh.matrixAutoUpdate = false;
+        this.mesh.renderOrder = data.zvalue;
+        data.uniform_updater.on(([name, data])=>{
+            this.update_uniform(name, data);
+        });
+        if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
+            connect_attributes(this.mesh, data.attribute_updater);
+        }
+        this.parent = scene;
+        this.mesh.plot_object = this;
+        this.mesh.visible = data.visible.value;
+        data.visible.on((v)=>{
+            this.mesh.visible = v;
+        });
+    }
+    move_to(scene) {
+        if (scene === this.parent) {
+            return;
+        }
+        this.parent.remove(this.mesh);
+        connect_plot(scene, this);
+        scene.add(this.mesh);
+        this.parent = scene;
         return;
+    }
+    update(attributes) {
+        attributes.keys().forEach((key)=>{
+            const value = attributes[key];
+            if (value.type == "uniform") {
+                this.update_uniform(key, value.data);
+            } else if (value.type === "geometry") {
+                this.update_geometries(value.data);
+            } else if (value.type === "faces") {
+                this.update_faces(value.data);
+            }
+        });
+        this.apply_updates();
+    }
+    update_uniform(name, new_data) {
+        const uniform = this.mesh.material.uniforms[name];
+        if (!uniform) {
+            throw new Error(`Uniform ${name} doesn't exist in Plot: ${this.name}`);
+        }
+        update_uniform(uniform, new_data);
+    }
+    update_geometry(name, new_data) {
+        buffer = this.mesh.geometry.attributes[name];
+        if (!buffer) {
+            throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
+        }
+        const old_length = buffer.count;
+        if (new_data.length <= old_length) {
+            buffer.set(new_data.data);
+            buffer.needsUpdate = true;
+        } else {
+            buffer.to_update = new_data.data;
+            this.geometry_needs_recreation = true;
+        }
+    }
+    update_faces(face_data) {
+        this.mesh.geometry.setIndex(new mod.BufferAttribute(face_data, 1));
+    }
+}
+const scene_cache = {};
+const plot_cache = {};
+const TEXTURE_ATLAS = [
+    undefined
+];
+function add_scene(scene_id, three_scene) {
+    scene_cache[scene_id] = three_scene;
+}
+function find_scene(scene_id) {
+    return scene_cache[scene_id];
+}
+function delete_scene(scene_id) {
+    const scene = scene_cache[scene_id];
+    if (!scene) {
+        return;
+    }
+    delete_three_scene(scene);
+    while(scene.children.length > 0){
+        scene.remove(scene.children[0]);
+    }
+    delete scene_cache[scene_id];
+}
+function find_plots(plot_uuids) {
+    const plots = [];
+    plot_uuids.forEach((id)=>{
+        const plot = plot_cache[id];
+        if (plot) {
+            plots.push(plot);
+        }
+    });
+    return plots;
+}
+function delete_scenes(scene_uuids, plot_uuids) {
+    plot_uuids.forEach((plot_id)=>{
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
+    });
+    scene_uuids.forEach((scene_id)=>{
+        delete_scene(scene_id);
+    });
+}
+function insert_plot(scene_id, plot_data1) {
+    const scene = find_scene(scene_id);
+    plot_data1.forEach((plot)=>{
+        add_plot(scene, plot);
+    });
+}
+function delete_plots(plot_uuids) {
+    const plots = find_plots(plot_uuids);
+    plots.forEach(delete_plot);
+}
+function convert_texture(scene, data) {
+    const tex = create_texture(scene, data);
+    tex.needsUpdate = true;
+    tex.minFilter = mod[data.minFilter];
+    tex.magFilter = mod[data.magFilter];
+    tex.anisotropy = data.anisotropy;
+    tex.wrapS = mod[data.wrapS];
+    if (data.size.length > 1) {
+        tex.wrapT = mod[data.wrapT];
+    }
+    if (data.size.length > 2) {
+        tex.wrapR = mod[data.wrapR];
+    }
+    return tex;
+}
+function is_three_fixed_array(value) {
+    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
+}
+function to_uniform(scene, data) {
+    if (data.type !== undefined) {
+        if (data.type == "Sampler") {
+            return convert_texture(scene, data);
+        }
+        throw new Error(`Type ${data.type} not known`);
+    }
+    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
+        if (!data.every((x)=>typeof x === "number")) {
+            return data;
+        }
+        if (data.length == 2) {
+            return new mod.Vector2().fromArray(data);
+        }
+        if (data.length == 3) {
+            return new mod.Vector3().fromArray(data);
+        }
+        if (data.length == 4) {
+            return new mod.Vector4().fromArray(data);
+        }
+        if (data.length == 16) {
+            const mat = new mod.Matrix4();
+            mat.fromArray(data);
+            return mat;
+        }
+    }
+    return data;
+}
+function deserialize_uniforms(scene, data) {
+    const result = {};
+    for(const name in data){
+        const value = data[name];
+        if (value instanceof mod.Uniform) {
+            result[name] = value;
+        } else {
+            const ser = to_uniform(scene, value);
+            result[name] = new mod.Uniform(ser);
+        }
+    }
+    return result;
+}
+function create_line_material(scene, uniforms, attributes, is_linesegments) {
+    const uniforms_des = deserialize_uniforms(scene, uniforms);
+    const mat = new THREE.RawShaderMaterial({
+        uniforms: uniforms_des,
+        glslVersion: THREE.GLSL3,
+        vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
+        fragmentShader: lines_fragment_shader(uniforms_des, attributes),
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        blendEquation: THREE.AddEquation
+    });
+    mat.uniforms.object_id = {
+        value: 1
     };
-    if (data.plot_type === "lines") {
-        mesh = create_line(scene, data);
-    } else if (data.plot_type === "linesegments") {
-        mesh = create_linesegments(scene, data);
-    } else if ("instance_attributes" in data) {
-        mesh = create_instanced_mesh(scene, data);
-    } else {
-        mesh = create_mesh(scene, data);
-    }
-    mesh.name = data.name;
-    mesh.frustumCulled = false;
-    mesh.matrixAutoUpdate = false;
-    mesh.plot_uuid = data.uuid;
-    mesh.renderOrder = data.zvalue;
-    update_visible(data.visible.value);
-    data.visible.on(update_visible);
-    connect_uniforms(mesh, data.uniform_updater);
-    if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
-        connect_attributes(mesh, data.attribute_updater);
-    }
-    return mesh;
+    return mat;
 }
 const ON_NEXT_INSERT = new Set();
 function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
-function add_plot(scene, plot_data) {
+function connect_plot(scene, plot) {
     const cam = scene.wgl_camera;
     const identity = new mod.Uniform(new mod.Matrix4());
-    if (plot_data.cam_space == "data") {
-        plot_data.uniforms.view = cam.view;
-        plot_data.uniforms.projection = cam.projection;
-        plot_data.uniforms.projectionview = cam.projectionview;
-        plot_data.uniforms.eyeposition = cam.eyeposition;
-    } else if (plot_data.cam_space == "pixel") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.pixel_space;
-        plot_data.uniforms.projectionview = cam.pixel_space;
-    } else if (plot_data.cam_space == "relative") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.relative_space;
-        plot_data.uniforms.projectionview = cam.relative_space;
+    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+    const space = plot.plot_data.cam_space;
+    if (space == "data") {
+        uniforms.view = cam.view;
+        uniforms.projection = cam.projection;
+        uniforms.projectionview = cam.projectionview;
+        uniforms.eyeposition = cam.eyeposition;
+    } else if (space == "pixel") {
+        uniforms.view = identity;
+        uniforms.projection = cam.pixel_space;
+        uniforms.projectionview = cam.pixel_space;
+    } else if (space == "relative") {
+        uniforms.view = identity;
+        uniforms.projection = cam.relative_space;
+        uniforms.projectionview = cam.relative_space;
+    } else if (space == "clip") {
+        uniforms.view = identity;
+        uniforms.projection = identity;
+        uniforms.projectionview = identity;
     } else {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = identity;
-        plot_data.uniforms.projectionview = identity;
+        throw new Error(`Space ${space} not supported!`);
     }
     const { px_per_unit  } = scene.screen;
-    plot_data.uniforms.resolution = cam.resolution;
-    plot_data.uniforms.px_per_unit = new mod.Uniform(px_per_unit);
-    if (plot_data.uniforms.preprojection) {
-        const { space , markerspace  } = plot_data;
-        plot_data.uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
+    uniforms.resolution = cam.resolution;
+    uniforms.px_per_unit = new mod.Uniform(px_per_unit);
+    if (plot.plot_data.uniforms.preprojection) {
+        const { space , markerspace  } = plot.plot_data;
+        uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
     }
-    if (scene.camera_relative_light) {
-        plot_data.uniforms.light_direction = cam.light_direction;
-        scene.light_direction.on((value)=>{
-            cam.update_light_dir(value);
-        });
-    } else {
-        const light_dir = new mod.Vector3().fromArray(scene.light_direction.value);
-        plot_data.uniforms.light_direction = new mod.Uniform(light_dir);
-        scene.light_direction.on((value)=>{
-            plot_data.uniforms.light_direction.value.fromArray(value);
-        });
-    }
-    const p = deserialize_plot(scene, plot_data);
-    plot_cache[p.plot_uuid] = p;
-    scene.add(p);
+    uniforms.light_direction = scene.light_direction;
+}
+function add_plot(scene, plot_data1) {
+    const p = new Plot(scene, plot_data1);
+    plot_cache[p.uuid] = p.mesh;
+    scene.add(p.mesh);
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
-}
-function connect_uniforms(mesh, updater) {
-    updater.on(([name, data])=>{
-        if (name === "none") {
-            return;
-        }
-        const uniform = mesh.material.uniforms[name];
-        if (uniform.value.isTexture) {
-            const im_data = uniform.value.image;
-            const [size, tex_data] = data;
-            if (tex_data.length == im_data.data.length) {
-                im_data.data.set(tex_data);
-            } else {
-                const old_texture = uniform.value;
-                uniform.value = re_create_texture(old_texture, tex_data, size);
-                old_texture.dispose();
-            }
-            uniform.value.needsUpdate = true;
-        } else {
-            if (is_three_fixed_array(uniform.value)) {
-                uniform.value.fromArray(data);
-            } else {
-                uniform.value = data;
-            }
-        }
-    });
 }
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
@@ -22510,24 +22574,24 @@ function convert_RGB_to_RGBA(rgbArray) {
     return rgbaArray;
 }
 function create_texture_from_data(data) {
-    let buffer = data.data;
+    let buffer1 = data.data;
     if (data.size.length == 3) {
-        const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
+        const tex = new mod.Data3DTexture(buffer1, data.size[0], data.size[1], data.size[2]);
         tex.format = mod[data.three_format];
         tex.type = mod[data.three_type];
         return tex;
     } else {
         let format = mod[data.three_format];
         if (data.three_format == "RGBFormat") {
-            buffer = convert_RGB_to_RGBA(buffer);
+            buffer1 = convert_RGB_to_RGBA(buffer1);
             format = mod.RGBAFormat;
         }
-        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
+        return new mod.DataTexture(buffer1, data.size[0], data.size[1], format, mod[data.three_type]);
     }
 }
 function create_texture(scene, data) {
-    const buffer = data.data;
-    if (buffer == "texture_atlas") {
+    const buffer1 = data.data;
+    if (buffer1 == "texture_atlas") {
         const { texture_atlas  } = scene.screen;
         if (texture_atlas) {
             return texture_atlas;
@@ -22550,14 +22614,14 @@ function create_texture(scene, data) {
         return create_texture_from_data(data);
     }
 }
-function re_create_texture(old_texture, buffer, size) {
+function re_create_texture(old_texture, buffer1, size) {
     let tex;
     if (size.length == 3) {
-        tex = new mod.Data3DTexture(buffer, size[0], size[1], size[2]);
+        tex = new mod.Data3DTexture(buffer1, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
     } else {
-        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+        tex = new mod.DataTexture(buffer1, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
     }
     tex.minFilter = old_texture.minFilter;
     tex.magFilter = old_texture.magFilter;
@@ -22571,26 +22635,26 @@ function re_create_texture(old_texture, buffer, size) {
     }
     return tex;
 }
-function BufferAttribute(buffer) {
-    const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
+function BufferAttribute(buffer1) {
+    const jsbuff = new mod.BufferAttribute(buffer1.flat, buffer1.type_length);
     jsbuff.setUsage(mod.DynamicDrawUsage);
     return jsbuff;
 }
-function InstanceBufferAttribute(buffer) {
-    const jsbuff = new mod.InstancedBufferAttribute(buffer.flat, buffer.type_length);
+function InstanceBufferAttribute(buffer1) {
+    const jsbuff = new mod.InstancedBufferAttribute(buffer1.flat, buffer1.type_length);
     jsbuff.setUsage(mod.DynamicDrawUsage);
     return jsbuff;
 }
 function attach_geometry(buffer_geometry, vertexarrays, faces) {
     for(const name in vertexarrays){
         const buff = vertexarrays[name];
-        let buffer;
+        let buffer1;
         if (buff.to_update) {
-            buffer = new mod.BufferAttribute(buff.to_update, buff.itemSize);
+            buffer1 = new mod.BufferAttribute(buff.to_update, buff.itemSize);
         } else {
-            buffer = BufferAttribute(buff);
+            buffer1 = BufferAttribute(buff);
         }
-        buffer_geometry.setAttribute(name, buffer);
+        buffer_geometry.setAttribute(name, buffer1);
     }
     buffer_geometry.setIndex(faces);
     buffer_geometry.boundingSphere = new mod.Sphere();
@@ -22600,8 +22664,8 @@ function attach_geometry(buffer_geometry, vertexarrays, faces) {
 }
 function attach_instanced_geometry(buffer_geometry, instance_attributes) {
     for(const name in instance_attributes){
-        const buffer = InstanceBufferAttribute(instance_attributes[name]);
-        buffer_geometry.setAttribute(name, buffer);
+        const buffer1 = InstanceBufferAttribute(instance_attributes[name]);
+        buffer_geometry.setAttribute(name, buffer1);
     }
 }
 function recreate_geometry(mesh, vertexarrays, faces) {
@@ -22619,17 +22683,17 @@ function recreate_instanced_geometry(mesh) {
         ...mesh.geometry.index.array
     ];
     Object.keys(mesh.geometry.attributes).forEach((name)=>{
-        const buffer = mesh.geometry.attributes[name];
-        const copy = buffer.to_update ? buffer.to_update : buffer.array.map((x)=>x);
-        if (buffer.isInstancedBufferAttribute) {
+        const buffer1 = mesh.geometry.attributes[name];
+        const copy = buffer1.to_update ? buffer1.to_update : buffer1.array.map((x)=>x);
+        if (buffer1.isInstancedBufferAttribute) {
             instance_attributes[name] = {
                 flat: copy,
-                type_length: buffer.itemSize
+                type_length: buffer1.itemSize
             };
         } else {
             vertexarrays[name] = {
                 flat: copy,
-                type_length: buffer.itemSize
+                type_length: buffer1.itemSize
             };
         }
     });
@@ -22692,11 +22756,11 @@ function connect_attributes(mesh, updater) {
     function re_assign_buffers() {
         const attributes = mesh.geometry.attributes;
         Object.keys(attributes).forEach((name)=>{
-            const buffer = attributes[name];
-            if (buffer.isInstancedBufferAttribute) {
-                instance_buffers[name] = buffer;
+            const buffer1 = attributes[name];
+            if (buffer1.isInstancedBufferAttribute) {
+                instance_buffers[name] = buffer1;
             } else {
-                geometry_buffers[name] = buffer;
+                geometry_buffers[name] = buffer1;
             }
         });
         first_instance_buffer = first(instance_buffers);
@@ -22708,7 +22772,7 @@ function connect_attributes(mesh, updater) {
     }
     re_assign_buffers();
     updater.on(([name, new_values, length])=>{
-        const buffer = mesh.geometry.attributes[name];
+        const buffer1 = mesh.geometry.attributes[name];
         let buffers;
         let real_length;
         let is_instance = false;
@@ -22723,19 +22787,19 @@ function connect_attributes(mesh, updater) {
             real_length = real_geometry_length;
         }
         if (length <= real_length[0]) {
-            buffer.set(new_values);
-            buffer.needsUpdate = true;
+            buffer1.set(new_values);
+            buffer1.needsUpdate = true;
             if (is_instance) {
                 mesh.geometry.instanceCount = length;
             }
         } else {
-            buffer.to_update = new_values;
+            buffer1.to_update = new_values;
             const all_have_same_length = Object.values(buffers).every((x)=>x.to_update && x.to_update.length / x.itemSize == length);
             if (all_have_same_length) {
                 if (is_instance) {
                     recreate_instanced_geometry(mesh);
                     re_assign_buffers();
-                    mesh.geometry.instanceCount = new_values.length / buffer.itemSize;
+                    mesh.geometry.instanceCount = new_values.length / buffer1.itemSize;
                 } else {
                     recreate_geometry(mesh, buffers, mesh.geometry.index);
                     re_assign_buffers();
@@ -22756,8 +22820,6 @@ function deserialize_scene(data, screen) {
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
-    scene.camera_relative_light = data.camera_relative_light;
-    scene.light_direction = data.light_direction;
     const camera = new MakieCamera();
     scene.wgl_camera = camera;
     function update_cam(camera_matrices, force) {
@@ -22775,8 +22837,17 @@ function deserialize_scene(data, screen) {
     update_cam(data.camera.value, true);
     camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
-    data.plots.forEach((plot_data)=>{
-        add_plot(scene, plot_data);
+    if (data.camera_relative_light) {
+        scene.light_direction = camera.light_direction;
+    } else {
+        const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
+        scene.light_direction = new mod.Uniform(light_dir);
+        data.light_direction.on((value)=>{
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
+    data.plots.forEach((plot_data1)=>{
+        add_plot(scene, plot_data1);
     });
     scene.scene_children = data.children.map((child)=>{
         const childscene = deserialize_scene(child, screen);
@@ -23263,9 +23334,9 @@ function pick_closest(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
-    const plot_matrix = plot_data.data;
-    let min_dist = 1e30;
+    const [plot_data1, _] = pick_native(scene, x0, y0, dx, dy, false);
+    const plot_matrix = plot_data1.data;
+    let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [
         null,
         0
@@ -23304,11 +23375,11 @@ function pick_sorted(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy, false);
+    const [plot_data1, selected] = pick_native(scene, x0, y0, dx, dy, false);
     if (selected.length == 0) {
         return null;
     }
-    const plot_matrix = plot_data.data;
+    const plot_matrix = plot_data1.data;
     const distances = selected.map((x)=>1e30);
     const x = xy[0] * px_per_unit + 1 - x0;
     const y = xy[1] * px_per_unit + 1 - y0;

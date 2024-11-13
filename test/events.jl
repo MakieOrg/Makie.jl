@@ -235,7 +235,7 @@ end
 
 
 
-        # Reset state so this is indepentent from the last checks
+        # Reset state so this is independent from the last checks
         scene = Scene(size=(800, 600));
         e = events(scene)
         cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
@@ -326,6 +326,8 @@ end
         for button in (:left, :middle, :right)
             # click
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mouseposition[] = (301, 301) # small mouse deviations with pressed button shouldn't register as a drag and prohibit a click
+            e.mouseposition[] = (300, 300)
             e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
             @test length(eventlog) == 3
             for (i, t) in enumerate((

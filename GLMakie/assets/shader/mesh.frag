@@ -7,6 +7,9 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 // Sets which shading procedures to use
 {{shading}}
 
+// Selects what is used to calculate the picked index
+{{picking_mode}}
+
 in vec3 o_world_normal;
 in vec3 o_view_normal;
 in vec4 o_color;
@@ -125,5 +128,13 @@ void main(){
     #ifndef NO_SHADING
     color.rgb = illuminate(normalize(o_world_normal), color.rgb);
     #endif
+
+#ifdef PICKING_INDEX_FROM_UV
+    ivec2 size = textureSize(image, 0);
+    ivec2 jl_idx = clamp(ivec2(o_uv * size), ivec2(0), size-1);
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
+    write2framebuffer(color, uvec2(o_id.x, uint(1) + idx));
+#else
     write2framebuffer(color, o_id);
+#endif
 }

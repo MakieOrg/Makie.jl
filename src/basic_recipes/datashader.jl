@@ -15,10 +15,10 @@ abstract type AggOp end
 using Makie
 canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
 aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
-aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
-# Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
-image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
-surface!(canvas; operation=equalize_histogram, local_operation=identiy)
+aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
+# Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
+image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
+surface!(canvas; operation=equalize_histogram, local_operation=identity)
 ```
 """
 mutable struct Canvas
@@ -94,10 +94,11 @@ function Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCoun
     xsize, ysize = resolution
     n_elements = xsize * ysize
     o0 = null(op)
+    v0 = value(op, o0)
     aggbuffer = fill(o0, n_elements)
-    pixelbuffer = fill(o0, n_elements)
+    pixelbuffer = fill(v0, n_elements)
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (o0, o0))
+    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
 end
 
 n_threads(::AggSerial) = 1
@@ -116,9 +117,10 @@ end
 function change_op!(canvas::Canvas, op::AggOp)
     op == canvas.op && return false
     o0 = null(op)
+    v0 = value(op, o0)
     if eltype(canvas.aggbuffer) != typeof(o0)
         canvas.aggbuffer = fill(o0, size(c.aggbuffer))
-        canvas.pixelbuffer = fill(o0, size(c.pixelbuffer))
+        canvas.pixelbuffer = fill(v0, size(c.pixelbuffer))
     end
     return true
 end
@@ -289,7 +291,7 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 @recipe DataShader (points,) begin
     """
     Can be `AggCount()`, `AggAny()` or `AggMean()`.
-    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accomodate the output of `local_operation`.
+    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accommodate the output of `local_operation`.
     User-extensible by overloading:
     ```julia
     struct MyAgg{T} <: Makie.AggOp end
@@ -334,8 +336,11 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     show_timings = false
     """
     If the resulting image should be displayed interpolated.
+    Note that interpolation can make NaN-adjacent bins also NaN in some backends, for example
+    due to interpolation schemes used in GPU hardware. This can make it look
+    like there are more NaN bins than there actually are.
     """
-    interpolate = true
+    interpolate = false
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
@@ -344,13 +349,14 @@ function fast_bb(points, f)
     N = length(points)
     NT = Threads.nthreads()
     slices = ceil(Int, N / NT)
-    results = fill(Point2f(0), NT, 2)
+    results = fill(Point2d(0), NT, 2)
+    R = eltype(points) isa Point2 ? Rect2d : Rect3d
     Threads.@threads for i in 1:NT
         start = ((i - 1) * slices + 1)
         stop = min(length(points), i * slices)
-        pmin, pmax = extrema(Rect2f(view(points, start:stop)))
-        results[i, 1] = f(pmin)
-        results[i, 2] = f(pmax)
+        pmin, pmax = extrema(R(view(points, start:stop)))
+        results[i, 1] = f(Point2d(Point3d(pmin)))
+        results[i, 2] = f(Point2d(Point3d(pmax)))
     end
     return Rect3f(Rect2f(vec(results)))
 end
@@ -494,7 +500,7 @@ function legendelements(plot::FakePlot, legend)
     return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
 end
 
-# Sadly we must define the colorbar here and cant use the default fallback,
+# Sadly we must define the colorbar here and can't use the default fallback,
 # Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?
@@ -564,8 +570,19 @@ function conversion_trait(::Type{<:Heatmap}, ::Resampler)
     return HeatmapShaderConversion()
 end
 
-function Makie.MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
+function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
     return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
+end
+
+function data_limits(p::HeatmapShader)
+    x, y = p[1][], p[2][]
+    mini = Vec3f(x[1], y[1], 0)
+    widths = Vec3f(x[2] - x[1], y[2] - y[1], 0)
+    return Rect3f(mini, widths)
+end
+
+function boundingbox(p::HeatmapShader, space::Symbol=:data)
+    return apply_transform_and_model(p, data_limits(p))
 end
 
 function calculated_attributes!(::Type{Heatmap}, plot::HeatmapShader)
@@ -597,8 +614,9 @@ function resample_image(x, y, image, max_resolution, limits)
         nrange = ranges[i]
         si = imgsize[i]
         indices = ((nrange .- data_min[i]) ./ data_width[i]) .* (si .- 1) .+ 1
-        resolution = round(Int, indices[2] - indices[1])
-        return LinRange(max(1, indices[1]), min(indices[2], si), min(resolution, max_resolution[i]))
+        resolution = max(2, round(Int, indices[2] - indices[1]))
+        len = min(resolution, max_resolution[i])
+        return LinRange(max(1, indices[1]), min(indices[2], si), len)
     end
     if isempty(x_index_range) || isempty(y_index_range)
         return nothing
@@ -615,7 +633,7 @@ end
 
 function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
     x, y, img = convert_arguments(Heatmap, x, y, image.data)
-    return (x, y, Resampler(img))
+    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), Resampler(img))
 end
 
 function empty_channel!(channel::Channel)
@@ -650,7 +668,9 @@ function Makie.plot!(p::HeatmapShader)
 
     x, y = p.x, p.y
     max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
-        return resampler.max_resolution isa Automatic ? widths(viewport) : ntuple(x-> resampler.max_resolution, 2)
+        res = resampler.max_resolution isa Automatic ? widths(viewport) :
+              ntuple(x -> resampler.max_resolution, 2)
+        return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
     image = lift(x-> x.data, p, p.values)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
@@ -676,16 +696,22 @@ function Makie.plot!(p::HeatmapShader)
     translate!(lp, 0, 0, -1)
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
-
-    # Make sure we don't trigger an event if the image/xy stays the same
-    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
-
-    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
     visible = Observable(p.visible[]; ignore_equal_values=true)
     on(p, p.visible) do v
         visible[] = v
+        return
     end
+    # if nothing, the image is currently not visible in the limits chosen
+    if isnothing(first_downsample)
+        visible[] = false
+        first_downsample = EndPoints{Float32}(0, 1), EndPoints{Float32}(0, 1), zeros(Float32, 2, 2)
+    end
+    # Make sure we don't trigger an event if the image/xy stays the same
+    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
+
+    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
+
     # To actually run the resampling on another thread, we need another channel:
     # To make this threadsafe, the observable needs to be triggered from the current thread
     # So we need another channel for the result (unbuffered, so `put!` blocks while the image is being updated)

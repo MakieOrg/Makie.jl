@@ -59,7 +59,7 @@ function plot!(plot::Violin)
                                dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
-        # for horizontal violin just flip all componentes
+        # for horizontal violin just flip all components
         point_func = Point2f
         if orientation === :horizontal
             point_func = flip_xy ∘ point_func
