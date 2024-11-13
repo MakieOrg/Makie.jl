@@ -466,17 +466,15 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
-        # Not projecting here causes alignment (and render order?) issues with
-        # ticks, probably due to float precision differences.
-        map([p1, p2, p3, p4, p5, p6]) do p
-            return Point3f(project(scene, p)..., -10_000)
-        end
+        # we are going to transform the 3d frame points into 2d of the topscene
+        # because otherwise the frame lines can
+        # be cut when they lie directly on the scene boundary
+        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
-        xautolimits = false, yautolimits = false, zautolimits = false, transparency = false,
-        clip_planes = Plane3f[], visible = attr(:spinesvisible), inspectable = false, space = :pixel)
+    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        transparency = false, visible = attr(:spinesvisible), inspectable = false)
 
     return gridline1, gridline2, framelines
 end
@@ -507,7 +505,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     ticksize = attr(:ticksize)
 
-    tick_segments = lift(scene, limits, tickvalues, miv, min1, min2,
+    tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
             scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
                 pview, pxa, tsize, xrev, yrev, zrev
 
@@ -523,6 +521,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
+        o = pxa.origin
+
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
@@ -536,24 +536,25 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
                 dpoint(t, f1 + diff_f1, f2)
             end
 
-            pp1 = Point2f(Makie.project(scene, p1))
-            pp2 = Point2f(Makie.project(scene, p2))
+            pp1 = Point2f(o + Makie.project(scene, p1))
+            pp2 = Point2f(o + Makie.project(scene, p2))
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
          end
     end
 
-    ticks = linesegments!(scene, tick_segments, space = :pixel,
-        xautolimits = false, yautolimits = false, zautolimits = false,
-        transparency = true, inspectable = false, clip_planes = Plane3f[],
+    ticks = linesegments!(topscene, tick_segments,
+        transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
     # move ticks behind plots
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
-    map!(scene, labels_positions, scene.viewport, scene.camera.projectionview,
+    map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
+
+        o = pxa.origin
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -574,8 +575,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels_text = text!(scene, labels_positions, align = align, space = :pixel,
-        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize), clip_planes = Plane3f[],
+    ticklabels_text = text!(topscene, labels_positions, align = align,
+        color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
 
@@ -589,6 +590,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
+
+        o = pxa.origin
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -605,8 +608,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(Makie.project(scene, p1))
-        pp2 = Point2f(Makie.project(scene, p2))
+        pp1 = Point2f(o + Makie.project(scene, p1))
+        pp2 = Point2f(o + Makie.project(scene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
@@ -660,9 +663,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(scene, label_position,
-        space = :pixel, clip_planes = Plane3f[],
-        xautolimits = false, yautolimits = false, zautolimits = false,
+    label = text!(topscene, label_position,
         text = attr(:label),
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
