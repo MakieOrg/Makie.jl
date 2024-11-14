@@ -892,6 +892,7 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
+convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
@@ -899,9 +900,9 @@ convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"highclip") = p
+convert_attribute(p::Union{Automatic, Nothing}, ::key"highclip") = p
 convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"lowclip") = p
+convert_attribute(p::Union{Automatic,Nothing}, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -1421,6 +1422,7 @@ to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
+convert_attribute(x::Automatic, ::key"colorrange") = x
 convert_attribute(x, ::key"colorrange") = to_colorrange(x)
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
