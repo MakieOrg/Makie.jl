@@ -305,8 +305,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting) * 2,
-        distance_score(ap, bp, scores_dict) * 2,
+        abs(anesting - bnesting),
+        distance_score(ap, bp, scores_dict),
         distance_score(a, b, scores_dict)
     ]
     return norm(scores)
@@ -775,7 +775,6 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
-    unhide!(block)
     if spec.type === :Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
@@ -809,10 +808,13 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
+        score = distance_score(old_spec.plots, spec.plots, Dict())
         plot_obs[] = spec.plots
-        scene = get_scene(block)
-        if any(needs_tight_limits, scene.plots)
-            tightlimits!(block)
+        if score > 0
+            scene = get_scene(block)
+            if any(needs_tight_limits, scene.plots)
+                tightlimits!(block)
+            end
         end
     end
     for observer in old_spec.then_observers
@@ -829,6 +831,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         observers = func(block)
         add_observer!(spec, observers)
     end
+    unhide!(block)
     return to_update, reset_to_defaults
 end
 
@@ -913,7 +916,11 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                                    new_layoutables, global_unused_plots, new_plots)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
-                update_state_before_display!(layoutable)
+                if layoutable isa AbstractAxis
+                    if distance_score(old_spec, spec, Dict()) > 0.0
+                        update_state_before_display!(layoutable)
+                    end
+                end
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
