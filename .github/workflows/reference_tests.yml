@@ -6,6 +6,7 @@ on:
       - '*.md'
     branches:
       - master
+      - breaking-0.22
   push:
     tags:
       - '*'
@@ -45,6 +46,9 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
+          pkg"add GeometryBasics#master"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -95,6 +99,9 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
+          pkg"add GeometryBasics#master"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
@@ -145,6 +152,9 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
+          pkg"add MeshIO#ff/GeometryBasics_refactor"
+          pkg"add GeometryBasics#master"
+          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true

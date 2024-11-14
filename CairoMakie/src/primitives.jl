@@ -9,22 +9,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     isempty(positions) && return
 
-    # workaround for a LineSegments object created from a GLNormalMesh
-    # the input argument is a view of points using faces, which results in
-    # a vector of tuples of two points. we convert those to a list of points
-    # so they don't trip up the rest of the pipeline
-    # TODO this shouldn't be necessary anymore!
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
-        positions = let
-            pos = Point3f[]
-            for tup in positions
-                push!(pos, tup[1])
-                push!(pos, tup[2])
-            end
-            pos
-        end
-    end
-
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
     color = to_color(primitive.calculated_colors[])
@@ -912,7 +896,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
+    vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -1200,7 +1184,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)
+    model = copy(model)::Mat4d
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin
@@ -1253,9 +1237,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
-    # Face culling
+    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+
+
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]
         pos = pos[valid]
@@ -1263,7 +1247,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
 
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive.model[])
+    model = copy(primitive.model[])::Mat4d
     view = scene.camera.view[]
 
     zorder = sortperm(pos, by = p -> begin

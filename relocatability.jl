@@ -31,6 +31,8 @@ cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
+pkg"add GeometryBasics#master MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
+
 makie_dir = @__DIR__
 
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)

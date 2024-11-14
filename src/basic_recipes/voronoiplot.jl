@@ -52,7 +52,7 @@ function _clip_polygon(poly::Polygon, circle::Circle)
         return A + AB * t
     end
 
-    input = Point2f.(first.(poly.exterior))
+    input = Point2f.(poly.exterior)
     output = sizehint!(Point2f[], length(input))
 
     for i in eachindex(input)

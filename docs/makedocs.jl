@@ -1,6 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
+pkg"add GeometryBasics#master ShaderAbstractions#ff/GeometryBasics_refactor MeshIO#ff/GeometryBasics_refactor"
 pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
 Pkg.precompile()
 
@@ -137,7 +138,7 @@ pages = [
             "reference/plots/voxels.md",
             "reference/plots/vspan.md",
             "reference/plots/waterfall.md",
-            "reference/plots/wireframe.md",  
+            "reference/plots/wireframe.md",
         ],
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",
