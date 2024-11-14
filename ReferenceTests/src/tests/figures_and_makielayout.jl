@@ -311,28 +311,30 @@ end
 
     protrusions = (40, 30, 20, 10)
     perspectiveness = Observable(0.0)
-    m = load(Makie.assetpath("cat.obj"))
+    cat = load(Makie.assetpath("cat.obj"))
     cs = 1:length(Makie.coordinates(m))
 
     for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
         gl = GridLayout(fig[by, bx])
-        Label(gl[0, 1:2], "viewmode = $viewmode")
+        Label(gl[0, 1:2], "viewmode = :$viewmode")
         for (x, rev) in enumerate((true, false))
             for (y, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
                 ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
                     protrusions = protrusions, perspectiveness = perspectiveness)
-                mesh!(ax, m, color = cs)
+                mesh!(ax, cat, color = cs)
 
                 # for debug purposes
-                ax.scene.clear = true
-                ax.scene.backgroundcolor[] = RGBAf(1,0.8,0.6, 1.0)
-                lines!(fig.scene, ax.layoutobservables.computedbbox, color = (:blue, 0.5), linestyle = :dash)
+                # layout area
                 fullarea = lift(ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
                     mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
                     maxi = maximum(bbox) + Vec2(prot.right, prot.top)
                     return Rect2f(mini, maxi - mini)
                 end
-                lines!(fig.scene, fullarea, color = :red)
+                p = poly!(fig.scene, fullarea, color = RGBf(1, 0.8, 0.6), strokecolor = :red, strokewidth = 1.5)
+                translate!(p, 0, 0, -10_000)
+                # axis area = layout area - protrusions
+                p = poly!(fig.scene, ax.layoutobservables.computedbbox, color = RGBf(0.8, 0.9, 1), strokecolor = :blue, strokewidth = 1.5, linestyle = :dash)
+                translate!(p, 0, 0, -10_000)
             end
         end
     end
