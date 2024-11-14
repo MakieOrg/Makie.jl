@@ -15,7 +15,7 @@
 
 
 ## [Unreleased]
-
+- Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 
 ## [0.21.16] - 2024-11-06
