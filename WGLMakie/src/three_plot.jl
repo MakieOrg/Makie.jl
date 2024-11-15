@@ -43,7 +43,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     )
     wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
-    done_init = Observable(false)
+    done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     ta = Bonito.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
@@ -61,7 +61,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             $(done_init).notify(true)
         } catch (e) {
             Bonito.Connection.send_error("error initializing scene", e)
-            $(done_init).notify(false)
+            $(done_init).notify(e)
             return
         }
     })
@@ -71,4 +71,21 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     end
     connect_scene_events!(screen, scene, comm)
     return wrapper, done_init
+end
+
+Makie.supports_move_to(::Screen) = true
+
+function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
+    session = get_screen_session(screen)
+    # Make sure target scene is serialized
+    insert_scene!(session, screen, scene)
+    return evaljs(session, js"""
+    $(scene).then(scene=> {
+        $(plot).then(meshes=> {
+            meshes.forEach(m => {
+                m.plot_object.move_to(scene)
+            })
+        })
+    })
+    """)
 end

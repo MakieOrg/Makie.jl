@@ -39,6 +39,27 @@ f
 fig = Figure()
 ax = Axis(fig[1, 1]; autolimitaspect=1)
 
+kw = (; offset_radius=0.4, strokecolor=:transparent, strokewidth=0)
+pie!(ax, ones(7); radius=sqrt.(2:8) * 3, kw..., color=Makie.wong_colors(0.8)[1:7])
+
+vs = [2, 3, 4, 5, 6, 7, 8]
+vs_inner = [1, 1, 1, 1, 2, 2, 2]
+rs = 8
+rs_inner = sqrt.(vs_inner ./ vs) * rs
+
+lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+# draw the inner pie twice since `color` can not be vector of `LinePattern` currently
+pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
+pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
+pie!(ax, 20, 0, vs; radius=rs, inner_radius=rs_inner, kw..., color=Makie.wong_colors(0.8)[eachindex(vs)])
+
+fig
+```
+
+```@figure
+fig = Figure()
+ax = Axis(fig[1, 1]; autolimitaspect=1)
+
 vs = 0:6 |> Vector
 vs_ = vs ./ sum(vs) .* (3/2*π)
 cs = Makie.wong_colors()

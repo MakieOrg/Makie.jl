@@ -80,6 +80,8 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
+import InverseFunctions
+
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
@@ -132,7 +134,6 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
-include("conversions.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -187,6 +188,9 @@ include("basic_recipes/tooltip.jl")
 include("basic_recipes/makiecore_examples/scatter.jl")
 include("basic_recipes/makiecore_examples/lines.jl")
 
+# conversions: need to be after plot recipes
+include("conversions.jl")
+
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
@@ -194,7 +198,7 @@ include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
 include("layouting/text_boundingbox.jl")
 
-# Declaritive SpecApi
+# Declarative SpecApi
 include("specapi.jl")
 
 # more default recipes
@@ -264,7 +268,7 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categ
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, scale!, rotate!, Accum, Absolute
+export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
 # Spaces for widths and markers

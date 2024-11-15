@@ -36,7 +36,7 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
 
     # markercolor is the same as linecolor if left automatic
     real_markercolor = Observable{Any}()
-    map!(real_markercolor, p.color, p.markercolor) do col, mcol
+    lift!(p, real_markercolor, p.color, p.markercolor) do col, mcol
         if mcol === automatic
             return to_color(col)
         else
@@ -45,12 +45,12 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
     end
 
     real_markercolormap = Observable{Any}()
-    map!(real_markercolormap, p.colormap, p.markercolormap) do col, mcol
+    lift!(p, real_markercolormap, p.colormap, p.markercolormap) do col, mcol
         mcol === automatic ? col : mcol
     end
 
     real_markercolorrange = Observable{Any}()
-    map!(real_markercolorrange, p.colorrange, p.markercolorrange) do col, mcol
+    lift!(p, real_markercolorrange, p.colorrange, p.markercolorrange) do col, mcol
         mcol === automatic ? col : mcol
     end
 

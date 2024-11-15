@@ -77,7 +77,11 @@ function mixin_generic_plot_attributes()
         inspector_clear = automatic
         "Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods."
         inspector_hover = automatic
-        "TODO: docs"
+        """
+        Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here,
+        behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
+        parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+        """
         clip_planes = automatic
     end
 end

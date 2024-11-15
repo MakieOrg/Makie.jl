@@ -1,5 +1,5 @@
 function sumlengths(points, resolution)
-    # normalize w component if availabke
+    # normalize w component if available
     f(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
     f(p::VecTypes) = p[Vec(1, 2)]
 
@@ -8,13 +8,13 @@ function sumlengths(points, resolution)
 
     T = eltype(eltype(typeof(points)))
     result = zeros(T, length(points))
-    for i in eachindex(points)
-        i0 = max(i-1, 1)
-        p1, p2 = points[i0], points[i]
+    for (i, idx) in enumerate(eachindex(points))
+        idx0 = max(idx-1, 1)
+        p1, p2 = points[idx0], points[idx]
         if any(map(isnan, p1)) || any(map(isnan, p2)) || invalid(p1) || invalid(p2)
             result[i] = 0f0
         else
-            result[i] = result[i0] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
+            result[i] = result[max(i-1, 1)] + 0.5 * norm(resolution .* (f(p1) - f(p2)))
         end
     end
     result
@@ -45,10 +45,10 @@ function generate_indices(positions)
         # if A != F (no loop):   0 A B C D E F 0
         # where 0 is NaN
         # It marks vertices as invalid (0) if they are NaN, valid (1) if they
-        # are part of a continous line section, or as ghost edges (2) used to
+        # are part of a continuous line section, or as ghost edges (2) used to
         # cleanly close a loop. The shader detects successive vertices with
         # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
-        # 0-E-A-B and F-B from E-F-B-0 which would dublicate E-F and A-B)
+        # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
 
         last_start_pos = eltype(ps)(NaN)
         last_start_idx = -1
@@ -60,7 +60,7 @@ function generate_indices(positions)
             if not_nan
                 if last_start_idx == -1
                     # place nan before section of line vertices
-                    # (or dublicate ps[1])
+                    # (or duplicate ps[1])
                     push!(indices, i-1)
                     last_start_idx = length(indices) + 1
                     last_start_pos = p

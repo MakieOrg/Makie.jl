@@ -190,10 +190,11 @@ function clip2screen(p, res)
     return res .* s
 end
 
-@generated function project_line_points(scene, plot::T, positions, colors) where {T <: Union{Lines, LineSegments}}
+@generated function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
     per_point_colors = colors <: AbstractArray
+    per_point_linewidths = (T <: Lines) && (linewidths <: AbstractArray)
     
     quote
         @get_attribute(plot, (space, model))
@@ -203,8 +204,8 @@ end
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
         clip_points = Vector{Vec4f}(undef, length(points))
-        @inbounds for i in eachindex(points)
-            clip_points[i] = transform * to_ndim(Vec4d, to_ndim(Vec3d, points[i], 0), 1)
+        @inbounds for (i, point) in enumerate(points)
+            clip_points[i] = transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
         end
         
         # yflip and clip -> screen/pixel coords
@@ -228,18 +229,20 @@ end
         
         # outputs
         screen_points = sizehint!(Vec2f[], length(clip_points))
-        indices = Vector{Int}(undef, 0)
         $(if per_point_colors
             quote
                 color_output = sizehint!(eltype(colors)[], length(clip_points))
                 skipped_color = RGBAf(1,0,1,1) # for debug purposes, should not show
             end
         end)
+        $(if per_point_linewidths
+            quote
+                linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
+            end
+        end)
 
         # Handling one segment per iteration
         if plot isa Lines
-
-            sizehint!(indices, length(clip_points))
 
             last_is_nan = true
             for i in 1:length(clip_points)-1
@@ -303,7 +306,9 @@ end
                     # if segment hidden make sure the line separates
                     last_is_nan = true
                     push!(screen_points, Vec2f(NaN))
-                    push!(indices, i)
+                    $(if per_point_linewidths
+                        :(push!(linewidth_output, linewidths[i]))
+                    end)
                     $(if per_point_colors
                         :(push!(color_output, c1))
                     end)
@@ -314,7 +319,9 @@ end
                     # line separates before it
                     if disconnect1 && !last_is_nan
                         push!(screen_points, Vec2f(NaN))
-                        push!(indices, i)
+                        $(if per_point_linewidths
+                            :(push!(linewidth_output, linewidths[i]))
+                        end)
                         $(if per_point_colors
                             :(push!(color_output, c1))
                         end)
@@ -322,7 +329,9 @@ end
                     
                     last_is_nan = false
                     push!(screen_points, clip2screen(p1, res))
-                    push!(indices, i)
+                    $(if per_point_linewidths
+                        :(push!(linewidth_output, linewidths[i]))
+                    end)
                     $(if per_point_colors
                         :(push!(color_output, c1))
                     end)
@@ -332,7 +341,9 @@ end
                     if disconnect2
                         last_is_nan = true
                         push!(screen_points, clip2screen(p2, res), Vec2f(NaN))
-                        push!(indices, i+1, i+1)
+                        $(if per_point_linewidths
+                            :(push!(linewidth_output, linewidths[i+1], linewidths[i+1]))
+                        end)
                         $(if per_point_colors
                             :(push!(color_output, c2, c2)) # relevant, irrelevant
                         end)
@@ -345,7 +356,9 @@ end
             # clip_points
             if !last_is_nan
                 push!(screen_points, clip2screen(clip_points[end], res))
-                push!(indices, length(clip_points))
+                $(if per_point_linewidths
+                        :(push!(linewidth_output, linewidths[end]))
+                    end)
                 $(if per_point_colors
                     :(push!(color_output, colors[end]))
                 end)
@@ -413,7 +426,8 @@ end
 
         end
 
-        return screen_points, indices, $(ifelse(per_point_colors, :color_output, :colors))
+        return screen_points, $(ifelse(per_point_colors, :color_output, :colors)),
+            $(ifelse(per_point_linewidths, :linewidth_output, :linewidths))
     end
 end
 
@@ -581,7 +595,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
     elseif color isa AbstractVector{<: Colorant}
-        return FaceIterator(color, faces)
+        return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
         # let next level extend and fill with CairoPattern
         return color

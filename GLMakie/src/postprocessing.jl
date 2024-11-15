@@ -63,7 +63,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
             # blending (here)
             #   src = out = (pre-multiplied color, transmittance)
             #   dst = (pre-multiplied color, transmittance) (from non-OIT draw)
-            #   src.rgb + src.a * dst.rgb, src.a * dst.a       
+            #   src.rgb + src.a * dst.rgb, src.a * dst.a
             glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA)
         end,
         nothing
@@ -260,7 +260,7 @@ end
 """
     compose_postprocessor(framebuffer, shader_cache, default_id = nothing)
 
-Creates a Postprocessor for merging the finished render of a scene with the 
+Creates a Postprocessor for merging the finished render of a scene with the
 composition buffer which will eventually include all scenes.
 """
 function compose_postprocessor(framebuffer, shader_cache)
@@ -302,9 +302,9 @@ end
 """
     to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
 
-Creates a Postprocessor which maps the composed render of all scenes to the 
-screen. Used as a final step for displaying the screen. The argument 
-`screen_fb_id` can be used to pass in a reference to the framebuffer ID of the 
+Creates a Postprocessor which maps the composed render of all scenes to the
+screen. Used as a final step for displaying the screen. The argument
+`screen_fb_id` can be used to pass in a reference to the framebuffer ID of the
 screen. If `nothing` is used (the default), 0 is used.
 """
 function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
@@ -335,13 +335,12 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         # TODO: Is this an observable? Can this be static?
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
         OUTPUT_FRAMEBUFFER_ID = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
-        
+
         # Set target
         glBindFramebuffer(GL_FRAMEBUFFER, OUTPUT_FRAMEBUFFER_ID)
-        wh = framebuffer_size(to_native(screen))
-        glViewport(0, 0, wh[1], wh[2])
+        glViewport(0, 0, framebuffer_size(screen)...)
         # glScissor(0, 0, wh[1], wh[2])
-        
+
         # clear target
         # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
         # TODO: Should this be cleared if we don't own the target?

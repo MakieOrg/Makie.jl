@@ -13,17 +13,17 @@ function render_frame(screen::Screen, glscenes::Vector{GLScene}, resize_buffers=
 
     # Resize buffers
     fb = screen.framebuffer
-    if resize_buffers && !isnothing(screen.root_scene)
+    if resize_buffers && !isnothing(screen.scene)
         ppu = screen.px_per_unit[]
-        resize!(fb, round.(Int, ppu .* size(screen.root_scene))...)
+        resize!(fb, round.(Int, ppu .* size(screen.scene))...)
     end
-    
+
     # Clear global buffers (color composition, objectid)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
     glDrawBuffers(2, [fb[:composition][1], fb[:objectid][1]]) # TODO: avoid alloc?
     glClearColor(0, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT)
-    
+
     # TODO: Does this require a lock to avoid changes to the glscenes array?
     # Draw scene by scene
     glEnable(GL_SCISSOR_TEST)
@@ -100,13 +100,19 @@ function render_frame(screen::Screen, glscene::GLScene)
         glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
         # z-sorting
-        function sortby(robj)
-            plot = glscene.robj2plot[robj.id]
+        # TODO: only do this for 2D scenes
+        # (3D and mixed scenes can't be correctly sorted based on world space z
+        # shifts. Center of bbox would be better but needs caching)
+        function sortby(x)
+            robj = x[3]
+            plot = screen.cache2plot[robj.id]
             # TODO, use actual boundingbox
-            return Makie.zvalue2d(plot)
+            # ~7% faster than calling zvalue2d doing the same thing?
+            return Makie.transformationmatrix(plot)[][3, 4]
+            # return Makie.zvalue2d(plot)
         end
-        zvals = sortby.(glscene.renderobjects)
-        permute!(glscene.renderobjects, sortperm(zvals))
+
+        sort!(glscene.renderobjects; by=sortby)
 
         # NOTE
         # The transparent color buffer is reused by SSAO and FXAA. Changing the

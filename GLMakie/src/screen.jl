@@ -164,7 +164,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     config::Union{Nothing, ScreenConfig}
-    stop_renderloop::Bool
+    stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
     timer::BudgetedTimer
     px_per_unit::Observable{Float32}
@@ -182,7 +182,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     window_open::Observable{Bool}
     scalefactor::Observable{Float32}
 
-    root_scene::Union{Scene, Nothing}
+    scene::Union{Scene, Nothing}
     reuse::Bool
     close_after_renderloop::Bool
     # To trigger rerenders that aren't related to an existing renderobject.
@@ -209,16 +209,18 @@ mutable struct Screen{GLWindow} <: MakieScreen
         s = size(framebuffer)
         screen = new{GLWindow}(
             glscreen, owns_glscreen, shader_cache, framebuffer,
-            config, stop_renderloop, rendertask, 
-            BudgetedTimer(1.0 / 30.0), Observable(0f0), 
-            GLSceneTree(), postprocessors, 
-            Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
+            config, Threads.Atomic{Bool}(stop_renderloop), rendertask,
+            BudgetedTimer(1.0 / 30.0), Observable(0f0),
+            GLSceneTree(), postprocessors,
+            Matrix{RGBA{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
     end
 end
+
+framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
 
 Makie.isvisible(screen::Screen) = screen.config.visible
 
@@ -398,8 +400,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     else
         stop_renderloop!(screen)
     end
-    if !isnothing(screen.root_scene)
-        resize!(screen, size(screen.root_scene)...)
+    if !isnothing(screen.scene)
+        resize!(screen, size(screen.scene)...)
     end
     set_screen_visibility!(screen, config.visible)
     return screen
@@ -437,16 +439,15 @@ end
 function display_scene!(screen::Screen, scene::Scene)
     @debug("display scene on screen")
     resize!(screen, size(scene)...)
-    
+
     # insert scene content
     @assert isempty(screen.scene_tree.scenes) "There should be no scenes in the tree when inserting the root"
-    screen.root_scene = scene
+    screen.scene = scene
     insert_scene!(screen.scene_tree, scene, nothing, 0)
     insertplots!(screen, scene)
 
     Makie.push_screen!(scene, screen)
     connect_screen(scene, screen)
-
     return
 end
 
@@ -517,7 +518,7 @@ end
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    
+
     # TODO: organize this better?
     # typemin(Int) to force boundserror if scene is not root_scene
     if !haskey(screen.scene_tree, scene)
@@ -553,7 +554,7 @@ function destroy!(rob::RenderObject)
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 
             # TODO, refcounting, or leaving freeing to GC...
-            # GC is a bit tricky with active contexts, so immediate free is prefered.
+            # GC is a bit tricky with active contexts, so immediate free is preferred.
             # I guess as long as we make it hard for users to share buffers directly, this should be fine!
             GLAbstraction.free(v)
         end
@@ -579,10 +580,10 @@ function Base.empty!(screen::Screen)
     #     delete!(screen, Makie.rootparent(plot), plot)
     # end
 
-    if !isnothing(screen.root_scene)
-        Makie.disconnect_screen(screen.root_scene, screen)
-        delete!(screen, screen.root_scene) # this should wipe all scenes and plots
-        screen.root_scene = nothing
+    if !isnothing(screen.scene)
+        Makie.disconnect_screen(screen.scene, screen)
+        delete!(screen, screen.scene) # this should wipe all scenes and plots
+        screen.scene = nothing
     elseif !isempty(screen.scene_tree.scenes)
         @error "Root scene not defined but scenes are still connected"
     else
@@ -635,11 +636,12 @@ Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=t
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
     set_screen_visibility!(screen, false)
-    stop_renderloop!(screen; close_after_renderloop=false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
         screen.window_open[] = false
     end
     empty!(screen)
+    stop_renderloop!(screen; close_after_renderloop=false)
+
     if reuse && screen.reuse
         @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
@@ -651,21 +653,20 @@ function Base.close(screen::Screen; reuse=true)
     return
 end
 
-function closeall()
-    while !isempty(SCREEN_REUSE_POOL)
-        screen = pop!(SCREEN_REUSE_POOL)
-        delete!(ALL_SCREENS, screen)
-        destroy!(screen)
+function closeall(; empty_shader=true)
+    # Since we call closeall to reload any shader
+    # We empty the shader source cache here
+    if empty_shader
+        empty!(LOADED_SHADERS)
+        WARN_ON_LOAD[] = false
     end
-    if !isempty(SINGLETON_SCREEN)
-        screen = pop!(SINGLETON_SCREEN)
-        delete!(ALL_SCREENS, screen)
-        destroy!(screen)
-    end
+
     while !isempty(ALL_SCREENS)
         screen = pop!(ALL_SCREENS)
         destroy!(screen)
     end
+    empty!(SINGLETON_SCREEN)
+    empty!(SCREEN_REUSE_POOL)
     return
 end
 
@@ -788,55 +789,8 @@ end
 
 Makie.to_native(x::Screen) = x.glscreen
 
-"""
-    get_loading_image(resolution)
-
-Loads the makie loading icon, embeds it in an image the size of `resolution`,
-and returns the image.
-"""
-function get_loading_image(resolution)
-    icon = Matrix{N0f8}(undef, 192, 192)
-    open(joinpath(GL_ASSET_DIR, "loading.bin")) do io
-        read!(io, icon)
-    end
-    img = zeros(RGBA{N0f8}, resolution...)
-    center = resolution .÷ 2
-    center_icon = size(icon) .÷ 2
-    start = CartesianIndex(max.(center .- center_icon, 1))
-    I1 = CartesianIndex(1, 1)
-    stop = min(start + CartesianIndex(size(icon)) - I1, CartesianIndex(resolution))
-    for idx in start:stop
-        gray = icon[idx - start + I1]
-        img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
-    end
-    return img
-end
-
-# TODO: This is not in the right alpha-format anymore
-function display_loading_image(screen::Screen)
-    fb = screen.framebuffer
-    fbsize = size(fb)
-    image = get_loading_image(fbsize)
-    if size(image) == fbsize
-        nw = to_native(screen)
-        # transfer loading image to gpu framebuffer
-        fb.buffers[:color][1:size(image, 1), 1:size(image, 2)] = image
-        ShaderAbstractions.is_context_active(nw) || return
-        w, h = fbsize
-        glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
-        glViewport(0, 0, w, h)
-        glClearColor(0, 0, 0, 0)
-        glClear(GL_COLOR_BUFFER_BIT)
-        # GLAbstraction.render(fb.postprocess[end]) # copy postprocess
-        GLAbstraction.render(screen.postprocessors[end].robjs[1])
-        GLFW.SwapBuffers(nw)
-    else
-        error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
-    end
-end
-
 function renderloop_running(screen::Screen)
-    return !screen.stop_renderloop && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
+    return !screen.stop_renderloop[] && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
 end
 
 function start_renderloop!(screen::Screen)
@@ -844,7 +798,7 @@ function start_renderloop!(screen::Screen)
         screen.config.pause_renderloop = false
         return
     else
-        screen.stop_renderloop = false
+        screen.stop_renderloop[] = false
         task = @async screen.config.renderloop(screen)
         yield()
         if istaskstarted(task)
@@ -865,7 +819,8 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     # don't double close when stopping renderloop
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
-    screen.stop_renderloop = true
+    screen.stop_renderloop[] = true
+    screen.close_after_renderloop = c
 
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
@@ -874,9 +829,6 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
         # after done, we can set the task to nothing
         screen.rendertask = nothing
     end
-
-    screen.close_after_renderloop = c
-
     # else, we can't do that much in the rendertask itself
     return
 end
@@ -904,8 +856,8 @@ end
 scalechangecb(screen) = (window, xscale, yscale) -> scalechangecb(screen, window, xscale, yscale)
 
 function scalechangeobs(screen, _)
-    if !isnothing(screen.root_scene)
-        resize!(screen, size(screen.root_scene)...)
+    if !isnothing(screen.scene)
+        resize!(screen, size(screen.scene)...)
     end
     return nothing
 end
@@ -913,7 +865,7 @@ scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
 
 
 function vsynced_renderloop(screen)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         if screen.config.pause_renderloop
             pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
             continue
@@ -928,7 +880,7 @@ end
 
 function fps_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         if screen.config.pause_renderloop
             pollevents(screen, Makie.PausedRenderTick)
         else
@@ -958,7 +910,7 @@ function on_demand_renderloop(screen::Screen)
     tick_state = Makie.UnknownTickState
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
-    while isopen(screen) && !screen.stop_renderloop
+    while isopen(screen) && !screen.stop_renderloop[]
         pollevents(screen, tick_state) # GLFW poll
 
         if !screen.config.pause_renderloop && requires_update(screen)
@@ -976,7 +928,7 @@ function on_demand_renderloop(screen::Screen)
         # push!(time_record, 1e-9 * (t - last_time))
         # last_time = t
     end
-    cause = screen.stop_renderloop ? "stopped renderloop" : "closing window"
+    cause = screen.stop_renderloop[] ? "stopped renderloop" : "closing window"
     @debug("Leaving renderloop, cause: $(cause)")
 end
 
@@ -1001,7 +953,7 @@ function renderloop(screen)
     end
     if screen.close_after_renderloop
         try
-            @debug("Closing screen after quiting renderloop!")
+            @debug("Closing screen after quitting renderloop!")
             close(screen)
         catch e
             @warn "error closing screen" exception=(e, Base.catch_backtrace())

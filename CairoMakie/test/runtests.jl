@@ -122,7 +122,9 @@ end
 @testset "VideoStream & screen options" begin
     N = 3
     points = Observable(Point2f[])
-    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
+    width = 600
+    height = 800
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(width, height),))
 
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
     tmp_path = vio.path
@@ -132,6 +134,11 @@ end
     @test vio.screen.device_scaling_factor == 2.0
 
     Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
+
     save("test.mp4", vio)
     save("test_2.mkv", vio)
     save("test_3.mp4", vio)
@@ -150,60 +157,42 @@ end
     plotlist!([Makie.SpecApi.Scatter(1:10)])
 end
 
+@testset "multicolor line clipping (#4313)" begin
+    fig, ax, p = contour(rand(20,20))
+    xlims!(ax, 0, 10)
+    Makie.colorbuffer(fig; backend=CairoMakie)
+end
 
 excludes = Set([
-    "Colored Mesh",
     "Line GIF",
     "Streamplot animation",
-    "Line changing colour",
     "Axis + Surface",
     "Streamplot 3D",
     "Meshscatter Function",
-    "Hollow pie chart",
     "Record Video",
-    "Image on Geometry (Earth)",
-    "Image on Geometry (Moon)",
+    # "mesh textured and loaded", # bad texture resolution on mesh
     "Comparing contours, image, surfaces and heatmaps",
-    "Textured Mesh",
-    "Simple pie chart",
     "Animated surface and wireframe",
-    "Open pie chart",
-    "image scatter",
     "surface + contour3d",
-    "Orthographic Camera",
-    "Legend",
-    "rotation",
+    "Orthographic Camera", # This renders blank, why?
     "3D Contour with 2D contour slices",
     "Surface with image",
-    "Test heatmap + image overlap",
-    "Text Annotation",
-    "step-2",
-    "FEM polygon 2D.png",
-    "Text rotation",
-    "Image on Surface Sphere",
-    "FEM mesh 2D",
-    "Hbox",
-    "Subscenes",
+    "FEM poly and mesh", # different color due to bad colormap resolution on mesh
+    "Image on Surface Sphere", # bad texture resolution
     "Arrows 3D",
-    "Layouting",
-    # sigh this is actually super close,
-    # but doesn't interpolate the values inside the
-    # triangles, so looks pretty different
-    "FEM polygon 2D",
     "Connected Sphere",
     # markers too big, close otherwise, needs to be assimilated with glmakie
-    "Unicode Marker",
     "Depth Shift",
     "Order Independent Transparency",
-    "heatmap transparent colormap",
     "fast pixel marker",
-    "scatter with glow",
-    "scatter with stroke",
-    "heatmaps & surface",
+    "scatter with glow", # some are missing
+    "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
+    "heatmaps & surface", # different nan_colors in surface
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
-    "Scatter with FastPixel" # almost works, but scatter + markerspace=:data seems broken for 3D
+    "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
+    "picking", # Not implemented
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -212,7 +201,7 @@ functions = [:volume, :volume!, :uv_mesh]
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
     recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
-    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir, "CairoMakie")
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
 

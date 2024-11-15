@@ -89,6 +89,9 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
+        # Because of on(scene.events.window_open) in scene, we need to free all scenes first
+        # to have 0 listeners
+        empty!(fig)
         @test isempty(events(ax.scene).window_open.listeners)
 
         # Test singleton screen replacement
@@ -133,7 +136,7 @@ end
     end
 end
 
-@testset "emtpy!(fig)" begin
+@testset "empty!(fig)" begin
     GLMakie.closeall()
     fig = Figure()
     ax = Axis(fig[1,1])
@@ -306,7 +309,7 @@ end
         @test isempty(screen.px_per_unit.listeners)
         @test isempty(screen.scalefactor.listeners)
 
-        @test screen.root_scene === nothing
+        @test screen.scene === nothing
         @test screen.rendertask === nothing
         @test (Base.summarysize(screen) / 10^6) < 1.7
     end
@@ -341,7 +344,6 @@ end
     screen = display(GLMakie.Screen(visible = true, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 2f0  # inherited from scale factor
-    winscale = screen.scalefactor[] / (@static Sys.isapple() ? GLMakie.scale_factor(screen.glscreen) : 1)
     @test size(screen.framebuffer) == (2W, 2H)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
@@ -359,6 +361,11 @@ end
     picks = pick(ax.scene, quadrant)
     points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
     @test points == Set(((N+1)÷2):N)
+    # - pick sorted
+    xy_px = project_sp(ax.scene, Point2f(x[1], y[1]))
+    picks = GLMakie.Makie.pick_sorted(ax.scene, screen, xy_px, 50)
+    points = [i for (p, i) in picks if p == pl]
+    @test points == [1, 2, 3]
 
     # render at lower resolution
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
@@ -450,6 +457,22 @@ end
     end
 
     GLMakie.closeall()
+end
+
+@testset "html video size annotation" begin
+    width = 600
+    height = 800
+    f = Figure(; size = (width, height))
+
+    vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=GLMakie)
+
+    @test size(vio.screen) == size(f.scene) .* 2
+
+    Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
 end
 
 @testset "image size changes" begin

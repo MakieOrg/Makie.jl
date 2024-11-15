@@ -18,7 +18,7 @@ function create_shader(mscene::Scene, plot::Surface)
     positions = Buffer(ps)
     rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
-    fs = map((ps, fs) -> filter(f -> !any(i -> isnan(ps[i]), f), fs), plot, ps, fs)
+    fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
     # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
     # the center of a texture pixel rather than the edge, fixing
@@ -34,7 +34,7 @@ function create_shader(mscene::Scene, plot::Surface)
     end)
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
-    uniforms = Dict(:uniform_color => color, :color => false, :model => model)
+    uniforms = Dict(:uniform_color => color, :color => false, :model => model, :PICKING_INDEX_FROM_UV => true)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
     uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
@@ -61,6 +61,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         :shininess => 0.0f0,
         :backlight => 0.0f0,
         :model => model,
+        :PICKING_INDEX_FROM_UV => true
     )
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
@@ -129,7 +130,7 @@ end
 
 
 
-xy_convert(x::Makie.EndPoints, n) = LinRange(extrema(x)..., n + 1)
+xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
 xy_convert(x::AbstractArray, n) = x
 
 # TODO, speed up GeometryBasics
@@ -162,17 +163,19 @@ function limits_to_uvmesh(plot, f32c)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
-
+    px = lift(identity, plot, px; ignore_equal_values=true)
+    py = lift(identity, plot, py; ignore_equal_values=true)
     if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
-            xmin, xmax = extrema(x)
-            ymin, ymax = extrema(y)
+            xmin, xmax = x
+            ymin, ymax = y
             return Rect2f(xmin, ymin, xmax - xmin, ymax - ymin)
         end
         ps = lift(rect -> decompose(Point2f, rect), plot, rect)
         positions = Buffer(apply_transform_and_f32_conversion(plot, f32c, ps))
-        faces = Buffer(lift(rect -> decompose(GLTriangleFace, rect), plot, rect))
-        uv = Buffer(lift(decompose_uv, plot, rect))
+        # UV + Faces stay the same for the rectangle
+        faces = Buffer(decompose(GLTriangleFace, rect[]))
+        uv = Buffer(decompose_uv(rect[]))
     else
         px = lift((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
         py = lift((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)

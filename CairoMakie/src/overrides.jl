@@ -216,26 +216,50 @@ end
 #        gradients as well via `mesh` we have to intercept the poly use        #
 ################################################################################
 
+function band_segment_ranges(lowerpoints, upperpoints)
+    ranges = UnitRange{Int}[]
+    start = nothing
+
+    for i in eachindex(lowerpoints, upperpoints)
+        if isnan(lowerpoints[i]) || isnan(upperpoints[i])
+            if start !== nothing && i - start > 1 # more than one point
+                push!(ranges, start:i-1)
+            end
+            start = nothing
+        elseif start === nothing
+            start = i
+        elseif i == lastindex(lowerpoints)
+            push!(ranges, start:i)
+        end
+    end
+    return ranges
+end
+
 function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
     if !(band.color[] isa AbstractArray)
         basecolor = to_cairo_color(band.color[], band)
         color = coloralpha(basecolor, alpha(basecolor) * band.alpha[])
-        upperpoints = band[1][]
-        lowerpoints = band[2][]
-        points = vcat(lowerpoints, reverse(upperpoints))
+
         model = band.model[]
         space = to_value(get(band, :space, :data))
-        points = clip_poly(band.clip_planes[], points, space, model)
-        points = project_position.(Ref(band), space, points, Ref(model))
-        Cairo.move_to(screen.context, points[1]...)
-        for p in points[2:end]
-            Cairo.line_to(screen.context, p...)
+
+        upperpoints = band[1][]
+        lowerpoints = band[2][]
+
+        for rng in band_segment_ranges(lowerpoints, upperpoints)
+            points = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))
+            points = clip_poly(band.clip_planes[], points, space, model)
+            points = project_position.(Ref(band), space, points, Ref(model))
+            Cairo.move_to(screen.context, points[1]...)
+            for p in points[2:end]
+                Cairo.line_to(screen.context, p...)
+            end
+            Cairo.close_path(screen.context)
+            set_source(screen.context, color)
+            Cairo.fill(screen.context)
         end
-        Cairo.close_path(screen.context)
-        set_source(screen.context, color)
-        Cairo.fill(screen.context)
     else
         for p in band.plots
             draw_plot(scene, screen, p)

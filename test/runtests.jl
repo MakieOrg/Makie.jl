@@ -14,6 +14,7 @@ using Makie: volume
 # COV_EXCL_STOP
 
 @testset "Unit tests" begin
+    include("updating.jl")
     include("deprecated.jl")
     include("specapi.jl")
     include("primitives.jl")

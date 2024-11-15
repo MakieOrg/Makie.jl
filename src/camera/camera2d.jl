@@ -195,13 +195,12 @@ function camspace(scene::SceneLike, cam::Camera2D, point)
     return Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
-function absrect(rect)
+function absrect(rect::Rect)
     xy, wh = minimum(rect), widths(rect)
-    xy = ntuple(Val(2)) do i
-        wh[i] < 0 ? xy[i] + wh[i] : xy[i]
+    xy = map(xy, wh) do xy, wh
+        wh < 0 ? xy + wh : xy
     end
-
-    return Rect2(Vec2(xy), abs.(wh))
+    return Rect2(xy, abs.(wh))
 end
 
 

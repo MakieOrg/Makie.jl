@@ -50,12 +50,13 @@ If `weights` for the values are provided, a weighted ECDF is plotted.
 end
 
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
-function convert_arguments(
-    ::Type{<:ECDFPlot},
-    x::AbstractVector;
-    npoints=10_000,
-    weights=StatsBase.Weights(Float64[]),
-)
+
+function Makie.convert_arguments(
+        ::Type{<:ECDFPlot},
+        x::AbstractVector;
+        npoints=10_000,
+        weights=StatsBase.Weights(Float64[]),
+    )
     ecdf = StatsBase.ecdf(x; weights=weights)
     return convert_arguments(Stairs, ecdf; npoints=npoints)
 end

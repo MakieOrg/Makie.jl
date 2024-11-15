@@ -66,12 +66,19 @@ that are multiples of pi, printed like "1π", "2π", etc.:
 ```
 MultiplesTicks(5, pi, "π")
 ```
+
+If `strip_zero == true`, then the resulting labels
+will be checked and any label that is a multiple of 0
+will be set to "0".
 """
 struct MultiplesTicks
     n_ideal::Int
     multiple::Float64
     suffix::String
+    strip_zero::Bool
 end
+
+MultiplesTicks(n_ideal, multiple, suffix; strip_zero = false) = MultiplesTicks(n_ideal, multiple, suffix, strip_zero)
 
 """
     AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
@@ -535,6 +542,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "Button that needs to be pressed to allow scroll zooming."
+        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -944,8 +953,8 @@ end
 end
 
 """
-A grid of horizontal `Slider`s, where each slider has one name label on the left,
-and a value label on the right.
+A grid of one or more horizontal `Slider`s, where each slider has a
+name label on the left and a value label on the right.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
 and `label`, and optionally a `format` for the value label. Beyond that, you can set
@@ -1089,6 +1098,57 @@ end
         clicks = 0
         "The align mode of the button in its parent GridLayout."
         alignmode = Inside()
+    end
+end
+
+const CHECKMARK_BEZIER = scale(BezierPath(
+    "M 81.449219,-0.08203125A 7.5,7.5 0 0 0 76.628906,3.0332031L 38.113281,58.792969 18.806641,34.650391A 7.5,7.5 0 0 0 8.265625,33.478516 7.5,7.5 0 0 0 7.0917969,44.019531L 32.697266,76.037109A 7.50075,7.50075 0 0 0 44.724609,75.615234L 88.970703,11.558594A 7.5,7.5 0 0 0 87.0625,1.125 7.5,7.5 0 0 0 81.449219,-0.08203125Z",
+    fit = true,
+    flipy = true,
+), 0.85)
+
+@Block Checkbox begin
+    @attributes begin
+        "The horizontal alignment of the checkbox in its suggested boundingbox"
+        halign = :center
+        "The vertical alignment of the checkbox in its suggested boundingbox"
+        valign = :center
+        "The width setting of the checkbox."
+        width = Auto()
+        "The height setting of the checkbox."
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The size (width/height) of the checkbox"
+        size = 11
+        "The size of the checkmark, relative to the size."
+        checkmarksize = 0.85
+        "The checkmark marker symbol. Anything that `scatter` can use."
+        checkmark = CHECKMARK_BEZIER
+        "Roundness of the checkbox poly, 0 is square, 1 is circular."
+        roundness = 0.15
+        "The strokewidth of the checkbox poly."
+        checkboxstrokewidth = 1.5
+        "The color of the checkbox background when checked."
+        checkboxcolor_checked = COLOR_ACCENT[]
+        "The color of the checkbox background when unchecked."
+        checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
+        "The strokecolor of the checkbox background when checked."
+        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        "The strokecolor of the checkbox background when unchecked."
+        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        "The color of the checkmark when unchecked."
+        checkmarkcolor_unchecked = :transparent
+        "The color of the checkmark when the mouse clicks the checkbox."
+        checkmarkcolor_checked = :white
+        "The align mode of the checkbox in its parent GridLayout."
+        alignmode = Inside()
+        "If the checkbox is currently checked. This value should not be modified directly."
+        checked = false
+        "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
+        onchange = !
     end
 end
 
@@ -1250,6 +1310,7 @@ end
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
+    scene::Scene
     entrygroups::Observable{Vector{EntryGroup}}
     _tellheight::Observable{Bool}
     _tellwidth::Observable{Bool}
@@ -1768,7 +1829,7 @@ end
         xzpanelvisible = true
         "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
         targetlimits = Rect3f(Vec3f(0, 0, 0), Vec3f(1, 1, 1))
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, yhigh, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
         limits = (nothing, nothing, nothing)
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin = (0.05, 0.05)
@@ -1871,7 +1932,7 @@ end
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
-        rticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), 16)
+        rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
@@ -1907,7 +1968,7 @@ end
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."
-        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), 16)
+        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."

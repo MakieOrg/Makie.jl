@@ -53,7 +53,7 @@ export update!                  # updates a gpu array with a Julia array
 export gpu_data                 # gets the data of a gpu array as a Julia Array
 
 export RenderObject             # An object which holds all GPU handles and datastructes to ready for rendering by calling render(obj)
-export prerender!               # adds a function to a RenderObject, which gets executed befor setting the OpenGL render state
+export prerender!               # adds a function to a RenderObject, which gets executed before setting the OpenGL render state
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
 export extract_renderable
 export set_arg!
