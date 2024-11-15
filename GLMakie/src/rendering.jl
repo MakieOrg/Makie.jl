@@ -103,9 +103,8 @@ function render_frame(screen::Screen, glscene::GLScene)
         # TODO: only do this for 2D scenes
         # (3D and mixed scenes can't be correctly sorted based on world space z
         # shifts. Center of bbox would be better but needs caching)
-        function sortby(x)
-            robj = x[3]
-            plot = screen.cache2plot[robj.id]
+        function sortby(robj)
+            plot = glscene.robj2plot[robj.id]
             # TODO, use actual boundingbox
             # ~7% faster than calling zvalue2d doing the same thing?
             return Makie.transformationmatrix(plot)[][3, 4]
