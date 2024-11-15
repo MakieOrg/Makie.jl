@@ -245,7 +245,7 @@ end
 function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(viewport(parent)[]) == Vec2f(0)
-    scene = Scene(parent, viewport = parent.viewport, clear = false)
+    scene = Scene(parent, viewport = parent.viewport, clear = false, overlay = true)
     campixel!(scene)
 
     attrib_dict = Dict(kwargs)
