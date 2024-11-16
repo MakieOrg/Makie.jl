@@ -158,25 +158,25 @@ end
 end
 
 @reference_test "line color interpolation with clipping" begin
-    # Clipping should not change the color interpolation of a line piece, so 
+    # Clipping should not change the color interpolation of a line piece, so
     # these boxes should match in color
-    fig = Figure(); 
-    ax = Axis(fig[1,1]); 
-    ylims!(ax, -0.1, 1.1); 
+    fig = Figure();
+    ax = Axis(fig[1,1]);
+    ylims!(ax, -0.1, 1.1);
     lines!(
         ax, Rect2f(0, 0, 1, 10), color = 1:5, linewidth = 5,
         clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
-    ); 
-    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5); 
+    );
+    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5);
 
-    ax = Axis(fig[1,2]); 
-    ylims!(ax, -0.1, 1.1); 
+    ax = Axis(fig[1,2]);
+    ylims!(ax, -0.1, 1.1);
     cs = [1, 2, 2, 3, 3, 4, 4, 5]
     linesegments!(
-        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5, 
+        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5,
         clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
-    ); 
-    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5); 
+    );
+    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5);
     fig
 end
 
@@ -612,8 +612,8 @@ end
     for (i, invert) in ((1, false), (2, true))
         surface(
             fig[1, i],
-            range(-1, 1, length = 21), 
-            -cos.(range(-pi, pi, length = 21)), 
+            range(-1, 1, length = 21),
+            -cos.(range(-pi, pi, length = 21)),
             [sin(y) for x in range(-0.5pi, 0.5pi, length = 21), y in range(-0.5pi, 0.5pi, length = 21)],
             axis = (show_axis = false, ),
             invert_normals = invert
@@ -712,7 +712,7 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function 
+    # Tests that (primitive) plots can have different transform function
     # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
@@ -752,16 +752,16 @@ end
         ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
         hidedecorations!(ax)
     end
-    
+
     gl = fig[1, 1] = GridLayout()
     create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
-    
+
     gl = fig[1, 2] = GridLayout()
     create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
-    
+
     gl = fig[2, 1] = GridLayout()
     create_block(
-        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img, 
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img,
         marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
 
     gl = fig[2, 2] = GridLayout()
@@ -780,9 +780,9 @@ end
         [Point2f(x, y) for x in 1:M for y in 1:N],
         color = cow,
         uv_transform = [
-            Makie.uv_transform(:rotl90) * 
+            Makie.uv_transform(:rotl90) *
             Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
-            for x in range(0, 1, length = M+1)[1:M] 
+            for x in range(0, 1, length = M+1)[1:M]
             for y in range(0, 1, length = N+1)[1:N]
         ],
         markersize = Vec3f(0.9, 0.9, 1),
@@ -822,8 +822,8 @@ end
 
     for (i, interp) in enumerate((true, false))
         for (j, plot_func) in enumerate((
-            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
-            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp),
+            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp),
             (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading)
         ))
 
@@ -841,4 +841,26 @@ end
     end
 
     f
+end
+
+@reference_test "scatter marker_offset" begin
+    scene = Scene(size = (175, 350))
+    campixel!(scene)
+    img = [RGBf(r, 0.2, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    for (x, offset) in [(50, (0, 0)), (150, (-20, 0))]
+        scatter!(scene, Point2f(x,  50), markersize = 40, marker_offset = offset)
+        scatter!(scene, Point2f(x, 100), markersize = 40, marker_offset = offset, marker = Circle)
+        scatter!(scene, Point2f(x, 150), markersize = 40, marker_offset = offset, marker = Rect)
+        scatter!(scene, Point2f(x, 200), markersize = 40, marker_offset = offset, marker = 'x')
+        scatter!(scene, Point2f(x, 250), markersize = 40, marker_offset = offset, marker = FastPixel())
+        scatter!(scene, Point2f(x, 300), markersize = 40, marker_offset = offset, marker = img)
+    end
+
+    p = scatter!(
+        scene, [Point2f(x, y) for x in (50, 150 - 20) for y in 50:50:300],
+        strokewidth = 2, strokecolor = :black,
+        color = :transparent, markersize = 40, marker = Rect
+    )
+    translate!(p, 0, 0, 1)
+    scene
 end
