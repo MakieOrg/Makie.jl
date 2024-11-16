@@ -864,3 +864,14 @@ end
     translate!(p, 0, 0, 1)
     scene
 end
+
+@reference_test "scatter marker_offset 3D" begin
+    ns = Vec3f[(-1,0,0), (0,-1,0), (0,0,-1), (1,0,0), (0,1,0), (0,0,1)]
+    img = load(Makie.assetpath("cow.png"))
+    scatter(
+        [Point3f(0) for _ in eachindex(ns)],
+        marker = img, markerspace = :data, markersize = 1.5,
+        marker_offset = ns, rotation = to_rotation(ns),
+        strokewidth = 2, strokecolor = :orange,
+    )
+end
