@@ -386,15 +386,6 @@ function draw_atomic_scatter(
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    # Marker offset is meant to be relative to the
-    # bottom left corner of the box centered at
-    # `pos` with sides defined by `scale`, but
-    # this does not take the character's dimensions
-    # into account.
-    # Here, we reposition the marker offset to be
-    # relative to the center of the char.
-    marker_offset = marker_offset .+ scale ./ 2
-
     cairoface = set_ft_font(ctx, font)
 
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
@@ -436,7 +427,6 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 end
 
 function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    marker_offset = marker_offset + scale ./ 2
     pos += Point2f(marker_offset[1], -marker_offset[2])
 
     if scale[1] != scale[2]
@@ -462,6 +452,8 @@ end
 function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
                      marker_offset, rotation)
     s2 = Point2((scale .* (1, -1))...)
+    # unlike other Char markers this one is not centered, so it needs to be shifted by 0.5scale
+    marker_offset -= Vec2f(0.5 .* scale)
     pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.rectangle(ctx, pos[1], pos[2], s2...)
@@ -474,7 +466,7 @@ end
 
 function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     Cairo.save(ctx)
-    Cairo.translate(ctx, pos[1], pos[2])
+    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.scale(ctx, scale[1], -scale[2]) # flip y for cairo
     draw_path(ctx, beziermarker)
@@ -530,9 +522,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
 
     w, h = size(marker)
 
-    Cairo.translate(ctx,
-                    scale[1]/2 + pos[1] + marker_offset[1],
-                    scale[2]/2 + pos[2] + marker_offset[2])
+    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] + marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.scale(ctx, scale[1] / w, scale[2] / h)
     Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
@@ -1254,7 +1244,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]

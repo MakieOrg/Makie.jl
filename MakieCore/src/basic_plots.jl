@@ -469,8 +469,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
     "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
     rotation = Billboard()
-    "The offset of the marker from the given position in `markerspace` units. Default is centered around the position (markersize * -0.5)."
-    marker_offset = automatic
+    "The offset of the marker from the given position in `markerspace` units. An offset of 0 corresponds to a centered marker."
+    marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."

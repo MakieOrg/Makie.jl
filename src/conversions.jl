@@ -947,6 +947,11 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+convert_attribute(o, ::key"marker_offset", ::key"scatter") = to_3d_offset(o)
+# Is it reasonable to go from offset -> (offset, 0, 0)?
+to_3d_offset(x::VecTypes) = to_ndim(Vec3f, x, 0)
+to_3d_offset(x::AbstractVector) = to_offset.(x)
+
 
 ## UV Transforms
 

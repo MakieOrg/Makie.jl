@@ -131,7 +131,6 @@ function to_glvisualize_key(k)
     k === :strokecolor && return :stroke_color
     k === :positions && return :position
     k === :linewidth && return :thickness
-    k === :marker_offset && return :quad_offset
     k === :colormap && return :color_map
     k === :colorrange && return :color_norm
     k === :transform_marker && return :scale_primitive
@@ -441,8 +440,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 get!(gl_attributes, :uv_offset_width) do
                     return Makie.primitive_uv_offset_width(atlas, marker, font)
                 end
-                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font,
-                                                             gl_attributes[:quad_offset], plot)
+                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, plot)
                 gl_attributes[:scale] = scale
                 gl_attributes[:quad_offset] = quad_offset
             end
@@ -452,7 +450,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
+            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
                              :projectionview, :projection, :view, :visible, :resolution, :transparency])
             filter!(gl_attributes) do (k, v,)
                 return (k in to_keep)

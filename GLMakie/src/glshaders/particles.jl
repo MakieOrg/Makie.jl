@@ -90,7 +90,7 @@ function draw_mesh_particle(screen, p, data)
                 return output
             end => TextureBuffer
         end
-    else 
+    else
         # handled automatically
     end
 
@@ -140,6 +140,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         vertex       = position => GLBuffer
         color_map    = nothing => Texture
         color        = nothing => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -227,7 +228,7 @@ function draw_scatter(screen, (marker, position), data)
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
-        marker_offset = Vec3f(0) => GLBuffer;
+        marker_offset = Vec3f(0) => GLBuffer
         scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture
