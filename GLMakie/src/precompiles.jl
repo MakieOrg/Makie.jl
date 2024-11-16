@@ -32,6 +32,8 @@ let
             Makie.CURRENT_FIGURE[] = nothing
 
             screen = Screen(Scene())
+            refresh_func = refreshwindowcb(screen)
+            refresh_func(to_native(screen))
             close(screen)
             screen = empty_screen(false)
             close(screen)
