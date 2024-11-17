@@ -451,12 +451,10 @@ end
 
 function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
                      marker_offset, rotation)
-    s2 = Point2((scale .* (1, -1))...)
-    # unlike other Char markers this one is not centered, so it needs to be shifted by 0.5scale
-    marker_offset -= Vec2f(0.5 .* scale)
-    pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
+
+    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.rectangle(ctx, pos[1], pos[2], s2...)
+    Cairo.rectangle(ctx, -0.5scale[1], -0.5scale[2], scale...)
     Cairo.fill_preserve(ctx)
     Cairo.set_line_width(ctx, Float64(strokewidth))
     sc = to_color(strokecolor)
