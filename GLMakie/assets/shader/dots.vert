@@ -66,12 +66,12 @@ void main(){
         gl_PointSize = px_per_unit * scale.x;
     } else {
         // dataspace with 3D camera
-        clip_pos += projectionview * vec4(marker_offset, 0);
         // to have a billboard, we project the upvector
         vec3 scale_vec = upvector * scale.x;
         vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
         float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
         gl_PointSize = ceil(0.5 * yup *  resolution.y);
+        clip_pos += projectionview * vec4(marker_offset, 0);
     }
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
 
