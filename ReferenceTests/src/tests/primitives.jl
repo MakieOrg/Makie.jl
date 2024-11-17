@@ -844,25 +844,39 @@ end
 end
 
 @reference_test "scatter marker_offset" begin
-    scene = Scene(size = (175, 350))
-    campixel!(scene)
-    img = [RGBf(r, 0.2, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
-    for (x, offset) in [(50, (0, 0)), (150, (-20, 0))]
-        scatter!(scene, Point2f(x,  50), markersize = 40, marker_offset = offset)
-        scatter!(scene, Point2f(x, 100), markersize = 40, marker_offset = offset, marker = Circle)
-        scatter!(scene, Point2f(x, 150), markersize = 40, marker_offset = offset, marker = Rect)
-        scatter!(scene, Point2f(x, 200), markersize = 40, marker_offset = offset, marker = 'x')
-        scatter!(scene, Point2f(x, 250), markersize = 40, marker_offset = offset, marker = FastPixel())
-        scatter!(scene, Point2f(x, 300), markersize = 40, marker_offset = offset, marker = img)
+    fig = Figure(size = (350, 500))
+    ax = Axis(fig[1, 1], aspect = DataAspect())
+    xlims!(ax, -6.5, 6.5); ylims!(ax, -10, 10)
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rect_corners = Point2f[(-0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0.5, -0.5), (-0.5, -0.5), (NaN, NaN)]
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0), :pixel, 40),   (-5.5, (0, -20), :pixel, 40),
+            (-4, (0, 0), :data, 1.8),     (-0.5, (0, -1), :data, 1.8),
+            (+1, (0, 0), :relative, 0.1), (+4.5, (0, -0.05), :relative, 0.1),
+            (+6, (0, 0), :clip, 0.2),     (+9.5, (0, -0.1), :clip, 0.2),
+        ]
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset)
+        scatter!(ax, Point2f(-5, y); kwargs...)
+        scatter!(ax, Point2f(-3, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f(-1, y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 1, y), marker = 'x'; kwargs...)
+        if space in (:data, :pixel)
+            scatter!(ax, Point2f( 3, y), marker = FastPixel(); kwargs...)
+        end
+        scatter!(ax, Point2f( 5, y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        transformed = map(Point2f.(-5:2:5, y)) do pos
+            pos_ms = Makie.project(ax.scene, :data, space, pos)[Vec(1,2)]
+            rect_ps = [pos_ms .+ markersize .* xy .+ offset for xy in rect_corners]
+            return rect_ps
+        end
+        p = lines!(ax, vcat(transformed...), color = :black, linewidth = 2, space = space)
     end
 
-    p = scatter!(
-        scene, [Point2f(x, y) for x in (50, 150 - 20) for y in 50:50:300],
-        strokewidth = 2, strokecolor = :black,
-        color = :transparent, markersize = 40, marker = Rect
-    )
-    translate!(p, 0, 0, 1)
-    scene
+    fig
 end
 
 @reference_test "scatter marker_offset 3D" begin
