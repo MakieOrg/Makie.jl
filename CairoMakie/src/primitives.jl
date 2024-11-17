@@ -522,7 +522,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
 
     w, h = size(marker)
 
-    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] + marker_offset[2])
+    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
     Cairo.rotate(ctx, to_2d_rotation(rotation))
     Cairo.scale(ctx, scale[1] / w, scale[2] / h)
     Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
