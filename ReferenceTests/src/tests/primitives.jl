@@ -896,7 +896,7 @@ end
 
     img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
     rotation = 0.3f0
-    rect_corners = [Point2f(cos(a), sin(a)) ./ sqrt(2) for a in (range(0, 2pi, 5) .+ pi/4 .+ rotation)]
+    rect_corners = [Point2f(cos(a), sin(a)) ./ sqrt(2) for a in (range(0.0, 2pi, length=5) .+ pi/4 .+ rotation)]
     push!(rect_corners, Point2f(NaN))
 
     for (y, offset, space, markersize) in [
