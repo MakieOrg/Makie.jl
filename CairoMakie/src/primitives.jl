@@ -362,6 +362,7 @@ function draw_atomic_scatter(
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         isnan(pos) && return
+        isnan(rotation) && return # matches GLMakie
 
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
@@ -372,7 +373,7 @@ function draw_atomic_scatter(
         # Setting a markersize of 0.0 somehow seems to break Cairos global state?
         # At least it stops drawing any marker afterwards
         # TODO, maybe there's something wrong somewhere else?
-        if !(norm(scale) ≈ 0.0)
+        if !(isnan(scale) || norm(scale) ≈ 0.0)
             if m isa Char
                 draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
             else
@@ -1254,7 +1255,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]
