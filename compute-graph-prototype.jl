@@ -119,14 +119,6 @@ end
 
 function mark_dirty!(edge::ComputeEdge)
     edge.got_resolved[] = false
-    for (i, input) in enumerate(edge.inputs)
-        isdirty(input) && (edge.inputs_dirty[i] = true)
-    end
-    for computed in edge.outputs
-        if hasparent(computed) && computed.parent !== edge
-            mark_dirty!(computed.parent)
-        end
-    end
     for dep in edge.dependents
         mark_dirty!(dep)
     end
@@ -170,14 +162,19 @@ end
 
 Base.getindex(resolved::Resolved) = resolved.ref[]
 
+function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
+    for (i, input) in enumerate(edge.inputs)
+        # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
+        hasparent(input) && input.parent === parent && (edge.inputs_dirty[i] = isdirty(input))
+    end
+end
+
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function inner_resolve(edge, inputs, outputs)
     needs_init = false
     if all(x -> isassigned(x.value), edge.outputs)
-        @show inputs
         result = edge.callback(inputs, outputs)
-        @show result
     else
         needs_init = true
         result = edge.callback(inputs, nothing)
@@ -199,6 +196,11 @@ function inner_resolve(edge, inputs, outputs)
                 end
             end
         end
+        edge.got_resolved[] = true
+        fill!(edge.inputs_dirty, false)
+        for dep in edge.dependents
+            mark_input_dirty!(edge, dep)
+        end
     elseif isnothing(result)
         fill!(edge.outputs_dirty, false)
     else
@@ -214,7 +216,6 @@ function resolve!(computed::Computed)
 end
 
 
-
 function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
@@ -225,14 +226,14 @@ function resolve!(edge::ComputeEdge)
         # But we only really know if the value has changed if we run resolve!
         # has_changed = edge.inputs_dirty[i]
         resolve!(input)
-        return Resolved(input.value, isdirty(input))
+        return Resolved(input.value, edge.inputs_dirty[i])
     end
     # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
     # TODO, can/should we store this tuple?
     outputs = ntuple(i -> edge.outputs[i].value, length(edge.outputs))
     inner_resolve(edge, inputs, outputs)
-    edge.got_resolved[] = true
-    fill!(edge.inputs_dirty, false)
+
+
     return true
 end
 
@@ -340,11 +341,11 @@ begin
 
     # Adding inputs - default_theme effectively does this
     add_inputs!(attr,
-        color=1:4, colormap=:viridis, colorscale=identity, colorrange=automatic,
+        color=[-1:0.1:1...], colormap=:viridis, colorscale=identity, colorrange=automatic,
         lowclip=automatic, highclip=automatic, nan_color=:transparent, alpha=1.0, marker=:circle, markersize=8,
         strokecolor=:black, strokewidth=0,
         glowcolor=:yellow, glowwidth=0, f32c=nothing, transform_func=identity, space=:data, markerspace=:pixel,
-        rotation=Billboard(), marker_offset=automatic, transparency=false, arg1=-1:0.1:1, arg2=-1:0.1:1,
+        rotation=Billboard(), marker_offset=automatic, transparency=false, arg1=[-1:0.1:1...], arg2=[-1:0.1:1...],
     )
 
     # Special case: calculated_attributes - marker_offset
@@ -464,14 +465,7 @@ begin
     end
 end;
 
-update!(attr; arg1=-1:0.1:1, arg2=-1:0.1:1, color=1:0.1:1, markersize=22);
 
-bb = attr.outputs[:uniforms_buffers][].changeset
-
-bb = attr.outputs[:uniforms_buffers][].buffers.positions_transformed_f32c[]
-bb = attr.outputs[:uniforms_buffers][].uniforms.color[]
-bb = attr.outputs[:quad_scale][]
-attr.outputs[:data_limits][]
 
 function assemble_scatter_robj(scene, screen, positions, colormap, color, colornorm, scale, transparency)
     cam = scene[].camera
@@ -507,36 +501,76 @@ function create_robj(screen::GLMakie.Screen, scene, attr)
     register_computation!(attr, Symbol[], [scene_name]) do args, last
         (scene,)
     end
-    register_computation!(attr, [scene_name, screen_name, :positions_transformed_f32c, :colormap, :color, :_colorrange, :markersize, :transparency], [:gl_renderobject]) do args, last
+    inputs = [scene_name, screen_name, :positions_transformed_f32c, :colormap, :color, :_colorrange,
+              :markersize, :transparency]
+    gl_names = [:vertex, :color_map, :color, :color_norm, :scale, :transparency]
+    register_computation!(attr, inputs, [:gl_renderobject]) do args, last
         scene = args[1][]
         screen = args[2][]
         !isopen(screen) && return :deregister
-        if isnothing(last)
+        robj = if isnothing(last)
             robj = assemble_scatter_robj(args...)
             push!(screen, scene, robj)
-            return (robj,)
+            robj
         else
             robj = last[1][]
-            # for key in changeset
-            #     if haskey(uniforms, key)
-            #         update_uniform!(robj[1][key], uniforms[key])
-            #     else
-            #         update_buffers!(robj[2][key], buffers[key])
-            #     end
-            # end
+            for (name, arg) in zip(gl_names, args[3:end])
+                if arg.has_changed
+                    if haskey(robj.uniforms, name)
+                        robj.uniforms[name] = arg[]
+                    elseif haskey(robj.vertexarray.buffers, string(name))
+                        GLMakie.update!(robj.vertexarray.buffers[string(name)], arg[])
+                    end
+                end
+            end
+            robj
         end
+        screen.requires_update = true
+        return (robj,)
     end
 end
 
-attr.color = -1:0.1:1
 
-update!(attr, color=-1:0.1:1);
+# update!(attr; arg1=-1:0.1:1, arg2=-1:0.1:1, color=1:0.1:1, markersize=22);
 
-attr.outputs[:color][]
 
 scene = Scene();
 empty!(screen.renderlist)
 GLMakie.closeall()
-screen = display(scene; vsync=true, render_on_demand=false)
+screen = display(scene)
 create_robj(screen, scene, attr)
 robj = attr.outputs[:gl_renderobject][]
+
+
+for i in 1:0.1:20
+    update!(attr; arg2=sin.((-1:0.1:1) .* (i/10)), markersize=i);
+    @time attr.outputs[:gl_renderobject][]
+    yield()
+end
+
+
+# x = attr.outputs[:gl_renderobject].parent
+
+
+
+# attr = ComputeGraph() do key, value
+#     return value
+# end
+
+# # Adding inputs - default_theme effectively does this
+# add_inputs!(attr, attr1=1, attr2=3, attr3=5)
+
+# register_computation!(attr, [:attr1, :attr2, :attr3], [:a1changed, :a2changed, :a3changed]) do args, last
+#     return map(x-> x.has_changed, args)
+# end
+
+# register_computation!(attr, [:a1changed, :a2changed, :a3changed], [:out]) do args, last
+#     return (map(x -> x[], args),)
+# end
+
+
+# attr.outputs[:out][]
+
+# update!(attr; attr1=2, attr2=4)
+
+# attr.outputs[:a3changed].parent.outputs_dirty

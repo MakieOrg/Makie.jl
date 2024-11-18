@@ -90,7 +90,7 @@ function draw_mesh_particle(screen, p, data)
                 return output
             end => TextureBuffer
         end
-    else 
+    else
         # handled automatically
     end
 
