@@ -213,7 +213,7 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{<:AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}}) where {N, T}
+function convert_arguments(PB::PointBased, linestring::Union{AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}, AbstractVector{<:MultiLineString{N,T}}}) where {N, T}
     T_out = float_type(T)
     arr = Point{N, T_out}[]; n = length(linestring)
     for idx in 1:n
