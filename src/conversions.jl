@@ -920,6 +920,8 @@ end
 to_color(c::Nothing) = c # for when color is not used
 to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::VecTypes{3}) = RGBAf(c[1], c[2], c[3], 1)
+to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
