@@ -312,7 +312,7 @@ end
     protrusions = (40, 30, 20, 10)
     perspectiveness = Observable(0.0)
     cat = load(Makie.assetpath("cat.obj"))
-    cs = 1:length(Makie.coordinates(m))
+    cs = 1:length(Makie.coordinates(cat))
 
     for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
         gl = GridLayout(fig[by, bx])
