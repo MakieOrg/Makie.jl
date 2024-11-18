@@ -1982,3 +1982,8 @@ assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32conv
 # BUFFER OVERLOAD
 
 GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
+
+# Used in Label, maybe useful elsewhere?
+to_lrbt_padding(x::Real) = Vec4f(x)
+to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
+to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
