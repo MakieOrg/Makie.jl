@@ -61,7 +61,6 @@ end
 pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
-pkg"add GeometryBasics#master MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
 Pkg.add([(; name="JSON")])
 
 @time Pkg.precompile()

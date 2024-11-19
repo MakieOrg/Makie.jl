@@ -44,9 +44,6 @@ jobs:
           using Pkg;
           pkg"registry up"
           Pkg.update()
-          pkg"add GeometryBasics#master"
-          pkg"add MeshIO#ff/GeometryBasics_refactor"
-          pkg"add ShaderAbstractions#ff/GeometryBasics_refactor"
           # dev mono repo versions
           pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
       - name: Run the tests

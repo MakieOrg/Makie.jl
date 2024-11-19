@@ -65,7 +65,6 @@ for metric_target in metric_targets
 
             @everywhere i_proc begin
                 pkg"activate --temp"
-                pkg"add GeometryBasics#master MeshIO#ff/GeometryBasics_refactor ShaderAbstractions#ff/GeometryBasics_refactor"
                 pkg"dev . MakieCore GLMakie CairoMakie"
                 Pkg.precompile()
                 @timed begin end
@@ -101,7 +100,7 @@ for metric_target in metric_targets
 
         finally
             rmprocs(i_proc)
-        end    
+        end
     end
     append!(results, df, cols = :union)
 end
