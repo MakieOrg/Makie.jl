@@ -4,6 +4,10 @@
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
+- Added PointBased conversion for `Vector{MultiLineString}` [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Added color conversions for tuples, Points and Vecs [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Added conversions for 1 and 2 value paddings in `Label` and `tooltip` [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Fixed `NaN` in scatter rotation and markersize breaking Cairo state [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
 
 ## [0.21.16] - 2024-11-06
 
