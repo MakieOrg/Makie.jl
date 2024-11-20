@@ -975,6 +975,7 @@ function draw_mesh3D(
     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
     matcap = to_value(get(attributes, :matcap, nothing))
+    transform_marker = to_value(get(attributes, :transform_marker, true))
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
@@ -1007,7 +1008,7 @@ function draw_mesh3D(
     draw_mesh3D(
         scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading_bool::Bool, diffuse::Vec3f,
+        model, transform_marker::Bool, shading_bool::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
     )
 end
@@ -1015,7 +1016,7 @@ end
 function draw_mesh3D(
         scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading, diffuse,
+        model, transform_marker, shading, diffuse,
         specular, shininess, faceculling, clip_planes
     )
     ctx = screen.context
@@ -1025,6 +1026,7 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     local_model = rotation * Makie.scalematrix(Vec3d(scale))
     normalmatrix = transpose(inv(model[i, i] * local_model[i, i])) # see issue #3702
+    local_model = transform_marker ? model * local_model : local_model
 
     # pass transform_func as argument to function, so that we get a function barrier
     # and have `transform_func` be fully typed inside closure
@@ -1033,7 +1035,7 @@ function draw_mesh3D(
         # Should v get a nan2zero?
         v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
-        return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
+        return to_ndim(Vec4f, local_model * p4d .+ model_f32 * to_ndim(Vec4d, pos, 0), NaN32)
     end
 
     valid = if Makie.is_data_space(space)
@@ -1217,7 +1219,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = primitive.clip_planes,
+        transform_marker = primitive.transform_marker
     )
 
     submesh[:model] = model
@@ -1254,7 +1257,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]

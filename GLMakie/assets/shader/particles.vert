@@ -29,6 +29,7 @@ in vec3 normals;
 {{texturecoordinates_type}} texturecoordinates;
 
 uniform mat4 view, model, projection;
+uniform bool scale_primitive;
 uniform uint objectid;
 uniform int len;
 
@@ -123,5 +124,8 @@ void main(){
     o_uv = get_uv(index, texturecoordinates);
     o_InstanceID = index;
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection);
+    if (scale_primitive)
+        render(model * vec4(pos + V, 1), N, view, projection);
+    else
+        render(model * vec4(pos, 1) +  vec4(V, 0), N, view, projection);
 }
