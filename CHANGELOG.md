@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fix uint16 overflow for over ~65k elements in WGLMakie picking [#4604](https://github.com/MakieOrg/Makie.jl/pull/4604).
 - Improve performance for line plot in CairoMakie [#4601](https://github.com/MakieOrg/Makie.jl/pull/4601).
 - Prevent more default actions when canvas has focus [#4602](https://github.com/MakieOrg/Makie.jl/pull/4602).
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
