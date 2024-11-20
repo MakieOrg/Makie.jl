@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+- Improve performance for line plot in CairoMakie [#4601](https://github.com/MakieOrg/Makie.jl/pull/4601).
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
