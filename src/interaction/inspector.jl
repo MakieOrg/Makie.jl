@@ -1078,7 +1078,6 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     tt = inspector.plot
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
-    @show idx
     idx2d = spy._index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
         z = spy.z[][idx2d...]

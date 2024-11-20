@@ -500,7 +500,7 @@ function set_picking_uniforms(
     return next_id;
 }
 
-function decodeHalfFloatToUint(r, g) {
+function decode_float_to_uint(r, g) {
     const lower = Math.round(r * 65535);
     const upper = Math.round(g * 65535);
     return (upper << 16) | lower;
@@ -524,12 +524,10 @@ function read_pixels(renderer, picking_target, x, y, w, h) {
         const g = pixel_bytes[i + 1];
         const b = pixel_bytes[i + 2];
         const a = pixel_bytes[i + 3];
-        const id = decodeHalfFloatToUint(r, g);
-        const index = decodeHalfFloatToUint(b, a);
+        const id = decode_float_to_uint(r, g);
+        const index = decode_float_to_uint(b, a);
         result.push([id, index]);
     }
-
-    console.log(result)
     return result;
 }
 
