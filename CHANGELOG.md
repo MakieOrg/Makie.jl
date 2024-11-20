@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Added `backend` kwarg to `show` [#4558](https://github.com/MakieOrg/Makie.jl/pull/4558)
+- Added `backend` and `update_state` kwargs to `show` [#4558](https://github.com/MakieOrg/Makie.jl/pull/4558)
 - Fix uint16 overflow for over ~65k elements in WGLMakie picking [#4604](https://github.com/MakieOrg/Makie.jl/pull/4604).
 - Improve performance for line plot in CairoMakie [#4601](https://github.com/MakieOrg/Makie.jl/pull/4601).
 - Prevent more default actions when canvas has focus [#4602](https://github.com/MakieOrg/Makie.jl/pull/4602).
