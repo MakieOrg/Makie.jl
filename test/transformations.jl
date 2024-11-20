@@ -138,6 +138,118 @@ end
     @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 end
 
+@testset "Model Transforms" begin
+    t1 = Transformation()
+    
+    @testset "defaults" begin
+        @test !isassigned(t1.parent)
+        @test t1.translation[] == Vec3d(0)
+        @test t1.scale[] == Vec3d(1)
+        @test t1.rotation[] == Quaternionf(0,0,0,1)
+        @test t1.origin[] == Vec3d(0)
+        @test t1.transform_func[] == identity
+        @test t1.parent_model[] == Mat4d(I)
+        @test t1.model[] == Mat4d(I)
+    end
+
+    @testset "getters" begin
+        @test translation(t1) == t1.translation
+        @test Makie.scale(t1) == t1.scale
+        @test Makie.rotation(t1) == t1.rotation
+        @test Makie.origin(t1) == t1.origin
+    end
+
+    function model_from_parts(t)
+        Makie.translationmatrix(t.translation[] + t.origin[]) *
+        Makie.scalematrix(t.scale[]) *
+        Makie.rotationmatrix4(t.rotation[]) *
+        Makie.translationmatrix(-t.origin[])
+    end
+
+    @testset "Mutation/Transformation functions + model Matrix" begin
+        # translate!
+        translate!(t1, 1,2,3)
+        @test t1.translation[] ≈ Vec3d(1,2,3)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(t1, 1)
+        @test t1.translation[] ≈ Vec3d(1,0,0)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(t1, Vec3f(0.5, 1.2, 0.9))
+        @test t1.translation[] ≈ Vec3f(0.5, 1.2, 0.9)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(Accum, t1, Vec3f(1))
+        @test t1.translation[] ≈ Vec3f(0.5, 1.2, 0.9) + Vec3f(1)
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # rotate!
+        q = Quaternionf(0.4, 0.3, 0.5, 0.6)
+        Makie.rotate!(t1, q)
+        @test t1.rotation[] ≈ q
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(t1, pi/2)
+        @test t1.rotation[] ≈ Quaternionf(0, 0, sqrt(0.5), sqrt(0.5))
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(t1, Vec3f(1,1,0), pi/3)
+        @test t1.rotation[] ≈ Quaternionf(sqrt(0.125), sqrt(0.125), 0, sqrt(0.75))
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(Accum, t1, pi/2)
+        combined = Quaternionf(sqrt(0.125), sqrt(0.125), 0, sqrt(0.75)) * Quaternionf(0, 0, sqrt(0.5), sqrt(0.5))
+        @test t1.rotation[] ≈ combined atol = 1e-5
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # scale!
+        scale!(t1, 0.5, 2, 3)
+        @test t1.scale[] ≈ Vec3d(0.5, 2, 3)
+        @test t1.model[] ≈ model_from_parts(t1)
+        scale!(t1, 2)
+        @test t1.scale[] ≈ Vec3d(2, 1, 1)
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # origin!
+        origin!(t1, 1, 0, 1)
+        @test t1.origin[] ≈ Vec3d(1,0,1)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(t1, 0.5)
+        @test t1.origin[] ≈ Vec3d(0.5, 0, 0)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(t1, Vec3(0.5))
+        @test t1.origin[] ≈ Vec3d(0.5)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(Accum, t1, 1, 1)
+        @test t1.origin[] ≈ Vec3d(1.5, 1.5, 0.5)
+        @test t1.model[] ≈ model_from_parts(t1)
+    end
+
+    @testset "Child transform" begin
+        t2 = Transformation(t1)
+
+        @test isassigned(t2.parent) && (t2.parent[] == t1)
+        @test t2.translation[] == Vec3d(0)
+        @test t2.scale[] == Vec3d(1)
+        @test t2.rotation[] == Quaternionf(0,0,0,1)
+        @test t2.origin[] == Vec3d(0)
+        @test t2.transform_func[] == identity
+        @test t2.parent_model !== t1.model # not the same object
+        @test t2.parent_model[] == t1.model[] # but same value
+        @test t2.model[] == t1.model[]
+
+        # transform child
+        translate!(t2, 1,2,3)
+        scale!(t2, 2)
+        Makie.rotate!(t2, pi)
+        origin!(t2, -1,0,1)
+        @test t2.model[] ≈ t1.model[] * model_from_parts(t2)
+
+        # transform parent
+        translate!(t1, 0)
+        scale!(t1, 1)
+        Makie.rotate!(t1, 0)
+        origin!(t1, 0)
+        @test t2.model[] ≈ model_from_parts(t2)
+    end
+
+end
+
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
     spaces = [:data, :pixel, :relative, :clip]

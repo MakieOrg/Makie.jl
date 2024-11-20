@@ -89,6 +89,9 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
+        # Because of on(scene.events.window_open) in scene, we need to free all scenes first
+        # to have 0 listeners
+        empty!(fig)
         @test isempty(events(ax.scene).window_open.listeners)
 
         # Test singleton screen replacement
@@ -288,7 +291,7 @@ end
         @test isempty(screen.px_per_unit.listeners)
         @test isempty(screen.scalefactor.listeners)
 
-        @test screen.root_scene === nothing
+        @test screen.scene === nothing
         @test screen.rendertask === nothing
         @test (Base.summarysize(screen) / 10^6) < 1.4
     end
@@ -436,6 +439,22 @@ end
     end
 
     GLMakie.closeall()
+end
+
+@testset "html video size annotation" begin
+    width = 600
+    height = 800
+    f = Figure(; size = (width, height))
+
+    vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=GLMakie)
+
+    @test size(vio.screen) == size(f.scene) .* 2
+
+    Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
 end
 
 @testset "image size changes" begin

@@ -707,6 +707,12 @@ end
         strokewidth = 2f0, strokecolor = :cyan
     )
     tooltip!(ax, "i'm an axis", placement=:center)
+    # Test depth (this part is expected to fail in CairoMakie)
+    p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
+    translate!(p, 0, 0, 100)
+    mesh!(ax, 
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
+        shading = NoShading, color = :orange)
     fig
 end
 
@@ -1663,7 +1669,7 @@ end
         show_notch = true, notchwidth = 0.3,
         notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
         strokewidth = 2, strokecolor = :black,
-        orientation = :horizontal, color = :lightblue
+        orientation = :horizontal, color = (:gray, 0.5)
     )
     fig
 end

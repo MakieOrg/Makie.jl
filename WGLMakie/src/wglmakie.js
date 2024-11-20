@@ -237,9 +237,7 @@ function add_canvas_events(screen, comm, resize_to) {
 
     function keydown(event) {
         // Prevent the default browser behavior for `Space`, which is to scroll.
-        if (event.code === "Space") {
-            event.preventDefault();
-        }
+        event.preventDefault();
         comm.notify({
             keydown: [event.code, event.key],
         });
@@ -249,6 +247,7 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("keydown", keydown);
 
     function keyup(event) {
+        event.preventDefault();
         comm.notify({
             keyup: event.code,
         });
