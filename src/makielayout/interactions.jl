@@ -236,6 +236,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     yzoomlock = ax.yzoomlock
     xzoomkey = ax.xzoomkey
     yzoomkey = ax.yzoomkey
+    use_zoom_reset_timer = ax.use_zoom_reset_timer[]
 
 
     scene = ax.scene
@@ -276,7 +277,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         newxorigin = xzoomlock[] ? xorigin : xorigin + mp_axfraction[1] * (xwidth - newxwidth)
         newyorigin = yzoomlock[] ? yorigin : yorigin + mp_axfraction[2] * (ywidth - newywidth)
 
-        timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
+        use_zoom_reset_timer && timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
 
         newrect_trans = if ispressed(scene, xzoomkey[])
             Rectd(newxorigin, yorigin, newxwidth, ywidth)
@@ -304,6 +305,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     ypanlock = ax.ypanlock
     xpankey = ax.xpankey
     ypankey = ax.ypankey
+    use_pan_reset_timer = ax.use_pan_reset_timer[]
 
     scene = ax.scene
     cam = camera(scene)
@@ -345,7 +347,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
         yori = tlimits_trans.origin[2]
     end
 
-    timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
+    use_pan_reset_timer && timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
     inv_transf = Makie.inverse_transform(transf)
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))

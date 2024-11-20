@@ -1086,11 +1086,9 @@ function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
 
     reset_timer[] = Timer(threshold_sec) do t
         reset_timer[] = nothing
-
         ax.xticklabelspace = prev_xticklabelspace[]
         ax.yticklabelspace = prev_yticklabelspace[]
     end
-
 end
 
 
@@ -1197,8 +1195,8 @@ end
 
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_yticklabel_spacing!(ax::Axis)
-    space = tight_ticklabel_spacing!(ax.yaxis)
+function tight_yticklabel_spacing!(ax::Axis; n_tick_chars=automatic)
+    space = tight_ticklabel_spacing!(ax.yaxis; n_tick_chars=n_tick_chars)
     return space
 end
 
@@ -1207,8 +1205,8 @@ end
 
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_xticklabel_spacing!(ax::Axis)
-    space = tight_ticklabel_spacing!(ax.xaxis)
+function tight_xticklabel_spacing!(ax::Axis; n_tick_chars=automatic)
+    space = tight_ticklabel_spacing!(ax.xaxis; n_tick_chars=n_tick_chars)
     return space
 end
 
@@ -1217,9 +1215,11 @@ end
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
-function tight_ticklabel_spacing!(ax::Axis)
-    tight_xticklabel_spacing!(ax)
-    tight_yticklabel_spacing!(ax)
+function tight_ticklabel_spacing!(ax::Axis; n_tick_chars=automatic, reset_timer=false)
+    ax.use_zoom_reset_timer = reset_timer
+    ax.use_pan_reset_timer = reset_timer
+    tight_xticklabel_spacing!(ax; n_tick_chars=n_tick_chars)
+    tight_yticklabel_spacing!(ax; n_tick_chars=n_tick_chars)
     return
 end
 

@@ -676,6 +676,11 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         on the values of `yticks` and `ytickformat`.
         """
         yscale = identity
+
+        "Controls if the zoom reset timer is used, which is used to reset the ticklabel space after zooming."
+        use_zoom_reset_timer = true
+        "Controls if the pan reset timer is used, which is used to reset the ticklabel space after panning."
+        use_pan_reset_timer = true
     end
 end
 

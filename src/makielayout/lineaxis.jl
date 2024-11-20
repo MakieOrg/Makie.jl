@@ -506,7 +506,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
-function tight_ticklabel_spacing!(la::LineAxis)
+function tight_ticklabel_spacing!(la::LineAxis; n_tick_chars=automatic)
 
     horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
         true
@@ -517,12 +517,20 @@ function tight_ticklabel_spacing!(la::LineAxis)
     end
 
     tls = la.elements[:ticklabels]
+    str = if n_tick_chars == automatic
+        text_array = tls.plots[1].text[]
+        len, idx = findmax(length, text_array)
+        text_array[idx]
+    else
+        "0"^n_tick_chars
+    end
+    bb = text_bb(str, to_font(tls.fonts, tls.font[]), tls.fontsize[])
     maxwidth = if horizontal
-            # height
-            tls.visible[] ? height(Rect2f(boundingbox(tls, :data))) : 0f0
-        else
-            # width
-            tls.visible[] ? width(Rect2f(boundingbox(tls, :data))) : 0f0
+        # height
+        tls.visible[] ? height(bb) : 0.0f0
+    else
+        # width
+        tls.visible[] ? width(bb) : 0.0f0
     end
     la.attributes.ticklabelspace = maxwidth
     return Float64(maxwidth)
