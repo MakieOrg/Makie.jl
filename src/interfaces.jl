@@ -23,8 +23,7 @@ function calculated_attributes!(::Type{<: AbstractPlot}, plot)
 end
 
 function calculated_attributes!(::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
+    color = hasproperty(plot.mesh[], :color) ? lift(x -> x.color, plot, plot.mesh) : plot.color
     color_and_colormap!(plot, color)
     return
 end

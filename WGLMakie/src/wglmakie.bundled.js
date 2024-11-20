@@ -22441,6 +22441,7 @@ function delete_plots(plot_uuids) {
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
     tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
     tex.minFilter = mod[data.minFilter];
     tex.magFilter = mod[data.magFilter];
     tex.anisotropy = data.anisotropy;
@@ -22565,11 +22566,12 @@ function add_plot(scene, plot_data1) {
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
     const rgbaArray = new rgbArray.constructor(length / 3 * 4);
+    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
     for(let i = 0, j = 0; i < length; i += 3, j += 4){
         rgbaArray[j] = rgbArray[i];
         rgbaArray[j + 1] = rgbArray[i + 1];
         rgbaArray[j + 2] = rgbArray[i + 2];
-        rgbaArray[j + 3] = 1.0;
+        rgbaArray[j + 3] = a;
     }
     return rgbaArray;
 }
