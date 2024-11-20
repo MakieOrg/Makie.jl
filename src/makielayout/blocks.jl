@@ -617,12 +617,11 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
 end
 
 """
-    function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth=9e3, kwargs...)
+    function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
 
-Adds a tooltip to a block.  `visible` can be `:always`, `:hover`, or `:never`.
-`delay` specifies the interval in seconds before the tooltip appears if
-`visible` is `:hover`.  `depth` should be large to ensure that the tooltip is
-in front.  See `tooltip` for more details.
+Adds a tooltip to a block.  `delay` specifies the interval in seconds before the
+tooltip appears if `visible` is `true`.  `depth` should be large to ensure that
+the tooltip is in front.  See `tooltip` for more details.
 
 # Examples
 ```julia-repl
@@ -631,30 +630,28 @@ julia> f = Figure()
 julia> t = Toggle(f[1,1])
 Toggle()
 
-julia> tooltip!(t, "I'm a Toggle", visible = :hover)
+julia> tooltip!(t, "I'm a Toggle")
 Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 
 julia> b = Button(f[2,1])
 Button()
 
-julia> v = Observable(:never)
-Observable(:never)
+julia> v = Observable(false)
+Observable(false)
 
-julia> tt = tooltip!(b, "I'm a Button", placement = :below, visible = v)
+julia> tt = tooltip!(b, "I'm a Button", placement = :below, visible = v, delay = 1)
 Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 
-julia> v[] = :always
+julia> v[] = true
 :always
 ```
 """
-function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth=9e3, kwargs...)
+function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
     tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str; kwargs...)
     translate!(tt, 0, 0, depth)
     t0, last_mp = time(), b.blockscene.events.mouseposition[]
     onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
-        tt.visible[] = if v == :never
-            false
-        elseif v == :hover
+        tt.visible[] = v &&
             if mp in bbox
                 last_mp in bbox || (t0 = time())
                 last_mp = mp
@@ -663,10 +660,6 @@ function tooltip!(b::Block, str::AbstractString; visible=:always, delay=0, depth
                 last_mp = mp
                 false
             end
-        else
-            v == :always || @error("invalid value for tooltip visible, using :always")
-            true
-        end
     end
     notify(b.blockscene.events.mouseposition)
     return tt
