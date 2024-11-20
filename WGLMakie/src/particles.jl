@@ -170,7 +170,6 @@ function scatter_shader(scene::Scene, attributes, plot)
 
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
-        # TODO: Is this going to be very wrong with text?
         msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
