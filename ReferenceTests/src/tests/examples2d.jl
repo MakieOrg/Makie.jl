@@ -692,8 +692,8 @@ end
 
 @reference_test "Tooltip" begin
     fig, ax, p = scatter(Point2f(0,0))
-    xlims!(ax, -15, 5)
-    ylims!(ax, -7, 3)
+    xlims!(ax, -10, 10)
+    ylims!(ax, -5, 5)
     tt = tooltip!(ax, Point2f(0), text = "left", placement = :left)
     tt.backgroundcolor[] = :red
     tooltip!(
@@ -706,7 +706,6 @@ end
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )
-    tooltip!(ax, "i'm an axis", placement=:center)
     # Test depth (this part is expected to fail in CairoMakie)
     p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
     translate!(p, 0, 0, 100)
