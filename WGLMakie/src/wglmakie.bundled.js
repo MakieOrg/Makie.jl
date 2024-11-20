@@ -23041,9 +23041,7 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("wheel", wheel);
     function keydown(event) {
-        if (event.code === "Space") {
-            event.preventDefault();
-        }
+        event.preventDefault();
         comm.notify({
             keydown: [
                 event.code,
@@ -23054,6 +23052,7 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("keydown", keydown);
     function keyup(event) {
+        event.preventDefault();
         comm.notify({
             keyup: event.code
         });
