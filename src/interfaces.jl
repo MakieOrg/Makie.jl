@@ -62,13 +62,6 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
 
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        return lift(plot, plot[:markersize]) do msize
-            return to_2d_scale(map(x -> x .* -0.5f0, msize))
-        end
-    end
-
     replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))

@@ -90,14 +90,14 @@ function data_limits(plot::Scatter)
             plot.marker[],
             plot.markersize[],
             get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot.marker_offset[],
             plot
         )
         rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        marker_offsets = convert_attribute(plot.marker_offset[], key"marker_offset"(), key"scatter"())
 
         bb = Rect3d()
         for (i, p) in enumerate(point_iterator(plot))
-            marker_pos = to_ndim(Point3d, p, 0)
+            marker_pos = to_ndim(Point3d, p, 0) + sv_getindex(marker_offsets, i)
             quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
             quad_size = Vec2d(sv_getindex(scale[], i))
             quad_rotation = sv_getindex(rotations, i)

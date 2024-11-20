@@ -39,6 +39,20 @@ function attribute_examples(::Type{Scatter})
                     """
             )
         ],
+        :marker_offset => [
+            Example(
+                code = """
+                    fig = Figure()
+                    scatter(fig[1, 1], [Point2f(0) for _ in 1:5]; marker = Circle, markersize = 30,
+                        marker_offset = [(0, 0), (-50, 0), (0, -50), (50, 0), (0, 50)],
+                        color = [:black, :blue, :green, :red, :orange])
+                    scatter(fig[1, 2], [Point3f(0) for _ in 1:7]; marker = :ltriangle, markersize = 0.2, markerspace = :data,
+                        marker_offset = Vec3f[(0, 0, 0), (-1, 0, 0), (0, -1, 0), (1, 0, 0), (0, 1, 0), (0, 0, -1), (0, 0, 1)],
+                        color = [:black, :blue, :green, :red, :orange, :cyan, :purple])
+                    fig
+                    """
+            )
+        ],
         :rotation => [
             Example(
                 code = """

@@ -193,6 +193,7 @@ excludes = Set([
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
     "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
     "picking", # Not implemented
+    "scatter marker_offset 3D with rotation", # missing support for 3D scatter with markerspace = :data
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
 ])
 
