@@ -73,11 +73,12 @@ end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
-function poly_convert(polys::AbstractVector{<:Polygon}, transform_func=identity)
+
+function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func=identity) where {N, T}
     # GLPlainMesh2D is not concrete?
     # TODO is this a problem with Float64 meshes?
-    T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
-    return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
+    MeshType = GeometryBasics.Mesh{N, T, GeometryBasics.Ngon{N, T, 3, Point{N, T}}, SimpleFaceView{N, T, 3, GLIndex, Point{N, T}, GLTriangleFace}}
+    return isempty(polys) ? MeshType[] : poly_convert.(polys, (transform_func,))
 end
 
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func=identity)
@@ -194,7 +195,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
+# TODO: for Makie v0.22, GeometryBasics v0.5,
+# switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{<: Polytope{N, T}}, Polygon{N, T}} where {N, T}
     meshes = plot[1]
     attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
@@ -244,7 +247,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     bigmesh = lift(plot, meshes, transform_func) do meshes, tf
         if isempty(meshes)
             # TODO: Float64
-            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+            return GeometryBasics.Mesh(Point{N, T}[], GLTriangleFace[])
         else
             triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
             return merge(triangle_meshes)
