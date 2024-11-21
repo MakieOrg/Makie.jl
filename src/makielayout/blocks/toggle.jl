@@ -9,7 +9,7 @@ function initialize_block!(t::Toggle)
     end
 
     button_endpoint_inactive = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
-        
+
         Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
     end
 
@@ -17,15 +17,9 @@ function initialize_block!(t::Toggle)
         Point2f(right(bbox) - ms / 2, top(bbox) - ms / 2)
     end
 
-    buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments, t.orientation, t.layoutobservables.computedbbox) do len, ms, cs, or, bbox
+    buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments) do len, ms, cs
         rect0 = GeometryBasics.HyperRectangle(-ms/2, -ms/2, len, ms)
-        rrv = roundedrectvertices(rect0, ms * 0.499, cs)
-        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
-        costheta, sintheta = cos(theta), sin(theta)
-        rotmatrix = GeometryBasics.@SMatrix [costheta -sintheta
-                                             sintheta  costheta]
-        tranvector = Ref(GeometryBasics.@SVector [left(bbox)+ms/2, bottom(bbox)+ms/2])
-        Ref(rotmatrix) .* rrv .+ tranvector
+        return roundedrectvertices(rect0, ms * 0.499, cs)
     end
 
     # trigger bbox
@@ -34,6 +28,12 @@ function initialize_block!(t::Toggle)
 
     framecolor = Observable{Any}(t.active[] ? t.framecolor_active[] : t.framecolor_inactive[])
     frame = poly!(topscene, buttonvertices, color = framecolor, inspectable = false)
+
+    onany(topscene, t.markersize, t.orientation, t.layoutobservables.computedbbox, update = true) do ms, or, bbox
+        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
+        rotate!(frame, theta)
+        translate!(frame, origin(bbox) .+ ms/2)
+    end
 
     animating = Observable(false)
     buttonpos = Observable(t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
