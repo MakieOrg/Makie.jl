@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -205,7 +208,7 @@ bool process_clip_planes(inout vec3 p1, inout vec3 p2)
             p2 = p1;
             return true;
         }
-        
+
         // one outside - shorten segment
         else if (d1 < 0.0)
             // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
@@ -245,12 +248,16 @@ float min_bigger_0(vec3 v1, vec3 v2){
     return min(x, min(y, z));
 }
 
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
@@ -268,7 +275,7 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
-    
+
     // if completely clipped discard this ray tracing attempt
     if (process_clip_planes(start, back_position))
         discard;
