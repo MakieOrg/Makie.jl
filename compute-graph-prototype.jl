@@ -28,6 +28,15 @@ end
 
 hasparent(computed::ComputedValue) = isdefined(computed, :parent)
 
+
+struct TypedEdge{InputTuple,OutputTuple,F}
+    callback::F
+    inputs::InputTuple
+    inputs_dirty::Vector{Bool}
+    outputs::OutputTuple
+    outputs_dirty::Vector{Bool}
+end
+
 struct ComputeEdge
     callback::Function
     inputs::Vector{ComputedValue{ComputeEdge}}
@@ -38,6 +47,21 @@ struct ComputeEdge
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Set{ComputeEdge}
+    typed_edge::RefValue{TypedEdge}
+end
+
+
+function TypedEdge(edge::ComputeEdge)
+    inputs = ntuple(i -> edge.inputs[i].value, length(edge.inputs))
+    result = edge.callback(inputs, edge.inputs_dirty, nothing)
+    @assert length(result) === length(edge.outputs)
+    outputs = ntuple(length(edge.outputs)) do i
+        v = RefValue(result[i])
+        edge.outputs[i].value = v # initialize to fully typed RefValue
+        return v
+    end
+    fill!(edge.outputs_dirty, true)
+    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs_dirty)
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
@@ -59,7 +83,7 @@ const Computed = ComputedValue{ComputeEdge}
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, inputs::Vector{Computed})
-    return ComputeEdge(f, inputs, fill(true, length(inputs)), Computed[], Bool[], RefValue(false), Set{ComputeEdge}())
+    return ComputeEdge(f, inputs, fill(true, length(inputs)), Computed[], Bool[], RefValue(false), Set{ComputeEdge}(), RefValue{TypedEdge}())
 end
 
 function Base.show(io::IO, computed::Computed)
@@ -155,12 +179,6 @@ end
 
 Base.getindex(computed::Computed) = resolve!(computed)
 
-struct Resolved{T}
-    ref::RefValue{T}
-    has_changed::Bool
-end
-
-Base.getindex(resolved::Resolved) = resolved.ref[]
 
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     for (i, input) in enumerate(edge.inputs)
@@ -169,38 +187,35 @@ function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     end
 end
 
+function set_result!(edge::TypedEdge, result, i, value)
+    if isnothing(value)
+        edge.outputs_dirty[i] = false
+    else
+        edge.outputs_dirty[i] = true
+        edge.outputs[i][] = value
+    end
+    if !isempty(result)
+        next_val = first(result)
+        rem = Base.tail(result)
+        set_result!(edge, rem, i + 1, next_val)
+    end
+    return
+end
+
+function set_result!(edge::TypedEdge, result)
+    next_val = first(result)
+    rem = Base.tail(result)
+    return set_result!(edge, rem, 1, next_val)
+end
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
-function inner_resolve(edge, inputs, outputs)
-    needs_init = false
-    if all(x -> isassigned(x.value), edge.outputs)
-        result = edge.callback(inputs, outputs)
-    else
-        needs_init = true
-        result = edge.callback(inputs, nothing)
-    end
+function resolve!(edge::TypedEdge)
+    result = edge.callback(edge.inputs, edge.inputs_dirty, edge.outputs)
     if result === :deregister
         # TODO
     elseif result isa Tuple
-        @assert length(result) === length(outputs)
-        ntuple(length(outputs)) do i
-            v = result[i]
-            if isnothing(v)
-                edge.outputs_dirty[i] = false
-            else
-                edge.outputs_dirty[i] = true
-                if needs_init
-                    edge.outputs[i].value = RefValue(v)
-                else
-                    edge.outputs[i].value[] = v
-                end
-            end
-        end
-        edge.got_resolved[] = true
-        fill!(edge.inputs_dirty, false)
-        for dep in edge.dependents
-            mark_input_dirty!(edge, dep)
-        end
+        @assert length(result) === length(edge.outputs)
+        set_result!(edge, result)
     elseif isnothing(result)
         fill!(edge.outputs_dirty, false)
     else
@@ -219,21 +234,21 @@ end
 function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
-
-    inputs = ntuple(length(edge.inputs)) do i
-        input = edge.inputs[i]
-        # This comes from `mark_dirty!`
-        # But we only really know if the value has changed if we run resolve!
-        # has_changed = edge.inputs_dirty[i]
-        resolve!(input)
-        return Resolved(input.value, edge.inputs_dirty[i])
-    end
+    # Resolve inputs first
+    foreach(resolve!, edge.inputs)
     # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
     # TODO, can/should we store this tuple?
-    outputs = ntuple(i -> edge.outputs[i].value, length(edge.outputs))
-    inner_resolve(edge, inputs, outputs)
-
-
+    if !isassigned(edge.typed_edge)
+        # constructor does first resolve to determine fully typed outputs
+        edge.typed_edge[] = TypedEdge(edge)
+    else
+        resolve!(edge.typed_edge[])
+    end
+    edge.got_resolved[] = true
+    fill!(edge.inputs_dirty, false)
+    for dep in edge.dependents
+        mark_input_dirty!(edge, dep)
+    end
     return true
 end
 
@@ -249,7 +264,7 @@ function update!(attr::ComputeGraph; kwargs...)
 end
 
 function add_input!(attr::ComputeGraph, key::Symbol, value)
-    edge = ComputeEdge() do (input,), last
+    edge = ComputeEdge() do (input,), changed, last
         (attr.default(key, input[]),)
     end
     # Needs to be Any, since input can change type
@@ -260,7 +275,6 @@ function add_input!(attr::ComputeGraph, key::Symbol, value)
     push!(edge.inputs_dirty, false) # we already run default!
     push!(edge.outputs, output)
     push!(edge.outputs_dirty, true)
-
     # We assign the parent, since if we gave input a parent, we would get a circle/stackoverflow
     attr.inputs[key] = edge
     attr.outputs[key] = output
@@ -349,7 +363,7 @@ begin
     )
 
     # Special case: calculated_attributes - marker_offset
-    register_computation!(attr, [:marker_offset, :markersize], [:_marker_offset]) do (offset, size), last
+    register_computation!(attr, [:marker_offset, :markersize], [:_marker_offset]) do (offset, size), changed, last
         if offset[] isa Automatic
             (to_2d_scale(map(x -> x .* -0.5f0, size[])),)
         else
@@ -358,7 +372,7 @@ begin
     end
 
     # Static?
-    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), last
+    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), changed, last
         icm = attr.colormap[] # the raw input colormap e.g. :viridis
         raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
         if a[] < 1.0
@@ -373,7 +387,7 @@ begin
 
     for key in (:lowclip, :highclip)
         sym = Symbol("_$key")
-        register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), _
+        register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
             if input[] === Makie.automatic
                 (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
             else
@@ -382,7 +396,7 @@ begin
         end
     end
 
-    register_computation!(attr, [:color, :colorrange], [:_colorrange]) do (color, colorrange), last
+    register_computation!(attr, [:color, :colorrange], [:_colorrange]) do (color, colorrange), changed, last
         (color[] isa AbstractVector{<:Real} || color[] isa Real) || return nothing
         if colorrange[] === automatic
             (Vec2d(distinct_extrema_nan(color[])),)
@@ -390,13 +404,13 @@ begin
             (Vec2d(colorrange[]),)
         end
     end
-    register_computation!(attr, [:_colorrange, :colorscale], [:scaled_colorrange]) do (colorrange, colorscale), last
+    register_computation!(attr, [:_colorrange, :colorscale], [:scaled_colorrange]) do (colorrange, colorscale), changed, last
         isnothing(colorrange[]) && return nothing
         (Vec2f(apply_scale(colorscale[], colorrange[])),)
     end
 
     # Step 1 - Setup extra computed stuff
-    register_computation!(attr, [:marker, :markersize, :_marker_offset], [:quad_offset, :quad_scale]) do (marker, markersize, marker_offset), last
+    register_computation!(attr, [:marker, :markersize, :_marker_offset], [:quad_offset, :quad_scale]) do (marker, markersize, marker_offset), changed, last
         atlas = gl_texture_atlas()
         font = defaultfont()
         changed = marker.has_changed || markersize.has_changed
@@ -417,25 +431,25 @@ begin
         end
     end
     # TODO expand_dims + dim_converts
-    register_computation!(attr, args, [:positions]) do args, last
+    register_computation!(attr, args, [:positions]) do args, changed, last
         return Makie.convert_arguments(Scatter, getindex.(args)...)
     end
 
-    register_computation!(attr, [:positions, :transform_func, :space], [:positions_transformed]) do (positions, func, space), last
+    register_computation!(attr, [:positions, :transform_func, :space], [:positions_transformed]) do (positions, func, space), changed, last
         return (Makie.apply_transform(func[], positions[], space[]),)
     end
 
-    register_computation!(attr, [:positions_transformed, :f32c], [:positions_transformed_f32c]) do (positions, f32c), last
+    register_computation!(attr, [:positions_transformed, :f32c], [:positions_transformed_f32c]) do (positions, f32c), changed, last
         return (Makie.inv_f32_convert(f32c[], positions[]),)
     end
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation], [:data_limits]) do args, last
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation], [:data_limits]) do args, changed, last
         return (_boundingbox(getindex.(args)...),)
     end
 
     inputs = [:color, :alpha_colormap, :_colorrange, :_lowclip, :_highclip, :nan_color, :marker, :markersize,
         :strokecolor, :strokewidth, :glowcolor, :glowwidth, :rotation, :marker_offset, :positions_transformed_f32c]
 
-    register_computation!(attr, inputs, [:uniforms_buffers]) do args, last
+    register_computation!(attr, inputs, [:uniforms_buffers]) do args, changed, last
         println("running uniform buffers")
         # On first run, we collect all uniforms & buffers, with has to be an operations that can't be typed
         # But on second run, we already have the fully typed namedtuple, which allows us to have a fully typed buffers + uniforms struct
@@ -457,8 +471,8 @@ begin
             return ((uniforms=(; uniforms...), buffers=(; buffers...), changeset=changeset),)
         else
             changeset = Set{Symbol}()
-            for (k, value) in zip(inputs, args)
-                value.has_changed && push!(changeset, k)
+            for (k, has_changed) in zip(inputs, changed)
+                has_changed && push!(changeset, k)
             end
             return ((uniforms=last[1][].uniforms, buffers=last[1][].buffers, changeset=changeset),)
         end
@@ -494,17 +508,17 @@ function create_robj(screen::GLMakie.Screen, scene, attr)
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
 
-    register_computation!(attr, Symbol[], [screen_name]) do args, last
+    register_computation!(attr, Symbol[], [screen_name]) do args, changed, last
         (screen,)
     end
     scene_name = Symbol(string(objectid(scene)))
-    register_computation!(attr, Symbol[], [scene_name]) do args, last
+    register_computation!(attr, Symbol[], [scene_name]) do args, changed, last
         (scene,)
     end
     inputs = [scene_name, screen_name, :positions_transformed_f32c, :colormap, :color, :_colorrange,
               :markersize, :transparency]
     gl_names = [:vertex, :color_map, :color, :color_norm, :scale, :transparency]
-    register_computation!(attr, inputs, [:gl_renderobject]) do args, last
+    register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, last
         scene = args[1][]
         screen = args[2][]
         !isopen(screen) && return :deregister
@@ -514,8 +528,8 @@ function create_robj(screen::GLMakie.Screen, scene, attr)
             robj
         else
             robj = last[1][]
-            for (name, arg) in zip(gl_names, args[3:end])
-                if arg.has_changed
+            for (name, arg, has_changed) in zip(gl_names, args[3:end], changed[3:end])
+                if has_changed
                     if haskey(robj.uniforms, name)
                         robj.uniforms[name] = arg[]
                     elseif haskey(robj.vertexarray.buffers, string(name))
@@ -539,16 +553,25 @@ empty!(screen.renderlist)
 GLMakie.closeall()
 screen = display(scene)
 create_robj(screen, scene, attr)
-robj = attr.outputs[:gl_renderobject][]
 
 
-for i in 1:0.1:20
-    update!(attr; arg2=sin.((-1:0.1:1) .* (i/10)), markersize=i);
-    @time attr.outputs[:gl_renderobject][]
-    yield()
+# function test()
+#     for i in 1:10000
+#         update!(attr; arg2=sin.((-1:0.1:1)), markersize=10);
+#         attr.outputs[:gl_renderobject][]
+#     end
+#     return
+# end
+# using BenchmarkTools
+# update!(attr; arg2=sin.((-1:0.1:1)), markersize=10);
+# @btime attr.outputs[:gl_renderobject][]
+
+function test(i)
+    update!(attr; arg2=sin.((-1:0.1:1) .* 0.1), markersize=i);
+    attr.outputs[:gl_renderobject][]
 end
-
-
+using BenchmarkTools
+@profview foreach(test, 1.0:0.01:100.0)
 # x = attr.outputs[:gl_renderobject].parent
 
 
