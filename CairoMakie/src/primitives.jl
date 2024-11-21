@@ -978,7 +978,7 @@ function draw_mesh3D(
     transform_marker = to_value(get(attributes, :transform_marker, true))
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
+    meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
@@ -1001,7 +1001,7 @@ function draw_mesh3D(
         shading_bool = shading != NoShading
     end
 
-    if to_value(get(attributes, :invert_normals, false))
+    if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
         meshnormals .= -meshnormals
     end
 
@@ -1038,13 +1038,17 @@ function draw_mesh3D(
         return to_ndim(Vec4f, local_model * p4d .+ model_f32 * to_ndim(Vec4d, pos, 0), NaN32)
     end
 
-    valid = if Makie.is_data_space(space)
-        [is_visible(clip_planes, p) for p in vs]
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        valid = Bool[is_visible(clip_planes, p) for p in vs]
     else
-        Bool[]
+        valid = Bool[]
     end
 
-    ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    if isnothing(meshnormals)
+        ns = nothing
+    else
+        ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    end
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
@@ -1090,10 +1094,12 @@ function draw_mesh3D(
     zorder = sortperm(average_zs)
 
     # Face culling
-    if isempty(clip_planes) || !Makie.is_data_space(space)
+    if isempty(valid) && !isnothing(ns)
         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    else
+    elseif !isempty(valid)
         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
     end
 
     draw_pattern(
@@ -1130,7 +1136,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         facecolors = per_face_col[k]
         # light calculation
-        if shading
+        if shading && !isnothing(ns)
             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
                 # these face index expressions currently allocate for SizedVectors
                 # if done like `ns[f]`
