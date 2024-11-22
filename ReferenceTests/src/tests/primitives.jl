@@ -874,19 +874,19 @@ end
     ax = Axis(fig[2, 2], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
     mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
 
-    # f32c can be applied (fingers crossed?)
-    ticks = (1e9 .+ (-10:5:10), string.(-10:5:10))
-    ax = Axis(fig[3, 1], xticks = ticks, yticks = ticks)
-    meshscatter!(ax, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
-    ax = Axis(fig[3, 2], xticks = ticks, yticks = ticks)
-    mesh!(ax, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
+    # f32c can be applied
+    ticks = (1e12 .+ (-1f6:1f6:1f6), string.(-1:1) .* ("f6",))
+    ax1 = Axis(fig[3, 1], xticks = ticks, yticks = ticks)
+    meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
+    ax2 = Axis(fig[3, 2], xticks = ticks, yticks = ticks)
+    mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
 
     # Both together should produce correct center
     ticks = (10.0 .^ (-1:5:19), [rich("10", superscript(string(x))) for x in -1:5:19])
-    ax1 = Axis(fig[4, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
-    meshscatter!(ax1, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
-    ax2 = Axis(fig[4, 2], xscale = log10, yscale = log10)
-    mesh!(ax2, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
+    ax3 = Axis(fig[4, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    meshscatter!(ax3, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
+    ax4 = Axis(fig[4, 2], xscale = log10, yscale = log10)
+    mesh!(ax4, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
 
     fig
 end
