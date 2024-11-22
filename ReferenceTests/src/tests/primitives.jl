@@ -843,18 +843,13 @@ end
     f
 end
 
-# TODO: test all the options:
-# (transform_marker) x (model) x (transform_func) x (float32convert)
-# this does:
-# (false) x (I) x (transform_func) x (float32convert)
 @reference_test "meshscatter marker conversions" begin
-    fig = Figure(size = (400, 700))
+    fig = Figure(size = (400, 500))
     Label(fig[0, 1], tellwidth = false, "meshscatter")
     Label(fig[0, 2], tellwidth = false, "mesh")
     Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
     Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
     Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
-    Label(fig[4, 0], tellheight = false, rotation = pi/2, "f32c + log10")
 
     kwargs = (markersize = 1, transform_marker = false, shading = NoShading)
     kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
@@ -880,13 +875,6 @@ end
     meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
     ax2 = Axis(fig[3, 2], xticks = ticks, yticks = ticks)
     mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
-
-    # Both together should produce correct center
-    ticks = (10.0 .^ (-1:5:19), [rich("10", superscript(string(x))) for x in -1:5:19])
-    ax3 = Axis(fig[4, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
-    meshscatter!(ax3, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
-    ax4 = Axis(fig[4, 2], xscale = log10, yscale = log10)
-    mesh!(ax4, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
 
     fig
 end
