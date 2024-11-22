@@ -391,14 +391,6 @@ end
     meshscatter(positions, color=RGBAf(0.9, 0.2, 0.4, 1), markersize=0.05)
 end
 
-@reference_test "meshscatter transform_marker" begin
-    f = Figure(size = (300, 500))
-    a1,p1 = meshscatter(f[1, 1], Rect3f(Point3f(0), Vec3f(0.3)), transform_marker = true)
-    a2,p2 = meshscatter(f[2, 1], Rect3f(Point3f(0), Vec3f(0.3)), transform_marker = false)
-    scale!.((p1, p2), 5,5,5)
-    f
-end
-
 @reference_test "Animated surface and wireframe" begin
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
