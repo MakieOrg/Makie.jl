@@ -1323,12 +1323,13 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[],
+        transform_marker = true
     )
 
     for i in zorder
         submesh[:calculated_colors] = colors[i]
-        draw_mesh3D(scene, screen, submesh, marker, pos = pos[i], scale = scale)
+        draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
     end
 
     return nothing
