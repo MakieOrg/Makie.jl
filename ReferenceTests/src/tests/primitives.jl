@@ -880,3 +880,59 @@ end
 
     fig
 end
+
+@reference_test "meshscatter marker conversions with model" begin
+    fig = Figure(size = (600, 500))
+    Label(fig[0, 1], tellwidth = false, "meshscatter")
+    Label(fig[0, 2], tellwidth = false, "mesh")
+    Label(fig[0, 3], tellwidth = false, "meshscatter\ntransformable")
+    Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
+    Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
+    Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
+
+    kwargs = (markersize = 1, shading = NoShading)
+    kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+    function transform!(p, x, rotate = true)
+        scale!(p, 0.5, 0.5, 0.5)
+        if rotate
+            rotate!(p, pi/2)
+            translate!(p, x, 0, 0)
+        else
+            translate!(p, x, x, 0)
+        end
+    end
+
+    # scale shrinks so left should be 2x bigger than rest
+    limits = (-0.2, 2.2, -0.2, 2.2)
+    ax = Axis(fig[1, 1], limits = limits)
+    p1 = meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); transform_marker = false, kwargs...)
+    ax = Axis(fig[1, 2], limits = limits)
+    p2 = mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
+    ax = Axis(fig[1, 3], limits = limits)
+    p3 = meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); transform_marker = true, kwargs...)
+    transform!.((p1, p2, p3), 2)
+
+    # center must match, left 2x bigger than right
+    ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
+    axis_kwargs = (xscale = log10, yscale = log10, xticks = ticks, yticks = ticks, limits = (0.25, 4, 0.25, 4))
+    ax = Axis(fig[2, 1]; axis_kwargs...)
+    p4 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = false, kwargs...)
+    ax = Axis(fig[2, 2]; axis_kwargs...)
+    p5 = mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+    ax = Axis(fig[2, 3]; axis_kwargs...)
+    p6 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = true, kwargs...)
+    transform!.((p4, p5, p6), 0)
+
+    # center must match, left 2x bigger than rest
+    ticks = (1e12 .+ (-10f5:5f5:10f5), string.(-10:5:10) .* ("f5",))
+    axis_kwargs = (xticks = ticks, yticks = ticks, limits = 1e12 .+ (-1.2e6, 1.2e6, -1.2e6, 1.2e6))
+    ax1 = Axis(fig[3, 1]; axis_kwargs...)
+    p7 = meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = false, kwargs...)
+    ax2 = Axis(fig[3, 2]; axis_kwargs...)
+    p8 = mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
+    ax3 = Axis(fig[3, 3]; axis_kwargs...)
+    p9 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
+    transform!.((p7, p8, p9), 5e11, false)
+
+    fig
+end
