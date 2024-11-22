@@ -572,8 +572,27 @@ function test(i)
 end
 using BenchmarkTools
 @profview foreach(test, 1.0:0.01:100.0)
+
+s = Scene()
+sp = scatter!(s, [-1:0.1:1...], [-1:0.1:1...], color=[-1:0.1:1...], markersize=22, marker=FastPixel())
+ss = display(s)
+i = 50
+function test(sp, i)
+    sp[1] = sin.((-1:0.1:1) .* 0.1)
+    sp.markersize = i
+    return
+end
+
+@btime test(sp, 50)
 # x = attr.outputs[:gl_renderobject].parent
 
+## Bechmark
+# Unoptimized Graph
+8.100 μs (87 allocations: 3.55 KiB)
+# Makie
+6.600 μs (79 allocations: 3.38 KiB)
+# Optimzed Graph:
+2.678 μs (23 allocations: 1.34 KiB)
 
 
 # attr = ComputeGraph() do key, value
