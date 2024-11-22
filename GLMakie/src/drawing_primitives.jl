@@ -413,7 +413,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
 
         space = plot.space
         positions = handle_view(plot[1], gl_attributes)
-        positions = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
+        f32c = pop!(gl_attributes, :f32c)
+        positions = apply_transform_and_f32_conversion(plot, f32c, positions)
         cam = scene.camera
 
         if plot isa Scatter
@@ -475,7 +476,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 # transform them to world space (post float32convert) on the CPU. We then can't
                 # do instancing anymore, so meshscatter becomes pointless.
                 if !isnothing(scene.float32convert)
-                    gl_attributes[:f32c_scale] = map(x -> Vec3f(x.scale), plot, scene.float32convert.scaling)
+                    gl_attributes[:f32c_scale] = map(x -> Vec3f(x.scale), plot, f32c)
                 end
 
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}

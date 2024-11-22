@@ -77,10 +77,10 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:transform_marker] = get(plot, :transform_marker, false)
 
     # See GLMakie/drawing_primtives.jl
-    if isnothing(f32c)
+    if isnothing(scene.float32convert)
         uniform_dict[:f32c_scale] = Vec3f(1)
     else
-        uniform_dict[:f32c_scale] = map(x -> Vec3f(x.scale), plot, scene.float32convert.scaling)
+        uniform_dict[:f32c_scale] = map(x -> Vec3f(x.scale), plot, f32c)
     end
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
