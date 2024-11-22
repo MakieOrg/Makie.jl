@@ -967,6 +967,14 @@ end
 
 nan2zero(x) = !isnan(x) * x
 
+function strip_translation(M::Mat4{T}) where {T}
+    return @inbounds Mat4{T}(
+        M[1], M[2], M[3], M[4],
+        M[5], M[6], M[7], M[8],
+        M[9], M[10], M[11], M[12],
+        0, 0, 0, M[16],
+    )
+end
 
 function draw_mesh3D(
         scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
@@ -999,9 +1007,9 @@ function draw_mesh3D(
         #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
         # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
         transform_marker = attributes[:transform_marker][]::Bool
-        f32c_model = transform_marker ? model : Mat4d(I)
+        f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
         if !isnothing(scene.float32convert) && Makie.is_data_space(space)
-            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * model
+            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
         end
     else
         # mesh/surface path
