@@ -9,6 +9,7 @@
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
 - Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
+- Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 
 ## [0.21.16] - 2024-11-06
 
