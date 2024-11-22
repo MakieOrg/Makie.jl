@@ -895,7 +895,7 @@ end
     function transform!(p, x, rotate = true)
         scale!(p, 0.5, 0.5, 0.5)
         if rotate
-            rotate!(p, pi/2)
+            Makie.rotate!(p, pi/2)
             translate!(p, x, 0, 0)
         else
             translate!(p, x, x, 0)

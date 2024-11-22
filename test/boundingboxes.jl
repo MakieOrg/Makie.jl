@@ -67,7 +67,7 @@ end
         @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(1) + Point3f(1, 0.5, 2)
         @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
 
-        rotate!(p, pi/2)
+        Makie.rotate!(p, pi/2)
         bb = boundingbox(p)
         @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5, 1, 1) + Point3f(1, 0.5, 2)
         @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
@@ -101,7 +101,7 @@ end
         @test bb.widths ≈ Vec3f(2.4)
 
         # same with rotate
-        rotate!(p, pi/2)
+        Makie.rotate!(p, pi/2)
         bb = boundingbox(p)
         @test bb.origin ≈ Point3f(-0.2) + Vec3f(1,2,3)
         @test bb.widths ≈ Vec3f(2.4)
