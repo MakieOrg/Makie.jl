@@ -158,25 +158,25 @@ end
 end
 
 @reference_test "line color interpolation with clipping" begin
-    # Clipping should not change the color interpolation of a line piece, so 
+    # Clipping should not change the color interpolation of a line piece, so
     # these boxes should match in color
-    fig = Figure(); 
-    ax = Axis(fig[1,1]); 
-    ylims!(ax, -0.1, 1.1); 
+    fig = Figure();
+    ax = Axis(fig[1,1]);
+    ylims!(ax, -0.1, 1.1);
     lines!(
         ax, Rect2f(0, 0, 1, 10), color = 1:5, linewidth = 5,
         clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
-    ); 
-    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5); 
+    );
+    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5);
 
-    ax = Axis(fig[1,2]); 
-    ylims!(ax, -0.1, 1.1); 
+    ax = Axis(fig[1,2]);
+    ylims!(ax, -0.1, 1.1);
     cs = [1, 2, 2, 3, 3, 4, 4, 5]
     linesegments!(
-        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5, 
+        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5,
         clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
-    ); 
-    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5); 
+    );
+    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5);
     fig
 end
 
@@ -612,8 +612,8 @@ end
     for (i, invert) in ((1, false), (2, true))
         surface(
             fig[1, i],
-            range(-1, 1, length = 21), 
-            -cos.(range(-pi, pi, length = 21)), 
+            range(-1, 1, length = 21),
+            -cos.(range(-pi, pi, length = 21)),
             [sin(y) for x in range(-0.5pi, 0.5pi, length = 21), y in range(-0.5pi, 0.5pi, length = 21)],
             axis = (show_axis = false, ),
             invert_normals = invert
@@ -712,7 +712,7 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function 
+    # Tests that (primitive) plots can have different transform function
     # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
@@ -752,16 +752,16 @@ end
         ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
         hidedecorations!(ax)
     end
-    
+
     gl = fig[1, 1] = GridLayout()
     create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
-    
+
     gl = fig[1, 2] = GridLayout()
     create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
-    
+
     gl = fig[2, 1] = GridLayout()
     create_block(
-        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img, 
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img,
         marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
 
     gl = fig[2, 2] = GridLayout()
@@ -780,9 +780,9 @@ end
         [Point2f(x, y) for x in 1:M for y in 1:N],
         color = cow,
         uv_transform = [
-            Makie.uv_transform(:rotl90) * 
+            Makie.uv_transform(:rotl90) *
             Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
-            for x in range(0, 1, length = M+1)[1:M] 
+            for x in range(0, 1, length = M+1)[1:M]
             for y in range(0, 1, length = N+1)[1:N]
         ],
         markersize = Vec3f(0.9, 0.9, 1),
@@ -822,8 +822,8 @@ end
 
     for (i, interp) in enumerate((true, false))
         for (j, plot_func) in enumerate((
-            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
-            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp), 
+            (fp, x, y, cs, interp) -> image(fp, x, y, cs, colormap = :viridis, interpolate = interp),
+            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp),
             (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading)
         ))
 
@@ -841,4 +841,52 @@ end
     end
 
     f
+end
+
+# TODO: test all the options:
+# (transform_marker) x (model) x (transform_func) x (float32convert)
+# this does:
+# (false) x (I) x (transform_func) x (float32convert)
+@reference_test "meshscatter marker conversions" begin
+    fig = Figure(size = (400, 700))
+    Label(fig[0, 1], tellwidth = false, "meshscatter")
+    Label(fig[0, 2], tellwidth = false, "mesh")
+    Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
+    Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
+    Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
+    Label(fig[4, 0], tellheight = false, rotation = pi/2, "f32c + log10")
+
+    kwargs = (markersize = 1, transform_marker = false, shading = NoShading)
+    kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+
+    # no special transformations, must match
+    ax = Axis(fig[1, 1])
+    meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); kwargs...)
+    ax = Axis(fig[1, 2])
+    mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
+
+    # log10 transform, center must match (meshscatter does not transform vertices
+    # because that would destroy performance)
+    ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
+    ax = Axis(fig[2, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); kwargs...)
+    ticks = (10.0 .^ (-0.2:0.2:0.2), [rich("10", superscript(string(x))) for x in -0.2:0.2:0.2])
+    ax = Axis(fig[2, 2], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+
+    # f32c can be applied (fingers crossed?)
+    ticks = (1e9 .+ (-10:5:10), string.(-10:5:10))
+    ax = Axis(fig[3, 1], xticks = ticks, yticks = ticks)
+    meshscatter!(ax, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
+    ax = Axis(fig[3, 2], xticks = ticks, yticks = ticks)
+    mesh!(ax, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
+
+    # Both together should produce correct center
+    ticks = (10.0 .^ (-1:5:19), [rich("10", superscript(string(x))) for x in -1:5:19])
+    ax1 = Axis(fig[4, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    meshscatter!(ax1, [Point2f(1e9)], marker = Circle(Point2f(0), 10f0); kwargs...)
+    ax2 = Axis(fig[4, 2], xscale = log10, yscale = log10)
+    mesh!(ax2, Circle(Makie.Point2d(1e9), 10.0); kwargs2...)
+
+    fig
 end
