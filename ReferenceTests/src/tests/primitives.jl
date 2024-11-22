@@ -855,25 +855,27 @@ end
     kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
 
     # no special transformations, must match
-    ax = Axis(fig[1, 1])
+    limits = (0.8, 3.2, 0.8, 3.2)
+    ax = Axis(fig[1, 1], limits = limits)
     meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); kwargs...)
-    ax = Axis(fig[1, 2])
+    ax = Axis(fig[1, 2], limits = limits)
     mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
 
     # log10 transform, center must match (meshscatter does not transform vertices
     # because that would destroy performance)
     ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
-    ax = Axis(fig[2, 1], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    axis_kwargs = (xscale = log10, yscale = log10, xticks = ticks, yticks = ticks, limits = (0.25, 4, 0.25, 4))
+    ax = Axis(fig[2, 1]; axis_kwargs...)
     meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); kwargs...)
-    ticks = (10.0 .^ (-0.2:0.2:0.2), [rich("10", superscript(string(x))) for x in -0.2:0.2:0.2])
-    ax = Axis(fig[2, 2], xscale = log10, yscale = log10, xticks = ticks, yticks = ticks)
+    ax = Axis(fig[2, 2]; axis_kwargs...)
     mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
 
     # f32c can be applied
     ticks = (1e12 .+ (-1f6:1f6:1f6), string.(-1:1) .* ("f6",))
-    ax1 = Axis(fig[3, 1], xticks = ticks, yticks = ticks)
+    axis_kwargs = (xticks = ticks, yticks = ticks, limits = 1e12 .+ (-1.2e6, 1.2e6, -1.2e6, 1.2e6))
+    ax1 = Axis(fig[3, 1]; axis_kwargs...)
     meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
-    ax2 = Axis(fig[3, 2], xticks = ticks, yticks = ticks)
+    ax2 = Axis(fig[3, 2]; axis_kwargs...)
     mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
 
     fig
