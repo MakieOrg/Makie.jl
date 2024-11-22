@@ -63,6 +63,8 @@ vec3 _scale(samplerBuffer scale, int index);
 vec3 _scale(vec3          scale, int index);
 vec3 _scale(vec2          scale, int index);
 
+uniform vec3 f32c_scale;
+
 {{color_type}} color;
 {{color_map_type}} color_map;
 {{intensity_type}} intensity;
@@ -115,7 +117,7 @@ void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
-    vec3 V = vertices * s;
+    vec3 V = s * vertices;
     vec3 N = normals / s; // see issue #3702
     vec3 pos;
     {{position_calc}}
@@ -124,6 +126,8 @@ void main(){
     o_uv = get_uv(index, texturecoordinates);
     o_InstanceID = index;
     rotate(rotation, index, V, N);
+    V = f32c_scale * V;
+    N = N / f32c_scale;
     if (scale_primitive)
         render(model * vec4(pos + V, 1), N, view, projection);
     else

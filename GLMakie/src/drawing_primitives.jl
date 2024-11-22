@@ -467,6 +467,17 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter
+                # If the vertices of the scattered mesh, markersize and (if it applies) model
+                # are float32 safe we should be able to just correct for any scaling from
+                # float32convert in the shader, after those conversions.
+                # We should also be fine as long as rotation = identity (also in model).
+                # If neither is the case we would have to combine vertices with positions and
+                # transform them to world space (post float32convert) on the CPU. We then can't
+                # do instancing anymore, so meshscatter becomes pointless.
+                if !isnothing(scene.float32convert)
+                    gl_attributes[:f32c_scale] = map(x -> Vec3f(x.scale), plot, scene.float32convert.scaling)
+                end
+
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
                     gl_attributes[:image] = gl_attributes[:color]
                 end
