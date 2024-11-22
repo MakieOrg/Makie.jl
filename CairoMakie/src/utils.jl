@@ -14,13 +14,13 @@ end
 
 # much faster than dot-ing `project_position` because it skips all the repeated mat * mat
 function project_position(
-        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}}, 
+        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}},
         indices::Vector{<:Integer}, model::Mat4, yflip::Bool = true
     ) where {N, T1}
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -44,13 +44,13 @@ function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N,
 end
 
 function project_position(
-        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}}, 
+        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}},
         indices::Base.OneTo, model::Mat4, yflip::Bool = true
     ) where {N, T1}
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -74,7 +74,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -149,7 +149,7 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
     if !Makie.is_data_space(space) || isempty(clip_planes)
         return shape
     end
-    
+
     xy = origin(shape)
     w, h = widths(shape)
     ps = [xy, xy + Vec2(w, 0), xy + Vec2f(w, h), xy + Vec2(0, h)]
@@ -173,7 +173,7 @@ function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, c
 
     ext_proj = PT[project(p) for p in clip_poly(clip_planes, ext, space, model)]
     interiors_proj = Vector{PT}[
-        PT[project(p) for p in clip_poly(clip_planes, decompose(PT, points), space, model)] 
+        PT[project(p) for p in clip_poly(clip_planes, decompose(PT, points), space, model)]
         for points in poly.interiors]
 
     return Polygon(ext_proj, interiors_proj)
@@ -195,19 +195,19 @@ end
     # at clip planes
     per_point_colors = colors <: AbstractArray
     per_point_linewidths = (T <: Lines) && (linewidths <: AbstractArray)
-    
+
     quote
         @get_attribute(plot, (space, model))
 
         # Standard transform from input space to clip space
         points = Makie.apply_transform(transform_func(plot), positions, space)
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
         clip_points = Vector{Vec4f}(undef, length(points))
         @inbounds for (i, point) in enumerate(points)
             clip_points[i] = transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
         end
-        
+
         # yflip and clip -> screen/pixel coords
         res = scene.camera.resolution[]
 
@@ -219,14 +219,14 @@ end
         end
 
         # Fix lines with points far outside the clipped region not drawing at all
-        # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1 
+        # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1
         #      directly and calculating intersections directly (1D)
         push!(clip_planes,
             Plane3f(Vec3f(-1, 0, 0), -1f0), Plane3f(Vec3f(+1, 0, 0), -1f0),
             Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
         )
 
-        
+
         # outputs
         screen_points = sizehint!(Vec2f[], length(clip_points))
         $(if per_point_colors
@@ -314,8 +314,8 @@ end
                     end)
                 elseif !hidden
                     # if not hidden, always push the first element to 1:end-1 line points
-                    
-                    # if the start of the segment is disconnected (moved), make sure the 
+
+                    # if the start of the segment is disconnected (moved), make sure the
                     # line separates before it
                     if disconnect1 && !last_is_nan
                         push!(screen_points, Vec2f(NaN))
@@ -326,7 +326,7 @@ end
                             :(push!(color_output, c1))
                         end)
                     end
-                    
+
                     last_is_nan = false
                     push!(screen_points, clip2screen(p1, res))
                     $(if per_point_linewidths
@@ -336,7 +336,7 @@ end
                         :(push!(color_output, c1))
                     end)
 
-                    # if the end of the segment is disconnected (moved), add the adjusted 
+                    # if the end of the segment is disconnected (moved), add the adjusted
                     # point and separate it from from the next segment
                     if disconnect2
                         last_is_nan = true
@@ -351,8 +351,8 @@ end
                 end
             end
 
-            # If last_is_nan == true, the last segment is either hidden or the moved 
-            # end point has been added. If it is false we're missing the last regular 
+            # If last_is_nan == true, the last segment is either hidden or the moved
+            # end point has been added. If it is false we're missing the last regular
             # clip_points
             if !last_is_nan
                 push!(screen_points, clip2screen(clip_points[end], res))
@@ -365,7 +365,7 @@ end
             end
 
         else  # LineSegments
-            
+
             for i in 1:2:length(clip_points)-1
                 $(if per_point_colors
                     quote
@@ -525,8 +525,8 @@ end
 """
     cairo_scatter_marker(marker)
 
-Convert a Makie marker to a Cairo-compatible marker.  This defaults to calling 
-`Makie.to_spritemarker`, but can be overridden for specific markers that can 
+Convert a Makie marker to a Cairo-compatible marker.  This defaults to calling
+`Makie.to_spritemarker`, but can be overridden for specific markers that can
 be directly rendered to vector formats using Cairo.
 """
 cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
