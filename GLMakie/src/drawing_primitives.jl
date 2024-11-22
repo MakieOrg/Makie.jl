@@ -476,7 +476,13 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 # transform them to world space (post float32convert) on the CPU. We then can't
                 # do instancing anymore, so meshscatter becomes pointless.
                 if !isnothing(scene.float32convert)
-                    gl_attributes[:f32c_scale] = map(x -> Vec3f(x.scale), plot, f32c)
+                    gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+                        # we must use new_f32c with transform_marker = true,
+                        # because model might be merged into f32c (robj.model = I)
+                        # with transform_marker = false we must use the old f32c
+                        # as we don't want model to apply
+                        return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+                    end
                 end
 
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}

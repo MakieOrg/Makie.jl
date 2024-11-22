@@ -80,7 +80,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
     if isnothing(scene.float32convert)
         uniform_dict[:f32c_scale] = Vec3f(1)
     else
-        uniform_dict[:f32c_scale] = map(x -> Vec3f(x.scale), plot, f32c)
+        uniform_dict[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+            return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+        end
     end
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
