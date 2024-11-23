@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 out vec2 frag_uv;
 out vec3 o_normal;
 out vec3 o_camdir;
@@ -69,7 +72,7 @@ void process_clip_planes(vec3 world_pos) {
         o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
 }
 
-// TODO: enable 
+// TODO: enable
 // vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
 vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
 

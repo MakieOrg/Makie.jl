@@ -12,11 +12,12 @@
   - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
   - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
 - Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
-
+- `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
 
 ## [Unreleased]
 
-- `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
+- Fix uint16 overflow for over ~65k elements in WGLMakie picking [#4604](https://github.com/MakieOrg/Makie.jl/pull/4604).
+- Improve performance for line plot in CairoMakie [#4601](https://github.com/MakieOrg/Makie.jl/pull/4601).
 - Prevent more default actions when canvas has focus [#4602](https://github.com/MakieOrg/Makie.jl/pull/4602).
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
