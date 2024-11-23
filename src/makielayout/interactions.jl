@@ -453,46 +453,46 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
         xyz_zoom = (x_zoom, y_zoom, z_zoom)
     end
 
-    # Compute target
-    mode = ax.zoommode[]
-    target = Point3f(NaN)
-    model = ax.scene.transformation.model[]
-
-    if mode == :cursor
-        # try to find position of plot object under cursor
-        mp = mouseposition_px(ax)
-        ray = ray_from_projectionview(ax.scene, mp) # world space
-        pos = Point3f(NaN)
-        plot, idx = pick(ax.scene)
-        if plot !== nothing
-            n = findfirst(==(plot), ax.scene.plots)
-            if !isnothing(n) && (n > 9) # user plot
-                pos = position_on_plot(plot, idx, ray, apply_transform = true)
-                # ^ applying transform also applies model transform so we stay in world space for this
-            end
-        end
-
-        if !isfinite(pos)
-            # fall back on using intersection between view ray and center view plane
-            # (meaning plane parallel to screen, going through center of Axis3 limits)
-            world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
-            plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
-            pos = ray_plane_intersection(plane, ray) # world space
-        end
-        # axis space, i.e. pre ax.scene.transformation.model applies, same as targetlimits space
-        target = to_ndim(Point3f, inv(model) * to_ndim(Point4f, pos, 1), NaN)
-    elseif mode == :center
-        target = center # axis space
-    else
-        error("$(ax.zoommode[]) is not a valid mode for zooming. Should be :center or :cursor.")
-    end
-
-    # Perform zoom
     zoom_mult = (1f0 - interaction.speed)^zoom
 
     if ax.viewmode[] == :free
         ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
     else
+
+        # Compute target
+        mode = ax.zoommode[]
+        target = Point3f(NaN)
+        model = ax.scene.transformation.model[]
+
+        if mode == :cursor
+            # try to find position of plot object under cursor
+            mp = mouseposition_px(ax)
+            ray = ray_from_projectionview(ax.scene, mp) # world space
+            pos = Point3f(NaN)
+            plot, idx = pick(ax.scene)
+            if plot !== nothing
+                n = findfirst(==(plot), ax.scene.plots)
+                if !isnothing(n) && (n > 9) # user plot
+                    pos = position_on_plot(plot, idx, ray, apply_transform = true)
+                    # ^ applying transform also applies model transform so we stay in world space for this
+                end
+            end
+
+            if !isfinite(pos)
+                # fall back on using intersection between view ray and center view plane
+                # (meaning plane parallel to screen, going through center of Axis3 limits)
+                world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
+                plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
+                pos = ray_plane_intersection(plane, ray) # world space
+            end
+            # axis space, i.e. pre ax.scene.transformation.model applies, same as targetlimits space
+            target = to_ndim(Point3f, inv(model) * to_ndim(Point4f, pos, 1), NaN)
+        elseif mode == :center
+            target = center # axis space
+        else
+            error("$(ax.zoommode[]) is not a valid mode for zooming. Should be :center or :cursor.")
+        end
+
         mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
         maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
         tlimits[] = Rect3f(mini, maxi - mini)
