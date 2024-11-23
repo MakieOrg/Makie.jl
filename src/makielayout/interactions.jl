@@ -391,7 +391,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     end
 
     # Perform translation
-    if ax.viewmode[] == :free
+    if (ax.viewmode[] == :free) && ispressed(ax, ax.axis_translation_mod[])
 
         ws = widths(ax.layoutobservables.computedbbox[])[2]
         ax.axis_offset[] -= Vec2d(2 .* (event.px - event.prev_px) ./ ws)
@@ -512,8 +512,8 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
             ax.axis_offset[] = Vec2d(0)
             consumed = true
         end
-            if ispressed(ax.scene, Keyboard.left_shift)
-                autolimits!(ax)
+        if ispressed(ax.scene, Keyboard.left_shift)
+            autolimits!(ax)
             consumed = true
         end
     end

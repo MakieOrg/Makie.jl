@@ -1876,6 +1876,8 @@ end
         ytranslationkey::IsPressedInputType = Keyboard.y
         "The key for limiting translations to the y direction."
         ztranslationkey::IsPressedInputType = Keyboard.z
+        "Sets the key that must be pressed to translate the whole axis (as opposed to the content) with `viewmode = :free`."
+        axis_translation_mod::IsPressedInputType = Keyboard.left_control | Keyboard.right_control
 
 
     end
