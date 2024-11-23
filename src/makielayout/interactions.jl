@@ -394,9 +394,10 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     if ax.viewmode[] == :free
 
         ws = widths(ax.layoutobservables.computedbbox[])[2]
-        ax.lookat[] -= to_ndim(Vec3d, 2 .* (event.px - event.prev_px) ./ ws, 0) .* xyz_translate
+        ax.axis_offset[] -= Vec2d(2 .* (event.px - event.prev_px) ./ ws)
 
     else
+
         #=
         # Faster but less acurate (dependent on aspect ratio)
         scene_area = viewport(ax.scene)[]
@@ -456,9 +457,10 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
     zoom_mult = (1f0 - interaction.speed)^zoom
 
     if ax.viewmode[] == :free
-        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
-    else
 
+        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+
+    else
         # Compute target
         mode = ax.zoommode[]
         target = Point3f(NaN)
@@ -503,17 +505,18 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
 end
 
 function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
-
+    consumed = false
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
             ax.zoom_mult[] = 1.0
-            ax.lookat[] = Vec3d(0)
+            ax.axis_offset[] = Vec2d(0)
+            consumed = true
+        end
             if ispressed(ax.scene, Keyboard.left_shift)
                 autolimits!(ax)
-            end
-            return Consume(true)
+            consumed = true
         end
     end
 
-    return Consume(false)
+    return Consume(consumed)
 end

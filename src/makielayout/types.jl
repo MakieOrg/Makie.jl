@@ -1554,7 +1554,7 @@ end
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
-    lookat::Observable{Vec3d}
+    axis_offset::Observable{Vec2d} # center of scene -> center of Axis3
     zoom_mult::Observable{Float64}
     @attributes begin
         """
@@ -1599,6 +1599,8 @@ end
         if aesthetics are more important than neutral presentation.
         """
         perspectiveness = 0f0
+        "Sets the minimum value for `near`. Increasing this value will make objects close to the camera clip earlier. Reducing this value too much results in depth values becoming inaccurate. Must be > 0."
+        near = 1e-3
         """
         Controls the lengths of the three axes relative to each other.
 

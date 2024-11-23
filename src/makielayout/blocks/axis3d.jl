@@ -46,12 +46,13 @@ function initialize_block!(ax::Axis3)
         return
     end
 
-    setfield!(ax, :lookat, Observable(Vec3d(0)))
+    setfield!(ax, :axis_offset, Observable(Vec2d(0)))
     setfield!(ax, :zoom_mult, Observable(1.0))
 
-    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions, ax.elevation, ax.azimuth,
-                    ax.perspectiveness, ax.aspect, ax.viewmode, ax.xreversed, ax.yreversed, ax.zreversed,
-                    ax.zoom_mult, ax.lookat)
+    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions,
+                    ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode,
+                    ax.xreversed, ax.yreversed, ax.zreversed,
+                    ax.zoom_mult, ax.axis_offset, ax.near)
 
     on(scene, matrices) do (model, view, proj, lookat, eyepos)
         cam = camera(scene)
@@ -184,7 +185,7 @@ function initialize_block!(ax::Axis3)
 end
 
 function calculate_matrices(limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed, zoom_mult, offset)
+    viewmode, xreversed, yreversed, zreversed, zoom_mult, scene_offset, near)
 
     ori = limits.origin
     ws = widths(limits)
@@ -228,11 +229,8 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
 
     fov = ang_min + (ang_max - ang_min) * perspectiveness
 
-    # vFOV = 2 * Math.asin(sphereRadius / distance);
-    # distance = sphere_radius / Math.sin(vFov / 2)
-
+    # After model content is normalized to a -1..1^3 box, i.e. within radius sqrt(3)
     radius = zoom_mult * sqrt(3) / sind(fov / 2)
-
     camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
     eyepos = radius * camdir
 
@@ -242,30 +240,31 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
         u_x = normalize(cross(up, u_z))
         u_y = cross(u_z, u_x)
 
-        lookat = zoom_mult * sqrt(3) * (offset[1] * u_x + offset[2] * u_y)
+        lookat = zoom_mult * sqrt(3) * (scene_offset[1] * u_x + scene_offset[2] * u_y)
         eyepos += lookat
-        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
     else
         lookat = Vec3d(0)
-        lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
     end
+
+    lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
 
     w = width(viewport)
     h = height(viewport)
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, radius, fov,
-        w, h, to_protrusions(protrusions), viewmode)
+        w, h, to_protrusions(protrusions), viewmode, near)
 
     return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode)
+function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode, near_limit)
     # model normalizes the the longest axis of the axis bbox to -1..1, so its
     # bounding sphere has a radius of sqrt(3)
     # The distance of the camera to the center of the bounding sphere is "radius"
-    near = max(1e-5,              radius - sqrt(3))
-    far  = max((1 + 1e-4) * near, radius + sqrt(3))
+    near_limit > 0.0 || error("near value must be > 0, but is $near_limit.")
+    near = max(near_limit,         radius - sqrt(3))
+    far  = max((1 + 1e-3) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
 
