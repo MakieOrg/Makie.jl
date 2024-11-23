@@ -322,22 +322,8 @@ function update_state_before_display!(ax::Axis3)
 end
 
 function autolimits!(ax::Axis3)
-    xlims = getlimits(ax, 1)
-    ylims = getlimits(ax, 2)
-    zlims = getlimits(ax, 3)
-
-    ori = Vec3f(xlims[1], ylims[1], zlims[1])
-    widths = Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1])
-
-    enlarge_factor = 0.1
-
-    nori = ori .- (0.5 * enlarge_factor) * widths
-    nwidths = widths .* (1 + enlarge_factor)
-
-    lims = Rect3f(nori, nwidths)
-
-    ax.finallimits[] = lims
-    nothing
+    ax.limits[] = (nothing, nothing, nothing)
+    return
 end
 
 to_protrusions(x::Number) = GridLayoutBase.RectSides{Float32}(x, x, x, x)
