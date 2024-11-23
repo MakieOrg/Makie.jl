@@ -393,21 +393,21 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     # Perform translation
     if ax.viewmode[] == :free
 
-        ws = widths(ax.layoutobservables.computedbbox[])
+        ws = widths(ax.layoutobservables.computedbbox[])[2]
         ax.lookat[] -= to_ndim(Vec3d, 2 .* (event.px - event.prev_px) ./ ws, 0) .* xyz_translate
 
     else
         #=
         # Faster but less acurate (dependent on aspect ratio)
         scene_area = viewport(ax.scene)[]
-        relative_delta = (event.px - event.prev_px) ./ minimum(widths(scene_area))
+        relative_delta = (event.px - event.prev_px) ./ widths(scene_area)
 
         # Get u_x (screen right direction) and u_y (screen up direction)
         u_z = ax.scene.camera.view_direction[]
         u_y = ax.scene.camera.upvector[]
         u_x = cross(u_z, u_y)
 
-        translation = - (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+        translation = - 2.0 * (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
         =#
 
         # Slower but more accurate
@@ -420,8 +420,8 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
         p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
         p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
         delta = p1 - p0
-
         translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+
         tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
     end
 
