@@ -194,6 +194,13 @@ end
 struct DragRotate
 end
 
+mutable struct FocusOnCursor
+    last_time::Float64
+    timeout::Float64
+    skip::Int64
+end
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+
 struct ScrollEvent
     x::Float32
     y::Float32
@@ -1879,7 +1886,8 @@ end
         "Sets the key that must be pressed to translate the whole axis (as opposed to the content) with `viewmode = :free`."
         axis_translation_mod::IsPressedInputType = Keyboard.left_control | Keyboard.right_control
 
-
+        "Sets the key/button for centering the Axis3 on the currently hovered position."
+        cursorfocuskey::IsPressedInputType = Keyboard.left_alt & Mouse.left
     end
 end
 

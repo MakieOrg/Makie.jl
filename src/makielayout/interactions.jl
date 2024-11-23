@@ -520,3 +520,26 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
 
     return Consume(consumed)
 end
+
+function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
+    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
+        xy = events(ax.scene).mouseposition[]
+        plot, idx = pick(ax.scene, xy)
+        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || (plot.space[] != :data) ||
+                (findfirst(p -> p === plot, ax.scene.plots) <= focus.skip) # is axis decoration
+            return Consume(false)
+        end
+
+        ray = Ray(ax.scene, xy .- minimum(viewport(ax.scene)[]))
+        p3d = position_on_plot(plot, idx, ray, apply_transform = false)
+        if !isnan(p3d)
+            tlimits = ax.targetlimits
+            ws = widths(tlimits[])
+            tlimits[] = Rect3f(p3d - 0.5 * ws, ws)
+            focus.last_time = time() # to avoid double triggers
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
+end

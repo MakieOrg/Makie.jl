@@ -177,6 +177,7 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :limitreset, LimitReset())
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
+    register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
 
     # in case the user set limits already
     notify(ax.limits)
