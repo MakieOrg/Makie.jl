@@ -264,7 +264,7 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protr
     # model normalizes the the longest axis of the axis bbox to -1..1, so its
     # bounding sphere has a radius of sqrt(3)
     # The distance of the camera to the center of the bounding sphere is "radius"
-    near = max(1e-9,              radius - sqrt(3))
+    near = max(1e-5,              radius - sqrt(3))
     far  = max((1 + 1e-4) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
