@@ -4,8 +4,9 @@ function initialize_block!(t::Toggle)
 
     onany(topscene, t.orientation, t.length, t.markersize) do or, len, ms
         theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
-        t.width[] = (len - ms) * cos(theta) + ms
-        t.height[] = (len - ms)  * sin(theta) + ms
+        autowidth = (len - ms) * cos(theta) + ms
+        autoheight = (len - ms)  * sin(theta) + ms
+        t.layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
     button_endpoint_inactive = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
