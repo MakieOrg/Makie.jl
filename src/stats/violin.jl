@@ -67,7 +67,7 @@ function plot!(plot::Violin)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : 0
+            return s === :left ? - 1 : s === :right ? 1 : s === :both ? 0 : error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
         end
 
         sa = StructArray((x = x̂, side = sides))
