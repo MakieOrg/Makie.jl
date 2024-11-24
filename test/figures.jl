@@ -175,6 +175,6 @@ end
 @testset "show with a backend" begin
     fig = Figure()
     io = IOBuffer()
-    # if there were no show method with backend and update_state kwargs then MethodError would be thrown instead
-    @test_throws ErrorException show(io, MIME"text/plain"(), fig, backend=missing, update_state=missing)
+    # if there were no show method with backend and update kwargs then MethodError would be thrown instead
+    @test_throws ErrorException show(io, MIME"text/plain"(), fig, backend=missing, update=missing)
 end
