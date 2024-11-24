@@ -647,20 +647,45 @@ julia> v[] = true
 ```
 """
 function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
-    tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str; kwargs...)
+    _visible = typeof(visible)<:Observable ? visible : Observable(visible)
+    _delay = typeof(delay)<:Observable ? delay : Observable(delay)
+
+    tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str;
+                  visible=_visible[], kwargs...)
     translate!(tt, 0, 0, depth)
-    t0, last_mp = time(), b.blockscene.events.mouseposition[]
-    onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox, visible) do mp, bbox, v
-        tt.visible[] = v &&
+
+    update_viz0(mp, bbox) = tt.visible[] = mp in bbox
+
+    if _delay[] > 0
+        t0, last_mp = time(), b.blockscene.events.mouseposition[]
+    end
+
+    function update_viz(mp, bbox)
+        tt.visible[] =
             if mp in bbox
                 last_mp in bbox || (t0 = time())
                 last_mp = mp
-                delay == 0 || time() > t0 + delay
+                time() > t0 + _delay[]
             else
                 last_mp = mp
                 false
             end
     end
+
+    obsfun = nothing
+    on(_visible) do v
+        if v
+            obsfun = onany((mp,bbox) -> _delay[]==0 ? update_viz0(mp,bbox) : update_viz(mp,bbox),
+                           b.blockscene.events.mouseposition, b.layoutobservables.computedbbox)
+        else
+            if !isnothing(obsfun)
+                off(obsfun[1])
+                obsfun = nothing
+            end
+        end
+    end
+
+    notify(_visible)
     notify(b.blockscene.events.mouseposition)
     return tt
 end
