@@ -489,3 +489,13 @@ end
     Makie.set!(tb, "some string")
     f
 end
+
+@reference_test "Toggle orientation" begin
+    f = Figure()
+    for x=1:3, y=1:3
+        x==y==2 && continue
+        Box(f[x, y], color = :tomato)
+        Toggle(f[x, y], orientation = atan(x-2,2-y))
+    end
+    f
+end

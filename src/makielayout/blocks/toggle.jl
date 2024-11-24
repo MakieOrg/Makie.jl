@@ -4,18 +4,25 @@ function initialize_block!(t::Toggle)
 
     onany(topscene, t.orientation, t.length, t.markersize) do or, len, ms
         theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
-        autowidth = (len - ms) * cos(theta) + ms
-        autoheight = (len - ms)  * sin(theta) + ms
+        y, x = sincos(theta)
+        autowidth = (len - ms) * abs(x) + ms
+        autoheight = (len - ms)  * abs(y) + ms
         t.layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-    button_endpoint_inactive = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
+    xfun(x, bbox, ms) = x>0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
+    yfun(y, bbox, ms) = y>0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
 
-        Point2f(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
+    button_endpoint_inactive = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
+        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
+        y, x = sincos(theta)
+        Point2f(xfun(x, bbox, ms), yfun(y, bbox, ms))
     end
 
-    button_endpoint_active = lift(topscene, t.markersize, t.layoutobservables.computedbbox) do ms, bbox
-        Point2f(right(bbox) - ms / 2, top(bbox) - ms / 2)
+    button_endpoint_active = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
+        theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
+        y, x = sincos(theta)
+        Point2f(xfun(-x, bbox, ms), yfun(-y, bbox, ms))
     end
 
     buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments) do len, ms, cs
@@ -33,7 +40,10 @@ function initialize_block!(t::Toggle)
     onany(topscene, t.markersize, t.orientation, t.layoutobservables.computedbbox, update = true) do ms, or, bbox
         theta = or == :horizontal ? 0 : or == :vertical ? pi/2 : or
         rotate!(frame, theta)
-        translate!(frame, origin(bbox) .+ ms/2)
+        y, x = sincos(theta)
+        tx = x>0 ? origin(bbox)[1] + ms/2 : origin(bbox)[1] + widths(bbox)[1] - ms/2
+        ty = y>0 ? origin(bbox)[2] + ms/2 : origin(bbox)[2] + widths(bbox)[2] - ms/2
+        translate!(frame, Point2f(tx, ty))
     end
 
     animating = Observable(false)
