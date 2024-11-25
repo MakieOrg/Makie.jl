@@ -393,7 +393,7 @@ function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) whe
     # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
     p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2{T}(p[1], p[2])
-    return (0.5 .* (p .+ 1) .* (resolution .- 1)) .+ 1
+    return 0.5 .* (p .+ 1) .* resolution
 end
 
 # TODO: consider warning here to discourage risky functions
