@@ -208,31 +208,18 @@ function add_theme!(plot::T, scene::Scene) where T
     return
 end
 
-function cscatter end
-const CScatter{ARGS} = Plot{cscatter, ARGS}
-
-Makie.MakieCore.documented_attributes(::Type{<:CScatter}) = Makie.MakieCore.documented_attributes(Scatter)
-
-function cscatter(args...; kw...)
-    return Makie.MakieCore._create_plot(cscatter, Dict{Symbol, Any}(kw), args...)
-end
-
-function cscatter!(args...; kw...)
-    return Makie.MakieCore._create_plot!(cscatter, Dict{Symbol,Any}(kw), args...)
-end
-
-function Makie.plot!(scene::Scene, plot::CScatter)
+function Makie.plot!(scene::Scene, plot::Scatter)
     add_theme!(plot, scene)
     plot.parent = scene
     push!(scene.plots, plot)
     return
 end
 
-function Makie.data_limits(plot::CScatter)
+function Makie.data_limits(plot::Scatter)
     return plot.args[1][:data_limits][]
 end
 
-function CScatter(args::Tuple, user_kw::Dict{Symbol,Any})
+function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attibutes!(Scatter, attr, user_kw)
     register_arguments!(Scatter, attr, user_kw, args...)
@@ -242,57 +229,91 @@ function CScatter(args::Tuple, user_kw::Dict{Symbol,Any})
         return (_boundingbox(getindex.(args)...),)
     end
     T = typeof(attr[:positions][])
-    p = Plot{cscatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.attributes[:model] = Observable{Mat4f}(Mat4f(I))
     p.attributes[:clip_planes] = Makie.Plane3f[]
     p.transformation = Makie.Transformation()
     return p
 end
 
-function assemble_scatter_robj(scene, screen, positions, colormap, color, colornorm, scale, transparency)
-    cam = scene[].camera
+function assemble_scatter_robj(
+        atlas, marker, space, markerspace,
+        scene, screen,
+        positions,
+        colormap, color, colornorm,
+        marker_shape, uv_offset_width, quad_scale, quad_offset,
+        transparency
+    )
+    camera = scene[].camera
     needs_mapping = !(colornorm[] isa Nothing)
+    fast_pixel = marker isa FastPixel
+    pspace = fast_pixel ? space : markerspace
+    distancefield = marker_shape[] === Cint(GLMakie.DISTANCEFIELD) ? GLMakie.get_texture!(atlas) : nothing
+    _color = needs_mapping ? nothing : color[]
+    intensity = needs_mapping ? color[] : nothing
+
     data = Dict(
+
         :vertex => positions[],
         :color_map => needs_mapping ? colormap[] : nothing,
-        :color => color[],
+        :color => _color,
+        :intensity => intensity,
         :color_norm => colornorm[],
-        :scale => scale[],
+        :scale => quad_scale[],
+        :quad_offset => quad_offset[],
+        :uv_offset_width => uv_offset_width[],
+        :marker_shape => marker_shape[],
         :transparency => transparency[],
-        :resolution => cam.resolution,
-        :projection => Mat4f(cam.projection[]),
-        :projectionview => Mat4f(cam.projectionview[]),
-        :view => Mat4f(cam.view[]),
+
+
+        :resolution => Makie.get_ppu_resolution(camera, screen[].px_per_unit[]),
+        :projection => Makie.get_projection(camera, pspace),
+        :projectionview => Makie.get_projectionview(camera, pspace),
+        :preprojection => Makie.get_preprojection(camera, space, markerspace),
+        :view => Makie.get_view(camera, pspace),
         :model => Mat4f(I),
         :markerspace => Cint(0),
+        :distancefield => distancefield,
+
         :px_per_unit => screen[].px_per_unit,
         :upvector => Vec3f(0),
         :ssao => false,
     )
-    return GLMakie.draw_pixel_scatter(screen[], positions[], data)
+    return GLMakie.draw_scatter(screen[], (marker_shape[], positions[]), data)
 end
 
-function GLMakie.draw_atomic(screen::GLMakie.Screen, scene::Scene, plot::CScatter)
+function GLMakie.draw_atomic(screen::GLMakie.Screen, scene::Scene, plot::Scatter)
     screen_name = Symbol(string(objectid(screen)))
     attr = plot.args[1]
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
-
+    atlas = GLMakie.gl_texture_atlas()
     register_computation!(attr, Symbol[], [screen_name]) do args, changed, last
         (screen,)
     end
+    register_computation!(attr, [:uv_offset_width, :marker, :font], [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+        new_mf = changed[2] || changed[3]
+        uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
+        marker = changed[1] ? Makie.marker_to_sdf_shape(m[]) : nothing
+        return (marker, uv)
+    end
+
     scene_name = Symbol(string(objectid(scene)))
     register_computation!(attr, Symbol[], [scene_name]) do args, changed, last
         (scene,)
     end
-    inputs = [scene_name, screen_name, :positions_transformed_f32c, :colormap, :color, :_colorrange,
-              :markersize, :transparency]
-    gl_names = [:vertex, :color_map, :color, :color_norm, :scale, :transparency]
+    inputs = [
+        scene_name, screen_name,
+        :positions_transformed_f32c, :colormap, :color, :_colorrange,
+        :sdf_marker_shape, :sdf_uv, :quad_scale, :quad_offset,
+        :transparency
+    ]
+    gl_names = [:vertex, :color_map, :color, :color_norm, :shape, :uv_offset_width, :scale, :quad_offset, :transparency]
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, last
         screen = args[2][]
         !isopen(screen) && return :deregister
         robj = if isnothing(last)
-            robj = assemble_scatter_robj(args...)
+            robj = assemble_scatter_robj(atlas, attr.marker[], attr.space[], attr.markerspace[], args...)
         else
             robj = last[1][]
             for (name, arg, has_changed) in zip(gl_names, args[3:end], changed[3:end])
@@ -311,60 +332,11 @@ function GLMakie.draw_atomic(screen::GLMakie.Screen, scene::Scene, plot::CScatte
     end
     robj = attr[:gl_renderobject][]
     screen.cache2plot[robj.id] = plot
-
+    screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
     return robj
 end
 
 begin
-    cscatter(-1:0.1:1, -1:0.1:1)
+    f, ax, pl = scatter(-1:0.1:1, -1:0.1:1; color=-1:0.1:1)
 end
-
-
-# update!(attr; arg1=-1:0.1:1, arg2=-1:0.1:1, color=1:0.1:1, markersize=22);
-
-
-# function test()
-#     for i in 1:10000
-#         update!(attr; arg2=sin.((-1:0.1:1)), markersize=10);
-#         attr.outputs[:gl_renderobject][]
-#     end
-#     return
-# end
-# using BenchmarkTools
-# update!(attr; arg2=sin.((-1:0.1:1)), markersize=10);
-# @btime attr.outputs[:gl_renderobject][]
-
-
-# x = attr.outputs[:gl_renderobject].parent
-
-## Bechmark
-# Unoptimized Graph
-#8.100 μs (87 allocations: 3.55 KiB)
-# Makie
-#6.600 μs (79 allocations: 3.38 KiB)
-# Optimzed Graph:
-#2.678 μs (23 allocations: 1.34 KiB)
-
-
-# attr = ComputeGraph() do key, value
-#     return value
-# end
-
-# # Adding inputs - default_theme effectively does this
-# add_inputs!(attr, attr1=1, attr2=3, attr3=5)
-
-# register_computation!(attr, [:attr1, :attr2, :attr3], [:a1changed, :a2changed, :a3changed]) do args, last
-#     return map(x-> x.has_changed, args)
-# end
-
-# register_computation!(attr, [:a1changed, :a2changed, :a3changed], [:out]) do args, last
-#     return (map(x -> x[], args),)
-# end
-
-
-# attr.outputs[:out][]
-
-# update!(attr; attr1=2, attr2=4)
-
-# attr.outputs[:a3changed].parent.outputs_dirty

@@ -475,6 +475,10 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     transform_marker = false
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
+    """
+    Sets the font to be used for character markers
+    """
+    font = "default"
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
