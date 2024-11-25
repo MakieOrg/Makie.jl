@@ -9,7 +9,7 @@ function initialize_block!(ax::Axis3)
     end
     notify(ax.protrusions)
 
-    finallimits = Observable(Rect3f(Vec3f(0f0, 0f0, 0f0), Vec3f(100f0, 100f0, 100f0)))
+    finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
 
     scenearea = lift(blockscene, ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
@@ -191,7 +191,7 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
     ori = limits.origin
     ws = widths(limits)
 
-    limits = Rect3f(
+    limits = Rect3d(
         (
             ori[1] + (xreversed ? ws[1] : zero(ws[1])),
             ori[2] + (yreversed ? ws[2] : zero(ws[2])),
@@ -264,7 +264,7 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protr
     # bounding sphere has a radius of sqrt(3)
     # The distance of the camera to the center of the bounding sphere is "radius"
     near_limit > 0.0 || error("near value must be > 0, but is $near_limit.")
-    near = max(near_limit,         radius - sqrt(3))
+    near = max(near_limit,        radius - sqrt(3))
     far  = max((1 + 1e-3) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
@@ -287,8 +287,8 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protr
 
         if viewmode in (:fitzoom, :stretch)
             # coordinates of axis rect w.r.t real viewport
-            points = decompose(Point3f, limits)
-            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4f, points, 1)
+            points = decompose(Point3d, limits)
+            projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4d, points, 1)
 
             # convert to effective viewport
             w = w/width; h = h/height
@@ -301,13 +301,13 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protr
 
             if viewmode === :fitzoom
                 s = min(ratio_x, ratio_y)
-                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(s, s, 1)) * pm
+                pm = transformationmatrix(Vec3(dx, dy, 0), Vec3(s, s, 1)) * pm
             else
-                pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3(ratio_x, ratio_y, 1)) * pm
+                pm = transformationmatrix(Vec3(dx, dy, 0), Vec3(ratio_x, ratio_y, 1)) * pm
             end
         else
             wh = min(w, h) / min(width, height) # works for :fit
-            pm = transformationmatrix(Vec3f(dx, dy, 0), Vec3f(wh, wh, 1)) * pm
+            pm = transformationmatrix(Vec3(dx, dy, 0), Vec3(wh, wh, 1)) * pm
         end
 
         pm
