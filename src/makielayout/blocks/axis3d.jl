@@ -457,7 +457,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
-        transparency = false, visible = attr(:spinesvisible), inspectable = false,
+        transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
 
     return gridline1, gridline2, framelines
