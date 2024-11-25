@@ -137,7 +137,7 @@ pages = [
             "reference/plots/voxels.md",
             "reference/plots/vspan.md",
             "reference/plots/waterfall.md",
-            "reference/plots/wireframe.md",  
+            "reference/plots/wireframe.md",
         ],
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",

@@ -152,11 +152,12 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
 
     xy = origin(shape)
     w, h = widths(shape)
-    ps = [xy, xy + Vec2(w, 0), xy + Vec2f(w, h), xy + Vec2(0, h)]
+    ps = Vec2f[xy, xy + Vec2f(w, 0), xy + Vec2f(w, h), xy + Vec2f(0, h)]
     if any(p -> Makie.is_clipped(clip_planes, p), ps)
         push!(ps, xy)
         ps = clip_poly(clip_planes, ps, space, model)
-        return BezierPath([MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()])
+        commands = Makie.PathCommand[MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()]
+        return BezierPath(commands::Vector{Makie.PathCommand})
     else
         return shape
     end
