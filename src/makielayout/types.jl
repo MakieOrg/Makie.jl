@@ -1632,6 +1632,10 @@ end
           - `:stretch` pulls the cuboid corners to the frame edges such that the available space is filled completely.
             The chosen `aspect` is not maintained using this setting, so `:stretch` should not be used
             if a particular aspect is needed.
+          - `:free` behaves like `:fit` but changes some interactions. Zooming affects the whole axis rather
+            than just the content. This allows you to zoom in on content without it getting clipped by the 3D
+            bounding box of the Axis3. `zoommode = :cursor` is disabled. Translations can no also affect the axis as
+            a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
         "The background color"
@@ -1868,7 +1872,10 @@ end
         yzoomkey::IsPressedInputType = Keyboard.y
         "The key for limiting zooming to the z direction."
         zzoomkey::IsPressedInputType = Keyboard.z
-        "Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor` for zooming centered approximately where the cursor is."
+        """
+        Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor`
+        for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
+        """
         zoommode::Symbol = :center
 
         "Locks interactive translation in the x direction."
