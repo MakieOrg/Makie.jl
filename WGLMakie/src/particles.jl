@@ -183,7 +183,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset], plot)
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
@@ -273,9 +273,6 @@ function create_shader(scene::Scene, plot::Scatter)
     f32c, model = Makie.patch_model(plot)
     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
-    quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
-    attributes[:marker_offset] = Vec3f(0)
-    attributes[:quad_offset] = quad_offset
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = model
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))

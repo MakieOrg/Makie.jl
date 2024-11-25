@@ -102,10 +102,10 @@ function boundingbox(plot::Scatter)
             plot.marker[],
             plot.markersize[],
             get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot.marker_offset[],
             plot
         )
         rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
+        marker_offsets = convert_attribute(plot.marker_offset[], key"marker_offset"(), key"scatter"())
         model = plot.model[]
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
         transform_marker = to_value(get(plot, :transform_marker, false))::Bool
@@ -118,16 +118,19 @@ function boundingbox(plot::Scatter)
                 continue
             end
 
+            marker_offset = sv_getindex(marker_offsets, i)
             quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
             quad_size = Vec2d(sv_getindex(scale[], i))
             quad_rotation = sv_getindex(rotations, i)
 
             if transform_marker
+                marker_pos += model[Vec(1,2,3), Vec(1,2,3)] * marker_offset
                 p4d = model * to_ndim(Point4d, quad_origin, 1)
                 quad_origin = quad_rotation * p4d[Vec(1,2,3)] / p4d[4]
                 quad_v1 = quad_rotation * (model33 * Vec3d(quad_size[1], 0, 0))
                 quad_v2 = quad_rotation * (model33 * Vec3d(0, quad_size[2], 0))
             else
+                marker_pos += marker_offset
                 quad_origin = quad_rotation * quad_origin
                 quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
                 quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)

@@ -602,7 +602,7 @@ end
     f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
     # plot a wireframe so we can see what's going on, and in which cells.
     m = Makie.surface2mesh(to_value.(p.converted)...)
-    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
+    scatter!(a, m.position, color = isnan.(m.normal), depth_shift = -1f-3)
     wireframe!(a, m, depth_shift = -1f-3, color = :black)
     f
 end
@@ -877,7 +877,6 @@ end
     meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
     ax2 = Axis(fig[3, 2]; axis_kwargs...)
     mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
-
     fig
 end
 
@@ -933,6 +932,130 @@ end
     ax3 = Axis(fig[3, 3]; axis_kwargs...)
     p9 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
     transform!.((p7, p8, p9), 5e11, false)
+              
+    fig
+end
+
+@reference_test "scatter marker_offset 2D" begin
+    fig = Figure(size = (450, 500))
+    ax = Axis(fig[1, 1])
+    xlims!(ax, -6.5, 6.5); ylims!(ax, -10, 10)
+    ax.xticks[] = (-5:2:5, ["BezierPath", "Circle", "Rect", "Char", "FastPixel", "Image"])
+    ax.yticks[] = ([-7.5, -2.75, 2.25, 7.25], [":pixel", ":data", ":relative", ":clip"])
+    ax.yticklabelrotation[] = pi/2
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rect_corners = Point2f[(-0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0.5, -0.5), (-0.5, -0.5), (NaN, NaN)]
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0), :pixel, 40),   (-5.5, (0, -20), :pixel, 40),
+            (-4, (0, 0), :data, 1.8),     (-0.5, (0, -1), :data, 1.8),
+            (+1, (0, 0), :relative, 0.1), (+4.5, (0, -0.05), :relative, 0.1),
+            (+6, (0, 0), :clip, 0.2),     (+9.5, (0, -0.1), :clip, 0.2),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset)
+        scatter!(ax, Point2f(-5, y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-3, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f(-1, y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 1, y), marker = 'x'; kwargs...)
+        if space in (:data, :pixel)
+            scatter!(ax, Point2f( 3, y), marker = FastPixel(); kwargs...)
+        end
+        scatter!(ax, Point2f( 5, y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        xs = space in (:data, :pixel) ? (-5:2:5) : [-5, -3, -1, 1, 5]
+        transformed = map(Point2f.(xs, y)) do pos
+            pos_ms = Makie.project(ax.scene, :data, space, pos)[Vec(1,2)]
+            rect_ps = [pos_ms .+ markersize .* xy .+ offset for xy in rect_corners]
+            return rect_ps
+        end
+        p = lines!(ax, vcat(transformed...), color = :black, linewidth = 2, space = space)
+    end
+
+    fig
+end
+
+# Above without FastPixel since FastPixel doesn't rotate
+@reference_test "scatter marker_offset 2D with billboarded rotation" begin
+    fig = Figure(size = (450, 500))
+    ax = Axis(fig[1, 1])
+    xlims!(ax, -6.5, 6.5); ylims!(ax, -10, 10)
+    ax.xticks[] = (-5:2.5:5, ["BezierPath", "Circle", "Rect", "Char", "Image"])
+    ax.yticks[] = ([-7.5, -2.75, 2.25, 7.25], [":pixel", ":data", ":relative", ":clip"])
+    ax.yticklabelrotation[] = pi/2
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rotation = 0.3f0
+    rect_corners = [Point2f(cos(a), sin(a)) ./ sqrt(2) for a in (range(0.0, 2pi, length=5) .+ pi/4 .+ rotation)]
+    push!(rect_corners, Point2f(NaN))
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0), :pixel, 40),   (-5.5, (0, -20), :pixel, 40),
+            (-4, (0, 0), :data, 1.8),     (-0.5, (0, -1), :data, 1.8),
+            (+1, (0, 0), :relative, 0.1), (+4.5, (0, -0.05), :relative, 0.1),
+            (+6, (0, 0), :clip, 0.2),     (+9.5, (0, -0.1), :clip, 0.2),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset, rotation = rotation)
+        scatter!(ax, Point2f(-5, y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-2.5, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f( 0, y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 2.5, y), marker = 'x'; kwargs...)
+        scatter!(ax, Point2f( 5, y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        transformed = map(Point2f.(-5:2.5:5, y)) do pos
+            pos_ms = Makie.project(ax.scene, :data, space, pos)[Vec(1,2)]
+            rect_ps = [pos_ms .+ markersize .* xy .+ offset for xy in rect_corners]
+            return rect_ps
+        end
+        p = lines!(ax, vcat(transformed...), color = :black, linewidth = 2, space = space)
+    end
+
+    fig
+end
+
+@reference_test "scatter marker_offset 3D with rotation" begin
+    fig = Figure(size = (500, 400))
+    ax = LScene(fig[1, 1], show_axis = false)
+    update_cam!(ax.scene, Vec3f(12), Vec3f(1, 2, -2))
+    cameracontrols(ax).settings.center[] = false
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rotation = qrotation(Vec3f(1), 0.8)
+    rect_corners = Point2f[(-0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0.5, -0.5), (-0.5, -0.5), (NaN, NaN)]
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0, 0), :pixel, 20),      (-6,   (0, -10, 0), :pixel, 20),
+            (-2,   (0, 0, 0), :data, 1.5),      (1,    (0, -1, 0), :data, 1.5),
+            (+3,   (0, 0, 0), :relative, 0.05), (+4.5, (0, -0.025, 0), :relative, 0.05),
+            (+8,   (0, 0, 0), :clip, 0.1),      (+9,   (0, -0.05, 0), :clip, 0.1),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset, rotation = rotation)
+        scatter!(ax, Point2f(-5,   y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-2.5, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f( 0,   y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 2.5, y), marker = 'x'; kwargs...)
+        scatter!(ax, Point2f( 5,   y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        transformed = map(ax.scene.camera.projectionview) do _
+            transformed = map(Point3f.(-5:2.5:5, y, 0)) do pos
+                pos_ms = Makie.project(ax.scene, :data, space, pos) .+ offset
+                rect_ps = [pos_ms .+ rotation * to_ndim(Vec3f, markersize .* xy, 0) for xy in rect_corners]
+
+                return rect_ps
+            end
+            vcat(transformed...)
+        end
+        p = lines!(ax, transformed, color = :black, linewidth = 2, space = space, depth_shift = -5f-2)
+    end
 
     fig
 end
