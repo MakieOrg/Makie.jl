@@ -452,22 +452,13 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
         # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
-        # we are going to transform the 3d frame points into 2d of the topscene
-        # because otherwise the frame lines can
-        # be cut when they lie directly on the scene boundary
-        o = scene.viewport[].origin
-        return map([p1, p2, p3, p4, p5, p6]) do p3d
-            # This strip z here (set it to 0) and translate to coerce z sorting
-            # to be correct in CairoMakie (which is based on plot.transformation)
-            return Point2f(o + Makie.project(scene, p3d))
-        end
+        return [p1, p2, p3, p4, p5, p6]
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
-    framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
-        transparency = false, visible = attr(:spinesvisible), inspectable = false)
-    # -10000 is the far value in campixel
-    translate!(framelines, 0, 0, -10000)
+    framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        transparency = false, visible = attr(:spinesvisible), inspectable = false,
+        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
 
     return gridline1, gridline2, framelines
 end
