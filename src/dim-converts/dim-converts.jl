@@ -59,7 +59,7 @@ using MakieCore: should_dim_convert
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-MakieCore.should_dim_convert(::Type{<:Real}) = true
+MakieCore.should_dim_convert(::Type{<:Real}) = false
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end

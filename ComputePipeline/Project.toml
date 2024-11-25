@@ -1,0 +1,13 @@
+name = "ComputePipeline"
+uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
+authors = ["Simon Danisch", "MakieOrg"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

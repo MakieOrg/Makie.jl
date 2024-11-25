@@ -421,7 +421,6 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
     if haskey(theme(scene), plot_sym)
         merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
     end
-
     for (k, v) in plot.kw
         if v isa NamedTuple
             raw_attr[k] = Attributes(v)
