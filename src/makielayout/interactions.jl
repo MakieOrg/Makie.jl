@@ -509,11 +509,17 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
             ax.zoom_mult[] = 1.0
-            ax.axis_offset[] = Vec2d(0)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            else
+                reset_limits!(ax)
+            end
             consumed = true
         end
         if ispressed(ax.scene, Keyboard.left_shift)
-            autolimits!(ax)
+            ax.axis_offset[] = Vec2d(0)
+            ax.elevation[] = pi/8
+            ax.azimuth[] = 1.275 * pi
             consumed = true
         end
     end
