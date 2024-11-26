@@ -873,9 +873,9 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
             # To avoid shifting the cell border we skip extensions at (i, j), i.e.
             # we only extend the sides that will be covered by other cells.
             center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0)
-            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0,               0.5f0 * (j!=nj))
+            p2 += sign.(p2 - center) .* Point2f(i != ni, 0)
+            p3 += sign.(p3 - center) .* Point2f(i != ni, j != nj)
+            p4 += sign.(p4 - center) .* Point2f(0,       j != nj)
         end
 
         Cairo.set_line_width(ctx, 0)
