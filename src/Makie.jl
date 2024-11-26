@@ -134,6 +134,7 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
+include("compute-plots.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")

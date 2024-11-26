@@ -1,17 +1,5 @@
 using GLMakie
-using GLMakie: gl_texture_atlas
-using Makie: defaultfont, Mat4f
-using LinearAlgebra
-using Makie
-using Makie: automatic, Automatic, Key
-using Makie: convert_attribute
-using Makie: PlotUtils, Colors, Colorant
-using Makie: to_2d_scale, to_color, colormapping_type, to_colormap, _to_colormap,
-    distinct_extrema_nan, apply_scale, convert_attribute, update_boundingbox, to_ndim, sv_getindex
-using Base: RefValue
-using LinearAlgebra
-using GeometryBasics
-using ComputePipeline
+
 
 ################################################################################
 

@@ -1,9 +1,10 @@
 Package = Symbol(ARGS[1])
+Package = :GLMakie
 macro ctime(x)
     return quote
         tstart = time_ns()
         $(esc(x))
-        Float64(time_ns() - tstart)
+        Float64(time_ns() - tstart) / 1e9
     end
 end
 t_using = @ctime @eval using $Package

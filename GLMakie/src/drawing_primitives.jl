@@ -554,7 +554,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegme
         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
         data[:num_clip_planes] = Observable(0)
 
-
         positions = handle_view(plot[1], data)
         positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
         if haskey(data, :intensity)
