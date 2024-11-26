@@ -8,6 +8,7 @@
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
+- Fix color mapping between contourf and colorbar [#4618](https://github.com/MakieOrg/Makie.jl/pull/4618)
 
 ## [0.21.16] - 2024-11-06
 
