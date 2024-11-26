@@ -4,7 +4,7 @@ macro ctime(x)
     return quote
         tstart = time_ns()
         $(esc(x))
-        Float64(time_ns() - tstart) / 1e9
+        Float64(time_ns() - tstart)
     end
 end
 t_using = @ctime @eval using $Package
