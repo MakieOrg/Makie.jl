@@ -20,9 +20,9 @@ function initialize_block!(ax::Axis3)
 
     onany(blockscene, scenearea, ax.clip_decorations) do area, clip
         if clip
-            blockscene.theme.clip_planes[] = planes(area)
-        elseif !isempty(blockscene.theme.clip_planes[])
-            blockscene.theme.clip_planes[] = Plane3f[]
+            blockscene.viewport[] = area
+        elseif blockscene.viewport[] != root(blockscene).viewport[]
+            blockscene.viewport[] = root(blockscene).viewport[]
         end
     end
 
@@ -439,9 +439,8 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         visible = attr(:gridvisible), inspectable = false)
 
 
-    framepoints = lift(limits, scene.camera.projectionview, scene.viewport, min1, min2, xreversed, yreversed, zreversed
-            ) do lims, _, pxa, mi1, mi2, xrev, yrev, zrev
-        o = pxa.origin
+    framepoints = lift(limits, min1, min2, xreversed, yreversed, zreversed
+            ) do lims, mi1, mi2, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -502,7 +501,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        o = pxa.origin
+        o = (origin(pxa) - origin(topscene.viewport[]))
 
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
@@ -535,7 +534,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
             tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
 
-        o = pxa.origin
+        o = (origin(pxa) - origin(topscene.viewport[]))
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -572,7 +571,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
             ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
-        o = pxa.origin
+        o = (origin(pxa) - origin(topscene.viewport[]))
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
