@@ -286,7 +286,7 @@ end
 @testset "line projection" begin
     # Check #4627
     f = Figure(size = (600, 450))
-    a, p = stephist(f[1,1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
+    a, p = stephist(f[1, 1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
     Makie.update_state_before_display!(f)
     lp = p.plots[1].plots[1]
     ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
@@ -295,26 +295,11 @@ end
     # as outside. The adjustment of 2, 5 should be negligible.
     necessary_points = Vec{2, Float32}[[0.0, 89.77272], [275.5, 89.77272], [275.5, 17.95454], [551.0, 17.95454]]
     @test length(ps) >= 4
-    start = ps[1] ≈ necessary_points[1] ? 1 : 2
-    if all(isapprox.(ps[start:start+3], necessary_points, atol = 1e-4))
-        @test true
-    else
-        @info ps, start
-        @info necessary_points
-        @test false
-    end
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
 
     ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
     ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
     ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
     @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
-    # @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
-    start = ps[1] ≈ necessary_points[1] ? 1 : 3
-    if all(isapprox.(ps[start:start+5], necessary_points[[1,2,2,3,3,4]], atol = 1e-4))
-        @test true
-    else
-        @info ps, start
-        @info necessary_points[[1,2,2,3,3,4]]
-        @test false
-    end
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
 end
