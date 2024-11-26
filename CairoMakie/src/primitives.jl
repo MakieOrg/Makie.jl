@@ -345,12 +345,23 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p._marker_offset[], p.rotation[],
            p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
 
+    attr = p.args[1]
+    Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
+        return (cairo_scatter_marker(marker[]),)
+    end
+
+    Makie.register_computation!(attr, [:positions_transformed_f32c, :model, :space, :clip_planes], [:clipped_transformed_positions]) do (transformed, model, space, clip_planes), changed, outputs
+        indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
+        positions = project_position(scene, space[], transformed[], indices, model[])
+        return (view(positions, indices),)
+    end
+
     markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
         transform_marker, model, markerspace, space, clip_planes = args
 
-    marker = cairo_scatter_marker(p.marker[]) # this goes through CairoMakie's conversion system and not Makie's...
+    marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
-    positions = p.positions_transformed_f32c[]
+    positions = p.clipped_transformed_positions[]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4d(I)
 
@@ -359,21 +370,17 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     markerspace = p.markerspace[]
     space = p.space[]
 
-    return draw_atomic_scatter(scene, ctx, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotation, model, positions, size_model, font, markerspace,
-                               space, clip_planes)
+    return draw_atomic_scatter(scene, ctx, positions, colors, markersize, strokecolor, strokewidth, marker,
+                               marker_offset, rotation, size_model, font, markerspace)
 end
 
 function draw_atomic_scatter(
-        scene, ctx, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, model, transformed, size_model, font,
-        markerspace, space, clip_planes
+        scene, ctx, positions, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, size_model, font,
+        markerspace
     )
 
-    indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
-    projected_positions = project_position(scene, space, transformed, indices, model)
-
-    Makie.broadcast_foreach_index(projected_positions, indices, colors, markersize, strokecolor,
+    Makie.broadcast_foreach(positions, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
