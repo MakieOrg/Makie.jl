@@ -288,7 +288,7 @@ end
     f, a, p = stephist(1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
     Makie.update_state_before_display!(f)
     lp = p.plots[1].plots[1]
-    ps, _, _ = project_line_points(a.scene, lp, lp[1][], nothing, nothing)
+    ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
     # 4, 5 could also be fine if the first and/or last point gets cut off.
     # ps[[1,2, 5,6]] lie on the boundary and could be detected as "outside"
     # or "inside" depending on the exact float math. If [1, 2] are detected as
@@ -297,5 +297,12 @@ end
     # for 5--6 with 6 being cut.
     @test length(ps) == 6
     expected = Vec{2, Float32}[[0.0, 377.04547], [0.0, 89.77272], [275.5, 89.77272], [275.5, 17.95454], [551.0, 17.95454], [551.0, 377.04547]]
+    @test all(isapprox.(ps, expected, atol = 1e-5))
+
+    ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
+    ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
+    ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
+    @test length(ps) == 6
+    expected = expected[[1,2,2,3,3,4,4,5,5,6]]
     @test all(isapprox.(ps, expected, atol = 1e-5))
 end
