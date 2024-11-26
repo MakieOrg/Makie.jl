@@ -32,7 +32,7 @@ Observables = "0.5.1"
 PNGFiles = "0.3, 0.4"
 PrecompileTools = "1.0"
 RelocatableFolders = "0.1, 0.2, 0.3, 1.0"
-ShaderAbstractions = "0.4"
+ShaderAbstractions = "0.4, 0.5"
 StaticArrays = "0.12, 1.0"
 julia = "1.3"
 
