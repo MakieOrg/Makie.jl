@@ -12,8 +12,8 @@ function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offs
         bb = Rect3d()
         for (i, p) in enumerate(positions)
             marker_pos = to_ndim(Point3d, p, 0)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
+            quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotation, i)
 
             quad_origin = quad_rotation * quad_origin
@@ -164,7 +164,7 @@ function add_attibutes!(::Type{T}, attr, kwargs) where {T}
             val = v.default_value
             value = val isa MakieCore.Inherit ? val.fallback : val
         end
-        add_input!(attr, k, value) do key, value
+        add_input!(attr, k, to_value(value)) do key, value
             return convert_attribute(value, Key{key}(), Key{:scatter}())
         end
     end
