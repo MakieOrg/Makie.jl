@@ -8,6 +8,7 @@
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
+- Fixed an incorrect comparison in CairoMakie's line clipping code causing a line segment to disappear [#4631](https://github.com/MakieOrg/Makie.jl/pull/4631)
 
 ## [0.21.16] - 2024-11-06
 
