@@ -324,36 +324,52 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
-    @get_attribute(primitive, (
-        markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-        transform_marker, model, markerspace, space, clip_planes)
-    )
 
-    marker = cairo_scatter_marker(primitive.marker[]) # this goes through CairoMakie's conversion system and not Makie's...
+function get_colors(p::Scatter)
+    if isnothing(p._colorrange[])
+        return p.color[]
+    else
+        sampler = Makie.Sampler(
+            p.colormap[],
+            p.color[],
+            p.alpha[],
+            # interpolation method for sampling
+            Makie.Linear,
+            Makie.Scaling(p.colorscale[], p._colorrange[])
+        )
+        collect(sampler)
+    end
+end
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
+    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p._marker_offset[], p.rotation[],
+           p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
+
+    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+        transform_marker, model, markerspace, space, clip_planes = args
+
+    marker = cairo_scatter_marker(p.marker[]) # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
-    positions = primitive[1][]
+    positions = p.positions_transformed_f32c[]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4d(I)
 
-    font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
-    colors = to_color(primitive.calculated_colors[])
-    markerspace = primitive.markerspace[]
-    space = primitive.space[]
-    transfunc = Makie.transform_func(primitive)
+    font = p.font[]
+    colors = get_colors(p)
+    markerspace = p.markerspace[]
+    space = p.space[]
 
-    return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
+    return draw_atomic_scatter(scene, ctx, colors, markersize, strokecolor, strokewidth, marker,
                                marker_offset, rotation, model, positions, size_model, font, markerspace,
                                space, clip_planes)
 end
 
 function draw_atomic_scatter(
-        scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, model, positions, size_model, font,
+        scene, ctx, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, model, transformed, size_model, font,
         markerspace, space, clip_planes
     )
 
-    transformed = apply_transform(transfunc, positions, space)
     indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
     projected_positions = project_position(scene, space, transformed, indices, model)
 
@@ -1254,7 +1270,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]

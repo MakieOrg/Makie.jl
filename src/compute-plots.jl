@@ -212,6 +212,16 @@ function data_limits(plot::Scatter)
     return plot.args[1][:data_limits][]
 end
 
+function Base.getproperty(plot::Scatter, key::Symbol)
+    if key in fieldnames(Scatter)
+        return getfield(plot, key)
+    end
+    return plot.args[1][key]
+end
+
+Observables.to_value(computed::ComputePipeline.Computed) = computed[]
+
+
 function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attibutes!(Scatter, attr, user_kw)
@@ -224,8 +234,8 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.attributes[:model] = Observable{Mat4f}(Mat4f(I))
-    p.attributes[:clip_planes] = Plane3f[]
+    add_input!(attr, :model, Mat4f(I))
+    add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
 end
