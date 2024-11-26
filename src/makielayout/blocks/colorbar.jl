@@ -247,14 +247,15 @@ function initialize_block!(cb::Colorbar)
     end
     heatmap!(blockscene,
         xrange, yrange, continuous_pixels;
-        colormap=colormap,
-        colorrange=limits,
-        visible=show_cats,
-        inspectable=false
+        colormap = colormap,
+        colorrange = limits,
+        visible = show_cats,
+        inspectable = false
     )
     image!(blockscene,
         lift(extrema, xrange), lift(extrema, yrange), continuous_pixels;
         colormap = colormap,
+        colorrange = limits,
         visible = show_continuous,
         inspectable = false
     )
