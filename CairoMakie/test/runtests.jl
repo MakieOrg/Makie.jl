@@ -285,7 +285,8 @@ end
 
 @testset "line projection" begin
     # Check #4627
-    f, a, p = stephist(1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
+    f = Figure(size = (600, 450))
+    a, p = stephist(f[1,1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
     Makie.update_state_before_display!(f)
     lp = p.plots[1].plots[1]
     ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
