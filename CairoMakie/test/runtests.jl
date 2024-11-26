@@ -294,11 +294,26 @@ end
     # as outside. The adjustment of 2, 5 should be negligible.
     necessary_points = Vec{2, Float32}[[0.0, 89.77272], [275.5, 89.77272], [275.5, 17.95454], [551.0, 17.95454]]
     @test length(ps) >= 4
-    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+    start = ps[1] ≈ necessary_points[1] ? 1 : 2
+    if all(isapprox.(ps[start:start+3], necessary_points, atol = 1e-4))
+        @test true
+    else
+        @info ps, start
+        @info necessary_points
+        @test false
+    end
 
     ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
     ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
     ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
     @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
-    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+    # @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+    start = ps[1] ≈ necessary_points[1] ? 1 : 3
+    if all(isapprox.(ps[start:start+5], necessary_points[[1,2,2,3,3,4]], atol = 1e-4))
+        @test true
+    else
+        @info ps, start
+        @info necessary_points[[1,2,2,3,3,4]]
+        @test false
+    end
 end
