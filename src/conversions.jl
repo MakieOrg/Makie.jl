@@ -1212,7 +1212,7 @@ end
 function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
-    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
+    vals = (miter = 0, round = 2, bevel = 3)
     return get(vals, value) do
         error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
     end

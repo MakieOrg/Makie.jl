@@ -30,7 +30,8 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
             # Some primitives don't have line faces defined, so we just connect each line segment
             return collect(reinterpret(eltype(points), connect(points, Line, 1)))
         else
-            return connect(points, indices)
+            x = collect(reinterpret(eltype(points), connect(points, indices)))
+            return x
         end
     end
     linesegments!(plot, Attributes(plot), points)

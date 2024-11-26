@@ -266,7 +266,6 @@ function update!(attr::ComputeGraph; kwargs...)
     return attr
 end
 
-
 add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr::ComputeGraph, key::Symbol, value)
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)

@@ -478,91 +478,91 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        linestyle = pop!(gl_attributes, :linestyle)
-        miter_limit = pop!(gl_attributes, :miter_limit)
-        data = Dict{Symbol, Any}(gl_attributes)
-        data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
-        positions = handle_view(plot[1], data)
-        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-            Vec2f(ppu * origin(viewport))
-        end
-        space = plot.space
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         linestyle = pop!(gl_attributes, :linestyle)
+#         miter_limit = pop!(gl_attributes, :miter_limit)
+#         data = Dict{Symbol, Any}(gl_attributes)
+#         data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
+#         positions = handle_view(plot[1], data)
+#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+#             Vec2f(ppu * origin(viewport))
+#         end
+#         space = plot.space
 
-        # Handled manually without using OpenGL clipping
-        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-        data[:num_clip_planes] = Observable(0)
-        pop!(data, :clip_planes)
-        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+#         # Handled manually without using OpenGL clipping
+#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+#         data[:num_clip_planes] = Observable(0)
+#         pop!(data, :clip_planes)
+#         data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
+#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            clip_planes = Makie.to_clip_space(pv, planes)
+#             clip_planes = Makie.to_clip_space(pv, planes)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                output[i] = Makie.gl_plane_format(clip_planes[i])
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
-            return output
-        end
+#             output = Vector{Vec4f}(undef, 8)
+#             for i in 1:min(length(planes), 8)
+#                 output[i] = Makie.gl_plane_format(clip_planes[i])
+#             end
+#             for i in min(length(planes), 8)+1:8
+#                 output[i] = Vec4f(0, 0, 0, -1e9)
+#             end
+#             return output
+#         end
 
-        if isnothing(to_value(linestyle))
-            data[:pattern] = nothing
-            data[:fast] = true
+#         if isnothing(to_value(linestyle))
+#             data[:pattern] = nothing
+#             data[:fast] = true
 
-            positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-        else
-            data[:pattern] = linestyle
-            data[:fast] = false
+#             positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
+#         else
+#             data[:pattern] = linestyle
+#             data[:fast] = false
 
-            # TODO: Skip patch_model() when this branch is used
-            pop!(data, :f32c)
-            pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
-                Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
-            end
-            transform_func = transform_func_obs(plot)
-            positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point4f}(undef, length(transformed))
-                for i in eachindex(transformed)
-                    output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
-                end
-                output
-            end
-        end
+#             # TODO: Skip patch_model() when this branch is used
+#             pop!(data, :f32c)
+#             pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
+#                 Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
+#             end
+#             transform_func = transform_func_obs(plot)
+#             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
+#                 transformed = apply_transform(f, ps, space)
+#                 output = Vector{Point4f}(undef, length(transformed))
+#                 for i in eachindex(transformed)
+#                     output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
+#                 end
+#                 output
+#             end
+#         end
 
-        if haskey(data, :intensity)
-            data[:color] = pop!(data, :intensity)
-        end
+#         if haskey(data, :intensity)
+#             data[:color] = pop!(data, :intensity)
+#         end
 
-        return draw_lines(screen, positions, data)
-    end
-end
+#         return draw_lines(screen, positions, data)
+#     end
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = pop!(data, :linestyle)
-        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-            Vec2f(ppu * origin(viewport))
-        end
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         data = Dict{Symbol, Any}(gl_attributes)
+#         data[:pattern] = pop!(data, :linestyle)
+#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+#             Vec2f(ppu * origin(viewport))
+#         end
 
-        # Handled manually without using OpenGL clipping
-        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-        data[:num_clip_planes] = Observable(0)
+#         # Handled manually without using OpenGL clipping
+#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+#         data[:num_clip_planes] = Observable(0)
 
-        positions = handle_view(plot[1], data)
-        positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-        if haskey(data, :intensity)
-            data[:color] = pop!(data, :intensity)
-        end
+#         positions = handle_view(plot[1], data)
+#         positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
+#         if haskey(data, :intensity)
+#             data[:color] = pop!(data, :intensity)
+#         end
 
-        return draw_linesegments(screen, positions, data)
-    end
-end
+#         return draw_linesegments(screen, positions, data)
+#     end
+# end
 
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})

@@ -7,6 +7,8 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
+const ComputePlots = Union{Scatter, Lines, LineSegments}
+
 function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
     if space === markerspace
         bb = Rect3d()
@@ -85,6 +87,11 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         sym = Symbol(:arg, i)
         add_input!(attr, sym, arg)
         return sym
+    end
+    onany(input_args...) do args...
+        kw = [Symbol(:arg, i) => args[i] for i in 1:length(args)]
+        update!(attr; kw...)
+        return
     end
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
         args = map(getindex, input_args)
@@ -167,6 +174,11 @@ function add_attibutes!(::Type{T}, attr, kwargs) where {T}
         add_input!(attr, k, to_value(value)) do key, value
             return convert_attribute(value, Key{key}(), Key{:scatter}())
         end
+        if value isa Observable
+            on(value) do new_val
+                setproperty!(attr, k, new_val)
+            end
+        end
     end
 end
 
@@ -201,19 +213,19 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-function plot!(scene::Scene, plot::Scatter)
+function plot!(scene::Scene, plot::ComputePlots)
     add_theme!(plot, scene)
     plot.parent = scene
     push!(scene.plots, plot)
     return
 end
 
-function data_limits(plot::Scatter)
+function data_limits(plot::ComputePlots)
     return plot.args[1][:data_limits][]
 end
 
-function Base.getproperty(plot::Scatter, key::Symbol)
-    if key in fieldnames(Scatter)
+function Base.getproperty(plot::ComputePlots, key::Symbol)
+    if key in fieldnames(typeof(plot))
         return getfield(plot, key)
     end
     return plot.args[1][key]
@@ -234,6 +246,43 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    add_input!(attr, :model, Mat4f(I))
+    add_input!(attr, :clip_planes, Plane3f[])
+    p.transformation = Transformation()
+    return p
+end
+
+function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attibutes!(Lines, attr, user_kw)
+    register_arguments!(Lines, attr, user_kw, args...)
+    register_colormapping!(attr)
+    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
+        return (Rect3d(positions[]),)
+    end
+    T = typeof(attr[:positions][])
+    p = Plot{lines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    add_input!(attr, :model, Mat4f(I))
+    add_input!(attr, :clip_planes, Plane3f[])
+    p.transformation = Transformation()
+    return p
+end
+
+function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
+    if !isempty(args) && first(args) isa Attributes
+        attr = attributes(first(args))
+        merge!(user_kw, attr)
+        return LineSegments(Base.tail(args), user_kw)
+    end
+    attr = ComputeGraph()
+    add_attibutes!(LineSegments, attr, user_kw)
+    register_arguments!(LineSegments, attr, user_kw, args...)
+    register_colormapping!(attr)
+    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
+        return (Rect3d(positions[]),)
+    end
+    T = typeof(attr[:positions][])
+    p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     add_input!(attr, :model, Mat4f(I))
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
