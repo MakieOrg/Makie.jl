@@ -18,6 +18,14 @@ function initialize_block!(ax::Axis3)
         return round_to_IRect2D(Rect2f(mini, maxi - mini))
     end
 
+    onany(blockscene, scenearea, ax.clip_decorations) do area, clip
+        if clip
+            blockscene.theme.clip_planes[] = planes(area)
+        elseif !isempty(blockscene.theme.clip_planes[])
+            blockscene.theme.clip_planes[] = Plane3f[]
+        end
+    end
+
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
     cam = Axis3Camera()
@@ -124,7 +132,6 @@ function initialize_block!(ax::Axis3)
         font = ax.titlefont,
         color = ax.titlecolor,
         markerspace = :data,
-        clip_planes = Plane3f[],
         inspectable = false)
 
     ax.mouseeventhandle = addmouseevents!(scene)

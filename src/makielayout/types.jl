@@ -1858,6 +1858,8 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+        "Controls whether decorations are cut off outside the layout area assigned to the axis."
+        clip_decorations::Bool = true
 
         # Interaction
         "Locks interactive zooming in the x direction."
