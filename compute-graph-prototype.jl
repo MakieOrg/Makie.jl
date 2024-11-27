@@ -23,3 +23,5 @@ end
 f, ax, pl = lines(rand(10), rand(10); color=rand(10), linewidth=10);
 
 pl.color[]
+using Makie
+@profview [scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true) for i in 1:100]

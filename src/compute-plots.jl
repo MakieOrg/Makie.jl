@@ -53,7 +53,7 @@ function register_colormapping!(attr::ComputeGraph)
     end
 
     for key in (:lowclip, :highclip)
-        sym = Symbol("_$key")
+        sym = Symbol(:_, key)
         register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
             if input[] === automatic
                 (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
@@ -106,21 +106,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     converts = get!(() -> DimConversions(), user_kw, :dim_conversions)
     register_computation!(attr, [:expanded_args], [:dim_converted]) do input_args, changed, last
         args = input_args[1][]
-        if (length(args) in (2, 3))
-            converted = ntuple(length(args)) do i
-                arg = args[i]
-                # We only convert if we have a conversion struct (which isn't NoDimConversion),
-                # or if we we should dim_convert
-                if !isnothing(converts[i]) || should_dim_convert(P, arg) ||
-                   should_dim_convert(PTrait, arg)
-                    return convert_dim_observable(converts, i, arg)
-                end
-                return arg
-            end
-            return (converted,)
-        else
-            return (args,)
-        end
+        return (args,)
     end
 
     register_computation!(attr, [:dim_converted],
