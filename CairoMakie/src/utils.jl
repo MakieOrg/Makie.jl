@@ -272,18 +272,18 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
                 d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
                 d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
 
-                if (d1 <= 0.0) && (d2 <= 0.0)
+                if (d1 < 0.0) && (d2 < 0.0)
                     # start and end clipped by one plane -> not visible
                     hidden = true
                     break;
-                elseif (d1 < 0.0) && (d2 > 0.0)
+                elseif (d1 < 0.0)
                     # p1 clipped, move it towards p2 until unclipped
                     disconnect1 = true
                     p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
                     if per_point_colors
                         c1 = c1 - d1 * (c2 - c1) / (d2 - d1)
                     end
-                elseif (d1 > 0.0) && (d2 < 0.0)
+                elseif (d2 < 0.0)
                     # p2 clipped, move it towards p1 until unclipped
                     disconnect2 = true
                     p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
@@ -385,19 +385,19 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
                 d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
                 d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
 
-                if (d1 <= 0.0) && (d2 <= 0.0)
+                if (d1 < 0.0) && (d2 < 0.0)
                     # start and end clipped by one plane -> not visible
                     # to keep index order we just set p1 and p2 to NaN and insert anyway
                     p1 = Vec4f(NaN)
                     p2 = Vec4f(NaN)
                     break;
-                elseif (d1 < 0.0) && (d2 > 0.0)
+                elseif (d1 < 0.0)
                     # p1 clipped, move it towards p2 until unclipped
                     p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
                     if per_point_colors
                         c1 = c1 - d1 * (c2 - c1) / (d2 - d1)
                     end
-                elseif (d1 > 0.0) && (d2 < 0.0)
+                elseif (d2 < 0.0)
                     # p2 clipped, move it towards p1 until unclipped
                     p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
                     if per_point_colors
