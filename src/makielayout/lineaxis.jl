@@ -318,6 +318,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space == :max_auto
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end
@@ -506,36 +508,35 @@ function LineAxis(parent::Scene, attrs::Attributes)
     return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
-function tight_ticklabel_spacing!(la::LineAxis; n_tick_chars=automatic)
-
-    horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
+function tight_ticklabel_spacing(la::LineAxis)
+    endpoints = la.attributes.endpoints[]
+    horizontal = if endpoints[1][2] == endpoints[2][2]
         true
-    elseif la.attributes.endpoints[][1][1] == la.attributes.endpoints[][2][1]
+    elseif endpoints[1][1] == endpoints[2][1]
         false
     else
         error("endpoints not on a horizontal or vertical line")
     end
-
     tls = la.elements[:ticklabels]
-    str = if n_tick_chars == automatic
-        text_array = tls.plots[1].text[]
-        len, idx = findmax(length, text_array)
-        text_array[idx]
-    else
-        "0"^n_tick_chars
-    end
-    bb = text_bb(str, to_font(tls.fonts, tls.font[]), tls.fontsize[])
-    maxwidth = if horizontal
-        # height
-        tls.visible[] ? height(bb) : 0.0f0
-    else
-        # width
-        tls.visible[] ? width(bb) : 0.0f0
-    end
-    la.attributes.ticklabelspace = maxwidth
-    return Float64(maxwidth)
+    bb = Rect2f(boundingbox(tls, :data))
+    maxwidth = horizontal ? height(bb) : width(bb)
+    return Float64(tls.visible[] ? maxwidth : 0.0)
 end
 
+function tight_ticklabel_spacing!(la::LineAxis)
+    maxwidth = tight_ticklabel_spacing(la)
+    la.attributes.ticklabelspace = maxwidth
+    return maxwidth
+end
+
+
+function max_auto_ticklabel_spacing!(la::LineAxis)
+    # Grow tickspace to fit the current ticklabels to prevent jittering
+    maxwidth = tight_ticklabel_spacing(la)
+    la.attributes.actual_ticklabelspace = maxwidth
+    la.attributes.ticklabelspace = :max_auto
+    return maxwidth
+end
 
 iswhitespace(str) = match(r"^\s*$", str) !== nothing
 

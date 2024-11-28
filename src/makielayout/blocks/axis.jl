@@ -1195,9 +1195,11 @@ end
 
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_yticklabel_spacing!(ax::Axis; n_tick_chars=automatic)
-    space = tight_ticklabel_spacing!(ax.yaxis; n_tick_chars=n_tick_chars)
-    return space
+function tight_yticklabel_spacing!(ax::Axis)
+    spacing = tight_ticklabel_spacing!(ax.yaxis)
+    # Needed to not reset to automatic... But still doesn't keep the value somehow?
+    # ax.yticklabelspace = spacing
+    return spacing
 end
 
 """
@@ -1205,9 +1207,11 @@ end
 
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_xticklabel_spacing!(ax::Axis; n_tick_chars=automatic)
-    space = tight_ticklabel_spacing!(ax.xaxis; n_tick_chars=n_tick_chars)
-    return space
+function tight_xticklabel_spacing!(ax::Axis)
+    spacing = tight_ticklabel_spacing!(ax.xaxis)
+    # Needed to not reset to automatic... But still doesn't keep the value somehow?
+    # ax.xticklabelspace = spacing
+    return spacing
 end
 
 """
@@ -1215,11 +1219,24 @@ end
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
-function tight_ticklabel_spacing!(ax::Axis; n_tick_chars=automatic, reset_timer=false)
-    ax.use_zoom_reset_timer = reset_timer
-    ax.use_pan_reset_timer = reset_timer
-    tight_xticklabel_spacing!(ax; n_tick_chars=n_tick_chars)
-    tight_yticklabel_spacing!(ax; n_tick_chars=n_tick_chars)
+function tight_ticklabel_spacing!(ax::Axis)
+    tight_xticklabel_spacing!(ax)
+    tight_yticklabel_spacing!(ax)
+    return
+end
+
+"""
+    max_auto_ticklabel_spacing!(ax::Axis)
+
+Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the maximum of what is currently displayed,
+    and when zooming or panning, tick space will only ever get larger but never shrink.
+This is useful for avoiding jittering when interacting with the plot.
+"""
+function max_auto_ticklabel_spacing!(ax::Axis)
+    ax.use_zoom_reset_timer = false
+    ax.use_pan_reset_timer = false
+    max_auto_ticklabel_spacing!(ax.xaxis)
+    max_auto_ticklabel_spacing!(ax.yaxis)
     return
 end
 
