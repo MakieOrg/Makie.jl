@@ -21,18 +21,15 @@ using Makie
             @test fbl_px == Point3f(0, 0, 10_000)
             @test ntr_px == Point3f(650, 400, -10_000)
 
-            # These tests are sensitive to camera settings. If the projectionview
-            # check fails the rest probably needs to be recalculated.
-            pv = Mat4d(-1.4856698845372893, 0.0, 0.0, 0.0, 0.0, 0.0, -1.024204047037133, -1.0, 0.0, 2.4142135623730954, 0.0, 0.0, 0.0, 0.0, 0.8217836423334196, 1.0)
-            @test pv ≈ sc.camera.projectionview[] atol = 1e-10
-
-            bottom_left_data = Vec3d(0.13302875, 0.8023632, -0.08186384)
-            top_righ_data = Vec3d(-0.13302875, 0.8023632, 0.08186384)
+            ipv = inv(sc.camera.projectionview[])
+            div4(p) = p[Vec(1,2,3)] / p[4]
+            bottom_left_data = div4(ipv * Point4d(-1, -1, 0, 1))
+            top_right_data    = div4(ipv * Point4d(+1, +1, 0, 1))
             @test Makie.project(sc, bottom_left_data) ≈ Point2f(0, 0)     atol = 1e-4
-            @test Makie.project(sc, top_righ_data)    ≈ Point2f(650, 400) atol = 1e-4
+            @test Makie.project(sc, top_right_data)    ≈ Point2f(650, 400) atol = 1e-4
 
             @test Makie.project(sc, :pixel, :data, Vec2f(0, 0))     ≈ bottom_left_data
-            @test Makie.project(sc, :pixel, :data, Vec2f(650, 400)) ≈ top_righ_data
+            @test Makie.project(sc, :pixel, :data, Vec2f(650, 400)) ≈ top_right_data
         end
 
         @testset "No warnings in projections between spaces" begin
