@@ -112,7 +112,7 @@ end
     scale!([mode = Absolute], t::Transformable, xyz::VecTypes)
 
 Scale the given `t::Transformable` (a Scene or Plot) to the given arguments `xyz`.
-Any missing dimension will be scaled by 1. If `mode == Accum` the given scaling 
+Any missing dimension will be scaled by 1. If `mode == Accum` the given scaling
 will be multiplied with the previous one.
 """
 scale!(t::Transformable, xyz...) = scale!(Absolute, t, xyz)
@@ -187,7 +187,7 @@ GeometryBasics.origin(t::Transformable) = transformation(t).origin
     origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
 
 Sets the origin of the transformable `t` to the given `xyz` value. This affects
-the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as 
+the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as
 `Accum` the origin is translated by the given `xyz` instead.
 """
 origin!(t::Transformable, xyz...) = origin!(Absolute, t, xyz)
@@ -224,7 +224,7 @@ function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     t
 end
 
-transformationmatrix(x) = transformation(x).model
+transformationmatrix(x)::Observable{Mat4d} = transformation(x).model
 transformation(x::Attributes) = x.transformation[]
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
