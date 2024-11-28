@@ -132,6 +132,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 geom = Sphere(Point3{T_in}(0), T_in(1))
                 _mesh = GeometryBasics.mesh(rect3; pointtype=Point3{T_in}, facetype=GLTriangleFace)
                 polygon = Polygon(Point2.(xs, ys))
+                polygon3d = Polygon(Point3.(xs, ys, zs))
                 line = LineString(Point3.(xs, ys, zs))
                 bp = BezierPath([
                     MoveTo(T_in(0), T_in(0)),
@@ -228,6 +229,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, polygon)    isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, [polygon, polygon]) isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, MultiPolygon([polygon, polygon])) isa Tuple{Vector{Point2{T_out}}}
+                        @test apply_conversion(CT, polygon3d)    isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, [polygon3d, polygon3d]) isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, MultiPolygon([polygon3d, polygon3d])) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, line)       isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, [line, line]) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, MultiLineString([line, line])) isa Tuple{Vector{Point3{T_out}}}

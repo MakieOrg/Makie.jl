@@ -261,7 +261,7 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, Mul
         converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
         append!(arr, converted)
         if idx != n # don't add NaN at the end
-            push!(arr, Point2(NaN))
+            push!(arr, Point{N, float_type(T)}(NaN))
         end
     end
     return (arr,)

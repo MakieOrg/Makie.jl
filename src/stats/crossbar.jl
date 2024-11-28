@@ -77,7 +77,7 @@ function Makie.plot!(plot::CrossBar)
             end
             # when notchmin = ymin || notchmax == ymax, fill disappears from
             # half the box. first ∘ StatsBase.rle removes adjacent duplicates.
-            points = first.(StatsBase.rle.(Base.vect.(fpoint.(l, ymin),
+            boxes = first.(StatsBase.rle.(Base.vect.(fpoint.(l, ymin),
                 fpoint.(r, ymin),
                 fpoint.(r, nmin),
                 fpoint.(m .+ nw .* hw, y), # notch right
@@ -89,11 +89,6 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, nmin),
                 fpoint.(l, ymin)
                )))
-            boxes = if points isa AbstractVector{<: Point} # poly
-                [GeometryBasics.triangle_mesh(points)]
-            else # multiple polys (Vector{Vector{<:Point}})
-                GeometryBasics.triangle_mesh.(points)
-            end
             midlines = Pair.(fpoint.(m .- nw .* hw, y), fpoint.(m .+ nw .* hw, y))
         else
             boxes = frect.(l, ymin, boxwidth, ymax .- ymin)

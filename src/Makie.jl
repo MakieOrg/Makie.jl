@@ -268,7 +268,7 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categ
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, scale!, rotate!, Accum, Absolute
+export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
 # Spaces for widths and markers
