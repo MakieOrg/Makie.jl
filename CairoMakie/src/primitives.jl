@@ -2,39 +2,23 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
-    @get_attribute(primitive, (color, linewidth, linestyle, space, model))
+function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegments})
+    args = plot.color[], plot.linewidth[], plot.linestyle[], plot.space[], plot.model[]
+    (color, linewidth, linestyle, space, model) = args
     ctx = screen.context
-    positions = primitive[1][]
+    positions = plot.positions[]
 
     isempty(positions) && return
 
-    # workaround for a LineSegments object created from a GLNormalMesh
-    # the input argument is a view of points using faces, which results in
-    # a vector of tuples of two points. we convert those to a list of points
-    # so they don't trip up the rest of the pipeline
-    # TODO this shouldn't be necessary anymore!
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
-        positions = let
-            pos = Point3f[]
-            for tup in positions
-                push!(pos, tup[1])
-                push!(pos, tup[2])
-            end
-            pos
-        end
-    end
-
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
-    color = to_color(primitive.calculated_colors[])
+    color = get_colors(plot)
 
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
     # TODO: If we have neither perspective projection not clip_planes we can
     #       use the normal projection_position() here
-    projected_positions, color, linewidth =
-        project_line_points(scene, primitive, positions, color, linewidth)
+    projected_positions, color, linewidth = project_line_points(scene, plot, positions, color, linewidth)
 
     # The linestyle can be set globally, as we do here.
     # However, there is a discrepancy between Makie
@@ -52,7 +36,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     # linecap
-    linecap = primitive.linecap[]
+    linecap = plot.linecap[]
     if linecap == :square
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
     elseif linecap == :round
@@ -62,10 +46,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
     end
 
     # joinstyle
-    miter_angle = to_value(get(primitive, :miter_limit, 2pi/3))
+    miter_angle = to_value(get(plot, :miter_limit, 2pi / 3))
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
-    joinstyle = to_value(get(primitive, :joinstyle, :miter))
+    joinstyle = to_value(get(plot, :joinstyle, :miter))
     if joinstyle == :round
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
     elseif joinstyle == :bevel
@@ -74,15 +58,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
     end
 
-    if primitive isa Lines && to_value(primitive.args[1]) isa BezierPath
-        return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), primitive, color, space, model, linewidth)
+    # TODO, how do we allow this conversion?s
+    if plot isa Lines && to_value(plot.args[1]) isa BezierPath
+        return draw_bezierpath_lines(ctx, to_value(plot.args[1]), plot, color, space, model, linewidth)
     end
 
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
         draw_multi(
-            primitive, ctx,
+            Plot, ctx,
             projected_positions,
             color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
@@ -93,7 +78,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
         # most common case
         Cairo.set_line_width(ctx, linewidth)
         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
-        draw_single(primitive, ctx, projected_positions)
+        draw_single(plot, ctx, projected_positions)
     end
     nothing
 end
@@ -325,7 +310,7 @@ end
 ################################################################################
 
 
-function get_colors(p::Scatter)
+function get_colors(p::Plot)
     if isnothing(p._colorrange[])
         return p.color[]
     else

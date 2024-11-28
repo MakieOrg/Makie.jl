@@ -1,4 +1,31 @@
+using ComputePipeline, Chairmarks
+using Makie
+Scatter((1:10,), Dict{Symbol,Any}())
+
+@profview [Scatter((1:10,), Dict{Symbol,Any}()) for i in 1:10000]
+@b Scatter((1:10,), Dict{Symbol,Any}())
+
+@b scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+
 using GLMakie
+using CairoMakie
+
+scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+
+
+function test(x)
+    s = 0.0
+    for (k, i) in x
+        s += i
+    end
+    return s
+end
+using Random
+a = Dict(randstring(10) => rand() for i in 1:10000)
+b = Dict(Symbol(k) => v for (k, v) in a)
+a |> first
+@b a["ha7SToDtH5"]
+@b b[:ha7SToDtH5]
 
 begin
     s = Scene()

@@ -458,6 +458,18 @@ function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
+function register_sdf_computations!(attr, atlas)
+    haskey(attr, :sdf_uv) && haskey(attr, :sdf_marker_shape) && return
+    register_computation!(attr, [:uv_offset_width, :marker, :font],
+                          [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+        new_mf = changed[2] || changed[3]
+        uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
+        marker = changed[1] ? Makie.marker_to_sdf_shape(m[]) : nothing
+        return (marker, uv)
+    end
+end
+
+
 _bcast(x::Vec) = Ref(x)
 _bcast(x) = x
 

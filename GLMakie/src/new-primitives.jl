@@ -1,42 +1,45 @@
 using Makie.ComputePipeline
 
-function assemble_scatter_robj(atlas, marker, space, markerspace,
-                               scene, screen,
-                               positions,
-                               colormap, color, colornorm,
-                               marker_shape, uv_offset_width, quad_scale, quad_offset,
-                               transparency)
+function assemble_scatter_robj(
+    atlas,
+    marker,
+    space,
+    markerspace,
+    scene,
+    screen,
+    positions,
+    colormap,
+    color,
+    colornorm,
+    marker_shape,
+    uv_offset_width,
+    quad_scale,
+    quad_offset,
+    transparency,
+)
     camera = scene[].camera
-    needs_mapping = !(colornorm[] isa Nothing)
     fast_pixel = marker isa FastPixel
     pspace = fast_pixel ? space : markerspace
     distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(atlas) : nothing
-    _color = needs_mapping ? nothing : color[]
-    intensity = needs_mapping ? color[] : nothing
-
-    data = Dict(:vertex => positions[],
-                :color_map => needs_mapping ? colormap[] : nothing,
-                :color => _color,
-                :intensity => intensity,
-                :color_norm => colornorm[],
-                :scale => quad_scale[],
-                :quad_offset => quad_offset[],
-                :uv_offset_width => uv_offset_width[],
-                :marker_shape => marker_shape[],
-                :transparency => transparency[],
-                :resolution => Makie.get_ppu_resolution(camera, screen[].px_per_unit[]),
-                :projection => Makie.get_projection(camera, pspace),
-                :projectionview => Makie.get_projectionview(camera, pspace),
-                :preprojection => Makie.get_preprojection(camera, space, markerspace),
-                :view => Makie.get_view(camera, pspace),
-                :model => Mat4f(I),
-                :markerspace => Cint(0),
-                :distancefield => distancefield, :px_per_unit => screen[].px_per_unit,
-                :upvector => Vec3f(0),
-                :ssao => false)
+    data = Dict(
+        :vertex => positions[],
+        :scale => quad_scale[],
+        :quad_offset => quad_offset[],
+        :uv_offset_width => uv_offset_width[],
+        :marker_shape => marker_shape[],
+        :transparency => transparency[],
+        :preprojection => Makie.get_preprojection(camera, space, markerspace),
+        :model => Mat4f(I),
+        :markerspace => Cint(0),
+        :distancefield => distancefield,
+        :px_per_unit => screen[].px_per_unit,
+        :upvector => Vec3f(0),
+        :ssao => false,
+    )
+    add_color_attributes!(data, color, colormap, colornorm)
+    add_camera_attributes!(data, screen[], camera, pspace)
     return draw_scatter(screen[], (marker_shape[], positions[]), data)
 end
-
 
 function update_robjs!(robj, args, changed, gl_names)
     for (name, arg, has_changed) in zip(gl_names, args, changed)
@@ -58,20 +61,39 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     atlas = gl_texture_atlas()
     add_input!(attr, :gl_screen, screen)
 
-    register_computation!(attr, [:uv_offset_width, :marker, :font],
-                          [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+    register_computation!(
+        attr, [:uv_offset_width, :marker, :font], [:sdf_marker_shape, :sdf_uv]
+    ) do (uv_off, m, f), changed, last
         new_mf = changed[2] || changed[3]
         uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
         marker = changed[1] ? Makie.marker_to_sdf_shape(m[]) : nothing
         return (marker, uv)
     end
 
-    inputs = [:scene, :gl_screen,
-              :positions_transformed_f32c, :colormap, :color, :_colorrange,
-              :sdf_marker_shape, :sdf_uv, :quad_scale, :quad_offset,
-              :transparency]
-    gl_names = [:vertex, :color_map, :color, :color_norm, :shape, :uv_offset_width, :scale, :quad_offset,
-                :transparency]
+    inputs = [
+        :scene,
+        :gl_screen,
+        :positions_transformed_f32c,
+        :colormap,
+        :color,
+        :_colorrange,
+        :sdf_marker_shape,
+        :sdf_uv,
+        :quad_scale,
+        :quad_offset,
+        :transparency,
+    ]
+    gl_names = [
+        :vertex,
+        :color_map,
+        :color,
+        :color_norm,
+        :shape,
+        :uv_offset_width,
+        :scale,
+        :quad_offset,
+        :transparency,
+    ]
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, last
         screen = args[2][]
         !isopen(screen) && return :deregister
@@ -100,7 +122,7 @@ function add_color_attributes!(data, color, colormap, colornorm)
     data[:color] = _color
     data[:intensity] = intensity
     data[:color_norm] = colornorm
-    return
+    return nothing
 end
 
 function add_color_attributes_lines!(data, color, colormap, colornorm)
@@ -108,26 +130,33 @@ function add_color_attributes_lines!(data, color, colormap, colornorm)
     data[:color_map] = needs_mapping ? colormap : nothing
     data[:color] = color
     data[:color_norm] = colornorm
-    return
+    return nothing
 end
-
 
 function add_camera_attributes!(data, screen, camera, space)
     data[:resolution] = Makie.get_ppu_resolution(camera, screen.px_per_unit[])
     data[:projection] = Makie.get_projection(camera, space)
     data[:projectionview] = Makie.get_projectionview(camera, space)
     data[:view] = Makie.get_view(camera, space)
+    return data
 end
 
 function assemble_lines_robj(
-        space,
-        scene, screen,
-        positions, linestyle,
-        scene_origin, gl_miter_limit,
-        linecap, joinstyle,
-        color, colormap, colornorm,
-        transparency, px_per_unit
-    )
+    space,
+    scene,
+    screen,
+    positions,
+    linestyle,
+    scene_origin,
+    gl_miter_limit,
+    linecap,
+    joinstyle,
+    color,
+    colormap,
+    colornorm,
+    transparency,
+    px_per_unit,
+)
     camera = scene[].camera
 
     data = Dict(
@@ -138,7 +167,7 @@ function assemble_lines_robj(
         :transparency => transparency[],
         :model => Mat4f(I),
         :px_per_unit => px_per_unit[],
-        :ssao => false
+        :ssao => false,
     )
 
     if isnothing(linestyle[])
@@ -154,7 +183,6 @@ function assemble_lines_robj(
     return draw_lines(screen[], positions[], data)
 end
 
-
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     attr = plot.args[1]
     add_input!(plot.args[1], :scene, scene)
@@ -164,12 +192,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     add_input!(attr, :screen, screen)
     add_input!(attr, :px_per_unit, screen.px_per_unit[])
     add_input!(attr, :viewport, scene.viewport[])
-    register_computation!(attr, [:px_per_unit, :viewport], [:scene_origin]) do (ppu, viewport), changed, output
+    register_computation!(
+        attr, [:px_per_unit, :viewport], [:scene_origin]
+    ) do (ppu, viewport), changed, output
         return (Vec2f(ppu[] * origin(viewport[])),)
     end
-    register_computation!(attr, [:positions], [:projected_transformed_positions]) do (positions,), changed, output
+    register_computation!(
+        attr, [:positions], [:projected_transformed_positions]
+    ) do (positions,), changed, output
         Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
-        pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
+        pvm = lift(
+            plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space
+        ) do pv, model, f32c, space
             Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
         end
     end
@@ -191,10 +225,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :colormap,
         :_colorrange,
         :transparency,
-        :px_per_unit
+        :px_per_unit,
     ]
-    gl_names = [:pattern, :scene_origin, :miter_limit, :linecap, :joinstyle, :color, :color_map, :color_norm,
-                :transparency, :px_per_unit]
+    gl_names = [
+        :pattern,
+        :scene_origin,
+        :miter_limit,
+        :linecap,
+        :joinstyle,
+        :color,
+        :color_map,
+        :color_norm,
+        :transparency,
+        :px_per_unit,
+    ]
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
             robj = assemble_lines_robj(args...)
@@ -213,12 +257,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     return robj
 end
 
-function assemble_linesegments_robj(space,
-                             scene, screen,
-                             positions, linestyle,
-                             scene_origin,
-                             color, colormap, colornorm,
-                             transparency, px_per_unit)
+function assemble_linesegments_robj(
+    space,
+    scene,
+    screen,
+    positions,
+    linestyle,
+    scene_origin,
+    color,
+    colormap,
+    colornorm,
+    transparency,
+    px_per_unit,
+)
     camera = scene[].camera
 
     data = Dict(
@@ -226,7 +277,7 @@ function assemble_linesegments_robj(space,
         :transparency => transparency[],
         :model => Mat4f(I),
         :px_per_unit => px_per_unit[],
-        :ssao => false
+        :ssao => false,
     )
 
     if isnothing(linestyle[])
@@ -247,26 +298,28 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     add_input!(attr, :screen, screen)
     add_input!(attr, :px_per_unit, screen.px_per_unit[])
     add_input!(attr, :viewport, scene.viewport[])
-    register_computation!(attr, [:px_per_unit, :viewport],
-                          [:scene_origin]) do (ppu, viewport), changed, output
+    register_computation!(
+        attr, [:px_per_unit, :viewport], [:scene_origin]
+    ) do (ppu, viewport), changed, output
         return (Vec2f(ppu[] * origin(viewport[])),)
     end
     if !haskey(attr, :scene)
         add_input!(plot.args[1], :scene, scene)
     end
-    inputs = [:space,
-              :scene,
-              :screen,
-              :positions_transformed_f32c,
-              :linestyle,
-              :scene_origin,
-              :color,
-              :colormap,
-              :_colorrange,
-              :transparency,
-              :px_per_unit]
-    gl_names = [:pattern, :scene_origin, :color, :color_map, :color_norm,
-                :transparency, :px_per_unit]
+    inputs = [
+        :space,
+        :scene,
+        :screen,
+        :positions_transformed_f32c,
+        :linestyle,
+        :scene_origin,
+        :color,
+        :colormap,
+        :_colorrange,
+        :transparency,
+        :px_per_unit,
+    ]
+    gl_names = [:pattern, :scene_origin, :color, :color_map, :color_norm, :transparency, :px_per_unit]
 
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
