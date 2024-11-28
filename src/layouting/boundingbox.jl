@@ -59,11 +59,40 @@ function boundingbox(plot::MeshScatter, space::Symbol = :data)
     if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
         marker_bb = rotation * (marker_bb * scales)
+        if plot.transform_marker[]::Bool
+            model = (plot.model[][Vec(1,2,3), Vec(1,2,3)])::Mat3d
+            corners = [model * p for p in coordinates(marker_bb)]
+            mini = minimum(corners); maxi = maximum(corners)
+            return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
+        end
         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
     else
         # TODO: optimize const scale, var rot and var scale, const rot
-        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+        if plot.transform_marker[]::Bool
+            return limits_with_marker_transforms(positions, scales, rotation, plot.model[], marker_bb)
+        else
+            return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+        end
     end
+end
+
+function limits_with_marker_transforms(positions, scales, rotation, model, element_bbox)
+    isempty(positions) && return Rect3d()
+    # translations don't apply to element_bbox, they are already included in positions
+    model3 = model[Vec(1,2,3), Vec(1,2,3)]
+
+    vertices = decompose(Point3d, element_bbox)
+    full_bbox = Ref(Rect3d())
+    for (i, pos) in enumerate(positions)
+        scale = attr_broadcast_getindex(scales, i)
+        rot = attr_broadcast_getindex(rotation, i)
+        for v in vertices
+            p = model3 * (rot * (scale .* v)) + to_ndim(Point3d, pos, 0)
+            update_boundingbox!(full_bbox, p)
+        end
+    end
+
+    return full_bbox[]
 end
 
 function boundingbox(plot::Scatter)

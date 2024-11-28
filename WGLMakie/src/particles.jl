@@ -74,6 +74,16 @@ function create_shader(scene::Scene, plot::MeshScatter)
     # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
     uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
+    uniform_dict[:transform_marker] = get(plot, :transform_marker, false)
+
+    # See GLMakie/drawing_primtives.jl
+    if isnothing(scene.float32convert)
+        uniform_dict[:f32c_scale] = Vec3f(1)
+    else
+        uniform_dict[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+            return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+        end
+    end
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
@@ -82,6 +92,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
+    end
+    if !hasproperty(instance, :normal)
+        uniform_dict[:normal] = Vec3f(0)
     end
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))

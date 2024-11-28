@@ -72,6 +72,7 @@ function draw_mesh_particle(screen, p, data)
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
+        f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
 
@@ -104,6 +105,7 @@ function draw_mesh_particle(screen, p, data)
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
+        scale_primitive = false
         interpolate_in_fragment_shader = false
         backlight = 0f0
 
