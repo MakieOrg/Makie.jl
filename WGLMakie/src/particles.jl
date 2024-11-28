@@ -93,8 +93,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
     end
-    if !hasproperty(instance, :normals)
-        uniform_dict[:normals] = Vec3f(0)
+    if !hasproperty(instance, :normal)
+        uniform_dict[:normal] = Vec3f(0)
     end
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
