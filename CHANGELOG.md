@@ -16,6 +16,7 @@
 - Split `marker_offset` handling from marker centering and fix various bugs with it [#4594](https://github.com/MakieOrg/Makie.jl/pull/4594).
 - Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
+
 ## [Unreleased]
 
 - Fix orientation of environment light textures in RPRMakie [#4629](https://github.com/MakieOrg/Makie.jl/pull/4629).
