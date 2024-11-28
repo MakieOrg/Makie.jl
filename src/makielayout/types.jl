@@ -327,10 +327,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
-        "The space reserved for the xticklabels."
-        xticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
-        "The space reserved for the yticklabels."
-        yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        "The space reserved for the xticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        xticklabelspace::Union{Makie.Automatic, Float64, Symbol} = Makie.automatic
+        "The space reserved for the yticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        yticklabelspace::Union{Makie.Automatic, Float64, Symbol} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
         "The space between yticks and yticklabels."
