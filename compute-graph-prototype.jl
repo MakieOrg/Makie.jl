@@ -1,6 +1,10 @@
 using ComputePipeline, Chairmarks
 using Makie
-Scatter((1:10,), Dict{Symbol,Any}())
+
+using GLMakie
+using CairoMakie
+scatter(1:4, color=1:4)
+
 
 @profview [Scatter((1:10,), Dict{Symbol,Any}()) for i in 1:10000]
 @b Scatter((1:10,), Dict{Symbol,Any}())

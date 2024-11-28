@@ -1,6 +1,10 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
 
+# macro compile(ex)
+#     :(display($ex))
+# end
+
 @compile scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))

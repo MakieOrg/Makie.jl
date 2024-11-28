@@ -36,7 +36,7 @@ function assemble_scatter_robj(
         :upvector => Vec3f(0),
         :ssao => false,
     )
-    add_color_attributes!(data, color, colormap, colornorm)
+    add_color_attributes!(data, color[], colormap[], colornorm[])
     add_camera_attributes!(data, screen[], camera, pspace)
     return draw_scatter(screen[], (marker_shape[], positions[]), data)
 end

@@ -67,7 +67,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegmen
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
         draw_multi(
-            Plot, ctx,
+            plot, ctx,
             projected_positions,
             color, linewidth,
             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
