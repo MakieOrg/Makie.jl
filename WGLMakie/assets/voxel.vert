@@ -1,5 +1,7 @@
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER
+precision highp float;
+precision highp int;
 
 flat out vec3 o_normal;
 out vec3 o_uvw;

@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 uniform mat4 projection;
 uniform mat4 view;
 uniform int num_clip_planes;
@@ -79,7 +82,7 @@ void main(){
 
     vec4 position_world = model * vec4(tovec3(get_pos()), 1);
     process_clip_planes(position_world.xyz);
-    
+
     // Compute centre of billboard in clipping coordinates
     // Always transform text/scatter position argument
     vec4 data_point = get_preprojection() * position_world;
