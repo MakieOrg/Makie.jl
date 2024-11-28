@@ -939,17 +939,26 @@ end
 
 nan2zero(x) = !isnan(x) * x
 
+function strip_translation(M::Mat4{T}) where {T}
+    return @inbounds Mat4{T}(
+        M[1], M[2], M[3], M[4],
+        M[5], M[6], M[7], M[8],
+        M[9], M[10], M[11], M[12],
+        0, 0, 0, M[16],
+    )
+end
 
 function draw_mesh3D(
-        scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I),
+        scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
         uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
     )
     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
     matcap = to_value(get(attributes, :matcap, nothing))
+    transform_marker = to_value(get(attributes, :transform_marker, true))
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
+    meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
@@ -962,7 +971,27 @@ function draw_mesh3D(
 
     model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
-    func = Makie.transform_func(attributes)
+
+    if haskey(attributes, :transform_marker)
+        # meshscatter/voxels route:
+        # - transform_func does not apply to vertices (only pos)
+        # - only scaling from float32convert applies to vertices
+        #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
+        # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
+        transform_marker = attributes[:transform_marker][]::Bool
+        f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
+        if !isnothing(scene.float32convert) && Makie.is_data_space(space)
+            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
+        end
+    else
+        # mesh/surface path
+        # - transform_func applies to vertices here
+        # - full float32convert applies to vertices
+        # f32c * model * vertices = f32c_model * vertices
+        transform_marker = true
+        meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
+        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+    end
 
     # TODO: assume Symbol here after this has been deprecated for a while
     if shading isa Bool
@@ -972,49 +1001,54 @@ function draw_mesh3D(
         shading_bool = shading != NoShading
     end
 
-    if to_value(get(attributes, :invert_normals, false))
+    if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
         meshnormals .= -meshnormals
     end
 
     draw_mesh3D(
-        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading_bool::Bool, diffuse::Vec3f,
+        f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading, diffuse,
+        f32c_model, shading, diffuse,
         specular, shininess, faceculling, clip_planes
     )
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
 
+    # local_model applies rotation and markersize from meshscatter to vertices
     i = Vec(1, 2, 3)
     local_model = rotation * Makie.scalematrix(Vec3d(scale))
-    normalmatrix = transpose(inv(model[i, i] * local_model[i, i])) # see issue #3702
+    normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
 
-    # pass transform_func as argument to function, so that we get a function barrier
-    # and have `transform_func` be fully typed inside closure
-    model_f32 = model * Makie.f32_convert_matrix(scene.float32convert, space)
-    vs = broadcast(meshpoints, (transform_func,)) do v, f
+    # mesh, surface:        apply f32convert and model to vertices
+    # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
+    # (see previous function)
+    vs = broadcast(meshpoints) do v
         # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
-        return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
+        p4d = f32c_model * local_model * p4d
+        return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
     end
 
-    valid = if Makie.is_data_space(space)
-        [is_visible(clip_planes, p) for p in vs]
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        valid = Bool[is_visible(clip_planes, p) for p in vs]
     else
-        Bool[]
+        valid = Bool[]
     end
 
-    ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    if isnothing(meshnormals)
+        ns = nothing
+    else
+        ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    end
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
@@ -1060,10 +1094,12 @@ function draw_mesh3D(
     zorder = sortperm(average_zs)
 
     # Face culling
-    if isempty(clip_planes) || !Makie.is_data_space(space)
+    if isempty(valid) && !isnothing(ns)
         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    else
+    elseif !isempty(valid)
         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
     end
 
     draw_pattern(
@@ -1100,7 +1136,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         facecolors = per_face_col[k]
         # light calculation
-        if shading
+        if shading && !isnothing(ns)
             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
                 # these face index expressions currently allocate for SizedVectors
                 # if done like `ns[f]`
@@ -1167,17 +1203,35 @@ end
 ################################################################################
 
 
+function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
+    space = plot.space[]::Symbol
+    model = plot.model[]::Mat4d
+    f32_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+    tf = Makie.transform_func(plot)
+    return _transform_to_world(f32_model, tf, space, pos)
+end
+
+function _transform_to_world(f32_model, tf, space, pos)
+    return map(pos) do p
+        transformed = Makie.apply_transform(tf, p, space)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+        p4d = f32_model * p4d
+        return p4d[Vec(1,2,3)] / p4d[4]
+    end
+end
+
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (model, marker, markersize, rotation))
 
-    pos = primitive[1][]
-    # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)::Mat4d
-    view = scene.camera.view[]
+    # We combine vertices and positions in world space. Here we do the
+    # transformation to world space
+    transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
 
-    zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1)
-        cam_pos = (view * model)[Vec(3,4), Vec(1,2,3,4)] * p4d
+    # For correct z-ordering we need to be in view/camera or screen space
+    view = scene.camera.view[]
+    zorder = sortperm(transformed_pos, by = p -> begin
+        p4d = to_ndim(Vec4d, p, 1)
+        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
         cam_pos[1] / cam_pos[2]
     end, rev=false)
 
@@ -1189,14 +1243,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = primitive.clip_planes,
+        transform_marker = primitive.transform_marker
     )
 
-    submesh[:model] = model
-    scales = primitive[:markersize][]
     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
     for i in zorder
-        p = pos[i]
         if color isa AbstractVector
             submesh[:calculated_colors] = color[i]
         end
@@ -1205,7 +1257,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         _uv_transform = Makie.sv_getindex(uv_transform, i)
 
         draw_mesh3D(
-            scene, screen, submesh, marker, pos = p,
+            scene, screen, submesh, marker, pos = transformed_pos[i],
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
             rotation = _rotation, uv_transform = _uv_transform
         )
@@ -1227,35 +1279,37 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
     
+    # transformation to world space
+    transformed_pos = _transform_to_world(scene, primitive, pos)
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
-        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
-        pos = pos[valid]
+        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+        transformed_pos = transformed_pos[valid]
         colors = colors[valid]
     end
 
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive.model[])::Mat4d
     view = scene.camera.view[]
-
-    zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos[3] / cam_pos[4]
+    zorder = sortperm(transformed_pos, by = p -> begin
+        p4d = to_ndim(Vec4d, p, 1)
+        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+        cam_pos[1] / cam_pos[2]
     end, rev=false)
 
     submesh = Attributes(
-        model = model,
+        model = primitive.model,
         shading = primitive.shading, diffuse = primitive.diffuse,
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[],
+        transform_marker = true
     )
 
     for i in zorder
         submesh[:calculated_colors] = colors[i]
-        draw_mesh3D(scene, screen, submesh, marker, pos = pos[i], scale = scale)
+        draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
     end
 
     return nothing

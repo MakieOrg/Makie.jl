@@ -20,7 +20,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -50,7 +50,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -74,7 +74,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -204,7 +204,7 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     # Standard transform from input space to clip space
     points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
+    transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
     clip_points = map(points) do point
         return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
     end
