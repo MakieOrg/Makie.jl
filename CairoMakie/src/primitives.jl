@@ -852,6 +852,8 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
 end
 
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+    mini = min.(xys[1, 1], xys[end, end])
+    maxi = max.(xys[1, 1], xys[end, end])
     @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
         p2 = xys[i+1, j]
@@ -873,9 +875,9 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
             # To avoid shifting the cell border we skip extensions at (i, j), i.e.
             # we only extend the sides that will be covered by other cells.
             center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p2 += sign.(p2 - center) .* Point2f(i != ni, 0)
-            p3 += sign.(p3 - center) .* Point2f(i != ni, j != nj)
-            p4 += sign.(p4 - center) .* Point2f(0,       j != nj)
+            p2 = clamp.(p2 + sign.(p2 - center) .* 2f0 * Point2f(i != ni, 0),       mini, maxi)
+            p3 = clamp.(p3 + sign.(p3 - center) .* 2f0 * Point2f(i != ni, j != nj), mini, maxi)
+            p4 = clamp.(p4 + sign.(p4 - center) .* 2f0 * Point2f(0,       j != nj), mini, maxi)
         end
 
         Cairo.set_line_width(ctx, 0)
