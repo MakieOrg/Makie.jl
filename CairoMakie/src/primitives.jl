@@ -326,6 +326,8 @@ function get_colors(p::Plot)
     end
 end
 
+
+
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p._marker_offset[], p.rotation[],
            p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
@@ -337,8 +339,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
 
     Makie.register_computation!(attr, [:positions_transformed_f32c, :model, :space, :clip_planes], [:clipped_transformed_positions]) do (transformed, model, space, clip_planes), changed, outputs
         indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
-        positions = project_position(scene, space[], transformed[], indices, model[])
-        return (view(positions, indices),)
+        pos = project_position(scene, space[], transformed[], indices, model[])
+        return (view(pos, indices),)
     end
 
     markersize, strokecolor, strokewidth, marker, marker_offset, rotation,

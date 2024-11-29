@@ -463,8 +463,8 @@ function register_sdf_computations!(attr, atlas)
     register_computation!(attr, [:uv_offset_width, :marker, :font],
                           [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
         new_mf = changed[2] || changed[3]
-        uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
-        marker = changed[1] ? Makie.marker_to_sdf_shape(m[]) : nothing
+        uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : nothing
+        marker = changed[1] ? marker_to_sdf_shape(m[]) : nothing
         return (marker, uv)
     end
 end

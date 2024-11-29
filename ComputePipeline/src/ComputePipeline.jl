@@ -22,6 +22,7 @@ mutable struct ComputedValue{P}
 end
 
 hasparent(computed::ComputedValue) = isdefined(computed, :parent)
+getparent(computed::ComputedValue) = hasparent(computed) ? computed.parent : nothing
 
 struct TypedEdge{InputTuple,OutputTuple,F}
     callback::F
@@ -330,11 +331,33 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     end
 end
 
+get_callback(computed::ComputedValue) = hasparent(computed) ? computed.parent.callback : nothing
+
+function stringify_callback(f)
+    m = first(methods(f))
+    return string(m.file, ":", m.line)
+end
+
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
-    if any(x -> haskey(attr.outputs, x), outputs)
-        bad_outputs = filter(x -> haskey(attr.outputs, x), outputs)
-        # TODO, allow double registration of exactly the same computation?
-        error("Only one computation is allowed to be registered for an output. Found: $(bad_outputs)")
+    if all(x -> haskey(attr.outputs, x), outputs)
+        function throw_error()
+            callbacks = join([string(k, "=>", stringify_callback(get_callback(attr.outputs[k]))) for k in outputs], ", ")
+            current = stringify_callback(f)
+            cf_equal = f == get_callback(attr.outputs[first(outputs)])
+            return error("Only one computation is allowed to be registered for an output. Callbacks: $(callbacks). Current: $(current), isequal: $(cf_equal)")
+        end
+        # We check if all outputs have the same parent + callback, which means this computation is already registered
+        # Which we allow, and simply ignore the new registration
+        out1 = attr.outputs[first(outputs)]
+        !hasparent(out1) && throw_error()
+        edge1 = out1.parent
+        edge1.callback !== f && throw_error()
+        all_same = all(outputs) do k
+            out = attr.outputs[k]
+            return hasparent(out) && out.parent === edge1
+        end
+        all_same || throw_error()
+        return # ignore new registration
     end
     _inputs = ComputedValue[attr.outputs[k] for k in inputs]
     new_edge = ComputeEdge(f, _inputs)
