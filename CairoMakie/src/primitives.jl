@@ -579,15 +579,15 @@ function draw_glyph_collection(
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
-        p = apply_transform(transform_func, position, space)
+        transformed = apply_transform(transform_func, position, space)
+        p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
 
         Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
         Makie.f32_convert_matrix(scene.float32convert, space) *
-        model *
-        to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+        p
     end
 
     Cairo.save(ctx)
