@@ -37,6 +37,7 @@ using Makie: volume
     include("hist.jl")
     include("poly.jl")
     include("cameras.jl")
+    include("voronoiplot.jl")
 
     # for short tests of resolved issues
     include("issues.jl")

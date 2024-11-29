@@ -86,7 +86,7 @@ function check_framebuffer()
     return enum_to_error(status)
 end
 
-function GLFramebuffer(fb_size::NTuple{2, Int})
+Makie.@noconstprop function GLFramebuffer(fb_size::NTuple{2, Int})
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
