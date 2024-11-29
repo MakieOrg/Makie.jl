@@ -73,7 +73,7 @@ end
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
 function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func=identity) where {N, T}
-    MeshType = GeometryBasics.SimpleMesh{N, float_type(PT), GLTriangleFace}
+    MeshType = GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
     return isempty(polys) ? MeshType[] : poly_convert.(polys, (transform_func,))
 end
 
