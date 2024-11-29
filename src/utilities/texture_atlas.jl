@@ -116,8 +116,8 @@ function write_array(io::IO, array::AbstractArray)
 end
 
 function read_array(io::IO, T)
-    nd = read(io, Int32)
-    size = Vector{Int32}(undef, nd)
+    ndims = read(io, Int32)
+    size = Vector{Int32}(undef, ndims)
     read!(io, size)
     array = Array{T}(undef, size...)
     read!(io, array)
@@ -325,7 +325,7 @@ The padding is in units after downscaling!
 function sdistancefield(img, downsample, pad)
     # we pad before downsampling, so we need to have `downsample` as much padding
     pad = downsample * pad
-    # padd the image
+    # pad the image
     padded_size = size(img) .+ 2pad
 
     # for the downsampling, we need to make sure that

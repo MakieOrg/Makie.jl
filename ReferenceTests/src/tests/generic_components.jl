@@ -390,7 +390,7 @@
     end
 
     #=
-    For Verfication 
+    For Verification 
     Note that the text only marks the index in the picking list. The position
     that is closest (that pick_sorted used) is somewhere else in the marked
     element. Check scene2 to see the pickable regions if unsure

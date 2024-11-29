@@ -586,7 +586,7 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
-    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # we convert to UV mesh as default, because otherwise the uv information gets lost
     # - we can still drop them, but we can't add them later on
     m = GeometryBasics.mesh(geom; pointtype=Point{N,float_type(T)}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
     return (m,)

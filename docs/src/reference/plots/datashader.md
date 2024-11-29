@@ -214,7 +214,7 @@ hidedecorations!(ax)
 fig
 ```
 
-We can also re-use the previous NYC example for a categorical plot:
+We can also reuse the previous NYC example for a categorical plot:
 ```julia
 @time begin
     f = Figure(figure_padding=0, size=(1200, 600))
