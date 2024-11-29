@@ -72,12 +72,9 @@ end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
-function poly_convert(polys::AbstractVector{PT}, transform_func=identity) where {PT <: Polygon}
-    get_eltype(::Type{<: Polygon{2, T}}) where {T} = float_type(T)
-    get_eltype(::Type{<: Polygon}) = Float64 # assuming mixed type
-
-    T = GeometryBasics.SimpleMesh{2, get_eltype(PT), GLTriangleFace}
-    return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
+function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func=identity) where {N, T}
+    MeshType = GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
+    return isempty(polys) ? MeshType[] : poly_convert.(polys, (transform_func,))
 end
 
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func=identity)
@@ -198,7 +195,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, AbstractVecto
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
+# TODO: for Makie v0.22, GeometryBasics v0.5,
+# switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
     meshes = plot[1]
     attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
@@ -248,7 +247,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     bigmesh = lift(plot, meshes, transform_func) do meshes, tf
         if isempty(meshes)
             # TODO: Float64
-            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+            return GeometryBasics.Mesh(Point{N, T}[], GLTriangleFace[])
         else
             triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
             return merge(triangle_meshes)
