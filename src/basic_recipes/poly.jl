@@ -197,7 +197,7 @@ end
 
 # TODO: for Makie v0.22, GeometryBasics v0.5,
 # switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{<: Polytope{N, T}}, Polygon{N, T}} where {N, T}
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
     meshes = plot[1]
     attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
