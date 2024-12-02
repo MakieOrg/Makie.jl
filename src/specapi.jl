@@ -935,14 +935,14 @@ function delete_layoutable!(grid::GridLayout)
 end
 
 function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
-                            new_layoutables, unused_plots, new_plots)
+                            new_layoutables)
     # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
     # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
     update_gridlayout!(
         target_layout, 1, nothing, layout_spec, unused_layoutables,
-        new_layoutables, unused_plots, new_plots
+        new_layoutables
     )
 
     foreach(unused_layoutables) do (p, (block, obs))
@@ -966,14 +966,6 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
         GridLayoutBase.update!(l)
     end
 
-    for (_, plot) in unused_plots
-        delete!(plot.parent, plot)
-    end
-    # Transfer all new plots into unused_plots for the next update!
-    @assert isempty(unused_plots) || !any(x -> x in unused_plots, new_plots)
-    empty!(unused_plots)
-    merge!(unused_plots, new_plots)
-    empty!(new_plots)
     # finally, notify all changes at once
 
     # foreach(unused_layoutables) do (p, (block, obs))
@@ -997,12 +989,9 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
-    unused_plots = IdDict{PlotSpec,Plot}()
-    new_plots = IdDict{PlotSpec,Plot}()
     on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
-            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables,
-                               unused_plots, new_plots)
+            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
