@@ -28,7 +28,7 @@ function serve_update_page_from_dir(folder)
 
         @info "Downloading latest reference folder for $tag"
         tempdir = download_refimages(tag)
-        
+
         @info "Updating files in $tempdir"
 
         for image in images_to_update
@@ -185,7 +185,7 @@ end
 """
     serve_update_page(; commit, pr)
 
-Create a ReferenceUpdater page which shows the test differences from a CI run 
+Create a ReferenceUpdater page which shows the test differences from a CI run
 of a given commit hash or pr.
 """
 function serve_update_page(; commit = nothing, pr = nothing)
@@ -198,7 +198,7 @@ end
 """
     update_from_previous_version(; source_version, target_version, commit, pr[, score_threshold = 0.03])
 
-Replaces every test that is failing (based on score_threshold) or missing in the 
+Replaces every test that is failing (based on score_threshold) or missing in the
 given commit or pr with the respective test from the given `source_version` and
 uploads the result to `target_version`.
 
@@ -208,8 +208,8 @@ This is useful for breaking pull requests, where new or changed tests from maste
 update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22.0", pr = 4477)
 ```
 """
-function update_from_previous_version(; 
-        source_version::String, target_version::String, 
+function update_from_previous_version(;
+        source_version::String, target_version::String,
         commit = nothing, pr = nothing, score_threshold = 0.03)
 
     tmpdir = download_artifacts(commit = commit, pr = pr)
@@ -240,7 +240,21 @@ function update_from_previous_version(;
         end
     end
 
-    update_from_previous_version(changed_or_missing; 
+    # Get confirmation
+    print("Are you sure you want to ")
+    printstyled("replace/add", bold = true, color = :red)
+    print(" the listed reference images in/to ")
+    printstyled("$target_version", bold = true, color = :red)
+    print(" with those from ")
+    printstyled("$source_version", bold = false, color = :light_red)
+    println("? (y/n)")
+    input = lowercase(readline())
+    if !any(x -> x == input, ["y", "yes"])
+        @info "Cancelling"
+        return
+    end
+
+    update_from_previous_version(changed_or_missing;
         source_version = source_version, target_version = target_version)
 
     return
@@ -249,16 +263,16 @@ end
 """
     update_from_previous_version(changed_or_missing::Vector{String}; source_version, target_version)
 
-Replaces every test in `changed_or_missing` with the respective test from the 
-given `source_version` and uploads the result to `target_version`. This is the 
-more manual version of the other method. 
+Replaces every test in `changed_or_missing` with the respective test from the
+given `source_version` and uploads the result to `target_version`. This is the
+more manual version of the other method.
 
 Tests should be given as `"backend/name-of-test.png"` in `changed_or_missing`.
-Source and target version are given as `"v0.00.0"` matching the respective 
+Source and target version are given as `"v0.00.0"` matching the respective
 github release version.
 """
 function update_from_previous_version(
-        changed_or_missing::Vector{String}; 
+        changed_or_missing::Vector{String};
         source_version::String, target_version::String)
 
     # Merge new and old
@@ -365,7 +379,7 @@ end
 
 function group_files(path, input_filename, output_filename)
     isfile(joinpath(path, output_filename)) && return
-    
+
     # Group files in new_files/missing_files into a table like layout:
     #  GLMakie  CairoMakie  WGLMakie
 
@@ -378,7 +392,7 @@ function group_files(path, input_filename, output_filename)
             if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
                 error("Failed to parse backend in \"$line\", got \"$backend\"")
             end
-            
+
             filename = join(pieces[2:end], '/')
             exists = get!(data, filename, [false, false, false])
 
