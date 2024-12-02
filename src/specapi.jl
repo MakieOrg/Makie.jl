@@ -872,7 +872,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @debug("Creating new content for spec")
+            @info("Creating new content for spec")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
@@ -891,7 +891,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
-            @debug("updating old block with spec")
+            @info("updating old block with spec")
             # Make sure we don't double re-use a layoutable
             splice!(previous_contents, idx)
             (_, _, old_spec) = old_key
