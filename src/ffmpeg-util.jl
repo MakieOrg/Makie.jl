@@ -265,7 +265,7 @@ function VideoStream(fig::FigureLike;
     # In case of WGLMakie, this isn't easy to find out otherwise,
     # So for now we just use colorbuffer until we have a reliable pixel_size(screen) function.
     first_frame = colorbuffer(screen)
-    _xdim, _ydim = size(first_frame)
+    _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
