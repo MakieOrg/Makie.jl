@@ -427,25 +427,22 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # we are going to transform the 3d frame points into 2d of the topscene
         # because otherwise the frame lines can
         # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        o = scene.viewport[].origin
+        return map([p1, p2, p3, p4, p5, p6]) do p3d
+            # This strip z here (set it to 0) and translate to coerce z sorting
+            # to be correct in CairoMakie (which is based on plot.transformation)
+            return Point2f(o + Makie.project(scene, p3d))
+        end
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
+    # -10000 is the far value in campixel
+    translate!(framelines, 0, 0, -10000)
 
     return gridline1, gridline2, framelines
-end
-
-# this function projects a point from a 3d subscene into the parent space with a really
-# small z value
-function to_topscene_z_2d(p3d, scene)
-    o = scene.viewport[].origin
-    p2d = Point2f(o + Makie.project(scene, p3d))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
-    Point3f(p2d..., -10000)
 end
 
 function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
@@ -502,21 +499,12 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
          end
     end
-    # we are going to transform the 3d tick segments into 2d of the topscene
-    # because otherwise they
-    # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.viewport) do ts, _, _
-        map(ts) do p1_p2
-            to_topscene_z_2d.(p1_p2, Ref(scene))
-        end
-    end
 
     ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
+    # -10000 is the far value in campixel
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
@@ -664,29 +652,42 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
         string((:x, :y, :z)[dim2]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
 
-    vertices = lift(limits, min3) do lims, mi3
+    rect = lift(limits) do lims
+        mi = minimum(lims)
+        ma = maximum(lims)
+        Polygon([
+            Point2(mi[dim1], mi[dim2]),
+            Point2(ma[dim1], mi[dim2]),
+            Point2(ma[dim1], ma[dim2]),
+            Point2(mi[dim1], ma[dim2])
+        ])
+    end
 
+    plane_offset = lift(limits, min3) do lims, mi3
         mi = minimum(lims)
         ma = maximum(lims)
 
-        v3 = if mi3
-            mi[dim3] + 0.005 * (mi[dim3] - ma[dim3])
-        else
-            ma[dim3] + 0.005 * (ma[dim3] - mi[dim3])
-        end
-
-        p1 = dim3point(dim1, dim2, dim3, mi[dim1], mi[dim2], v3)
-        p2 = dim3point(dim1, dim2, dim3, mi[dim1], ma[dim2], v3)
-        p3 = dim3point(dim1, dim2, dim3, ma[dim1], ma[dim2], v3)
-        p4 = dim3point(dim1, dim2, dim3, ma[dim1], mi[dim2], v3)
-        [p1, p2, p3, p4]
+        mi3 ? mi[dim3] : ma[dim3]
     end
 
-    faces = [1 2 3; 3 4 1]
+    plane = Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2])
 
-    panel = mesh!(scene, vertices, faces, shading = NoShading, inspectable = false,
+    panel = poly!(scene, rect, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        color = attr(:panelcolor), visible = attr(:panelvisible))
+        color = attr(:panelcolor), visible = attr(:panelvisible),
+        strokecolor = :transparent, strokewidth = 0,
+        transformation = (plane, 0),
+    )
+
+    on(plane_offset) do offset
+        translate!(
+            panel,
+            dim3 == 1 ? offset : zero(offset),
+            dim3 == 2 ? offset : zero(offset),
+            dim3 == 3 ? offset : zero(offset),
+        )
+    end
+
     return panel
 end
 

@@ -476,6 +476,11 @@ end
     @test_nowarn axislegend()
 end
 
+@testset "Legend with empty element" begin
+    f = Figure()
+    @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp

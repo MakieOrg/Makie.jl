@@ -387,10 +387,10 @@ function group_files(path, input_filename, output_filename)
     data = Dict{String, Vector{Bool}}()
     open(joinpath(path, input_filename), "r") do file
         for filepath in eachline(file)
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
-                error("Failed to parse backend in \"$line\", got \"$backend\"")
+                error("Failed to parse backend in \"$pieces\", got \"$backend\"")
             end
 
             filename = join(pieces[2:end], '/')
@@ -402,7 +402,7 @@ function group_files(path, input_filename, output_filename)
         end
     end
 
-    # generate new structed file
+    # generate new structured file
     open(joinpath(path, output_filename), "w") do file
         for (filename, valid) in data
             println(file,

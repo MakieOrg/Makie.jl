@@ -866,15 +866,18 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
         # increase their size slightly.
 
         if alpha(colors[i, j]) == 1
-            # sign.(p - center) gives the direction in which we need to
-            # extend the polygon. (Which may change due to rotations in the
-            # model matrix.) (i!=1) etc is used to avoid increasing the
-            # outer extent of the heatmap.
-            center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
-            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
-            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
+            # To avoid gaps between heatmap cells we pad cells.
+            # For 3D compatability (and rotation, inversion/mirror) we pad cells
+            # using directional vectors, not along x/y directions.
+            v1 = normalize(p2 - p1)
+            v2 = normalize(p4 - p1)
+            # To avoid shifting cells we only pad them on the +i, +j side, which
+            # gets covered by later cells.
+            # To avoid enlarging the final column and row of the heatmap, the
+            # last set of cells is not padded. (i != ni), (j != nj)
+            p2 += Float32(i != ni) * v1
+            p3 += Float32(i != ni) * v1 + Float32(j != nj) * v2
+            p4 += Float32(j != nj) * v2
         end
 
         Cairo.set_line_width(ctx, 0)
@@ -908,11 +911,11 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     return nothing
 end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot), @nospecialize(mesh))
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, decompose(Point, mesh), model)
+    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -928,7 +931,7 @@ end
 function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
 
     ctx = screen.context
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
@@ -943,9 +946,9 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1...)
-        Cairo.mesh_pattern_line_to(pattern, t2...)
-        Cairo.mesh_pattern_line_to(pattern, t3...)
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -984,7 +987,7 @@ function draw_mesh3D(
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    # Priorize colors of the mesh if present
+    # Prioritize colors of the mesh if present
     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
@@ -1254,7 +1257,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]
