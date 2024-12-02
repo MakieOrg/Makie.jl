@@ -432,3 +432,9 @@ function scaled_steps(steps, scale, lims)
     # then rescale to 0 to 1
     return @. (steps_lim_scaled - steps_lim_scaled[begin]) / (steps_lim_scaled[end] - steps_lim_scaled[begin])
 end
+
+
+function max_auto_ticklabel_spacing!(cb::Colorbar)
+    max_auto_ticklabel_spacing!(cb.axis)
+    return
+end

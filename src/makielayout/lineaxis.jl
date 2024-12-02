@@ -318,8 +318,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
-        elseif space == :max_auto
-            max(idealspace, actual_ticklabelspace[])
+        elseif space === :max_auto
+            max(actual_ticklabelspace[], idealspace)
         else
             space
         end
