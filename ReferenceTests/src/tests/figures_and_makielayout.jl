@@ -522,10 +522,11 @@ end
     Makie.set_close_to!(sl, 30, 70)
 
     Toggle(f[3, 1])
-    Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
-    Toggle(f[3, 2], active = true)
+    t = Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
+    t.orientation = 3pi/4
+    Toggle(f[3, 2], active = true, orientation = :horizontal)
     Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue,
-        framecolor_active = :yellow, rimfraction = 0.6)
+        framecolor_active = :yellow, rimfraction = 0.6, orientation = :vertical)
 
     Makie.Slider(f[3, 3])
     sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan,
@@ -539,6 +540,15 @@ end
     tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20,
         fontsize =10, textcolor = :red, boxcolor = :lightblue)
     Makie.set!(tb, "some string")
+    f
+end
 
+@reference_test "Toggle orientation" begin
+    f = Figure()
+    for x=1:3, y=1:3
+        x==y==2 && continue
+        Box(f[x, y], color = :tomato)
+        Toggle(f[x, y], orientation = atan(x-2,2-y))
+    end
     f
 end
