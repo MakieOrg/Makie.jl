@@ -29,8 +29,10 @@
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591).
 - Fix `colorbuffer(axis)` for `px_per_unit != 1` [#4574](https://github.com/MakieOrg/Makie.jl/pull/4574).
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
+- Fix color mapping between contourf and colorbar [#4618](https://github.com/MakieOrg/Makie.jl/pull/4618)
 - Fixed an incorrect comparison in CairoMakie's line clipping code causing a line segment to disappear [#4631](https://github.com/MakieOrg/Makie.jl/pull/4631)
 - Fix `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
+- Fixed heatmap cells being 0.5px/units too large in CairoMakie [4633](https://github.com/MakieOrg/Makie.jl/pull/4633)
 
 ## [0.21.16] - 2024-11-06
 
