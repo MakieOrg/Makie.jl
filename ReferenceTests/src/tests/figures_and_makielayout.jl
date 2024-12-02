@@ -342,6 +342,17 @@ end
     fig
 end
 
+@reference_test "Colorbar mapping to contourf" begin
+    l = [1, 2, 5, 10, 20, 50]
+    x = 0:0.1:51
+    y = 0:0.1:51
+    z = [y for x in x, y in y]
+    fig, ax, plt = contourf(x, y, z; levels = l)
+    cb = Colorbar(fig[1, 2], plt; tellheight = false)
+
+    fig
+end
+
 @reference_test "datashader" begin
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
     # Dont use the full dataset, since WGLMakie seems to time out if it's too big
