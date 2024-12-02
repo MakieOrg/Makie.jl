@@ -874,7 +874,7 @@ end
 
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, previous_contents, new_layoutables, global_unused_plots, new_plots)
+                            gridspec::GridLayoutSpec, previous_contents, new_layoutables)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
     scores = IdDict{Any, Float64}()
@@ -890,7 +890,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             if new_layoutable isa AbstractAxis
                 obs = Observable(spec.plots)
                 scene = get_scene(new_layoutable)
-                update_plotspecs!(scene, obs, nothing, global_unused_plots, new_plots, false)
+                update_plotspecs!(scene, obs)
                 if any(needs_tight_limits, scene.plots)
                     tightlimits!(new_layoutable)
                 end
@@ -898,7 +898,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             elseif new_layoutable isa GridLayout
                 # Make sure all plots & blocks are inserted
                 update_gridlayout!(new_layoutable, nesting + 1, spec, spec, previous_contents,
-                                   new_layoutables, global_unused_plots, new_plots)
+                                   new_layoutables)
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
@@ -910,7 +910,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout
                 update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents,
-                                   new_layoutables, global_unused_plots, new_plots)
+                                   new_layoutables)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
                 update_state_before_display!(layoutable)
