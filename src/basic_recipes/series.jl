@@ -32,6 +32,19 @@ function convert_arguments(T::Type{<: Series}, y::RealMatrix)
     convert_arguments(T, 1:size(y, 2), y)
 end
 
+function convert_arguments(T::Type{<:Series}, x::RealVector, y::AbstractVector{<: StaticVector{N}}) where N
+    T = float_type(x, eltype(first(y)))
+    if length(x) != length(y)
+        error("x and y must have the same length")
+    end
+    point_of_points = Vector{Point2{T}}[]
+    _x = replace_missing.(x)
+    for i in 1:N
+        push!(point_of_points, Point2{T}.(_x, replace_missing.(getindex.(y, i))))
+    end
+    return (point_of_points,)
+end
+
 function convert_arguments(::Type{<: Series}, x::RealVector, ys::RealMatrix)
     T = float_type(x, ys)
     return (map(1:size(ys, 1)) do i
