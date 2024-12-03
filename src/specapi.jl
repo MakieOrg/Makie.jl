@@ -293,7 +293,7 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
         scores = Float64[
             distance_score(a.kwargs, b.kwargs, scores_dict),
             distance_score(a.plots, b.plots, scores_dict),
-            distance_score(a.then_funcs, b.then_funcs, scores_dict)
+            # distance_score(a.then_funcs, b.then_funcs, scores_dict)
         ]
         return norm(scores)
     end
@@ -305,8 +305,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting) * 2,
-        distance_score(ap, bp, scores_dict) * 2,
+        abs(anesting - bnesting) * 0.5,
+        distance_score(ap, bp, scores_dict) * 0.5,
         distance_score(a, b, scores_dict)
     ]
     return norm(scores)
