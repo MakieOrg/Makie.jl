@@ -170,24 +170,24 @@ end
 struct ScrollZoom
     speed::Float32
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 
@@ -327,10 +327,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
-        "The space reserved for the xticklabels."
-        xticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
-        "The space reserved for the yticklabels."
-        yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        "The space reserved for the xticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        xticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
+        "The space reserved for the yticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        yticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
         "The space between yticks and yticklabels."
@@ -755,7 +755,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticks = Makie.automatic
         "Format for ticks."
         tickformat = Makie.automatic
-        "The space reserved for the tick labels."
+        "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3f0

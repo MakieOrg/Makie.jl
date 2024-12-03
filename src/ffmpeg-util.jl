@@ -200,7 +200,7 @@ end
 
 function next_tick!(controller::TickController)
     controller.tick[] = Tick(
-        OneTimeRenderTick, 
+        OneTimeRenderTick,
         controller.frame_counter,
         controller.frame_counter * controller.frame_time,
         controller.frame_time
@@ -260,7 +260,12 @@ function VideoStream(fig::FigureLike;
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, scene, config, GLNative)
-    _xdim, _ydim = size(screen)
+    # Use colorbuffer to get the actual dimensions for the backend,
+    # since the backend might have a different size from the Monitor scaling.
+    # In case of WGLMakie, this isn't easy to find out otherwise,
+    # So for now we just use colorbuffer until we have a reliable pixel_size(screen) function.
+    first_frame = colorbuffer(screen)
+    _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
