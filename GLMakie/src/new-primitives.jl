@@ -47,7 +47,9 @@ function update_robjs!(robj, args, changed, gl_names)
             if haskey(robj.uniforms, name)
                 robj.uniforms[name] = arg[]
             elseif haskey(robj.vertexarray.buffers, string(name))
-                update!(robj.vertexarray.buffers[string(name)], arg[])
+                GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
+            else
+                # Core.println("Could not update ", name)
             end
         end
     end
@@ -84,7 +86,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :transparency,
     ]
     gl_names = [
-        :vertex,
+        :position,
         :color_map,
         :color,
         :color_norm,
@@ -101,7 +103,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             robj = assemble_scatter_robj(atlas, attr.marker[], attr.space[], attr.markerspace[], args...)
         else
             robj = last[1][]
+            if changed[3] # position
+                robj.uniforms[:len][] = length(args[3][])
+                robj.vertexarray.bufferlength = length(args[3][])
+                robj.vertexarray.indices[] = length(args[3][])
+            end
             update_robjs!(robj, args[3:end], changed[3:end], gl_names)
+            robj
         end
         screen.requires_update = true
         return (robj,)

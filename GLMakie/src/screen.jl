@@ -933,7 +933,12 @@ function on_demand_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
         pollevents(screen, tick_state) # GLFW poll
-
+        for plot in values(screen.cache2plot)
+            # poll object for updates
+            if plot isa Makie.ComputePlots
+                plot.args[1][:gl_renderobject][]
+            end
+        end
         if !screen.config.pause_renderloop && requires_update(screen)
             tick_state = Makie.RegularRenderTick
             render_frame(screen)

@@ -33,9 +33,6 @@ function render_frame(screen::Screen; resize_buffers=true)
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
-        if plot isa Makie.ComputePlots
-            plot.gl_renderobject[]
-        end
         # TODO, use actual boundingbox
         # ~7% faster than calling zvalue2d doing the same thing?
         return Makie.transformationmatrix(plot)[][3, 4]

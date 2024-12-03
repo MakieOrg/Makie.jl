@@ -6,12 +6,10 @@ mutable struct ComputedValue{P}
     value::RefValue
     parent::P
     parent_idx::Int # index of parent.outputs this value refers to
+    ComputedValue{P}() where {P} = new{P}()
     ComputedValue{P}(value::RefValue) where {P} = new{P}(value)
     function ComputedValue{P}(value::RefValue, parent::P, idx::Integer) where {P}
         return new{P}(value, parent, idx)
-    end
-    function ComputedValue{P}() where {P}
-        return new{P}()
     end
     function ComputedValue{P}(edge::P, idx::Integer) where {P}
         p = new{P}()
@@ -34,11 +32,14 @@ end
 
 struct ComputeEdge
     callback::Function
+
     inputs::Vector{ComputedValue}
     inputs_dirty::Vector{Bool}
+
     outputs::Vector{ComputedValue{ComputeEdge}}
     outputs_dirty::Vector{Bool}
     got_resolved::RefValue{Bool}
+
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Vector{ComputeEdge}
@@ -86,11 +87,11 @@ function Base.show(io::IO, edge::ComputeEdge)
     print(io, "ComputeEdge(")
     println("  inputs:")
     for v in edge.inputs
-        println("    ", v)
+        println("    ", typeof(v))
     end
     println("  outputs:")
     for v in edge.outputs
-        println("    ", v)
+        println("    ", typeof(v))
     end
     return println(io, ")")
 end
@@ -118,11 +119,12 @@ mutable struct Input
     f::Function
     output::ComputedValue{Input}
     dirty::Bool
+    output_dirty::Bool
     dependents::Vector{ComputeEdge}
 end
 
 function Input(value, f, output)
-    return Input(value, f, output, true, ComputeEdge[])
+    return Input(value, f, output, true, true, ComputeEdge[])
 end
 
 struct ComputeGraph
@@ -139,7 +141,7 @@ function Base.show(io::IO, graph::ComputeGraph)
     end
     println("  outputs:")
     for (k, out) in graph.outputs
-        println("    ", k, "=>", out)
+        println("    ", k, "=>", typeof(out))
     end
     return println(io, ")")
 end
@@ -183,17 +185,27 @@ function mark_dirty!(computed::Computed)
 end
 
 function resolve!(input::Input)
+    if !input.dirty
+        input.output_dirty = false
+        return
+    end
+    value = input.f(input.value)
     if isassigned(input.output.value)
-        input.output.value[] = input.f(input.value)
+        input.output.value[] = value
     else
-        input.output.value = RefValue(input.f(input.value))
+        input.output.value = RefValue(value)
     end
     input.dirty = false
+    input.output_dirty = true
+    for edge in input.dependents
+        mark_input_dirty!(input, edge)
+    end
     return input.output.value[]
 end
 
 function mark_dirty!(input::Input)
     input.dirty = true
+    input.output_dirty = false
     for edge in input.dependents
         mark_dirty!(edge)
     end
@@ -225,13 +237,33 @@ end
 function Base.getindex(attr::ComputeGraph, key::Symbol)
     return attr.outputs[key]
 end
+isdirty(input::Input) = input.dirty
 
 Base.getindex(computed::ComputedValue) = resolve!(computed)
 
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
+    @assert parent.got_resolved[] # parent should only call this after resolve!
     for (i, input) in enumerate(edge.inputs)
         # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-        hasparent(input) && input.parent === parent && (edge.inputs_dirty[i] = isdirty(input))
+        if hasparent(input)
+            iparent = input.parent
+            if iparent === parent
+                edge.inputs_dirty[i] = isdirty(input)
+            end
+        end
+    end
+end
+
+function mark_input_dirty!(parent::Input, edge::ComputeEdge)
+    @assert !parent.dirty # should got resolved
+    for (i, input) in enumerate(edge.inputs)
+        # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
+        if hasparent(input)
+            iparent = input.parent
+            if iparent === parent
+                edge.inputs_dirty[i] = iparent.output_dirty
+            end
+        end
     end
 end
 

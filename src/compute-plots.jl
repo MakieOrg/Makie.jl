@@ -141,9 +141,10 @@ function register_marker_computations!(attr::ComputeGraph)
                           [:quad_offset, :quad_scale]) do (marker, markersize, marker_offset), changed, last
         atlas = get_texture_atlas()
         font = defaultfont()
-        changed = changed[1] || changed[2]
-        quad_scale = changed ? rescale_marker(atlas, marker[], font, markersize[]) : nothing
+        mm_changed = changed[1] || changed[2]
+        quad_scale = mm_changed ? rescale_marker(atlas, marker[], font, markersize[]) : nothing
         quad_offset = offset_marker(atlas, marker[], font, markersize[], marker_offset[])
+
         return (quad_offset, quad_scale)
     end
 end
@@ -273,4 +274,8 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
+end
+
+function ComputePipeline.update!(plot::ComputePlots; args...)
+    return ComputePipeline.update!(plot.args[1]; args...)
 end
