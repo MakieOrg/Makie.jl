@@ -801,19 +801,19 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         plot_obs[] = spec.plots
         scene = get_scene(block)
         if any(needs_tight_limits, scene.plots)
-            tightlimits!(block)
+            # tightlimits!(block)
         end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
     end
     empty!(old_spec.then_observers)
-    if hasproperty(spec, :xaxislinks)
-        empty!(spec.xaxislinks)
-    end
-    if hasproperty(spec, :yaxislinks)
-        empty!(spec.yaxislinks)
-    end
+    # if hasproperty(spec, :xaxislinks)
+    #     empty!(spec.xaxislinks)
+    # end
+    # if hasproperty(spec, :yaxislinks)
+    #     empty!(spec.yaxislinks)
+    # end
     for func in spec.then_funcs
         observers = func(block)
         add_observer!(spec, observers)
@@ -902,7 +902,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                                    new_layoutables)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
-                update_state_before_display!(layoutable)
+                # update_state_before_display!(layoutable)
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
