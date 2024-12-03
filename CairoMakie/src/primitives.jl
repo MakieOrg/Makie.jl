@@ -866,15 +866,18 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
         # increase their size slightly.
 
         if alpha(colors[i, j]) == 1
-            # sign.(p - center) gives the direction in which we need to
-            # extend the polygon. (Which may change due to rotations in the
-            # model matrix.) (i!=1) etc is used to avoid increasing the
-            # outer extent of the heatmap.
-            center = 0.25f0 * (p1 + p2 + p3 + p4)
-            p1 += sign.(p1 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=1))
-            p2 += sign.(p2 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=1))
-            p3 += sign.(p3 - center) .* Point2f(0.5f0 * (i!=ni), 0.5f0 * (j!=nj))
-            p4 += sign.(p4 - center) .* Point2f(0.5f0 * (i!=1),  0.5f0 * (j!=nj))
+            # To avoid gaps between heatmap cells we pad cells.
+            # For 3D compatability (and rotation, inversion/mirror) we pad cells
+            # using directional vectors, not along x/y directions.
+            v1 = normalize(p2 - p1)
+            v2 = normalize(p4 - p1)
+            # To avoid shifting cells we only pad them on the +i, +j side, which
+            # gets covered by later cells.
+            # To avoid enlarging the final column and row of the heatmap, the
+            # last set of cells is not padded. (i != ni), (j != nj)
+            p2 += Float32(i != ni) * v1
+            p3 += Float32(i != ni) * v1 + Float32(j != nj) * v2
+            p4 += Float32(j != nj) * v2
         end
 
         Cairo.set_line_width(ctx, 0)
@@ -1254,7 +1257,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
-    
+
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
         valid = [is_visible(primitive.clip_planes[], p) for p in pos]
