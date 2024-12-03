@@ -327,9 +327,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
-        "The space reserved for the xticklabels."
+        "The space reserved for the xticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         xticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
-        "The space reserved for the yticklabels."
+        "The space reserved for the yticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         yticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
@@ -755,7 +755,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticks = Makie.automatic
         "Format for ticks."
         tickformat = Makie.automatic
-        "The space reserved for the tick labels."
+        "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3f0
