@@ -13,8 +13,8 @@
 - Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
 - Fix color mapping between contourf and colorbar [#4618](https://github.com/MakieOrg/Makie.jl/pull/4618)
 - Fixed an incorrect comparison in CairoMakie's line clipping code causing a line segment to disappear [#4631](https://github.com/MakieOrg/Makie.jl/pull/4631)
-- Introduce `max_auto_ticklabel_spacing!` for a jitter free tickspace which only grows larger and `use_zoom_reset_timer`/`use_pan_reset_timer` to disable timed reset [#4607](https://github.com/MakieOrg/Makie.jl/pull/4607).
 - Fixed heatmap cells being 0.5px/units too large in CairoMakie [4633](https://github.com/MakieOrg/Makie.jl/pull/4633)
+- Introduce `max_auto_ticklabel_spacing!` for a jitter free tickspace which only grows larger and `use_zoom_reset_timer`/`use_pan_reset_timer` to disable timed reset [#4607](https://github.com/MakieOrg/Makie.jl/pull/4607).
 
 ## [0.21.16] - 2024-11-06
 
