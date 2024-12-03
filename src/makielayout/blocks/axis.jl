@@ -975,13 +975,9 @@ yautolimits(ax::Axis) = autolimits(ax, 2)
 
 Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
-function linkaxes!(axes::Vector{<:Axis})
-    linkxaxes!(axes)
-    linkyaxes!(axes)
-end
-
 function linkaxes!(a::Axis, others...)
-    linkaxes!([a, others...])
+    linkxaxes!(a, others...)
+    linkyaxes!(a, others...)
 end
 
 function adjustlimits!(la)
@@ -1033,30 +1029,26 @@ function adjustlimits!(la)
     return
 end
 
-linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
+function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
+    axes = Axis[a; others...]
 
-function linkaxes!(dir::Symbol, axes::Vector{Axis})
     all_links = Set{Axis}(axes)
     for ax in axes
-        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
+        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
         for ax in links
             push!(all_links, ax)
         end
     end
-    links_changed = false
+
     for ax in all_links
-        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
+        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
         for linked_ax in all_links
-            if linked_ax !== ax && !(linked_ax in links)
-                links_changed = true
+            if linked_ax !== ax && linked_ax ∉ links
                 push!(links, linked_ax)
             end
         end
     end
-    if links_changed
-        reset_limits!(first(axes))
-    end
-    return
+    reset_limits!(a)
 end
 
 """
@@ -1064,16 +1056,14 @@ end
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-linkxaxes!(axes::Vector{Axis}) = linkaxes!(:x, axes)
-linkxaxes!(a::Axis, others...) = linkaxes!(:x, [a, others...])
+linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-linkyaxes!(axes::Vector{Axis}) = linkaxes!(:y, axes)
-linkyaxes!(a::Axis, others...) = linkaxes!(:y, [a, others...])
+linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
