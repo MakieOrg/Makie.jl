@@ -104,7 +104,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         else
             robj = last[1][]
             if changed[3] # position
-                robj.uniforms[:len][] = length(args[3][])
+                haskey(robj.uniforms, :len) && (robj.uniforms[:len][] = length(args[3][]))
                 robj.vertexarray.bufferlength = length(args[3][])
                 robj.vertexarray.indices[] = length(args[3][])
             end
