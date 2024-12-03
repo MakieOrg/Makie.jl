@@ -292,10 +292,10 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     get!(scores_dict, (a, b)) do
         scores = Float64[
             distance_score(a.kwargs, b.kwargs, scores_dict),
-            distance_score(a.plots, b.plots, scores_dict) * 2,
-            # distance_score(a.then_funcs, b.then_funcs, scores_dict) * 0.5
+            distance_score(a.plots, b.plots, scores_dict),
+            distance_score(a.then_funcs, b.then_funcs, scores_dict)
         ]
-        return norm(scores) * 0.5
+        return norm(scores)
     end
 end
 
@@ -305,8 +305,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting),
-        distance_score(ap, bp, scores_dict) * 0.1,
+        abs(anesting - bnesting) * 2,
+        distance_score(ap, bp, scores_dict) * 2,
         distance_score(a, b, scores_dict)
     ]
     return norm(scores)
@@ -812,13 +812,19 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         plot_obs[] = spec.plots
         scene = get_scene(block)
         if any(needs_tight_limits, scene.plots)
-            # tightlimits!(block)
+            tightlimits!(block)
         end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
     end
     empty!(old_spec.then_observers)
+    if hasproperty(spec, :xaxislinks)
+        empty!(spec.xaxislinks)
+    end
+    if hasproperty(spec, :yaxislinks)
+        empty!(spec.yaxislinks)
+    end
     for func in spec.then_funcs
         observers = func(block)
         add_observer!(spec, observers)
@@ -877,7 +883,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @info("Creating new content for spec")
+            @debug("Creating new content for spec")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
@@ -896,7 +902,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
-            @info("updating old block with spec")
+            @debug("updating old block with spec")
             # Make sure we don't double re-use a layoutable
             splice!(previous_contents, idx)
             (_, _, old_spec) = old_key
@@ -907,7 +913,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
                                    new_layoutables, global_unused_plots, new_plots)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
-                # update_state_before_display!(layoutable)
+                update_state_before_display!(layoutable)
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
