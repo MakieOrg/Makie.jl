@@ -22,7 +22,9 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 #### JupyterHub / Jupyterlab / Binder
 
 
-* WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem, on hosted ones one may need add `jupyter-server-proxy`. See:
+* WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem. On hosted instances one will likely need to have [`jupyter-server-proxy`](https://jupyter-server-proxy.readthedocs.io/en/latest/arbitrary-ports-hosts.html#with-jupyterhub) installed, and then execute something like `Page(; listen_port=9091, proxy_url="<jhub-instance>.com/user/<username>/proxy/9091")`.
+
+  Also see:
     * [issue #2464](https://github.com/MakieOrg/Makie.jl/issues/2464)
     * [issue #2405](https://github.com/MakieOrg/Makie.jl/issues/2405)
 
