@@ -84,17 +84,24 @@ function TypedEdge(edge::ComputeEdge)
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
-    print(io, "ComputeEdge(")
-    println("  inputs:")
-    for v in edge.inputs
-        println("    ", typeof(v))
-    end
-    println("  outputs:")
-    for v in edge.outputs
-        println("    ", typeof(v))
-    end
-    return println(io, ")")
+    print(io, "ComputeEdge(", length(edge.inputs), " -> ", length(edge.outputs), ")")
 end
+
+function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
+    println(io, "ComputeEdge{$(edge.callback)}:")
+    print(io, "  inputs:")
+    for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
+        print(io, "\n    ", dirty ? '↻' : '✓', ' ')
+        show(io, v)
+    end
+    print(io, "\n  outputs:")
+    for (dirty, v) in zip(edge.outputs_dirty, edge.outputs)
+        print(io, "\n    ", dirty ? '↻' : '✓', ' ')
+        show(io, v)
+    end
+end
+
+
 # Can only make this alias after ComputeEdge & ComputedValue are created
 # We're going to ignore that ComputedValue has a type parameter,
 # which it only has to resolve the circular dependency
@@ -106,9 +113,9 @@ function ComputeEdge(f, inputs::Vector{ComputedValue})
                        ComputeEdge[], RefValue{TypedEdge}())
 end
 
-function Base.show(io::IO, computed::Computed)
-    if isassigned(computed.value)
-        print(io, "Computed($(typeof(computed.value[])))")
+function Base.show(io::IO, computed::ComputedValue)
+    if isdefined(computed, :value) && isassigned(computed.value)
+        print(io, "Computed(", computed.value[], ")")
     else
         print(io, "Computed(#undef)")
     end
@@ -132,18 +139,80 @@ struct ComputeGraph
     outputs::Dict{Symbol,ComputedValue}
 end
 
+# TODO: Handle Edges better?
+function collect_edges(graph::ComputeGraph)
+    cache = Set{ComputeEdge}()
+    foreach(input -> collect_edges(input, cache), values(graph.inputs))
+    return cache
+end
+function collect_edges(input::Input, cache::Set{ComputeEdge} = Set{ComputeEdge}())
+    for edge in input.dependents
+        collect_edges!(cache, edge)
+    end
+    return cache
+end
+function collect_edges!(cache::Set{ComputeEdge}, edge::ComputeEdge)
+    if !(edge in cache)
+        push!(cache, edge)
+        foreach(e -> collect_edges!(cache, e), edge.dependents)
+    end
+    return
+end
+count_edges(graph::ComputeGraph) = length(collect_edges(graph))
+count_edges(input::Input) = length(collect_edges(input))
+
+function Base.show(io::IO, input::Input)
+    print(io, "Input(")
+    show(io, input.value)
+    print(io, ")")
+end
+
+# TODO: easier name resultion?
+function Base.show(io::IO, ::MIME"text/plain", input::Input)
+    print(io, "Input(")
+    show(io, input.value)
+    print(io, ") with $(length(input.dependents)) direct dependents:")
+    for edge in input.dependents
+        N = length(edge.inputs)
+        println()
+        if N == 1
+            print(io, "  input ══ ")
+        else
+            print(io, "  (input, $(N-1) more...) ══ ")
+        end
+        print(io, "ComputeEdge{$(edge.callback)}()")
+        N = length(edge.outputs)
+        if N == 1
+            print(io, " ══> ", edge.outputs[1])
+        else
+            print(io, " ══> ", edge.outputs)
+        end
+    end
+end
+
 function Base.show(io::IO, graph::ComputeGraph)
-    print(io, "ComputeGraph(")
-    println("  inputs:")
+    print(io, "ComputeGraph() with ",
+        length(graph.inputs), " inputs, ",
+        length(graph.outputs), " outputs and ",
+        count_edges(graph), " compute edges."
+    )
+end
+
+function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
+    println(io, "ComputeGraph():")
+    print(io, "  Inputs:")
+    io = IOContext(io, :compact => true)
+    pad = mapreduce(k -> length(string(k)), max, keys(graph.inputs))
     for (k, v) in graph.inputs
         val = getproperty(graph, k)[]
-        println("    ", k, "=>", typeof(val))
+        print(io, "\n    ", rpad(string(k), pad), " => ", val)
     end
-    println("  outputs:")
+    print(io, "\n\n  Outputs:")
+    pad = mapreduce(k -> length(string(k)), max, keys(graph.outputs))
     for (k, out) in graph.outputs
-        println("    ", k, "=>", typeof(out))
+        print(io, "\n    ", rpad(string(k), pad), " => ", out)
     end
-    return println(io, ")")
+    return io
 end
 
 function ComputeGraph()
