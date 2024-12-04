@@ -491,3 +491,25 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
         end
     end
 end
+
+@testset "Explicit convert_arguments" begin
+    function nan_equal(a::Vector, b::Vector)
+        length(a) == length(b) || return false
+        for (x, y) in zip(a, b)
+            (isnan(x) && isnan(y)) || (x == y) || return false
+        end
+        return true
+    end
+
+    @testset "PointBased" begin
+        ps = Point2f.([1, 2], [1, 2])
+        ls1 = [LineString(ps) for _ in 1:2]
+        ls2 = MultiLineString(ls1)
+        ls3 = [ls2, ls2]
+        ps12 = [ps; [Point2f(NaN)]; ps]
+        ps3 = [ps12; [Point2f(NaN)]; ps12]
+        @test nan_equal(convert_arguments(PointBased(), ls1)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls2)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls3)[1], ps3)
+    end
+end
