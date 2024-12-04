@@ -77,7 +77,7 @@ function TypedEdge(edge::ComputeEdge)
         end
         fill!(edge.outputs_dirty, false)
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing")
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
 
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs_dirty)
@@ -131,6 +131,7 @@ mutable struct Input
 end
 
 function Input(value, f, output)
+    @assert !(value isa ComputedValue)
     return Input(value, f, output, true, true, ComputeEdge[])
 end
 
@@ -204,8 +205,14 @@ function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
     io = IOContext(io, :compact => true)
     pad = mapreduce(k -> length(string(k)), max, keys(graph.inputs))
     for (k, v) in graph.inputs
-        val = getproperty(graph, k)[]
-        print(io, "\n    ", rpad(string(k), pad), " => ", val)
+        try
+            val = getproperty(graph, k)[]
+            print(io, "\n    ", rpad(string(k), pad), " => ", val)
+        catch e
+            println()
+            @info "While evaluating $k = $v:"
+            rethrow(e)
+        end
     end
     print(io, "\n\n  Outputs:")
     pad = mapreduce(k -> length(string(k)), max, keys(graph.outputs))
@@ -416,8 +423,9 @@ end
 add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr, key, value)
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
+    @assert !(value isa ComputedValue)
     output = ComputedValue{Input}(RefValue{Any}())
-    input = Input(value, (v)-> conversion_func(key, v), output)
+    input = Input(value, (v) -> conversion_func(key, v), output)
     output.parent = input
     output.parent_idx = 1
     # Needs to be Any, since input can change type
@@ -430,6 +438,22 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     for (k, v) in pairs(kw)
         add_input!(conversion_func, attr, k, v)
     end
+end
+
+# for recipe -> recipe (mostly)
+function add_input!(attr::ComputeGraph, key::Symbol, value::ComputedValue)
+    attr.outputs[key] = value
+    return
+end
+
+# for recipe -> primitive (mostly)
+function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::ComputedValue)
+    input_name = Symbol(:parent_, key)
+    attr.outputs[input_name] = value
+    register_computation!(attr, [input_name], [key]) do (input,), changed, last
+        return (conversion_func(key, input[]),)
+    end
+    return
 end
 
 get_callback(computed::ComputedValue) = hasparent(computed) ? computed.parent.callback : nothing

@@ -100,7 +100,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         screen = args[2][]
         !isopen(screen) && return :deregister
         robj = if isnothing(last)
-            robj = assemble_scatter_robj(atlas, attr.marker[], attr.space[], attr.markerspace[], args...)
+            robj = assemble_scatter_robj(atlas, attr.outputs[:marker][],
+                attr.outputs[:space][], attr.outputs[:markerspace][], args...)
         else
             robj = last[1][]
             if changed[3] # position

@@ -83,16 +83,32 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     # Only 2 and 3d conversions are supported, and only
     args = map(to_value, input_args)
     PTrait = conversion_trait(P, args...)
-    inputs = map(enumerate(args)) do (i, arg)
-        sym = Symbol(:arg, i)
-        add_input!(attr, sym, arg)
-        return sym
+
+    if all(arg -> arg isa Computed, input_args)
+
+        inputs = map(enumerate(input_args)) do (i, arg)
+            sym = Symbol(:arg, i)
+            add_input!(attr, sym, arg)
+            return sym
+        end
+
+    elseif !any(arg -> arg isa Computed, input_args)
+
+        inputs = map(enumerate(args)) do (i, arg)
+            sym = Symbol(:arg, i)
+            add_input!(attr, sym, arg)
+            return sym
+        end
+        onany(input_args...) do args...
+            kw = [Symbol(:arg, i) => args[i] for i in 1:length(args)]
+            update!(attr; kw...)
+            return
+        end
+
+    else
+        error("args should be either all Computed or all other things. $input_args")
     end
-    onany(input_args...) do args...
-        kw = [Symbol(:arg, i) => args[i] for i in 1:length(args)]
-        update!(attr; kw...)
-        return
-    end
+
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
         args = map(getindex, input_args)
         expanded_args = expand_dimensions(PTrait, args...)
@@ -114,15 +130,24 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         return convert_arguments(P, args[1][]...)
     end
     add_input!(attr, :transform_func, identity)
-    register_computation!(attr, [:positions, :transform_func, :space],
-                          [:positions_transformed]) do (positions, func, space), changed, last
-        return (apply_transform(func[], positions[], space[]),)
-    end
-    add_input!(attr, :f32c, nothing)
 
-    register_computation!(attr, [:positions_transformed, :f32c],
-                          [:positions_transformed_f32c]) do (positions, f32c), changed, last
-        return (inv_f32_convert(f32c[], positions[]),)
+    # TODO:
+    # - :positions may not be compatible with all primitive plot types
+    #   probably need specialization, e.g. for heatmap, image, surface
+    # - recipe plots may want this too for boundingbox
+    if P <: PrimitivePlotTypes
+
+        register_computation!(attr, [:positions, :transform_func, :space],
+                            [:positions_transformed]) do (positions, func, space), changed, last
+            return (apply_transform(func[], positions[], space[]),)
+        end
+        add_input!(attr, :f32c, nothing)
+
+        register_computation!(attr, [:positions_transformed, :f32c],
+                            [:positions_transformed_f32c]) do (positions, f32c), changed, last
+            return (inv_f32_convert(f32c[], positions[]),)
+        end
+
     end
 end
 
@@ -149,8 +174,18 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
-function add_attibutes!(::Type{T}, attr, kwargs) where {T}
+# TODO: this won't work because Text is both primitive and not
+const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
+    MeshScatter, Heatmap, Image, Surface, Voxels, Volume}
+
+obs_to_value(obs::Observables.AbstractObservable) = to_value(obs)
+obs_to_value(x) = x
+
+function add_attributes!(::Type{T}, attr, kwargs) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
+    name = plotkey(T)
+    is_primitive = T <: PrimitivePlotTypes
+
     for (k, v) in documented_attr
         if haskey(kwargs, k)
             value = kwargs[k]
@@ -158,9 +193,16 @@ function add_attibutes!(::Type{T}, attr, kwargs) where {T}
             val = v.default_value
             value = val isa MakieCore.Inherit ? val.fallback : val
         end
-        add_input!(attr, k, to_value(value)) do key, value
-            return convert_attribute(value, Key{key}(), Key{:scatter}())
+
+        # primitives use convert_attributes, recipe plots don't
+        if is_primitive
+            add_input!(attr, k, obs_to_value(value)) do key, value
+                return convert_attribute(value, Key{key}(), Key{name}())
+            end
+        else
+            add_input!(attr, k, obs_to_value(value))
         end
+
         if value isa Observable
             on(value) do new_val
                 setproperty!(attr, k, new_val)
@@ -223,7 +265,7 @@ Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 
 function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
-    add_attibutes!(Scatter, attr, user_kw)
+    add_attributes!(Scatter, attr, user_kw)
     register_arguments!(Scatter, attr, user_kw, args...)
     register_marker_computations!(attr)
     register_colormapping!(attr)
@@ -241,7 +283,7 @@ end
 
 function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
-    add_attibutes!(Lines, attr, user_kw)
+    add_attributes!(Lines, attr, user_kw)
     register_arguments!(Lines, attr, user_kw, args...)
     register_colormapping!(attr)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
@@ -262,7 +304,7 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
         return LineSegments(Base.tail(args), user_kw)
     end
     attr = ComputeGraph()
-    add_attibutes!(LineSegments, attr, user_kw)
+    add_attributes!(LineSegments, attr, user_kw)
     register_arguments!(LineSegments, attr, user_kw, args...)
     register_colormapping!(attr)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
