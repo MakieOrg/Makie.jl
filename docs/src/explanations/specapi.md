@@ -153,6 +153,7 @@ S.GridLayout([...],
 Axis links are also supported, but they're not part of Axis, but rather the surrounding `GridLayout`, since when constructing the axis you usually don't yet have the other Axes you want to link them to.
 
 ```@figure
+import Makie.SpecApi as S
 axis_matrix = broadcast(1:2, (1:2)') do x, y
     S.Axis(; title="$x, $y")
 end
