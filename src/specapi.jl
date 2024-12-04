@@ -875,7 +875,7 @@ function update_axis_links!(gridspec, all_layoutables)
     # axes that should be linked
     axes = Dict{BlockSpec, Axis}()
     for ((_, _, ax_spec), (ax_object, _)) in all_layoutables
-        if ax_spec.type === :Axis
+        if ax_spec isa BlockSpec && ax_spec.type === :Axis
             axes[ax_spec] = ax_object
         end
     end
