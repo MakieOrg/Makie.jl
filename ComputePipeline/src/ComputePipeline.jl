@@ -168,7 +168,7 @@ function Base.show(io::IO, input::Input)
     print(io, ")")
 end
 
-# TODO: easier name resultion?
+# TODO: easier name resolution?
 function Base.show(io::IO, ::MIME"text/plain", input::Input)
     print(io, "Input(")
     show(io, input.value)
@@ -503,6 +503,78 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     end
     return
 end
+
+# GLMakie only *requires* an endpoint to be deleted atm so lets keep this simple
+# for now
+function Base.delete!(attr::ComputeGraph, key::Symbol)
+    haskey(attr.outputs, key) || return attr
+
+    computed = attr.outputs[key]
+    if hasparent(computed)
+        delete!(attr, computed.parent)
+    else
+        delete!(attr.outputs, key)
+    end
+
+    return attr
+end
+
+function Base.delete!(attr::ComputeGraph, edge::ComputeEdge)
+    # deregister this edge as a dependency of its parents
+    for computed in edge.inputs
+        if hasparent(computed)
+            parent_edge = computed.parent
+            filter!(e -> e === edge, parent_edge.dependents)
+        end
+    end
+
+    # all dependents become invalid as their parent computation no longer runs
+    for dependent in edge.dependents
+        delete!(attr, dependent)
+    end
+
+    # All outputs lose their parent computation so they should probably be removed
+    # Could also disconnect them, but what's the point of a loose node?
+    for computed in edge.outputs
+        for (k, v) in attr.outputs
+            if v === computed
+                delete!(attr.outputs, k)
+                break
+            end
+        end
+    end
+
+    return attr
+end
+
+function Base.delete!(attr::ComputeGraph, edge::Input)
+    # all dependents become invalid as their parent computation no longer runs
+    for dependent in edge.dependents
+        delete!(attr, dependent)
+    end
+
+    # All outputs lose their parent computation so they should probably be removed
+    # Could also disconnect them, but what's the point of a loose node?
+    for computed in edge.outputs
+        for (k, v) in attr.outputs
+            if v === computed
+                delete!(attr.outputs, k)
+                break
+            end
+        end
+    end
+
+    # Input also exists in attr.input, so delete that
+    for (k, v) in attr.inputs
+        if v === edge
+            delete!(attr.inputs, k)
+            break
+        end
+    end
+
+    return attr
+end
+
 
 export Computed, ComputedValue, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
 
