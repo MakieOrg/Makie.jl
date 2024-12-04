@@ -1,8 +1,26 @@
 # Changelog
 
 ## [Unreleased]
+
+- Disabled unit prefix conversions for compound units (e.g. `u"m/s"`) to avoid generating incorrect units. [#4583](https://github.com/MakieOrg/Makie.jl/pull/4583)
+- Add kwarg to rotate Toggle [#4445](https://github.com/MakieOrg/Makie.jl/pull/4445)
+- Fix orientation of environment light textures in RPRMakie [#4629](https://github.com/MakieOrg/Makie.jl/pull/4629).
+- Fix uint16 overflow for over ~65k elements in WGLMakie picking [#4604](https://github.com/MakieOrg/Makie.jl/pull/4604).
+- Improve performance for line plot in CairoMakie [#4601](https://github.com/MakieOrg/Makie.jl/pull/4601).
+- Prevent more default actions when canvas has focus [#4602](https://github.com/MakieOrg/Makie.jl/pull/4602).
 - Fix an error in `convert_arguments` for PointBased plots and 3D polygons [#4585](https://github.com/MakieOrg/Makie.jl/pull/4585).
 - Fix polygon rendering issue of `crossbar(..., show_notch = true)` in CairoMakie [#4587](https://github.com/MakieOrg/Makie.jl/pull/4587).
+- Fix `colorbuffer(axis)` for `px_per_unit != 1` [#4574](https://github.com/MakieOrg/Makie.jl/pull/4574).
+- Fix render order of Axis3 frame lines in CairoMakie [#4591](https://github.com/MakieOrg/Makie.jl/pull/4591)
+- Added PointBased conversion for `Vector{MultiLineString}` [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Added color conversions for tuples, Points and Vecs [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Added conversions for 1 and 2 value paddings in `Label` and `tooltip` [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Fixed `NaN` in scatter rotation and markersize breaking Cairo state [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
+- Fix color mapping between contourf and colorbar [#4618](https://github.com/MakieOrg/Makie.jl/pull/4618)
+- Fixed an incorrect comparison in CairoMakie's line clipping code causing a line segment to disappear [#4631](https://github.com/MakieOrg/Makie.jl/pull/4631)
+- Fixed heatmap cells being 0.5px/units too large in CairoMakie [4633](https://github.com/MakieOrg/Makie.jl/pull/4633)
+- Fix bounds error when recording video with WGLMakie [#4639](https://github.com/MakieOrg/Makie.jl/pull/4639).
+- Add `axis.(x/y)ticklabelspace = :max_auto`, to only grow tickspace but never shrink to reduce jitter [#4642](https://github.com/MakieOrg/Makie.jl/pull/4642).
 
 ## [0.21.16] - 2024-11-06
 

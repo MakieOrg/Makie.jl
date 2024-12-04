@@ -621,7 +621,7 @@ function expand_mixin(e::Expr)
 end
 
 """
-    Plot(args::Vararg{<:DataType,N})
+    Plot(args::Vararg{DataType,N})
 
 Returns the Plot type that represents the signature of `args`.
 Example:

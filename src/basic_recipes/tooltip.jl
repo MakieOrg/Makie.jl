@@ -81,16 +81,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     # Text
 
-    textpadding = map(p, p.textpadding) do pad
-        if pad isa Real
-            return (pad, pad, pad, pad)
-        elseif length(pad) == 4
-            return pad
-        else
-            @error "Failed to parse $pad as (left, right, bottom, top). Using defaults"
-            return (4, 4, 4, 4)
-        end
-    end
+    textpadding = map(to_lrbt_padding, p, p.textpadding)
 
     text_offset = map(p, p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
         l, r, b, t = pad
@@ -195,7 +186,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
     mesh!(
         p, tri_points, [1 2 3], shading = NoShading, space = :pixel,
-        color = p.backgroundcolor, fxaa = false, 
+        color = p.backgroundcolor, fxaa = false,
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,
         inspectable = p.inspectable, transformation = Transformation()
