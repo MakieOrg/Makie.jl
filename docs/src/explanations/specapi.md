@@ -150,6 +150,26 @@ S.GridLayout([...],
 )
 ```
 
+Axis links are also supported, but they're not part of Axis, but rather the surrounding `GridLayout`, since when constructing the axis you usually don't yet have the other Axes you want to link them to.
+
+```@figure
+axis_matrix = broadcast(1:2, (1:2)') do x, y
+    S.Axis(; title="$x, $y")
+end
+layout = S.GridLayout(
+    axis_matrix;
+    xaxislinks=vec(axis_matrix[1:2, 1]),
+    yaxislinks=vec(axis_matrix[1:2, 2])
+)
+f, _, pl = plot(layout)
+# Change limits to see the links in action
+for ax in f.content[[1, 3]]
+    limits!(ax, 2, 3, 2, 3)
+end
+f
+```
+
+
 ## Using specs in `convert_arguments`
 
 !!! warning

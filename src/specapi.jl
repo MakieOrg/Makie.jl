@@ -811,10 +811,6 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots
-        scene = get_scene(block)
-        if any(needs_tight_limits, scene.plots)
-            # tightlimits!(block)
-        end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
@@ -868,6 +864,38 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     return
 end
 
+function replace_links!(axis_links::Vector, new_links::Set)
+    Set(axis_links) == new_links && return false
+    empty!(axis_links)
+    append!(axis_links, new_links)
+    return true
+end
+
+function update_axis_links!(gridspec, all_layoutables)
+    # axes that should be linked
+    axes = Dict{BlockSpec, Axis}()
+    for ((_, _, ax_spec), (ax_object, _)) in all_layoutables
+        if ax_spec.type === :Axis
+            axes[ax_spec] = ax_object
+        end
+    end
+    xlinked = Set(map(x-> axes[x], gridspec.xaxislinks))
+    ylinked = Set(map(x-> axes[x], gridspec.yaxislinks))
+
+    for (spec, ax) in axes
+        if spec in gridspec.xaxislinks
+            replace_links!(ax.xaxislinks, filter(x -> x !== ax, xlinked))
+        else
+            empty!(ax.xaxislinks)
+        end
+        if spec in gridspec.yaxislinks
+            replace_links!(ax.yaxislinks, filter(x -> x !== ax, ylinked))
+        else
+            empty!(ax.yaxislinks)
+        end
+    end
+end
+
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
                             gridspec::GridLayoutSpec, previous_contents, new_layoutables)
@@ -915,20 +943,8 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
         end
     end
-    if !isempty(gridspec.xaxislinks) || !isempty(gridspec.yaxislinks)
-        xlinks = Axis[]
-        ylinks = Axis[]
-        for ((_, _, ax_spec), (ax_object, _)) in new_layoutables
-            if ax_spec in gridspec.xaxislinks
-                push!(xlinks, ax_object)
-            end
-            if ax_spec in gridspec.yaxislinks
-                push!(ylinks, ax_object)
-            end
-        end
-        linkxaxes!(xlinks)
-        linkyaxes!(ylinks)
-    end
+    update_axis_links!(gridspec, new_layoutables)
+    return
 end
 
 get_layout!(fig::Figure) = fig.layout
