@@ -237,6 +237,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :px_per_unit,
     ]
     gl_names = [
+        :vertex,
         :pattern,
         :scene_origin,
         :miter_limit,
@@ -253,7 +254,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
             robj = assemble_lines_robj(args...)
         else
             robj = output[1][]
-            update_robjs!(robj, args[3:end], changed[3:end], gl_names)
+            update_robjs!(robj, args[4:end], changed[4:end], gl_names)
         end
         screen.requires_update = true
         return (robj,)
