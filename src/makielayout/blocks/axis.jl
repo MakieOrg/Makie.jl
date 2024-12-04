@@ -1054,7 +1054,7 @@ function linkaxes!(dir::Symbol, axes::Vector{Axis})
         end
     end
     if links_changed
-        reset_limits!(first(axes))
+        notify(first(axes).targetlimits)
     end
     return
 end
