@@ -1,11 +1,11 @@
 always_for_in = true
 always_use_return = true
-import_to_using = true
+import_to_using = false
 margin = 110
 pipe_to_function_call = true
 remove_extra_newlines = true
-short_to_long_function_def = true
-style = "yas"
+short_to_long_function_def = false
+style = "blue"
 whitespace_in_kwargs = false
 whitespace_ops_in_indices = true
 whitespace_typedefs = false
