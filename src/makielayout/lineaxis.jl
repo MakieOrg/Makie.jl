@@ -321,6 +321,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end
