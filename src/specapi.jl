@@ -781,7 +781,6 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
-    unhide!(block)
     if spec.type === :Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
@@ -816,6 +815,13 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots
+        score = distance_score(old_spec.plots, spec.plots, Dict())
+        if score >= 1.0
+            scene = get_scene(block)
+            if any(needs_tight_limits, scene.plots)
+                tightlimits!(block)
+            end
+        end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
@@ -826,6 +832,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         observers = func(block)
         add_observer!(spec, observers)
     end
+    unhide!(block)
     return to_update, reset_to_defaults
 end
 
