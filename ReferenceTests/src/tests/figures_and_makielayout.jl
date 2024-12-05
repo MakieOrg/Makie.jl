@@ -137,7 +137,7 @@ end
     xs = range(10, 100; length=100)
     f, ax, _ = lines(xs, xs; axis=(; title="Log scale with manual ticks", xticks=[10, 100], xscale=log10))
     xs = range(-10, 10; length=100)
-    lines(f[1, 2], xs, xs; axis=(; title="Non-standard log tick formatting"), xscale = Makie.pseudolog10)
+    lines(f[1, 2], xs, xs; axis=(; title="Non-standard log tick formatting", xscale=Makie.pseudolog10))
     f
 end
 
