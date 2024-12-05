@@ -195,21 +195,49 @@ end
     get_ticks = Makie.get_ticks
     get_tickvalues = Makie.get_tickvalues
     get_ticklabels = Makie.get_ticklabels
+    get_auto_ticks = (xs, func) -> begin
+        ticks, labels = get_ticks(xs, func, automatic, 0, 5)
+        # Convert the labels to strings for easier comparison
+        ticks, String.(labels)
+    end
+    pseudolog10 = Makie.pseudolog10
+    inv_pseudolog10 = Makie.inverse_transform(Makie.pseudolog10)
 
-    for func in [identity, log, log2, log10, Makie.logit]
+    # Test automatic formatting with a range
+    rng = 1:5
+    @test get_auto_ticks(rng, identity) == (rng, ["1", "2", "3", "4", "5"])
+    # The string conversion of the log labels can be a little confusing, read
+    # these as `baseexponent` with no spacing between them or
+    # superscripting. Note that we apply the inverse functions to the input
+    # range to get more readable labels to test.
+    @test get_auto_ticks(exp.(rng), log) == (exp.(rng), ["e1", "e2", "e3", "e4", "e5"])
+    @test get_auto_ticks(exp2.(rng), log2) == (exp2.(rng), ["21", "22", "23", "24", "25"])
+    @test get_auto_ticks(exp10.(rng), log10) == (exp10.(rng), ["101", "102", "103", "104", "105"])
+    # Note: not clear why using exp10 gives prettier numbers than
+    # Makie.logistic, which should be the inverse of Makie.logit.
+    @test get_auto_ticks(exp10.(rng), Makie.logit) == (exp10.(rng), ["1.0×10¹", "1.0×10²", "1.0×10³", "1.0×10⁴", "1.0×10⁵"])
+    @test get_auto_ticks(inv_pseudolog10.(rng), pseudolog10) == (inv_pseudolog10.(rng), ["101", "102", "103", "104", "105"])
+
+    # Test automatic formatting with an explicit list
+    numbers = [1.0, 1.5, 2.0]
+    @test get_auto_ticks(numbers, identity) == (numbers, ["1.0", "1.5", "2.0"])
+    @test get_auto_ticks(exp.(numbers), log) == (exp.(numbers), ["e1.0", "e1.5", "e2.0"])
+    @test get_auto_ticks(exp2.(numbers), log2) == (exp2.(numbers), ["21.0", "21.5", "22.0"])
+    @test get_auto_ticks(exp10.(numbers), log10) == (exp10.(numbers), ["101.0", "101.5", "102.0"])
+    @test get_auto_ticks(exp10.(numbers), Makie.logit) == (exp10.(numbers), ["10.000000", "31.622777", "100.000000"])
+    @test get_auto_ticks(inv_pseudolog10.(numbers), pseudolog10) == (inv_pseudolog10.(numbers), ["101.0", "101.5", "102.0"])
+
+    for func in [identity, log, log2, log10, Makie.logit, Makie.pseudolog10]
+        # Test formatting with explicit labels
         tup = ([1, 2, 3], ["a", "b", "c"])
         @test get_ticks(tup, func, automatic, 0, 5) == tup
 
-        rng = 1:5
-        @test get_ticks(rng, func, automatic, 0, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
-
-        numbers = [1.0, 1.5, 2.0]
-        @test get_ticks(numbers, func, automatic, 0, 5) == (numbers, ["1.0", "1.5", "2.0"])
-
+        # Test custom formatters
         @test get_ticks(numbers, func, xs -> string.(xs) .* "kg", 0, 5) == (numbers, ["1.0kg", "1.5kg", "2.0kg"])
-
-        @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
     end
+
+    # Test the default ticks
+    @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
 end
 
 @testset "MultiplesTicks strip_zero" begin
@@ -527,7 +555,16 @@ end
         ax.yscale = identity
         ax.yscale = log10
         ax.yscale = identity
-        @test true
+
+        # Setting negative limits and changing to a standard log scale should fail
+        xlims!(ax, -10, 10)
+        @test_throws ErrorException ax.xscale = log
+        @test_throws ErrorException ax.xscale = log2
+        @test_throws ErrorException ax.xscale = log10
+
+        # But setting it to pseudolog10 or Symlog10 should work
+        ax.xscale = Makie.pseudolog10
+        ax.xscale = Makie.Symlog10(5)
     catch e
         @test false
         rethrow(e)

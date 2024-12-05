@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Treat pseudolog10 and Symlog10 like log10, and fix formatting of manual ticks
+  with log scales. [#4092](https://github.com/MakieOrg/Makie.jl/issues/4092)
 - Disabled unit prefix conversions for compound units (e.g. `u"m/s"`) to avoid generating incorrect units. [#4583](https://github.com/MakieOrg/Makie.jl/pull/4583)
 - Add kwarg to rotate Toggle [#4445](https://github.com/MakieOrg/Makie.jl/pull/4445)
 - Fix orientation of environment light textures in RPRMakie [#4629](https://github.com/MakieOrg/Makie.jl/pull/4629).

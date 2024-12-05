@@ -588,7 +588,7 @@ function get_ticks(tickfunction::Function, _, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
-_logbase(::typeof(log10)) = "10"
+_logbase(::Union{typeof(log10), typeof(pseudolog10), typeof(Symlog10)}) = "10"
 _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
 
@@ -597,21 +597,24 @@ function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
     get_ticks(ticks, scale, any_formatter, vmin, vmax)
 end
 
-# log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
-    ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
-
-    ticks = Makie.inverse_transform(scale).(ticks_scaled)
-
+function get_ticks(tickvalues::AbstractVector, scale::LogFunctions, ::Automatic, vmin, vmax)
     labels_scaled = get_ticklabels(
         # avoid unicode superscripts in ticks, as the ticks are converted
         # to superscripts in the next step
         xs -> Showoff.showoff(xs, :plain),
-        ticks_scaled
+        scale.(tickvalues)
     )
     labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0f0)))
 
-    ticks, labels
+    tickvalues, labels
+end
+
+# log ticks just use the normal pipeline but with log'd limits, then transform the labels
+function get_ticks(l::LogTicks, scale::LogFunctions, formatter::Automatic, vmin, vmax)
+    ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
+    ticks = Makie.inverse_transform(scale).(ticks_scaled)
+
+    get_ticks(ticks, scale, formatter, vmin, vmax)
 end
 
 logit_10(x) = Makie.logit(x) / log(10)

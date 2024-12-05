@@ -33,6 +33,10 @@ struct Cycled
     i::Int
 end
 
+# The standard log functions can't handle non-positive numbers
+const StandardLogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
+const LogFunctions = Union{StandardLogFunctions, typeof(pseudolog10), typeof(Symlog10)}
+
 """
 LinearTicks with ideally a number of `n_ideal` tick marks.
 """

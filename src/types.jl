@@ -479,8 +479,6 @@ end
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
 
-const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
-
 """
     ReversibleScale
 
