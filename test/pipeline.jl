@@ -166,6 +166,22 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
+import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
+
+@testset "attribute suggestions" begin
+    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
+    suggestions = find_nearby_attributes(attrs, triplot_attrs)
+    @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
+
+    @test textdiff("clr", "color") == "c\e[34m\e[1mo\e[22m\e[39ml\e[34m\e[1mo\e[22m\e[39mr"
+    @test textdiff("clor", "color") == "c\e[34m\e[1mo\e[22m\e[39mlor"
+    @test textdiff("", "color") == "\e[34m\e[1mc\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1mr\e[22m\e[39m"
+    @test textdiff("colorcolor", "color") == "color"
+    @test textdiff("cloourm", "color") == "co\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39mr"
+    @test textdiff("ssoa", "ssao") == "ss\e[34m\e[1ma\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m"
+end 
 
 @recipe(TestRecipe, x, y) do scene
     Attributes()
