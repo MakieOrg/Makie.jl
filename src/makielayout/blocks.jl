@@ -678,7 +678,7 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
             obsfun = onany((mp,bbox) -> _delay[]==0 ? update_viz0(mp,bbox) : update_viz(mp,bbox),
                            b.blockscene.events.mouseposition, b.layoutobservables.computedbbox)
         elseif !isnothing(obsfun)
-            off(obsfun[1])
+            foreach(off, obsfun)
             obsfun = nothing
             tt.visible[] = false
         end
