@@ -10,6 +10,7 @@ function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2
 end
 
 function process_axis_event(ax, event)
+    ax.scene.visible[] || return Consume(false)
     for (active, interaction) in values(ax.interactions)
         if active
             maybe_consume = process_interaction(interaction, event, ax)

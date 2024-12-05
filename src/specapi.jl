@@ -269,13 +269,19 @@ end
 function distance_score(a::Any, b::Any, scores)
     a === b && return 0.0
     a == b && return 0.0
-    typeof(a) == typeof(b) && return 0.5
+    typeof(a) == typeof(b) && return 0.01
     return 100.0
 end
 
 _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
+
+function distance_score(a::T, b::T, scores_dict) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
+    a === b && return 0.0
+    a == b && return 0.0
+    return 0.1 # we can always update a vector of colors/reals/vecs
+end
 
 function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
     a === b && return 0.0
@@ -304,8 +310,7 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
             # keyword arguments are cheap to change
             distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
-            distance_score(a.plots, b.plots, scores_dict) * 2.0,
-            # distance_score(a.then_funcs, b.then_funcs, scores_dict)
+            distance_score(a.plots, b.plots, scores_dict),
         ]
         return norm(scores)
     end
@@ -879,6 +884,7 @@ function update_axis_links!(gridspec, all_layoutables)
             axes[ax_spec] = ax_object
         end
     end
+
     xlinked = Set(map(x-> axes[x], gridspec.xaxislinks))
     ylinked = Set(map(x-> axes[x], gridspec.yaxislinks))
 
@@ -896,6 +902,8 @@ function update_axis_links!(gridspec, all_layoutables)
     end
 end
 
+get_type(x::BlockSpec) = x.type
+get_type(::GridLayoutSpec) = :GridLayout
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
                             gridspec::GridLayoutSpec, previous_contents, new_layoutables)
@@ -907,7 +915,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @debug("Creating new content for spec")
+            @debug("Creating new block for spec: $(get_type(spec))")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
