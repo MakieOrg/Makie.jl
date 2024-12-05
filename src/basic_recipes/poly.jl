@@ -218,7 +218,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     interpolate_in_fragment_shader = Observable(false)
 
-    map!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
+    lift!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
         # one mesh per color
         if colors isa AbstractVector && length(colors) == length(num_meshes)
             ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)

@@ -59,7 +59,7 @@ function plot!(plot::Violin)
                                dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
-        # for horizontal violin just flip all componentes
+        # for horizontal violin just flip all components
         point_func = Point2f
         if orientation === :horizontal
             point_func = flip_xy ∘ point_func
@@ -67,7 +67,7 @@ function plot!(plot::Violin)
 
         # Allow `side` to be either scalar or vector
         sides = broadcast(x̂, vside) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : 0
+            return s === :left ? - 1 : s === :right ? 1 : s === :both ? 0 : error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
         end
 
         sa = StructArray((x = x̂, side = sides))

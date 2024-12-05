@@ -47,7 +47,7 @@ let
             close(screen)
 
             empty!(atlas_texture_cache)
-            closeall()
+            closeall(; empty_shader=false)
             @assert isempty(SCREEN_REUSE_POOL)
             @assert isempty(ALL_SCREENS)
             @assert isempty(SINGLETON_SCREEN)

@@ -41,6 +41,19 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
 )
 
 """
+    quadratic_curve_to(x0::Real, y0::Real, cx1::Real, cy1::Real, p1::Real, p2::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a quadratic
+bezier curve to point `p`, with the control point `c`. The curve is converted into a cubic bezier
+curve internally.
+"""
+quadratic_curve_to(x0, y0, cx1, cy1, p1, p2) = CurveTo(
+    x0 + 2/3 * (cx1 - x0), y0 + 2/3 * (cy1 - y0),
+    p1 + 2/3 * (cx1 - p1), p2 + 2/3 * (cy1 - p2),
+    p1, p2
+)
+
+"""
     EllipticalArc(c::VecTypes, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
     EllipticalArc(cx::Real, cy::Real, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
 
@@ -492,6 +505,16 @@ function parse_bezier_commands(svg)
             l = lastp()
             push!(commands, LineTo(Point2d(l[1], y)))
             i += 2
+        elseif comm == "Q"
+            x0, y0 = lastp()
+            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            push!(commands, quadratic_curve_to(x0, y0, x1, y1, x2, y2))
+            i += 5
+        elseif comm == "q"
+            x0, y0 = lastp()
+            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            push!(commands, quadratic_curve_to(x0, y0, x1 + x0, y1 + y0, x2 + x0, y2 + y0))
+            i += 5
         else
             for c in commands
                 println(c)
@@ -619,7 +642,7 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for
+    # Minimal size that becomes integer when multiplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))

@@ -225,7 +225,9 @@ scene
 
 ## Point Picking
 
-Makie provides a function `pick(x[, position = events(x).mouseposition[]])` to get the plot displayed at a certain position with `x` being a `Figure`, `Axis`, `FigureAxisPlot` or `Scene`. The function returns a primitive plot and an index. The primitive plots are the base plots drawable in backends:
+Makie provides a function `pick(x[, position = events(x).mouseposition[]])` to get the plot displayed at a certain position with `x` being a `Figure`, `Axis`, `FigureAxisPlot` or `Scene`.
+The function returns a primitive plot and an index.
+The primitive plots are the base plots drawable in backends:
 
 - scatter
 - text
@@ -235,12 +237,20 @@ Makie provides a function `pick(x[, position = events(x).mouseposition[]])` to g
 - meshscatter
 - surface
 - volume
+- voxels
 - image
 - heatmap
 
 Every other plot is build from these somewhere down the line. For example `fig, ax, p = scatterlines(rand(10))` has `Lines` and `Scatter` as it's primitive plots in `p.plots`.
 
-The index returned by `pick` relates to the main input of the respective primitive plot. For `scatter`, `test` and `meshscatter` it is the index into the position (character) array that matches the clicked marker (symbol). For `lines` and `linesegments` it's end position of the clicked line segment. For other plots it tends less useful. `mesh`, `image` and `surface` return index of the largest vertex in the clicked (triangle) face. `heatmap` and `volume` always return 0.
+The index returned by `pick()` relates to the main input of the respective primitive plot.
+- For `scatter` and `meshscatter` it is an index into the positions given to the plot.
+- For `text` it is an index into the merged character array.
+- For `lines` and `linesegments` it is the end position of the selected line segment. 
+- For `image`, `heatmap` and `surface` it is the linear index into the matrix argument of the plot (i.e. the given image, value or z-value matrix) that is closest to the selected position.
+- For `voxels` it is the linear index into the given 3D Array.
+- For `mesh` it is the largest vertex index of the picked triangle face.
+- For `volume` it is always 0.
 
 Let's implement adding, moving and deleting of scatter markers as an example. We could implement adding and deleting with left and right clicks, however that would overwrite existing axis interactions. To avoid this we implement adding as `a + left click` and removing as `d + left click`. Since these settings are more restrictive we want Makie to check if either of them applies first and default back to normal axis interactions otherwise. This means our interactions should have a higher priority than the defaults and block conditionally.
 

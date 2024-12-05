@@ -237,9 +237,12 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     xzoomkey = ax.xzoomkey
     yzoomkey = ax.yzoomkey
 
+
     scene = ax.scene
     e = events(scene)
     cam = camera(scene)
+
+    ispressed(scene, ax.zoombutton[]) || return Consume(false)
 
     if zoom != 0
         pa = viewport(scene)[]
@@ -282,7 +285,6 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         else
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
-
         inv_transf = Makie.inverse_transform(transf)
         tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
     end

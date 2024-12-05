@@ -172,3 +172,17 @@ mjx-container > svg {
   --vp-c-sponsor: #91dd33;
   --vitest-c-sponsor-hover: #e51370;
 }
+
+/* Component: Docstring Custom Block */
+
+.jldocstring.custom-block {
+  border: 1px solid var(--vp-c-gray-2);
+  color: var(--vp-c-text-1)
+}
+
+.jldocstring.custom-block summary {
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  margin: 0 0 8px;
+}

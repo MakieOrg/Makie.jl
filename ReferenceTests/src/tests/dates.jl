@@ -7,9 +7,13 @@ time_range = some_time .+ range(Second(0); step=Second(5), length=10)
 date_range = range(date, step=Day(5), length=10)
 date_time_range = range(date_time, step=Week(5), length=10)
 
-@reference_test "time_range" scatter(time_range, 1:10)
-@reference_test "date_range" scatter(date_range, 1:10)
-@reference_test "date_time_range" scatter(date_time_range, 1:10)
+@reference_test "Time & Date ranges" begin
+    f = Figure()
+    scatter(f[1, 1], time_range, 1:10, axis = (xticklabelrotation = pi/4, ))
+    scatter(f[1, 2], date_range, 1:10, axis = (xticklabelrotation = pi/4, ))
+    scatter(f[2, 1], date_time_range, 1:10, axis = (xticklabelrotation = pi/4, ))
+    f
+end
 
 @reference_test "Don'some_time allow mixing units incorrectly" begin
     date_time_range = range(date_time, step=Second(5), length=10)

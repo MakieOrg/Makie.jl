@@ -49,10 +49,9 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         ) do xs, ys, zs, chunk, model
         mini = minimum.((xs, ys, zs))
         width = maximum.((xs, ys, zs)) .- mini
-        # with f32convert applying to 3D plots patch_model should apply to all of this
-        return Mat4f(model) *
-            Makie.scalematrix(Vec3f(width ./ size(chunk))) *
-            Makie.translationmatrix(Vec3f(mini))
+        return Mat4f(model *
+            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+        )
     end
 
     maybe_color_mapping = plot.calculated_colors[]
@@ -90,7 +89,7 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     onany(plot, plot.gap, plot.converted[end]) do gap, chunk
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
-        if N_instances != length(dummy_data[]) # avoid updating unneccesarily
+        if N_instances != length(dummy_data[]) # avoid updating unnecessarily
             dummy_data[] = [0f0 for _ in 1:N_instances]
         end
         return

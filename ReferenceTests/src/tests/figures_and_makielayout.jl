@@ -181,6 +181,39 @@ end
     f
 end
 
+@reference_test "Legend overrides" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+
+    li = lines!(
+        1:10,
+        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+    )
+    sc = scatter!(
+        1:10,
+        2:11,
+        color = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        colorrange = (1, 3),
+        marker = :utriangle,
+        markersize = 20,
+        label = [
+            label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
+        ]
+    )
+    Legend(f[1, 2], ax)
+    Legend(
+        f[1, 3],
+        [
+            sc => (; markersize = 30),
+            [li => (; color = :red), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan),
+        ],
+        ["Scatter", "Line and Scatter", "Another"],
+        patchsize = (40, 20)
+    )
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -324,6 +357,17 @@ end
     fig
 end
 
+@reference_test "Colorbar mapping to contourf" begin
+    l = [1, 2, 5, 10, 20, 50]
+    x = 0:0.1:51
+    y = 0:0.1:51
+    z = [y for x in x, y in y]
+    fig, ax, plt = contourf(x, y, z; levels = l)
+    cb = Colorbar(fig[1, 2], plt; tellheight = false)
+
+    fig
+end
+
 @reference_test "datashader" begin
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
     # Dont use the full dataset, since WGLMakie seems to time out if it's too big
@@ -353,5 +397,131 @@ end
     scale!(a.scene, 0.5, 2, 1.0)
     translate!(hl, 0, 1, 0)
     translate!(vl, 1, 0, 0)
+    f
+end
+
+@reference_test "Latex labels after the fact" begin
+    f = Figure(fontsize = 50)
+    ax = Axis(f[1, 1])
+    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    f
+end
+
+@reference_test "Rich text" begin
+    f = Figure(fontsize = 30, size = (800, 600))
+    ax = Axis(f[1, 1],
+        limits = (1, 100, 0.001, 1),
+        xscale = log10,
+        yscale = log2,
+        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
+        xlabel = rich("X", subscript("label", fontsize = 25)),
+        ylabel = rich("Y", superscript("label")),
+    )
+    gl = GridLayout(f[1, 2], tellheight = false)
+    Label(gl[1, 1], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)))
+    Label(gl[2, 1], rich("X", superscript("super"), subscript("sub")))
+    Label(gl[3, 1], rich(left_subsup("92", "238"), "U"))
+    Label(gl[4, 1], rich("SO", subsup("4", "2−")))
+    Label(gl[5, 1], rich("x", subsup("f", "g")))
+    f
+end
+
+@reference_test "Checkbox" begin
+    f = Figure(size = (300, 200))
+    Makie.Checkbox(f[1, 1])
+    Makie.Checkbox(f[1, 2], checked = true)
+    Makie.Checkbox(f[1, 3], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6)
+    Makie.Checkbox(f[1, 4], checked = true, checkmark = Circle, roundness = 1, checkmarksize = 0.6, size = 20)
+    Makie.Checkbox(f[1, 5], checkboxstrokewidth = 3)
+    Makie.Checkbox(f[2, 1], checkboxstrokecolor_unchecked = :red)
+    Makie.Checkbox(f[2, 2], checked = true, checkboxstrokecolor_checked = :cyan)
+    Makie.Checkbox(f[2, 3], checked = true, checkmarkcolor_checked = :black)
+    Makie.Checkbox(f[2, 4], checked = false, checkboxcolor_unchecked = :yellow)
+    Makie.Checkbox(f[2, 5], checked = true, checkboxcolor_checked = :orange)
+    f
+end
+
+@reference_test "Textbox" begin
+    f = Figure()
+
+    tb1 = Makie.Textbox(f[1,1])
+    Makie.set!(tb1, "1234567890qwertyuiop")
+    Makie.focus!(tb1)
+    f.scene.events.mouseposition[] = (297, 221)
+    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    Makie.defocus!(tb1)
+
+    tb2 = Makie.Textbox(f[2,1], width=100)
+    Makie.set!(tb2, "1234567890qwertyuiop")
+    tb2.cursorindex[] = 20
+    Makie.focus!(tb2)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    Makie.defocus!(tb2)
+
+    tb3 = Makie.Textbox(f[3,1], width=100)
+    Makie.set!(tb3, "1234567890qwertyuiop")
+    tb3.cursorindex[] = 20
+    Makie.focus!(tb3)
+    f.scene.events.mouseposition[] = (259, 173)  # between 7 and 8
+    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    Makie.defocus!(tb3)
+
+    tb4 = Makie.Textbox(f[4,1], width=100)
+    Makie.set!(tb4, "1234567890qwertyuiop")
+    tb4.cursorindex[] = 20
+    tb4.cursorindex[] = 10
+    Makie.focus!(tb4)
+    for _ in 1:8
+        f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    end
+    Makie.defocus!(tb4)
+
+    f
+end
+
+@reference_test "Button - Slider - Toggle - Textbox" begin
+    f = Figure(size = (500, 250))
+    Makie.Button(f[1, 1:2])
+    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20,
+        strokecolor = :red, strokewidth = 2, # TODO: allocate space for this
+        fontsize = 16, labelcolor = :blue)
+
+    IntervalSlider(f[1, 3])
+    sl = IntervalSlider(f[2, 3], range = 0:100, linewidth = 20,
+        color_inactive = :orange, color_active_dimmed = :lightgreen)
+    Makie.set_close_to!(sl, 30, 70)
+
+    Toggle(f[3, 1])
+    t = Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
+    t.orientation = 3pi/4
+    Toggle(f[3, 2], active = true, orientation = :horizontal)
+    Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue,
+        framecolor_active = :yellow, rimfraction = 0.6, orientation = :vertical)
+
+    Makie.Slider(f[3, 3])
+    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan,
+        color_active_dimmed = :lightgreen)
+    Makie.set_close_to!(sl, 30)
+
+    gl = GridLayout(f[5, 1:3])
+    Textbox(gl[1, 1])
+    Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0,
+        placeholder = "test string", fontsize = 16, textcolor_placeholder = :blue)
+    tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20,
+        fontsize =10, textcolor = :red, boxcolor = :lightblue)
+    Makie.set!(tb, "some string")
+    f
+end
+
+@reference_test "Toggle orientation" begin
+    f = Figure()
+    for x=1:3, y=1:3
+        x==y==2 && continue
+        Box(f[x, y], color = :tomato)
+        Toggle(f[x, y], orientation = atan(x-2,2-y))
+    end
     f
 end

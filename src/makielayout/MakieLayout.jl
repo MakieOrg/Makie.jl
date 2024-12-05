@@ -27,6 +27,7 @@ include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
 include("blocks/intervalslider.jl")
 include("blocks/button.jl")
+include("blocks/checkbox.jl")
 include("blocks/box.jl")
 include("blocks/toggle.jl")
 include("blocks/legend.jl")
@@ -41,6 +42,7 @@ export Slider
 export SliderGrid
 export IntervalSlider
 export Button
+export Checkbox
 export Colorbar
 export Label
 export Box

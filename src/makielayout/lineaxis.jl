@@ -318,6 +318,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end
@@ -670,7 +673,13 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmax = vmax / m.multiple
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
-    multiples .* m.multiple, showoff_minus(multiples) .* m.suffix
+    locs = multiples .* m.multiple
+    labs = showoff_minus(multiples) .* m.suffix
+    if m.strip_zero
+        labs = map( ((x, lab),) -> x != 0 ? lab : "0", zip(multiples, labs))
+    end
+
+    return locs, labs
 end
 
 function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)

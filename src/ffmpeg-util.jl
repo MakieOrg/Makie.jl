@@ -50,7 +50,7 @@ struct VideoStreamOptions
             pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
 
         if !isa(framerate, Integer)
-            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To supress this warning, provide an integer as the framerate."
+            @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
             framerate = round(Int, framerate)
         end
 
@@ -200,7 +200,7 @@ end
 
 function next_tick!(controller::TickController)
     controller.tick[] = Tick(
-        OneTimeRenderTick, 
+        OneTimeRenderTick,
         controller.frame_counter,
         controller.frame_counter * controller.frame_time,
         controller.frame_time
@@ -260,13 +260,20 @@ function VideoStream(fig::FigureLike;
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, scene, config, GLNative)
-    _xdim, _ydim = size(screen)
+    # Use colorbuffer to get the actual dimensions for the backend,
+    # since the backend might have a different size from the Monitor scaling.
+    # In case of WGLMakie, this isn't easy to find out otherwise,
+    # So for now we just use colorbuffer until we have a reliable pixel_size(screen) function.
+    first_frame = colorbuffer(screen)
+    _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
     vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
-    process = open(`$(FFMPEG_jll.ffmpeg()) $cmd $path`, "w")
+    # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
+    # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
+    process = open(pipeline(`$(FFMPEG_jll.ffmpeg()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
     result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
     finalizer(result) do x
@@ -286,8 +293,12 @@ function recordframe!(io::VideoStream)
     # Make no copy if already Matrix{RGB{N0f8}}
     # There may be a 1px padding for odd dimensions
     xdim, ydim = size(glnative)
-    copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
-    write(io.io, io.buffer)
+    if eltype(glnative) == eltype(io.buffer) && size(glnative) == size(io.buffer)
+        write(io.io, glnative)
+    else
+        copy!(view(io.buffer, 1:xdim, 1:ydim), glnative)
+        write(io.io, io.buffer)
+    end
     next_tick!(io.tick_controller)
     return
 end

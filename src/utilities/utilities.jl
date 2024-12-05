@@ -222,8 +222,8 @@ end
 """
     broadcast_foreach_index(f, arg, indices, args...)
 
-Like broadcast_foreach but with indexing. The first arg is assumed to already 
-have indices applied while the remaining ones use the given indices. 
+Like broadcast_foreach but with indexing. The first arg is assumed to already
+have indices applied while the remaining ones use the given indices.
 
 Effectively calls:
 ```
@@ -298,7 +298,7 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     d = defaults()
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
-        # TODO have a mark that says "theme uncomplete" and only then get the defaults
+        # TODO have a mark that says "theme incomplete" and only then get the defaults
         d = merge!(to_value(theme(scene, key)), d)
     end
     return merge!(input, d)
@@ -427,7 +427,7 @@ function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
-    # crate a `Matrix{Point3}`
+    # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh
@@ -576,7 +576,7 @@ Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
     valid_attributes = attribute_names(target)
-    existing_attributes = attribute_names(typeof(plot))
+    existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)
     return drop_attributes(plot, to_drop)
 end
