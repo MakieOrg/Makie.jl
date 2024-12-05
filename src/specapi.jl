@@ -90,17 +90,23 @@ struct GridLayoutSpec
     tellwidth::Bool
     halign::Float64
     valign::Float64
+    xaxislinks::Vector{BlockSpec}
+    yaxislinks::Vector{BlockSpec}
 
-    function GridLayoutSpec(content::AbstractVector{<:Pair};
-                            colsizes=nothing,
-                            rowsizes=nothing,
-                            colgaps=nothing,
-                            rowgaps=nothing,
-                            alignmode::AlignMode=GridLayoutBase.Inside(),
-                            tellheight::Bool=true,
-                            tellwidth::Bool=true,
-                            halign::Union{Symbol,Real}=:center,
-                            valign::Union{Symbol,Real}=:center,)
+    function GridLayoutSpec(
+            content::AbstractVector{<:Pair};
+            colsizes=nothing,
+            rowsizes=nothing,
+            colgaps=nothing,
+            rowgaps=nothing,
+            alignmode::AlignMode=GridLayoutBase.Inside(),
+            tellheight::Bool=true,
+            tellwidth::Bool=true,
+            halign::Union{Symbol,Real}=:center,
+            valign::Union{Symbol,Real}=:center,
+            xaxislinks=BlockSpec[],
+            yaxislinks=BlockSpec[],
+        )
         rowspan, colspan = foldl(content; init=(1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
             return rangeunion(rows, _rows), rangeunion(cols, _cols)
         end
@@ -123,18 +129,22 @@ struct GridLayoutSpec
         halign = GridLayoutBase.halign2shift(halign)
         valign = GridLayoutBase.valign2shift(valign)
 
-        return new(content,
-                   (nrows, ncols),
-                   (rowspan[1] - 1, colspan[1] - 1),
-                   colsizes,
-                   rowsizes,
-                   colgaps,
-                   rowgaps,
-                   alignmode,
-                   tellheight,
-                   tellwidth,
-                   halign,
-                   valign)
+        return new(
+            content,
+            (nrows, ncols),
+            (rowspan[1] - 1, colspan[1] - 1),
+            colsizes,
+            rowsizes,
+            colgaps,
+            rowgaps,
+            alignmode,
+            tellheight,
+            tellwidth,
+            halign,
+            valign,
+            xaxislinks,
+            yaxislinks,
+        )
     end
 end
 
@@ -259,13 +269,19 @@ end
 function distance_score(a::Any, b::Any, scores)
     a === b && return 0.0
     a == b && return 0.0
-    typeof(a) == typeof(b) && return 0.5
+    typeof(a) == typeof(b) && return 0.01
     return 100.0
 end
 
 _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
+
+function distance_score(a::T, b::T, scores_dict) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
+    a === b && return 0.0
+    a == b && return 0.0
+    return 0.1 # we can always update a vector of colors/reals/vecs
+end
 
 function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
     a === b && return 0.0
@@ -291,9 +307,10 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
         scores = Float64[
-            distance_score(a.kwargs, b.kwargs, scores_dict),
+            # keyword arguments are cheap to change
+            distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
+            # Creating plots in a new axis is expensive, so we rather move the axis around
             distance_score(a.plots, b.plots, scores_dict),
-            distance_score(a.then_funcs, b.then_funcs, scores_dict)
         ]
         return norm(scores)
     end
@@ -305,8 +322,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting) * 2,
-        distance_score(ap, bp, scores_dict) * 2,
+        abs(anesting - bnesting) * 0.5,
+        distance_score(ap, bp, scores_dict) * 0.5,
         distance_score(a, b, scores_dict)
     ]
     return norm(scores)
@@ -355,14 +372,7 @@ function find_layoutable(
 end
 
 function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
-    function penalty(key, score)
-        # penalize plots with different parents
-        # needs to be implemented via this penalty function, since parent scenes arent part of the spec
-        plot = plots[key]
-        move_to_penalty = ((!Makie.supports_move_to(plot)) * 100) + 1
-        return norm(Float64[plot.parent !== scene, score]) * move_to_penalty
-    end
-    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores, penalty)
+    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
     idx == -1 && return nothing, nothing
     return plots[idx], idx
 end
@@ -612,10 +622,6 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
             delete!(reusable_plots, old_spec)
-            if reused_plot.parent !== scene
-                @assert Makie.supports_move_to(reused_plot)
-                move_to!(reused_plot, scene)
-            end
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
@@ -775,7 +781,6 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
-    unhide!(block)
     if spec.type === :Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
@@ -810,25 +815,24 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots
-        scene = get_scene(block)
-        if any(needs_tight_limits, scene.plots)
-            tightlimits!(block)
+        score = distance_score(old_spec.plots, spec.plots, Dict())
+        if score >= 1.0
+            scene = get_scene(block)
+            if any(needs_tight_limits, scene.plots)
+                tightlimits!(block)
+            end
         end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
     end
     empty!(old_spec.then_observers)
-    if hasproperty(spec, :xaxislinks)
-        empty!(spec.xaxislinks)
-    end
-    if hasproperty(spec, :yaxislinks)
-        empty!(spec.yaxislinks)
-    end
+
     for func in spec.then_funcs
         observers = func(block)
         add_observer!(spec, observers)
     end
+    unhide!(block)
     return to_update, reset_to_defaults
 end
 
@@ -872,9 +876,44 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     return
 end
 
+function replace_links!(axis_links::Vector, new_links::Set)
+    Set(axis_links) == new_links && return false
+    empty!(axis_links)
+    append!(axis_links, new_links)
+    return true
+end
+
+function update_axis_links!(gridspec, all_layoutables)
+    # axes that should be linked
+    axes = Dict{BlockSpec, Axis}()
+    for ((_, _, ax_spec), (ax_object, _)) in all_layoutables
+        if ax_spec isa BlockSpec && ax_spec.type === :Axis
+            axes[ax_spec] = ax_object
+        end
+    end
+
+    xlinked = Set(map(x-> axes[x], gridspec.xaxislinks))
+    ylinked = Set(map(x-> axes[x], gridspec.yaxislinks))
+
+    for (spec, ax) in axes
+        if spec in gridspec.xaxislinks
+            replace_links!(ax.xaxislinks, filter(x -> x !== ax, xlinked))
+        else
+            empty!(ax.xaxislinks)
+        end
+        if spec in gridspec.yaxislinks
+            replace_links!(ax.yaxislinks, filter(x -> x !== ax, ylinked))
+        else
+            empty!(ax.yaxislinks)
+        end
+    end
+end
+
+get_type(x::BlockSpec) = x.type
+get_type(::GridLayoutSpec) = :GridLayout
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
-                            gridspec::GridLayoutSpec, previous_contents, new_layoutables, global_unused_plots, new_plots)
+                            gridspec::GridLayoutSpec, previous_contents, new_layoutables)
 
     update_layoutable!(gridlayout, nothing, oldgridspec, gridspec)
     scores = IdDict{Any, Float64}()
@@ -883,14 +922,14 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @debug("Creating new content for spec")
+            @debug("Creating new block for spec: $(get_type(spec))")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
             if new_layoutable isa AbstractAxis
                 obs = Observable(spec.plots)
                 scene = get_scene(new_layoutable)
-                update_plotspecs!(scene, obs, nothing, global_unused_plots, new_plots, false)
+                update_plotspecs!(scene, obs)
                 if any(needs_tight_limits, scene.plots)
                     tightlimits!(new_layoutable)
                 end
@@ -898,7 +937,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             elseif new_layoutable isa GridLayout
                 # Make sure all plots & blocks are inserted
                 update_gridlayout!(new_layoutable, nesting + 1, spec, spec, previous_contents,
-                                   new_layoutables, global_unused_plots, new_plots)
+                                   new_layoutables)
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
@@ -910,15 +949,17 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout
                 update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents,
-                                   new_layoutables, global_unused_plots, new_plots)
+                                   new_layoutables)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
-                update_state_before_display!(layoutable)
+                # update_state_before_display!(layoutable)
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
         end
     end
+    update_axis_links!(gridspec, new_layoutables)
+    return
 end
 
 get_layout!(fig::Figure) = fig.layout
@@ -935,14 +976,14 @@ function delete_layoutable!(grid::GridLayout)
 end
 
 function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
-                            new_layoutables, unused_plots, new_plots)
+                            new_layoutables)
     # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
     # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
     update_gridlayout!(
         target_layout, 1, nothing, layout_spec, unused_layoutables,
-        new_layoutables, unused_plots, new_plots
+        new_layoutables
     )
 
     foreach(unused_layoutables) do (p, (block, obs))
@@ -966,14 +1007,6 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
         GridLayoutBase.update!(l)
     end
 
-    for (_, plot) in unused_plots
-        delete!(plot.parent, plot)
-    end
-    # Transfer all new plots into unused_plots for the next update!
-    @assert isempty(unused_plots) || !any(x -> x in unused_plots, new_plots)
-    empty!(unused_plots)
-    merge!(unused_plots, new_plots)
-    empty!(new_plots)
     # finally, notify all changes at once
 
     # foreach(unused_layoutables) do (p, (block, obs))
@@ -997,12 +1030,9 @@ function update_fig!(fig::Union{Figure,GridPosition,GridSubposition}, layout_obs
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
     layout = get_layout!(fig)
-    unused_plots = IdDict{PlotSpec,Plot}()
-    new_plots = IdDict{PlotSpec,Plot}()
     on(get_topscene(fig), layout_obs; update=true) do layout_spec
         lock(l) do
-            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables,
-                               unused_plots, new_plots)
+            update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end

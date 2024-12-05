@@ -22,6 +22,7 @@
 - Fix bounds error when recording video with WGLMakie [#4639](https://github.com/MakieOrg/Makie.jl/pull/4639).
 - Add `axis.(x/y)ticklabelspace = :max_auto`, to only grow tickspace but never shrink to reduce jitter [#4642](https://github.com/MakieOrg/Makie.jl/pull/4642).
 - The error shown for invalid attributes will now also show suggestions for nearby attributes (if there are any) [#4394](https://github.com/MakieOrg/Makie.jl/pull/4394).
+- Add (x/y)axislinks to S.GridLayout and make sure limits don't reset when linking axes [#4643](https://github.com/MakieOrg/Makie.jl/pull/4643).
 
 ## [0.21.16] - 2024-11-06
 
