@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## [0.21.17] - 2024-12-03
+## [0.21.17] - 2024-12-05
 
 - Disabled unit prefix conversions for compound units (e.g. `u"m/s"`) to avoid generating incorrect units. [#4583](https://github.com/MakieOrg/Makie.jl/pull/4583)
 - Added kwarg to rotate Toggle [#4445](https://github.com/MakieOrg/Makie.jl/pull/4445)
