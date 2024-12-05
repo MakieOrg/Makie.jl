@@ -621,7 +621,7 @@ function expand_mixin(e::Expr)
 end
 
 """
-    Plot(args::Vararg{<:DataType,N})
+    Plot(args::Vararg{DataType,N})
 
 Returns the Plot type that represents the signature of `args`.
 Example:
@@ -670,8 +670,12 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 deprecated_attributes(_) = ()
 
 struct InvalidAttributeError <: Exception
-    plottype::Type
+    type::Type
+    object_name::String # Generic name like plot, block
     attributes::Set{Symbol}
+end
+function InvalidAttributeError(::Type{PT}, attributes::Set{Symbol}) where {PT <: Plot}
+    return InvalidAttributeError(PT, "plot", attributes)
 end
 
 function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true, cols = displaysize(io)[2])
@@ -723,10 +727,10 @@ function _levenshtein_matrix(s1, s2)
     a, b = collect(s1), collect(s2)
     m, n = length(a), length(b)
     d = Matrix{Int}(undef, m + 1, n + 1)
-    d[1:m+1, 1] = 0:m 
-    d[1, 1:n+1] = 0:n 
-    for i in 1:m 
-        for j in 1:n 
+    d[1:m+1, 1] = 0:m
+    d[1, 1:n+1] = 0:n
+    for i in 1:m
+        for j in 1:n
             d[i+1, j+1] = min(d[i, j+1] + 1, d[i+1, j] + 1, d[i, j] + (a[i] != b[j]))
         end
     end
@@ -741,9 +745,9 @@ function _fuzzyscore(needle, haystack)
     # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L631
     score = 0.0
     is, acro = _bestmatch(needle, haystack)
-    score += (acro ? 2 : 1) * length(is)                # Matched characters 
-    score -= 2(length(needle) - length(is))             # Missing characters 
-    !acro && (score -= _avgdistance(is)/10)             # Contiguous 
+    score += (acro ? 2 : 1) * length(is)                # Matched characters
+    score -= 2(length(needle) - length(is))             # Missing characters
+    !acro && (score -= _avgdistance(is)/10)             # Contiguous
     !isempty(is) && (score -= sum(is)/length(is)/100)   # Closer to beginning
 end
 function _matchinds(needle, haystack; acronym::Bool = false)
@@ -781,7 +785,7 @@ function _avgdistance(xs)
 end
 function _levsort(search::String, candidates::Vector{String})
     # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L666
-    scores = map(candidates) do cand 
+    scores = map(candidates) do cand
         lev = Float64(_levenshtein(search, cand))
         fuz = -_fuzzyscore(search, cand)
         return (lev, -fuz)
@@ -791,7 +795,7 @@ function _levsort(search::String, candidates::Vector{String})
     return candidates[1], valid # Only return one suggestion per search
 end
 function find_nearby_attributes(attributes, candidates)
-    d = Vector{Tuple{String, Bool}}(undef, length(attributes)) 
+    d = Vector{Tuple{String, Bool}}(undef, length(attributes))
     any_close = false
     for (i, attr) in enumerate(attributes)
         candidate, valid = _levsort(String(attr), candidates)
@@ -809,7 +813,7 @@ function textdiff(X::String, Y::String)
     # Backtrack to print the differences with style
     i, j = m, n
     results = Vector{Tuple{Char, Symbol}}()
-    
+
     while i > 0 || j > 0
         if i > 0 && j > 0 && a[i] == b[j]
             # Characters match, print normally
@@ -830,49 +834,49 @@ function textdiff(X::String, Y::String)
             i -= 1  # Just move the index for X. Not showing the deletion here.
         end
     end
-     
+
     reverse!(results)
     io = IOBuffer()
     cio = IOContext(io, :color => true)
-    
+
     for (char, clr) in results
-        if clr == :normal 
+        if clr == :normal
             print(io, char)
         else
             printstyled(cio, char; color = :blue, bold = true) # Ignoring different color choices here
         end
     end
-    
+
     return String(take!(io))
 end
 
-function Base.showerror(io::IO, i::InvalidAttributeError)
-    n = length(i.attributes)
+function Base.showerror(io::IO, err::InvalidAttributeError)
+    n = length(err.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
-    for (j, att) in enumerate(i.attributes)
-        j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
+    for (j, att) in enumerate(err.attributes)
+        j > 1 && print(io, j == length(err.attributes) ? " and " : ", ")
         printstyled(io, att; color = :red, bold = true)
     end
-    print(io, " for plot type ")
-    printstyled(io, i.plottype; color = :blue, bold = true)
+    print(io, " for $(err.object_name) type ")
+    printstyled(io, err.type; color=:blue, bold=true)
     println(io, ".")
-    nameset = sort(string.(collect(attribute_names(i.plottype))))
-    attrs = string.(collect(i.attributes))
+    nameset = sort(string.(collect(attribute_names(err.type))))
+    attrs = string.(collect(err.attributes))
     possible_cands, any_close = find_nearby_attributes(attrs, nameset)
     any_close && println(io)
-    if any_close && length(possible_cands) == 1 
+    if any_close && length(possible_cands) == 1
         print(io, "Did you mean ", textdiff(attrs[1], possible_cands[1][1]), "?")
         println(io)
     elseif any_close
         print(io, "Did you mean:")
         for (id, (passed, (suggestion, close))) in enumerate(zip(attrs, possible_cands))
-            close || continue 
+            close || continue
             any_next = any(x -> x[2], view(possible_cands, id+1:length(possible_cands)))
-            if (id == length(i.attributes)) || (id < length(i.attributes) && !any_next)
+            if (id == length(err.attributes)) || (id < length(err.attributes) && !any_next)
                 print(io, " and")
             end
             print(io, " ", textdiff(passed, suggestion))
-            if id < length(i.attributes) && any_next
+            if id < length(err.attributes) && any_next
                 print(io, ",")
             end
         end
@@ -880,15 +884,17 @@ function Base.showerror(io::IO, i::InvalidAttributeError)
         println(io)
     end
     println(io)
-    println(io, "The available plot attributes for $(i.plottype) are:")
+    println(io, "The available $(err.object_name) attributes for $(err.type) are:")
     println(io)
     print_columns(io, nameset; cols = displaysize(stderr)[2], rows_first = true)
-    allowlist = attribute_name_allowlist()
-    println(io)
-    println(io)
-    println(io, "Generic attributes are:")
-    println(io)
-    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    if err.type isa Plot
+        allowlist = attribute_name_allowlist()
+        println(io)
+        println(io)
+        println(io, "Generic attributes are:")
+        println(io)
+        print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    end
     println(io)
 end
 

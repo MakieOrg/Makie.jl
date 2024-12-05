@@ -1,4 +1,5 @@
-precision mediump float;
+precision highp float;
+precision highp int;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -76,7 +77,7 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     }
 }
 
-// TODO: enable 
+// TODO: enable
 // vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
 vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
 // TODO: per element
