@@ -133,18 +133,11 @@ end
     f
 end
 
-@reference_test "Log scale with manual ticks" begin
+@reference_test "Log scale with manual ticks and on-standard log" begin
     xs = range(10, 100; length=100)
-    f, ax, _ = lines(xs, xs)
-    ax.xticks = [10, 100]
-    ax.xscale = log10
-    f
-end
-
-@reference_test "Non-standard log tick formatting" begin
+    f, ax, _ = lines(xs, xs; axis=(; title="Log scale with manual ticks", xticks=[10, 100], xscale=log10))
     xs = range(-10, 10; length=100)
-    f, ax, _ = lines(xs, xs)
-    ax.xscale = Makie.pseudolog10
+    lines(f[1, 2], xs, xs; axis=(; title="Non-standard log tick formatting"), xscale = Makie.pseudolog10)
     f
 end
 
