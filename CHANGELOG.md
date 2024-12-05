@@ -75,6 +75,7 @@
 - Fix NaN handling in WGLMakie [#4282](https://github.com/MakieOrg/Makie.jl/pull/4282).
 - Show DataInspector tooltip on NaN values if `nan_color` has been set to other than `:transparent` [#4310](https://github.com/MakieOrg/Makie.jl/pull/4310)
 - Fix `linestyle` not being used in `triplot` [#4332](https://github.com/MakieOrg/Makie.jl/pull/4332)
+- Invalid keyword arguments for `Block`s (e.g. `Axis` and `Colorbar`) now throw errors and show suggestions rather than simply throwing [#4392](https://github.com/MakieOrg/Makie.jl/pull/4392)
 - Fix voxel clipping not being based on voxel centers [#4397](https://github.com/MakieOrg/Makie.jl/pull/4397)
 - Parsing `Q` and `q` commands in svg paths with `BezierPath` is now supported [#4413](https://github.com/MakieOrg/Makie.jl/pull/4413)
 
