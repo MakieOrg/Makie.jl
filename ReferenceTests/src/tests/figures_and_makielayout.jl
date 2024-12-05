@@ -133,12 +133,35 @@ end
     f
 end
 
-@reference_test "Log scale with manual ticks and on-standard log" begin
-    xs = range(10, 100; length=100)
-    f, ax, _ = lines(xs, xs; axis=(; title="Log scale with manual ticks", xticks=[10, 100], xscale=log10))
-    xs = range(-10, 10; length=100)
-    lines(f[1, 2], xs, xs; axis=(; title="Non-standard log tick formatting", xscale=Makie.pseudolog10))
-    f
+@reference_test "Axis scales" begin
+    xs0 = range(0.1, 0.9; length=100)
+    xs1 = range(10, 100; length=100)
+    xs2 = range(-10, 10; length=100)
+
+    f = Figure(size = (450, 700))
+    a1, _ = lines(f[1, 1], xs1, xs1; axis=(; title="log10, manual ticks", xscale=log10))
+    a2, _ = lines(f[2, 1], xs1, xs1; axis=(; title="log2", xscale=Makie.log2))
+    a3, _ = lines(f[3, 1], xs1, xs1; axis=(; title="log", xscale=Makie.log))
+    a4, _ = lines(f[4, 1], xs1, xs1; axis=(; title="ReversibleScale(x³, ∛x)", xscale=Makie.ReversibleScale(x -> x^3, x -> cbrt(x))))
+
+    a5, _ = lines(f[1, 2], xs2, xs2; axis=(; title="pseudolog10", xscale=Makie.pseudolog10))
+    a6, _ = lines(f[2, 2], xs1, xs1; axis=(; title="sqrt", xscale=sqrt))
+    a7, _ = lines(f[3, 2], xs0, xs0; axis=(; title="logit", xscale=Makie.logit))
+    a8, _ = lines(f[4, 2], xs2, xs2; axis=(; title="Symlog(1)", xscale=Makie.Symlog10(1)))
+
+    st = Stepper(f)
+    Makie.step!(st) # generated ticks
+
+    a1.xticks[] = [10, 100]
+    a2.xticks[] = 2 .^ [4, 6]
+    a3.xticks[] = exp.([3, 4])
+    a4.xticks[] = [0, 60, 80, 90, 100]
+    a5.xticks[] = [-10, 0, 10]
+    a6.xticks[] = [10, 25, 50, 75, 100]
+    a7.xticks[] = 0.2:0.2:0.8
+    a8.xticks[] = [-10, -3, 0, 3, 10]
+    Makie.step!(st) # user ticks
+    st
 end
 
 @reference_test "Legend draw order" begin
