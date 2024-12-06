@@ -49,8 +49,13 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
+            const wrapper = $wrapper
+            const canvas = $canvas
+            if (wrapper == null || canvas == null) {
+                return
+            }
             const renderer = WGL.create_scene(
-                $wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
                 $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
             )
             const gl = renderer.getContext()
