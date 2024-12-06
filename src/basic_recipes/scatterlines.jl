@@ -87,7 +87,11 @@ MakieCore.argument_names(::Type{ScatterLines}, N::Integer) = (:positions,)
 
 # Also needs to avoid normal path
 function plot!(parent::Plot, plot::ComputePlots)
-    add_theme!(plot, parent_scene(parent))
+    scene = parent_scene(parent)
+    add_theme!(plot, scene)
+    if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
+        on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
+    end
     plot.parent = parent
     push!(parent.plots, plot)
     return

@@ -129,7 +129,11 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
                           [MakieCore.argument_names(P, 10)...]) do args, changed, last
         return convert_arguments(P, args[1][]...)
     end
+
     add_input!(attr, :transform_func, identity)
+    add_input!(attr, :model, Mat4d(I))
+    # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
+    add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
 
     # TODO:
     # - :positions may not be compatible with all primitive plot types
@@ -141,11 +145,36 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
                             [:positions_transformed]) do (positions, func, space), changed, last
             return (apply_transform(func[], positions[], space[]),)
         end
-        add_input!(attr, :f32c, nothing)
 
-        register_computation!(attr, [:positions_transformed, :f32c],
-                            [:positions_transformed_f32c]) do (positions, f32c), changed, last
-            return (inv_f32_convert(f32c[], positions[]),)
+        # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
+        register_computation!(attr,
+            [:positions_transformed, :model, :f32c],
+            [:positions_transformed_f32c, :model_f32c]
+        ) do (positions, model, f32c), changed, last
+
+            # This is simplified, skipping what's commented out
+
+            # trans, scale = decompose_translation_scale_matrix(model)
+            # is_rot_free = is_translation_scale_matrix(model)
+            if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+                return (positions[], Mat4f(model[]))
+            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+                # edge case: positions not float safe, model not float safe but result in float safe range
+                # (this means positions -> world not float safe, but appears float safe)
+            # elseif is_float_safe(scale, trans) && is_rot_free
+                # fast path: can swap order of f32c and model, i.e. apply model on GPU
+            # elseif is_rot_free
+                # fast path: can merge model into f32c and skip applying model matrix on CPU
+            else
+                # TODO: avoid reallocating?
+                output = Vector{Point3f}(undef, length(positions[]))
+                @inbounds for i in eachindex(output)
+                    p4d = to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0), 1)
+                    p4d = model[] * p4d
+                    output[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)])
+                end
+                return (output, Mat4f(I))
+            end
         end
 
     end
@@ -245,6 +274,9 @@ end
 function plot!(scene::Scene, plot::ComputePlots)
     add_theme!(plot, scene)
     plot.parent = scene
+    if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
+        on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
+    end
     push!(scene.plots, plot)
     return
 end
@@ -275,7 +307,6 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :model, Mat4f(I))
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
@@ -291,7 +322,6 @@ function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{lines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :model, Mat4f(I))
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
@@ -312,7 +342,6 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :model, Mat4f(I))
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p

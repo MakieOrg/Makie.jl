@@ -70,6 +70,7 @@ function f32_convert_matrix(ls::LinearScaling, space::Symbol)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
+is_identity_transform(f32c::Float32Convert) = is_identity_transform(f32c.scaling[])
 is_identity_transform(ls::LinearScaling) = (ls.scale == Vec3d(1)) && (ls.offset == Vec3d(0))
 is_identity_transform(ls::Nothing) = true # Float32Convert with scaling == nothing is neutral/identity
 
