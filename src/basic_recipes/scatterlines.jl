@@ -104,11 +104,6 @@ function plot!(parent::Scene, plot::ScatterLines)
     return
 end
 
-function data_limits(plot::ScatterLines)
-    return plot.args[1][:data_limits][]
-end
-
-
 function ScatterLines(args::Tuple, user_kw::Dict{Symbol,Any})
     if !isempty(args) && first(args) isa Attributes
         attr = attributes(first(args))
@@ -125,13 +120,9 @@ function ScatterLines(args::Tuple, user_kw::Dict{Symbol,Any})
     register_arguments!(ScatterLines, attr, user_kw, args...)
 
     # TODO: How do we do this generically?
-    register_computation!(attr, [:positions], [:data_limits]) do args, changed, last
-        return (Rect3d(args[1][]),)
-    end
     T = typeof(attr[:positions][])
     p = Plot{scatterlines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
 
-    add_input!(attr, :model, Mat4f(I))
     add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
