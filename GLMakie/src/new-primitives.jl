@@ -1,41 +1,28 @@
 using Makie.ComputePipeline
 
 function assemble_scatter_robj(
-    atlas,
-    marker,
-    space,
-    markerspace,
-    scene,
-    screen,
-    positions,
-    colormap,
-    color,
-    colornorm,
-    marker_shape,
-    uv_offset_width,
-    quad_scale,
-    quad_offset,
-    transparency,
-)
+        atlas, marker,
+        space, markerspace, # TODO: feels incomplete to me... Do matrices react correctly? What about markerspace with FastPixel?
+        scene, screen,
+        positions, # TODO: can probably be avoided by rewriting draw_scatter()
+        colormap, color, colornorm,
+        marker_shape
+    )
+
     camera = scene[].camera
     fast_pixel = marker isa FastPixel
     pspace = fast_pixel ? space : markerspace
     distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(atlas) : nothing
     data = Dict(
         :vertex => positions[],
-        :scale => quad_scale[],
-        :quad_offset => quad_offset[],
-        :uv_offset_width => uv_offset_width[],
-        :marker_shape => marker_shape[],
-        :transparency => transparency[],
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
-        :model => Mat4f(I),
-        :markerspace => Cint(0),
+        :markerspace => Cint(0), # TODO: should be dynamic
         :distancefield => distancefield,
-        :px_per_unit => screen[].px_per_unit,
+        :px_per_unit => screen[].px_per_unit,   # technically not const?
         :upvector => Vec3f(0),
-        :ssao => false,
+        :ssao => false,                         # shader compilation const
     )
+
     add_color_attributes!(data, color[], colormap[], colornorm[])
     add_camera_attributes!(data, screen[], camera, pspace)
     return draw_scatter(screen[], (marker_shape[], positions[]), data)
@@ -61,56 +48,87 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
     atlas = gl_texture_atlas()
-    add_input!(attr, :gl_screen, screen)
+    add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     register_computation!(
         attr, [:uv_offset_width, :marker, :font], [:sdf_marker_shape, :sdf_uv]
     ) do (uv_off, m, f), changed, last
         new_mf = changed[2] || changed[3]
         uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
-        marker = changed[1] ? Makie.marker_to_sdf_shape(m[]) : nothing
+        # TODO: maybe we should just add a glconvert(x::Enum) = Cint(x)?
+        marker = changed[1] ? Cint(Makie.marker_to_sdf_shape(m[])) : nothing
         return (marker, uv)
     end
 
+    # TODO:
+    # - depthsorting
+    # - colorrange, lowclip, highclip cannot be changed from autoamtic
+    # - rotation -> billboard missing
+    # - px_per_unit (that can update dynamically via record, right?)
+    # - fxaa
+    # - intensity_convert
+
     inputs = [
-        :scene,
-        :gl_screen,
+        # Special
+        :scene, :gl_screen,
+        # Needs explicit handling
         :positions_transformed_f32c,
-        :colormap,
-        :color,
-        :_colorrange,
+        :colormap, :color, :_colorrange,
         :sdf_marker_shape,
+        # Simple forwards
         :sdf_uv,
-        :quad_scale,
-        :quad_offset,
+        :quad_scale, :quad_offset,
         :transparency,
+        :strokecolor, :strokewidth,
+        :glowcolor, :glowwidth,
+        :model_f32c, :rotation,
+        :transform_marker,
+        :_lowclip, :_highclip, :nan_color,
     ]
-    gl_names = [
-        :position,
-        :color_map,
-        :color,
-        :color_norm,
-        :shape,
-        :uv_offset_width,
-        :scale,
-        :quad_offset,
-        :transparency,
-    ]
+
+    # To take the human error out of the bookkeeping of two lists
+    # Could also consider using this in computation since Dict lookups are
+    # O(1) and only takes ~4ns
+    input2glname = Dict{Symbol, Symbol}(
+        :positions_transformed_f32c => :position,
+        :colormap => :color_map, :_colorrange => :color_norm,
+        :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
+        :quad_scale => :scale,
+        :strokecolor => :stroke_color, :strokewidth => :stroke_width,
+        :glowcolor => :glow_color, :glowwidth => :glow_width,
+        :model_f32c => :model, :transform_marker => :scale_primitive,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+    )
+    gl_names = Symbol[]
+
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, last
         screen = args[2][]
         !isopen(screen) && return :deregister
-        robj = if isnothing(last)
+        if isnothing(last)
+
+            # Generate complex defaults
             robj = assemble_scatter_robj(atlas, attr.outputs[:marker][],
-                attr.outputs[:space][], attr.outputs[:markerspace][], args...)
+                attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...)
+
+            # Generate name mapping
+            haskey(robj.vertexarray.buffers, "intensity") && (input2glname[:color] = :intensity)
+            gl_names = get.(Ref(input2glname), inputs, inputs)
+
+            # Simple defaults
+            foreach(8:length(args)) do idx
+                robj.uniforms[gl_names[idx]] = args[idx][]
+            end
+
         else
+
             robj = last[1][]
             if changed[3] # position
                 haskey(robj.uniforms, :len) && (robj.uniforms[:len][] = length(args[3][]))
                 robj.vertexarray.bufferlength = length(args[3][])
                 robj.vertexarray.indices[] = length(args[3][])
             end
-            update_robjs!(robj, args[3:end], changed[3:end], gl_names)
-            robj
+            update_robjs!(robj, args[3:end], changed[3:end], gl_names[3:end])
+
         end
         screen.requires_update = true
         return (robj,)
