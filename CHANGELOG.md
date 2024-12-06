@@ -4,6 +4,7 @@
 
 ## [0.21.17] - 2024-12-05
 
+- Added `backend` and `update` kwargs to `show` [#4558](https://github.com/MakieOrg/Makie.jl/pull/4558)
 - Disabled unit prefix conversions for compound units (e.g. `u"m/s"`) to avoid generating incorrect units. [#4583](https://github.com/MakieOrg/Makie.jl/pull/4583)
 - Added kwarg to rotate Toggle [#4445](https://github.com/MakieOrg/Makie.jl/pull/4445)
 - Fixed orientation of environment light textures in RPRMakie [#4629](https://github.com/MakieOrg/Makie.jl/pull/4629).
