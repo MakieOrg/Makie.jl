@@ -128,12 +128,12 @@ end
 ########################################################################################
 # OpenGL Arrays
 
-const GLArrayEltypes = Union{StaticVector,Real,Colorant}
+const GLArrayEltypes = Union{StaticVector, Quaternion, Real, Colorant}
 """
 Transform julia datatypes to opengl enum type
 """
 julia2glenum(x::Type{T}) where {T <: FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
-julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
+julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector, Quaternion, Colorant}} = julia2glenum(eltype(x))
 julia2glenum(::Type{OffsetInteger{O,T}}) where {O,T} = julia2glenum(T)
 julia2glenum(::Type{GLubyte})  = GL_UNSIGNED_BYTE
 julia2glenum(::Type{GLbyte})   = GL_BYTE
@@ -280,13 +280,17 @@ function bind(va::GLVertexArray)
 end
 
 
-function Base.show(io::IO, vao::GLVertexArray)
-    show(io, vao.program)
+Base.show(io::IO, vao::GLVertexArray) = print(io, "GLVertexArray $(vao.id)")
+function Base.show(io::IO, ::MIME"text/plain", vao::GLVertexArray)
+    # show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
-    print(io, "GLVertexArray $(vao.id) buffers: ")
-    writemime(io, MIME("text/plain"), vao.buffers)
-    println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
+    print(io, "buffers: ")
+    show(io, MIME("text/plain"), vao.buffers)
+    _print_indices(io, vao.indices)
 end
+_print_indices(io::IO, n::Integer) = print(io, "\nindices: ", Int64(n))
+_print_indices(io::IO, is::AbstractVector{<: Integer}) = print(io, "\nindices: ", Int64.(is))
+_print_indices(io::IO, fs) = print(io, "\nfaces: ", fs)
 
 ##################################################################################
 
