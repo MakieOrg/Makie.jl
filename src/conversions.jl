@@ -36,7 +36,7 @@ end
 # if no specific conversion is defined, we don't convert
 convert_single_argument(@nospecialize(x)) = x
 
-# replace missings with NaNs
+# replace `missing`s with `NaN`s
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
     return float_convert(a)
 end
@@ -195,7 +195,7 @@ end
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
     points = unique(decompose(PT, rect))
-    push!(points, PT(NaN)) # use to seperate linesegments
+    push!(points, PT(NaN)) # use to separate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -213,7 +213,7 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{<:AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}}) where {N, T}
+function convert_arguments(PB::PointBased, linestring::Union{AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}, AbstractVector{<:MultiLineString{N,T}}}) where {N, T}
     T_out = float_type(T)
     arr = Point{N, T_out}[]; n = length(linestring)
     for idx in 1:n
@@ -261,7 +261,7 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, Mul
         converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
         append!(arr, converted)
         if idx != n # don't add NaN at the end
-            push!(arr, Point2(NaN))
+            push!(arr, Point{N, float_type(T)}(NaN))
         end
     end
     return (arr,)
@@ -406,7 +406,7 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     Ty = typeof(ye[1])
     # heatmaps are centered on the edges, so we need to adjust the range
     # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
-    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), whcih only substracts the step
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), which only subtracts the step
     # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
     # If we return a different type with no conversion overload, it stops that recursion
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
@@ -920,6 +920,8 @@ end
 to_color(c::Nothing) = c # for when color is not used
 to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::VecTypes{3}) = RGBAf(c[1], c[2], c[3], 1)
+to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
@@ -1136,7 +1138,7 @@ function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     else
         error(
             """
-            Unkown line style: $ls. Available linestyles are:
+            Unknown line style: $ls. Available linestyles are:
             :solid, :dash, :dot, :dashdot, :dashdotdot
             or a sequence of numbers enumerating the next transparent/opaque region.
             This sequence of numbers must be cumulative; 1 unit corresponds to 1 line width.
@@ -1463,7 +1465,7 @@ function available_gradients()
 end
 
 
-to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
     categorical_colors(colormaplike, categories::Integer)
@@ -1980,3 +1982,8 @@ assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32conv
 # BUFFER OVERLOAD
 
 GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
+
+# Used in Label, maybe useful elsewhere?
+to_lrbt_padding(x::Real) = Vec4f(x)
+to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
+to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)

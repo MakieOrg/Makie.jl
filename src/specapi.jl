@@ -90,17 +90,23 @@ struct GridLayoutSpec
     tellwidth::Bool
     halign::Float64
     valign::Float64
+    xaxislinks::Vector{BlockSpec}
+    yaxislinks::Vector{BlockSpec}
 
-    function GridLayoutSpec(content::AbstractVector{<:Pair};
-                            colsizes=nothing,
-                            rowsizes=nothing,
-                            colgaps=nothing,
-                            rowgaps=nothing,
-                            alignmode::AlignMode=GridLayoutBase.Inside(),
-                            tellheight::Bool=true,
-                            tellwidth::Bool=true,
-                            halign::Union{Symbol,Real}=:center,
-                            valign::Union{Symbol,Real}=:center,)
+    function GridLayoutSpec(
+            content::AbstractVector{<:Pair};
+            colsizes=nothing,
+            rowsizes=nothing,
+            colgaps=nothing,
+            rowgaps=nothing,
+            alignmode::AlignMode=GridLayoutBase.Inside(),
+            tellheight::Bool=true,
+            tellwidth::Bool=true,
+            halign::Union{Symbol,Real}=:center,
+            valign::Union{Symbol,Real}=:center,
+            xaxislinks=BlockSpec[],
+            yaxislinks=BlockSpec[],
+        )
         rowspan, colspan = foldl(content; init=(1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
             return rangeunion(rows, _rows), rangeunion(cols, _cols)
         end
@@ -123,18 +129,22 @@ struct GridLayoutSpec
         halign = GridLayoutBase.halign2shift(halign)
         valign = GridLayoutBase.valign2shift(valign)
 
-        return new(content,
-                   (nrows, ncols),
-                   (rowspan[1] - 1, colspan[1] - 1),
-                   colsizes,
-                   rowsizes,
-                   colgaps,
-                   rowgaps,
-                   alignmode,
-                   tellheight,
-                   tellwidth,
-                   halign,
-                   valign)
+        return new(
+            content,
+            (nrows, ncols),
+            (rowspan[1] - 1, colspan[1] - 1),
+            colsizes,
+            rowsizes,
+            colgaps,
+            rowgaps,
+            alignmode,
+            tellheight,
+            tellwidth,
+            halign,
+            valign,
+            xaxislinks,
+            yaxislinks,
+        )
     end
 end
 
@@ -190,6 +200,7 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
+
 function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw...)
     attr = Dict{Symbol,Any}(kw)
     if typ == :Legend
@@ -201,8 +212,16 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec}=PlotSpec[], kw.
         attr[:entrygroups] = entrygroups
         return BlockSpec(typ, attr, plots)
     else
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                attr[:plotspec] = args[1]
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
+            end
+        end
         if !isempty(args)
-            error("BlockSpecs, with an exception for Legend, don't support positional arguments yet.")
+            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
         end
         return BlockSpec(typ, attr, plots)
     end
@@ -250,13 +269,19 @@ end
 function distance_score(a::Any, b::Any, scores)
     a === b && return 0.0
     a == b && return 0.0
-    typeof(a) == typeof(b) && return 0.5
+    typeof(a) == typeof(b) && return 0.01
     return 100.0
 end
 
 _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
+
+function distance_score(a::T, b::T, scores_dict) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
+    a === b && return 0.0
+    a == b && return 0.0
+    return 0.1 # we can always update a vector of colors/reals/vecs
+end
 
 function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
     a === b && return 0.0
@@ -279,12 +304,13 @@ end
 
 function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
     a === b && return 0.0
-    (a.type !== b.type) && return 100.0 # Cant update when types dont match
+    (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
         scores = Float64[
-            distance_score(a.kwargs, b.kwargs, scores_dict),
+            # keyword arguments are cheap to change
+            distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
+            # Creating plots in a new axis is expensive, so we rather move the axis around
             distance_score(a.plots, b.plots, scores_dict),
-            distance_score(a.then_funcs, b.then_funcs, scores_dict)
         ]
         return norm(scores)
     end
@@ -296,8 +322,8 @@ function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     scores = Float64[
-        abs(anesting - bnesting) * 2,
-        distance_score(ap, bp, scores_dict) * 2,
+        abs(anesting - bnesting) * 0.5,
+        distance_score(ap, bp, scores_dict) * 0.5,
         distance_score(a, b, scores_dict)
     ]
     return norm(scores)
@@ -317,12 +343,13 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
     end
 end
 
-function find_min_distance(f, to_compare, list, scores)
+function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> score)
     isempty(list) && return -1
     minscore = 2.0
     idx = -1
     for key in keys(list)
         score = distance_score(to_compare, f(list[key], key), scores)
+        score = penalty(key, score) # apply custom penalty
         if score ≈ 0.0 # shortcuircit for exact matches
             return key
         end
@@ -344,7 +371,7 @@ function find_layoutable(
     return (idx, layoutables[idx]...)
 end
 
-function find_reusable_plot(plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
+function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
     idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
     idx == -1 && return nothing, nothing
     return plots[idx], idx
@@ -395,7 +422,6 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-
 function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
     for i in eachindex(spec.args)
@@ -423,8 +449,24 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             push!(obs_to_notify, old_attr)
         end
     end
+
+    reset_to_default = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
+    filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
+    if !isempty(reset_to_default)
+        for k in reset_to_default
+            old_attr = plot[k]
+            new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
+            # In case of e.g. dim_conversions
+            isnothing(new_value) && continue
+            # only update if different
+            if is_different(old_attr[], new_value)
+                old_attr.val = new_value
+                push!(obs_to_notify, old_attr)
+            end
+        end
+    end
     # Cycling needs to be handled separately sadly,
-    # since they're implicitely mutating attributes, e.g. if I re-use a plot
+    # since they're implicitly mutating attributes, e.g. if I re-use a plot
     # that has been on cycling position 2, and now I re-use it for the first plot in the list
     # it will need to change to the color of cycling position 1
     if haskey(plot, :cycle)
@@ -437,7 +479,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 end
             end
         end
-
         if !isempty(uncycled)
             # remove all attributes that don't need cycling
             for (attr_vec, _) in cycle.cycle
@@ -449,6 +490,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
     end
     return
 end
+
 
 """
     plotlist!(
@@ -540,18 +582,21 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
-function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify, reusable_plots,
-                        plotlist::Union{Nothing,PlotList}=nothing)
-    new_plots = IdDict{PlotSpec,Plot}() # needed to be mutated
+function diff_plotlist!(
+        scene::Scene, plotspecs::Vector{PlotSpec},
+        obs_to_notify,
+        plotlist::Union{Nothing,PlotList}=nothing,
+        reusable_plots = IdDict{PlotSpec, Plot}(),
+        new_plots = IdDict{PlotSpec,Plot}())
+     # needed to be mutated
     empty!(scene.cycler.counters)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
-    empty!(obs_to_notify)
     scores = IdDict{Any, Float64}()
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(plotspec, reusable_plots, scores)
+        reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
@@ -579,43 +624,51 @@ function diff_plotlist!(scene::Scene, plotspecs::Vector{PlotSpec}, obs_to_notify
             delete!(reusable_plots, old_spec)
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
+
         end
     end
     return new_plots
 end
 
-function update_plotspecs!(scene::Scene, list_of_plotspecs::Observable, plotlist::Union{Nothing, PlotList}=nothing)
+function update_plotspecs!(
+        scene::Scene, list_of_plotspecs::Observable,
+        plotlist::Union{Nothing,PlotList}=nothing,
+        unused_plots=IdDict{PlotSpec,Plot}(),
+        new_plots=IdDict{PlotSpec,Plot}(),
+        own_plots=true
+    )
     # Cache plots here so that we aren't re-creating plots every time;
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    unused_plots = IdDict{PlotSpec,Plot}()
     obs_to_notify = Observable[]
-
     update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
-        empty!(obs_to_notify)
         empty!(scene.cycler.counters) # Reset Cycler
         # diff_plotlist! deletes all plots that get re-used from unused_plots
         # so, this will become our list of unused plots!
-        new_plots = diff_plotlist!(scene, plotspecs, obs_to_notify, unused_plots, plotlist)
+        diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        for (_, plot) in unused_plots
-            if !isnothing(plotlist)
-                filter!(x -> x !== plot, plotlist.plots)
+        if own_plots
+            for (_, plot) in unused_plots
+                if !isnothing(plotlist)
+                    filter!(x -> x !== plot, plotlist.plots)
+                end
+                delete!(scene, plot)
             end
-            delete!(scene, plot)
+            # Transfer all new plots into unused_plots for the next update!
+            @assert !any(x-> x in unused_plots, new_plots)
+            empty!(unused_plots)
+            merge!(unused_plots, new_plots)
+            empty!(new_plots)
+            # finally, notify all changes at once
         end
-        # Transfer all new plots into unused_plots for the next update!
-        @assert !any(x-> x in unused_plots, new_plots)
-        empty!(unused_plots)
-        merge!(unused_plots, new_plots)
-        # finally, notify all changes at once
         foreach(notify, obs_to_notify)
+        empty!(obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
@@ -645,10 +698,64 @@ function add_observer!(block::BlockSpec, obs::AbstractVector{<:ObserverFunction}
     return
 end
 
+function get_numeric_colors(plot::PlotSpec)
+    if plot.type in [:Heatmap, :Image, :Surface]
+        z = plot.args[end]
+        if z isa AbstractMatrix{<:Real}
+            return z
+        end
+    else
+        if haskey(plot.kwargs, :color) && plot.kwargs[:color] isa AbstractArray{<:Real}
+            return plot.kwargs[:color]
+        end
+    end
+    return nothing
+end
+
+# TODO it's really hard to get from PlotSpec -> Plot object in the
+# Colorbar constructor (to_layoutable),
+# since the plot may not be created yet and may change when calling
+# update_layoutable!. So for now, we manually extract the Colorbar arguments from the spec
+# Which is a bit brittle and won't work for Recipes which overload the Colorbar api (extract_colormap)
+# We hope to improve the situation after the observable refactor, which may bring us a bit closer to
+# Being able to use the Plot object itself instead of a spec.
+function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
+    if haskey(legend.kwargs, :plotspec)
+        kw = copy(legend.kwargs)
+        spec = pop!(kw, :plotspec)
+        pt = plottype(spec)
+        for k in [:colorrange, :colormap, :lowclip, :highclip]
+            get!(kw, k) do
+                haskey(spec.kwargs, k) && return spec.kwargs[k]
+                if k === :colorrange
+                    color = get_numeric_colors(spec)
+                    if !isnothing(color)
+                        return nan_extrema(color)
+                    end
+                else
+                    MakieCore.lookup_default(pt, scene, k)
+                end
+            end
+        end
+        return kw
+    else
+        return legend.kwargs
+    end
+end
+
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
     BType = getfield(Makie, spec.type)
-    # TODO forward kw
-    block = BType(get_top_parent(parent); spec.kwargs...)
+    fig = get_top_parent(parent)
+
+    block = if spec.type === :Colorbar
+        # We use the root scene to extract any theming
+        # This means, we dont support a separate theme per scene
+        # Which I think has been bitrotting anyways.
+        kw = extract_colorbar_kw(spec, root(get_scene(fig)))
+        BType(fig; kw...)
+    else
+        BType(fig; spec.kwargs...)
+    end
     parent[position...] = block
     for func in spec.then_funcs
         observers = func(block)
@@ -674,9 +781,17 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where T <: Block
-    unhide!(block)
-    old_attr = keys(old_spec.kwargs)
-    new_attr = keys(spec.kwargs)
+    if spec.type === :Colorbar
+        # To get plot defaults for Colorbar(specapi), we need a theme / scene
+        # So we have to look up the kwargs here instead of the BlockSpec constructor.
+        old_kw = extract_colorbar_kw(old_spec, root(block.blockscene))
+        new_kw = extract_colorbar_kw(spec, root(block.blockscene))
+    else
+        old_kw = old_spec.kwargs
+        new_kw = spec.kwargs
+    end
+    old_attr = keys(old_kw)
+    new_attr = keys(new_kw)
     # attributes that have been set previously and need to get unset now
     reset_to_defaults = setdiff(old_attr, new_attr)
     if !isempty(reset_to_defaults)
@@ -688,7 +803,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
     # Attributes needing an update
     to_update = setdiff(new_attr, reset_to_defaults)
     for key in to_update
-        val = spec.kwargs[key]
+        val = new_kw[key]
         prev_val = to_value(getproperty(block, key))
         if is_different(val, prev_val)
             setproperty!(block, key, val)
@@ -699,28 +814,25 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
-        if plot_obs[] != spec.plots
-            plot_obs[] = spec.plots
-        end
-        scene = get_scene(block)
-        if any(needs_tight_limits, scene.plots)
-            tightlimits!(block)
+        plot_obs[] = spec.plots
+        score = distance_score(old_spec.plots, spec.plots, Dict())
+        if score >= 1.0
+            scene = get_scene(block)
+            if any(needs_tight_limits, scene.plots)
+                tightlimits!(block)
+            end
         end
     end
     for observer in old_spec.then_observers
         Observables.off(observer)
     end
     empty!(old_spec.then_observers)
-    if hasproperty(spec, :xaxislinks)
-        empty!(spec.xaxislinks)
-    end
-    if hasproperty(spec, :yaxislinks)
-        empty!(spec.yaxislinks)
-    end
+
     for func in spec.then_funcs
         observers = func(block)
         add_observer!(spec, observers)
     end
+    unhide!(block)
     return to_update, reset_to_defaults
 end
 
@@ -764,6 +876,41 @@ function update_layoutable!(layout::GridLayout, obs, old_spec::Union{GridLayoutS
     return
 end
 
+function replace_links!(axis_links::Vector, new_links::Set)
+    Set(axis_links) == new_links && return false
+    empty!(axis_links)
+    append!(axis_links, new_links)
+    return true
+end
+
+function update_axis_links!(gridspec, all_layoutables)
+    # axes that should be linked
+    axes = Dict{BlockSpec, Axis}()
+    for ((_, _, ax_spec), (ax_object, _)) in all_layoutables
+        if ax_spec isa BlockSpec && ax_spec.type === :Axis
+            axes[ax_spec] = ax_object
+        end
+    end
+
+    xlinked = Set(map(x-> axes[x], gridspec.xaxislinks))
+    ylinked = Set(map(x-> axes[x], gridspec.yaxislinks))
+
+    for (spec, ax) in axes
+        if spec in gridspec.xaxislinks
+            replace_links!(ax.xaxislinks, filter(x -> x !== ax, xlinked))
+        else
+            empty!(ax.xaxislinks)
+        end
+        if spec in gridspec.yaxislinks
+            replace_links!(ax.yaxislinks, filter(x -> x !== ax, ylinked))
+        else
+            empty!(ax.yaxislinks)
+        end
+    end
+end
+
+get_type(x::BlockSpec) = x.type
+get_type(::GridLayoutSpec) = :GridLayout
 
 function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::Union{Nothing, GridLayoutSpec},
                             gridspec::GridLayoutSpec, previous_contents, new_layoutables)
@@ -775,7 +922,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
 
         idx, old_key, layoutable_obs = find_layoutable((nesting, position, spec), previous_contents, scores)
         if isnothing(layoutable_obs)
-            @debug("Creating new content for spec")
+            @debug("Creating new block for spec: $(get_type(spec))")
             # Create new plot, store it into `new_layoutables`
             new_layoutable = to_layoutable(gridlayout, position, spec)
             obs = Observable(PlotSpec[])
@@ -801,20 +948,22 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             (layoutable, plot_obs) = layoutable_obs
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout
-                update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents, new_layoutables)
+                update_gridlayout!(layoutable, nesting + 1, old_spec, spec, previous_contents,
+                                   new_layoutables)
             else
                 update_layoutable!(layoutable, plot_obs, old_spec, spec)
-                update_state_before_display!(layoutable)
+                # update_state_before_display!(layoutable)
             end
             # Carry over to cache it in new_layoutables
             push!(new_layoutables, (nesting, position, spec) => (layoutable, plot_obs))
         end
     end
+    update_axis_links!(gridspec, new_layoutables)
+    return
 end
 
 get_layout!(fig::Figure) = fig.layout
 get_layout!(gp::Union{GridSubposition,GridPosition}) = GridLayoutBase.get_layout_at!(gp; createmissing=true)
-
 
 
 delete_layoutable!(block::Block) = delete!(block)
@@ -832,11 +981,16 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
     # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
+    update_gridlayout!(
+        target_layout, 1, nothing, layout_spec, unused_layoutables,
+        new_layoutables
+    )
 
-    update_gridlayout!(target_layout, 1, nothing, layout_spec, unused_layoutables, new_layoutables)
     foreach(unused_layoutables) do (p, (block, obs))
         # disconnect! all unused layoutables, so they dont show up anymore
-        disconnect!(block)
+        if block isa Block
+            disconnect!(block)
+        end
         return
     end
     layouts_to_update = Set{GridLayout}([target_layout])
@@ -852,6 +1006,8 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
         l.block_updates = false
         GridLayoutBase.update!(l)
     end
+
+    # finally, notify all changes at once
 
     # foreach(unused_layoutables) do (p, (block, obs))
     #     # Finally, disconnect all blocks that haven't been used!

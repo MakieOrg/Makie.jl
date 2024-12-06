@@ -30,7 +30,7 @@ function (sp::StandardPrerender)()
         glDepthFunc(GL_LEQUAL)
     end
 
-    # Disable cullface for now, untill all rendering code is corrected!
+    # Disable cullface for now, until all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 
@@ -68,14 +68,14 @@ function (sp::StandardPostrender)()
     render(sp.vao, sp.primitive)
 end
 
-struct StandardPostrenderInstanced{T}
-    main::T
+struct StandardPostrenderInstanced
+    n_instances::Observable{Int}
     vao::GLVertexArray
     primitive::GLenum
 end
 
 function (sp::StandardPostrenderInstanced)()
-    renderinstanced(sp.vao, to_value(sp.main), sp.primitive)
+    return renderinstanced(sp.vao, sp.n_instances[], sp.primitive)
 end
 
 struct EmptyPrerender end

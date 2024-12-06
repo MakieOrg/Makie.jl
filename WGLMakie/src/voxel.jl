@@ -89,7 +89,7 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     onany(plot, plot.gap, plot.converted[end]) do gap, chunk
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
-        if N_instances != length(dummy_data[]) # avoid updating unneccesarily
+        if N_instances != length(dummy_data[]) # avoid updating unnecessarily
             dummy_data[] = [0f0 for _ in 1:N_instances]
         end
         return

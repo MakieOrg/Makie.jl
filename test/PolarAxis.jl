@@ -13,7 +13,7 @@
         )
         rticklabelplot = po.overlay.plots[8].plots[1]
 
-        # Mostly for verfication that we got the right plot
+        # Mostly for verification that we got the right plot
         @test po.overlay.plots[8][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
 
         # automatic

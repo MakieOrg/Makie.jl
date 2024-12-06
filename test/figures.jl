@@ -171,3 +171,10 @@ end
     @test_throws ArgumentError lines(f[1, 1], 1:10, axis = (aspect = DataAspect()))
     @test_throws ArgumentError lines(f[1, 1][2, 2], 1:10, axis = (aspect = DataAspect()))
 end
+
+@testset "show with a backend" begin
+    fig = Figure()
+    io = IOBuffer()
+    # if there were no show method with backend and update kwargs then MethodError would be thrown instead
+    @test_throws ErrorException show(io, MIME"text/plain"(), fig, backend=missing, update=false)
+end
