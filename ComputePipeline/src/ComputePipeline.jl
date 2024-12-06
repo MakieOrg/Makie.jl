@@ -2,7 +2,9 @@ module ComputePipeline
 
 using Base: RefValue
 
-mutable struct ComputedValue{P}
+abstract type AbstractComputed end
+
+mutable struct ComputedValue{P} <: AbstractComputed
     value::RefValue
     parent::P
     parent_idx::Int # index of parent.outputs this value refers to
@@ -33,7 +35,7 @@ end
 struct ComputeEdge
     callback::Function
 
-    inputs::Vector{ComputedValue}
+    inputs::Vector{AbstractComputed}
     inputs_dirty::Vector{Bool}
 
     outputs::Vector{ComputedValue{ComputeEdge}}
@@ -48,7 +50,7 @@ end
 
 function ComputeEdge(f, input, output)
     return ComputeEdge(
-        f, ComputedValue[input], [true], [output], [true], RefValue(false),
+        f, AbstractComputed[input], [true], [output], [true], RefValue(false),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -108,7 +110,7 @@ end
 const Computed = ComputedValue{ComputeEdge}
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
-function ComputeEdge(f, inputs::Vector{ComputedValue})
+function ComputeEdge(f, inputs::Vector{AbstractComputed})
     return ComputeEdge(f, inputs, fill(true, length(inputs)), ComputedValue[], Bool[], RefValue(false),
                        ComputeEdge[], RefValue{TypedEdge}())
 end
@@ -121,8 +123,8 @@ function Base.show(io::IO, computed::ComputedValue)
     end
 end
 
-mutable struct Input
-    value::Any
+mutable struct Input <: AbstractComputed
+    value::RefValue{Any}
     f::Function
     output::ComputedValue{Input}
     dirty::Bool
@@ -132,8 +134,11 @@ end
 
 function Input(value, f, output)
     @assert !(value isa ComputedValue)
+    value = value isa RefValue ? value : RefValue{Any}(value)
     return Input(value, f, output, true, true, ComputeEdge[])
 end
+
+hasparent(::Input) = false
 
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
@@ -265,7 +270,7 @@ function resolve!(input::Input)
         input.output_dirty = false
         return
     end
-    value = input.f(input.value)
+    value = input.f(input.value[])
     if isassigned(input.output.value)
         input.output.value[] = value
     else
@@ -295,7 +300,7 @@ end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
-    input.value = value
+    input.value[] = value
     mark_dirty!(input)
     return value
 end
@@ -307,7 +312,8 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :default && return getfield(attr, :default)
-    return attr.inputs[key].output
+    haskey(attr.inputs, key) && return attr.outputs[key]
+    return
 end
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
@@ -434,6 +440,17 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     return
 end
 
+function add_dummy_input!(attr::ComputeGraph, key::Symbol, value)
+    @assert !(value isa ComputedValue)
+    output = ComputedValue{Input}(RefValue{Nothing}())
+    attr.inputs[key] = Input(value, (v) -> nothing, output)
+    # TODO: would be nice to get rid of you entirely
+    # output.parent = input
+    # output.parent_idx = 1
+    # attr.outputs[key] = output
+    return
+end
+
 function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     for (k, v) in pairs(kw)
         add_input!(conversion_func, attr, k, v)
@@ -463,7 +480,7 @@ function stringify_callback(f)
     return string(m.file, ":", m.line)
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}, from_input::Vector{Bool} = fill(false, length(inputs)))
     if all(x -> haskey(attr.outputs, x), outputs)
         function throw_error()
             callbacks = join([string(k, "=>", stringify_callback(get_callback(attr.outputs[k]))) for k in outputs], ", ")
@@ -484,7 +501,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
         all_same || throw_error()
         return # ignore new registration
     end
-    _inputs = ComputedValue[attr.outputs[k] for k in inputs]
+    _inputs = AbstractComputed[b ? attr.inputs[k] : attr.outputs[k] for (k, b) in zip(inputs, from_input)]
     new_edge = ComputeEdge(f, _inputs)
     for (k, input) in zip(inputs, _inputs)
         if hasparent(input)

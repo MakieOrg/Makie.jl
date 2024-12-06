@@ -83,7 +83,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :glowcolor, :glowwidth,
         :model_f32c, :rotation,
         :transform_marker,
-        :_lowclip, :_highclip, :nan_color,
+        :lowclip, :highclip,
+        :nan_color,
     ]
 
     # To take the human error out of the bookkeeping of two lists
@@ -97,7 +98,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        # :_lowclip => :lowclip, :_highclip => :highclip,
     )
     gl_names = Symbol[]
 

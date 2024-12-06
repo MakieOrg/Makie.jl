@@ -53,8 +53,7 @@ function register_colormapping!(attr::ComputeGraph)
     end
 
     for key in (:lowclip, :highclip)
-        sym = Symbol(:_, key)
-        register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
+        register_computation!(attr, [key, :colormap], [key], [true, false]) do (input, cmap), changed, _
             if input[] === automatic
                 (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
             else
@@ -224,7 +223,9 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         end
 
         # primitives use convert_attributes, recipe plots don't
-        if is_primitive
+        if k in (:lowclip, :highclip)
+            ComputePipeline.add_dummy_input!(attr, k, obs_to_value(value))
+        elseif is_primitive
             add_input!(attr, k, obs_to_value(value)) do key, value
                 return convert_attribute(value, Key{key}(), Key{name}())
             end
