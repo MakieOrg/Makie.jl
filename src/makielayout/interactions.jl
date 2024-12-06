@@ -1,6 +1,19 @@
+const DEFAULT_INTERACTIONS = Dict(
+    Axis => Dict(
+        :rectanglezoom => (true, () -> RectangleZoom()),
+        :limitreset => (true, () -> LimitReset()),
+        :scrollzoom => (true, () -> ScrollZoom(0.1, 0.2)),
+        :dragpan => (true, () -> DragPan(0.2)),
+    ),
+    Axis3 => Dict(
+        :dragrotate => (true, () -> DragRotate()),
+    ),
+)
+
 # overloadable for other types that might want to offer similar interactions
 function interactions end
 
+interactions(::Type{T}) where {T} = DEFAULT_INTERACTIONS[T]
 interactions(ax::Axis) = ax.interactions
 interactions(ax3::Axis3) = ax3.interactions
 
