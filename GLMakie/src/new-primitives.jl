@@ -1,6 +1,18 @@
 using Makie.ComputePipeline
 
 ################################################################################
+### Util, delete later
+################################################################################
+
+function missing_uniforms(robj)
+    for (key, value) in robj.vertexarray.program.uniformloc
+        if !haskey(robj.uniforms, key)
+            @info "Missing $key"
+        end
+    end
+end
+
+################################################################################
 ### Generic (more or less)
 ################################################################################
 
@@ -191,6 +203,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # - px_per_unit (that can update dynamically via record, right?)
     # - fxaa
     # - intensity_convert
+    # - image
 
     inputs = [
         # Special
@@ -208,7 +221,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :model_f32c, :rotation,
         :transform_marker,
         :_lowclip, :_highclip, :nan_color,
-        :gl_clip_planes, :gl_num_clip_planes
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
     # To take the human error out of the bookkeeping of two lists
@@ -470,7 +483,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :transparency, :fxaa, :debug, :visible,
         :model_f32c,
         :_lowclip, :_highclip, :nan_color,
-        :gl_clip_planes, :gl_num_clip_planes,
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
     input2glname = Dict{Symbol, Symbol}(
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
@@ -598,7 +611,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
         :visible,
-        :gl_clip_planes, :gl_num_clip_planes,
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -606,7 +619,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :linewidth => :thickness, :model_f32c => :model,
         :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
     gl_names = Symbol[]
 
