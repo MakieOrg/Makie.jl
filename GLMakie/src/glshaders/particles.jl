@@ -232,16 +232,6 @@ function draw_scatter(screen, (marker, position), data)
         image       = nothing => Texture
     end
 
-    data[:shape] = map(
-            convert(Observable{Int}, pop!(data, :shape)), data[:scale]
-        ) do shape, scale
-        if shape == 0 && !is_all_equal_scale(scale)
-            return Cint(5) # scaled CIRCLE -> ELLIPSE
-        else
-            return shape
-        end
-    end
-
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -256,7 +246,7 @@ function draw_scatter(screen, (marker, position), data)
         uv_offset_width = Vec4f(0) => GLBuffer
 
         distancefield   = nothing => Texture
-        indices         = const_lift(length, position) => to_index_buffer
+        indices         = 0 => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false

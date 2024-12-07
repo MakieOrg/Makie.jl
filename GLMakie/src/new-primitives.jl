@@ -137,12 +137,14 @@ function assemble_scatter_robj(
     distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(atlas) : nothing
     data = Dict(
         :vertex => positions[],
+        :indices => length(positions[]),
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :markerspace => Cint(0), # TODO: should be dynamic
         :distancefield => distancefield,
         :px_per_unit => screen[].px_per_unit,   # technically not const?
         :upvector => Vec3f(0),
         :ssao => false,                         # shader compilation const
+        :shape => marker_shape[],
     )
 
     add_color_attributes!(data, color[], colormap[], colornorm[])
@@ -160,12 +162,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     register_computation!(
-        attr, [:uv_offset_width, :marker, :font], [:sdf_marker_shape, :sdf_uv]
-    ) do (uv_off, m, f), changed, last
+        attr, [:uv_offset_width, :marker, :font, :quad_scale], [:sdf_marker_shape, :sdf_uv]
+    ) do (uv_off, m, f, scale), changed, last
         new_mf = changed[2] || changed[3]
         uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
         # TODO: maybe we should just add a glconvert(x::Enum) = Cint(x)?
-        marker = changed[1] ? Cint(Makie.marker_to_sdf_shape(m[])) : nothing
+        if changed[1] || changed[4]
+            marker = Cint(Makie.marker_to_sdf_shape(m[]))
+            if marker == 0 && !is_all_equal_scale(scale[])
+                marker = Cint(5)
+            end
+        else
+            marker = nothing
+        end
         return (marker, uv)
     end
 
