@@ -324,6 +324,11 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
 end
 
 function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
+    if !isempty(args) && first(args) isa Attributes
+        attr = attributes(first(args))
+        merge!(user_kw, attr)
+        return Lines(Base.tail(args), user_kw)
+    end
     attr = ComputeGraph()
     add_attributes!(Lines, attr, user_kw)
     register_arguments!(Lines, attr, user_kw, args...)
