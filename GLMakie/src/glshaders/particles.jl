@@ -246,7 +246,7 @@ function draw_scatter(screen, (marker, position), data)
         uv_offset_width = Vec4f(0) => GLBuffer
 
         distancefield   = nothing => Texture
-        indices         = 0 => to_index_buffer
+        indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
