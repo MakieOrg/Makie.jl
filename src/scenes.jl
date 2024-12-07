@@ -479,6 +479,8 @@ function Base.empty!(scene::Scene; free=false)
         Observables.off(obsfunc)
     end
     empty!(scene.deregister_callbacks)
+    empty!(scene.camera.calculated_matrices)
+    empty!(scene.camera.resolution_ppu)
     return nothing
 end
 

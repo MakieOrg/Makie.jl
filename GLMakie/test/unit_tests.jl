@@ -486,6 +486,5 @@ end
     cam = ax.scene.camera
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
-    # @test robj.uniforms[:projectionview][] == cam.projectionview[] # Earlier filtering? Different plot?
-    @test robj[:projection][] * robj[:view][] * robj[:preprojection][] ≈ cam.projectionview[]
+    @test robj.uniforms[:projectionview][] == cam.projectionview[]
 end

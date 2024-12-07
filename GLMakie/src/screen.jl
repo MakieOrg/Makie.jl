@@ -500,6 +500,7 @@ function add_scene!(screen::Screen, scene::Scene)
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
         screen.requires_update = true
+        # TODO: Does this consume?
         onany((args...) -> screen.requires_update = true,
               scene,
               scene.visible, scene.backgroundcolor, scene.clear,
@@ -560,12 +561,21 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-function destroy!(rob::RenderObject)
+function destroy!(rob::RenderObject, has_cached_camera = false)
+    # With camera caching these must not be cleaned up. If they do get cleared
+    # here, the cached Observable will continue to exist in camera and be used
+    # for future plots, but not be connected to the parent values.
+    keep_alive = (:view, :projection, :projectionview, :resolution)
+
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
     tex = get_texture!(gl_texture_atlas())
     for (k, v) in rob.uniforms
+        if has_cached_camera && in(k, keep_alive)
+            continue
+        end
+
         if v isa Observable
             Observables.clear(v)
         elseif v isa GPUArray && v !== tex
@@ -578,8 +588,13 @@ function destroy!(rob::RenderObject)
             GLAbstraction.free(v)
         end
     end
+
+    keep_alive_vals = [rob[k] for k in keep_alive if haskey(rob, k)]
     for obs in rob.observables
-        Observables.clear(obs)
+        if has_cached_camera && in(obs, keep_alive_vals)
+        else
+            Observables.clear(obs)
+        end
     end
     GLAbstraction.free(rob.vertexarray)
 end
@@ -595,7 +610,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         # TODO, is it?
         renderobject = get(screen.cache, objectid(plot), nothing)
         if !isnothing(renderobject)
-            destroy!(renderobject)
+            destroy!(renderobject, plot isa Makie.ComputePlots)
             filter!(x-> x[3] !== renderobject, screen.renderlist)
             delete!(screen.cache2plot, renderobject.id)
         end
