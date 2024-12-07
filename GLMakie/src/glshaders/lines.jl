@@ -62,6 +62,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = Float32[] => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
         debug               = false
+        num_clip_planes     = Int32(0)
     end
 
     return assemble_shader(data)

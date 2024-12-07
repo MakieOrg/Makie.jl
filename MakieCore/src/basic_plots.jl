@@ -82,7 +82,7 @@ function mixin_generic_plot_attributes()
         behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
-        clip_planes = automatic
+        clip_planes = @inherit clip_planes automatic
     end
 end
 

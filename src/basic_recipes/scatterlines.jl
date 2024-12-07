@@ -166,7 +166,8 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         colormap    = attr.outputs[:colormap],
         colorscale  = attr.outputs[:colorscale],
         colorrange  = attr.outputs[:colorrange],
-        inspectable = attr.outputs[:inspectable]
+        inspectable = attr.outputs[:inspectable],
+        clip_planes = attr.outputs[:clip_planes],
     )
     scatter!(p,       attr.outputs[:positions];
         color       = attr.outputs[:real_markercolor],
@@ -177,6 +178,7 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         colormap    = attr.outputs[:real_markercolormap],
         colorscale  = attr.outputs[:colorscale],
         colorrange  = attr.outputs[:real_markercolorrange],
-        inspectable = attr.outputs[:inspectable]
+        inspectable = attr.outputs[:inspectable],
+        clip_planes = attr.outputs[:clip_planes],
     )
 end

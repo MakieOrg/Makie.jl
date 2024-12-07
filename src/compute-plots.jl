@@ -238,6 +238,8 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             end
         end
     end
+
+
 end
 
 # function gscatter end
@@ -307,7 +309,6 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
 end
@@ -322,7 +323,6 @@ function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{lines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
 end
@@ -342,7 +342,6 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    add_input!(attr, :clip_planes, Plane3f[])
     p.transformation = Transformation()
     return p
 end

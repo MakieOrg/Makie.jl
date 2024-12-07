@@ -48,6 +48,79 @@ function add_camera_attributes!(data, screen, camera, space)
     return data
 end
 
+# For use with register!(...)
+
+function generate_clip_planes!(attr, target_space::Symbol = :data)
+
+    if target_space === :data
+
+        register_computation!(attr, [:clip_planes, :space], [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, cached
+            output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
+            planes = input[1][]
+
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            if Makie.is_data_space(input[2][])
+                N = min(8, length(planes))
+                for i in 1:N
+                    output[i] = Makie.gl_plane_format(planes[i])
+                end
+                for i in N+1 : 8
+                    output[i] = Vec4f(0, 0, 0, -1e9)
+                end
+            else
+                output .= Ref(Vec4f(0, 0, 0, -1e9))
+                N = 0
+            end
+
+            return (output, Int32(N))
+        end
+
+    elseif target_space === :clip
+
+        register_computation!(attr,
+            [:clip_planes, :space, :projectionview],
+            [:gl_clip_planes, :gl_num_clip_planes]
+        ) do input, changed, cached
+
+            output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
+            planes = input[1][]
+
+            if length(planes) > 8
+                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+            end
+
+            if Makie.is_data_space(input[2][])
+                N = min(8, length(planes))
+                planes = Makie.to_clip_space(input[3][], planes) # this got added
+                for i in 1:N
+                    output[i] = Makie.gl_plane_format(planes[i])
+                end
+                for i in N+1 : 8
+                    output[i] = Vec4f(0, 0, 0, -1e9)
+                end
+            else
+                output .= Ref(Vec4f(0, 0, 0, -1e9))
+                N = 0
+            end
+
+            return (output, Int32(N))
+        end
+
+    else
+        # model for volume, voxels
+        error("TODO")
+
+    end
+
+    return
+end
+
+################################################################################
+### Scatter
+################################################################################
 
 function assemble_scatter_robj(
         atlas, marker,
@@ -96,6 +169,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         return (marker, uv)
     end
 
+    generate_clip_planes!(attr)
+
     # TODO:
     # - depthsorting
     # - colorrange, lowclip, highclip cannot be changed from autoamtic
@@ -120,6 +195,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :model_f32c, :rotation,
         :transform_marker,
         :_lowclip, :_highclip, :nan_color,
+        :gl_clip_planes, :gl_num_clip_planes
     ]
 
     # To take the human error out of the bookkeeping of two lists
@@ -134,6 +210,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :_lowclip => :lowclip, :_highclip => :highclip,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes
     )
     gl_names = Symbol[]
 
@@ -349,6 +426,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     add_input!(attr, :debug, false)
 
+    generate_clip_planes!(attr, :clip) # requires projectionview
 
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
@@ -377,6 +455,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :transparency, :fxaa, :debug, :visible,
         :model_f32c,
         :_lowclip, :_highclip, :nan_color,
+        :gl_clip_planes, :gl_num_clip_planes,
     ]
     input2glname = Dict{Symbol, Symbol}(
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
@@ -385,6 +464,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
     gl_names = Symbol[]
 
@@ -492,6 +572,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     add_input!(attr, :debug, false)
 
+    generate_clip_planes!(attr)
+
     inputs = [
         :space, :scene, :screen,
         :positions_transformed_f32c,
@@ -500,7 +582,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :pattern, :pattern_length, :linecap, :linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
-        :visible
+        :visible,
+        :gl_clip_planes, :gl_num_clip_planes,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -508,6 +591,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :linewidth => :thickness, :model_f32c => :model,
         :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes
     )
     gl_names = Symbol[]
 
