@@ -71,7 +71,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
     color_type = gl_color_type_annotation(data[:color])
 
     @gen_defaults! data begin
-        vertex              = positions => GLBuffer
+        vertex              = Point3f[] => GLBuffer
         color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
@@ -79,8 +79,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false
-        fast                = false
-        indices             = const_lift(length, positions) => to_index_buffer
+        indices             = 0 => to_index_buffer
         # TODO update boundingbox
         transparency        = false
         shader              = GLVisualizeShader(
@@ -96,14 +95,6 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         gl_primitive        = GL_LINES
         pattern_length      = 1f0
         debug               = false
-    end
-    if !isa(pattern, Texture) && to_value(pattern) !== nothing
-        if !isa(to_value(pattern), Vector)
-            error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
-        end
-        tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
-        data[:pattern] = tex
-        data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
     robj = assemble_shader(data)
     return robj

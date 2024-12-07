@@ -329,7 +329,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
             tex = Texture(sdf, x_repeat = :repeat)
         else
             tex = cached[1][]
-            update!(cached[1], sdf)
+            GLAbstraction.update!(tex, sdf)
         end
 
         return (tex, len)
@@ -408,46 +408,41 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 end
 
 function assemble_linesegments_robj(
-    space,
-    scene,
-    screen,
+    add_uniforms!,
+    space, scene, screen,
     positions,
+    color, colormap, colornorm,
     linestyle,
-    scene_origin,
-    color,
-    colormap,
-    colornorm,
-    transparency,
-    px_per_unit,
 )
     camera = scene[].camera
 
-    data = Dict(
-        :scene_origin => scene_origin[],
-        :transparency => transparency[],
-        :model => Mat4f(I),
-        :px_per_unit => px_per_unit[],
+    data = Dict{Symbol, Any}(
         :ssao => false,
+        :vertex => positions[], # TODO: can be automated
     )
-
-    if isnothing(linestyle[])
-        data[:pattern] = nothing
-    else
-        data[:pattern] = linestyle[]
-        data[:fast] = false
-    end
 
     add_camera_attributes!(data, screen[], camera, space[])
     add_color_attributes_lines!(data, color[], colormap[], colornorm[])
-    return draw_linesegments(screen[], positions[], data)
+
+    add_uniforms!(data)
+
+    # Here we do need to be careful with pattern because :fast does not
+    # exist as a compile time switch
+    # Running this after add_uniforms overwrites
+    if isnothing(linestyle[])
+        data[:pattern] = nothing
+    end
+
+    return draw_linesegments(screen[], positions[], data) # TODO: extract positions
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     attr = plot.args[1]
     add_input!(plot.args[1], :scene, scene)
     add_input!(attr, :screen, screen)
-    add_input!(attr, :px_per_unit, screen.px_per_unit[])
+    add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
     add_input!(attr, :viewport, scene.viewport[])
+    on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin]
     ) do (ppu, viewport), changed, output
@@ -456,27 +451,74 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     if !haskey(attr, :scene)
         add_input!(plot.args[1], :scene, scene)
     end
+
+    # linestyle/pattern handling
+    register_computation!(
+        attr, [:linestyle], [:pattern, :pattern_length]
+    ) do (linestyle,), changed, cached
+        if isnothing(linestyle[])
+            sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
+            len = 1f0 # should be irrelevant, compat for strictly solid lines
+        else
+            sdf = Makie.linestyle_to_sdf(linestyle[])
+            len = Float32(last(linestyle[]) - first(linestyle[]))
+        end
+
+        if isnothing(cached)
+            tex = Texture(sdf, x_repeat = :repeat)
+        else
+            tex = cached[1][]
+            GLAbstraction.update!(tex, sdf)
+        end
+
+        return (tex, len)
+    end
+
+    add_input!(attr, :debug, false)
+
     inputs = [
-        :space,
-        :scene,
-        :screen,
+        :space, :scene, :screen,
         :positions_transformed_f32c,
-        :linestyle,
-        :scene_origin,
-        :color,
-        :colormap,
-        :_colorrange,
-        :transparency,
-        :px_per_unit,
+        :color, :colormap, :_colorrange,
+        # Auto
+        :pattern, :pattern_length, :linecap, :linewidth,
+        :scene_origin, :px_per_unit, :model_f32c,
+        :transparency, :fxaa, :debug
     ]
-    gl_names = [:pattern, :scene_origin, :color, :color_map, :color_norm, :transparency, :px_per_unit]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :positions_transformed_f32c => :vertex,
+        :linewidth => :thickness, :model_f32c => :model,
+        :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+    )
+    gl_names = Symbol[]
 
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
-            robj = assemble_linesegments_robj(args...)
+            robj = assemble_linesegments_robj(args[1:7]..., attr[:linestyle]) do data
+
+                # Generate name mapping
+                haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                gl_names = get.(Ref(input2glname), inputs, inputs)
+
+                # Simple defaults
+                foreach(7:length(args)) do idx
+                    data[gl_names[idx]] = args[idx][]
+                end
+
+                @assert gl_names[4] === :vertex
+                data[:indices] = length(args[4][])
+
+                return
+            end
         else
             robj = output[1][]
-            update_robjs!(robj, args[3:end], changed[3:end], gl_names)
+            if changed[4]
+                @assert gl_names[4] === :vertex
+                robj.vertexarray.indices = length(args[4][])
+            end
+            update_robjs!(robj, args[4:end], changed[4:end], gl_names[4:end])
         end
         screen.requires_update = true
         return (robj,)
