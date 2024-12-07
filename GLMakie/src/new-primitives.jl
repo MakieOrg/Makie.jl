@@ -169,45 +169,107 @@ function add_camera_attributes!(data, screen, camera, space)
 end
 
 function assemble_lines_robj(
-    space,
-    scene,
-    screen,
-    positions,
-    linestyle,
-    scene_origin,
-    gl_miter_limit,
-    linecap,
-    joinstyle,
-    color,
-    colormap,
-    colornorm,
-    transparency,
-    px_per_unit,
-)
-    camera = scene[].camera
-
-    data = Dict(
-        :linecap => linecap[],
-        :joinstyle => joinstyle[],
-        :miter_limit => gl_miter_limit[],
-        :scene_origin => scene_origin[],
-        :transparency => transparency[],
-        :model => Mat4f(I),
-        :px_per_unit => px_per_unit[],
-        :ssao => false,
+        add_uniforms!, space, scene, screen,
+        positions,
+        color, colormap, colornorm,
+        linestyle,
     )
 
-    if isnothing(linestyle[])
-        data[:pattern] = nothing
-        data[:fast] = true
-    else
-        data[:pattern] = linestyle[]
-        data[:fast] = false
-    end
+    camera = scene[].camera
+    data = Dict{Symbol, Any}(
+        :ssao => false,
+        :fast => isnothing(linestyle[]),
+        # :fast == true removes pattern from the shader so we don't need
+        #               to worry about this
+        :vertex => positions[], # Needs to be set before draw_lines()
+    )
 
     add_camera_attributes!(data, screen[], camera, space[])
     add_color_attributes_lines!(data, color[], colormap[], colornorm[])
+    add_uniforms!(data)
+
     return draw_lines(screen[], positions[], data)
+end
+
+# Observables removed and adjusted to fit Compute Pipeline
+function generate_indices(positions, changed, cached)
+    if isnothing(cached)
+        indices = Cuint[]
+        valid = Float32[]
+    else
+        indices = empty!(cached[1][])
+        valid = cached[2][]
+    end
+
+    ps = positions[1][]
+    resize!(valid, length(ps))
+    sizehint!(indices, length(ps) + 2)
+
+    # This loop identifies sections of line points A B C D E F bounded by
+    # the start/end of the list ps or by NaN and generates indices for them:
+    # if A == F (loop):      E A B C D E F B 0
+    # if A != F (no loop):   0 A B C D E F 0
+    # where 0 is NaN
+    # It marks vertices as invalid (0) if they are NaN, valid (1) if they
+    # are part of a continuous line section, or as ghost edges (2) used to
+    # cleanly close a loop. The shader detects successive vertices with
+    # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
+    # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
+
+    last_start_pos = eltype(ps)(NaN)
+    last_start_idx = -1
+
+    for (i, p) in enumerate(ps)
+        not_nan = isfinite(p)
+        valid[i] = not_nan
+
+        if not_nan
+            if last_start_idx == -1
+                # place nan before section of line vertices
+                # (or duplicate ps[1])
+                push!(indices, i-1)
+                last_start_idx = length(indices) + 1
+                last_start_pos = p
+            end
+            # add line vertex
+            push!(indices, i)
+
+        # case loop (loop index set, loop contains at least 3 segments, start == end)
+        elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+                (ps[max(1, i-1)] ≈ last_start_pos)
+
+            # add ghost vertices before an after the loop to cleanly connect line
+            indices[last_start_idx-1] = max(1, i-2)
+            push!(indices, indices[last_start_idx+1], i)
+            # mark the ghost vertices
+            valid[i-2] = 2
+            valid[indices[last_start_idx+1]] = 2
+            # not in loop anymore
+            last_start_idx = -1
+
+        # non-looping line end
+        elseif (last_start_idx != -1) # effective "last index not NaN"
+            push!(indices, i)
+            last_start_idx = -1
+        # else: we don't need to push repeated NaNs
+        end
+    end
+
+    # treat ps[end+1] as NaN to correctly finish the line
+    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+            (ps[end] ≈ last_start_pos)
+
+        indices[last_start_idx-1] = length(ps) - 1
+        push!(indices, indices[last_start_idx+1])
+        valid[end-1] = 2
+        valid[indices[last_start_idx+1]] = 2
+    elseif last_start_idx != -1
+        push!(indices, length(ps))
+    end
+
+    indices .-= Cuint(1)
+
+    return (indices, valid)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
@@ -217,62 +279,122 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (Float32(cos(pi - miter[])),)
     end
     add_input!(attr, :screen, screen)
-    add_input!(attr, :px_per_unit, screen.px_per_unit[])
+    add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
     add_input!(attr, :viewport, scene.viewport[])
+    on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
     register_computation!(
-        attr, [:px_per_unit, :viewport], [:scene_origin]
+        attr, [:px_per_unit, :viewport], [:scene_origin, :resolution]
     ) do (ppu, viewport), changed, output
-        return (Vec2f(ppu[] * origin(viewport[])),)
+        return (Vec2f(ppu[] * origin(viewport[])), Vec2f(ppu[] * widths(viewport[])))
+    end
+
+    # position calculations for patterned lines
+    # is projectionview enough to trigger on scene resize in all cases?
+    add_input!(attr, :projectionview, scene.camera.projectionview[])
+    on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+    register_computation!(
+        attr, [:projectionview, :model, :f32c, :space], [:pvm32]
+    ) do (_, model, f32c, space), changed, output
+        pvm = Makie.space_to_clip(scene.camera, space[]) *
+            Makie.f32_convert_matrix(f32c[], space[]) * model[]
+        return (pvm,)
     end
     register_computation!(
-        attr, [:positions], [:projected_transformed_positions]
-    ) do (positions,), changed, output
-        Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
-        pvm = lift(
-            plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space
-        ) do pv, model, f32c, space
-            Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
+        attr, [:pvm32, :positions_transformed], [:projected_transformed_positions]
+    ) do (pvm32, positions), changed, cached
+        if isnothing(cached)
+            output = Vector{Point4f}(undef, length(positions[]))
+        else
+            output = resize!(cached[1][], length(positions[]))
         end
+        @inbounds for i in eachindex(positions[])
+            output[i] = pvm32[] * to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0.0), 1.0)
+        end
+        return (output,)
     end
 
-    linestyle = plot.linestyle[]
+    # linestyle/pattern handling
+    register_computation!(
+        attr, [:linestyle], [:pattern, :pattern_length]
+    ) do (linestyle,), changed, cached
+        if isnothing(linestyle[])
+            sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
+            len = 1f0 # should be irrelevant, compat for strictly solid lines
+        else
+            sdf = Makie.linestyle_to_sdf(linestyle[])
+            len = Float32(last(linestyle[]) - first(linestyle[]))
+        end
 
-    positions = isnothing(linestyle) ? :positions_transformed_f32c : :projected_transformed_positions
+        if isnothing(cached)
+            tex = Texture(sdf, x_repeat = :repeat)
+        else
+            tex = cached[1][]
+            update!(cached[1], sdf)
+        end
+
+        return (tex, len)
+    end
+
+    add_input!(attr, :debug, false)
+
+
+    if isnothing(plot.linestyle[])
+        positions = :positions_transformed_f32c
+    else
+        positions = :projected_transformed_positions
+    end
+
+    # Derived vertex attributes
+    register_computation!(generate_indices, attr, [positions], [:gl_indices, :gl_valid_vertex])
+    register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
+        return (Int32(length(indices[]) - 2),)
+    end
+    register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
+        return (sumlengths(pos[], res[]),)
+    end
+
     inputs = [
-        :space,
-        :scene,
-        :screen,
+        # relevant to compile time decisions
+        :space, :scene, :screen,
         positions,
-        :linestyle,
-        :scene_origin,
-        :gl_miter_limit,
-        :linecap,
-        :joinstyle,
-        :color,
-        :colormap,
-        :_colorrange,
-        :transparency,
-        :px_per_unit,
+        :color, :colormap, :_colorrange,
+        # Auto
+        :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
+        :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
+        :scene_origin, :px_per_unit,
+        :transparency, :fxaa, :debug,
+        :model_f32c,
+        :_lowclip, :_highclip, :nan_color,
     ]
-    gl_names = [
-        :vertex,
-        :pattern,
-        :scene_origin,
-        :miter_limit,
-        :linecap,
-        :joinstyle,
-        :color,
-        :color_map,
-        :color_norm,
-        :transparency,
-        :px_per_unit,
-    ]
+    input2glname = Dict{Symbol, Symbol}(
+        positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
+        :gl_total_length => :total_length, :gl_last_length => :lastlen,
+        :gl_miter_limit => :miter_limit, :linewidth => :thickness,
+        :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
+        :model_f32c => :model,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+    )
+    gl_names = Symbol[]
+
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
-            robj = assemble_lines_robj(args...)
+            robj = assemble_lines_robj(args[1:7]..., attr[:linestyle]) do data
+
+                # Generate name mapping
+                haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                gl_names = get.(Ref(input2glname), inputs, inputs)
+
+                # Simple defaults
+                foreach(7:length(args)) do idx
+                    data[gl_names[idx]] = args[idx][]
+                end
+
+                return
+            end
+
         else
             robj = output[1][]
-            update_robjs!(robj, args[4:end], changed[4:end], gl_names)
+            update_robjs!(robj, args[4:end], changed[4:end], gl_names[4:end])
         end
         screen.requires_update = true
         return (robj,)

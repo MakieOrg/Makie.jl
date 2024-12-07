@@ -29,112 +29,22 @@ gl_color_type_annotation(::Real) = "float"
 gl_color_type_annotation(::Makie.RGB) = "vec3"
 gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
-function generate_indices(positions)
-    valid_obs = Observable(Float32[]) # why does this need to be a float?
-
-    indices_obs = const_lift(positions) do ps
-        valid = valid_obs[]
-        resize!(valid, length(ps))
-
-        indices = Cuint[]
-        sizehint!(indices, length(ps)+2)
-
-        # This loop identifies sections of line points A B C D E F bounded by
-        # the start/end of the list ps or by NaN and generates indices for them:
-        # if A == F (loop):      E A B C D E F B 0
-        # if A != F (no loop):   0 A B C D E F 0
-        # where 0 is NaN
-        # It marks vertices as invalid (0) if they are NaN, valid (1) if they
-        # are part of a continuous line section, or as ghost edges (2) used to
-        # cleanly close a loop. The shader detects successive vertices with
-        # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
-        # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
-
-        last_start_pos = eltype(ps)(NaN)
-        last_start_idx = -1
-
-        for (i, p) in enumerate(ps)
-            not_nan = isfinite(p)
-            valid[i] = not_nan
-
-            if not_nan
-                if last_start_idx == -1
-                    # place nan before section of line vertices
-                    # (or duplicate ps[1])
-                    push!(indices, i-1)
-                    last_start_idx = length(indices) + 1
-                    last_start_pos = p
-                end
-                # add line vertex
-                push!(indices, i)
-
-            # case loop (loop index set, loop contains at least 3 segments, start == end)
-            elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-                    (ps[max(1, i-1)] ≈ last_start_pos)
-
-                # add ghost vertices before an after the loop to cleanly connect line
-                indices[last_start_idx-1] = max(1, i-2)
-                push!(indices, indices[last_start_idx+1], i)
-                # mark the ghost vertices
-                valid[i-2] = 2
-                valid[indices[last_start_idx+1]] = 2
-                # not in loop anymore
-                last_start_idx = -1
-
-            # non-looping line end
-            elseif (last_start_idx != -1) # effective "last index not NaN"
-                push!(indices, i)
-                last_start_idx = -1
-            # else: we don't need to push repeated NaNs
-            end
-        end
-
-        # treat ps[end+1] as NaN to correctly finish the line
-        if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-                (ps[end] ≈ last_start_pos)
-
-            indices[last_start_idx-1] = length(ps) - 1
-            push!(indices, indices[last_start_idx+1])
-            valid[end-1] = 2
-            valid[indices[last_start_idx+1]] = 2
-        elseif last_start_idx != -1
-            push!(indices, length(ps))
-        end
-
-        notify(valid_obs)
-        return indices .- Cuint(1)
-    end
-
-    return indices_obs, valid_obs
-end
-
 @nospecialize
 function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
-    p_vec = if isa(position, GPUArray)
-        position
-    else
-        const_lift(vec, position)
-    end
-
-    indices, valid_vertex = generate_indices(p_vec)
-
     color_type = gl_color_type_annotation(data[:color])
-    resolution = data[:resolution]
 
     @gen_defaults! data begin
-        total_length::Int32 = const_lift(x -> Int32(length(x) - 2), indices)
-        vertex              = p_vec => GLBuffer
+        vertex              = Point3f[] => GLBuffer
         color               = nothing => GLBuffer
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
-        pattern_sections    = pattern => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
-        indices             = indices => to_index_buffer
+        indices             = Cuint[] => to_index_buffer
         transparency = false
         fast         = false
         shader              = GLVisualizeShader(
@@ -148,20 +58,10 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             )
         )
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
-        valid_vertex        = valid_vertex => GLBuffer
-        lastlen             = const_lift(sumlengths, p_vec, resolution) => GLBuffer
+        valid_vertex        = Float32[] => GLBuffer
+        lastlen             = Float32[] => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
         debug               = false
-    end
-    if to_value(pattern) !== nothing
-        if !isa(pattern, Texture)
-            if !isa(to_value(pattern), Vector)
-                error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
-            end
-            tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
-            data[:pattern] = tex
-        end
-        data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
 
     return assemble_shader(data)

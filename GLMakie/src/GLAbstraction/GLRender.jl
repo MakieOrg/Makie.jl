@@ -84,7 +84,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
                         error("Uniform tuple too long: $(length(value))")
                     end
                 catch e
-                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])") exception=(e, Base.catch_backtrace())
+                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])::$(typeof(renderobject.uniforms[key]))") exception=(e, Base.catch_backtrace())
                 end
             end
         end

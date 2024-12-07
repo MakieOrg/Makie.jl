@@ -1203,7 +1203,7 @@ end
 
 function convert_attribute(value::Symbol, ::key"linecap")
     # TODO: make this an enum?
-    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    vals = Dict(:butt => Int32(0), :square => Int32(1), :round => Int32(2))
     return get(vals, value) do
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
@@ -1212,7 +1212,7 @@ end
 function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
-    vals = (miter = 0, round = 2, bevel = 3)
+    vals = (miter = Int32(0), round = Int32(2), bevel = Int32(3))
     return get(vals, value) do
         error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
     end
