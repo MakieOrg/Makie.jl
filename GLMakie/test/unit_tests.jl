@@ -274,7 +274,7 @@ end
     images = map(Makie.colorbuffer, screens)
     @test all(x-> x ≈ first(images), images)
 
-    @test Base.summarysize(screens) / 10^6 > 60
+    @test Base.summarysize(screens) / 10^6 > 60 # TODO: greater? What's the point of that?
     foreach(close, screens)
 
     for screen in screens
@@ -350,6 +350,7 @@ end
     @test points == [1, 2, 3]
 
     # render at lower resolution
+    close(screen)
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 1f0
@@ -384,6 +385,7 @@ end
 
     # make sure there isn't a race between changing the scale factor and window_area updater
     # see https://github.com/MakieOrg/Makie.jl/pull/2544#issuecomment-1416861800
+    close(screen)
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, framerate = 60), fig)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
     on(screen.scalefactor) do sf
@@ -484,5 +486,6 @@ end
     cam = ax.scene.camera
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
-    @test robj.uniforms[:projectionview][] == cam.projectionview[]
+    # @test robj.uniforms[:projectionview][] == cam.projectionview[] # Earlier filtering? Different plot?
+    @test robj[:projection][] * robj[:view][] * robj[:preprojection][] ≈ cam.projectionview[]
 end
