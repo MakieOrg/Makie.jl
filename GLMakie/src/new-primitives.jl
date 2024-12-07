@@ -53,10 +53,12 @@ function add_color_attributes_lines!(data, color, colormap, colornorm)
 end
 
 function add_camera_attributes!(data, screen, camera, space)
+    # Make sure to protect these from cleanup in destroy!(renderobject)
     data[:resolution] = Makie.get_ppu_resolution(camera, screen.px_per_unit[])
     data[:projection] = Makie.get_projection(camera, space)
     data[:projectionview] = Makie.get_projectionview(camera, space)
     data[:view] = Makie.get_view(camera, space)
+    data[:upvector] = camera.upvector
     return data
 end
 
@@ -154,8 +156,6 @@ function assemble_scatter_robj(
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :distancefield => distancefield,
         :px_per_unit => screen[].px_per_unit,   # technically not const?
-        :markerspace => Cint(0),                # TODO: should be dynamic
-        :upvector => Vec3f(0),                  # TODO: should be dynamic
         :ssao => false,                         # shader compilation const
         :shape => marker_shape[],
     )
@@ -165,7 +165,11 @@ function assemble_scatter_robj(
 
     add_uniforms!(data)
 
-    return draw_scatter(screen[], (marker_shape[], positions[]), data)
+    if fast_pixel
+        return draw_pixel_scatter(screen[], positions[], data)
+    else
+        return draw_scatter(screen[], (marker_shape[], positions[]), data)
+    end
 end
 
 
@@ -177,21 +181,70 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     atlas = gl_texture_atlas()
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
-    register_computation!(
-        attr, [:uv_offset_width, :marker, :font, :quad_scale], [:sdf_marker_shape, :sdf_uv]
-    ) do (uv_off, m, f, scale), changed, last
-        new_mf = changed[2] || changed[3]
-        uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
-        # TODO: maybe we should just add a glconvert(x::Enum) = Cint(x)?
-        if changed[1] || changed[4]
-            marker = Cint(Makie.marker_to_sdf_shape(m[]))
-            if marker == 0 && !is_all_equal_scale(scale[])
-                marker = Cint(5)
-            end
-        else
-            marker = nothing
+    if attr[:marker][] isa FastPixel
+
+        register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
+            space[] == :pixel && return (Int32(0),)
+            space[] == :data  && return (Int32(1),)
+            return error("Unsupported markerspace for FastPixel marker: $space")
         end
-        return (marker, uv)
+
+        register_computation!(
+            attr, [:marker], [:pixel_marker_shape]
+        ) do (marker,), changed, last
+            return (marker[].marker_type,)
+        end
+        marker_inputs = [:pixel_marker_shape, :markerspace, :upvector]
+        inputs = [
+            # Special
+            :scene, :gl_screen,
+            # Needs explicit handling
+            :positions_transformed_f32c,
+            :colormap, :color, :_colorrange,
+            :pixel_marker_shape,
+            # Simple forwards
+            :gl_markerspace, :quad_scale,
+            :transparency, :fxaa, :visible,
+            :model_f32c,
+            :_lowclip, :_highclip, :nan_color,
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+            # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offste
+        ]
+    else
+
+        register_computation!(
+            attr, [:uv_offset_width, :marker, :font, :quad_scale], [:sdf_marker_shape, :sdf_uv]
+        ) do (uv_off, m, f, scale), changed, last
+            new_mf = changed[2] || changed[3]
+            uv = new_mf ? Makie.primitive_uv_offset_width(atlas, m[], f[]) : nothing
+            # TODO: maybe we should just add a glconvert(x::Enum) = Cint(x)?
+            if changed[1] || changed[4]
+                marker = Cint(Makie.marker_to_sdf_shape(m[]))
+                if marker == 0 && !is_all_equal_scale(scale[])
+                    marker = Cint(5)
+                end
+            else
+                marker = nothing
+            end
+            return (marker, uv)
+        end
+
+        inputs = [
+            # Special
+            :scene, :gl_screen,
+            # Needs explicit handling
+            :positions_transformed_f32c,
+            :colormap, :color, :_colorrange,
+            :sdf_marker_shape,
+            # Simple forwards
+            :sdf_uv, :quad_scale, :quad_offset,
+            :transparency, :fxaa, :visible,
+            :strokecolor, :strokewidth, :glowcolor, :glowwidth,
+            :model_f32c, :rotation, :transform_marker,
+            :_lowclip, :_highclip, :nan_color,
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+        ]
+
     end
 
     generate_clip_planes!(attr)
@@ -205,25 +258,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # - intensity_convert
     # - image
 
-    inputs = [
-        # Special
-        :scene, :gl_screen,
-        # Needs explicit handling
-        :positions_transformed_f32c,
-        :colormap, :color, :_colorrange,
-        :sdf_marker_shape,
-        # Simple forwards
-        :sdf_uv,
-        :quad_scale, :quad_offset,
-        :transparency, :fxaa, :visible,
-        :strokecolor, :strokewidth,
-        :glowcolor, :glowwidth,
-        :model_f32c, :rotation,
-        :transform_marker,
-        :_lowclip, :_highclip, :nan_color,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
-    ]
-
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
@@ -231,6 +265,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :positions_transformed_f32c => :position,
         :colormap => :color_map, :_colorrange => :color_norm,
         :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
+        :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
         :quad_scale => :scale,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,

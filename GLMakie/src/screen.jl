@@ -565,7 +565,7 @@ function destroy!(rob::RenderObject, has_cached_camera = false)
     # With camera caching these must not be cleaned up. If they do get cleared
     # here, the cached Observable will continue to exist in camera and be used
     # for future plots, but not be connected to the parent values.
-    keep_alive = (:view, :projection, :projectionview, :resolution)
+    keep_alive = (:view, :projection, :projectionview, :resolution, :eyeposition, :lookat, :viewdirection, :upvector)
 
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
