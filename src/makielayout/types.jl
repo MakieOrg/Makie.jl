@@ -2098,3 +2098,70 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+@Block CameraWidget begin
+    @attributes begin
+        # Layouting
+        "The height setting of the scene."
+        height = Auto()
+        "The width setting of the scene."
+        width = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+        "The horizontal alignment of the scene when it is not attached to the layout."
+        halign = :right
+        "The vertical alignment of the scene when it is not attached to the layout."
+        valign = :bottom
+        "The size of controller scene when it is not placed in a layout."
+        float_size = 150
+
+        # Text that appears on scroll
+        "Sets the font color for the current angle popup."
+        angle_indicator_fontcolor = :black
+        "Sets the font size for the current angle popup."
+        angle_indicator_fontsize = 20
+        "Sets the font outline size for the current angle popup."
+        angle_indicator_strokesize = 2
+        "Sets the font outline color for the current angle popup."
+        angle_indicator_strokecolor = :white
+        "Sets how long the angle indicator is visible after switching to a finer or coarser direction selection."
+        angle_indicator_timeout = 3.0
+
+        "Controls the number of different selectable directions. The elements represent different zoom levels of the selection with each value being the number of direction over 360°."
+        step_choices = (4, 6, 8, 9, 10, 12, 16, 18, 24, 36, 72)
+
+        # Rect that shows on hover
+        "Sets the color for the direction picking rect."
+        direction_indicator_color = :black
+        "Sets the line width for the direction picking rect."
+        direction_indicator_linewidth = 1
+
+        # Controller visuals
+        "Sets the background color for the circle behind the displayed ball"
+        backgroundcolor = :black
+        "Sets the low resolution texture."
+        texture_low = FileIO.load(Makie.assetpath("ball_controller_200.png"))
+        "Sets the mid resolution texture."
+        texture_mid = FileIO.load(Makie.assetpath("ball_controller_400.png"))
+        "Sets the high resolution texture."
+        texture_high = FileIO.load(Makie.assetpath("ball_controller_800.png"))
+        "Threshold pixel diameter for switching between low and mid resolution textures."
+        low_mid_threshold = 125
+        "Threshold pixel diameter for switching between mid and high resolution textures."
+        mid_high_threshold = 250
+
+        # Camera Controls
+        "Adjuts the field of view."
+        fov = 45.0
+        "Adjusts the projection type. Can be `Perspective` or `Orthographic`."
+        projectiontype = Perspective
+        "Sets the speed of mouse drag rotations."
+        rotationspeed = 1.0
+        "Sets the maximum time between pressing and releasing a mouse button for it to still count as a click."
+        click_timeout = 0.3
+    end
+end
