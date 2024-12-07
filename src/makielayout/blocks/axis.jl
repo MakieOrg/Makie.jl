@@ -50,8 +50,10 @@ function register_events!(ax, scene)
     onany(process_axis_event, scene, ax, scrollevents)
     onany(process_axis_event, scene, ax, keysevents)
 
-    for (name, (active, fn)) in Makie.interactions(Axis)
-        active && register_interaction!(ax, name, fn())
+    for (name, (active, interaction)) in Makie.interactions(Axis)
+        active && register_interaction!(ax, name,
+            interaction isa Function ? interaction : deepcopy(interaction),
+        )
     end
 
     return

@@ -1,12 +1,12 @@
 const DEFAULT_INTERACTIONS = Dict(
     Axis => Dict(
-        :rectanglezoom => (true, () -> RectangleZoom()),
-        :limitreset => (true, () -> LimitReset()),
-        :scrollzoom => (true, () -> ScrollZoom(0.1, 0.2)),
-        :dragpan => (true, () -> DragPan(0.2)),
+        :rectanglezoom => (true, RectangleZoom()),
+        :limitreset => (true, LimitReset()),
+        :scrollzoom => (true, ScrollZoom(0.1, 0.2)),
+        :dragpan => (true, DragPan(0.2)),
     ),
     Axis3 => Dict(
-        :dragrotate => (true, () -> DragRotate()),
+        :dragrotate => (true, DragRotate()),
     ),
 )
 
