@@ -355,6 +355,22 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions[]),)
     end
+
+    # allow color/linewidth per segment (like calculated_attributes! did)
+    for key in [:color, :linewidth]
+        register_computation!(attr, [:positions, key], [Symbol(:synched_, key)]) do (positions, input), changed, last
+            N = length(positions[])
+            output = isnothing(last) ? copy(input[]) : last[1][]
+            if changed[2] && (output isa AbstractVector) && (div(N, 2) == length(input[]))
+                resize!(output, N)
+                for i in eachindex(output) # TODO: @inbounds
+                    output[i] = input[][div(i+1, 2)]
+                end
+            end
+            return (output,)
+        end
+    end
+
     T = typeof(attr[:positions][])
     p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()

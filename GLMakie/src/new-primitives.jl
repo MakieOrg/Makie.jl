@@ -684,9 +684,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     inputs = [
         :space, :scene, :screen,
         :positions_transformed_f32c,
-        :color, :colormap, :_colorrange,
+        :synched_color, :colormap, :_colorrange,
         # Auto
-        :pattern, :pattern_length, :linecap, :linewidth,
+        :pattern, :pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
         :visible,
@@ -695,8 +695,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
-        :linewidth => :thickness, :model_f32c => :model,
-        :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
+        :synched_linewidth => :thickness, :model_f32c => :model,
+        :synched_color => :color, :colormap => :color_map, :_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
@@ -707,7 +707,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
             robj = assemble_linesegments_robj(args[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                haskey(data, :intensity) && (input2glname[:synched_color] = :intensity)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
