@@ -123,6 +123,7 @@ end
 ################################################################################
 
 function assemble_scatter_robj(
+        add_uniforms!,
         atlas, marker,
         space, markerspace, # TODO: feels incomplete to me... Do matrices react correctly? What about markerspace with FastPixel?
         scene, screen,
@@ -139,16 +140,19 @@ function assemble_scatter_robj(
         :vertex => positions[],
         :indices => length(positions[]),
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
-        :markerspace => Cint(0), # TODO: should be dynamic
         :distancefield => distancefield,
         :px_per_unit => screen[].px_per_unit,   # technically not const?
-        :upvector => Vec3f(0),
+        :markerspace => Cint(0),                # TODO: should be dynamic
+        :upvector => Vec3f(0),                  # TODO: should be dynamic
         :ssao => false,                         # shader compilation const
         :shape => marker_shape[],
     )
 
     add_color_attributes!(data, color[], colormap[], colornorm[])
     add_camera_attributes!(data, screen[], camera, pspace)
+
+    add_uniforms!(data)
+
     return draw_scatter(screen[], (marker_shape[], positions[]), data)
 end
 
@@ -230,15 +234,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
             # Generate complex defaults
             robj = assemble_scatter_robj(atlas, attr.outputs[:marker][],
-                attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...)
+                attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...) do data
 
-            # Generate name mapping
-            haskey(robj.vertexarray.buffers, "intensity") && (input2glname[:color] = :intensity)
-            gl_names = get.(Ref(input2glname), inputs, inputs)
+                # Generate name mapping
+                haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                gl_names = get.(Ref(input2glname), inputs, inputs)
 
-            # Simple defaults
-            foreach(8:length(args)) do idx
-                robj.uniforms[gl_names[idx]] = args[idx][]
+                # Simple defaults
+                foreach(8:length(args)) do idx
+                    data[gl_names[idx]] = args[idx][]
+                end
+
             end
 
         else
