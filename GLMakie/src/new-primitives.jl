@@ -31,7 +31,9 @@ end
 function update_robjs!(robj, args, changed, gl_names)
     for (name, arg, has_changed) in zip(gl_names, args, changed)
         if has_changed
-            if haskey(robj.uniforms, name)
+            if name === :visible
+                robj.visible = arg[]
+            elseif haskey(robj.uniforms, name)
                 robj.uniforms[name] = arg[]
             elseif haskey(robj.vertexarray.buffers, string(name))
                 GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
@@ -78,7 +80,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # Simple forwards
         :sdf_uv,
         :quad_scale, :quad_offset,
-        :transparency,
+        :transparency, :fxaa, :visible,
         :strokecolor, :strokewidth,
         :glowcolor, :glowwidth,
         :model_f32c, :rotation,
@@ -362,7 +364,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit,
-        :transparency, :fxaa, :debug,
+        :transparency, :fxaa, :debug, :visible,
         :model_f32c,
         :_lowclip, :_highclip, :nan_color,
     ]
@@ -483,7 +485,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         # Auto
         :pattern, :pattern_length, :linecap, :linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :transparency, :fxaa, :debug
+        :transparency, :fxaa, :debug,
+        :visible
     ]
 
     input2glname = Dict{Symbol, Symbol}(

@@ -330,12 +330,14 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, visible[]
+            id, to_value(visible)
         )
-        push!(observables, visible)
-        on(visible) do visible
-            robj.visible = visible
-            return
+        if visible isa Observable # old way, set in GLMakie now
+            push!(observables, visible)
+            on(visible) do visible
+                robj.visible = visible
+                return
+            end
         end
         return robj
     end
