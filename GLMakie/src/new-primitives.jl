@@ -22,7 +22,11 @@ function update_robjs!(robj, args, changed, gl_names)
             if name === :visible
                 robj.visible = arg[]
             elseif haskey(robj.uniforms, name)
-                robj.uniforms[name] = arg[]
+                if robj.uniforms[name] isa GLAbstraction.GPUArray
+                    GLAbstraction.update!(robj.uniforms[name], arg[])
+                else
+                    robj.uniforms[name] = arg[]
+                end
             elseif haskey(robj.vertexarray.buffers, string(name))
                 GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
             else
@@ -38,7 +42,12 @@ function add_color_attributes!(data, color, colormap, colornorm)
     intensity = needs_mapping ? color : nothing
 
     data[:color_map] = needs_mapping ? colormap : nothing
-    data[:color] = _color
+    if _color isa Matrix{RGBAf}
+        data[:image] = _color
+        data[:color] = RGBAf(1,1,1,1)
+    else
+        data[:color] = _color
+    end
     data[:intensity] = intensity
     data[:color_norm] = colornorm
     return nothing
@@ -254,9 +263,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # - colorrange, lowclip, highclip cannot be changed from autoamtic
     # - rotation -> billboard missing
     # - px_per_unit (that can update dynamically via record, right?)
-    # - fxaa
     # - intensity_convert
-    # - image
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
@@ -286,6 +293,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
                 # Generate name mapping
                 haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                haskey(data, :image) && (input2glname[:color] = :image)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
