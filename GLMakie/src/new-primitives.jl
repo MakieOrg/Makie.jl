@@ -62,6 +62,8 @@ function add_color_attributes_lines!(data, color, colormap, colornorm)
 end
 
 function add_camera_attributes!(data, screen, camera, space)
+    # TODO: This doesn't allow dynamic space, markerspace (regression)
+    #       Are we ok with this?
     # Make sure to protect these from cleanup in destroy!(renderobject)
     data[:resolution] = Makie.get_ppu_resolution(camera, screen.px_per_unit[])
     data[:projection] = Makie.get_projection(camera, space)
@@ -190,6 +192,39 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     atlas = gl_texture_atlas()
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
+    if attr[:depthsorting][]
+
+        # is projectionview enough to trigger on scene resize in all cases?
+        add_input!(attr, :projectionview, scene.camera.projectionview[])
+        on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+
+        register_computation!(attr,
+            [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
+            [:gl_depth_cache, :gl_indices]
+        ) do (pos, _, space, model), changed, cached
+            pvm = Makie.space_to_clip(scene.camera, space[]) * model[]
+            pvm24 = pvm[Vec(3,4), Vec(1,2,3,4)] # only calculate zw
+            if isnothing(cached)
+                depth_vals = Vector{Float32}(undef, length(pos[]))
+                indices = Vector{Cuint}(undef, length(pos[]))
+            else
+                depth_vals = resize!(cached[1][], length(pos[]))
+                indices = resize!(cached[2][], length(pos[]))
+            end
+            map!(depth_vals, pos[]) do p
+                p4d = pvm24 * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+                p4d[1] / p4d[2]
+            end
+            sortperm!(indices, depth_vals, rev = true)
+            indices .-= 1
+            return (depth_vals, indices)
+        end
+    else
+        register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
+            return (length(ps[]),)
+        end
+    end
+
     if attr[:marker][] isa FastPixel
 
         register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
@@ -216,7 +251,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :transparency, :fxaa, :visible,
             :model_f32c,
             :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offste
         ]
     else
@@ -251,7 +286,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
             :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
         ]
 
     end
@@ -278,7 +313,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+        :gl_indices => :indices
     )
     gl_names = Symbol[]
 
@@ -309,7 +345,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             if changed[3] # position
                 haskey(robj.uniforms, :len) && (robj.uniforms[:len][] = length(args[3][]))
                 robj.vertexarray.bufferlength = length(args[3][])
-                robj.vertexarray.indices = length(args[3][])
+                # robj.vertexarray.indices = length(args[3][])
             end
             update_robjs!(robj, args[3:end], changed[3:end], gl_names[3:end])
 
