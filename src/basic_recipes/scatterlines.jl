@@ -85,6 +85,12 @@ conversion_trait(::Type{<: ScatterLines}) = PointBased()
 # TODO: Bad workaround for now
 MakieCore.argument_names(::Type{ScatterLines}, N::Integer) = (:positions,)
 
+Base.getindex(plot::ScatterLines, idx::Integer) = plot.args[1][Symbol(:arg, idx)]
+function Base.getindex(plot::ScatterLines, idx::UnitRange{<:Integer})
+    return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
+end
+
+
 # Also needs to avoid normal path
 function plot!(parent::Plot, plot::ComputePlots)
     scene = parent_scene(parent)

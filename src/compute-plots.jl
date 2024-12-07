@@ -9,6 +9,18 @@ using ComputePipeline
 
 const ComputePlots = Union{Scatter, Lines, LineSegments}
 
+Base.getindex(plot::ComputePlots, idx::Integer) = plot.args[1][Symbol(:arg, idx)]
+function Base.getindex(plot::ComputePlots, idx::UnitRange{<:Integer})
+    return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
+end
+
+# temp fix axis selection
+function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
+    result = args_preferred_axis(PT, attr[:positions][])
+    isnothing(result) && return Axis
+    return result
+end
+
 function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
     if space === markerspace
         bb = Rect3d()
@@ -238,8 +250,6 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             end
         end
     end
-
-
 end
 
 # function gscatter end
