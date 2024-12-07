@@ -1,5 +1,54 @@
 using Makie.ComputePipeline
 
+################################################################################
+### Generic (more or less)
+################################################################################
+
+function update_robjs!(robj, args, changed, gl_names)
+    for (name, arg, has_changed) in zip(gl_names, args, changed)
+        if has_changed
+            if name === :visible
+                robj.visible = arg[]
+            elseif haskey(robj.uniforms, name)
+                robj.uniforms[name] = arg[]
+            elseif haskey(robj.vertexarray.buffers, string(name))
+                GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
+            else
+                # Core.println("Could not update ", name)
+            end
+        end
+    end
+end
+
+function add_color_attributes!(data, color, colormap, colornorm)
+    needs_mapping = !(colornorm isa Nothing)
+    _color = needs_mapping ? nothing : color
+    intensity = needs_mapping ? color : nothing
+
+    data[:color_map] = needs_mapping ? colormap : nothing
+    data[:color] = _color
+    data[:intensity] = intensity
+    data[:color_norm] = colornorm
+    return nothing
+end
+
+function add_color_attributes_lines!(data, color, colormap, colornorm)
+    needs_mapping = !(colornorm isa Nothing)
+    data[:color_map] = needs_mapping ? colormap : nothing
+    data[:color] = color
+    data[:color_norm] = colornorm
+    return nothing
+end
+
+function add_camera_attributes!(data, screen, camera, space)
+    data[:resolution] = Makie.get_ppu_resolution(camera, screen.px_per_unit[])
+    data[:projection] = Makie.get_projection(camera, space)
+    data[:projectionview] = Makie.get_projectionview(camera, space)
+    data[:view] = Makie.get_view(camera, space)
+    return data
+end
+
+
 function assemble_scatter_robj(
         atlas, marker,
         space, markerspace, # TODO: feels incomplete to me... Do matrices react correctly? What about markerspace with FastPixel?
@@ -28,21 +77,6 @@ function assemble_scatter_robj(
     return draw_scatter(screen[], (marker_shape[], positions[]), data)
 end
 
-function update_robjs!(robj, args, changed, gl_names)
-    for (name, arg, has_changed) in zip(gl_names, args, changed)
-        if has_changed
-            if name === :visible
-                robj.visible = arg[]
-            elseif haskey(robj.uniforms, name)
-                robj.uniforms[name] = arg[]
-            elseif haskey(robj.vertexarray.buffers, string(name))
-                GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
-            else
-                # Core.println("Could not update ", name)
-            end
-        end
-    end
-end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     attr = plot.args[1]
@@ -142,33 +176,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     return robj
 end
 
-function add_color_attributes!(data, color, colormap, colornorm)
-    needs_mapping = !(colornorm isa Nothing)
-    _color = needs_mapping ? nothing : color
-    intensity = needs_mapping ? color : nothing
-
-    data[:color_map] = needs_mapping ? colormap : nothing
-    data[:color] = _color
-    data[:intensity] = intensity
-    data[:color_norm] = colornorm
-    return nothing
-end
-
-function add_color_attributes_lines!(data, color, colormap, colornorm)
-    needs_mapping = !(colornorm isa Nothing)
-    data[:color_map] = needs_mapping ? colormap : nothing
-    data[:color] = color
-    data[:color_norm] = colornorm
-    return nothing
-end
-
-function add_camera_attributes!(data, screen, camera, space)
-    data[:resolution] = Makie.get_ppu_resolution(camera, screen.px_per_unit[])
-    data[:projection] = Makie.get_projection(camera, space)
-    data[:projectionview] = Makie.get_projectionview(camera, space)
-    data[:view] = Makie.get_view(camera, space)
-    return data
-end
+################################################################################
+### Lines
+################################################################################
 
 function assemble_lines_robj(
         add_uniforms!, space, scene, screen,
@@ -204,8 +214,8 @@ function generate_indices(positions, changed, cached)
     end
 
     ps = positions[1][]
-    resize!(valid, length(ps))
     sizehint!(indices, length(ps) + 2)
+    resize!(valid, length(ps))
 
     # This loop identifies sections of line points A B C D E F bounded by
     # the start/end of the list ps or by NaN and generates indices for them:
@@ -408,6 +418,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     push!(screen, scene, robj)
     return robj
 end
+
+################################################################################
+### LineSegments
+################################################################################
 
 function assemble_linesegments_robj(
     add_uniforms!,
