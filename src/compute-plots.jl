@@ -289,7 +289,7 @@ function plot!(scene::Scene, plot::ComputePlots)
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
         on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
     end
-    push!(scene.plots, plot)
+    push!(scene, plot)
     return
 end
 

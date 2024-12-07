@@ -105,7 +105,7 @@ end
 function plot!(parent::Scene, plot::ScatterLines)
     add_theme!(plot, parent)
     plot.parent = parent
-    push!(parent.plots, plot)
+    push!(parent, plot)
     plot!(plot)
     return
 end
