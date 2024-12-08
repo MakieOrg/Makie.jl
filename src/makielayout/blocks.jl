@@ -288,6 +288,29 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
+function MakieCore.InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
+    return MakieCore.InvalidAttributeError(BT, "block", attributes)
+end
+
+function MakieCore.attribute_names(::Type{T}) where {T <: Block}
+    attrs = _attribute_docs(T)
+    # Some blocks have keyword arguments that are not attributes.
+    # TODO: Refactor intiailize_block! to just not use kwargs?
+    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
+    T <: Legend && (attrs[:entrygroups] = "")
+    T <: Menu && (attrs[:default] = "")
+    T <: LScene && (attrs[:scenekw] = "")
+    return keys(attrs)
+end
+
+function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
+    badnames = setdiff(keys(kwdict), MakieCore.attribute_names(T))
+    if !isempty(badnames)
+        throw(MakieCore.InvalidAttributeError(T, badnames))
+    end
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -301,6 +324,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     end
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
+    _check_remaining_kwargs(T, non_attribute_kwargs)
 
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme
