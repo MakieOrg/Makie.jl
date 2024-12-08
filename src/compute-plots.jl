@@ -55,7 +55,7 @@ end
 function register_colormapping!(attr::ComputeGraph)
     register_computation!(attr, [:colormap, :alpha],
                           [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), changed, last
-        icm = attr.colormap[] # the raw input colormap e.g. :viridis
+        icm = colormap[] # the raw input colormap e.g. :viridis
         raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
         if a[] < 1.0
             alpha_colormap = add_alpha.(colormap[], a[])
@@ -317,7 +317,7 @@ end
 
 plot!(parent::SceneLike, plot::ComputePlots) = computed_plot!(parent, plot)
 
-function computed_plot!(parent, plot)
+function computed_plot!(parent, plot::T) where {T}
     scene = parent_scene(parent)
     add_theme!(plot, scene)
     plot.parent = parent
@@ -355,9 +355,14 @@ function computed_plot!(parent, plot)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(plot.args[1][:cycle][]))
     end
 
+    documented_attr = MakieCore.documented_attributes(T).d
     for (k, v) in plot.kw
-        if !haskey(plot.args[1], k)
-            add_input!(plot.args[1], k, v)
+        if !haskey(plot.args[1].outputs, k)
+            if haskey(documented_attr, k)
+                error("User Attribute $k did not get registered.")
+            else
+                add_input!(plot.args[1], k, v)
+            end
         end
     end
 

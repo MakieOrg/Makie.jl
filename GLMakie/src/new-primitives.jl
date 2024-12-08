@@ -21,6 +21,12 @@ function update_robjs!(robj, args, changed, gl_names)
         if has_changed
             if name === :visible
                 robj.visible = arg[]
+            elseif name === :indices
+                if robj.vertexarray.indices isa GLAbstraction.GPUArray
+                    GLAbstraction.update!(robj.vertexarray.indices, arg[])
+                else
+                    robj.vertexarray.indices = arg[]
+                end
             elseif haskey(robj.uniforms, name)
                 if robj.uniforms[name] isa GLAbstraction.GPUArray
                     GLAbstraction.update!(robj.uniforms[name], arg[])
@@ -30,7 +36,7 @@ function update_robjs!(robj, args, changed, gl_names)
             elseif haskey(robj.vertexarray.buffers, string(name))
                 GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
             else
-                # Core.println("Could not update ", name)
+                # println("Could not update ", name)
             end
         end
     end
@@ -244,7 +250,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :scaled_color, :scaled_colorrange,
+            :alpha_colormap, :scaled_color, :scaled_colorrange,
             :pixel_marker_shape,
             # Simple forwards
             :gl_markerspace, :quad_scale,
@@ -279,7 +285,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :scaled_color, :scaled_colorrange,
+            :alpha_colormap, :scaled_color, :scaled_colorrange,
             :sdf_marker_shape,
             # Simple forwards
             :sdf_uv, :quad_scale, :quad_offset,
@@ -306,7 +312,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position,
-        :colormap => :color_map, :scaled_colorrange => :color_norm,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :color,
         :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
         :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
@@ -556,7 +562,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         # relevant to compile time decisions
         :space, :scene, :screen,
         positions,
-        :scaled_color, :colormap, :scaled_colorrange,
+        :scaled_color, :alpha_colormap, :scaled_colorrange,
         # Auto
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
@@ -570,7 +576,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
-        :scaled_color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
@@ -579,6 +585,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
+
             robj = assemble_lines_robj(args[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
@@ -686,7 +693,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     inputs = [
         :space, :scene, :screen,
         :positions_transformed_f32c,
-        :synched_color, :colormap, :scaled_colorrange,
+        :synched_color, :alpha_colormap, :scaled_colorrange,
         # Auto
         :pattern, :pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
@@ -698,7 +705,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
-        :synched_color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
+        :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
