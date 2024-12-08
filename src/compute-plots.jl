@@ -345,6 +345,11 @@ function computed_plot!(parent, plot)
 
     push!(parent, plot)
     plot!(plot)
+
+    if !isnothing(scene) && haskey(plot.args[1], :cycle)
+        add_cycle_attribute!(plot, scene, get_cycle_for_plottype(plot.args[1][:cycle][]))
+    end
+
     return
 end
 
