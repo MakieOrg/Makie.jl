@@ -93,13 +93,15 @@ function register_colormapping!(attr::ComputeGraph)
         return (Vec2f(apply_scale(colorscale[], colorrange[])),)
     end
 
-    register_computation!(attr, [:color, :colorscale],
-                          [:scaled_color]) do (color, colorscale), changed, last
+    register_computation!(attr, [:color, :colorscale, :alpha],
+                          [:scaled_color]) do (color, colorscale, alpha), changed, last
 
         if color[] isa Union{AbstractArray{<: Real}, Real}
             return (el32convert(apply_scale(colorscale[], color[])),)
+        elseif color[] isa AbstractArray
+            return (add_alpha.(color[], alpha[]),)
         else
-            return (color[],)
+            return (add_alpha(color[], alpha[]),)
         end
     end
 end
