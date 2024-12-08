@@ -92,23 +92,7 @@ end
 
 
 # Also needs to avoid normal path
-function plot!(parent::Plot, plot::ComputePlots)
-    scene = parent_scene(parent)
-    add_theme!(plot, scene)
-    if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
-        on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
-    end
-    plot.parent = parent
-    push!(parent.plots, plot)
-    return
-end
-function plot!(parent::Scene, plot::ScatterLines)
-    add_theme!(plot, parent)
-    plot.parent = parent
-    push!(parent, plot)
-    plot!(plot)
-    return
-end
+plot!(parent::Scene, plot::ScatterLines) = computed_plot!(parent, plot)
 
 function ScatterLines(args::Tuple, user_kw::Dict{Symbol,Any})
     if !isempty(args) && first(args) isa Attributes

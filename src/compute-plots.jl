@@ -143,6 +143,9 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     end
 
     add_input!(attr, :transform_func, identity)
+    # Hack-fix variable type
+    attr[:transform_func].value = RefValue{Any}(identity)
+
     add_input!(attr, :model, Mat4d(I))
     # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
     add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
@@ -227,6 +230,14 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
 
+    # Hack-fix variable types
+    abstract_type_init = Dict{Symbol, RefValue}(
+        :lowclip => RefValue{Union{Automatic, Colorant}}(automatic),
+        :highclip => RefValue{Union{Automatic, Colorant}}(automatic),
+        :colorrange => RefValue{Union{Automatic, Vec2f}}(automatic),
+        :colorscale => RefValue{Any}(identity),
+    )
+
     for (k, v) in documented_attr
         if haskey(kwargs, k)
             value = kwargs[k]
@@ -248,6 +259,11 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             on(value) do new_val
                 setproperty!(attr, k, new_val)
             end
+        end
+
+        # Hack-fix variable type
+        if haskey(abstract_type_init, k)
+            attr[k].value = abstract_type_init[k]
         end
     end
 end
@@ -283,13 +299,41 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-function plot!(scene::Scene, plot::ComputePlots)
+plot!(parent::SceneLike, plot::ComputePlots) = computed_plot!(parent, plot)
+
+function computed_plot!(parent, plot)
+    scene = parent_scene(parent)
     add_theme!(plot, scene)
-    plot.parent = scene
+    plot.parent = parent
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
         on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
     end
-    push!(scene, plot)
+
+    # from connect_plot!()
+    t_user = to_value(get(attributes(plot), :transformation, automatic))
+    if t_user isa Transformation
+        plot.transformation = t_user
+    else
+        if t_user isa Union{Nothing, Automatic}
+            plot.transformation = Transformation()
+        else
+            t = Transformation()
+            transform!(t, t_user)
+            plot.transformation = t
+        end
+        if is_space_compatible(plot, parent)
+            obsfunc = connect!(transformation(parent), transformation(plot))
+            append!(plot.deregister_callbacks, obsfunc)
+        end
+    end
+
+    # TODO: Consider removing Transformation() and handling this in compute graph
+    # connect updates
+    on(model -> update!(plot.args[1], model = model), plot, plot.transformation.model, update = true)
+    on(tf -> update!(plot.args[1], transform_func = tf), plot, plot.transformation.transform_func, update = true)
+
+    push!(parent, plot)
+    plot!(plot)
     return
 end
 
