@@ -353,6 +353,12 @@ function computed_plot!(parent, plot)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(plot.args[1][:cycle][]))
     end
 
+    for (k, v) in plot.kw
+        if !haskey(plot.args[1], k)
+            add_input!(plot.args[1], k, v)
+        end
+    end
+
     return
 end
 
