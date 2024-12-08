@@ -344,6 +344,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
                 foreach(8:length(args)) do idx
                     data[gl_names[idx]] = args[idx][]
                 end
+                data[:overdraw] = attr.outputs[:overdraw][]
 
             end
 
@@ -597,6 +598,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
                     data[gl_names[idx]] = args[idx][]
                 end
 
+                data[:overdraw] = attr.outputs[:overdraw][]
+
                 return
             end
 
@@ -726,6 +729,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
                 @assert gl_names[4] === :vertex
                 data[:indices] = length(args[4][])
+                data[:overdraw] = attr.outputs[:overdraw][]
 
                 return
             end
