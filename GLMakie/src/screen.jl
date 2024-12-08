@@ -792,7 +792,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    pollevents(screen, Makie.BackendTick)
+    pollevents(screen, Makie.BackendTick) # TODO: consider triggering update on pollevents since we generally poll before rendering
+    update!(screen)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
@@ -946,6 +947,15 @@ end
 
 
 # const time_record = sizehint!(Float64[], 100_000)
+function update!(screen)
+    for plot in values(screen.cache2plot)
+        # poll object for updates
+        if plot isa Makie.ComputePlots
+            plot.args[1][:gl_renderobject][]
+        end
+    end
+    return
+end
 
 function on_demand_renderloop(screen::Screen)
     tick_state = Makie.UnknownTickState
@@ -953,12 +963,7 @@ function on_demand_renderloop(screen::Screen)
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
         pollevents(screen, tick_state) # GLFW poll
-        for plot in values(screen.cache2plot)
-            # poll object for updates
-            if plot isa Makie.ComputePlots
-                plot.args[1][:gl_renderobject][]
-            end
-        end
+        update!(screen)
         if !screen.config.pause_renderloop && requires_update(screen)
             tick_state = Makie.RegularRenderTick
             render_frame(screen)
