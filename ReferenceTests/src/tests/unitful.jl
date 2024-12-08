@@ -30,3 +30,16 @@ end
 
     st
 end
+
+@reference_test "Unit reflection" begin
+    # Don't swallow units past the first
+    f, a, p = scatter((1:10) .* u"J/s")
+    # Don't simplify (assume the user knows better)
+    scatter(f[1, 2], (1:10) .* u"K", exp.(1:10) .* u"mm/m^2")
+    # Only change prefixes of simple units, not compound units
+    scatter(f[2, 1], 10 .^ (1:6) .* u"W/m^2", (1:6) .* 1000 .* u"nm")
+    # Only change units/prefixes for simple units when adding more plots
+    scatter(f[2, 2], (0:10) .* u"W/m^2", (0:10) .* u"g")
+    scatter!((0:10) .* u"kW/m^2", (0:10) .* u"kg")
+    f
+end
