@@ -244,7 +244,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :color, :_colorrange,
+            :colormap, :color, :scaled_colorrange,
             :pixel_marker_shape,
             # Simple forwards
             :gl_markerspace, :quad_scale,
@@ -278,7 +278,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :color, :_colorrange,
+            :colormap, :color, :scaled_colorrange,
             :sdf_marker_shape,
             # Simple forwards
             :sdf_uv, :quad_scale, :quad_offset,
@@ -305,7 +305,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position,
-        :colormap => :color_map, :_colorrange => :color_norm,
+        :colormap => :color_map, :scaled_colorrange => :color_norm,
         :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
         :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
         :quad_scale => :scale,
@@ -554,7 +554,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         # relevant to compile time decisions
         :space, :scene, :screen,
         positions,
-        :color, :colormap, :_colorrange,
+        :color, :colormap, :scaled_colorrange,
         # Auto
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
@@ -568,7 +568,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
-        :color => :color, :colormap => :color_map, :_colorrange => :color_norm,
+        :color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
@@ -684,7 +684,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     inputs = [
         :space, :scene, :screen,
         :positions_transformed_f32c,
-        :synched_color, :colormap, :_colorrange,
+        :synched_color, :colormap, :scaled_colorrange,
         # Auto
         :pattern, :pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
@@ -696,7 +696,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
-        :synched_color => :color, :colormap => :color_map, :_colorrange => :color_norm,
+        :synched_color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
