@@ -167,6 +167,7 @@ function draw_scatter(
     draw_scatter(screen, (RECTANGLE, p[2]), data)
 end
 
+# TODO: vector of images
 function draw_scatter(
         screen, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}

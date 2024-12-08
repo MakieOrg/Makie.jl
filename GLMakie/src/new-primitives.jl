@@ -244,7 +244,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :color, :scaled_colorrange,
+            :colormap, :scaled_color, :scaled_colorrange,
             :pixel_marker_shape,
             # Simple forwards
             :gl_markerspace, :quad_scale,
@@ -254,6 +254,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offste
         ]
+
     else
 
         register_computation!(
@@ -278,7 +279,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
-            :colormap, :color, :scaled_colorrange,
+            :colormap, :scaled_color, :scaled_colorrange,
             :sdf_marker_shape,
             # Simple forwards
             :sdf_uv, :quad_scale, :quad_offset,
@@ -306,6 +307,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position,
         :colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :color,
         :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
         :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
         :quad_scale => :scale,
@@ -328,8 +330,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
                 attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:color] = :intensity)
-                haskey(data, :image) && (input2glname[:color] = :image)
+                haskey(data, :intensity) && (input2glname[:scaled_color] = :intensity)
+                haskey(data, :image) && (input2glname[:scaled_color] = :image)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
@@ -554,7 +556,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         # relevant to compile time decisions
         :space, :scene, :screen,
         positions,
-        :color, :colormap, :scaled_colorrange,
+        :scaled_color, :colormap, :scaled_colorrange,
         # Auto
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
@@ -568,7 +570,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
-        :color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :color, :colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
@@ -580,7 +582,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
             robj = assemble_lines_robj(args[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:color] = :intensity)
+                haskey(data, :intensity) && (input2glname[:scaled_color] = :intensity)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults

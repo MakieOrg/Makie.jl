@@ -83,10 +83,21 @@ function register_colormapping!(attr::ComputeGraph)
             (Vec2d(colorrange[]),)
         end
     end
+
     register_computation!(attr, [:_colorrange, :colorscale],
                           [:scaled_colorrange]) do (colorrange, colorscale), changed, last
         isnothing(colorrange[]) && return nothing
         return (Vec2f(apply_scale(colorscale[], colorrange[])),)
+    end
+
+    register_computation!(attr, [:color, :colorscale],
+                          [:scaled_color]) do (color, colorscale), changed, last
+
+        if color[] isa Union{AbstractArray{<: Real}, Real}
+            return (el32convert(apply_scale(colorscale[], color[])),)
+        else
+            return (color[],)
+        end
     end
 end
 
@@ -401,8 +412,8 @@ function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
     end
 
     # allow color/linewidth per segment (like calculated_attributes! did)
-    for key in [:color, :linewidth]
-        register_computation!(attr, [:positions, key], [Symbol(:synched_, key)]) do (positions, input), changed, last
+    for (in, out) in zip([:scaled_color, :linewidth], [:synched_color, :synched_linewidth])
+        register_computation!(attr, [:positions, in], [out]) do (positions, input), changed, last
             N = length(positions[])
             output = isnothing(last) ? copy(input[]) : last[1][]
             if changed[2] && (output isa AbstractVector) && (div(N, 2) == length(input[]))
