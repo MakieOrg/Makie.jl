@@ -9,6 +9,9 @@ using ComputePipeline
 
 const ComputePlots = Union{Scatter, Lines, LineSegments}
 
+Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
+Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
+
 Base.getindex(plot::ComputePlots, idx::Integer) = plot.args[1][Symbol(:arg, idx)]
 function Base.getindex(plot::ComputePlots, idx::UnitRange{<:Integer})
     return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
@@ -317,7 +320,7 @@ function computed_plot!(parent, plot)
     add_theme!(plot, scene)
     plot.parent = parent
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
-        on(f32c -> update!(plot.args[1], f32c = f32c), scene.float32convert.scaling)
+        on(f32c -> update!(plot.args[1], f32c = f32c), plot, scene.float32convert.scaling)
     end
 
     # from connect_plot!()
@@ -364,7 +367,7 @@ function Base.getproperty(plot::ComputePlots, key::Symbol)
     return plot.args[1][key]
 end
 
-Observables.to_value(computed::ComputePipeline.Computed) = computed[]
+Observables.to_value(computed::ComputePipeline.ComputedValue) = computed[]
 
 
 function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
