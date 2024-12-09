@@ -2,18 +2,20 @@ module ComputePipeline
 
 using Base: RefValue
 
-mutable struct ComputedValue{P}
+abstract type AbstractEdge end
+
+mutable struct ComputedValue
     dirty::Bool
     value::RefValue
-    parent::P
+    parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
-    ComputedValue{P}() where {P} = new{P}(false)
-    ComputedValue{P}(value::RefValue) where {P} = new{P}(false, value)
-    function ComputedValue{P}(value::RefValue, parent::P, idx::Integer) where {P}
-        return new{P}(false, value, parent, idx)
+    ComputedValue() = new(false)
+    ComputedValue(value::RefValue) = new(false, value)
+    function ComputedValue(value::RefValue, parent::AbstractEdge, idx::Integer)
+        return new(false, value, parent, idx)
     end
-    function ComputedValue{P}(edge::P, idx::Integer) where {P}
-        p = new{P}(false)
+    function ComputedValue(edge::AbstractEdge, idx::Integer)
+        p = new(false)
         p.parent = edge
         p.parent_idx = idx
         return p
@@ -31,13 +33,15 @@ struct TypedEdge{InputTuple,OutputTuple,F}
     outputs_dirty::Vector{Bool}
 end
 
-struct ComputeEdge
+struct ComputeEdge <: AbstractEdge
     callback::Function
+
+    parents::Vector{ComputeEdge}
 
     inputs::Vector{ComputedValue}
     inputs_dirty::Vector{Bool}
 
-    outputs::Vector{ComputedValue{ComputeEdge}}
+    outputs::Vector{ComputedValue}
     outputs_dirty::Vector{Bool}
     got_resolved::RefValue{Bool}
 
@@ -49,7 +53,7 @@ end
 
 function ComputeEdge(f, input, output)
     return ComputeEdge(
-        f, ComputedValue[input], [true], [output], [true], RefValue(false),
+        f, ComputeEdge[], ComputedValue[input], [true], [output], [true], RefValue(false),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -106,11 +110,11 @@ end
 # Can only make this alias after ComputeEdge & ComputedValue are created
 # We're going to ignore that ComputedValue has a type parameter,
 # which it only has to resolve the circular dependency
-const Computed = ComputedValue{ComputeEdge}
+const Computed = ComputedValue
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, inputs::Vector{ComputedValue})
-    return ComputeEdge(f, inputs, fill(true, length(inputs)), ComputedValue[], Bool[], RefValue(false),
+    return ComputeEdge(f, ComputeEdge[], inputs, fill(true, length(inputs)), ComputedValue[], Bool[], RefValue(false),
                        ComputeEdge[], RefValue{TypedEdge}())
 end
 
@@ -122,18 +126,29 @@ function Base.show(io::IO, computed::ComputedValue)
     end
 end
 
+# mutable struct Input
+#     value::Any
+#     f::Function
+#     output::ComputedValue{Input}
+#     dirty::Bool
+#     output_dirty::Bool
+#     dependents::Vector{ComputeEdge}
+# end
+
 mutable struct Input
-    value::Any
-    f::Function
-    output::ComputedValue{Input}
-    dirty::Bool
-    output_dirty::Bool
-    dependents::Vector{ComputeEdge}
+    input::Computed
+    edge::ComputeEdge
+    output::Computed
 end
 
-function Input(value, f, output)
+function Input(value, f::Function, output::Computed)
     @assert !(value isa ComputedValue)
-    return Input(value, f, output, true, true, ComputeEdge[])
+    # return Input(value, f, output, true, true, ComputeEdge[])
+    input = Computed(RefValue{Any}(value))
+    edge = ComputeEdge((args, changed, cached) -> (f(args[1][]),), input, output)
+    output.parent = edge
+    output.parent_idx = 1
+    return Input(input, edge, output)
 end
 
 struct ComputeGraph
@@ -165,16 +180,16 @@ count_edges(input::Input) = length(collect_edges(input))
 
 function Base.show(io::IO, input::Input)
     print(io, "Input(")
-    show(io, input.value)
+    show(io, input.input[])
     print(io, ")")
 end
 
 # TODO: easier name resolution?
 function Base.show(io::IO, ::MIME"text/plain", input::Input)
     print(io, "Input(")
-    show(io, input.value)
-    print(io, ") with $(length(input.dependents)) direct dependents:")
-    for edge in input.dependents
+    show(io, input.input[])
+    print(io, ") with $(length(input.edge.dependents)) direct dependents:")
+    for edge in input.edge.dependents
         N = length(edge.inputs)
         println()
         if N == 1
@@ -261,33 +276,35 @@ function mark_dirty!(computed::Computed)
     return mark_dirty!(computed.parent)
 end
 
-function resolve!(input::Input)
-    if !input.dirty
-        input.output_dirty = false
-        return
-    end
-    value = input.f(input.value)
-    if isassigned(input.output.value)
-        input.output.value[] = value
-    else
-        input.output.value = RefValue(value)
-    end
-    input.dirty = false
-    input.output_dirty = true
-    input.output.dirty = true
-    for edge in input.dependents
-        mark_input_dirty!(input, edge)
-    end
-    input.output.dirty = false
-    return input.output.value[]
-end
+# function resolve!(input::Input)
+#     if !input.dirty
+#         input.output_dirty = false
+#         return
+#     end
+#     value = input.f(input.value)
+#     if isassigned(input.output.value)
+#         input.output.value[] = value
+#     else
+#         input.output.value = RefValue(value)
+#     end
+#     input.dirty = false
+#     input.output_dirty = true
+#     input.output.dirty = true
+#     for edge in input.dependents
+#         mark_input_dirty!(input, edge)
+#     end
+#     input.output.dirty = false
+#     return input.output.value[]
+# end
 
 function mark_dirty!(input::Input)
-    input.dirty = true
-    input.output_dirty = false
-    for edge in input.dependents
-        mark_dirty!(edge)
-    end
+    # input.dirty = true
+    # input.output_dirty = false
+    # for edge in input.dependents
+    #     mark_dirty!(edge)
+    # end
+    fill!(input.edge.inputs_dirty, true)
+    mark_dirty!(input.edge)
     return
 end
 
@@ -298,7 +315,8 @@ end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
-    input.value = value
+    # input.value = value
+    input.input[] = value
     mark_dirty!(input)
     return value
 end
@@ -342,18 +360,18 @@ function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     end
 end
 
-function mark_input_dirty!(parent::Input, edge::ComputeEdge)
-    @assert !parent.dirty # should got resolved
-    for (i, input) in enumerate(edge.inputs)
-        # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-        if hasparent(input)
-            iparent = input.parent
-            if iparent === parent
-                edge.inputs_dirty[i] = iparent.output_dirty
-            end
-        end
-    end
-end
+# function mark_input_dirty!(parent::Input, edge::ComputeEdge)
+#     @assert !parent.dirty # should got resolved
+#     for (i, input) in enumerate(edge.inputs)
+#         # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
+#         if hasparent(input)
+#             iparent = input.parent
+#             if iparent === parent
+#                 edge.inputs_dirty[i] = iparent.output_dirty
+#             end
+#         end
+#     end
+# end
 
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value)
@@ -404,7 +422,8 @@ function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
     # Resolve inputs first
-    foreach(resolve!, edge.inputs)
+    # foreach(resolve!, edge.inputs)
+    foreach(resolve!, edge.parents)
     # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
     # TODO, can/should we store this tuple?
     if !isassigned(edge.typed_edge)
@@ -438,10 +457,8 @@ add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa ComputedValue)
-    output = ComputedValue{Input}(RefValue{Any}())
+    output = ComputedValue(RefValue{Any}())
     input = Input(value, (v) -> conversion_func(key, v), output)
-    output.parent = input
-    output.parent_idx = 1
     # Needs to be Any, since input can change type
     attr.inputs[key] = input
     attr.outputs[key] = output
@@ -498,11 +515,13 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
         all_same || throw_error()
         return # ignore new registration
     end
+
     _inputs = ComputedValue[attr.outputs[k] for k in inputs]
     new_edge = ComputeEdge(f, _inputs)
     for (k, input) in zip(inputs, _inputs)
         if hasparent(input)
             push!(input.parent.dependents, new_edge)
+            push!(new_edge.parents, input.parent)
         else
             push!(attr.inputs[k].dependents, new_edge)
         end
