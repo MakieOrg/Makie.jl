@@ -95,13 +95,20 @@ end
 function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
     println(io, "ComputeEdge{$(edge.callback)}:")
     print(io, "  inputs:")
+    output_dirty = !(edge.got_resolved[])
     for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
         print(io, "\n    ", dirty ? '↻' : '✓', ' ')
         show(io, v)
+        output_dirty |= dirty
     end
     print(io, "\n  outputs:")
     for v in edge.outputs
-        print(io, "\n    ")
+        print(io, "\n    ", output_dirty ? '↻' : '✓', ' ')
+        show(io, v)
+    end
+    print(io, "\n  dependents:")
+    for v in edge.dependents
+        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ')
         show(io, v)
     end
 end
