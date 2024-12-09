@@ -134,7 +134,7 @@ end
 
 function Input(value, f, output)
     @assert !(value isa ComputedValue)
-    return Input(value, f, output, true, true, ComputeEdge[])
+    return Input(value, f, output, true, ComputeEdge[])
 end
 
 struct ComputeGraph
