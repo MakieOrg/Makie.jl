@@ -5,7 +5,10 @@ using Base: RefValue
 abstract type AbstractEdge end
 
 mutable struct Computed
+    # if a parent edge got resolved and updated this computed, dirty is temporarily true
+    # so that the edges dependents can update their inputs accordingly
     dirty::Bool
+
     value::RefValue
     parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
@@ -30,7 +33,7 @@ struct TypedEdge{InputTuple,OutputTuple,F}
     inputs::InputTuple
     inputs_dirty::Vector{Bool}
     outputs::OutputTuple
-    outputs_dirty::Vector{Bool}
+    output_nodes::Vector{Computed}
 end
 
 struct ComputeEdge <: AbstractEdge
@@ -40,7 +43,6 @@ struct ComputeEdge <: AbstractEdge
     inputs_dirty::Vector{Bool}
 
     outputs::Vector{Computed}
-    outputs_dirty::Vector{Bool}
     got_resolved::RefValue{Bool}
 
     # edges, that rely on outputs from this edge
@@ -51,7 +53,7 @@ end
 
 function ComputeEdge(f, input, output)
     return ComputeEdge(
-        f, [input], [true], [output], [true], RefValue(false),
+        f, [input], [true], [output], RefValue(false),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -71,19 +73,19 @@ function TypedEdge(edge::ComputeEdge)
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
-        fill!(edge.outputs_dirty, true)
+        foreach(node -> node.dirty = true, edge.outputs)
     elseif isnothing(result)
         outputs = ntuple(length(edge.outputs)) do i
             v = RefValue(nothing)
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
-        fill!(edge.outputs_dirty, false)
+        foreach(node -> node.dirty = false, edge.outputs)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
 
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs_dirty)
+    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
@@ -98,15 +100,15 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
         show(io, v)
     end
     print(io, "\n  outputs:")
-    for (dirty, v) in zip(edge.outputs_dirty, edge.outputs)
-        print(io, "\n    ", dirty ? '↻' : '✓', ' ')
+    for v in edge.outputs
+        print(io, "\n    ")
         show(io, v)
     end
 end
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, inputs::Vector{Computed})
-    return ComputeEdge(f, inputs, fill(true, length(inputs)), Computed[], Bool[], RefValue(false),
+    return ComputeEdge(f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
                        ComputeEdge[], RefValue{TypedEdge}())
 end
 
@@ -227,13 +229,7 @@ function isdirty(computed::Computed)
     parent = computed.parent
     # Can't be dirty if inputs have changed
 
-    if parent.got_resolved[]
-        # if resolved is true, the computed value is dirty if the output is dirty
-        return computed.parent.outputs_dirty[computed.parent_idx]
-    else
-        # if resolved is false, the computed value is dirty if any of the inputs have changed
-        return any(parent.inputs_dirty)
-    end
+    return !parent.got_resolved[] || any(parents.inputs_dirty)
 end
 
 function isdirty(edge::ComputeEdge)
@@ -326,9 +322,9 @@ end
 
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value)
-        edge.outputs_dirty[i] = false
+        foreach(x -> x.dirty = false, edge.output_nodes)
     else
-        edge.outputs_dirty[i] = true
+        foreach(x -> x.dirty = true, edge.output_nodes)
         edge.outputs[i][] = value
     end
     if !isempty(result)
@@ -356,7 +352,7 @@ function resolve!(edge::TypedEdge)
         end
         set_result!(edge, result)
     elseif isnothing(result)
-        fill!(edge.outputs_dirty, false)
+        foreach(x -> x.dirty = false, edge.output_nodes)
     else
         error("Needs to return a Tuple with one element per output, or nothing")
     end
@@ -384,7 +380,6 @@ function resolve!(edge::ComputeEdge)
     end
     edge.got_resolved[] = true
     fill!(edge.inputs_dirty, false)
-    foreach((comp, dirty) -> comp.dirty = dirty, edge.outputs, edge.outputs_dirty)
     for dep in edge.dependents
         mark_input_dirty!(edge, dep)
     end
@@ -480,9 +475,9 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     for (i, symbol) in enumerate(outputs)
         # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
         value = Computed(new_edge, i)
+        value.dirty = true
         attr.outputs[symbol] = value
         push!(new_edge.outputs, value)
-        push!(new_edge.outputs_dirty, true)
     end
     return
 end
