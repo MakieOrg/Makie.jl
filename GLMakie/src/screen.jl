@@ -1044,8 +1044,10 @@ function render_asap(f::Function, screen::Screen, N::Integer)
     stop_renderloop!(screen)
     yield()
     GLFW.SwapInterval(0)
+    ts = Vector{Float64}(undef, N)
 
-    for _ in 1:N
+    for i in 1:N
+        t = time()
         pollevents(screen, Makie.RegularRenderTick)
         f()
         for plot in values(screen.cache2plot)
@@ -1057,8 +1059,10 @@ function render_asap(f::Function, screen::Screen, N::Integer)
         render_frame(screen)
         GLFW.SwapBuffers(to_native(screen))
         GC.safepoint()
+        ts[i] = time() - t
     end
 
     screen.close_after_renderloop = true
     start_renderloop!(screen)
+    return ts
 end

@@ -2,17 +2,20 @@ module ComputePipeline
 
 using Base: RefValue
 
-mutable struct ComputedValue{P}
+abstract type AbstractEdge end
+
+mutable struct ComputedValue
+    dirty::Bool
     value::RefValue
-    parent::P
+    parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
-    ComputedValue{P}() where {P} = new{P}()
-    ComputedValue{P}(value::RefValue) where {P} = new{P}(value)
-    function ComputedValue{P}(value::RefValue, parent::P, idx::Integer) where {P}
-        return new{P}(value, parent, idx)
+    ComputedValue() = new(false)
+    ComputedValue(value::RefValue) = new(false, value)
+    function ComputedValue(value::RefValue, parent::AbstractEdge, idx::Integer)
+        return new(false, value, parent, idx)
     end
-    function ComputedValue{P}(edge::P, idx::Integer) where {P}
-        p = new{P}()
+    function ComputedValue(edge::AbstractEdge, idx::Integer)
+        p = new(false)
         p.parent = edge
         p.parent_idx = idx
         return p
@@ -30,13 +33,13 @@ struct TypedEdge{InputTuple,OutputTuple,F}
     outputs_dirty::Vector{Bool}
 end
 
-struct ComputeEdge
+struct ComputeEdge <: AbstractEdge
     callback::Function
 
     inputs::Vector{ComputedValue}
     inputs_dirty::Vector{Bool}
 
-    outputs::Vector{ComputedValue{ComputeEdge}}
+    outputs::Vector{ComputedValue}
     outputs_dirty::Vector{Bool}
     got_resolved::RefValue{Bool}
 
@@ -48,7 +51,7 @@ end
 
 function ComputeEdge(f, input, output)
     return ComputeEdge(
-        f, ComputedValue[input], [true], [output], [true], RefValue(false),
+        f, [input], [true], [output], [true], RefValue(false),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -105,7 +108,7 @@ end
 # Can only make this alias after ComputeEdge & ComputedValue are created
 # We're going to ignore that ComputedValue has a type parameter,
 # which it only has to resolve the circular dependency
-const Computed = ComputedValue{ComputeEdge}
+const Computed = ComputedValue
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, inputs::Vector{ComputedValue})
@@ -121,10 +124,10 @@ function Base.show(io::IO, computed::ComputedValue)
     end
 end
 
-mutable struct Input
+mutable struct Input <: AbstractEdge
     value::Any
     f::Function
-    output::ComputedValue{Input}
+    output::ComputedValue
     dirty::Bool
     output_dirty::Bool
     dependents::Vector{ComputeEdge}
@@ -273,9 +276,11 @@ function resolve!(input::Input)
     end
     input.dirty = false
     input.output_dirty = true
+    input.output.dirty = true
     for edge in input.dependents
         mark_input_dirty!(input, edge)
     end
+    input.output.dirty = false
     return input.output.value[]
 end
 
@@ -319,27 +324,33 @@ Base.getindex(computed::ComputedValue) = resolve!(computed)
 
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     @assert parent.got_resolved[] # parent should only call this after resolve!
-    for (i, input) in enumerate(edge.inputs)
-        # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-        if hasparent(input)
-            iparent = input.parent
-            if iparent === parent
-                edge.inputs_dirty[i] = isdirty(input)
-            end
-        end
+    # for (i, input) in enumerate(edge.inputs)
+    #     # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
+    #     if hasparent(input)
+    #         iparent = input.parent
+    #         if iparent === parent
+    #             edge.inputs_dirty[i] = isdirty(input)
+    #         end
+    #     end
+    # end
+    for i in eachindex(edge.inputs)
+        edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
 end
 
 function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     @assert !parent.dirty # should got resolved
-    for (i, input) in enumerate(edge.inputs)
-        # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-        if hasparent(input)
-            iparent = input.parent
-            if iparent === parent
-                edge.inputs_dirty[i] = iparent.output_dirty
-            end
-        end
+    # for (i, input) in enumerate(edge.inputs)
+    #     # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
+    #     if hasparent(input)
+    #         iparent = input.parent
+    #         if iparent === parent
+    #             edge.inputs_dirty[i] = iparent.output_dirty
+    #         end
+    #     end
+    # end
+    for i in eachindex(edge.inputs)
+        edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
 end
 
@@ -403,9 +414,11 @@ function resolve!(edge::ComputeEdge)
     end
     edge.got_resolved[] = true
     fill!(edge.inputs_dirty, false)
+    foreach(comp -> comp.dirty = true, edge.outputs)
     for dep in edge.dependents
         mark_input_dirty!(edge, dep)
     end
+    foreach(comp -> comp.dirty = false, edge.outputs)
     return true
 end
 
@@ -424,7 +437,7 @@ add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa ComputedValue)
-    output = ComputedValue{Input}(RefValue{Any}())
+    output = ComputedValue(RefValue{Any}())
     input = Input(value, (v) -> conversion_func(key, v), output)
     output.parent = input
     output.parent_idx = 1
