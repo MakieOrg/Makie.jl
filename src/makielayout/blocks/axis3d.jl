@@ -167,6 +167,7 @@ function initialize_block!(ax::Axis3)
     end
 
     function process_event(event)
+        ax.scene.visible[] || return Consume(false)
         for (active, interaction) in values(ax.interactions)
             if active
                 maybe_consume = process_interaction(interaction, event, ax)

@@ -243,12 +243,6 @@ end
     @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
 end
 
-@testset "colors" begin
-    @test to_color(["red", "green"]) isa Vector{RGBAf}
-    @test to_color(["red", "green"]) == [to_color("red"), to_color("green")]
-end
-
-
 @testset "heatmap from three vectors" begin
     x = [2, 1, 2]
     y = [2, 3, 3]
