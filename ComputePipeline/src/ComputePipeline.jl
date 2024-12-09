@@ -129,7 +129,6 @@ mutable struct Input <: AbstractEdge
     f::Function
     output::ComputedValue
     dirty::Bool
-    output_dirty::Bool
     dependents::Vector{ComputeEdge}
 end
 
@@ -264,10 +263,7 @@ function mark_dirty!(computed::Computed)
 end
 
 function resolve!(input::Input)
-    if !input.dirty
-        input.output_dirty = false
-        return
-    end
+    input.dirty || return
     value = input.f(input.value)
     if isassigned(input.output.value)
         input.output.value[] = value
@@ -285,7 +281,6 @@ end
 
 function mark_dirty!(input::Input)
     input.dirty = true
-    input.output_dirty = false
     for edge in input.dependents
         mark_dirty!(edge)
     end
