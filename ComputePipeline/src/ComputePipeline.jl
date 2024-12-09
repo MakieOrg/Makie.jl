@@ -275,7 +275,6 @@ function resolve!(input::Input)
         input.output.value = RefValue(value)
     end
     input.dirty = false
-    input.output_dirty = true
     input.output.dirty = true
     for edge in input.dependents
         mark_input_dirty!(input, edge)
@@ -324,15 +323,6 @@ Base.getindex(computed::ComputedValue) = resolve!(computed)
 
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     @assert parent.got_resolved[] # parent should only call this after resolve!
-    # for (i, input) in enumerate(edge.inputs)
-    #     # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-    #     if hasparent(input)
-    #         iparent = input.parent
-    #         if iparent === parent
-    #             edge.inputs_dirty[i] = isdirty(input)
-    #         end
-    #     end
-    # end
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
@@ -340,15 +330,6 @@ end
 
 function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     @assert !parent.dirty # should got resolved
-    # for (i, input) in enumerate(edge.inputs)
-    #     # This gets called from resolve!(parent), so we should only mark dirty if the input is a child of parent
-    #     if hasparent(input)
-    #         iparent = input.parent
-    #         if iparent === parent
-    #             edge.inputs_dirty[i] = iparent.output_dirty
-    #         end
-    #     end
-    # end
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
@@ -414,7 +395,7 @@ function resolve!(edge::ComputeEdge)
     end
     edge.got_resolved[] = true
     fill!(edge.inputs_dirty, false)
-    foreach(comp -> comp.dirty = true, edge.outputs)
+    foreach((comp, dirty) -> comp.dirty = dirty, edge.outputs, edge.outputs_dirty)
     for dep in edge.dependents
         mark_input_dirty!(edge, dep)
     end
