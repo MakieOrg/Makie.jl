@@ -336,8 +336,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
                 attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:scaled_color] = :intensity)
-                haskey(data, :image) && (input2glname[:scaled_color] = :image)
+                isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
+                isnothing(get(data, :image, nothing)) || (input2glname[:scaled_color] = :image)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
@@ -590,7 +590,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
             robj = assemble_lines_robj(args[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:scaled_color] = :intensity)
+                isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
@@ -719,7 +719,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
             robj = assemble_linesegments_robj(args[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
-                haskey(data, :intensity) && (input2glname[:synched_color] = :intensity)
+                isnothing(get(data, :intensity, nothing)) || (input2glname[:synched_color] = :intensity)
                 gl_names = get.(Ref(input2glname), inputs, inputs)
 
                 # Simple defaults
