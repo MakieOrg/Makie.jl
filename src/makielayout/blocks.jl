@@ -673,10 +673,11 @@ julia> v[] = true
 function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
     _visible = typeof(visible)<:Observable ? visible : Observable(visible)
     _delay = typeof(delay)<:Observable ? delay : Observable(delay)
+    _depth = typeof(depth)<:Observable ? depth : Observable(depth)
 
     tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str;
                   visible=_visible[], kwargs...)
-    translate!(tt, 0, 0, depth)
+    on(z->translate!(tt, 0, 0, z), _depth)
 
     update_viz0(mp, bbox) = tt.visible[] = mp in bbox
 
@@ -709,6 +710,7 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
     end
 
     notify(_visible)
+    notify(_depth)
     notify(b.blockscene.events.mouseposition)
     return tt
 end
