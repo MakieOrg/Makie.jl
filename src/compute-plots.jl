@@ -380,7 +380,7 @@ function Base.getproperty(plot::ComputePlots, key::Symbol)
     return plot.args[1][key]
 end
 
-Observables.to_value(computed::ComputePipeline.ComputedValue) = computed[]
+Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 
 
 function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
