@@ -119,7 +119,7 @@ end
 function collect_edges(edge::ComputeEdge, cache::Set{ComputeEdge})
     if !(edge in cache)
         push!(cache, edge)
-        foreach(e -> collect_edges!(cache, e), edge.dependents)
+        foreach(e -> collect_edges(e, cache), edge.dependents)
     end
     return
 end
@@ -140,16 +140,19 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
     println(io, "ComputeGraph():")
+
     print(io, "  Inputs:")
-    io = IOContext(io, :compact => true)
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.inputs))
-    for (k, v) in graph.inputs
-        print(io, "\n    :", rpad(string(k), pad), " => ", v)
+    ks = sort!(collect(keys(graph.inputs)), by = string)
+    pad = mapreduce(k -> length(string(k)), max, ks)
+    for k in ks
+        print(io, "\n    :", rpad(string(k), pad), " => ", graph.inputs[k])
     end
+
     print(io, "\n\n  Outputs:")
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.outputs))
-    for (k, out) in graph.outputs
-        print(io, "\n    :", rpad(string(k), pad), " => ", out)
+    ks = sort!(collect(keys(graph.outputs)), by = string)
+    pad = mapreduce(k -> length(string(k)), max, ks)
+    for k in ks
+        print(io, "\n    :", rpad(string(k), pad), " => ", graph.outputs[k])
     end
     return io
 end
