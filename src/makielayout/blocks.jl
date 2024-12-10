@@ -675,26 +675,33 @@ function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e
     _delay = typeof(delay)<:Observable ? delay : Observable(delay)
     _depth = typeof(depth)<:Observable ? depth : Observable(depth)
 
-    tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str;
-                  visible=false, kwargs...)
+    position = Observable(Point2f(0))
+    tt = tooltip!(b.blockscene, position, str; visible=false, kwargs...)
     on(z->translate!(tt, 0, 0, z), _depth)
 
-    update_viz0(mp, bbox) = tt.visible[] = mp in bbox
+    function update_viz0(mp, bbox)
+        if mp in bbox
+            position[] = mp
+            tt.visible[] = true
+        else
+            tt.visible[] = false
+        end
+    end
 
     if _delay[] > 0
         t0, last_mp = time(), b.blockscene.events.mouseposition[]
     end
 
     function update_viz(mp, bbox)
-        tt.visible[] =
-            if mp in bbox
-                last_mp in bbox || (t0 = time())
-                last_mp = mp
-                time() > t0 + _delay[]
-            else
-                last_mp = mp
-                false
-            end
+        if mp in bbox
+            last_mp in bbox || (t0 = time())
+            last_mp = mp
+            position[] = mp
+            tt.visible[] = time() > t0 + _delay[]
+        else
+            last_mp = mp
+            tt.visible[] = false
+        end
     end
 
     was_open = false
