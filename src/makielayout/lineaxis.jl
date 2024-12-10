@@ -134,6 +134,9 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     end
 end
 
+max_auto_ticklabel_spacing!(ax) = nothing
+
+
 function update_ticklabel_node(
         closure_args,
         ticklabel_annotation_obs::Observable,
