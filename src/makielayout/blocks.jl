@@ -676,7 +676,7 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
     _depth = typeof(depth)<:Observable ? depth : Observable(depth)
 
     tt = tooltip!(b.blockscene, b.blockscene.events.mouseposition, str;
-                  visible=_visible[], kwargs...)
+                  visible=false, kwargs...)
     on(z->translate!(tt, 0, 0, z), _depth)
 
     update_viz0(mp, bbox) = tt.visible[] = mp in bbox
@@ -697,12 +697,25 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
             end
     end
 
+    was_open = false
+    channel = Channel{Tuple}(Inf) do ch
+        for (mp,bbox) in ch
+            if isopen(b.blockscene)
+                was_open = true
+                _delay[]==0 ? update_viz0(mp,bbox) : update_viz(mp,bbox)
+            end
+            !isopen(b.blockscene) && was_open && break
+        end
+    end
+
     obsfun = nothing
-    on(_visible) do v
-        if v
-            obsfun = onany((mp,bbox) -> _delay[]==0 ? update_viz0(mp,bbox) : update_viz(mp,bbox),
-                           b.blockscene.events.mouseposition, b.layoutobservables.computedbbox)
-        elseif !isnothing(obsfun)
+    on(_visible) do e
+        if e && isnothing(obsfun)
+            obsfun = onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox) do mp, bbox
+                empty_channel!(channel)
+                put!(channel, (mp,bbox))
+            end
+        elseif !e && !isnothing(obsfun)
             foreach(off, obsfun)
             obsfun = nothing
             tt.visible[] = false
