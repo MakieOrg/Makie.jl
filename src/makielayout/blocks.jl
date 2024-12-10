@@ -641,10 +641,10 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
 end
 
 """
-    function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
+    function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e3, kwargs...)
 
 Adds a tooltip to a block.  `delay` specifies the interval in seconds before the
-tooltip appears if `visible` is `true`.  `depth` should be large to ensure that
+tooltip appears if `enabled` is `true`.  `depth` should be large to ensure that
 the tooltip is in front.  See `tooltip` for more details.
 
 # Examples
@@ -660,18 +660,18 @@ Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 julia> b = Button(f[2,1])
 Button()
 
-julia> v = Observable(false)
+julia> e = Observable(false)
 Observable(false)
 
-julia> tt = tooltip!(b, "I'm a Button", placement = :below, visible = v, delay = 1)
+julia> tt = tooltip!(b, "I'm a Button", placement = :below, enabled = e, delay = 1)
 Plot{Makie.tooltip, Tuple{Vec{2, Float32}, String}}
 
-julia> v[] = true
+julia> e[] = true
 :always
 ```
 """
-function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e3, kwargs...)
-    _visible = typeof(visible)<:Observable ? visible : Observable(visible)
+function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e3, kwargs...)
+    _enabled = typeof(enabled)<:Observable ? enabled : Observable(enabled)
     _delay = typeof(delay)<:Observable ? delay : Observable(delay)
     _depth = typeof(depth)<:Observable ? depth : Observable(depth)
 
@@ -709,7 +709,7 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
     end
 
     obsfun = nothing
-    on(_visible) do e
+    on(_enabled) do e
         if e && isnothing(obsfun)
             obsfun = onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox) do mp, bbox
                 empty_channel!(channel)
@@ -722,7 +722,8 @@ function tooltip!(b::Block, str::AbstractString; visible=true, delay=0, depth=9e
         end
     end
 
-    notify(_visible)
+    notify(_enabled)
+    notify(_delay)
     notify(_depth)
     notify(b.blockscene.events.mouseposition)
     return tt
