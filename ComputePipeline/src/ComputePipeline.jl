@@ -7,18 +7,19 @@ abstract type AbstractEdge end
 mutable struct Computed
     # if a parent edge got resolved and updated this computed, dirty is temporarily true
     # so that the edges dependents can update their inputs accordingly
+    name::Symbol
     dirty::Bool
 
     value::RefValue
     parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
-    Computed() = new(false)
-    Computed(value::RefValue) = new(false, value)
-    function Computed(value::RefValue, parent::AbstractEdge, idx::Integer)
-        return new(false, value, parent, idx)
+    Computed(name) = new(name, false)
+    Computed(name, value::RefValue) = new(name, false, value)
+    function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
+        return new(name, false, value, parent, idx)
     end
-    function Computed(edge::AbstractEdge, idx::Integer)
-        p = new(false)
+    function Computed(name, edge::AbstractEdge, idx::Integer)
+        p = new(name, false)
         p.parent = edge
         p.parent_idx = idx
         return p
@@ -88,30 +89,6 @@ function TypedEdge(edge::ComputeEdge)
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
-function Base.show(io::IO, edge::ComputeEdge)
-    print(io, "ComputeEdge(", length(edge.inputs), " -> ", length(edge.outputs), ")")
-end
-
-function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
-    println(io, "ComputeEdge{$(edge.callback)}:")
-    print(io, "  inputs:")
-    output_dirty = !(edge.got_resolved[])
-    for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
-        print(io, "\n    ", dirty ? '↻' : '✓', ' ')
-        show(io, v)
-        output_dirty |= dirty
-    end
-    print(io, "\n  outputs:")
-    for v in edge.outputs
-        print(io, "\n    ", output_dirty ? '↻' : '✓', ' ')
-        show(io, v)
-    end
-    print(io, "\n  dependents:")
-    for v in edge.dependents
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ')
-        show(io, v)
-    end
-end
 
 ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, inputs::Vector{Computed})
@@ -119,15 +96,8 @@ function ComputeEdge(f, inputs::Vector{Computed})
                        ComputeEdge[], RefValue{TypedEdge}())
 end
 
-function Base.show(io::IO, computed::Computed)
-    if isdefined(computed, :value) && isassigned(computed.value)
-        print(io, "Computed(", computed.value[], ")")
-    else
-        print(io, "Computed(#undef)")
-    end
-end
-
 mutable struct Input <: AbstractEdge
+    name::Symbol
     value::Any
     f::Function
     output::Computed
@@ -135,96 +105,14 @@ mutable struct Input <: AbstractEdge
     dependents::Vector{ComputeEdge}
 end
 
-function Input(value, f, output)
+function Input(name, value, f, output)
     @assert !(value isa Computed)
-    return Input(value, f, output, true, ComputeEdge[])
+    return Input(name, value, f, output, true, ComputeEdge[])
 end
 
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
-end
-
-# TODO: Handle Edges better?
-function collect_edges(graph::ComputeGraph)
-    cache = Set{ComputeEdge}()
-    foreach(input -> collect_edges(input, cache), values(graph.inputs))
-    return cache
-end
-function collect_edges(input::Input, cache::Set{ComputeEdge} = Set{ComputeEdge}())
-    for edge in input.dependents
-        collect_edges!(cache, edge)
-    end
-    return cache
-end
-function collect_edges!(cache::Set{ComputeEdge}, edge::ComputeEdge)
-    if !(edge in cache)
-        push!(cache, edge)
-        foreach(e -> collect_edges!(cache, e), edge.dependents)
-    end
-    return
-end
-count_edges(graph::ComputeGraph) = length(collect_edges(graph))
-count_edges(input::Input) = length(collect_edges(input))
-
-function Base.show(io::IO, input::Input)
-    print(io, "Input(")
-    show(io, input.value)
-    print(io, ")")
-end
-
-# TODO: easier name resolution?
-function Base.show(io::IO, ::MIME"text/plain", input::Input)
-    print(io, "Input(")
-    show(io, input.value)
-    print(io, ") with $(length(input.dependents)) direct dependents:")
-    for edge in input.dependents
-        N = length(edge.inputs)
-        println()
-        if N == 1
-            print(io, "  input ══ ")
-        else
-            print(io, "  (input, $(N-1) more...) ══ ")
-        end
-        print(io, "ComputeEdge{$(edge.callback)}()")
-        N = length(edge.outputs)
-        if N == 1
-            print(io, " ══> ", edge.outputs[1])
-        else
-            print(io, " ══> ", edge.outputs)
-        end
-    end
-end
-
-function Base.show(io::IO, graph::ComputeGraph)
-    print(io, "ComputeGraph() with ",
-        length(graph.inputs), " inputs, ",
-        length(graph.outputs), " outputs and ",
-        count_edges(graph), " compute edges."
-    )
-end
-
-function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
-    println(io, "ComputeGraph():")
-    print(io, "  Inputs:")
-    io = IOContext(io, :compact => true)
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.inputs))
-    for (k, v) in graph.inputs
-        try
-            val = getproperty(graph, k)[]
-            print(io, "\n    ", rpad(string(k), pad), " => ", val)
-        catch e
-            println()
-            @info "While evaluating $k = $v:"
-            rethrow(e)
-        end
-    end
-    print(io, "\n\n  Outputs:")
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.outputs))
-    for (k, out) in graph.outputs
-        print(io, "\n    ", rpad(string(k), pad), " => ", out)
-    end
-    return io
 end
 
 function ComputeGraph()
@@ -236,7 +124,7 @@ function isdirty(computed::Computed)
     parent = computed.parent
     # Can't be dirty if inputs have changed
 
-    return !parent.got_resolved[] || any(parents.inputs_dirty)
+    return !parent.got_resolved[] || any(parent.inputs_dirty)
 end
 
 function isdirty(edge::ComputeEdge)
@@ -409,8 +297,8 @@ add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
-    output = Computed(RefValue{Any}())
-    input = Input(value, (v) -> conversion_func(key, v), output)
+    output = Computed(key, RefValue{Any}())
+    input = Input(key, value, (v) -> conversion_func(key, v), output)
     output.parent = input
     output.parent_idx = 1
     # Needs to be Any, since input can change type
@@ -481,13 +369,17 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     # use order of namedtuple, which should not change!
     for (i, symbol) in enumerate(outputs)
         # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
-        value = Computed(new_edge, i)
+        value = Computed(symbol, new_edge, i)
         value.dirty = true
         attr.outputs[symbol] = value
         push!(new_edge.outputs, value)
     end
     return
 end
+
+# TODO:
+# What exactly should these do? Just remove the specific object, or clean up
+# invalid dependents as well? Or maybe both should be possible?
 
 # GLMakie only *requires* an endpoint to be deleted atm so lets keep this simple
 # for now
@@ -560,6 +452,7 @@ function Base.delete!(attr::ComputeGraph, edge::Input)
     return attr
 end
 
+include("io.jl")
 
 export Computed, Computed, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
 
