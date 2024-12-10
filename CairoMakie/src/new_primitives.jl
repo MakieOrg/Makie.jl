@@ -1,6 +1,27 @@
-function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegments})
-    args = plot.color[], plot.linewidth[], plot.linestyle[], plot.space[], plot.model[]
-    (color, linewidth, linestyle, space, model) = args
+
+
+function get_colors(p::Plot, color = p.scaled_color[])
+    if isnothing(p.scaled_colorrange[])
+        return color
+    else
+        sampler = Makie.Sampler(
+            p.alpha_colormap[],
+            color,
+            1.0,
+            # interpolation method for sampling
+            Makie.Linear,
+            Makie.Scaling(identity, p.scaled_colorrange[])
+        )
+        collect(sampler)
+    end
+end
+
+
+
+function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
+    linewidth = PT <: Lines ? plot.linewidth[] : plot.synched_linewidth[]
+    color = PT <: Lines ? plot.scaled_color[] : plot.synched_color[]
+    linestyle, space, model = plot.linestyle[], plot.space[], plot.model[]
     ctx = screen.context
     positions = plot.positions[]
 
@@ -8,7 +29,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegmen
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
-    color = get_colors(plot)
+    color = get_colors(plot, color)
 
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
@@ -80,23 +101,6 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegmen
 end
 
 
-
-
-function get_colors(p::Plot)
-    if isnothing(p._colorrange[])
-        return p.color[]
-    else
-        sampler = Makie.Sampler(
-            p.colormap[],
-            p.color[],
-            p.alpha[],
-            # interpolation method for sampling
-            Makie.Linear,
-            Makie.Scaling(p.colorscale[], p._colorrange[])
-        )
-        collect(sampler)
-    end
-end
 
 
 
