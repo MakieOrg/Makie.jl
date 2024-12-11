@@ -118,19 +118,37 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
         return (cairo_scatter_marker(marker[]),)
     end
 
-    Makie.register_computation!(attr, [:positions_transformed_f32c, :model, :space, :clip_planes], [:clipped_transformed_positions]) do (transformed, model, space, clip_planes), changed, outputs
-        indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
-        pos = project_position(scene, space[], transformed[], indices, model[])
-        return (view(pos, indices),)
+    if !haskey(attr.outputs, :cairo_indices) # TODO: Why?
+        Makie.register_computation!(attr,
+            [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
+            [:cairo_indices]
+        ) do (transformed, model, space, clip_planes), changed, outputs
+            indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
+            return (indices,)
+        end
     end
+
+    # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
+    #       the output can be comes invalid from render to render.
+    # Makie.register_computation!(attr,
+    #     [:positions_transformed_f32c, :cairo_indices, :model_f32c, :projectionview, :resolution, :space],
+    #     [:cairo_positions_px]
+    # ) do (transformed, indices, model, pv, res, space), changed, outputs
+    #     pos = project_position(scene, space[], transformed[], indices[], model[])
+    #     return (pos,)
+    # end
+    indices = p.cairo_indices[]
+    positions = project_position(
+        scene, p.space[], p.positions_transformed_f32c[],
+        indices, p.model_f32c[]
+    )
+    isempty(positions) && return
 
     markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
         transform_marker, model, markerspace, space, clip_planes = args
 
     marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
-    positions = p.clipped_transformed_positions[]
-    isempty(positions) && return
     size_model = transform_marker ? model : Mat4d(I)
 
     font = p.font[]
@@ -138,19 +156,21 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     markerspace = p.markerspace[]
     space = p.space[]
 
-    return draw_atomic_scatter(scene, ctx, positions, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotation, size_model, font, markerspace)
+    return draw_atomic_scatter(
+        scene, ctx, positions, indices, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, size_model, font, markerspace
+        )
 end
 
 function draw_atomic_scatter(
-        scene, ctx, positions, colors, markersize, strokecolor, strokewidth,
+        scene, ctx, positions, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font,
         markerspace
     )
 
-    Makie.broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
-            markersize, strokecolor, strokewidth, m, mo, rotation
+    Makie.broadcast_foreach_index(positions, indices, colors, markersize, strokecolor,
+        strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
+        markersize, strokecolor, strokewidth, m, mo, rotation
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
