@@ -589,3 +589,10 @@ function drop_attributes(plot::Plot, to_drop::Set{Symbol})
     attr = attributes(attributes(plot))
     return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
 end
+
+isscalar(x::StaticVector) = true
+isscalar(x::Mat) = true
+isscalar(x::AbstractArray) = false
+isscalar(x::Billboard) = isscalar(x.rotation)
+isscalar(x::Observable) = isscalar(x[])
+isscalar(x) = true

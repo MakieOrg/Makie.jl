@@ -264,73 +264,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
     else
 
-        # TODO: Probably shouldn't just drop uv_offset_width?
-        register_computation!(attr,
-            [:uv_offset_width, :marker, :font, :quad_scale],
-            [:sdf_marker_shape, :sdf_uv, :image]
-        ) do (uv_off, m, f, scale), changed, last
-
-            if m[] isa Matrix{<: Colorant} # single image marker
-
-                return (Cint(RECTANGLE), Vec4f(0,0,1,1), m[])
-
-            elseif m[] isa Vector{<: Matrix{<: Colorant}} # multiple image markers
-
-                # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-                if changed[2]
-                    images = map(el32convert, m[])
-                    isempty(images) && error("Can not display empty vector of images as primitive")
-                    sizes = map(size, images)
-                    if !all(x -> x == sizes[1], sizes)
-                        # create texture atlas
-                        maxdims = sum(map(Vec{2, Int}, sizes))
-                        rectangles = map(x->Rect2(0, 0, x...), sizes)
-                        rpack = RectanglePacker(Rect2(0, 0, maxdims...))
-                        uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-                        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-                        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
-                        for (area, img) in zip(uv_coordinates, images)
-                            texture_atlas[area] = img # transfer to texture atlas
-                        end
-                        uvs = map(uv_coordinates) do uv
-                            m = max_xy .- 1
-                            mini = reverse((minimum(uv)) ./ m)
-                            maxi = reverse((maximum(uv) .- 1) ./ m)
-                            return Vec4f(mini..., maxi...)
-                        end
-                        images = texture_atlas
-                    else
-                        uvs = Vec4f(0,0,1,1)
-                    end
-
-                    return (Cint(RECTANGLE), uvs, images)
-                else
-                    # if marker is up to date don't update
-                    return (nothing, nothing, nothing)
-                end
-
-            else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-
-                if changed[2] || changed[4]
-                    shape = Cint(Makie.marker_to_sdf_shape(m[])) # expensive for arrays with abstract eltype?
-                    if shape == 0 && !is_all_equal_scale(scale[])
-                        shape = Cint(5)
-                    end
-                else
-                    shape = last[1][]
-                end
-
-                if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed[3])
-                    uv = Makie.primitive_uv_offset_width(atlas, m[], f[])
-                elseif isnothing(last)
-                    uv = Vec4f(0,0,1,1)
-                else
-                    uv = nothing # Is this even worth it?
-                end
-
-                return (shape, uv, nothing)
-            end
-        end
+        Makie.all_marker_computations!(attr, 2048, 64)
 
         inputs = [
             # Special

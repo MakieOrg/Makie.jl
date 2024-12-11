@@ -353,7 +353,7 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
-function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::PlotList))
+function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
     return nothing
 end
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))

@@ -113,10 +113,11 @@ end
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
+    onchange::Observable{Nothing}
 end
 
 function ComputeGraph()
-    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}())
+    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}())
 end
 
 function isdirty(computed::Computed)
@@ -177,11 +178,29 @@ function Base.setindex!(computed::Computed, value)
     return mark_dirty!(computed)
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     input.value = value
     mark_dirty!(input)
     return value
+end
+
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+    _setproperty!(attr, key, value)
+    notify(attr.onchange)
+    return value
+end
+
+function update!(attr::ComputeGraph; kwargs...)
+    for (key, value) in pairs(kwargs)
+        if haskey(attr.inputs, key)
+            setproperty!(attr, key, value)
+        else
+            throw(Makie.AttributeNameError(key))
+        end
+    end
+    notify(attr.onchange)
+    return attr
 end
 
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
@@ -190,7 +209,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
-    key === :default && return getfield(attr, :default)
+    key === :onchange && return getfield(attr, :onchange)
     return attr.inputs[key].output
 end
 
@@ -282,16 +301,7 @@ function resolve!(edge::ComputeEdge)
     return true
 end
 
-function update!(attr::ComputeGraph; kwargs...)
-    for (key, value) in pairs(kwargs)
-        if haskey(attr.inputs, key)
-            setproperty!(attr, key, value)
-        else
-            throw(Makie.AttributeNameError(key))
-        end
-    end
-    return attr
-end
+
 
 add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr, key, value)
 

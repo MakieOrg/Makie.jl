@@ -155,12 +155,6 @@ end
 const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
 lasset(paths...) = read(joinpath(ASSETS_DIR, paths...), String)
 
-isscalar(x::StaticVector) = true
-isscalar(x::Mat) = true
-isscalar(x::AbstractArray) = false
-isscalar(x::Billboard) = isscalar(x.rotation)
-isscalar(x::Observable) = isscalar(x[])
-isscalar(x) = true
 
 function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
                                         ::Type{<:Makie.Quaternion})

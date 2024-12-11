@@ -32,12 +32,7 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
-# For switching between ellipse method and faster circle method in shader
-is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
-is_all_equal_scale(::Real) = true
-is_all_equal_scale(::Vector{Real}) = true
-is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
-is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
 
 
 intensity_convert(intensity, verts) = intensity
