@@ -54,25 +54,30 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
 
     # linecap
     linecap = plot.linecap[]
-    if linecap == :square
+    if linecap == 1
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
-    elseif linecap == :round
+    elseif linecap == 2
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-    else # :butt
+    elseif linecap == 0
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
+    else
+        error("$linecap is not a valid linecap. Valid: 0 (:butt), 1 (:square), 2 (:round)")
     end
 
     # joinstyle
-    miter_angle = to_value(get(plot, :miter_limit, 2pi / 3))
+    attr = plot.args[1]
+    miter_angle = plot isa Lines ? attr.outputs[:miter_limit][] : 2pi/3
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
-    joinstyle = to_value(get(plot, :joinstyle, :miter))
-    if joinstyle == :round
+    joinstyle = plot isa Lines ? attr.outputs[:joinstyle][] : linecap
+    if joinstyle == 2
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-    elseif joinstyle == :bevel
+    elseif joinstyle == 3
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
-    else # :miter
+    elseif joinstyle == 0
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
+    else
+        error("$linecap is not a valid linecap. Valid: 0 (:miter), 2 (:round), 3 (:bevel)")
     end
 
     # TODO, how do we allow this conversion?s
