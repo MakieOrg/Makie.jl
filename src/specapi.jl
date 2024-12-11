@@ -3,6 +3,7 @@ using GridLayoutBase: GridLayoutBase
 
 import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
 
+
 function get_recipe_function(name::Symbol)
     if hasproperty(Makie, name)
         return getfield(Makie, name)
@@ -169,7 +170,7 @@ function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = getfield(Makie, p.type)
+plottype(p::PlotSpec) = MakieCore.symbol_to_plot(p.type)
 
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
@@ -403,7 +404,10 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
     # The names are loaded from cache and dont contain anything after MakieCore.
-    func = get_recipe_function(field)
+    func = MakieCore.symbol_to_plot(field)
+    if isnothing(func)
+        func = get_recipe_function(field)
+    end
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
     elseif func isa Function
