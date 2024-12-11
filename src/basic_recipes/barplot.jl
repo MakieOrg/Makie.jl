@@ -184,7 +184,7 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     function flip(k)
         if flip_labels_at isa Number
             return k > flip_labels_at || k < 0
-        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+        elseif flip_labels_at isa Tuple{Number, Number}
             return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
         else
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")

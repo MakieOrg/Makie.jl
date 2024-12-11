@@ -24,7 +24,7 @@ end
 function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
     cols = to_colormap(cmap)
     r = range(0.0, stop=1.0, length=ncolors)
-    if alpha isa Tuple{<:Number, <:Number}
+    if alpha isa Tuple{Number, Number}
         alphas = LinRange(alpha..., ncolors)
     else
         alphas = alpha
