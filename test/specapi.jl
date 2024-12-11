@@ -187,3 +187,13 @@ end
     # @test contents(contents(leg.grid)[1])[2].text[] == "A"
     # @test contents(contents(leg.grid)[2])[4].text[] == "B"
 end
+
+
+@testset "External Recipe compatibility (#4295)"
+    @recipe(TestRecipeForSpecApi) do scene
+    return Attributes()
+    end
+
+    @test_nowarn S.TestRecipeForSpecApi
+    @test_nowarn S.TestRecipeForSpecApi(1, 2, 3; a = 4, b = 5)
+end
