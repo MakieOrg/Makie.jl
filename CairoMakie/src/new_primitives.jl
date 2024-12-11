@@ -1,19 +1,41 @@
-
-
-function get_colors(p::Plot, color = p.scaled_color[])
-    if isnothing(p.scaled_colorrange[])
-        return color
+# TODO: update Makie.Sampler to include lowclip, highclip, nan_color
+#       and maybe also just RGBAf color types?
+# Note: This assumes to be called with data from ComputePipeline, i.e.
+#       alpha and colorscale already applied
+function sample_color(
+        colormap::Vector{RGBAf}, value::Real, colorrange::VecTypes{2},
+        lowclip::RGBAf = first(colormap), highclip::RGBAf = last(colormap),
+        nan_color::RGBAf = RGBAf(0,0,0,0), interpolation = Makie.Linear
+    )
+    isnan(value) && return nan_color
+    value < colorrange[1] && return lowclip
+    value > colorrange[2] && return highclip
+    if interpolation == Makie.Linear
+        return Makie.interpolated_getindex(colormap, value, colorrange)
     else
-        sampler = Makie.Sampler(
-            p.alpha_colormap[],
-            color,
-            1.0,
-            # interpolation method for sampling
-            Makie.Linear,
-            Makie.Scaling(identity, p.scaled_colorrange[])
-        )
-        collect(sampler)
+        return Makie.nearest_getindex(colormap, value, colorrange)
     end
+end
+
+function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
+    Makie.register_computation!(plot.args[1]::Makie.ComputeGraph,
+            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :_lowclip, :_highclip],
+            [:cairo_colors]
+        ) do (color, colorrange, colormap, nan_color, lowclip, highclip), changed, cached
+
+        # colormapping
+        if color[] isa AbstractVector{<:Real} || color[] isa Real
+            output = isnothing(cached) ? Vector{RGBAf}(undef, length(color[])) : cached[1][]
+            for (i, v) in enumerate(color[])
+                output[i] = sample_color(colormap[], v, colorrange[], lowclip[], highclip[], nan_color[])
+            end
+            return (output,)
+        else # Raw colors
+            return (color[],)
+        end
+    end
+
+    return plot.cairo_colors[]
 end
 
 
@@ -29,7 +51,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
-    color = get_colors(plot, color)
+    color = cairo_colors(plot, ifelse(PT <: Lines, :scaled_color, :synched_color))
 
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
@@ -152,8 +174,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     size_model = transform_marker ? model : Mat4d(I)
 
     font = p.font[]
-    colors = get_colors(p)
-    markerspace = p.markerspace[]
+    colors = cairo_colors(p)
     space = p.space[]
 
     return draw_atomic_scatter(
