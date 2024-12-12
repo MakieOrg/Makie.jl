@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-0.22
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -100,5 +99,3 @@ jobs:
             ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
             ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
             ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
-
-

@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - breaking-0.22
   push:
     tags:
       - '*'

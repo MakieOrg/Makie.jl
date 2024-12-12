@@ -1,6 +1,8 @@
 # Changelog
 
-## [Breaking]
+## [Unreleased]
+
+## [0.22.0] - 2024-12-12
 
 - Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)
   - Removed `meta` infrastructure. Vertex attributes are now passed as kwargs.
@@ -18,8 +20,6 @@
 - Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
-
-## [Unreleased]
 
 ## [0.21.18] - 2024-12-12
 
@@ -706,7 +706,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...HEAD
+[0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
 [0.21.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...v0.21.17
 [0.21.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...v0.21.16
