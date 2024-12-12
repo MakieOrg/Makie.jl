@@ -223,9 +223,7 @@ function trace_error(io::IO, computed::Computed)
     end
     return
 end
-
 trace_error(io::IO, edge::ComputeEdge) = trace_error(io, edge, collect_dirty(edge))
-trace_error(io::IO, edge::Input) = trace_error(io, edge, collect_dirty(edge))
 
 function trace_error(io::IO, computed::Computed, marked)
     hasparent(computed) && trace_error(io, computed.parent, marked)
@@ -289,10 +287,9 @@ function trace_inputs!(input::Input, root_inputs)
     return
 end
 
-function trace_error(io::IO, edge::Input, marked = Set{Symbol}())
+function trace_error(io::IO, edge::Input, marked = nothing)
     print(io, "[Input] ")
     if edge.dirty
-        push!(marked, edge.name)
         printstyled(io, edge.name, color = :red)
         func = edge_callback_name(edge.f, "")
         println(io, " = ", func, '(', edge.value, ")")
