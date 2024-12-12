@@ -22911,19 +22911,22 @@ function dispose_screen(screen) {
     Object.keys(screen).forEach((key)=>delete screen[key]);
     return;
 }
-function render_scene(scene, picking = false) {
-    if (scene.screen == {}) {
+function check_screen(screen) {
+    if (!screen || !screen.renderer) {
+        dispose_screen(screen);
         return false;
     }
-    const { camera , renderer , px_per_unit  } = scene.screen;
-    if (!renderer) {
-        dispose_screen(scene.screen);
-        return false;
-    }
-    const canvas = renderer.domElement;
+    const canvas = screen.renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
-        dispose_screen(scene.screen);
+        dispose_screen(screen);
+        return false;
+    }
+    return true;
+}
+function render_scene(scene, picking = false) {
+    const { renderer , camera , px_per_unit  } = scene.screen;
+    if (!check_screen(scene.screen)) {
         return false;
     }
     if (!scene.visible.value) {
@@ -22952,6 +22955,9 @@ function start_renderloop(three_scene) {
     const time_per_frame = 1 / fps * 1000;
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
+        if (!check_screen(three_scene.screen)) {
+            return false;
+        }
         if (timestamp - last_time_stamp > time_per_frame) {
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
@@ -22959,9 +22965,16 @@ function start_renderloop(three_scene) {
             }
             last_time_stamp = performance.now();
         }
-        window.requestAnimationFrame(renderloop);
+        requestAnimationFrame(renderloop);
+    }
+    function _check_screen() {
+        if (!check_screen(three_scene.screen)) {
+            return;
+        }
+        setTimeout(_check_screen, 1000);
     }
     render_scene(three_scene);
+    _check_screen();
     renderloop();
 }
 function get_body_size() {

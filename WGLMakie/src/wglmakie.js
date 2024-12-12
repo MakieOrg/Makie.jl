@@ -50,19 +50,23 @@ function dispose_screen(screen) {
     return;
 }
 
-export function render_scene(scene, picking = false) {
-    if (scene.screen == {}) {
+function check_screen(screen) {
+    if (!screen || !screen.renderer) {
+        dispose_screen(screen);
         return false;
     }
-    const { camera, renderer, px_per_unit } = scene.screen;
-    if (!renderer) {
-        dispose_screen(scene.screen);
-        return false;
-    }
-    const canvas = renderer.domElement;
+    const canvas = screen.renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
-        dispose_screen(scene.screen);
+        dispose_screen(screen);
+        return false;
+    }
+    return true;
+}
+
+export function render_scene(scene, picking = false) {
+    const { renderer, camera, px_per_unit } = scene.screen;
+    if (!check_screen(scene.screen)) {
         return false;
     }
     // dont render invisible scenes
@@ -95,6 +99,9 @@ function start_renderloop(three_scene) {
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
+        if (!check_screen(three_scene.screen)) {
+            return false;
+        }
         if (timestamp - last_time_stamp > time_per_frame) {
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
@@ -104,10 +111,22 @@ function start_renderloop(three_scene) {
             }
             last_time_stamp = performance.now();
         }
-        window.requestAnimationFrame(renderloop);
+        requestAnimationFrame(renderloop);
     }
+    function _check_screen() {
+        // make sure we delete the screen if the canvas is not in the DOM anymore
+        if (!check_screen(three_scene.screen)){
+            return;
+        }
+        // this can't happen via requestAnimationFrame
+        // since it may not be called after the canvas got removed.
+        // So we need another check outside the renderloop (which can run a lot slower)
+        setTimeout(_check_screen, 1000);
+    }
+
     // render one time before starting loop, so that we don't wait 30ms before first render
     render_scene(three_scene);
+    _check_screen();
     renderloop();
 }
 
