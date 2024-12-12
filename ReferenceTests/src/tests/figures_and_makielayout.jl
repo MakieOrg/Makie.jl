@@ -306,6 +306,24 @@ end
     f
 end
 
+@reference_test "Axis3 fullbox" begin
+    f = Figure(size = (400, 400))
+    Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
+    for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
+        kwargs = Dict(
+            Symbol(viskey, :spinesvisible) => false,
+            Symbol(colkey, :spinecolor_1) => :red,
+            Symbol(colkey, :spinecolor_2) => :green,
+            Symbol(colkey, :spinecolor_3) => :blue,
+            Symbol(colkey, :spinecolor_4) => :orange,
+        )
+        Axis3(
+            f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
+            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
+    end
+    f
+end
+
 @reference_test "Axis3 viewmodes, xreversed, aspect, perspectiveness" begin
     fig = Figure(size = (800, 1200))
 
