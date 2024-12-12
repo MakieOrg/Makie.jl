@@ -341,32 +341,36 @@ end
 
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
-function stringify_callback(f)
-    m = first(methods(f))
-    return string(m.file, ":", m.line)
-end
-
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
-    if all(x -> haskey(attr.outputs, x), outputs)
-        function throw_error()
-            callbacks = join([string(k, "=>", stringify_callback(get_callback(attr.outputs[k]))) for k in outputs], ", ")
-            current = stringify_callback(f)
-            cf_equal = f == get_callback(attr.outputs[first(outputs)])
-            return error("Only one computation is allowed to be registered for an output. Callbacks: $(callbacks). Current: $(current), isequal: $(cf_equal)")
+    if any(k -> haskey(attr.outputs, k), outputs)
+        valid = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
+        if length(valid) == 0
+            # fine, we won't be overwriting an edge
+        elseif length(valid) != length(outputs)
+            existing = join(valid, ", ")
+            error("Cannot register computation because some outputs already have parent edges: $existing")
+        else
+            e1 = attr.outputs[outputs[1]].parent
+            if !all(attr.outputs[k].parent == e1 for k in outputs)
+                bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
+                error("Not all outputs are computed from the same edge. $bad_keys do not match first output.")
+            end
+
+            if e1.callback != f
+                # We should only care about input arg types...
+                func1, loc1 = edge_callback_to_string(f)
+                func2, loc2 = edge_callback_to_string(e1.callback)
+                error(
+                    "The callback function of the edge does not match the already registered callback.\n" *
+                    "  $func1 $loc1\n  $func2 $loc2\n  $(methods(f))"
+                )
+            end
+
+            # edge already exists
+            return
         end
-        # We check if all outputs have the same parent + callback, which means this computation is already registered
-        # Which we allow, and simply ignore the new registration
-        out1 = attr.outputs[first(outputs)]
-        !hasparent(out1) && throw_error()
-        edge1 = out1.parent
-        edge1.callback !== f && throw_error()
-        all_same = all(outputs) do k
-            out = attr.outputs[k]
-            return hasparent(out) && out.parent === edge1
-        end
-        all_same || throw_error()
-        return # ignore new registration
     end
+
     _inputs = Computed[attr.outputs[k] for k in inputs]
     new_edge = ComputeEdge(f, _inputs)
     for (k, input) in zip(inputs, _inputs)
@@ -376,12 +380,14 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
             push!(attr.inputs[k].dependents, new_edge)
         end
     end
+
     # use order of namedtuple, which should not change!
     for (i, symbol) in enumerate(outputs)
         # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
-        value = Computed(symbol, new_edge, i)
+        value = get!(attr.outputs, symbol, Computed(symbol))
+        value.parent = new_edge
+        value.parent_idx = i
         value.dirty = true
-        attr.outputs[symbol] = value
         push!(new_edge.outputs, value)
     end
     return

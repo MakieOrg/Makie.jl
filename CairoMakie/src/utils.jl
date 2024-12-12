@@ -199,7 +199,7 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     per_point_linewidths = (T <: Lines) && (linewidths isa AbstractArray)
 
     space = (plot.space[])::Symbol
-    model = (plot.model[])::Mat4f
+    model = (plot.model[])::Mat4d
     # Standard transform from input space to clip space
     points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)

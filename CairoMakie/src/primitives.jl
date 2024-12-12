@@ -2,86 +2,101 @@
 #                             Lines, LineSegments                              #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::Screen, plot::Union{Lines, LineSegments})
-    args = plot.color[], plot.linewidth[], plot.linestyle[], plot.space[], plot.model[]
-    (color, linewidth, linestyle, space, model) = args
-    ctx = screen.context
-    positions = plot.positions[]
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Union{Lines, LineSegments}))
+#     @get_attribute(primitive, (color, linewidth, linestyle, space, model))
+#     ctx = screen.context
+#     positions = primitive[1][]
 
-    isempty(positions) && return
+#     isempty(positions) && return
 
-    # color is now a color or an array of colors
-    # if it's an array of colors, each segment must be stroked separately
-    color = get_colors(plot)
+#     # workaround for a LineSegments object created from a GLNormalMesh
+#     # the input argument is a view of points using faces, which results in
+#     # a vector of tuples of two points. we convert those to a list of points
+#     # so they don't trip up the rest of the pipeline
+#     # TODO this shouldn't be necessary anymore!
+#     if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
+#         positions = let
+#             pos = Point3f[]
+#             for tup in positions
+#                 push!(pos, tup[1])
+#                 push!(pos, tup[2])
+#             end
+#             pos
+#         end
+#     end
 
-    # Lines need to be handled more carefully with perspective projections to
-    # avoid them inverting.
-    # TODO: If we have neither perspective projection not clip_planes we can
-    #       use the normal projection_position() here
-    projected_positions, color, linewidth = project_line_points(scene, plot, positions, color, linewidth)
+#     # color is now a color or an array of colors
+#     # if it's an array of colors, each segment must be stroked separately
+#     color = to_color(primitive.calculated_colors[])
 
-    # The linestyle can be set globally, as we do here.
-    # However, there is a discrepancy between Makie
-    # and Cairo when it comes to linestyles.
-    # For Makie, the linestyle array is cumulative,
-    # and defines the "absolute" endpoints of segments.
-    # However, for Cairo, each value provides the length of
-    # alternate "on" and "off" portions of the stroke.
-    # Therefore, we take the diff of the given linestyle,
-    # to convert the "absolute" coordinates into "relative" ones.
-    if !isnothing(linestyle) && !(linewidth isa AbstractArray)
-        pattern = diff(Float64.(linestyle)) .* linewidth
-        isodd(length(pattern)) && push!(pattern, 0)
-        Cairo.set_dash(ctx, pattern)
-    end
+#     # Lines need to be handled more carefully with perspective projections to
+#     # avoid them inverting.
+#     # TODO: If we have neither perspective projection not clip_planes we can
+#     #       use the normal projection_position() here
+#     projected_positions, color, linewidth =
+#         project_line_points(scene, primitive, positions, color, linewidth)
 
-    # linecap
-    linecap = plot.linecap[]
-    if linecap == :square
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
-    elseif linecap == :round
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-    else # :butt
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
-    end
+#     # The linestyle can be set globally, as we do here.
+#     # However, there is a discrepancy between Makie
+#     # and Cairo when it comes to linestyles.
+#     # For Makie, the linestyle array is cumulative,
+#     # and defines the "absolute" endpoints of segments.
+#     # However, for Cairo, each value provides the length of
+#     # alternate "on" and "off" portions of the stroke.
+#     # Therefore, we take the diff of the given linestyle,
+#     # to convert the "absolute" coordinates into "relative" ones.
+#     if !isnothing(linestyle) && !(linewidth isa AbstractArray)
+#         pattern = diff(Float64.(linestyle)) .* linewidth
+#         isodd(length(pattern)) && push!(pattern, 0)
+#         Cairo.set_dash(ctx, pattern)
+#     end
 
-    # joinstyle
-    miter_angle = to_value(get(plot, :miter_limit, 2pi / 3))
-    set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
+#     # linecap
+#     linecap = primitive.linecap[]
+#     if linecap == :square
+#         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
+#     elseif linecap == :round
+#         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+#     else # :butt
+#         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
+#     end
 
-    joinstyle = to_value(get(plot, :joinstyle, :miter))
-    if joinstyle == :round
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-    elseif joinstyle == :bevel
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
-    else # :miter
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
-    end
+#     # joinstyle
+#     miter_angle = to_value(get(primitive, :miter_limit, 2pi/3))
+#     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
-    # TODO, how do we allow this conversion?s
-    if plot isa Lines && to_value(plot.args[1]) isa BezierPath
-        return draw_bezierpath_lines(ctx, to_value(plot.args[1]), plot, color, space, model, linewidth)
-    end
+#     joinstyle = to_value(get(primitive, :joinstyle, :miter))
+#     if joinstyle == :round
+#         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
+#     elseif joinstyle == :bevel
+#         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
+#     else # :miter
+#         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
+#     end
 
-    if color isa AbstractArray || linewidth isa AbstractArray
-        # stroke each segment separately, this means disjointed segments with probably
-        # wonky dash patterns if segments are short
-        draw_multi(
-            plot, ctx,
-            projected_positions,
-            color, linewidth,
-            isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
-        )
-    else
-        # stroke the whole line at once if it has only one color
-        # this allows correct linestyles and line joins as well and will be the
-        # most common case
-        Cairo.set_line_width(ctx, linewidth)
-        Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
-        draw_single(plot, ctx, projected_positions)
-    end
-    nothing
-end
+#     if primitive isa Lines && to_value(primitive.args[1]) isa BezierPath
+#         return draw_bezierpath_lines(ctx, to_value(primitive.args[1]), primitive, color, space, model, linewidth)
+#     end
+
+#     if color isa AbstractArray || linewidth isa AbstractArray
+#         # stroke each segment separately, this means disjointed segments with probably
+#         # wonky dash patterns if segments are short
+#         draw_multi(
+#             primitive, ctx,
+#             projected_positions,
+#             color, linewidth,
+#             isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
+#         )
+#     else
+#         # stroke the whole line at once if it has only one color
+#         # this allows correct linestyles and line joins as well and will be the
+#         # most common case
+#         Cairo.set_line_width(ctx, linewidth)
+#         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
+#         draw_single(primitive, ctx, projected_positions)
+#     end
+#     nothing
+# end
 
 function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
     for c in bezierpath.commands
@@ -309,92 +324,67 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scatter))
+#     @get_attribute(primitive, (
+#         markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+#         transform_marker, model, markerspace, space, clip_planes)
+#     )
 
-function get_colors(p::Plot)
-    if isnothing(p._colorrange[])
-        return p.color[]
-    else
-        sampler = Makie.Sampler(
-            p.colormap[],
-            p.color[],
-            p.alpha[],
-            # interpolation method for sampling
-            Makie.Linear,
-            Makie.Scaling(p.colorscale[], p._colorrange[])
-        )
-        collect(sampler)
-    end
-end
+#     marker = cairo_scatter_marker(primitive.marker[]) # this goes through CairoMakie's conversion system and not Makie's...
+#     ctx = screen.context
+#     positions = primitive[1][]
+#     isempty(positions) && return
+#     size_model = transform_marker ? model : Mat4d(I)
 
+#     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
+#     colors = to_color(primitive.calculated_colors[])
+#     markerspace = primitive.markerspace[]
+#     space = primitive.space[]
+#     transfunc = Makie.transform_func(primitive)
 
+#     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
+#                                marker_offset, rotation, model, positions, size_model, font, markerspace,
+#                                space, clip_planes)
+# end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
-    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p._marker_offset[], p.rotation[],
-           p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
+# function draw_atomic_scatter(
+#         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
+#         marker, marker_offset, rotation, model, positions, size_model, font,
+#         markerspace, space, clip_planes
+#     )
 
-    attr = p.args[1]
-    Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
-        return (cairo_scatter_marker(marker[]),)
-    end
+#     transformed = apply_transform(transfunc, positions, space)
+#     indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
+#     projected_positions = project_position(scene, space, transformed, indices, model)
 
-    Makie.register_computation!(attr, [:positions_transformed_f32c, :model, :space, :clip_planes], [:clipped_transformed_positions]) do (transformed, model, space, clip_planes), changed, outputs
-        indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
-        pos = project_position(scene, space[], transformed[], indices, model[])
-        return (view(pos, indices),)
-    end
+#     Makie.broadcast_foreach_index(projected_positions, indices, colors, markersize, strokecolor,
+#             strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
+#             markersize, strokecolor, strokewidth, m, mo, rotation
 
-    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-        transform_marker, model, markerspace, space, clip_planes = args
+#         isnan(pos) && return
+#         isnan(rotation) && return # matches GLMakie
 
-    marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
-    ctx = screen.context
-    positions = p.clipped_transformed_positions[]
-    isempty(positions) && return
-    size_model = transform_marker ? model : Mat4d(I)
+#         scale = project_scale(scene, markerspace, markersize, size_model)
+#         offset = project_scale(scene, markerspace, mo, size_model)
 
-    font = p.font[]
-    colors = get_colors(p)
-    markerspace = p.markerspace[]
-    space = p.space[]
+#         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
 
-    return draw_atomic_scatter(scene, ctx, positions, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotation, size_model, font, markerspace)
-end
+#         Cairo.save(ctx)
+#         # Setting a markersize of 0.0 somehow seems to break Cairos global state?
+#         # At least it stops drawing any marker afterwards
+#         # TODO, maybe there's something wrong somewhere else?
+#         if !(isnan(scale) || norm(scale) ≈ 0.0)
+#             if m isa Char
+#                 draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+#             else
+#                 draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
+#             end
+#         end
+#         Cairo.restore(ctx)
+#     end
 
-function draw_atomic_scatter(
-        scene, ctx, positions, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, size_model, font,
-        markerspace
-    )
-
-    Makie.broadcast_foreach(positions, colors, markersize, strokecolor,
-            strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
-            markersize, strokecolor, strokewidth, m, mo, rotation
-
-        isnan(pos) && return
-        isnan(rotation) && return # matches GLMakie
-
-        scale = project_scale(scene, markerspace, markersize, size_model)
-        offset = project_scale(scene, markerspace, mo, size_model)
-
-        Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-
-        Cairo.save(ctx)
-        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
-        # At least it stops drawing any marker afterwards
-        # TODO, maybe there's something wrong somewhere else?
-        if !(isnan(scale) || norm(scale) ≈ 0.0)
-            if m isa Char
-                draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
-            else
-                draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
-            end
-        end
-        Cairo.restore(ctx)
-    end
-
-    return
-end
+#     return
+# end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
     # Marker offset is meant to be relative to the

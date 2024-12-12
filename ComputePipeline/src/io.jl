@@ -30,6 +30,15 @@ end
 edge_callback_name(f::Function, args = "…") = "$(nameof(f))($args)"
 edge_callback_name(functor, args = "…") = "(::$(nameof(functor)))($args)"
 
+function edge_callback_to_string(edge::ComputeEdge)
+    inputT = typeof(ntuple(i -> edge.inputs[i].value, length(edge.inputs)))
+    outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
+    return edge_callback_to_string(edge.callback, inputT, outputT)
+end
+function edge_callback_to_string(input::Input)
+    return edge_callback_to_string(input.f, (typeof(input.value),))
+end
+
 function edge_callback_to_string(f, argT1 = Tuple, argT3 = Nothing)
     return edge_callback_to_string(f, (argT1, Vector{Bool}, argT3))
 end
@@ -56,9 +65,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
     println(io, "ComputeEdge:")
 
-    inputT = typeof(ntuple(i -> edge.inputs[i].value, length(edge.inputs)))
-    outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
-    f, loc = edge_callback_to_string(edge.callback, inputT, outputT)
+    f, loc = edge_callback_to_string(edge)
     println(io, "  callback:\n    $f")
     printstyled(io, "    $loc\n", color = :light_black)
 
@@ -88,7 +95,7 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
     println(io, "Input:")
     println(io, "  name:     :", input.name)
     println(io, "  value:    ", input.value)
-    f, loc = edge_callback_to_string(input.f, (typeof(input.value),))
+    f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
     printstyled(io, " $loc\n", color = :light_black)
     println(io, "  output:   ", input.dirty ? '↻' : '✓', ' ', input.output)
@@ -119,7 +126,7 @@ end
 function collect_edges(edge::ComputeEdge, cache::Set{ComputeEdge})
     if !(edge in cache)
         push!(cache, edge)
-        foreach(e -> collect_edges!(cache, e), edge.dependents)
+        foreach(e -> collect_edges(e, cache), edge.dependents)
     end
     return
 end
@@ -140,16 +147,19 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
     println(io, "ComputeGraph():")
+
     print(io, "  Inputs:")
-    io = IOContext(io, :compact => true)
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.inputs))
-    for (k, v) in graph.inputs
-        print(io, "\n    :", rpad(string(k), pad), " => ", v)
+    ks = sort!(collect(keys(graph.inputs)), by = string)
+    pad = mapreduce(k -> length(string(k)), max, ks)
+    for k in ks
+        print(io, "\n    :", rpad(string(k), pad), " => ", graph.inputs[k])
     end
+
     print(io, "\n\n  Outputs:")
-    pad = mapreduce(k -> length(string(k)), max, keys(graph.outputs))
-    for (k, out) in graph.outputs
-        print(io, "\n    :", rpad(string(k), pad), " => ", out)
+    ks = sort!(collect(keys(graph.outputs)), by = string)
+    pad = mapreduce(k -> length(string(k)), max, ks)
+    for k in ks
+        print(io, "\n    :", rpad(string(k), pad), " => ", graph.outputs[k])
     end
     return io
 end

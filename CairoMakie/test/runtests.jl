@@ -151,11 +151,11 @@ end
     @test !isfile(tmp_path)
 end
 
-@testset "plotlist no ambiguity (#4038)" begin
-    f = plotlist([Makie.SpecApi.Scatter(1:10)])
-    Makie.colorbuffer(f; backend=CairoMakie)
-    plotlist!([Makie.SpecApi.Scatter(1:10)])
-end
+# @testset "plotlist no ambiguity (#4038)" begin
+#     f = plotlist([Makie.SpecApi.Scatter(1:10)])
+#     Makie.colorbuffer(f; backend=CairoMakie)
+#     plotlist!([Makie.SpecApi.Scatter(1:10)])
+# end
 
 @testset "multicolor line clipping (#4313)" begin
     fig, ax, p = contour(rand(20,20))

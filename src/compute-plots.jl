@@ -380,6 +380,26 @@ function Base.getproperty(plot::ComputePlots, key::Symbol)
     return plot.args[1][key]
 end
 
+function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
+    if key in fieldnames(typeof(plot))
+        return Base.setfield!(plot, key, val)
+    end
+    attr = plot.args[1]
+    if haskey(attr.inputs, key)
+        setproperty!(attr, key, val)
+    else
+        add_input!(attr, key, val)
+        # maybe best to not make assumptions about user attributes?
+        # CairoMakie rasterize needs this (or be treated with more care)
+        attr[key].value = RefValue{Any}(nothing)
+    end
+    return plot
+end
+
+Base.getindex(plot::ComputePlots, key::Symbol) = getproperty(plot, key)
+Base.setindex!(plot::ComputePlots, val, key::Symbol) = setproperty!(plot, key, val)
+
+
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 
 
