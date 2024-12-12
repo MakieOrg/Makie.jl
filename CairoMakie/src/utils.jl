@@ -193,29 +193,38 @@ end
 
 
 function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
-    # If colors are defined per point they need to be interpolated like positions
-    # at clip planes
-    per_point_colors = colors isa AbstractArray
-    per_point_linewidths = (T <: Lines) && (linewidths isa AbstractArray)
-
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
-    # Standard transform from input space to clip space
-    points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
+    is_lines_plot = T <: Lines
+
+    points = Makie.apply_transform(transform_func(plot), positions, space)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
-    clip_points = map(points) do point
-        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
-    end
-
-    # yflip and clip -> screen/pixel coords
-    res = scene.camera.resolution[]
 
     # clip planes in clip space
     clip_planes = if Makie.is_data_space(space)
         Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])::Vector{Plane3f}
     else
         Makie.Plane3f[]
+    end
+
+    # yflip and clip -> screen/pixel coords
+    res = scene.camera.resolution[]
+
+    return project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+end
+
+
+function project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+    # If colors are defined per point they need to be interpolated like positions
+    # at clip planes
+    per_point_colors = colors isa AbstractArray
+    per_point_linewidths = is_lines_plot && (linewidths isa AbstractArray)
+
+    # Standard transform from input space to clip space
+
+    clip_points = map(points) do point
+        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
     end
 
     # Fix lines with points far outside the clipped region not drawing at all
@@ -226,7 +235,6 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
         Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
     )
 
-
     # outputs
     screen_points = sizehint!(Vec2f[], length(clip_points))
     color_output = sizehint!(eltype(colors)[], length(clip_points))
@@ -234,7 +242,7 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
 
     # Handling one segment per iteration
-    if plot isa Lines
+    if is_lines_plot
 
         last_is_nan = true
         for i in 1:length(clip_points)-1
