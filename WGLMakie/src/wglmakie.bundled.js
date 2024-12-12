@@ -22341,6 +22341,19 @@ class Plot {
             this.mesh.visible = v;
         });
     }
+    dispose() {
+        delete plot_cache[this.uuid];
+        this.parent.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.mesh = undefined;
+        this.parent = undefined;
+        this.uuid = "";
+        this.name = "";
+        this.is_instanced = false;
+        this.geometry_needs_recreation = false;
+        this.plot_data = {};
+    }
     move_to(scene) {
         if (scene === this.parent) {
             return;
@@ -22862,13 +22875,7 @@ function deserialize_scene(data, screen) {
     return scene;
 }
 function delete_plot(plot) {
-    delete plot_cache[plot.plot_uuid];
-    const { parent  } = plot;
-    if (parent) {
-        parent.remove(plot);
-    }
-    plot.geometry.dispose();
-    plot.material.dispose();
+    plot.plot_object.dispose();
 }
 function delete_three_scene(scene) {
     delete scene_cache[scene.scene_uuid];
@@ -22878,20 +22885,45 @@ function delete_three_scene(scene) {
     }
 }
 window.THREE = mod;
+function dispose_screen(screen) {
+    const { renderer , picking_target , root_scene  } = screen;
+    if (renderer) {
+        const canvas = renderer.domElement;
+        if (canvas.parentNode) {
+            canvas.parentNode.removeChild(canvas);
+        }
+        renderer.state.reset();
+        renderer.forceContextLoss();
+        renderer.dispose();
+    }
+    if (screen.texture_atlas) {
+        const data = TEXTURE_ATLAS[0].value;
+        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
+        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas = undefined;
+    }
+    if (root_scene) {
+        delete_three_scene(root_scene);
+    }
+    if (picking_target) {
+        picking_target.dispose();
+    }
+    Object.keys(screen).forEach((key)=>delete screen[key]);
+    return;
+}
 function render_scene(scene, picking = false) {
+    if (scene.screen == {}) {
+        return false;
+    }
     const { camera , renderer , px_per_unit  } = scene.screen;
+    if (!renderer) {
+        dispose_screen(scene.screen);
+        return false;
+    }
     const canvas = renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
-        if (scene.screen.texture_atlas) {
-            const data = TEXTURE_ATLAS[0].value;
-            TEXTURE_ATLAS[0].notify(scene.screen.texture_atlas, true);
-            TEXTURE_ATLAS[0].value = data;
-            scene.screen.texture_atlas = undefined;
-        }
-        delete_three_scene(scene);
-        renderer.state.reset();
-        renderer.dispose();
+        dispose_screen(scene.screen);
         return false;
     }
     if (!scene.visible.value) {
@@ -23002,6 +23034,9 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
 }
 function add_canvas_events(screen, comm, resize_to) {
     const { canvas , winscale  } = screen;
+    canvas.addEventListener("webglcontextlost", (event)=>{
+        dispose_screen(screen);
+    });
     function mouse_callback(event) {
         const [x1, y1] = events2unitless(screen, event);
         comm.notify({
@@ -23199,6 +23234,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
     const three_scene = deserialize_scene(scenes, screen);
+    screen.root_scene = three_scene;
     start_renderloop(three_scene);
     canvas_width.on((w_h)=>{
         set_render_size(screen, ...w_h);
@@ -23276,7 +23312,10 @@ function pick_native(scene, _x, _y, _w, _h, apply_ppu = true) {
     ];
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
-    render_scene(scene, true);
+    const rendered = render_scene(scene, true);
+    if (!rendered) {
+        return;
+    }
     renderer.setRenderTarget(null);
     const picked_plots_array = read_pixels(renderer, picking_target, x1, y1, w, h);
     const picked_plots = {};
@@ -23318,7 +23357,10 @@ function get_picking_buffer(scene) {
     ];
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
-    render_scene(scene, true);
+    const rendered = render_scene(scene, true);
+    if (!rendered) {
+        return;
+    }
     renderer.setRenderTarget(null);
     const picked_plots_array = read_pixels(renderer, picking_target, x, y, w, h);
     return {
@@ -23386,7 +23428,11 @@ function pick_sorted(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data1, selected] = pick_native(scene, x0, y0, dx, dy, false);
+    const picked = pick_native(scene, x0, y0, dx, dy, false);
+    if (!picked) {
+        return null;
+    }
+    const [plot_data1, selected] = picked;
     if (selected.length == 0) {
         return null;
     }
@@ -23416,15 +23462,28 @@ function pick_sorted(scene, xy, range) {
     });
 }
 function pick_native_uuid(scene, x1, y1, w, h) {
-    const [_, picked_plots] = pick_native(scene, x1, y1, w, h);
+    const picked = pick_native(scene, x1, y1, w, h);
+    if (!picked) {
+        return [];
+    }
+    const [_, picked_plots] = picked;
     return picked_plots.map(([p, index])=>[
             p.plot_uuid,
             index
         ]);
 }
 function pick_native_matrix(scene, x1, y1, w, h) {
-    const [matrix, _] = pick_native(scene, x1, y1, w, h);
-    return matrix;
+    const picked = pick_native(scene, x1, y1, w, h);
+    if (!picked) {
+        return {
+            data: [],
+            size: [
+                0,
+                0
+            ]
+        };
+    }
+    return picked[0];
 }
 function register_popup(popup, scene, plots_to_pick, callback) {
     if (!scene || !scene.screen) {
@@ -23433,7 +23492,11 @@ function register_popup(popup, scene, plots_to_pick, callback) {
     const { canvas  } = scene.screen;
     canvas.addEventListener("mousedown", (event)=>{
         const [x1, y1] = events2unitless(scene.screen, event);
-        const [_, picks] = pick_native(scene, x1, y1, 1, 1);
+        const picked = pick_native(scene, x1, y1, 1, 1);
+        if (!picked) {
+            return;
+        }
+        const [_, picks] = picked;
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {
