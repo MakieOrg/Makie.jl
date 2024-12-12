@@ -21,6 +21,12 @@ function plotfunc(f::Function)
     end
 end
 
+symbol_to_plot(x::Symbol) = symbol_to_plot(Val(x))
+function symbol_to_plot(::Val{Sym}) where {Sym}
+    return nothing
+end
+
+
 function plotfunc!(x)
     F = plotfunc(x)::Function
     name = Symbol(nameof(F), :!)
@@ -188,6 +194,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        $(MakieCore).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
@@ -496,6 +503,8 @@ function create_recipe_expr(Tsym, args, attrblock)
         $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
+        $(MakieCore).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
+
         function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
             _create_plot($funcname, kwdict, args...)
