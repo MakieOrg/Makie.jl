@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Allow for user defined recipes to be used in SpecApi [#4655](https://github.com/MakieOrg/Makie.jl/pull/4655).
+
 ## [0.21.17] - 2024-12-05
 
 - Added `backend` and `update` kwargs to `show` [#4558](https://github.com/MakieOrg/Makie.jl/pull/4558)
