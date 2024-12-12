@@ -241,18 +241,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
 
         register_computation!(
-            attr, [:marker], [:pixel_marker_shape]
+            attr, [:marker], [:gl_marker_shape]
         ) do (marker,), changed, last
             return (marker[].marker_type,)
         end
-        marker_inputs = [:pixel_marker_shape, :markerspace, :upvector]
         inputs = [
             # Special
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
             :alpha_colormap, :scaled_color, :scaled_colorrange,
-            :pixel_marker_shape,
+            :gl_marker_shape,
             # Simple forwards
             :gl_markerspace, :quad_scale,
             :transparency, :fxaa, :visible,
@@ -267,7 +266,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # TODO: Probably shouldn't just drop uv_offset_width?
         register_computation!(attr,
             [:uv_offset_width, :marker, :font, :quad_scale],
-            [:sdf_marker_shape, :sdf_uv, :image]
+            [:gl_marker_shape, :gl_uv, :gl_image]
         ) do (uv_off, m, f, scale), changed, last
 
             if m[] isa Matrix{<: Colorant} # single image marker
@@ -338,9 +337,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             # Needs explicit handling
             :positions_transformed_f32c,
             :alpha_colormap, :scaled_color, :scaled_colorrange,
-            :sdf_marker_shape,
+            :gl_marker_shape,
             # Simple forwards
-            :sdf_uv, :quad_scale, :quad_offset, :image,
+            :gl_uv, :quad_scale, :quad_offset, :gl_image,
             :transparency, :fxaa, :visible,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
@@ -364,9 +363,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :positions_transformed_f32c => :position,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :color,
-        :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
-        :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
-        :quad_scale => :scale,
+        :gl_marker_shape => :shape, :gl_uv => :uv_offset_width,
+        :gl_markerspace => :markerspace,
+        :quad_scale => :scale, :gl_image => :image,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
@@ -548,14 +547,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     add_input!(attr, :projectionview, scene.camera.projectionview[])
     on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
     register_computation!(
-        attr, [:projectionview, :model, :f32c, :space], [:pvm32]
+        attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
         pvm = Makie.space_to_clip(scene.camera, space[]) *
             Makie.f32_convert_matrix(f32c[], space[]) * model[]
         return (pvm,)
     end
     register_computation!(
-        attr, [:pvm32, :positions_transformed], [:projected_transformed_positions]
+        attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
     ) do (pvm32, positions), changed, cached
         if isnothing(cached)
             output = Vector{Point4f}(undef, length(positions[]))
@@ -570,7 +569,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     # linestyle/pattern handling
     register_computation!(
-        attr, [:linestyle], [:pattern, :pattern_length]
+        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
     ) do (linestyle,), changed, cached
         if isnothing(linestyle[])
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
@@ -597,7 +596,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
     else
-        positions = :projected_transformed_positions
+        positions = :gl_projected_positions
     end
 
     # Derived vertex attributes
@@ -616,7 +615,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :scaled_color, :alpha_colormap, :scaled_colorrange,
         # Auto
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
-        :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
+        :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit,
         :transparency, :fxaa, :debug, :visible,
         :model_f32c,
@@ -627,6 +626,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
+        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
@@ -719,7 +719,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     # linestyle/pattern handling
     register_computation!(
-        attr, [:linestyle], [:pattern, :pattern_length]
+        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
     ) do (linestyle,), changed, cached
         if isnothing(linestyle[])
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
@@ -748,7 +748,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c,
         :synched_color, :alpha_colormap, :scaled_colorrange,
         # Auto
-        :pattern, :pattern_length, :linecap, :synched_linewidth,
+        :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
         :visible,
@@ -758,6 +758,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
+        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
