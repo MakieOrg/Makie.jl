@@ -707,7 +707,7 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
 [Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...HEAD
-[0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
+[0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
 [0.21.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...v0.21.17
 [0.21.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...v0.21.16
