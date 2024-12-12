@@ -456,12 +456,10 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
         p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
         return [p1, p2, p3, p4, p5, p6]
     end
-    framepoints = lift(limits, min1, min2, xreversed, yreversed, zreversed
+    framepoints_front_spines = lift(limits, min1, min2, xreversed, yreversed, zreversed
             ) do lims, mi1, mi2, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -471,7 +469,7 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         mi2 = mi2 ⊻ rev2
 
         f(mi) = mi ? minimum : maximum
-    
+
         p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
@@ -484,10 +482,11 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
 
-    framelines = linesegments!(scene, framepoints_front_spines, color = attr(:spinecolor_4), linewidth = attr(:spinewidth),
-        transparency = true, visible = ax.front_spines[] && attr(:spinesvisible), inspectable = false,
+    front_framelines = linesegments!(scene, framepoints_front_spines, color = attr(:spinecolor_4),
+        linewidth = attr(:spinewidth),visible = map((a,b) -> a && b, ax.front_spines, attr(:spinesvisible)),
+        overdraw = true, transparency = true, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
-  
+
     return gridline1, gridline2, framelines
 end
 
