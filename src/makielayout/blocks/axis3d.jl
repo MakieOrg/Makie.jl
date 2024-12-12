@@ -145,6 +145,7 @@ function initialize_block!(ax::Axis3)
     end
 
     function process_event(event)
+        ax.scene.visible[] || return Consume(false)
         for (active, interaction) in values(ax.interactions)
             if active
                 maybe_consume = process_interaction(interaction, event, ax)
@@ -427,25 +428,22 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         # we are going to transform the 3d frame points into 2d of the topscene
         # because otherwise the frame lines can
         # be cut when they lie directly on the scene boundary
-        to_topscene_z_2d.([p1, p2, p3, p4, p5, p6], Ref(scene))
+        o = scene.viewport[].origin
+        return map([p1, p2, p3, p4, p5, p6]) do p3d
+            # This strip z here (set it to 0) and translate to coerce z sorting
+            # to be correct in CairoMakie (which is based on plot.transformation)
+            return Point2f(o + Makie.project(scene, p3d))
+        end
     end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
     framelines = linesegments!(topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         # transparency = true,
         visible = attr(:spinesvisible), inspectable = false)
+    # -10000 is the far value in campixel
+    translate!(framelines, 0, 0, -10000)
 
     return gridline1, gridline2, framelines
-end
-
-# this function projects a point from a 3d subscene into the parent space with a really
-# small z value
-function to_topscene_z_2d(p3d, scene)
-    o = scene.viewport[].origin
-    p2d = Point2f(o + Makie.project(scene, p3d))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
-    Point3f(p2d..., -10000)
 end
 
 function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
@@ -502,21 +500,12 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
          end
     end
-    # we are going to transform the 3d tick segments into 2d of the topscene
-    # because otherwise they
-    # be cut when they extend beyond the scene boundary
-    tick_segments_2dz = lift(topscene, tick_segments, scene.camera.projectionview, scene.viewport) do ts, _, _
-        map(ts) do p1_p2
-            to_topscene_z_2d.(p1_p2, Ref(scene))
-        end
-    end
 
     ticks = linesegments!(topscene, tick_segments,
         xautolimits = false, yautolimits = false, zautolimits = false,
         transparency = true, inspectable = false,
         color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
-    # -10000 is an arbitrary weird constant that in preliminary testing didn't seem
-    # to clip into plot objects anymore
+    # -10000 is the far value in campixel
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()

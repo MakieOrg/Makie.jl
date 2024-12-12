@@ -14,7 +14,7 @@ scatter(1:4, Categorical(["a", "b", "c", "a"]))
 ```
 
 ```julia
-# Explicitely set them for other types:
+# Explicitly set them for other types:
 struct Named
     value
 end

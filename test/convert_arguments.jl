@@ -68,7 +68,7 @@ end
     @test_throws ArgumentError heatmap(1im)
 end
 
-# custom vector type to ensure that the conversion can be overriden for vectors
+# custom vector type to ensure that the conversion can be overridden for vectors
 struct MyConvVector <: AbstractVector{Float64} end
 Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
@@ -132,6 +132,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 geom = Sphere(Point3{T_in}(0), T_in(1))
                 _mesh = GeometryBasics.mesh(rect3; pointtype=Point3{T_in}, facetype=GLTriangleFace)
                 polygon = Polygon(Point2.(xs, ys))
+                polygon3d = Polygon(Point3.(xs, ys, zs))
                 line = LineString(Point3.(xs, ys, zs))
                 bp = BezierPath([
                     MoveTo(T_in(0), T_in(0)),
@@ -228,6 +229,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, polygon)    isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, [polygon, polygon]) isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, MultiPolygon([polygon, polygon])) isa Tuple{Vector{Point2{T_out}}}
+                        @test apply_conversion(CT, polygon3d)    isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, [polygon3d, polygon3d]) isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, MultiPolygon([polygon3d, polygon3d])) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, line)       isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, [line, line]) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, MultiLineString([line, line])) isa Tuple{Vector{Point3{T_out}}}
@@ -485,5 +489,27 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
             @test apply_conversion(Makie.Text, strings) isa Tuple{Vector{String}}
             # TODO glyphcollection
         end
+    end
+end
+
+@testset "Explicit convert_arguments" begin
+    function nan_equal(a::Vector, b::Vector)
+        length(a) == length(b) || return false
+        for (x, y) in zip(a, b)
+            (isnan(x) && isnan(y)) || (x == y) || return false
+        end
+        return true
+    end
+
+    @testset "PointBased" begin
+        ps = Point2f.([1, 2], [1, 2])
+        ls1 = [LineString(ps) for _ in 1:2]
+        ls2 = MultiLineString(ls1)
+        ls3 = [ls2, ls2]
+        ps12 = [ps; [Point2f(NaN)]; ps]
+        ps3 = [ps12; [Point2f(NaN)]; ps12]
+        @test nan_equal(convert_arguments(PointBased(), ls1)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls2)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls3)[1], ps3)
     end
 end

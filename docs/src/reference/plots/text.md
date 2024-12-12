@@ -195,9 +195,9 @@ f
 ## Rich text
 
 With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
-You can create such rich text objects using the functions `rich`, `superscript` and `subscript`, all of which create `RichText` objects.
+You can create such rich text objects using the functions `rich`, `superscript`, `subscript`, `subsup` and `left_subsup`, all of which create `RichText` objects.
 
-Each of these functions takes a variable number of arguments, each of which can be a `String` or `RichText`.
+Each of these functions takes a variable number of arguments (except `subsup` and `left_subsup` which take exactly two arguments), each of which can be a `String` or `RichText`.
 Each can also take keyword arguments such as `color` or `font`, to set these attributes for the given part.
 The top-level settings for font, color, etc. are taken from the `text` attributes as usual.
 
@@ -220,6 +220,8 @@ rainbow_chars = map(enumerate(str)) do (i, c)
 end
 
 Label(f[2, 1], rich(rainbow_chars...), font = :bold)
+
+Label(f[3, 1], rich("Chemists use notations like ", left_subsup("92", "238"), "U or PO", subsup("4", "3−")))
 
 f
 ```

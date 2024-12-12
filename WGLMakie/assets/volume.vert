@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 out vec3 frag_vert;
 
 uniform mat4 projection, view;
