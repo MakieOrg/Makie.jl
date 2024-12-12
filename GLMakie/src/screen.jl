@@ -951,7 +951,12 @@ function update!(screen)
     for plot in values(screen.cache2plot)
         # poll object for updates
         if plot isa Makie.ComputePlots
-            plot.args[1][:gl_renderobject][]
+            try
+                plot.args[1][:gl_renderobject][]
+            catch e
+                @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject])
+            end
         end
     end
     return
