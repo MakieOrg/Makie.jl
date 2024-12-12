@@ -24,7 +24,7 @@ end
 function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
     cols = to_colormap(cmap)
     r = range(0.0, stop=1.0, length=ncolors)
-    if alpha isa Tuple{<:Number, <:Number}
+    if alpha isa Tuple{Number, Number}
         alphas = LinRange(alpha..., ncolors)
     else
         alphas = alpha
@@ -298,7 +298,7 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     d = defaults()
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
-        # TODO have a mark that says "theme uncomplete" and only then get the defaults
+        # TODO have a mark that says "theme incomplete" and only then get the defaults
         d = merge!(to_value(theme(scene, key)), d)
     end
     return merge!(input, d)
@@ -427,7 +427,7 @@ function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
-    # crate a `Matrix{Point3}`
+    # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh

@@ -86,7 +86,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         @test eachindex(ps) == Makie.unclipped_indices([plane], ps, :other)
     end
 
-    @testset "Tranformations" begin
+    @testset "Transformations" begin
         # Test apply_transform()
         plane = Plane(Point3f(1), Vec3f(0,0,1))
         v = normalize(2f0 .* rand(Vec3f) .- 1)

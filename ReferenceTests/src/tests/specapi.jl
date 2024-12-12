@@ -116,3 +116,98 @@ end
     sync_step!(st)
     st
 end
+
+AxNoTicks(;kw...) = S.Axis(; xticksvisible=false,
+                    yticksvisible=false, yticklabelsvisible=false,
+                    xticklabelsvisible=false, kw...)
+
+@reference_test "Moving Plots in SpecApi" begin
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
+    pl2 = S.Scatter(1:4; color=1:4, markersize=30, strokewidth=1, strokecolor=:black)
+    ax1 = AxNoTicks(; plots=[pl1, pl2])
+    grid = S.GridLayout(AxNoTicks())
+    f, _, pl = plot(S.GridLayout([ax1 grid]; colgaps=Fixed(4)); figure=(; figure_padding=2, size=(500, 100)))
+    cb1 = copy(colorbuffer(f))
+
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50); colormap=:inferno)
+    ax1 = AxNoTicks()
+    grid = S.GridLayout(AxNoTicks(; plots=[pl1, pl2]))
+    pl[1] = S.GridLayout([ax1 grid]; colgaps=Fixed(4))
+    cb2 = copy(colorbuffer(f))
+
+    pl1 = S.Heatmap((1, 4), (1, 4), Makie.peaks(50))
+    ax1 = AxNoTicks(; plots=[pl1])
+    ax2 = S.GridLayout(AxNoTicks(; plots=[pl2]))
+    pl[1] = S.GridLayout([ax1 ax2]; colgaps=Fixed(4))
+    cb3 = copy(colorbuffer(f))
+
+    imgs = hcat(rotr90.((cb1, cb2, cb3))...)
+    s = Scene(; size=size(imgs))
+    image!(s, imgs; space=:pixel)
+    s
+end
+
+function to_plot(plots)
+    axes = map(permutedims(plots)) do plot
+        ax = AxNoTicks(; plots=[plot])
+        return S.GridLayout([ax S.Colorbar(plot)])
+    end
+    return S.GridLayout(axes)
+end
+
+@reference_test "Colorbar from Plots" begin
+    data = vcat((1:4)', (4:-1:1)')
+    plots = [S.Heatmap(data),
+             S.Image(data),
+             S.Lines(1:4; linewidth=4, color=1:4),
+             S.Scatter(1:4; markersize=20, color=1:4)]
+    obs = Observable(to_plot(plots))
+    fig = plot(obs; figure=(; size=(700, 150)))
+    img1 = copy(colorbuffer(fig))
+    plots = [S.Heatmap(data; colormap=:inferno),
+             S.Image(data; colormap=:inferno),
+             S.Lines(1:4; linewidth=4, color=1:4, colormap=:inferno),
+             S.Scatter(1:4; markersize=20, color=1:4, colormap=:inferno)]
+    obs[] = to_plot(plots)
+    img2 = copy(colorbuffer(fig))
+
+    plots = [S.Heatmap(data; colorrange=(2, 3)),
+             S.Image(data; colorrange=(2, 3)),
+             S.Lines(1:4; linewidth=4, color=1:4, colorrange=(2, 3)),
+             S.Scatter(1:4; markersize=20, color=1:4, colorrange=(2, 3))]
+    obs[] = to_plot(plots)
+    img3 = copy(colorbuffer(fig))
+
+    imgs = hcat(rotr90.((img3, img2, img1))...)
+    s = Scene(; size=size(imgs))
+    image!(s, imgs; space=:pixel)
+    s
+end
+
+@reference_test "Axis links" begin
+    axiis = broadcast(1:2, (1:2)') do x, y
+        S.Axis(; title="$x, $y")
+    end
+    f, _, pl = plot(
+        S.GridLayout(axiis; xaxislinks=vec(axiis[1:2, 1]), yaxislinks=vec(axiis[1:2, 2]));
+        figure=(; size=(500, 250)),
+    )
+    for ax in f.content[[1, 3]]
+        limits!(ax, 2, 3, 2, 3)
+    end
+
+    img1 = rotr90(colorbuffer(f; update=false))
+    for ax in f.content
+        limits!(ax, 0, 10, 0, 10)
+    end
+    pl[1] = S.GridLayout(axiis; xaxislinks=vec(axiis[1:2, 2]), yaxislinks=vec(axiis[1:2, 1]))
+    for ax in f.content[[1, 3]]
+        limits!(ax, 2, 3, 2, 3)
+    end
+    sleep(0.1)
+    img2 = rotr90(colorbuffer(f; update=false))
+    large = hcat(img2, img1)
+    s = Scene(; size=size(large))
+    image!(s, large; space=:pixel)
+    s
+end

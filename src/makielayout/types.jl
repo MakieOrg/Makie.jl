@@ -170,24 +170,24 @@ end
 struct ScrollZoom
     speed::Float32
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 
@@ -327,10 +327,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
-        "The space reserved for the xticklabels."
-        xticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
-        "The space reserved for the yticklabels."
-        yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        "The space reserved for the xticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        xticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
+        "The space reserved for the yticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        yticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
         "The space between yticks and yticklabels."
@@ -755,7 +755,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticks = Makie.automatic
         "Format for ticks."
         tickformat = Makie.automatic
-        "The space reserved for the tick labels."
+        "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3f0
@@ -1152,16 +1152,37 @@ const CHECKMARK_BEZIER = scale(BezierPath(
     end
 end
 
+"""
+A switch with two states.
+
+## Constructors
+
+```julia
+Toggle(fig_or_scene; kwargs...)
+```
+
+## Examples
+
+```julia
+t_horizontal = Toggle(fig[1, 1])
+t_vertical = Toggle(fig[2, 1], orientation = :vertical)
+t_diagonal = Toggle(fig[3, 1], orientation = pi/4)
+on(t_vertical.active) do switch_is_on
+    switch_is_on ? println("good morning!") : println("good night")
+end
+```
+
+"""
 @Block Toggle begin
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
-        "The width of the toggle."
-        width = 32
-        "The height of the toggle."
-        height = 18
+        "The width of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        width = Auto()
+        "The height of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1185,6 +1206,12 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
+        "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
+        orientation = :horizontal
+        "The length of the toggle."
+        length = 32
+        "The size of the button."
+        markersize = 18
     end
 end
 
@@ -1837,7 +1864,7 @@ end
         xzpanelvisible = true
         "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
         targetlimits = Rect3f(Vec3f(0, 0, 0), Vec3f(1, 1, 1))
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, yhigh, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
         limits = (nothing, nothing, nothing)
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin = (0.05, 0.05)

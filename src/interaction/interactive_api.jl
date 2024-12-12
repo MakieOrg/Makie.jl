@@ -108,7 +108,7 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (picks[i, j][1] != nothing)
+        if (d < min_dist) && (picks[i, j][1] !== nothing)
             min_dist = d
             selected = (i, j)
         end

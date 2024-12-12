@@ -237,9 +237,7 @@ function add_canvas_events(screen, comm, resize_to) {
 
     function keydown(event) {
         // Prevent the default browser behavior for `Space`, which is to scroll.
-        if (event.code === "Space") {
-            event.preventDefault();
-        }
+        event.preventDefault();
         comm.notify({
             keydown: [event.code, event.key],
         });
@@ -249,6 +247,7 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("keydown", keydown);
 
     function keyup(event) {
+        event.preventDefault();
         comm.notify({
             keyup: event.code,
         });
@@ -390,7 +389,11 @@ function add_picking_target(screen) {
     // 2) Only Area we pick
     //      It's currently not as easy to change the offset + area of the camera
     //      So, we'll need to make that easier first
-    screen.picking_target = new THREE.WebGLRenderTarget(w, h);
+    screen.picking_target = new THREE.WebGLRenderTarget(w, h, {
+        type: THREE.FloatType,
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+    });
     return;
 }
 
@@ -496,6 +499,37 @@ function set_picking_uniforms(
     return next_id;
 }
 
+function decode_float_to_uint(r, g) {
+    const lower = Math.round(r * 65535);
+    const upper = Math.round(g * 65535);
+    return (upper << 16) | lower;
+}
+
+function read_pixels(renderer, picking_target, x, y, w, h) {
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Float32Array(nbytes);
+    //read the pixel
+    renderer.readRenderTargetPixels(
+        picking_target,
+        x, // x
+        y, // y
+        w, // width
+        h, // height
+        pixel_bytes
+    );
+    const result = [];
+    for (let i = 0; i < pixel_bytes.length; i += 4) {
+        const r = pixel_bytes[i];
+        const g = pixel_bytes[i + 1];
+        const b = pixel_bytes[i + 2];
+        const a = pixel_bytes[i + 3];
+        const id = decode_float_to_uint(r, g);
+        const index = decode_float_to_uint(b, a);
+        result.push([id, index]);
+    }
+    return result;
+}
+
 /**
  *
  * @param {*} scene
@@ -516,28 +550,18 @@ export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
     set_picking_uniforms(scene, 1, true);
     render_scene(scene, true);
     renderer.setRenderTarget(null); // reset render target
-    const nbytes = w * h * 4;
-    const pixel_bytes = new Uint8Array(nbytes);
-    //read the pixel
-    renderer.readRenderTargetPixels(
+    const picked_plots_array = read_pixels(
+        renderer,
         picking_target,
-        x, // x
-        y, // y
-        w, // width
-        h, // height
-        pixel_bytes
+        x,
+        y,
+        w,
+        h
     );
 
-
     const picked_plots = {};
-    const picked_plots_array = [];
 
-    const reinterpret_view = new DataView(pixel_bytes.buffer);
-
-    for (let i = 0; i < pixel_bytes.length / 4; i++) {
-        const id = reinterpret_view.getUint16(i * 4);
-        const index = reinterpret_view.getUint16(i * 4 + 2);
-        picked_plots_array.push([id, index]);
+    picked_plots_array.forEach(([id, index]) => {
         if (!picked_plots[id]) {
             picked_plots[id] = [];
         }
@@ -546,7 +570,8 @@ export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
         if (!picked_plots[id].includes(index)) {
             picked_plots[id].push(index);
         }
-    }
+    })
+
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
     const plots = [];
     const id_to_plot = {};
@@ -569,24 +594,14 @@ export function get_picking_buffer(scene) {
     set_picking_uniforms(scene, 1, true);
     render_scene(scene, true);
     renderer.setRenderTarget(null); // reset render target
-    const nbytes = w * h * 4;
-    const pixel_bytes = new Uint8Array(nbytes);
-    //read the pixel
-    renderer.readRenderTargetPixels(
+    const picked_plots_array = read_pixels(
+        renderer,
         picking_target,
-        0, // x
-        0, // y
-        w, // width
-        h, // height
-        pixel_bytes
+        x,
+        y,
+        w,
+        h
     );
-    const reinterpret_view = new DataView(pixel_bytes.buffer);
-    const picked_plots_array = []
-    for (let i = 0; i < pixel_bytes.length / 4; i++) {
-        const id = reinterpret_view.getUint16(i * 4);
-        const index = reinterpret_view.getUint16(i * 4 + 2);
-        picked_plots_array.push([id, index]);
-    }
     return {picked_plots_array, w, h};
 }
 
@@ -607,7 +622,7 @@ export function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
-    let min_dist = 1e30;
+    let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [null, 0];
     const x = xy[0] * px_per_unit + 1 - x0;
     const y = xy[1] * px_per_unit + 1 - y0;

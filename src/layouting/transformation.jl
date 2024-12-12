@@ -15,11 +15,13 @@ end
 
 function Observables.connect!(parent::Transformation, child::Transformation; connect_func=true)
     tfuncs = []
+    # Observables.clear(child.parent_model)
     obsfunc = on(parent.model; update=true) do m
         return child.parent_model[] = m
     end
     push!(tfuncs, obsfunc)
     if connect_func
+        # Observables.clear(child.transform_func)
         t2 = on(parent.transform_func; update=true) do f
             child.transform_func[] = f
             return
@@ -77,21 +79,45 @@ transformation(t::Scene) = t.transformation
 transformation(t::AbstractPlot) = t.transformation
 transformation(t::Transformation) = t
 
+"""
+    Accum
+
+Force transformation to be relative to the current state, not absolute.
+"""
+struct Accum end
+
+"""
+    Absolute
+
+Force transformation to be absolute, not relative to the current state.
+This is the default setting.
+"""
+struct Absolute end
+
 scale(t::Transformable) = transformation(t).scale
 
-scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3d, s, 1))
+function scale!(::Type{T}, t::Transformable, s::VecTypes) where {T}
+    factor = to_ndim(Vec3d, s, 1)
+    if T === Accum
+        scale(t)[] = scale(t)[] .* factor
+    elseif T == Absolute
+        scale(t)[] = factor
+    else
+        error("Unknown transformation: $T")
+    end
+end
 
 """
-    scale!(t::Transformable, x, y)
-    scale!(t::Transformable, x, y, z)
-    scale!(t::Transformable, xyz)
-    scale!(t::Transformable, xyz...)
+    scale!([mode = Absolute], t::Transformable, xyz...)
+    scale!([mode = Absolute], t::Transformable, xyz::VecTypes)
 
-Scale the given `Transformable` (a Scene or Plot) to the given arguments.
-Can take `x, y` or `x, y, z`.
-This is an absolute scaling, and there is no option to perform relative scaling.
+Scale the given `t::Transformable` (a Scene or Plot) to the given arguments `xyz`.
+Any missing dimension will be scaled by 1. If `mode == Accum` the given scaling
+will be multiplied with the previous one.
 """
-scale!(t::Transformable, xyz...) = scale!(t, xyz)
+scale!(t::Transformable, xyz...) = scale!(Absolute, t, xyz)
+scale!(t::Transformable, xyz::VecTypes) = scale!(Absolute, t, xyz)
+scale!(::Type{T}, t::Transformable, xyz...) where {T} = scale!(T, t, xyz)
 
 rotation(t::Transformable) = transformation(t).rotation
 
@@ -116,29 +142,16 @@ rotate!(::Type{T}, t::Transformable, axis_rot...) where T = rotate!(T, t, axis_r
 
 """
     rotate!(t::Transformable, axis_rot::Quaternion)
-    rotate!(t::Transformable, axis_rot::AbstractFloat)
+    rotate!(t::Transformable, axis_rot::Real)
     rotate!(t::Transformable, axis_rot...)
 
 Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 """
 rotate!(t::Transformable, axis_rot...) = rotate!(Absolute, t, axis_rot)
 rotate!(t::Transformable, axis_rot::Quaternion) = rotate!(Absolute, t, axis_rot)
-rotate!(t::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, t, axis_rot)
+rotate!(t::Transformable, axis_rot::Real) = rotate!(Absolute, t, axis_rot)
 
 translation(t::Transformable) = transformation(t).translation
-
-"""
-    Accum
-Force transformation to be relative to the current state, not absolute.
-"""
-struct Accum end
-
-"""
-    Absolute
-Force transformation to be absolute, not relative to the current state.
-This is the default setting.
-"""
-struct Absolute end
 
 function translate!(::Type{T}, t::Transformable, trans) where T
     offset = to_ndim(Vec3d, trans, 0)
@@ -166,6 +179,32 @@ Translate the given `Transformable` (a Scene or Plot), relative to its current p
 """
 translate!(::Type{T}, t::Transformable, xyz...) where T = translate!(T, t, xyz)
 
+
+GeometryBasics.origin(t::Transformable) = transformation(t).origin
+
+"""
+    origin!([mode = Absolute], t::Transformable, xyz...)
+    origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
+
+Sets the origin of the transformable `t` to the given `xyz` value. This affects
+the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as
+`Accum` the origin is translated by the given `xyz` instead.
+"""
+origin!(t::Transformable, xyz...) = origin!(Absolute, t, xyz)
+origin!(t::Transformable, xyz::VecTypes) = origin!(Absolute, t, xyz)
+origin!(::Type{T}, t::Transformable, xyz...) where {T} = origin!(T, t, xyz)
+
+function origin!(::Type{T}, t::Transformable, xyz::VecTypes) where T
+    offset = to_ndim(Vec3d, xyz, 0)
+    if T === Accum
+        origin(t)[] = origin(t)[] + offset
+    elseif T === Absolute
+        origin(t)[] = offset
+    else
+        error("Unknown origin translation type: $T")
+    end
+end
+
 function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float64(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
@@ -185,7 +224,7 @@ function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
     t
 end
 
-transformationmatrix(x) = transformation(x).model
+transformationmatrix(x)::Observable{Mat4d} = transformation(x).model
 transformation(x::Attributes) = x.transformation[]
 transform_func(x) = transform_func_obs(x)[]
 transform_func_obs(x) = transformation(x).transform_func
@@ -534,5 +573,6 @@ end
 # and this way we can use the z-value as a means to shift the drawing order
 # by translating e.g. the axis spines forward so they are not obscured halfway
 # by heatmaps or images
-zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
-zvalue2d(::Nothing)::Float32 = 0f0
+# zvalue2d(x)::Float32 = Float32(Makie.translation(x)[][3] + zvalue2d(x.parent))
+@inline zvalue2d(x)::Float32 = Float32(transformationmatrix(x)[][3, 4])
+@inline zvalue2d(::Nothing)::Float32 = 0f0

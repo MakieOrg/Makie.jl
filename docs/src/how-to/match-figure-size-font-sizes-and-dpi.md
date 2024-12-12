@@ -1,4 +1,4 @@
-# How to match Figure size, font sizes and dpi
+# How to match figure size, font sizes and dpi
 
 We want to create three plots for inclusion in a document. These are the requirements:
 

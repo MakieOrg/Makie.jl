@@ -28,7 +28,7 @@ function serve_update_page_from_dir(folder)
 
         @info "Downloading latest reference folder for $tag"
         tempdir = download_refimages(tag)
-        
+
         @info "Updating files in $tempdir"
 
         for image in images_to_update
@@ -98,7 +98,7 @@ function serve_update_page_from_dir(folder)
     end
 end
 
-function serve_update_page(; commit = nothing, pr = nothing)
+function download_artifacts(; commit = nothing, pr = nothing)
     authget(url) = HTTP.get(url, Dict("Authorization" => "token $(github_token())"))
 
     commit !== nothing && pr !== nothing && error("Keyword arguments `commit` and `pr` can't be set at once.")
@@ -146,7 +146,7 @@ function serve_update_page(; commit = nothing, pr = nothing)
         @warn("Found multiple checkruns for \"Merge artifacts\". Using latest with timestamp: $datetime")
         check = checkruns[idx]
     else
-    check = only(checkruns)
+        check = only(checkruns)
     end
 
     job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(check["id"])").body)
@@ -171,16 +171,142 @@ function serve_update_page(; commit = nothing, pr = nothing)
                 @info "$download_url cached at $tmpdir"
             end
 
-            @info "Serving update page from folder $tmpdir."
-            serve_update_page_from_dir(tmpdir)
-            return
+            return tmpdir
         end
     end
+
     error("""
         No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
         This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
         Artifacts are only available for complete runs.
     """)
+end
+
+"""
+    serve_update_page(; commit, pr)
+
+Create a ReferenceUpdater page which shows the test differences from a CI run
+of a given commit hash or pr.
+"""
+function serve_update_page(; commit = nothing, pr = nothing)
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+    @info "Serving update page from folder $tmpdir."
+    serve_update_page_from_dir(tmpdir)
+    return
+end
+
+"""
+    update_from_previous_version(; source_version, target_version, commit, pr[, score_threshold = 0.03])
+
+Replaces every test that is failing (based on score_threshold) or missing in the
+given commit or pr with the respective test from the given `source_version` and
+uploads the result to `target_version`.
+
+This is useful for breaking pull requests, where new or changed tests from master
+(previous version) should be added to the new, breaking verison. E.g.:
+```
+update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22.0", pr = 4477)
+```
+"""
+function update_from_previous_version(;
+        source_version::String, target_version::String,
+        commit = nothing, pr = nothing, score_threshold = 0.03)
+
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+
+    @info "Updating reference images in $target_version from $source_version"
+    @info "By score threshold:"
+    # missing & changed
+    folder = realpath(tmpdir)
+    changed_or_missing = open(joinpath(folder, "scores.tsv"), "r") do file
+        names = String[]
+        for line in eachline(file)
+            score_str, filename = split(line, '\t')
+            if parse(Float64, score_str) >= score_threshold
+                push!(names, filename)
+                @info "  $filename"
+            end
+        end
+        return names
+    end
+
+    @info "Missing:"
+    open(joinpath(folder, "new_files.txt"), "r") do file
+        for line in eachline(file)
+            if !isempty(line)
+                push!(changed_or_missing, line)
+                @info "  $line"
+            end
+        end
+    end
+
+    # Get confirmation
+    print("Are you sure you want to ")
+    printstyled("replace/add", bold = true, color = :red)
+    print(" the listed reference images in/to ")
+    printstyled("$target_version", bold = true, color = :red)
+    print(" with those from ")
+    printstyled("$source_version", bold = false, color = :light_red)
+    println("? (y/n)")
+    input = lowercase(readline())
+    if !any(x -> x == input, ["y", "yes"])
+        @info "Cancelling"
+        return
+    end
+
+    update_from_previous_version(changed_or_missing;
+        source_version = source_version, target_version = target_version)
+
+    return
+end
+
+"""
+    update_from_previous_version(changed_or_missing::Vector{String}; source_version, target_version)
+
+Replaces every test in `changed_or_missing` with the respective test from the
+given `source_version` and uploads the result to `target_version`. This is the
+more manual version of the other method.
+
+Tests should be given as `"backend/name-of-test.png"` in `changed_or_missing`.
+Source and target version are given as `"v0.00.0"` matching the respective
+github release version.
+"""
+function update_from_previous_version(
+        changed_or_missing::Vector{String};
+        source_version::String, target_version::String)
+
+    # Merge new and old
+    @info "Downloading new reference image set (target)"
+    new_version = download_refimages(target_version)
+    @info "Target path: $new_version"
+    @info "Downloading old reference image set (source)"
+    old_version = download_refimages(source_version)
+
+
+    @info "Replacing target with source files..."
+    for image in changed_or_missing
+        @info "Overwriting or adding $image"
+        src = joinpath(old_version, image)
+        isfile(src) || error("Failed to find file $image in $source_version.")
+        trg = joinpath(new_version, image)
+        dir, _ = splitdir(trg)
+        isdir(dir) || mkdir(dir)
+        cp(src, trg, force = true)
+    end
+
+    rm(old_version, recursive = true)
+
+    @info "Uploading updated reference images under tag \"$target_version\""
+    try
+        upload_reference_images(new_version, target_version)
+        @info "Upload successful."
+        HTTP.Response(200, "Upload successful")
+    catch e
+        showerror(stdout, e, catch_backtrace())
+        HTTP.Response(404)
+    end
+
+    return
 end
 
 function unzip(file, exdir = "")
@@ -253,7 +379,7 @@ end
 
 function group_files(path, input_filename, output_filename)
     isfile(joinpath(path, output_filename)) && return
-    
+
     # Group files in new_files/missing_files into a table like layout:
     #  GLMakie  CairoMakie  WGLMakie
 
@@ -261,12 +387,12 @@ function group_files(path, input_filename, output_filename)
     data = Dict{String, Vector{Bool}}()
     open(joinpath(path, input_filename), "r") do file
         for filepath in eachline(file)
-            pieces = split(filepath, '/')
+            pieces = splitpath(filepath)
             backend = pieces[1]
             if !(backend in ("GLMakie", "CairoMakie", "WGLMakie"))
-                error("Failed to parse backend in \"$line\", got \"$backend\"")
+                error("Failed to parse backend in \"$pieces\", got \"$backend\"")
             end
-            
+
             filename = join(pieces[2:end], '/')
             exists = get!(data, filename, [false, false, false])
 
@@ -276,7 +402,7 @@ function group_files(path, input_filename, output_filename)
         end
     end
 
-    # generate new structed file
+    # generate new structured file
     open(joinpath(path, output_filename), "w") do file
         for (filename, valid) in data
             println(file,
