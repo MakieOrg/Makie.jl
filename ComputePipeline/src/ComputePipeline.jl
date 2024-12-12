@@ -1,5 +1,7 @@
 module ComputePipeline
 
+using Observables
+
 using Base: RefValue
 
 abstract type AbstractEdge end
