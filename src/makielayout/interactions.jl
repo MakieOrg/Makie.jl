@@ -208,7 +208,7 @@ function positivize(r::Rect2)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
-    return Rect2(newori, newwidths)
+    return Rect2(Point2(newori), Vec2(newwidths))
 end
 
 function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
@@ -226,6 +226,7 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
 
     return Consume(false)
 end
+
 
 function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     # use vertical zoom
@@ -355,7 +356,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 end
 
 
-function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
+function process_interaction(dr::DragRotate, event::MouseEvent, ax3d::Axis3)
     if event.type !== MouseEventTypes.leftdrag
         return Consume(false)
     end
@@ -366,4 +367,185 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
     ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
 
     return Consume(true)
+end
+
+
+function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
+    if event.type !== MouseEventTypes.rightdrag || (event.px == event.prev_px)
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    ws = widths(tlimits[])
+
+    # restrict to direction
+    x_translate = !(ax.xtranslationlock[]) && ispressed(ax, ax.xtranslationkey[])
+    y_translate = !(ax.ytranslationlock[]) && ispressed(ax, ax.ytranslationkey[])
+    z_translate = !(ax.ztranslationlock[]) && ispressed(ax, ax.ztranslationkey[])
+
+    if !(x_translate || y_translate || z_translate) # none restricted -> all active
+        xyz_translate = (true, true, true)
+    else
+        xyz_translate = (x_translate, y_translate, z_translate)
+    end
+
+    # Perform translation
+    if (ax.viewmode[] == :free) && ispressed(ax, ax.axis_translation_mod[])
+
+        ws = widths(ax.layoutobservables.computedbbox[])[2]
+        ax.axis_offset[] -= Vec2d(2 .* (event.px - event.prev_px) ./ ws)
+
+    else
+
+        #=
+        # Faster but less acurate (dependent on aspect ratio)
+        scene_area = viewport(ax.scene)[]
+        relative_delta = (event.px - event.prev_px) ./ widths(scene_area)
+
+        # Get u_x (screen right direction) and u_y (screen up direction)
+        u_z = ax.scene.camera.view_direction[]
+        u_y = ax.scene.camera.upvector[]
+        u_x = cross(u_z, u_y)
+
+        translation = - 2.0 * (relative_delta[1] * u_x + relative_delta[2] * u_y) .* ws
+        =#
+
+        # Slower but more accurate
+        model = ax.scene.transformation.model[]
+        world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
+        # make plane_normal perpendicular to the allowed trnaslation directions
+        # allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
+        # plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
+        plane = Plane3f(world_center, ax.scene.camera.view_direction[])
+        p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
+        p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
+        delta = p1 - p0
+        translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+
+        tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
+    end
+
+    return Consume(true)
+end
+
+
+function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Axis3)
+    # use vertical zoom
+    zoom = event.y
+
+    if zoom == 0
+        return Consume(false)
+    end
+
+    tlimits = ax.targetlimits
+    mini = minimum(tlimits[])
+    maxi = maximum(tlimits[])
+    center = 0.5 .* (mini .+ maxi)
+
+    # restrict to direction
+    x_zoom = !(ax.xzoomlock[]) && ispressed(ax, ax.xzoomkey[])
+    y_zoom = !(ax.yzoomlock[]) && ispressed(ax, ax.yzoomkey[])
+    z_zoom = !(ax.zzoomlock[]) && ispressed(ax, ax.zzoomkey[])
+
+    if !(x_zoom || y_zoom || z_zoom) # none restricted -> all active
+        xyz_zoom = (true, true, true)
+    else
+        xyz_zoom = (x_zoom, y_zoom, z_zoom)
+    end
+
+    zoom_mult = (1f0 - interaction.speed)^zoom
+
+    if ax.viewmode[] == :free
+
+        ax.zoom_mult[] = ax.zoom_mult[] * zoom_mult
+
+    else
+        # Compute target
+        mode = ax.zoommode[]
+        target = Point3f(NaN)
+        model = ax.scene.transformation.model[]
+
+        if mode == :cursor
+            # try to find position of plot object under cursor
+            mp = mouseposition_px(ax)
+            ray = ray_from_projectionview(ax.scene, mp) # world space
+            pos = Point3f(NaN)
+            plot, idx = pick(ax.scene)
+            if plot !== nothing
+                n = findfirst(==(plot), ax.scene.plots)
+                if !isnothing(n) && (n > 9) # user plot
+                    pos = position_on_plot(plot, idx, ray, apply_transform = true)
+                    # ^ applying transform also applies model transform so we stay in world space for this
+                end
+            end
+
+            if !isfinite(pos)
+                # fall back on using intersection between view ray and center view plane
+                # (meaning plane parallel to screen, going through center of Axis3 limits)
+                world_center = to_ndim(Point3f, model * to_ndim(Point4d, center, 1), NaN)
+                plane = Plane3f(world_center, -ax.scene.camera.view_direction[])
+                pos = ray_plane_intersection(plane, ray) # world space
+            end
+            # axis space, i.e. pre ax.scene.transformation.model applies, same as targetlimits space
+            target = to_ndim(Point3f, inv(model) * to_ndim(Point4f, pos, 1), NaN)
+        elseif mode == :center
+            target = center # axis space
+        else
+            error("$(ax.zoommode[]) is not a valid mode for zooming. Should be :center or :cursor.")
+        end
+
+        mini = ifelse.(xyz_zoom, target .+ zoom_mult .* (mini .- target), mini)
+        maxi = ifelse.(xyz_zoom, target .+ zoom_mult .* (maxi .- target), maxi)
+        tlimits[] = Rect3f(mini, maxi - mini)
+    end
+
+    # NOTE this might be problematic if we add scrolling to something like Menu
+    return Consume(true)
+end
+
+function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
+    consumed = false
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            ax.zoom_mult[] = 1.0
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            else
+                reset_limits!(ax)
+            end
+            consumed = true
+        end
+        if ispressed(ax.scene, Keyboard.left_shift)
+            ax.axis_offset[] = Vec2d(0)
+            ax.elevation[] = pi/8
+            ax.azimuth[] = 1.275 * pi
+            consumed = true
+        end
+    end
+
+    return Consume(consumed)
+end
+
+function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}, ax::Axis3)
+    if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
+        xy = events(ax.scene).mouseposition[]
+        plot, idx = pick(ax.scene, xy)
+        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || (plot.space[] != :data) ||
+                (findfirst(p -> p === plot, ax.scene.plots) <= focus.skip) # is axis decoration
+            return Consume(false)
+        end
+
+        ray = Ray(ax.scene, xy .- minimum(viewport(ax.scene)[]))
+        p3d = position_on_plot(plot, idx, ray, apply_transform = false)
+        if !isnan(p3d)
+            tlimits = ax.targetlimits
+            ws = widths(tlimits[])
+            tlimits[] = Rect3f(p3d - 0.5 * ws, ws)
+            focus.last_time = time() # to avoid double triggers
+            return Consume(true)
+        end
+    end
+
+    return Consume(false)
 end

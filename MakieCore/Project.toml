@@ -1,7 +1,7 @@
 name = "MakieCore"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 authors = ["Simon Danisch"]
-version = "0.8.12"
+version = "0.9.0"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
@@ -11,7 +11,7 @@ Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 
 [compat]
 ColorTypes = "0.8, 0.9, 0.10, 0.11, 0.12"
-GeometryBasics = "0.4.11"
+GeometryBasics = "0.5"
 IntervalSets = "0.6, 0.7"
 Observables = "0.5.1"
 julia = "1"

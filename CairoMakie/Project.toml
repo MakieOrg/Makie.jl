@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.12.18"
+version = "0.13.0"
 
 [deps]
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
@@ -22,9 +22,9 @@ Cairo_jll = "1.18.0"
 Colors = "0.10, 0.11, 0.12, 0.13"
 FileIO = "1.1"
 FreeType = "3, 4.0"
-GeometryBasics = "0.4.11"
+GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.21.18"
+Makie = "=0.22.0"
 PrecompileTools = "1.0"
 julia = "1.3"
 

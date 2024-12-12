@@ -16,7 +16,6 @@ using Base64
 # When loading Electron for WGLMakie, which depends on FilePaths
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-#
 import FilePaths
 using LaTeXStrings
 using MathTeXEngine
@@ -109,6 +108,18 @@ const NativeFont = FreeTypeAbstraction.FTFont
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
+
+# 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
+# We use this mainly in GLMakie to avoid a few bigger OpenGL based functions to get constant propagation
+# (e.g. GLFrameBuffer((width, height)), which should not profit from any constant propagation)
+macro noconstprop(expr)
+    if isdefined(Base, Symbol("@constprop"))
+        return esc(:(Base.@constprop :none @noinline $(expr)))
+    else
+        return esc(:(@noinline $(expr)))
+    end
+end
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
@@ -168,6 +179,7 @@ include("basic_recipes/datashader.jl")
 include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/hvlines.jl")
 include("basic_recipes/hvspan.jl")
+include("basic_recipes/mesh.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
@@ -331,16 +343,23 @@ export Pattern
 export ReversibleScale
 
 export assetpath
+
+using PNGFiles
+
 # default icon for Makie
+function load_icon(name::String)::Matrix{NTuple{4,UInt8}}
+    img = PNGFiles.load(name)::Matrix{RGBA{Colors.N0f8}}
+    return reinterpret(NTuple{4,UInt8}, img)
+end
+
 function icon()
     path = assetpath("icons")
-    imgs = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
-    return reinterpret.(NTuple{4,UInt8}, icons)
+    icons = readdir(path; join=true)
+    return map(load_icon, icons)
 end
 
 function logo()
-    FileIO.load(assetpath("logo.png"))
+    return PNGFiles.load(assetpath("logo.png"))
 end
 
 # populated by __init__()

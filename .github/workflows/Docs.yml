@@ -3,13 +3,12 @@ on:
   pull_request:
     branches:
       - master
-      - breaking-0.21
   push:
     tags:
       - '*'
     branches:
       - master
-      - breaking-0.21
+
   workflow_dispatch:
 
 concurrency:

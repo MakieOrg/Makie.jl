@@ -709,8 +709,8 @@ end
     # Test depth (this part is expected to fail in CairoMakie)
     p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
     translate!(p, 0, 0, 100)
-    mesh!(ax, 
-        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
+    mesh!(ax,
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4],
         shading = NoShading, color = :orange)
     fig
 end
@@ -876,14 +876,6 @@ end
     contour3d!(-zs; levels = -levels, labels = true, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
-end
-
-@reference_test "marker offset in data space" begin
-    f = Figure()
-    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
-    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
-    lines!(ax, Rect(0, 0, 1, 10), color=:red)
-    f
 end
 
 @reference_test "trimspine" begin
