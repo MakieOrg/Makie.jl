@@ -829,13 +829,13 @@ end
 
             gl = GridLayout(f[i, j])
 
-            a, p = plot_func(gl[1, 1], 1:4, 1:4, img, interp)
+            a, p = plot_func(gl[1, 1], (1, 4), (1, 4), img, interp)
             hidedecorations!(a)
-            a, p = plot_func(gl[2, 1], 1:4, 4..1, img, interp)
+            a, p = plot_func(gl[2, 1], (1, 4), 4..1, img, interp)
             hidedecorations!(a)
-            a, p = plot_func(gl[1, 2], 4:-1:1, 1:4, img, interp)
+            a, p = plot_func(gl[1, 2], (4, 1), (1, 4), img, interp)
             hidedecorations!(a)
-            a, p = plot_func(gl[2, 2], 4:-1:1, [4, 3, 2, 1], img, interp)
+            a, p = plot_func(gl[2, 2], (4, 1), [4, 3, 2, 1], img, interp)
             hidedecorations!(a)
         end
     end
@@ -932,7 +932,7 @@ end
     ax3 = Axis(fig[3, 3]; axis_kwargs...)
     p9 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
     transform!.((p7, p8, p9), 5e11, false)
-              
+
     fig
 end
 

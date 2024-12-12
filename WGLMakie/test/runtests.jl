@@ -28,9 +28,10 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
 ])
-Makie.inline!(Makie.automatic)
 
-edisplay = Bonito.use_electron_display(devtools=true)
+Makie.inline!(Makie.automatic)
+edisplay = Bonito.use_electron_display(devtools=false)
+
 @testset "refimages" begin
     WGLMakie.activate!()
     ReferenceTests.mark_broken_tests(excludes)
