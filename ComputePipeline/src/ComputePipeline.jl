@@ -7,9 +7,9 @@ using Base: RefValue
 abstract type AbstractEdge end
 
 mutable struct Computed
+    name::Symbol
     # if a parent edge got resolved and updated this computed, dirty is temporarily true
     # so that the edges dependents can update their inputs accordingly
-    name::Symbol
     dirty::Bool
 
     value::RefValue
@@ -30,6 +30,11 @@ end
 
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
+
+struct ResolveException{E <: Exception} <: Exception
+    start::Computed
+    error::E
+end
 
 struct TypedEdge{InputTuple,OutputTuple,F}
     callback::F
@@ -123,11 +128,7 @@ function ComputeGraph()
 end
 
 function isdirty(computed::Computed)
-    hasparent(computed) || return false
-    parent = computed.parent
-    # Can't be dirty if inputs have changed
-
-    return !parent.got_resolved[] || any(parent.inputs_dirty)
+    return hasparent(computed) && isdirty(computed.parent)
 end
 
 function isdirty(edge::ComputeEdge)
@@ -275,6 +276,14 @@ function resolve!(edge::TypedEdge)
 end
 
 function resolve!(computed::Computed)
+    try
+        return _resolve!(computed)
+    catch e
+        rethrow(ResolveException(computed, e))
+    end
+end
+
+function _resolve!(computed::Computed)
     if hasparent(computed)
         resolve!(computed.parent)
     end
@@ -285,7 +294,7 @@ function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
     # Resolve inputs first
-    foreach(resolve!, edge.inputs)
+    foreach(_resolve!, edge.inputs)
     # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
     # TODO, can/should we store this tuple?
     if !isassigned(edge.typed_edge)
@@ -303,10 +312,9 @@ function resolve!(edge::ComputeEdge)
     return true
 end
 
-
-
 add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr, key, value)
 
+# TODO: error tracking would be better if we didn't wrap the user function
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     output = Computed(key, RefValue{Any}())

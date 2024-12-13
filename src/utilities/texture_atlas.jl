@@ -528,7 +528,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
         end
 
         if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed[3])
-            uv = Makie.primitive_uv_offset_width(atlas, m[], f[])
+            uv = Makie.primitive_uv_offset_width(atlas[], m[], f[])
         elseif isnothing(last)
             uv = Vec4f(0,0,1,1)
         else
