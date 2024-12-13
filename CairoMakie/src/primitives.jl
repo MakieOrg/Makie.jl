@@ -356,7 +356,7 @@ function draw_atomic_scatter(
 
         ms = to_ndim(Vec3d, to_ndim(Vec2d, markersize, markersize), 1)
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
-        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Point3d, marker_offset, 0)
+        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Vec3d, mo, 0)
         proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
             ms, rotation, size_model, billboard)
 
