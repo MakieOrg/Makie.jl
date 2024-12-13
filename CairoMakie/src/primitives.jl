@@ -325,31 +325,52 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = primitive.markerspace[]
     space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
+    billboard = primitive.rotation[] isa Billboard
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
                                marker_offset, rotation, model, positions, size_model, font, markerspace,
-                               space, clip_planes)
+                               space, clip_planes, billboard)
 end
 
 function draw_atomic_scatter(
         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, model, positions, size_model, font,
-        markerspace, space, clip_planes
+        markerspace, space, clip_planes, billboard
     )
 
     transformed = apply_transform(transfunc, positions, space)
     indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
-    projected_positions = project_position(scene, space, transformed, indices, model)
+    transform = Makie.clip_to_space(scene.camera, markerspace) *
+        Makie.space_to_clip(scene.camera, space) *
+        Makie.f32_convert_matrix(scene.float32convert, space) *
+        model
+    model33 = size_model[Vec(1,2,3), Vec(1,2,3)]
 
-    Makie.broadcast_foreach_index(projected_positions, indices, colors, markersize, strokecolor,
+    Makie.broadcast_foreach_index(view(transformed, indices), indices, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
 
+        ms = to_ndim(Vec3d, to_ndim(Vec2d, markersize, markersize), 1)
+        p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Point3d, marker_offset, 0)
+        proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
+            ms, rotation, size_model, billboard)
+
+        # TODO: fix the rest
         scale = project_scale(scene, markerspace, markersize, size_model)
         offset = project_scale(scene, markerspace, mo, size_model)
+
+        # TODO: not here
+        if m isa Char
+            charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
+            inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
+
+            centering_offset = (Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb))
+            off = (jl_mat * ((1, -1) .* centering_offset))
+        end
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
 
@@ -359,9 +380,9 @@ function draw_atomic_scatter(
         # TODO, maybe there's something wrong somewhere else?
         if !(isnan(scale) || norm(scale) ≈ 0.0)
             if m isa Char
-                draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
+                draw_marker(ctx, m, best_font(m, font), proj_pos, strokecolor, strokewidth, off, mat)
             else
-                draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
+                draw_marker(ctx, m, proj_pos, scale, strokecolor, strokewidth, offset, rotation)
             end
         end
         Cairo.restore(ctx)
@@ -370,32 +391,33 @@ function draw_atomic_scatter(
     return
 end
 
-function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, marker_offset, mat)
     cairoface = set_ft_font(ctx, font)
 
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
 
     # scale normalized bbox by font size
-    inkbb_scaled = Rect2f(origin(inkbb) .* scale, widths(inkbb) .* scale)
+    inkbb_scaled = Rect2f(origin(inkbb), widths(inkbb))
 
     # flip y for the centering shift of the character because in Cairo y goes down
     centering_offset = Vec2f(1, -1) .* (-origin(inkbb_scaled) .- 0.5f0 .* widths(inkbb_scaled))
     # this is the origin where we actually have to place the glyph so it can be centered
-    charorigin = pos .+ Vec2f(marker_offset[1], -marker_offset[2])
+    charorigin = pos - Vec2f(marker_offset[1], marker_offset[2])
+
     old_matrix = get_font_matrix(ctx)
-    set_font_matrix(ctx, scale_matrix(scale...))
+    set_font_matrix(ctx, mat)
 
     # First, we translate to the point where the
     # marker is supposed to go.
     Cairo.translate(ctx, charorigin[1], charorigin[2])
     # Then, we rotate the context by the
     # appropriate amount,
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    # Cairo.rotate(ctx, to_2d_rotation(rotation))
     # and apply a centering offset to account for
     # the fact that text is shown from the (relative)
     # bottom left corner.
-    Cairo.translate(ctx, centering_offset[1], centering_offset[2])
+    # Cairo.translate(ctx, centering_offset[1], centering_offset[2])
 
     Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
@@ -616,28 +638,9 @@ function draw_glyph_collection(
             return
         end
 
-        scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
+        scale3 = scale isa Number ? Vec3f(scale, scale, 1) : to_ndim(Vec3f, scale, 1)
 
-        # the CairoMatrix is found by transforming the right and up vector
-        # of the character into screen space and then subtracting the projected
-        # origin. The resulting vectors give the directions in which the character
-        # needs to be stretched in order to match the 3D projection
-
-        xvec = rotation * (scale3[1] * Point3d(1, 0, 0))
-        yvec = rotation * (scale3[2] * Point3d(0, -1, 0))
-
-        glyphpos = _project_position(scene, markerspace, gp3, id, true)
-        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
-        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
-
-        xdiff = xproj - glyphpos
-        ydiff = yproj - glyphpos
-
-        mat = Cairo.CairoMatrix(
-            xdiff[1], xdiff[2],
-            ydiff[1], ydiff[2],
-            0, 0,
-        )
+        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale3, rotation, model33, id)
 
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)
@@ -1282,7 +1285,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
     marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
-    
+
     # transformation to world space
     transformed_pos = _transform_to_world(scene, primitive, pos)
 

@@ -416,6 +416,8 @@ end
 function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     if is_data_space(space)
         return projectionview ? cam.projectionview[] : cam.projection[]
+    elseif space == :eye
+        return cam.projection[]
     elseif is_pixel_space(space)
         return cam.pixel_space[]
     elseif is_relative_space(space)
@@ -429,6 +431,8 @@ end
 
 function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
+        return inv(cam.projectionview[])
+    elseif space == :eye
         return inv(cam.projectionview[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
