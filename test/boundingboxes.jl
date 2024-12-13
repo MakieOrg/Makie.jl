@@ -46,21 +46,73 @@ end
     @test bb.origin ≈ Point3f(1.0, 1.0, 1.0)
     @test bb.widths ≈ Vec3f(9.0, 9.0, 99.0)
 
-    fig, ax, p = meshscatter([Point3f(x, y, z) for x in 1:5 for y in 1:5 for z in 1:5])
-    bb = boundingbox(p)
-    # Note: awkwards numbers come from using mesh over Sphere
-    @test bb.origin ≈ Point3f(0.9011624, 0.9004657, 0.9)
-    @test bb.widths ≈ Vec3f(4.1986046, 4.199068, 4.2)
+    @testset "meshscatter" begin
+        # Testing path with single markersize & rotation
+        fig, ax, p = meshscatter(
+            [Point3f(x, y, z) for x in 1:5 for y in 1:5 for z in 1:5],
+            marker = Rect3f(Point3f(0), Vec3f(2)),
+            markersize = 0.1
+        )
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(1)
+        @test bb.widths ≈ Vec3f(4 + 0.2)
 
-    fig, ax, p = meshscatter(
-        [Point3f(0) for _ in 1:3],
-        marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
-        markersize = Vec3f(1, 1, 2),
-        rotation = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)])
-    )
-    bb = boundingbox(p)
-    @test bb.origin ≈ Point3f(-0.2)
-    @test bb.widths ≈ Vec3f(2.4)
+        translate!(p, 1, 0.5, 2)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(1) + Point3f(1, 0.5, 2)
+        @test bb.widths ≈ Vec3f(4 + 0.2)
+
+        scale!(p, 0.5, 0.25, 0.5)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(1) + Point3f(1, 0.5, 2)
+        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
+
+        Makie.rotate!(p, pi/2)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5, 1, 1) + Point3f(1, 0.5, 2)
+        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
+
+        p.transform_marker = true
+        bb = boundingbox(p)
+        @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5-0.2, 1, 1) + Point3f(1, 0.5, 2)
+        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* (4f0 .+ 0.2f0)
+
+        # Testing path with per element markersize and/or rotations
+        fig, ax, p = meshscatter(
+            [Point3f(0) for _ in 1:3],
+            marker = Rect3f(Point3f(-0.1, -0.1, -0.1), Vec3f(0.2, 0.2, 1.2)),
+            markersize = Vec3f(1, 1, 2),
+            rotation = Makie.rotation_between.((Vec3f(0,0,1),), Vec3f[(1,0,0), (0,1,0), (0,0,1)]),
+            transform_marker = false
+        )
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(-0.2)
+        @test bb.widths ≈ Vec3f(2.4)
+
+        translate!(p, 1, 2, 3)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(-0.2) + Vec3f(1,2,3)
+        @test bb.widths ≈ Vec3f(2.4)
+
+        # marker positions are 0, transform_marker = false, so scale does nothing
+        scale!(p, 0.5, 0.5, 0.25)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(-0.2) + Vec3f(1,2,3)
+        @test bb.widths ≈ Vec3f(2.4)
+
+        # same with rotate
+        Makie.rotate!(p, pi/2)
+        bb = boundingbox(p)
+        @test bb.origin ≈ Point3f(-0.2) + Vec3f(1,2,3)
+        @test bb.widths ≈ Vec3f(2.4)
+
+        # now it should affect markers
+        # (-0.2..2.2, -0.2..2.2) rotates to (-2.2..0.2, -0.2..2.2)
+        p.transform_marker = true
+        bb = boundingbox(p)
+        @test bb.origin ≈ Vec3f(0.5, 0.5, 0.25) .* Point3f(-2.2, -0.2, -0.2) + Vec(1,2,3)
+        @test bb.widths ≈ Vec3f(0.5, 0.5, 0.25) .* Vec3f(2.4)
+    end
 
     fig, ax, p = volume(rand(5, 5, 5))
     bb = boundingbox(p)

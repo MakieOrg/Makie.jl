@@ -20,7 +20,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -50,7 +50,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -74,7 +74,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -152,11 +152,12 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
 
     xy = origin(shape)
     w, h = widths(shape)
-    ps = [xy, xy + Vec2(w, 0), xy + Vec2f(w, h), xy + Vec2(0, h)]
+    ps = Vec2f[xy, xy + Vec2f(w, 0), xy + Vec2f(w, h), xy + Vec2f(0, h)]
     if any(p -> Makie.is_clipped(clip_planes, p), ps)
         push!(ps, xy)
         ps = clip_poly(clip_planes, ps, space, model)
-        return BezierPath([MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()])
+        commands = Makie.PathCommand[MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()]
+        return BezierPath(commands::Vector{Makie.PathCommand})
     else
         return shape
     end
@@ -200,7 +201,6 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     points = Makie.apply_transform(transform_func(plot), positions, space)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
-
     # clip planes in clip space
     clip_planes = if Makie.is_data_space(space)
         Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])::Vector{Plane3f}

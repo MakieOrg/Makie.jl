@@ -16,7 +16,7 @@ function create_shader(mscene::Scene, plot::Surface)
         apply_transform_and_f32_conversion(plot, f32c, grid_ps)
     end
     positions = Buffer(ps)
-    rect = lift(z -> Tesselation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    rect = lift(z -> Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
     fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
@@ -25,15 +25,19 @@ function create_shader(mscene::Scene, plot::Surface)
     # https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
     uv = Buffer(lift(plot, rect) do r
         Nx, Ny = r.nvertices
-        f = Vec2f(1 / Nx, 1 / Ny)
-        [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+        if (Nx, Ny) == (2, 2)
+            Vec2f[(0,1), (1,1), (1,0), (0,0)]
+        else
+            f = Vec2f(1 / Nx, 1 / Ny)
+            [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+        end
     end)
     normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
         ns = Makie.nan_aware_normals(ps, fs)
         return invert ? -ns : ns
     end)
 
-    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normals => normals)
+    per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normal => normals)
     uniforms = Dict(:uniform_color => color, :color => false, :model => model, :PICKING_INDEX_FROM_UV => true)
 
     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
@@ -54,7 +58,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     f32c, model = Makie.patch_model(plot)
     mesh = limits_to_uvmesh(plot, f32c)
     uniforms = Dict(
-        :normals => Vec3f(0),
+        :normal => Vec3f(0),
         :shading => false,
         :diffuse => Vec3f(0),
         :specular => Vec3f(0),
