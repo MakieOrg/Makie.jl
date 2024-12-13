@@ -225,6 +225,30 @@ end
     s
 end
 
+@reference_test "scatter Billboard and transform_marker" begin
+    r = Rect3f(Point3f(-0.5), Vec3f(1))
+    ps = coordinates(r)
+    phis = collect(range(0, 2pi, length = 8))
+    quats = Makie.to_rotation(phis)
+    fig = Figure(size = (500, 800))
+    for (k, transform_marker) in zip(0:1, [true, false])
+        for (i, space, ms) in zip(1:2, [:data, :pixel], [1, 30])
+            for (j, rot, lbl) in zip(1:3, [Billboard(phis), phis, quats], ["Billboard", "angles", "Quaternion"])
+                Label(fig[i+2k, j][1,1], "$space | $lbl | $transform_marker", tellwidth = false)
+                a, p = scatter(fig[i+2k, j][2,1], ps, marker = 'L',
+                    strokewidth = 2, strokecolor = :black, color = :yellow,
+                    markersize = ms, markerspace = space, rotation = rot,
+                    transform_marker = transform_marker)
+
+                Makie.rotate!(p, Vec3f(1, 0.5, 0.1), 1.0)
+                a.scene.camera_controls.settings[:center] = false
+                Makie.update_cam!(a.scene, r)
+            end
+        end
+    end
+    fig
+end
+
 @reference_test "scatter with stroke" begin
     s = Scene(size = (350, 700), camera = campixel!)
 
