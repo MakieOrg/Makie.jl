@@ -506,11 +506,12 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
+    # TODO, only calculate offset if needed
     if m[] isa Matrix{<: Colorant} # single image marker
         return (Cint(RECTANGLE), Vec4f(0,0,1,1), m[])
     elseif m[] isa Vector{<: Matrix{<: Colorant}} # multiple image markers
         # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-        if changed[2]
+        if changed[3]
             uvs, images = pack_images(m[])
             return (Cint(RECTANGLE), uvs, images)
         else
@@ -518,7 +519,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
             return (nothing, nothing, nothing)
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-        if changed[2] || changed[4]
+        if changed[3] || changed[5]
             shape = Cint(Makie.marker_to_sdf_shape(m[])) # expensive for arrays with abstract eltype?
             if shape == 0 && !is_all_equal_scale(scale[])
                 shape = Cint(5)
@@ -527,7 +528,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
             shape = last[1][]
         end
 
-        if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed[3])
+        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed[4])
             uv = Makie.primitive_uv_offset_width(atlas[], m[], f[])
         elseif isnothing(last)
             uv = Vec4f(0,0,1,1)
@@ -545,7 +546,7 @@ function all_marker_computations!(attr, atlas_res=1024, atlas_ppg=32)
             (get_texture_atlas(atlas_res, atlas_ppg),)
         end
     end
-    inputs = [atlas_sym, :uv_offset_width, :marker, :font, :quad_scale]
+    inputs = [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     register_computation!(
         compute_marker_attributes, attr, inputs, outputs

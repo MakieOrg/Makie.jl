@@ -257,7 +257,7 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         if idx === nothing # All resolved
             println(io, "  with edge inputs:")
             for input in edge.inputs
-                println(io, "    ", input.name, " = ", input.value)
+                println(io, "    ", input.name, " = ", input.value[])
             end
             print_root_inputs(io, edge)
         else # idx is first dirty

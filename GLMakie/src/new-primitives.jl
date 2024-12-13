@@ -200,7 +200,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     if attr[:depthsorting][]
-
         # is projectionview enough to trigger on scene resize in all cases?
         add_input!(attr, :projectionview, scene.camera.projectionview[])
         on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
@@ -264,7 +263,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
 
     else
-        :sdf_marker_shape, :sdf_uv, :image
         Makie.all_marker_computations!(attr, 2048, 64)
 
         inputs = [
