@@ -23,8 +23,7 @@ function calculated_attributes!(::Type{<: AbstractPlot}, plot)
 end
 
 function calculated_attributes!(::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
+    color = hasproperty(plot.mesh[], :color) ? lift(x -> x.color, plot, plot.mesh) : plot.color
     color_and_colormap!(plot, color)
     return
 end
@@ -62,13 +61,6 @@ end
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
-
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        return lift(plot, plot[:markersize]) do msize
-            return to_2d_scale(map(x -> x .* -0.5f0, msize))
-        end
-    end
 
     replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms

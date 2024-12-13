@@ -131,7 +131,6 @@ function to_glvisualize_key(k)
     k === :strokecolor && return :stroke_color
     k === :positions && return :position
     k === :linewidth && return :thickness
-    k === :marker_offset && return :quad_offset
     k === :colormap && return :color_map
     k === :colorrange && return :color_norm
     k === :transform_marker && return :scale_primitive
@@ -413,7 +412,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
 
         space = plot.space
         positions = handle_view(plot[1], gl_attributes)
-        positions = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
+        f32c = pop!(gl_attributes, :f32c)
+        positions = apply_transform_and_f32_conversion(plot, f32c, positions)
         cam = scene.camera
 
         if plot isa Scatter
@@ -441,8 +441,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 get!(gl_attributes, :uv_offset_width) do
                     return Makie.primitive_uv_offset_width(atlas, marker, font)
                 end
-                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font,
-                                                             gl_attributes[:quad_offset], plot)
+                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, plot)
                 gl_attributes[:scale] = scale
                 gl_attributes[:quad_offset] = quad_offset
             end
@@ -452,7 +451,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
+            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
                              :projectionview, :projection, :view, :visible, :resolution, :transparency])
             filter!(gl_attributes) do (k, v,)
                 return (k in to_keep)
@@ -467,6 +466,23 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter
+                # If the vertices of the scattered mesh, markersize and (if it applies) model
+                # are float32 safe we should be able to just correct for any scaling from
+                # float32convert in the shader, after those conversions.
+                # We should also be fine as long as rotation = identity (also in model).
+                # If neither is the case we would have to combine vertices with positions and
+                # transform them to world space (post float32convert) on the CPU. We then can't
+                # do instancing anymore, so meshscatter becomes pointless.
+                if !isnothing(scene.float32convert)
+                    gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+                        # we must use new_f32c with transform_marker = true,
+                        # because model might be merged into f32c (robj.model = I)
+                        # with transform_marker = false we must use the old f32c
+                        # as we don't want model to apply
+                        return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+                    end
+                end
+
                 if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
                     gl_attributes[:image] = gl_attributes[:color]
                 end
@@ -724,6 +740,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
+    
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -740,6 +757,10 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
                 return convert_attribute(uv_transform, key"uv_transform"())
             end
         end
+    elseif to_value(color) isa ShaderAbstractions.Sampler
+        gl_attributes[:image] = Texture(lift(el32convert, plot, color))
+        delete!(gl_attributes, :color_map)
+        delete!(gl_attributes, :color_norm)    
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
@@ -764,13 +785,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     end
 
     # TODO: avoid intermediate observable
-    positions = map(m -> metafree(coordinates(m)), mesh)
+    # TODO: Should these use direct getters? (faces, normals, texturecoordinates)
+    positions = map(coordinates, mesh)
     gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading || matcap_active)
+    if hasproperty(to_value(mesh), :normal) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)

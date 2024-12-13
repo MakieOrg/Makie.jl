@@ -99,5 +99,3 @@ jobs:
             ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
             ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
             ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
-
-
