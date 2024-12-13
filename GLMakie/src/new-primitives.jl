@@ -464,13 +464,18 @@ function generate_indices(positions, changed, cached)
     return (indices, valid)
 end
 
+
+
+
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     attr = plot.args[1]
-    add_input!(plot.args[1], :scene, scene)
-    register_computation!(attr, [:miter_limit], [:gl_miter_limit]) do (miter,), changed, output
-        return (Float32(cos(pi - miter[])),)
-    end
+
+    add_input!(attr, :scene, scene)
     add_input!(attr, :screen, screen)
+
+    Makie.add_computation!(attr, :gl_miter_limit)
+    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+
     add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
     add_input!(attr, :viewport, scene.viewport[])
     on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
@@ -505,27 +510,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (output,)
     end
 
-    # linestyle/pattern handling
-    register_computation!(
-        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
-    ) do (linestyle,), changed, cached
-        if isnothing(linestyle[])
-            sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
-            len = 1f0 # should be irrelevant, compat for strictly solid lines
-        else
-            sdf = Makie.linestyle_to_sdf(linestyle[])
-            len = Float32(last(linestyle[]) - first(linestyle[]))
-        end
-
-        if isnothing(cached)
-            tex = Texture(sdf, x_repeat = :repeat)
-        else
-            tex = cached[1][]
-            GLAbstraction.update!(tex, sdf)
-        end
-
-        return (tex, len)
-    end
 
     add_input!(attr, :debug, false)
 

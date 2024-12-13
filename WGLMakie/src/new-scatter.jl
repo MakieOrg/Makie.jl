@@ -1,40 +1,42 @@
+using Makie: register_computation!
 
 function assemble_scatter_robj(attr)
-    needs_mapping = !(attr.colornorm[] isa Nothing)
-    dfield = attr.sdf_marker_shape[] === Cint(DISTANCEFIELD)
-    atlas = attr.atlas_1024_32
+    needs_mapping = !(attr._colorrange[] isa Nothing)
+    dfield = attr.sdf_marker_shape[] === Cint(Makie.DISTANCEFIELD)
+    atlas = attr.atlas_1024_32[]
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : nothing
     _color = needs_mapping ? nothing : attr.color[]
-    intensity = needs_mapping ? attr.color[] : nothing
+    intensity = needs_mapping ? attr.color[] : false
+    color_norm = needs_mapping ? attr._colorrange[] : false
 
     uniform_dict = Dict(
         :pos => attr.positions_transformed_f32c[],
-        :color_map => needs_mapping ? attr.colormap[] : nothing,
+        :color_map => needs_mapping ? attr.colormap[] : false,
         :color => _color,
         :intensity => intensity,
-        :color_norm => attr.colornorm[],
+        :color_norm => color_norm,
 
         :rotation => attr.rotation[],
 
         :marker_offset => Vec3f(0),
         :markersize => attr.quad_scale[],
         :quad_offset => attr.quad_offset[],
-        :uv_offset_width => attr.uv_offset_width[],
-        :shape_type => attr.marker_shape[],
+        :uv_offset_width => attr.sdf_uv[],
+        :shape_type => attr.sdf_marker_shape[],
         :transparency => attr.transparency[],
 
         :distancefield => distancefield,
 
         # Camera will be set in JS
         :resolution => Vec2f(0),
-        :projection => Mat4f(I),
-        :projectionview => Mat4f(I),
+        # :projection => Mat4f(I),
+        # :projectionview => Mat4f(I),
         :preprojection => Mat4f(I),
-        :view => Mat4f(I),
+        # :view => Mat4f(I),
         :model => Mat4f(I),
+        :atlas_texture_size => Float32(size(atlas.data, 2)),
 
-        :markerspace => Cint(0),
-        :image => attr.image[],
+        :image => isnothing(attr.image[]) ? false : attr.image[],
         :px_per_unit => 0f0,
         :picking => false,
         :object_id => UInt32(0),
@@ -45,6 +47,7 @@ function assemble_scatter_robj(attr)
         :glowcolor => attr.glowcolor[],
         :billboard => attr.rotation[] isa Billboard,
         :depth_shift => attr.depth_shift[],
+        :transform_marker => false
     )
 
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
@@ -54,6 +57,9 @@ function assemble_scatter_robj(attr)
     )
     per_instance = filter(uniform_dict) do (k, v)
         return k in per_instance_keys && !(Makie.isscalar(v))
+    end
+    filter!(uniform_dict) do (k, v)
+        return !(k in per_instance_keys && !(Makie.isscalar(v)))
     end
 
     handle_color_getter!(uniform_dict, per_instance)
@@ -94,13 +100,14 @@ function create_shader(scene::Scene, plot::Scatter)
     Makie.all_marker_computations!(attr, 1024, 32)
     inputs = [
         :positions_transformed_f32c,
+        :color,
         :colormap,
-        :colornorm,
+        :_colorrange,
         :rotation,
         :quad_scale,
         :quad_offset,
-        :uv_offset_width,
-        :marker_shape,
+        :sdf_uv,
+        :sdf_marker_shape,
         :transparency,
         :image,
         :strokewidth,
@@ -108,20 +115,19 @@ function create_shader(scene::Scene, plot::Scatter)
         :glowwidth,
         :glowcolor,
         :depth_shift,
+        :atlas_1024_32,
+        :markerspace,
     ]
 
     register_computation!(attr, inputs, [:wgl_renderobject]) do args, changed, last
-        screen = args[2][]
-        !isopen(screen) && return :deregister
         robj = if isnothing(last)
-            robj = assemble_scatter_robj(attr)
+            robj = assemble_scatter_robj((; zip(inputs, args)...))
         else
             robj = last[1][]
             update_robjs!(robj, args[3:end], changed[3:end], gl_names)
         end
-        screen.requires_update = true
         return (robj,)
     end
 
-    return robj
+    return attr[:wgl_renderobject][]
 end

@@ -193,7 +193,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     per_instance = filter(attributes) do (k, v)
-        return k in per_instance_keys && !(isscalar(to_value(v)))
+        return k in per_instance_keys && !(Makie.isscalar(to_value(v)))
     end
 
     for (k, v) in per_instance

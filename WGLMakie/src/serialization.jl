@@ -93,14 +93,14 @@ function three_repeat(s::Symbol)
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", 
+    tex = Dict(:type => "Sampler",
                :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], 
+               :size => Int32[size(color.data)...],
                :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
                :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), 
+               :wrapS => three_repeat(color.repeat[1]),
                :mipmap => color.mipmap,
                :anisotropy => color.anisotropic)
     if N > 1
@@ -250,7 +250,6 @@ function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     return result
 end
 
-
 function serialize_three(@nospecialize(plot), program::Program)
     facies = reinterpret_faces(plot, ShaderAbstractions.indexbuffer(program.vertexarray))
     indices = convert(Observable, facies)
@@ -325,11 +324,11 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = plot.visible
+    mesh[:visible] = Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)
-    mesh[:transparency] = plot.transparency
-    mesh[:overdraw] = plot.overdraw
-    mesh[:zvalue] = Makie.zvalue2d(plot)
+    get!(mesh, :transparency, plot.transparency[])
+    get!(mesh, :overdraw, plot.overdraw[])
+    get!(() -> Makie.zvalue2d(plot), mesh, :zvalue)
 
     uniforms = mesh[:uniforms]
     updater = mesh[:uniform_updater]
@@ -352,120 +351,121 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         end
     end
 
-    if haskey(plot, :markerspace)
-        mesh[:markerspace] = plot.markerspace
+    if plot isa Scatter || haskey(plot, :markerspace)
+        mesh[:markerspace] = Observable(plot.markerspace[])
     end
-    mesh[:space] = plot.space
+    mesh[:space] = Observable(plot.space[])
 
-    key = haskey(plot, :markerspace) ? (:markerspace) : (:space)
+    key = plot isa Scatter ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
     # Handle clip planes
-    if plot isa Voxels
+    # if plot isa Voxels
 
-        clip_planes = map(
-                plot, plot.converted..., plot.model, plot.clip_planes, plot.space
-            ) do xs, ys, zs, chunk, model, planes, space
+    #     clip_planes = map(
+    #             plot, plot.converted..., plot.model, plot.clip_planes, plot.space
+    #         ) do xs, ys, zs, chunk, model, planes, space
 
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+    #         Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            # model/modelinv has no perspective projection so we should be fine
-            # with just applying it to the plane origin and transpose(inv(modelinv))
-            # to plane.normal
-            mini = minimum.((xs, ys, zs))
-            width = maximum.((xs, ys, zs)) .- mini
-            _model = Mat4f(model) *
-                Makie.scalematrix(Vec3f(width ./ size(chunk))) *
-                Makie.translationmatrix(Vec3f(mini))
-            modelinv = inv(_model)
-            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+    #         # model/modelinv has no perspective projection so we should be fine
+    #         # with just applying it to the plane origin and transpose(inv(modelinv))
+    #         # to plane.normal
+    #         mini = minimum.((xs, ys, zs))
+    #         width = maximum.((xs, ys, zs)) .- mini
+    #         _model = Mat4f(model) *
+    #             Makie.scalematrix(Vec3f(width ./ size(chunk))) *
+    #             Makie.translationmatrix(Vec3f(mini))
+    #         modelinv = inv(_model)
+    #         @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
-                normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
-                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
+    #         output = Vector{Vec4f}(undef, 8)
+    #         for i in 1:min(length(planes), 8)
+    #             origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+    #             normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
+    #             distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+    #                 Vec3f(normal[1], normal[2], normal[3]))
+    #             output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+    #         end
+    #         for i in min(length(planes), 8)+1:8
+    #             output[i] = Vec4f(0, 0, 0, -1e9)
+    #         end
 
-            return output
-        end
+    #         return output
+    #     end
 
-    elseif plot isa Volume
+    # elseif plot isa Volume
 
-        # TODO: better solution (ShaderAbstractions doesn't like Vector uniforms)
-        model2 = lift(plot, plot.model, plot[1], plot[2], plot[3]) do m, xyz...
-            mi = minimum.(xyz)
-            maxi = maximum.(xyz)
-            w = maxi .- mi
-            m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
-            return convert(Mat4f, m) * m2
-        end
+    #     # TODO: better solution (ShaderAbstractions doesn't like Vector uniforms)
+    #     model2 = lift(plot, plot.model, plot[1], plot[2], plot[3]) do m, xyz...
+    #         mi = minimum.(xyz)
+    #         maxi = maximum.(xyz)
+    #         w = maxi .- mi
+    #         m2 = Mat4f(w[1], 0, 0, 0, 0, w[2], 0, 0, 0, 0, w[3], 0, mi[1], mi[2], mi[3], 1)
+    #         return convert(Mat4f, m) * m2
+    #     end
 
-        clip_planes = map(plot, model2, plot.clip_planes, plot.space) do model, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+    #     clip_planes = map(plot, model2, plot.clip_planes, plot.space) do model, planes, space
+    #         Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            # model/modelinv has no perspective projection so we should be fine
-            # with just applying it to the plane origin and transpose(inv(modelinv))
-            # to plane.normal
-            modelinv = inv(model)
-            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+    #         # model/modelinv has no perspective projection so we should be fine
+    #         # with just applying it to the plane origin and transpose(inv(modelinv))
+    #         # to plane.normal
+    #         modelinv = inv(model)
+    #         @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
-                normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
-                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
+    #         output = Vector{Vec4f}(undef, 8)
+    #         for i in 1:min(length(planes), 8)
+    #             origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+    #             normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
+    #             distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+    #                 Vec3f(normal[1], normal[2], normal[3]))
+    #             output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+    #         end
+    #         for i in min(length(planes), 8)+1:8
+    #             output[i] = Vec4f(0, 0, 0, -1e9)
+    #         end
 
-            return output
-        end
+    #         return output
+    #     end
 
-    else
+    # else
 
-        clip_planes = map(plot, plot.clip_planes, plot.space) do planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+    #     clip_planes = map(plot, plot.clip_planes, plot.space) do planes, space
+    #         Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            if length(planes) > 8
-                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-            end
+    #         if length(planes) > 8
+    #             @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+    #         end
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                output[i] = Makie.gl_plane_format(planes[i])
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e10)
-            end
+    #         output = Vector{Vec4f}(undef, 8)
+    #         for i in 1:min(length(planes), 8)
+    #             output[i] = Makie.gl_plane_format(planes[i])
+    #         end
+    #         for i in min(length(planes), 8)+1:8
+    #             output[i] = Vec4f(0, 0, 0, -1e10)
+    #         end
 
-            return output
-        end
+    #         return output
+    #     end
 
-    end
+    # end
 
-    uniforms[:clip_planes] = serialize_three(clip_planes[])
-    on(plot, clip_planes) do value
-        updater[] = [:clip_planes, serialize_three(value)]
-        return
-    end
+    uniforms[:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
+    # on(plot, clip_planes) do value
+    #     updater[] = [:clip_planes, serialize_three(value)]
+    #     return
+    # end
 
-    uniforms[:num_clip_planes] = serialize_three(
-        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
-    )
-    onany(plot, plot.clip_planes, plot.space) do planes, space
-        N = Makie.is_data_space(space) ? length(planes) : 0
-        updater[] = [:num_clip_planes, serialize_three(N)]
-        return
-    end
+    uniforms[:num_clip_planes] = serialize_three(0)
+    # uniforms[:num_clip_planes] = serialize_three(
+    #     Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
+    # )
+    # onany(plot, plot.clip_planes, plot.space) do planes, space
+    #     N = Makie.is_data_space(space) ? length(planes) : 0
+    #     updater[] = [:num_clip_planes, serialize_three(N)]
+    #     return
+    # end
 
     return mesh
 end

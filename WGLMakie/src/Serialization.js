@@ -350,6 +350,7 @@ export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const p = new Plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
+    console.log(p.mesh);
     scene.add(p.mesh);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy

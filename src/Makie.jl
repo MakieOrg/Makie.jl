@@ -239,6 +239,7 @@ include("display.jl")
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
+include("backend-functionality.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath

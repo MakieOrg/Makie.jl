@@ -22576,6 +22576,7 @@ function connect_plot(scene, plot) {
 function add_plot(scene, plot_data1) {
     const p = new Plot(scene, plot_data1);
     plot_cache[p.uuid] = p.mesh;
+    console.log(p.mesh);
     scene.add(p.mesh);
     const next_insert = new Set(ON_NEXT_INSERT);
     next_insert.forEach((f)=>f());
