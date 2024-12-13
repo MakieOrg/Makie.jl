@@ -164,6 +164,7 @@ struct LimitReset
     end
 end
 
+
 mutable struct RectangleZoom
     active::Observable{Bool}
     restrict_x::Bool
@@ -179,6 +180,30 @@ function RectangleZoom(restrict_x=false, restrict_y=false, modifier=true)
                          nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
+function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
+    rect_scene = Scene(ax.scene)
+    selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
+                              r.rectnode)
+    # manually specify correct faces for a rectangle with a rectangle hole inside
+    faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
+    # plot to blockscene, so ax.scene stays exclusive for user plots
+    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
+    mesh = mesh!(rect_scene,
+        selection_vertices, faces, space=:pixel,
+        color = (:black, 0.2), shading = NoShading,
+        inspectable = false, transparency=true, overdraw=true, visible=r.active)
+    # translate forward so selection mesh and frame are never behind data
+    translate!(mesh, 0, 0, 1000)
+
+    return ax
+end
+
+function deregistration_cleanup!(ax::AbstractAxis, r::RectangleZoom)
+    # TODO: Remove mesh?
+    return ax
+end
+
+
 struct ScrollZoom
     speed::Float32
     reset_timer::RefValue{Union{Nothing, Timer}}
@@ -191,6 +216,7 @@ function ScrollZoom(speed, reset_delay)
     return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
+
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
     prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
@@ -201,6 +227,7 @@ end
 function DragPan(reset_delay)
     return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
+
 
 struct DragRotate end
 
@@ -701,30 +728,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         yscale = identity
     end
-end
-
-
-function registration_setup!(ax::Axis, r::RectangleZoom)
-    rect_scene = Scene(ax.scene)
-    selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
-                              r.rectnode)
-    # manually specify correct faces for a rectangle with a rectangle hole inside
-    faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    # plot to blockscene, so ax.scene stays exclusive for user plots
-    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(rect_scene,
-        selection_vertices, faces, space=:pixel,
-        color = (:black, 0.2), shading = NoShading,
-        inspectable = false, transparency=true, overdraw=true, visible=r.active)
-    # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 1000)
-
-    return ax
-end
-
-function deregistration_cleanup!(ax::Axis, r::RectangleZoom)
-    # TODO: Remove mesh?
-    return ax
 end
 
 
