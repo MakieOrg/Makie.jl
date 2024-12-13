@@ -3,12 +3,10 @@ using GridLayoutBase: GridLayoutBase
 
 import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inner, GridLayout, GridSubposition
 
-function get_recipe_function(name::Symbol)
-    if hasproperty(Makie, name)
-        return getfield(Makie, name)
-    else
-        return nothing
-    end
+function symbol_to_specable(sym::Symbol)
+    block = symbol_to_block(sym)
+    isnothing(block) || return block
+    return MakieCore.symbol_to_plot(sym)
 end
 
 """
@@ -27,7 +25,7 @@ struct PlotSpec
             error("PlotSpec objects are supposed to be used without !, unless when using `S.$(type)(axis::P.Axis, args...; kwargs...)`")
         end
         if !isuppercase(type_str[1])
-            func = get_recipe_function(type)
+            func = hasproperty(Makie, type) ? getproperty(Makie, type) : nothing
             func === nothing && error("PlotSpec need to be existing recipes or Makie plot objects. Found: $(type_str)")
             plot_type = Plot{func}
             type = plotsym(plot_type)
@@ -169,7 +167,7 @@ function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = getfield(Makie, p.type)
+plottype(p::PlotSpec) = MakieCore.symbol_to_plot(p.type)
 
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
@@ -403,7 +401,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
     # The names are loaded from cache and dont contain anything after MakieCore.
-    func = get_recipe_function(field)
+    func = symbol_to_specable(field)
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
     elseif func isa Function
@@ -744,7 +742,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
 end
 
 function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
-    BType = getfield(Makie, spec.type)
+    BType = symbol_to_block(spec.type)
     fig = get_top_parent(parent)
 
     block = if spec.type === :Colorbar

@@ -453,7 +453,7 @@ end
         cs = zeros(10, 10)
         for (p, c) in zip(polys, polycols)
             # calculate center of poly, round to indices
-            i, j = clamp.(round.(Int, sum(first.(p.exterior)) / length(p.exterior)), 1, 10)
+            i, j = clamp.(round.(Int, sum(p.exterior) / length(p.exterior)), 1, 10)
             cs[i, j] = c
         end
 

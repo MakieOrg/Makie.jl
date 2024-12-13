@@ -32,12 +32,7 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
-# For switching between ellipse method and faster circle method in shader
-is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
-is_all_equal_scale(::Real) = true
-is_all_equal_scale(::Vector{Real}) = true
-is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
-is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
 
 
 intensity_convert(intensity, verts) = intensity
@@ -71,6 +66,7 @@ function draw_mesh_particle(screen, p, data)
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
+        f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
 
@@ -103,6 +99,7 @@ function draw_mesh_particle(screen, p, data)
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
+        scale_primitive = false
         interpolate_in_fragment_shader = false
         backlight = 0f0
 
@@ -139,6 +136,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         vertex       = position => GLBuffer
         color_map    = nothing => Texture
         color        = nothing => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -213,7 +211,7 @@ function draw_scatter(screen, (marker, position), data)
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
-        marker_offset = Vec3f(0) => GLBuffer;
+        marker_offset = Vec3f(0) => GLBuffer
         scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture

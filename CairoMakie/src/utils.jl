@@ -20,7 +20,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -50,7 +50,7 @@ function project_position(
 
     transform = let
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * model * f32convert
+        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
         px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
@@ -74,7 +74,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    clip = Makie.space_to_clip(scene.camera, space) * model * f32convert * p4d
+    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -152,11 +152,12 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
 
     xy = origin(shape)
     w, h = widths(shape)
-    ps = [xy, xy + Vec2(w, 0), xy + Vec2f(w, h), xy + Vec2(0, h)]
+    ps = Vec2f[xy, xy + Vec2f(w, 0), xy + Vec2f(w, h), xy + Vec2f(0, h)]
     if any(p -> Makie.is_clipped(clip_planes, p), ps)
         push!(ps, xy)
         ps = clip_poly(clip_planes, ps, space, model)
-        return BezierPath([MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()])
+        commands = Makie.PathCommand[MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()]
+        return BezierPath(commands::Vector{Makie.PathCommand})
     else
         return shape
     end
@@ -193,29 +194,37 @@ end
 
 
 function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
-    # If colors are defined per point they need to be interpolated like positions
-    # at clip planes
-    per_point_colors = colors isa AbstractArray
-    per_point_linewidths = (T <: Lines) && (linewidths isa AbstractArray)
-
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
-    # Standard transform from input space to clip space
-    points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
+    is_lines_plot = T <: Lines
+
+    points = Makie.apply_transform(transform_func(plot), positions, space)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
-    clip_points = map(points) do point
-        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
-    end
-
-    # yflip and clip -> screen/pixel coords
-    res = scene.camera.resolution[]
-
     # clip planes in clip space
     clip_planes = if Makie.is_data_space(space)
         Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])::Vector{Plane3f}
     else
         Makie.Plane3f[]
+    end
+
+    # yflip and clip -> screen/pixel coords
+    res = scene.camera.resolution[]
+
+    return project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+end
+
+
+function project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+    # If colors are defined per point they need to be interpolated like positions
+    # at clip planes
+    per_point_colors = colors isa AbstractArray
+    per_point_linewidths = is_lines_plot && (linewidths isa AbstractArray)
+
+    # Standard transform from input space to clip space
+
+    clip_points = map(points) do point
+        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
     end
 
     # Fix lines with points far outside the clipped region not drawing at all
@@ -226,7 +235,6 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
         Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
     )
 
-
     # outputs
     screen_points = sizehint!(Vec2f[], length(clip_points))
     color_output = sizehint!(eltype(colors)[], length(clip_points))
@@ -234,7 +242,7 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
 
     # Handling one segment per iteration
-    if plot isa Lines
+    if is_lines_plot
 
         last_is_nan = true
         for i in 1:length(clip_points)-1

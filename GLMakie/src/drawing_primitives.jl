@@ -131,7 +131,6 @@ function to_glvisualize_key(k)
     k === :strokecolor && return :stroke_color
     k === :positions && return :position
     k === :linewidth && return :thickness
-    k === :marker_offset && return :quad_offset
     k === :colormap && return :color_map
     k === :colorrange && return :color_norm
     k === :transform_marker && return :scale_primitive
@@ -406,75 +405,37 @@ end
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Scatter, MeshScatter}))
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
     return cached_robj!(screen, scene, plot) do gl_attributes
+
         # signals not supported for shading yet
         marker = pop!(gl_attributes, :marker)
 
-        space = plot.space
         positions = handle_view(plot[1], gl_attributes)
-        positions = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
-        cam = scene.camera
+        f32c = pop!(gl_attributes, :f32c)
+        positions = apply_transform_and_f32_conversion(plot, f32c, positions)
 
-        if plot isa Scatter
-            mspace = plot.markerspace
-            gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
-                                                 cam.resolution) do space, mspace, _, _
-                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
-            end
-            # fast pixel does its own setup
-            if !(marker[] isa FastPixel)
-                gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-                atlas = gl_texture_atlas()
-                isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-                shape = lift(m -> Cint(Makie.marker_to_sdf_shape(m)), plot, marker)
-                gl_attributes[:shape] = shape
-                get!(gl_attributes, :distancefield) do
-                    if shape[] === Cint(DISTANCEFIELD)
-                        return get_texture!(atlas)
-                    else
-                        return nothing
-                    end
-                end
-                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
-                gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
-                get!(gl_attributes, :uv_offset_width) do
-                    return Makie.primitive_uv_offset_width(atlas, marker, font)
-                end
-                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font,
-                                                             gl_attributes[:quad_offset], plot)
-                gl_attributes[:scale] = scale
-                gl_attributes[:quad_offset] = quad_offset
+        # If the vertices of the scattered mesh, markersize and (if it applies) model
+        # are float32 safe we should be able to just correct for any scaling from
+        # float32convert in the shader, after those conversions.
+        # We should also be fine as long as rotation = identity (also in model).
+        # If neither is the case we would have to combine vertices with positions and
+        # transform them to world space (post float32convert) on the CPU. We then can't
+        # do instancing anymore, so meshscatter becomes pointless.
+        if !isnothing(scene.float32convert)
+            gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+                # we must use new_f32c with transform_marker = true,
+                # because model might be merged into f32c (robj.model = I)
+                # with transform_marker = false we must use the old f32c
+                # as we don't want model to apply
+                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
             end
         end
 
-        if marker[] isa FastPixel
-            if haskey(gl_attributes, :intensity)
-                gl_attributes[:color] = pop!(gl_attributes, :intensity)
-            end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model,
-                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
-            filter!(gl_attributes) do (k, v,)
-                return (k in to_keep)
-            end
-            gl_attributes[:markerspace] = lift(plot.markerspace) do space
-                space == :pixel && return Int32(0)
-                space == :data && return Int32(1)
-                return error("Unsupported markerspace for FastPixel marker: $space")
-            end
-            gl_attributes[:marker_shape] = lift(x -> x.marker_type, plot.marker)
-            gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), cam.upvector)
-            return draw_pixel_scatter(screen, positions, gl_attributes)
-        else
-            if plot isa MeshScatter
-                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-                    gl_attributes[:image] = gl_attributes[:color]
-                end
-                return draw_mesh_particle(screen, (marker, positions), gl_attributes)
-            else
-                return draw_scatter(screen, (marker, positions), gl_attributes)
-            end
+        if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+            gl_attributes[:image] = gl_attributes[:color]
         end
+        return draw_mesh_particle(screen, (marker, positions), gl_attributes)
     end
 end
 
@@ -723,6 +684,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -739,6 +701,10 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
                 return convert_attribute(uv_transform, key"uv_transform"())
             end
         end
+    elseif to_value(color) isa ShaderAbstractions.Sampler
+        gl_attributes[:image] = Texture(lift(el32convert, plot, color))
+        delete!(gl_attributes, :color_map)
+        delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
@@ -763,13 +729,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     end
 
     # TODO: avoid intermediate observable
-    positions = map(m -> metafree(coordinates(m)), mesh)
+    # TODO: Should these use direct getters? (faces, normals, texturecoordinates)
+    positions = map(coordinates, mesh)
     gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
         gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
     end
-    if hasproperty(to_value(mesh), :normals) && (shading !== NoShading || matcap_active)
+    if hasproperty(to_value(mesh), :normal) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
     end
     return draw_mesh(screen, gl_attributes)

@@ -26,3 +26,4 @@ metrics/ttfp/current-pr-project/
 metrics/ttfp/benchmark-projects/*
 *benchmark.json
 benchmark_results
+WGLMakie/test/electron.log

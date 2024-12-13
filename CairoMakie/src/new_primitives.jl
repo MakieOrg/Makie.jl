@@ -132,7 +132,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
-    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p._marker_offset[], p.rotation[],
+    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
            p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
 
     attr = p.args[1]

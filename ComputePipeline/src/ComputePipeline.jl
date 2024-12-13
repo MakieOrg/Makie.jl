@@ -1,13 +1,15 @@
 module ComputePipeline
 
+using Observables
+
 using Base: RefValue
 
 abstract type AbstractEdge end
 
 mutable struct Computed
+    name::Symbol
     # if a parent edge got resolved and updated this computed, dirty is temporarily true
     # so that the edges dependents can update their inputs accordingly
-    name::Symbol
     dirty::Bool
 
     value::RefValue
@@ -28,6 +30,11 @@ end
 
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
+
+struct ResolveException{E <: Exception} <: Exception
+    start::Computed
+    error::E
+end
 
 struct TypedEdge{InputTuple,OutputTuple,F}
     callback::F
@@ -113,18 +120,15 @@ end
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
+    onchange::Observable{Nothing}
 end
 
 function ComputeGraph()
-    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}())
+    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}())
 end
 
 function isdirty(computed::Computed)
-    hasparent(computed) || return false
-    parent = computed.parent
-    # Can't be dirty if inputs have changed
-
-    return !parent.got_resolved[] || any(parent.inputs_dirty)
+    return hasparent(computed) && isdirty(computed.parent)
 end
 
 function isdirty(edge::ComputeEdge)
@@ -177,11 +181,29 @@ function Base.setindex!(computed::Computed, value)
     return mark_dirty!(computed)
 end
 
-function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     input.value = value
     mark_dirty!(input)
     return value
+end
+
+function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
+    _setproperty!(attr, key, value)
+    notify(attr.onchange)
+    return value
+end
+
+function update!(attr::ComputeGraph; kwargs...)
+    for (key, value) in pairs(kwargs)
+        if haskey(attr.inputs, key)
+            setproperty!(attr, key, value)
+        else
+            throw(Makie.AttributeNameError(key))
+        end
+    end
+    notify(attr.onchange)
+    return attr
 end
 
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
@@ -190,7 +212,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
-    key === :default && return getfield(attr, :default)
+    key === :onchange && return getfield(attr, :onchange)
     return attr.inputs[key].output
 end
 
@@ -254,6 +276,14 @@ function resolve!(edge::TypedEdge)
 end
 
 function resolve!(computed::Computed)
+    try
+        return _resolve!(computed)
+    catch e
+        rethrow(ResolveException(computed, e))
+    end
+end
+
+function _resolve!(computed::Computed)
     if hasparent(computed)
         resolve!(computed.parent)
     end
@@ -264,7 +294,7 @@ function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
     # Resolve inputs first
-    foreach(resolve!, edge.inputs)
+    foreach(_resolve!, edge.inputs)
     # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
     # TODO, can/should we store this tuple?
     if !isassigned(edge.typed_edge)
@@ -282,19 +312,9 @@ function resolve!(edge::ComputeEdge)
     return true
 end
 
-function update!(attr::ComputeGraph; kwargs...)
-    for (key, value) in pairs(kwargs)
-        if haskey(attr.inputs, key)
-            setproperty!(attr, key, value)
-        else
-            throw(Makie.AttributeNameError(key))
-        end
-    end
-    return attr
-end
-
 add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr, key, value)
 
+# TODO: error tracking would be better if we didn't wrap the user function
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     output = Computed(key, RefValue{Any}())

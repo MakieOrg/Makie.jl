@@ -83,40 +83,6 @@ function data_limits(plot::Text)
     end
 end
 
-# function data_limits(plot::Scatter)
-#     if plot.space[] == plot.markerspace[]
-#         scale, offset = marker_attributes(
-#             get_texture_atlas(),
-#             plot.marker[],
-#             plot.markersize[],
-#             get(plot.attributes, :font, Observable(Makie.defaultfont())),
-#             plot.marker_offset[],
-#             plot
-#         )
-#         rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
-
-#         bb = Rect3d()
-#         for (i, p) in enumerate(point_iterator(plot))
-#             marker_pos = to_ndim(Point3d, p, 0)
-#             quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-#             quad_size = Vec2d(sv_getindex(scale[], i))
-#             quad_rotation = sv_getindex(rotations, i)
-
-#             quad_origin = quad_rotation * quad_origin
-#             quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
-#             quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
-
-#             bb = update_boundingbox(bb, marker_pos + quad_origin)
-#             bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1)
-#             bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
-#             bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
-#         end
-#         return bb
-#     else
-#         return Rect3d(point_iterator(plot))
-#     end
-# end
-
 function data_limits(plot::Voxels)
     xyz = to_value.(plot.converted[1:3])
     return Rect3d(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
@@ -171,7 +137,7 @@ function point_iterator(plot::Text{<: Tuple{<: Union{GlyphCollection, AbstractVe
     return plot.position[]
 end
 
-point_iterator(mesh::GeometryBasics.Mesh) = decompose(Point, mesh)
+point_iterator(mesh::GeometryBasics.AbstractMesh) = decompose(Point, mesh)
 point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
 
 # Fallback for other primitive plots, used in boundingbox

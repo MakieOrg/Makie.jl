@@ -74,6 +74,16 @@ function create_shader(scene::Scene, plot::MeshScatter)
     # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
     uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
+    uniform_dict[:transform_marker] = get(plot, :transform_marker, false)
+
+    # See GLMakie/drawing_primtives.jl
+    if isnothing(scene.float32convert)
+        uniform_dict[:f32c_scale] = Vec3f(1)
+    else
+        uniform_dict[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+            return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+        end
+    end
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
@@ -82,6 +92,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
+    end
+    if !hasproperty(instance, :normal)
+        uniform_dict[:normal] = Vec3f(0)
     end
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -161,7 +174,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     marker = nothing
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
-        font = get(attributes, :font, Observable(Makie.defaultfont()))
+        font =  attributes.font[]
         marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
             marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
@@ -170,7 +183,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset], plot)
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
@@ -247,30 +260,30 @@ function scatter_shader(scene::Scene, attributes, plot)
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
 
-function create_shader(scene::Scene, plot::Scatter)
-    # Potentially per instance attributes
-    # create new dict so we don't automatically convert to observables
-    # Which is the case for Dict{Symbol, Observable}
-    attributes = Dict{Symbol, Any}()
-    for (k, v) in plot.attributes.attributes
-        attributes[k] = v
-    end
-    space = get(attributes, :space, :data)
-    attributes[:preprojection] = Mat4f(I) # calculate this in JS
-    f32c, model = Makie.patch_model(plot)
-    attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
+# function create_shader(scene::Scene, plot::Scatter)
+#     # Potentially per instance attributes
+#     # create new dict so we don't automatically convert to observables
+#     # Which is the case for Dict{Symbol, Observable}
+#     attributes = Dict{Symbol, Any}()
+#     for (k, v) in plot.attributes.attributes
+#         attributes[k] = v
+#     end
+#     space = get(attributes, :space, :data)
+#     attributes[:preprojection] = Mat4f(I) # calculate this in JS
+#     f32c, model = Makie.patch_model(plot)
+#     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
-    quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
-    attributes[:marker_offset] = Vec3f(0)
-    attributes[:quad_offset] = quad_offset
-    attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-    attributes[:model] = model
-    attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+#     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
+#     attributes[:marker_offset] = Vec3f(0)
+#     attributes[:quad_offset] = quad_offset
+#     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
+#     attributes[:model] = model
+#     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
 
-    delete!(attributes, :uv_offset_width)
-    filter!(kv -> !(kv[2] isa Function), attributes)
-    return scatter_shader(scene, attributes, plot)
-end
+#     delete!(attributes, :uv_offset_width)
+#     filter!(kv -> !(kv[2] isa Function), attributes)
+#     return scatter_shader(scene, attributes, plot)
+# end
 
 value_or_first(x::AbstractArray) = first(x)
 value_or_first(x::StaticVector) = x

@@ -200,7 +200,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     if attr[:depthsorting][]
-
         # is projectionview enough to trigger on scene resize in all cases?
         add_input!(attr, :projectionview, scene.camera.projectionview[])
         on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
@@ -241,18 +240,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
 
         register_computation!(
-            attr, [:marker], [:pixel_marker_shape]
+            attr,
+            [:marker],
+            [:sdf_marker_shape],
         ) do (marker,), changed, last
             return (marker[].marker_type,)
         end
-        marker_inputs = [:pixel_marker_shape, :markerspace, :upvector]
         inputs = [
             # Special
             :scene, :gl_screen,
             # Needs explicit handling
             :positions_transformed_f32c,
             :alpha_colormap, :scaled_color, :scaled_colorrange,
-            :pixel_marker_shape,
+            :sdf_marker_shape,
             # Simple forwards
             :gl_markerspace, :quad_scale,
             :transparency, :fxaa, :visible,
@@ -263,74 +263,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
 
     else
-
-        # TODO: Probably shouldn't just drop uv_offset_width?
-        register_computation!(attr,
-            [:uv_offset_width, :marker, :font, :quad_scale],
-            [:sdf_marker_shape, :sdf_uv, :image]
-        ) do (uv_off, m, f, scale), changed, last
-
-            if m[] isa Matrix{<: Colorant} # single image marker
-
-                return (Cint(RECTANGLE), Vec4f(0,0,1,1), m[])
-
-            elseif m[] isa Vector{<: Matrix{<: Colorant}} # multiple image markers
-
-                # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-                if changed[2]
-                    images = map(el32convert, m[])
-                    isempty(images) && error("Can not display empty vector of images as primitive")
-                    sizes = map(size, images)
-                    if !all(x -> x == sizes[1], sizes)
-                        # create texture atlas
-                        maxdims = sum(map(Vec{2, Int}, sizes))
-                        rectangles = map(x->Rect2(0, 0, x...), sizes)
-                        rpack = RectanglePacker(Rect2(0, 0, maxdims...))
-                        uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-                        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-                        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
-                        for (area, img) in zip(uv_coordinates, images)
-                            texture_atlas[area] = img # transfer to texture atlas
-                        end
-                        uvs = map(uv_coordinates) do uv
-                            m = max_xy .- 1
-                            mini = reverse((minimum(uv)) ./ m)
-                            maxi = reverse((maximum(uv) .- 1) ./ m)
-                            return Vec4f(mini..., maxi...)
-                        end
-                        images = texture_atlas
-                    else
-                        uvs = Vec4f(0,0,1,1)
-                    end
-
-                    return (Cint(RECTANGLE), uvs, images)
-                else
-                    # if marker is up to date don't update
-                    return (nothing, nothing, nothing)
-                end
-
-            else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-
-                if changed[2] || changed[4]
-                    shape = Cint(Makie.marker_to_sdf_shape(m[])) # expensive for arrays with abstract eltype?
-                    if shape == 0 && !is_all_equal_scale(scale[])
-                        shape = Cint(5)
-                    end
-                else
-                    shape = last[1][]
-                end
-
-                if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed[3])
-                    uv = Makie.primitive_uv_offset_width(atlas, m[], f[])
-                elseif isnothing(last)
-                    uv = Vec4f(0,0,1,1)
-                else
-                    uv = nothing # Is this even worth it?
-                end
-
-                return (shape, uv, nothing)
-            end
-        end
+        Makie.all_marker_computations!(attr, 2048, 64)
 
         inputs = [
             # Special
@@ -340,7 +273,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :alpha_colormap, :scaled_color, :scaled_colorrange,
             :sdf_marker_shape,
             # Simple forwards
-            :sdf_uv, :quad_scale, :quad_offset, :image,
+            :sdf_uv,
+            :quad_scale,
+            :quad_offset,
+            :image,
             :transparency, :fxaa, :visible,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
@@ -364,9 +300,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :positions_transformed_f32c => :position,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :color,
-        :sdf_marker_shape => :shape, :sdf_uv => :uv_offset_width,
-        :pixel_marker_shape => :shape, :gl_markerspace => :markerspace,
-        :quad_scale => :scale,
+        :sdf_marker_shape => :shape,
+        :sdf_uv => :uv_offset_width,
+        :gl_markerspace => :markerspace,
+        :quad_scale => :scale, :gl_image => :image,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
@@ -548,14 +485,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     add_input!(attr, :projectionview, scene.camera.projectionview[])
     on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
     register_computation!(
-        attr, [:projectionview, :model, :f32c, :space], [:pvm32]
+        attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
         pvm = Makie.space_to_clip(scene.camera, space[]) *
             Makie.f32_convert_matrix(f32c[], space[]) * model[]
         return (pvm,)
     end
     register_computation!(
-        attr, [:pvm32, :positions_transformed], [:projected_transformed_positions]
+        attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
     ) do (pvm32, positions), changed, cached
         if isnothing(cached)
             output = Vector{Point4f}(undef, length(positions[]))
@@ -570,7 +507,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     # linestyle/pattern handling
     register_computation!(
-        attr, [:linestyle], [:pattern, :pattern_length]
+        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
     ) do (linestyle,), changed, cached
         if isnothing(linestyle[])
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
@@ -597,7 +534,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
     else
-        positions = :projected_transformed_positions
+        positions = :gl_projected_positions
     end
 
     # Derived vertex attributes
@@ -616,7 +553,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :scaled_color, :alpha_colormap, :scaled_colorrange,
         # Auto
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
-        :pattern, :pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
+        :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit,
         :transparency, :fxaa, :debug, :visible,
         :model_f32c,
@@ -627,6 +564,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
+        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
@@ -719,7 +657,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     # linestyle/pattern handling
     register_computation!(
-        attr, [:linestyle], [:pattern, :pattern_length]
+        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
     ) do (linestyle,), changed, cached
         if isnothing(linestyle[])
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
@@ -748,7 +686,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c,
         :synched_color, :alpha_colormap, :scaled_colorrange,
         # Auto
-        :pattern, :pattern_length, :linecap, :synched_linewidth,
+        :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
         :visible,
@@ -758,6 +696,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
+        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes

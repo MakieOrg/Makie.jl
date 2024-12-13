@@ -182,6 +182,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             [:positions_transformed, :model, :f32c],
             [:positions_transformed_f32c, :model_f32c]
         ) do (positions, model, f32c), changed, last
+            # TODO: this should be done in one nice function
 
             # This is simplified, skipping what's commented out
 
@@ -212,23 +213,14 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 end
 
 function register_marker_computations!(attr::ComputeGraph)
-    # Special case: calculated_attributes - marker_offset
-    register_computation!(attr, [:marker_offset, :markersize],
-                          [:_marker_offset]) do (offset, size), changed, last
-        if offset[] isa Automatic
-            (to_2d_scale(map(x -> x .* -0.5f0, size[])),)
-        else
-            (to_2d_scale(offset[]),)
-        end
-    end
 
-    register_computation!(attr, [:marker, :markersize, :_marker_offset],
-                          [:quad_offset, :quad_scale]) do (marker, markersize, marker_offset), changed, last
+    register_computation!(attr, [:marker, :markersize],
+                          [:quad_offset, :quad_scale]) do (marker, markersize), changed, last
         atlas = get_texture_atlas()
         font = defaultfont()
         mm_changed = changed[1] || changed[2]
         quad_scale = mm_changed ? rescale_marker(atlas, marker[], font, markersize[]) : nothing
-        quad_offset = offset_marker(atlas, marker[], font, markersize[], marker_offset[])
+        quad_offset = offset_marker(atlas, marker[], font, markersize[])
 
         return (quad_offset, quad_scale)
     end
