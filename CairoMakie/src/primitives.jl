@@ -352,6 +352,7 @@ function draw_atomic_scatter(
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
+        isnan(markersize) && return
 
         ms = to_ndim(Vec3d, to_ndim(Vec2d, markersize, markersize), 1)
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
@@ -359,31 +360,22 @@ function draw_atomic_scatter(
         proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
             ms, rotation, size_model, billboard)
 
-        # TODO: fix the rest
-        scale = project_scale(scene, markerspace, markersize, size_model)
-        offset = project_scale(scene, markerspace, mo, size_model)
+        # mat and jl_mat are the same matrix, once as a CairoMatrix, once as a Mat2f
+        # They both describe an approximate basis transformation matrix from
+        # marker space to pixel space with scaling appropriate to markersize.
+        # Markers that can be drawn from points/vertices of shape (e.g. Rect)
+        # could be projected more accurately by projecting each point individually
+        # and then building the shape.
 
-        # TODO: not here
-        if m isa Char
-            charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
-            inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
-
-            centering_offset = (Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb))
-            off = (jl_mat * ((1, -1) .* centering_offset))
-        end
+        # Can also skip if the x or y scale is ≈ 0
+        any(jl_mat * Vec2f(1) .≈ 0.0) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-
         Cairo.save(ctx)
-        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
-        # At least it stops drawing any marker afterwards
-        # TODO, maybe there's something wrong somewhere else?
-        if !(isnan(scale) || norm(scale) ≈ 0.0)
-            if m isa Char
-                draw_marker(ctx, m, best_font(m, font), proj_pos, strokecolor, strokewidth, off, mat)
-            else
-                draw_marker(ctx, m, proj_pos, scale, strokecolor, strokewidth, offset, rotation)
-            end
+        if m isa Char
+            draw_marker(ctx, m, best_font(m, font), proj_pos, strokecolor, strokewidth, jl_mat, mat)
+        else
+            draw_marker(ctx, m, proj_pos, strokecolor, strokewidth, mat)
         end
         Cairo.restore(ctx)
     end
@@ -391,33 +383,30 @@ function draw_atomic_scatter(
     return
 end
 
-function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, marker_offset, mat)
+function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)
     cairoface = set_ft_font(ctx, font)
 
+    # The given pos includes the user position which corresponds to the center
+    # of the marker and the user marker_offset which may shift the position.
+    # At this point we still need to center the character we draw. For that we
+    # get the character boundingbox where (0,0) is the anchor point:
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
 
-    # scale normalized bbox by font size
-    inkbb_scaled = Rect2f(origin(inkbb), widths(inkbb))
+    # And calculate an offset to the the center of the marker
+    centering_offset = Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb)
+    # which we then transform from marker space to screen space using the
+    # local coordinate transform derived by project_marker()
+    # (Need yflip because Cairo's y coordinates are reversed)
+    char_offset = Vec2f(jl_mat * ((1, -1) .* centering_offset))
 
-    # flip y for the centering shift of the character because in Cairo y goes down
-    centering_offset = Vec2f(1, -1) .* (-origin(inkbb_scaled) .- 0.5f0 .* widths(inkbb_scaled))
-    # this is the origin where we actually have to place the glyph so it can be centered
-    charorigin = pos - Vec2f(marker_offset[1], marker_offset[2])
+    # The offset is then applied to pos and the marker placement is set
+    charorigin = pos - char_offset
+    Cairo.translate(ctx, charorigin[1], charorigin[2])
 
+    # The font matrix takes care of rotation, scaling and shearing of the marker
     old_matrix = get_font_matrix(ctx)
     set_font_matrix(ctx, mat)
-
-    # First, we translate to the point where the
-    # marker is supposed to go.
-    Cairo.translate(ctx, charorigin[1], charorigin[2])
-    # Then, we rotate the context by the
-    # appropriate amount,
-    # Cairo.rotate(ctx, to_2d_rotation(rotation))
-    # and apply a centering offset to account for
-    # the fact that text is shown from the (relative)
-    # bottom left corner.
-    # Cairo.translate(ctx, centering_offset[1], centering_offset[2])
 
     Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
@@ -433,35 +422,24 @@ function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, mar
     set_font_matrix(ctx, old_matrix)
 end
 
-function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    pos += Point2f(marker_offset[1], -marker_offset[2])
-
-    if scale[1] != scale[2]
-        old_matrix = Cairo.get_matrix(ctx)
-        Cairo.scale(ctx, scale[1], scale[2])
-        Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
-        Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
-    else
-        Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
-    end
-
+function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
     Cairo.fill_preserve(ctx)
-
     Cairo.set_line_width(ctx, Float64(strokewidth))
-
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
-    scale[1] != scale[2] && Cairo.set_matrix(ctx, old_matrix)
     nothing
 end
 
-function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
-                     marker_offset, rotation)
-
-    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.rectangle(ctx, -0.5scale[1], -0.5scale[2], scale...)
+function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, strokecolor, strokewidth, mat)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.rectangle(ctx, -0.5, -0.5, 1, 1)
     Cairo.fill_preserve(ctx)
     Cairo.set_line_width(ctx, Float64(strokewidth))
     sc = to_color(strokecolor)
@@ -469,11 +447,12 @@ function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, s
     Cairo.stroke(ctx)
 end
 
-function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, beziermarker::BezierPath, pos, strokecolor, strokewidth, mat)
     Cairo.save(ctx)
-    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.scale(ctx, scale[1], -scale[2]) # flip y for cairo
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.scale(ctx, 1, -1) # maybe to transition BezierPath y to Cairo y?
     draw_path(ctx, beziermarker)
     Cairo.fill_preserve(ctx)
     sc = to_color(strokecolor)
@@ -517,9 +496,9 @@ function path_command(ctx, c::EllipticalArc)
 end
 
 
-function draw_marker(ctx, marker::Matrix{T}, pos, scale,
-        strokecolor #= unused =#, strokewidth #= unused =#,
-        marker_offset, rotation) where T<:Colorant
+function draw_marker(ctx, marker::Matrix{T}, pos,
+    strokecolor #= unused =#, strokewidth #= unused =#,
+    mat) where T<:Colorant
 
     # convert marker to Cairo compatible image data
     marker = permutedims(marker, (2,1))
@@ -527,13 +506,13 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
 
     w, h = size(marker)
 
-    Cairo.translate(ctx, pos[1] + marker_offset[1], pos[2] - marker_offset[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.scale(ctx, scale[1] / w, scale[2] / h)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.scale(ctx, 1.0 / w, 1.0 / h)
     Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
     Cairo.paint(ctx)
 end
-
 
 ################################################################################
 #                                     Text                                     #
