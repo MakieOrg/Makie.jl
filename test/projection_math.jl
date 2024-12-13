@@ -5,19 +5,31 @@ using Makie
         @test eltype(Makie.rotationmatrix_x(1)) == Float64
         @test eltype(Makie.rotationmatrix_x(1f0)) == Float32
     end
+
     @testset "Projection between spaces in 3D" begin
         # Set up an LScene and some points there
         sc = Scene(size = (650, 400), camera = cam3d!)
+        update_cam!(sc, Vec3d(0, 1, 0), Vec3d(0))
         corner_points_px = [Point3f(0, 0, 0), Point3f(650, 400, 0)]
 
         @testset "Clip space and pixel space equivalence" begin
             far_bottom_left_clip = Point3f(-1)
             near_top_right_clip = Point3f(1)
-            
+
             fbl_px = Makie.project(sc, :clip, :pixel, far_bottom_left_clip)
             ntr_px = Makie.project(sc, :clip, :pixel, near_top_right_clip)
-            @test Point2f(fbl_px) == Point2f(0, 0)
-            @test Point2f(ntr_px) == Point2f(650, 400)
+            @test fbl_px == Point3f(0, 0, 10_000)
+            @test ntr_px == Point3f(650, 400, -10_000)
+
+            ipv = inv(sc.camera.projectionview[])
+            div4(p) = p[Vec(1,2,3)] / p[4]
+            bottom_left_data = div4(ipv * Point4d(-1, -1, 0, 1))
+            top_right_data    = div4(ipv * Point4d(+1, +1, 0, 1))
+            @test Makie.project(sc, bottom_left_data) ≈ Point2f(0, 0)     atol = 1e-4
+            @test Makie.project(sc, top_right_data)    ≈ Point2f(650, 400) atol = 1e-4
+
+            @test Makie.project(sc, :pixel, :data, Vec2f(0, 0))     ≈ bottom_left_data
+            @test Makie.project(sc, :pixel, :data, Vec2f(650, 400)) ≈ top_right_data
         end
 
         @testset "No warnings in projections between spaces" begin
@@ -29,6 +41,7 @@ using Makie
                 end
             end
         end
+
     end
 end
 

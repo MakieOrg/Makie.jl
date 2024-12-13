@@ -169,33 +169,32 @@ Takes an input `Rect` `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::PointBased, x::Rect2{T}) where T
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2{float_type(T)}, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{float_type(T)}, x))
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
     return convert_arguments(P, coordinates(mesh))
 end
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:Point}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
 
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where {T}
-    f = decompose(LineFace{Int}, rect)
+    f = GeometryBasics.remove_duplicates(decompose(LineFace{Int}, rect))
     p = connect(decompose(Point3{float_type(T)}, rect), f)
     return convert_arguments(P, p)
 end
 
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
-    points = unique(decompose(PT, rect))
-    push!(points, PT(NaN)) # use to separate linesegments
+    points = decompose(PT, rect)
+    push!(points, PT(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -490,9 +489,8 @@ end
 ################################################################################
 
 function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 4, 3, 1]],)
+    return (points[[1, 2, 3, 4, 1]],)
 end
 
 ################################################################################
@@ -508,9 +506,8 @@ function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
+    return (points[[1, 2, 2, 3, 3, 4, 4, 1]],)
 end
 
 ################################################################################
@@ -545,28 +542,22 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
-    T_out = float_type(T)
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if !isnothing(n)
-            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
-        end
+    n = nothing
+    if !hasproperty(mesh, :normal)
+        n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
-    # If already correct eltypes for GL, we can pass the mesh through as is
-    if eltype(metafree(coordinates(mesh))) == Point{N, T_out} && eltype(faces(mesh)) == GLTriangleFace
-        return (mesh,)
-    else
-        # Else, we need to convert it!
-        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T_out}, facetype=GLTriangleFace),)
-    end
+
+    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
+
+    return (mesh,)
 end
 
 function convert_arguments(
         ::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
+    # TODO: clear faceviews
     return (meshes,)
 end
 
@@ -578,7 +569,7 @@ end
 # TODO GeometryBasics can't deal with this directly for Integer Points?
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector{<: AbstractPoint{2}}
+        xyz::AbstractVector{<: Point{2}}
     )
     ps = float_convert(xyz)
     m = GeometryBasics.mesh(ps; pointtype=eltype(ps), facetype=GLTriangleFace)
@@ -588,7 +579,10 @@ end
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.mesh(geom; pointtype=Point{N,float_type(T)}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
+    m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
+        geom; pointtype = Point{N, float_type(T)}, 
+        uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
+    ))
     return (m,)
 end
 
@@ -622,10 +616,10 @@ function convert_arguments(
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
         ns = Vec3f.(normals(vs, fs))
-        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = ns)
     else
         # TODO, we don't need to add normals here, but maybe nice for type stability?
-        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = fill(Vec3f(0, 0, 1), length(vs)))
     end
     return (m,)
 end
@@ -948,6 +942,11 @@ to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
 to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
+
+convert_attribute(o, ::key"marker_offset", ::key"scatter") = to_3d_offset(o)
+# Is it reasonable to go from offset -> (offset, 0, 0)?
+to_3d_offset(x::VecTypes) = to_ndim(Vec3f, x, 0)
+to_3d_offset(x::AbstractVector) = to_3d_offset.(x)
 
 
 ## UV Transforms
@@ -1945,7 +1944,7 @@ function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return normal_mesh(value)
+    return GeometryBasics.expand_faceviews(normal_mesh(value))
 end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)

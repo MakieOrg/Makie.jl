@@ -15,7 +15,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
         # grid with M,N grid points
-        faces = decompose(LineFace{GLIndex}, Tesselation(Rect2(0, 0, 1, 1), (M, N)))
+        faces = decompose(LineFace{GLIndex}, Tessellation(Rect2(0, 0, 1, 1), (M, N)))
         connect(points, faces)
     end
     linesegments!(plot, Attributes(plot), points_faces)
