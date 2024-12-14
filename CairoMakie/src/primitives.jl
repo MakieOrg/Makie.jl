@@ -367,8 +367,8 @@ function draw_atomic_scatter(
         # could be projected more accurately by projecting each point individually
         # and then building the shape.
 
-        # Can also skip if the x or y scale is ≈ 0
-        any(jl_mat * Vec2f(1) .≈ 0.0) && return
+        # Enclosed area of the marker must be at least 1 pixel?
+        (abs(det(jl_mat)) < 1) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         Cairo.save(ctx)
@@ -420,6 +420,7 @@ function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_
     cairo_font_face_destroy(cairoface)
 
     set_font_matrix(ctx, old_matrix)
+    return
 end
 
 function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
@@ -432,7 +433,7 @@ function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
-    nothing
+    return
 end
 
 function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, strokecolor, strokewidth, mat)
@@ -445,6 +446,7 @@ function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, strokeco
     sc = to_color(strokecolor)
     Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
     Cairo.stroke(ctx)
+    return
 end
 
 function draw_marker(ctx, beziermarker::BezierPath, pos, strokecolor, strokewidth, mat)
@@ -460,6 +462,7 @@ function draw_marker(ctx, beziermarker::BezierPath, pos, strokecolor, strokewidt
     Cairo.set_line_width(ctx, Float64(strokewidth))
     Cairo.stroke(ctx)
     Cairo.restore(ctx)
+    return
 end
 
 function draw_path(ctx, bp::BezierPath)
@@ -512,6 +515,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos,
     Cairo.scale(ctx, 1.0 / w, 1.0 / h)
     Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
     Cairo.paint(ctx)
+    return
 end
 
 ################################################################################
