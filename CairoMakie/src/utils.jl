@@ -193,7 +193,7 @@ end
 
 
 
-function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
+function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
     per_point_colors = colors isa AbstractArray
@@ -202,7 +202,7 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
     # Standard transform from input space to clip space
-    points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
+    points = Makie.apply_transform(transform_func(plot), positions, space)::AbstractVector{Point{N, FT}}
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
     clip_points = map(points) do point
