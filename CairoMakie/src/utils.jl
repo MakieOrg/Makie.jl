@@ -92,24 +92,6 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_scale(scene::Scene, space, s::Number, model = Mat4d(I))
-    project_scale(scene, space, Vec2d(s), model)
-end
-
-function project_scale(scene::Scene, space, s, model = Mat4d(I))
-    p4d = model * to_ndim(Vec4d, s, 0)
-    if is_data_space(space)
-        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
-        return p .* scene.camera.resolution[] .* 0.5
-    elseif is_pixel_space(space)
-        return p4d[Vec(1, 2)]
-    elseif is_relative_space(space)
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
-    else # clip
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
-    end
-end
-
 function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
     scale3 = to_ndim(Vec3d, scale, 1)
     model33 = model[Vec(1,2,3), Vec(1,2,3)]
