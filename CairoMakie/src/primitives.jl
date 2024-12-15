@@ -354,11 +354,10 @@ function draw_atomic_scatter(
         isnan(rotation) && return # matches GLMakie
         isnan(markersize) && return
 
-        ms = to_ndim(Vec3d, to_ndim(Vec2d, markersize, markersize), 1)
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
         o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Vec3d, mo, 0)
         proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
-            ms, rotation, size_model, billboard)
+            markersize, rotation, size_model, billboard)
 
         # mat and jl_mat are the same matrix, once as a CairoMatrix, once as a Mat2f
         # They both describe an approximate basis transformation matrix from
@@ -621,9 +620,8 @@ function draw_glyph_collection(
             return
         end
 
-        scale3 = scale isa Number ? Vec3f(scale, scale, 1) : to_ndim(Vec3f, scale, 1)
-
-        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale3, rotation, model33, id)
+        scale2 = scale isa Number ? Vec2d(scale, scale) : scale
+        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33, id)
 
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)

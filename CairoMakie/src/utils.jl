@@ -93,19 +93,19 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
 end
 
 function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
-    scale3 = to_ndim(Vec3d, scale, 1)
+    scale3 = to_ndim(Vec2d, scale, first(scale))
     model33 = model[Vec(1,2,3), Vec(1,2,3)]
     origin3 = to_ndim(Point3d, origin, 0)
     return project_marker(scene, markerspace, origin3, scale3, rotation, model33, Mat4d(I), billboard)
 end
-function project_marker(scene, markerspace, origin::Point3, scale3::Vec3, rotation, model33::Mat3, id = Mat4d(I), billboard = false)
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, id = Mat4d(I), billboard = false)
     # the CairoMatrix is found by transforming the right and up vector
     # of the marker into screen space and then subtracting the projected
     # origin. The resulting vectors give the directions in which the character
     # needs to be stretched in order to match the 3D projection
 
-    xvec = rotation * (model33 * (scale3[1] * Point3d(1, 0, 0)))
-    yvec = rotation * (model33 * (scale3[2] * Point3d(0, -1, 0)))
+    xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
+    yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
 
     proj_pos = _project_position(scene, markerspace, origin, id, true)
 
