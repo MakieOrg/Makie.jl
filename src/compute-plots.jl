@@ -468,3 +468,34 @@ end
 function ComputePipeline.update!(plot::ComputePlots; args...)
     return ComputePipeline.update!(plot.args[1]; args...)
 end
+
+
+get_colormapping(plot::Plot) = get_colormapping(plot.args[1])
+function get_colormapping(attr::ComputePipeline.ComputeGraph)
+    # None of these are needed by the computation
+    register_computation!(attr, Symbol[], [:cb_colormapping]) do args, changed, cached
+        N = ndims(attr[:color][])
+        Cin = typeof(attr[:color][])
+        Cout = typeof(attr[:scaled_color][])
+        if isnothing(cached)
+            cm = ColorMapping{N,Cin,Cout}(
+                map(_ -> attr[:color][], attr.onchange), # input color (typed)
+                map(_ -> attr[:alpha_colormap][], attr.onchange), # converted + alpha
+                map(_ -> attr[:raw_colormap][], attr.onchange), # _converted + alpha
+                map(_ -> attr[:colorscale][], attr.onchange), # typed as Function
+                map(_ -> attr[:color_mapping][], attr.onchange), # typed as Function
+                map(_ -> attr[:_colorrange][], attr.onchange), # unscaled but not automatic
+                map(_ -> attr[:lowclip][], attr.onchange), # automatic NOT replaced
+                map(_ -> attr[:highclip][], attr.onchange), # automatic NOT replaced
+                map(_ -> attr[:nan_color][], attr.onchange), # after color convert
+                map(_ -> colormapping_type(attr[:colormap][]), attr.onchange),
+                map(_ -> attr[:scaled_colorrange][], attr.onchange), # fully processed
+                map(_ -> attr[:scaled_color][], attr.onchange), # fully processed
+            )
+            return (cm,)
+        else
+            return (cached[],)
+        end
+    end
+    return attr[:cb_colormapping][]
+end
