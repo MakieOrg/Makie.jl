@@ -197,7 +197,9 @@ function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.V
 
     # Standard transform from input space to clip space
     # Note that this is type unstable, so there is a function barrier in place.
+    space = (plot.space[])::Symbol
     points = Makie.apply_transform(transform_func(plot), positions, space)::AbstractVector{Point{N, FT}}
+
     return project_transformed_line_points(scene, plot, points, colors, linewidths)
 end
 
