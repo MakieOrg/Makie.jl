@@ -744,7 +744,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-    
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -764,7 +764,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     elseif to_value(color) isa ShaderAbstractions.Sampler
         gl_attributes[:image] = Texture(lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)    
+        delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
@@ -1087,7 +1087,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.ShaderToy)
                 view=templates)
         end
         get!(uniforms, :ssao, Observable(false))
-        get!(uniforms, :transparency, Observable(true))
+        get!(uniforms, :transparency, Observable(false))
         robj = GLMakie.assemble_shader(uniforms)
         screen.cache2plot[robj.id] = plot
         return robj
