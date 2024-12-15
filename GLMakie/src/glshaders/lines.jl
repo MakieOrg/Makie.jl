@@ -39,7 +39,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_map           = nothing => Texture
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
-        pattern             = nothing
+        pattern             = nothing => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
@@ -78,7 +78,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
         shape               = RECTANGLE
-        pattern             = nothing
+        pattern             = nothing => Texture
         fxaa                = false
         indices             = 0 => to_index_buffer
         # TODO update boundingbox

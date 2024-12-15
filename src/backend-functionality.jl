@@ -32,6 +32,12 @@ function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
             sdf = Makie.linestyle_to_sdf(linestyle[])
             len = Float32(last(linestyle[]) - first(linestyle[]))
         end
-        return (sdf, len)
+        if isnothing(cached)
+            tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
+        else
+            tex = cached[1][]
+            ShaderAbstractions.update!(tex, sdf)
+        end
+        return (tex, len)
     end
 end
