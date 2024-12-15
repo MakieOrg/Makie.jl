@@ -342,7 +342,6 @@ function RenderObject(
         pre::Pre, post,
         context=current_context()
     ) where Pre
-
     switch_context!(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
@@ -401,7 +400,7 @@ function RenderObject(
     program = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
 
-    # remove all uniforms not occuring in shader
+    # remove all uniforms not occurring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
     special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
     for k in setdiff(keys(data), keys(program.nametype))

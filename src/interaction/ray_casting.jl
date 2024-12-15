@@ -207,6 +207,23 @@ function is_point_on_ray(p::Point3{T1}, ray::Ray{T2}) where {T1 <: Real, T2 <: R
 end
 
 
+function ray_plane_intersection(plane::Plane3{T1}, ray::Ray{T2}, epsilon = 1e-6) where {T1 <: Real, T2 <: Real}
+    # --- p ---   plane with normal (assumed normalized)
+    #     ↓
+    #     :  distance d along plane normal direction
+    #   ↖ :
+    #     r       ray with direction (assumed normalized)
+
+    d = distance(plane, ray.origin) # signed distance
+    cos_angle = dot(-plane.normal, ray.direction)
+
+    if abs(cos_angle) > epsilon
+        return ray.origin + d / cos_angle * ray.direction
+    else
+        return Point3f(NaN)
+    end
+end
+
 ################################################################################
 ### Ray casting (positions from ray-plot intersections)
 ################################################################################
@@ -287,7 +304,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
 
     pos = closest_point_on_line(f32_convert(plot, p0), f32_convert(plot, p1), ray)
-    
+
     if apply_transform
         return inv_f32_convert(plot, Point3d(pos))
     else
@@ -295,7 +312,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
         out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
-        return out 
+        return out
     end
 end
 
@@ -321,7 +338,7 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
-    positions = decompose(Point3, plot.mesh[])
+    positions = decompose(Point3d, plot.mesh[])
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
@@ -418,7 +435,7 @@ function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     tf = transform_func(plot)
 
     if tf === nothing
-        
+
         ray = transform(inv(plot.model[]), ray)
         pos = ray_rect_intersection(Rect3(min, max .- min), ray)
         if apply_transform
@@ -433,7 +450,7 @@ function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
         w = max - min
         ps = Point3d[min + (x, y, z) .* w for x in (0, 1) for y in (0, 1) for z in (0, 1)]
         fs = decompose(GLTriangleFace, QuadFace{Int}[
-            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1), 
+            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1),
             (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2)
         ])
 

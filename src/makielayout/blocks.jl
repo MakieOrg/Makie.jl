@@ -6,6 +6,9 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
+symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
+symbol_to_block(::Val) = nothing
+
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
@@ -78,18 +81,18 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         $structdef
 
         export $name
-
-        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
+        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
+        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
+            curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.attribute_default_expressions(::Type{$name})
+        function $(Makie).attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -99,7 +102,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        function Makie._attribute_docs(::Type{$(name)})
+        function $(Makie)._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -109,7 +112,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
         docstring_modified = make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
@@ -288,6 +291,29 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
+function MakieCore.InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
+    return MakieCore.InvalidAttributeError(BT, "block", attributes)
+end
+
+function MakieCore.attribute_names(::Type{T}) where {T <: Block}
+    attrs = _attribute_docs(T)
+    # Some blocks have keyword arguments that are not attributes.
+    # TODO: Refactor intiailize_block! to just not use kwargs?
+    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
+    T <: Legend && (attrs[:entrygroups] = "")
+    T <: Menu && (attrs[:default] = "")
+    T <: LScene && (attrs[:scenekw] = "")
+    return keys(attrs)
+end
+
+function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
+    badnames = setdiff(keys(kwdict), MakieCore.attribute_names(T))
+    if !isempty(badnames)
+        throw(MakieCore.InvalidAttributeError(T, badnames))
+    end
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -301,6 +327,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     end
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
+    _check_remaining_kwargs(T, non_attribute_kwargs)
 
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme

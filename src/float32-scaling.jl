@@ -107,7 +107,7 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
 
     onany(plot, f32c.scaling, model, update = true) do f32c, model
         # Neutral f32c can mean that data and model cancel each other and we 
-        # still have Float32 preicsion issues inbetween.
+        # still have Float32 preicsion issues in between.
 
         # works with rotation component as well, but drops signs on scale
         trans, scale = decompose_translation_scale_matrix(model)
@@ -122,7 +122,7 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
         elseif is_float_safe(scale, trans) && is_rot_free
             # model can be applied on GPU and we can pull f32c through the 
             # model matrix. This can be merged with the option below, but 
-            # keeping them separate improves compatability with transform_marker
+            # keeping them separate improves compatibility with transform_marker
             scale = Vec3d(model[1, 1], model[2, 2], model[3, 3]) # existing scale is missing signs
             f32c_obs[] = Makie.LinearScaling(
                 f32c.scale, ((f32c.scale .- 1) .* trans .+ f32c.offset) ./ scale
@@ -195,7 +195,7 @@ conversion applied to the given limits results in a range not representable
 with Float32 to high enough precision, the conversion will update. After the
 update update the converted range will be -1 .. 1.
 
-The function returns true if an update has occured. If `Nothing` is passed, the
+The function returns true if an update has occurred. If `Nothing` is passed, the
 function always returns false.
 """
 function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::VecTypes{3, Float64})

@@ -1,4 +1,5 @@
-precision mediump float;
+precision highp float;
+precision highp int;
 
 uniform mat4 projection;
 uniform mat4 view;
@@ -76,7 +77,7 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     }
 }
 
-// TODO: enable 
+// TODO: enable
 // vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
 vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
 // TODO: per element
@@ -87,12 +88,18 @@ void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = get_markersize() * to_vec3(get_position());
-    vec3 N = get_normals() / get_markersize(); // see issue #3702
+    vec3 N = get_normal() / get_markersize(); // see issue #3702
     rotate(get_rotation(), vertex_position, N);
-    vertex_position = to_vec3(get_offset()) + vertex_position;
-    vec4 position_world = model * vec4(vertex_position, 1);
+    vertex_position = get_f32c_scale() * vertex_position;
+    N = N / get_f32c_scale();
+    vec4 position_world;
+    if (get_transform_marker())
+        position_world = model * vec4(to_vec3(get_offset()) + vertex_position, 1);
+    else
+        position_world = model * to_vec4(to_vec3(get_offset())) + vec4(vertex_position, 0);
+
     process_clip_planes(position_world.xyz);
-    o_normal = N;
+    o_normal = normalize(N);
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     // direction to camera

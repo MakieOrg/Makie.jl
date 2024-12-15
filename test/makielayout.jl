@@ -476,6 +476,11 @@ end
     @test_nowarn axislegend()
 end
 
+@testset "Legend with empty element" begin
+    f = Figure()
+    @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
@@ -541,4 +546,11 @@ end
         empty!(fig)
     end
     @test isempty(limits.listeners)
+end
+
+@testset "Toggle" begin
+    f = Figure()
+    Toggle(f[1,1])
+    Toggle(f[2,1], orientation=:vertical)
+    Toggle(f[3,1], orientation=pi/4)
 end

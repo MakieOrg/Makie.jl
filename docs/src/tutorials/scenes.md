@@ -8,7 +8,7 @@ scene = Scene(;
     clear = true,
     # the camera struct of the scene.
     visible = true,
-    # ssao and light are explained in more detail in `Documetation/Lighting`
+    # ssao and light are explained in more detail in `Documentation/Lighting`
     ssao = Makie.SSAO(),
     # Creates lights from theme, which right now defaults to `
     # set_theme!(lightposition=:eyeposition, ambient=RGBf(0.5, 0.5, 0.5))`
@@ -282,7 +282,7 @@ function plot_part!(scene, parent, name::String)
     # center the mesh to its origin, if we have one
     if !isnothing(origin)
         centered = m.position .- origin
-        m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
+        m = GeometryBasics.mesh(m, position = centered)
         translate!(child, origin)
     else
         # if we don't have an origin, we need to correct for the parents translation

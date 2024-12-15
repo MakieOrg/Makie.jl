@@ -36,7 +36,7 @@ lights = [
 ]
 
 # Only LScene is supported right now,
-# since the other projections don't map to the pysical acurate Camera in RPR.
+# since the other projections don't map to the physical accurate Camera in RPR.
 ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
 # Note that since RPRMakie doesn't yet support text (this is being worked on!),
 # you can't show a 3d axis yet.
@@ -332,7 +332,7 @@ function plot_part!(scene, parent, name::String)
     origin = get(origins, name, nothing)
     if !isnothing(origin)
         centered = m.position .- origin
-        m = GeometryBasics.Mesh(meta(centered; normals=m.normals), faces(m))
+        m = GeometryBasics.mesh(m, position = centered)
         translate!(trans, origin)
     else
         translate!(trans, -ptrans.translation[])

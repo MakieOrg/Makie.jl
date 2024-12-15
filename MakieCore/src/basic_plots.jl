@@ -417,7 +417,7 @@ end
 
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 """
-@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh},) begin
+@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh,GeometryBasics.MetaMesh},) begin
     "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
@@ -469,8 +469,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
     "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
     rotation = Billboard()
-    "The offset of the marker from the given position in `markerspace` units. Default is centered around the position (markersize * -0.5)."
-    marker_offset = automatic
+    "The offset of the marker from the given position in `markerspace` units. An offset of 0 corresponds to a centered marker."
+    marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
@@ -522,6 +522,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
+    transform_marker = false
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...

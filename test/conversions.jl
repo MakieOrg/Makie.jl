@@ -243,12 +243,6 @@ end
     @test Colors.alpha.(cs) == Float32.(LinRange(0, 1, 10))
 end
 
-@testset "colors" begin
-    @test to_color(["red", "green"]) isa Vector{RGBAf}
-    @test to_color(["red", "green"]) == [to_color("red"), to_color("green")]
-end
-
-
 @testset "heatmap from three vectors" begin
     x = [2, 1, 2]
     y = [2, 3, 3]
@@ -459,7 +453,7 @@ end
         cs = zeros(10, 10)
         for (p, c) in zip(polys, polycols)
             # calculate center of poly, round to indices
-            i, j = clamp.(round.(Int, sum(first.(p.exterior)) / length(p.exterior)), 1, 10)
+            i, j = clamp.(round.(Int, sum(p.exterior) / length(p.exterior)), 1, 10)
             cs[i, j] = c
         end
 

@@ -5,8 +5,7 @@ function render(list::Tuple)
     return
 end
 
-function setup_clip_planes(robj)
-    N = to_value(get(robj.uniforms, :num_clip_planes, 0))
+function setup_clip_planes(N::Integer)
     for i in 0:min(7, N-1)
         glEnable(GL_CLIP_DISTANCE0 + UInt32(i))
     end
@@ -22,13 +21,13 @@ When rendering a specialised list of Renderables, we can do some optimizations
 function render(list::Vector{RenderObject{Pre}}) where Pre
     isempty(list) && return nothing
     first(list).prerenderfunction()
-    setup_clip_planes(first(list))
     vertexarray = first(list).vertexarray
     program = vertexarray.program
     glUseProgram(program.id)
     bind(vertexarray)
     for renderobject in list
         renderobject.visible || continue # skip invisible
+        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         # make sure we only bind new programs and vertexarray when it is actually
         # different from the previous one
         if renderobject.vertexarray != vertexarray
@@ -70,7 +69,7 @@ a lot of objects.
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if renderobject.visible
         renderobject.prerenderfunction()
-        setup_clip_planes(renderobject)
+        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         program = vertexarray.program
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
@@ -160,7 +159,7 @@ function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primi
 end
 
 """
-Renders `amount` instances of an not indexed geoemtry geometry
+Renders `amount` instances of an not indexed geometry geometry
 """
 function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)

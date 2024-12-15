@@ -1,5 +1,5 @@
 ################################################################################
-### Main Block Intialization
+### Main Block Initialization
 ################################################################################
 
 function initialize_block!(po::PolarAxis; palette=nothing)
