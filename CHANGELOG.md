@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 2024-12-12
+
+- Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)
+  - Removed `meta` infrastructure. Vertex attributes are now passed as kwargs.
+  - Simplified GeometryBasics Mesh type, improving compile times
+  - Added `FaceView` to allow different vertex attributes to use different indices for specifying data of the same vertex. This can be used to specify per-face data.
+  - Added `GeometryBasics.face_normals(points, faces)`
+  - Changed the order of `Rect2` coordinates to be counter-clockwise.
+  - Updated `Cylinder` to avoid visually rounding off the top and bottom.
+  - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
+  - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
+- Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
+- `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
+- Added `viewmode = :free` and translation, zoom, limit reset and cursor-focus interactions to Axis3. [4131](https://github.com/MakieOrg/Makie.jl/pull/4131)
+- Split `marker_offset` handling from marker centering and fix various bugs with it [#4594](https://github.com/MakieOrg/Makie.jl/pull/4594)
+- Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
+- Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
+- Fixed `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
+
 ## [0.21.18] - 2024-12-12
 
 - Allow for user defined recipes to be used in SpecApi [#4655](https://github.com/MakieOrg/Makie.jl/pull/4655).
@@ -26,10 +45,10 @@
 - Added conversions for 1 and 2 value paddings in `Label` and `tooltip` [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
 - Fixed `NaN` in scatter rotation and markersize breaking Cairo state [#4599](https://github.com/MakieOrg/Makie.jl/pull/4599)
 - Fixed heatmap cells being 0.5px/units too large in CairoMakie [4633](https://github.com/MakieOrg/Makie.jl/pull/4633)
-- Fix bounds error when recording video with WGLMakie [#4639](https://github.com/MakieOrg/Makie.jl/pull/4639).
-- Add `axis.(x/y)ticklabelspace = :max_auto`, to only grow tickspace but never shrink to reduce jitter [#4642](https://github.com/MakieOrg/Makie.jl/pull/4642).
+- Fixed bounds error when recording video with WGLMakie [#4639](https://github.com/MakieOrg/Makie.jl/pull/4639).
+- Added `axis.(x/y)ticklabelspace = :max_auto`, to only grow tickspace but never shrink to reduce jitter [#4642](https://github.com/MakieOrg/Makie.jl/pull/4642).
 - The error shown for invalid attributes will now also show suggestions for nearby attributes (if there are any) [#4394](https://github.com/MakieOrg/Makie.jl/pull/4394).
-- Add (x/y)axislinks to S.GridLayout and make sure limits don't reset when linking axes [#4643](https://github.com/MakieOrg/Makie.jl/pull/4643).
+- Added (x/y)axislinks to S.GridLayout and make sure limits don't reset when linking axes [#4643](https://github.com/MakieOrg/Makie.jl/pull/4643).
 
 ## [0.21.16] - 2024-11-06
 
@@ -687,7 +706,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
 [0.21.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...v0.21.17
 [0.21.16]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.15...v0.21.16

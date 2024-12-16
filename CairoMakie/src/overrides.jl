@@ -10,7 +10,7 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # dispatch on input arguments to poly to use smarter drawing methods than
     # meshes if possible.
     # however, since recipes exist, we can't explicitly handle all cases here
-    # so, we should also take a look at converted 
+    # so, we should also take a look at converted
     # First, we check whether a `draw_poly` method exists for the input arguments
     # before conversion:
     return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.args))...})
@@ -85,10 +85,14 @@ draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, sc
 draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_poly(scene, screen, poly, [bezierpath])
 
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2, BezierPath}})
-    model = poly.model[]
-    space = to_value(get(poly, :space, :data))
-    clipped_shapes = clip_shape.(Ref(poly.clip_planes[]), shapes, space, Ref(model))
-    projected_shapes = project_shape.(Ref(poly), space, clipped_shapes, Ref(model))
+    model = poly.model[]::Mat4d
+    space = to_value(get(poly, :space, :data))::Symbol
+    planes = poly.clip_planes[]::Vector{Plane3f}
+
+    projected_shapes = map(shapes) do shape
+        clipped = clip_shape(planes, shape, space, model)
+        return project_shape(poly, space, clipped, model)
+    end
 
     color = to_cairo_color(poly.color[], poly)
 
@@ -188,7 +192,7 @@ end
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
     space = to_value(get(poly, :space, :data))
-    projected_polys = map(polygons) do polygon 
+    projected_polys = map(polygons) do polygon
         project_multipolygon(poly, space, polygon, poly.clip_planes[], model)
     end
 

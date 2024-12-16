@@ -41,7 +41,6 @@ class Plot {
     plot_data = {};
 
     constructor(scene, data) {
-
         this.plot_data = data;
 
         connect_plot(scene, this);
@@ -51,7 +50,7 @@ class Plot {
         } else if (data.plot_type === "linesegments") {
             this.mesh = create_linesegments(scene, this.plot_data);
         } else if ("instance_attributes" in data) {
-            this.is_instanced = true
+            this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
         } else {
             this.mesh = create_mesh(scene, this.plot_data);
@@ -64,7 +63,6 @@ class Plot {
         this.mesh.frustumCulled = false;
         this.mesh.matrixAutoUpdate = false;
         this.mesh.renderOrder = data.zvalue;
-
 
         data.uniform_updater.on(([name, data]) => {
             this.update_uniform(name, data);
@@ -79,42 +77,55 @@ class Plot {
         // Give mesh a reference to the plot object.
         this.mesh.plot_object = this;
         this.mesh.visible = data.visible.value;
-        data.visible.on(v=> {
+        data.visible.on((v) => {
             this.mesh.visible = v;
         });
-
     }
-
+    dispose() {
+        delete plot_cache[this.uuid];
+        this.parent.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.mesh = undefined;
+        this.parent = undefined;
+        this.uuid = "";
+        this.name = "";
+        this.is_instanced = false;
+        this.geometry_needs_recreation = false;
+        this.plot_data = {};
+    }
     move_to(scene) {
         if (scene === this.parent) {
-            return
+            return;
         }
-        this.parent.remove(this.mesh)
-        connect_plot(scene, this)
-        scene.add(this.mesh)
-        this.parent = scene
-        return
+        this.parent.remove(this.mesh);
+        connect_plot(scene, this);
+        scene.add(this.mesh);
+        this.parent = scene;
+        return;
     }
 
     update(attributes) {
-        attributes.keys().forEach(key=> {
-            const value = attributes[key]
+        attributes.keys().forEach((key) => {
+            const value = attributes[key];
             if (value.type == "uniform") {
                 this.update_uniform(key, value.data);
             } else if (value.type === "geometry") {
-                this.update_geometries(value.data)
+                this.update_geometries(value.data);
             } else if (value.type === "faces") {
-                this.update_faces(value.data)
+                this.update_faces(value.data);
             }
-        })
+        });
         // For e.g. when we need to re-create the geometry
-        this.apply_updates()
+        this.apply_updates();
     }
 
     update_uniform(name, new_data) {
         const uniform = this.mesh.material.uniforms[name];
         if (!uniform) {
-            throw new Error(`Uniform ${name} doesn't exist in Plot: ${this.name}`)
+            throw new Error(
+                `Uniform ${name} doesn't exist in Plot: ${this.name}`
+            );
         }
         update_uniform(uniform, new_data);
     }
@@ -122,9 +133,11 @@ class Plot {
     update_geometry(name, new_data) {
         buffer = this.mesh.geometry.attributes[name];
         if (!buffer) {
-            throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`)
+            throw new Error(
+                `Buffer ${name} doesn't exist in Plot: ${this.name}`
+            );
         }
-        const old_length = buffer.count
+        const old_length = buffer.count;
         if (new_data.length <= old_length) {
             buffer.set(new_data.data);
             buffer.needsUpdate = true;
@@ -204,6 +217,7 @@ export function delete_plots(plot_uuids) {
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
     tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
     tex.minFilter = THREE[data.minFilter];
     tex.magFilter = THREE[data.magFilter];
     tex.anisotropy = data.anisotropy;
@@ -345,12 +359,13 @@ export function add_plot(scene, plot_data) {
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
     const rgbaArray = new rgbArray.constructor((length / 3) * 4);
+    const a = (rgbArray instanceof Uint8Array) ? 255 : 1.0;
 
     for (let i = 0, j = 0; i < length; i += 3, j += 4) {
         rgbaArray[j] = rgbArray[i]; // R
         rgbaArray[j + 1] = rgbArray[i + 1]; // G
         rgbaArray[j + 2] = rgbArray[i + 2]; // B
-        rgbaArray[j + 3] = 1.0; // A
+        rgbaArray[j + 3] = a; // A
     }
 
     return rgbaArray;
@@ -714,13 +729,7 @@ export function deserialize_scene(data, screen) {
 }
 
 export function delete_plot(plot) {
-    delete plot_cache[plot.plot_uuid];
-    const { parent } = plot;
-    if (parent) {
-        parent.remove(plot);
-    }
-    plot.geometry.dispose();
-    plot.material.dispose();
+    plot.plot_object.dispose()
 }
 
 export function delete_three_scene(scene) {
