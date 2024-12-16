@@ -26,7 +26,7 @@ function create_lines_data(plot, attr)
         uniforms[:highclip] = attr._highclip[]
         uniforms[:lowclip] = attr._lowclip[]
         uniforms[:nan_color] = attr.nan_color[]
-        color = attr.color_scaled[]
+        color = attr.scaled_color[]
     else
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)

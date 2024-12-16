@@ -4,17 +4,17 @@ function assemble_scatter_robj(attr)
     needs_mapping = !(attr._colorrange[] isa Nothing)
     dfield = attr.sdf_marker_shape[] === Cint(Makie.DISTANCEFIELD)
     atlas = attr.atlas_1024_32[]
-    distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : nothing
-    _color = needs_mapping ? nothing : attr.color[]
-    intensity = needs_mapping ? attr.color[] : false
+    distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
     color_norm = needs_mapping ? attr._colorrange[] : false
 
     uniform_dict = Dict(
         :pos => attr.positions_transformed_f32c[],
-        :color_map => needs_mapping ? attr.colormap[] : false,
-        :color => _color,
-        :intensity => intensity,
-        :color_norm => color_norm,
+        :colormap => needs_mapping ? Sampler(attr.colormap[]) : false,
+        :color => attr.color[],
+        :colorrange => Vec2f(color_norm),
+        :highclip => attr._highclip[],
+        :lowclip => attr._lowclip[],
+        :nan_color => attr.nan_color[],
 
         :rotation => attr.rotation[],
 
@@ -117,6 +117,9 @@ function create_shader(scene::Scene, plot::Scatter)
         :depth_shift,
         :atlas_1024_32,
         :markerspace,
+        :nan_color,
+        :_highclip,
+        :_lowclip,
     ]
 
     register_computation!(attr, inputs, [:wgl_renderobject]) do args, changed, last
