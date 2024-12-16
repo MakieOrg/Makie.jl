@@ -92,22 +92,42 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_scale(scene::Scene, space, s::Number, model = Mat4d(I))
-    project_scale(scene, space, Vec2d(s), model)
+function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
+    scale3 = to_ndim(Vec2d, scale, first(scale))
+    model33 = model[Vec(1,2,3), Vec(1,2,3)]
+    origin3 = to_ndim(Point3d, origin, 0)
+    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, Mat4d(I), billboard)
 end
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, id = Mat4d(I), billboard = false)
+    # the CairoMatrix is found by transforming the right and up vector
+    # of the marker into screen space and then subtracting the projected
+    # origin. The resulting vectors give the directions in which the character
+    # needs to be stretched in order to match the 3D projection
 
-function project_scale(scene::Scene, space, s, model = Mat4d(I))
-    p4d = model * to_ndim(Vec4d, s, 0)
-    if is_data_space(space)
-        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
-        return p .* scene.camera.resolution[] .* 0.5
-    elseif is_pixel_space(space)
-        return p4d[Vec(1, 2)]
-    elseif is_relative_space(space)
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
-    else # clip
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
+    xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
+    yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
+
+    proj_pos = _project_position(scene, markerspace, origin, id, true)
+
+    if billboard && Makie.is_data_space(markerspace)
+        p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
+        xproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, id, true)
+        yproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, id, true)
+    else
+        xproj = _project_position(scene, markerspace, origin + xvec, id, true)
+        yproj = _project_position(scene, markerspace, origin + yvec, id, true)
     end
+
+    xdiff = xproj - proj_pos
+    ydiff = yproj - proj_pos
+
+    mat = Cairo.CairoMatrix(
+        xdiff[1], xdiff[2],
+        ydiff[1], ydiff[2],
+        0, 0,
+    )
+
+    return proj_pos, mat, Mat2f(xdiff..., ydiff...)
 end
 
 function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
@@ -193,7 +213,18 @@ end
 
 
 
-function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
+function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+
+    # Standard transform from input space to clip space
+    # Note that this is type unstable, so there is a function barrier in place.
+    space = (plot.space[])::Symbol
+    points = Makie.apply_transform(transform_func(plot), positions, space)
+
+    return project_transformed_line_points(scene, plot, points, colors, linewidths)
+end
+
+function project_transformed_line_points(scene, plot::T, points::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+    # Note that here, `points` has already had `transform_func` applied.
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
     per_point_colors = colors isa AbstractArray
@@ -201,8 +232,6 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
 
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
-    # Standard transform from input space to clip space
-    points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
     clip_points = map(points) do point
