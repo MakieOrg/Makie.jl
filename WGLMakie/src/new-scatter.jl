@@ -95,42 +95,42 @@ function update_robjs!(robj, args, changed, gl_names)
     end
 end
 
+const SCATTER_INPUTS = [
+    :positions_transformed_f32c,
+    :color,
+    :colormap,
+    :_colorrange,
+    :rotation,
+    :quad_scale,
+    :quad_offset,
+    :sdf_uv,
+    :sdf_marker_shape,
+    :transparency,
+    :image,
+    :strokewidth,
+    :strokecolor,
+    :glowwidth,
+    :glowcolor,
+    :depth_shift,
+    :atlas_1024_32,
+    :markerspace,
+    :nan_color,
+    :_highclip,
+    :_lowclip,
+]
+
+function create_robj(args, changed, last)
+    robj = if isnothing(last)
+        robj = assemble_scatter_robj((; zip(SCATTER_INPUTS, args)...))
+    else
+        robj = last[1][]
+    end
+    return (robj,)
+end
+
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
-    inputs = [
-        :positions_transformed_f32c,
-        :color,
-        :colormap,
-        :_colorrange,
-        :rotation,
-        :quad_scale,
-        :quad_offset,
-        :sdf_uv,
-        :sdf_marker_shape,
-        :transparency,
-        :image,
-        :strokewidth,
-        :strokecolor,
-        :glowwidth,
-        :glowcolor,
-        :depth_shift,
-        :atlas_1024_32,
-        :markerspace,
-        :nan_color,
-        :_highclip,
-        :_lowclip,
-    ]
-
-    register_computation!(attr, inputs, [:wgl_renderobject]) do args, changed, last
-        robj = if isnothing(last)
-            robj = assemble_scatter_robj((; zip(inputs, args)...))
-        else
-            robj = last[1][]
-            update_robjs!(robj, args[3:end], changed[3:end], gl_names)
-        end
-        return (robj,)
-    end
-
+    register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject])
     return attr[:wgl_renderobject][]
 end
