@@ -884,7 +884,7 @@ end
 
     
     # and now, we plot!
-    fig, ax, srf = surface(xs, ys, zs; shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
+    fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
     ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
     translate!(ctr, 0, 0, 10)
     
