@@ -302,4 +302,15 @@ end
     ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
     @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
     @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    # Check that `reinterpret`ed arrays of points are handled correctly
+    # ref. https://github.com/MakieOrg/Makie.jl/issues/4661
+
+    data = reinterpret(Point2f, rand(Point2f, 10) .=> rand(Point2f, 10))
+
+    f, a, p = lines(data)
+    Makie.update_state_before_display!(f)
+    ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
+    @test length(ps) == length(data) # this should never clip!
+
 end
