@@ -28,6 +28,14 @@ function cairo_font_face_destroy(font_face)
     )
 end
 
+function cairo_transform(ctx, cairo_matrix)
+    ccall(
+        (:cairo_transform, Cairo.libcairo),
+        Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}),
+        ctx.ptr, Ref(cairo_matrix)
+    )
+end
+
 function set_ft_font(ctx, font)
 
     font_face = Base.@lock font.lock ccall(
