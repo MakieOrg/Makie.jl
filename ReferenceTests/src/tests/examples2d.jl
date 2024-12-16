@@ -151,6 +151,12 @@ end
     linesegments!(ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
+    poly!(ax, [Polygon(decompose(Point2f, Rect2f(150, 0, 100, 100))), Polygon(decompose(Point2f, Circle(Point2f(350, 200), 50)))],
+        color=:gray, strokewidth=10, strokecolor=:red)
+    # single objects
+    poly!(ax, Circle(Point2f(50, 350), 50), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Rect2f(0, 150, 100, 100), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Polygon(decompose(Point2f, Rect2f(150, 300, 100, 100))), color=:gray, strokewidth=10, strokecolor=:red)
     fig
 end
 
