@@ -309,7 +309,8 @@ end
 @reference_test "Axis3 fullbox" begin
     f = Figure(size = (400, 400))
     a = Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
-    mesh!(a, Sphere(Point3f(0), 1f0), color = :darkgray)
+    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
 
     for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
         kwargs = Dict(
@@ -322,7 +323,9 @@ end
         a = Axis3(
             f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
             xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
-        mesh!(a, Sphere(Point3f(0), 1f0), color = :darkgray)
+
+        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
     end
     f
 end
