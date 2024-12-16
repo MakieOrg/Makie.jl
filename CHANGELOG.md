@@ -22,6 +22,7 @@
 - Fixed `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
 - Fixed gaps in corners of `poly(Rect2(...))` stroke [#4664](https://github.com/MakieOrg/Makie.jl/pull/4664)
 - Fixed an issue where `reinterpret`ed arrays of line points were not handled correctly in CairoMakie [#4668](https://github.com/MakieOrg/Makie.jl/pull/4668).
+- Fixed various issues with `markerspace = :data`, `transform_marker = true` and `rotation` for scatter in CairoMakie (incorrect marker transformations, ignored transformations, Cairo state corruption) [#4663](https://github.com/MakieOrg/Makie.jl/pull/4663)
 
 ## [0.21.18] - 2024-12-12
 
