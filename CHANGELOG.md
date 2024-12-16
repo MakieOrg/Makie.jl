@@ -20,6 +20,7 @@
 - Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
+- empty! GLMakie screen instead of closing, fixing issue with resetted window position [#3881](https://github.com/MakieOrg/Makie.jl/pull/3881)
 
 ## [0.21.18] - 2024-12-12
 
