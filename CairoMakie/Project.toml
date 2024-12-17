@@ -24,7 +24,7 @@ FileIO = "1.1"
 FreeType = "3, 4.0"
 GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.22.0"
+Makie = "=0.22.0, 0.21"
 PrecompileTools = "1.0"
 julia = "1.3"
 
