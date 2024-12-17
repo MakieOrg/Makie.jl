@@ -26,6 +26,7 @@
 - Fixed gaps in corners of `poly(Rect2(...))` stroke [#4664](https://github.com/MakieOrg/Makie.jl/pull/4664)
 - Fixed an issue where `reinterpret`ed arrays of line points were not handled correctly in CairoMakie [#4668](https://github.com/MakieOrg/Makie.jl/pull/4668).
 - Fixed various issues with `markerspace = :data`, `transform_marker = true` and `rotation` for scatter in CairoMakie (incorrect marker transformations, ignored transformations, Cairo state corruption) [#4663](https://github.com/MakieOrg/Makie.jl/pull/4663)
+- It is now possible to change the title of a `GLFW.Window` with `GLMakie.set_screen_title!(screen::Screen, title::String)` [#4677](https://github.com/MakieOrg/Makie.jl/pull/4677).
 
 ## [0.21.18] - 2024-12-12
 
