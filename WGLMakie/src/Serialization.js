@@ -64,9 +64,15 @@ class Plot {
         this.mesh.matrixAutoUpdate = false;
         this.mesh.renderOrder = data.zvalue;
 
-        data.uniform_updater.on(([name, data]) => {
-            this.update_uniform(name, data);
-        });
+        if (data.uniform_updater) {
+            data.uniform_updater.on(([name, data]) => {
+                this.update_uniform(name, data);
+            });
+        } else if (data.updater) {
+            data.updater.on((data) => {
+                this.update(data);
+            });
+        }
 
         if (
             !(data.plot_type === "lines" || data.plot_type === "linesegments")
@@ -105,15 +111,20 @@ class Plot {
         return;
     }
 
-    update(attributes) {
-        attributes.keys().forEach((key) => {
-            const value = attributes[key];
-            if (value.type == "uniform") {
-                this.update_uniform(key, value.data);
-            } else if (value.type === "geometry") {
-                this.update_geometries(value.data);
-            } else if (value.type === "faces") {
-                this.update_faces(value.data);
+    update(data) {
+        const {uniforms} = this.mesh.material;
+        const {attributes} = this.mesh.geometry
+        console.log(data);
+        data.forEach(([key, value]) => {
+            if (key in uniforms) {
+                this.update_uniform(key, value);
+            } else if (key in attributes) {
+                console.log(attributes)
+                this.update_geometry(key, value);
+            } else if (key === "faces") {
+                this.update_faces(value);
+            } else if (key === "visible") {
+                this.mesh.visible = value;
             }
         });
         // For e.g. when we need to re-create the geometry
@@ -131,26 +142,75 @@ class Plot {
     }
 
     update_geometry(name, new_data) {
-        buffer = this.mesh.geometry.attributes[name];
+        const buffer = this.mesh.geometry.attributes[name];
         if (!buffer) {
             throw new Error(
                 `Buffer ${name} doesn't exist in Plot: ${this.name}`
             );
         }
-        const old_length = buffer.count;
+        const old_length = buffer.array.length;
         if (new_data.length <= old_length) {
-            buffer.set(new_data.data);
+            buffer.set(new_data);
             buffer.needsUpdate = true;
         } else {
             // if we have a larger size we need resizing + recreation of the buffer geometry
-            buffer.to_update = new_data.data;
+            console.log(`updating ${name} with new data: ${new_data}`)
+            buffer.to_update = new_data;
             this.geometry_needs_recreation = true;
         }
+        if (this.is_instanced) {
+            this.mesh.geometry.instanceCount = new_data.length / buffer.itemSize;
+        }
+    }
+
+    apply_updates() {
+        console.log(`needs recreation: ${this.geometry_needs_recreation}`)
+        if (this.geometry_needs_recreation) {
+            if (this.is_instanced) {
+                recreate_instanced_geometry(this.mesh);
+            } else {
+                recreate_geometry(this.mesh);
+            }
+        }
+        this.geometry_needs_recreation = false;
     }
 
     update_faces(face_data) {
         this.mesh.geometry.setIndex(new THREE.BufferAttribute(face_data, 1));
     }
+}
+
+
+function recreate_instanced_geometry(mesh) {
+    const buffer_geometry = new THREE.InstancedBufferGeometry();
+    const vertexarrays = {};
+    const instance_attributes = {};
+    const n_instances = mesh.geometry.instanceCount;
+    const faces = [...mesh.geometry.index.array];
+    Object.keys(mesh.geometry.attributes).forEach((name) => {
+        const buffer = mesh.geometry.attributes[name];
+        // really dont know why copying an array is considered rocket science in JS
+        const copy = buffer.to_update
+            ? buffer.to_update
+            : buffer.array.map((x) => x);
+        if (buffer.isInstancedBufferAttribute) {
+            instance_attributes[name] = {
+                flat: copy,
+                type_length: buffer.itemSize,
+            };
+        } else {
+            vertexarrays[name] = {
+                flat: copy,
+                type_length: buffer.itemSize,
+            };
+        }
+    });
+    attach_geometry(buffer_geometry, vertexarrays, faces);
+    attach_instanced_geometry(buffer_geometry, instance_attributes);
+    mesh.geometry.dispose();
+    mesh.geometry = buffer_geometry;
+    mesh.geometry.instanceCount = n_instances;
+    mesh.needsUpdate = true;
 }
 
 // global scene cache to look them up for dynamic operations in Makie
@@ -350,7 +410,6 @@ export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const p = new Plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
-    console.log(p.mesh);
     scene.add(p.mesh);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
@@ -511,35 +570,7 @@ function recreate_geometry(mesh, vertexarrays, faces) {
     mesh.needsUpdate = true;
 }
 
-function recreate_instanced_geometry(mesh) {
-    const buffer_geometry = new THREE.InstancedBufferGeometry();
-    const vertexarrays = {};
-    const instance_attributes = {};
-    const faces = [...mesh.geometry.index.array];
-    Object.keys(mesh.geometry.attributes).forEach((name) => {
-        const buffer = mesh.geometry.attributes[name];
-        // really dont know why copying an array is considered rocket science in JS
-        const copy = buffer.to_update
-            ? buffer.to_update
-            : buffer.array.map((x) => x);
-        if (buffer.isInstancedBufferAttribute) {
-            instance_attributes[name] = {
-                flat: copy,
-                type_length: buffer.itemSize,
-            };
-        } else {
-            vertexarrays[name] = {
-                flat: copy,
-                type_length: buffer.itemSize,
-            };
-        }
-    });
-    attach_geometry(buffer_geometry, vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, instance_attributes);
-    mesh.geometry.dispose();
-    mesh.geometry = buffer_geometry;
-    mesh.needsUpdate = true;
-}
+
 
 function create_material(scene, program) {
     const is_volume = "volumedata" in program.uniforms;

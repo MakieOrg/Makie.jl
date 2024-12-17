@@ -197,7 +197,7 @@ end
 function update!(attr::ComputeGraph; kwargs...)
     for (key, value) in pairs(kwargs)
         if haskey(attr.inputs, key)
-            setproperty!(attr, key, value)
+            _setproperty!(attr, key, value)
         else
             throw(Makie.AttributeNameError(key))
         end
@@ -239,9 +239,9 @@ end
 
 function set_result!(edge::TypedEdge, result, i, value)
     if isnothing(value)
-        foreach(x -> x.dirty = false, edge.output_nodes)
+        edge.output_nodes[i].dirty = false
     else
-        foreach(x -> x.dirty = true, edge.output_nodes)
+        edge.output_nodes[i].dirty = true
         edge.outputs[i][] = value
     end
     if !isempty(result)

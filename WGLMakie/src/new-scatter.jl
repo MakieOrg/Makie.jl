@@ -23,7 +23,7 @@ function assemble_scatter_robj(attr)
         :quad_offset => attr.quad_offset[],
         :uv_offset_width => attr.sdf_uv[],
         :shape_type => attr.sdf_marker_shape[],
-        :transparency => attr.transparency[],
+        :transparency => Observable(attr.transparency[]),
 
         :distancefield => distancefield,
 
@@ -47,7 +47,7 @@ function assemble_scatter_robj(attr)
         :glowcolor => attr.glowcolor[],
         :billboard => attr.rotation[] isa Billboard,
         :depth_shift => attr.depth_shift[],
-        :transform_marker => false
+        :transform_marker => false,
     )
 
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
@@ -73,6 +73,8 @@ function assemble_scatter_robj(attr)
         lens = [k => length(v) for (k, v) in per_instance]
         error("Not all have the same length: $(lens)")
     end
+
+
     return InstancedProgram(
         WebGL(),
         lasset("sprites.vert"),
@@ -81,18 +83,6 @@ function assemble_scatter_robj(attr)
         VertexArray(; per_instance...),
         uniform_dict,
     )
-end
-
-function update_robjs!(robj, args, changed, gl_names)
-    for (name, arg, has_changed) in zip(gl_names, args, changed)
-        if has_changed
-            if haskey(robj.uniforms, name)
-                robj.uniforms[name] = arg[]
-            elseif haskey(robj.vertexarray.buffers, string(name))
-                update!(robj.vertexarray.buffers[string(name)], arg[])
-            end
-        end
-    end
 end
 
 const SCATTER_INPUTS = [
@@ -117,20 +107,56 @@ const SCATTER_INPUTS = [
     :nan_color,
     :_highclip,
     :_lowclip,
+    :visible
 ]
 
 function create_robj(args, changed, last)
-    robj = if isnothing(last)
-        robj = assemble_scatter_robj((; zip(SCATTER_INPUTS, args)...))
+    inputs = SCATTER_INPUTS
+    r = Dict(:quad_scale => :markersize, :positions_transformed_f32c => :pos)
+    if isnothing(last)
+        program = assemble_scatter_robj((; zip(inputs, args)...))
+        return (program, Observable([]))
     else
-        robj = last[1][]
+        updater = last[2][]
+        new_values = [
+            [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for i in 1:length(inputs) if changed[i]
+        ]
+        if !isempty(new_values)
+            updater[] = new_values
+        end
+        return nothing
     end
-    return (robj,)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
-    register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject])
+    register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
+    on(attr.onchange) do _
+        attr[:wgl_renderobject][]
+        return nothing
+    end
     return attr[:wgl_renderobject][]
+end
+
+
+function serialize_three(scene::Scene, plot::Scatter)
+    program = create_shader(scene, plot)
+    mesh = serialize_three(plot, program)
+    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:visible] = Observable(plot.visible[])
+    mesh[:uuid] = js_uuid(plot)
+    mesh[:updater] = plot.args[1][:wgl_update_obs][]
+
+    mesh[:overdraw] = Observable(plot.overdraw[])
+    mesh[:transparency] = Observable(plot.transparency[])
+
+    mesh[:cam_space] = plot.markerspace[]
+    mesh[:space] = Observable(plot.space[])
+    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
+    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
+    mesh[:markerspace] = Observable(plot.markerspace[])
+
+    delete!(mesh, :uniform_updater)
+    return mesh
 end

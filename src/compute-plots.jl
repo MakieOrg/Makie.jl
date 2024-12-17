@@ -125,14 +125,14 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         inputs = map(enumerate(args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
+            if input_args[i] isa Observable
+                on(input_args[i]) do arg
+                    setproperty!(attr, Symbol(:arg, i), arg)
+                    return
+                end
+            end
             return sym
         end
-        onany(input_args...) do args...
-            kw = [Symbol(:arg, i) => args[i] for i in 1:length(args)]
-            update!(attr; kw...)
-            return
-        end
-
     else
         error("args should be either all Computed or all other things. $input_args")
     end
@@ -183,13 +183,13 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             [:positions_transformed_f32c, :model_f32c]
         ) do (positions, model, f32c), changed, last
             # TODO: this should be done in one nice function
-
             # This is simplified, skipping what's commented out
 
             # trans, scale = decompose_translation_scale_matrix(model)
             # is_rot_free = is_translation_scale_matrix(model)
-            if is_identity_transform(f32c) # && is_float_safe(scale, trans)
-                return (positions[], Mat4f(model[]))
+            if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
+                m = changed[2] ? Mat4f(model[]) : nothing
+                return (el32convert(positions[]), m)
             # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
                 # edge case: positions not float safe, model not float safe but result in float safe range
                 # (this means positions -> world not float safe, but appears float safe)
@@ -205,7 +205,8 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
                     p4d = model[] * p4d
                     output[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)])
                 end
-                return (output, Mat4f(I))
+                m = isnothing(last) ? Mat4f(I) : nothing
+                return (output, m)
             end
         end
 
@@ -265,7 +266,10 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
 
         if value isa Observable
             on(value) do new_val
-                setproperty!(attr, k, new_val)
+                old = getproperty(attr, k)[]
+                if old != new_val
+                    setproperty!(attr, k, new_val)
+                end
             end
         end
 
@@ -313,8 +317,12 @@ function computed_plot!(parent, plot::T) where {T}
     scene = parent_scene(parent)
     add_theme!(plot, scene)
     plot.parent = parent
+    attr = plot.args[1]
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
-        on(f32c -> update!(plot.args[1], f32c = f32c), plot, scene.float32convert.scaling)
+        on(plot, scene.float32convert.scaling) do f32c
+            println("kilo: $(attr.f32c[])")
+            attr.f32c = f32c
+        end
     end
 
     # from connect_plot!()
@@ -337,7 +345,7 @@ function computed_plot!(parent, plot::T) where {T}
 
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
-    on(model -> update!(plot.args[1], model = model), plot, plot.transformation.model, update = true)
+    on(model -> attr.model = model, plot, plot.transformation.model, update = true)
     on(tf -> update!(plot.args[1], transform_func = tf), plot, plot.transformation.transform_func, update = true)
 
     push!(parent, plot)

@@ -176,7 +176,7 @@ is called. Note that resolution must be smaller than `1 / eps(Float32)`.
 """
 function Float32Convert(resolution = 1e4)
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
-    return Float32Convert(Observable(scaling), resolution)
+    return Float32Convert(Observable(scaling; ignore_equal_values=true), resolution)
 end
 
 # transformed space limits

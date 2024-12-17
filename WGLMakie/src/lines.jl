@@ -1,3 +1,67 @@
+function nan_free_points_indices((inpoints,), changed, last)
+    last_indices = isnothing(last) ? UInt32[] : last[2][]
+    points = inpoints[]
+    isempty(points) && return (points, last_indices)
+    indices = UInt32[]
+    sizehint!(indices, length(points) + 2)
+    was_nan = true
+    loop_start = -1
+    for (i, p) in pairs(points)
+        if isnan(p)
+            # line section end (last was value, now nan)
+            if !was_nan
+                # does previous point close loop?
+                # loop started && 3+ segments && start == end
+                if loop_start != -1 &&
+                    (loop_start + 2 < length(indices)) &&
+                    (points[indices[loop_start]] ≈ points[i - 1])
+
+                    #               start -v             v- end
+                    # adjust from       j  j j+1 .. i-2 i-1
+                    # to           nan i-2 j j+1 .. i-2 i-1 j+1 nan
+                    # where start == end thus j == i-1
+                    # if nan is present in a quartet of vertices
+                    # (nan, i-2, j, i+1) the segment (i-2, j) will not
+                    # be drawn (which we want as that segment would overlap)
+
+                    # tweak duplicated vertices to be loop vertices
+                    push!(indices, indices[loop_start + 1])
+                    indices[loop_start - 1] = i - 2
+                    # nan is inserted at bottom (and not necessary for start/end)
+                else # no loop, duplicate end point
+                    push!(indices, i - 1)
+                end
+            end
+            loop_start = -1
+            was_nan = true
+        else
+            if was_nan
+                # line section start - duplicate point
+                push!(indices, i)
+                # first point in a potential loop
+                loop_start = length(indices) + 1
+            end
+            was_nan = false
+        end
+        # push normal line point (including nan)
+        push!(indices, i)
+    end
+    # Finish line (insert duplicate end point or close loop)
+    if !was_nan
+        if loop_start != -1 &&
+            (loop_start + 2 < length(indices)) &&
+            (points[indices[loop_start]] ≈ points[end])
+            push!(indices, indices[loop_start + 1])
+            indices[loop_start - 1] = prevind(points, lastindex(points))
+        else
+            push!(indices, lastindex(points))
+        end
+    end
+    indices_changed = indices != last_indices
+    points_changed = changed[1] && indices_changed
+    return (points_changed ? points[indices] : nothing, indices == last_indices ? nothing : indices)
+end
+
 function create_lines_data(islines, attr)
 
     uniforms = Dict(
@@ -33,15 +97,15 @@ function create_lines_data(islines, attr)
         end
         uniforms[:colormap] = false
         uniforms[:colorrange] = false
-        color = attr.color[]
+        color = attr.scaled_color[]
     end
-    points = attr.positions_transformed_f32c[]
-    positions = serialize_buffer_attribute(points)
+
+    to_buff_obs(x) = Observable(serialize_buffer_attribute(x))
 
     attributes = Dict{Symbol,Any}(
-        :linepoint => Observable(positions),
-        :lineindex => Observable(serialize_buffer_attribute(collect(UInt32(1):UInt32(length(points))))),
-        :lastlen => Observable(serialize_buffer_attribute(zeros(Float32, length(points))))
+        :linepoint => to_buff_obs(attr.linepoint[]),
+        :lineindex => to_buff_obs(attr.lineindex[]),
+        :lastlen => to_buff_obs(zeros(Float32, length(attr.linepoint[]))),
     )
 
     for (name, vals) in [:color => color, :linewidth => attr.linewidth[]]
@@ -70,15 +134,16 @@ function create_lines_data(islines, attr)
         :zvalue => 0,
     )
 end
+
 const LINE_INPUTS = [
     # relevant to compile time decisions
     :space,
-    :color,
     :scaled_color,
     :alpha_colormap,
     :scaled_colorrange,
     # Auto
-    :positions_transformed_f32c,
+    :linepoint,
+    :lineindex,
     :linecap,
     :linestyle,
     :gl_pattern,
@@ -99,7 +164,14 @@ function create_lines_robj(islines, args, changed, last)
     if islines
         push!(inputs, :joinstyle, :gl_miter_limit)
     end
-    return (create_lines_data(islines, (; zip(inputs, args)...)),)
+    if isnothing(last)
+        return (create_lines_data(islines, (; zip(inputs, args)...)),)
+    else
+        indices = [i for i in 1:length(inputs) if changed[i]]
+        new_values = Pair{Symbol, Any}.(inputs[indices], getindex.(args[indices]))
+        @show new_values
+        return nothing
+    end
 end
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
@@ -115,11 +187,19 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
     end
+    register_computation!(
+        nan_free_points_indices, attr, [:positions_transformed_f32c], [:linepoint, :lineindex]
+    )
 
     register_computation!((args...)-> create_lines_robj(islines, args...), attr, inputs, [:wgl_renderobject])
+
     dict = attr[:wgl_renderobject][]
     dict[:uuid] = js_uuid(plot)
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:uniform_updater] = uniform_updater(plot, dict[:uniforms])
+    on(attr.onchange) do _
+        attr[:wgl_renderobject][]
+        return
+    end
     return dict
 end

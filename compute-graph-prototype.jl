@@ -1,4 +1,4 @@
-using ComputePipeline, Chairmarks
+using Chairmarks
 using Makie
 
 using GLMakie
