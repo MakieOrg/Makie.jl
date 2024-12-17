@@ -300,8 +300,15 @@ function _colormapping(
         return Vec2f(apply_scale(scale, range))
     end
 
-    color_scaled = lift(color_tight, colorscale; ignore_equal_values=true) do color, scale
-        return el32convert(apply_scale(scale, color))
+    color_scaled = Observable(el32convert(apply_scale(colorscale[], color_tight[])))
+    onany(color_tight, colorscale) do color, scale
+        scaled = el32convert(apply_scale(scale, color))
+        # If they're exactly the same we assume the user called notify
+        # So we trigger an update...
+        # If they're `== && !==`, we assume it's staying the same
+        if color_scaled[] === scaled || color_scaled[] != scaled
+            color_scaled[] = scaled
+        end
     end
     CT = ColorMapping{N,V,typeof(color_scaled[])}
 
@@ -335,11 +342,9 @@ function ColorMapping(
     color_tight = Observable{T}(color)
     # We need to copy, to check for changes
     # Since users may re-use the array when pushing updates
-    last_colors = copy(color)
     on(colors_obs) do new_colors
-        if new_colors !== last_colors
+        if color_tight[] === new_colors || color_tight[] != new_colors
             color_tight[] = new_colors
-            last_colors = copy(new_colors)
         end
     end
      # color_tight.ignore_equal_values = true

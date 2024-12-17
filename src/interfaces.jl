@@ -156,7 +156,10 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
             for (obs, arg) in zip(new_obs, expanded)
                 obs.val = arg
             end
-            foreach(notify, new_obs)
+            # It should be enough to trigger the first observable since 
+            # this will go into `map(convert_arguments, new_obs...)` 
+            # Without this, we'll get 3 updates for `notify(data)` in `heatmap(data)`
+            notify(new_obs[1])
             return
         end
         append!(deregister, fs)
