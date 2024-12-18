@@ -42,7 +42,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     """
     Formats the numeric values of the contour levels to strings.
     """
-    labelformatter = contour_label_formatter
+    labelformatter = Makie.automatic
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
     MakieCore.mixin_colormap_attributes()...
@@ -112,6 +112,37 @@ function to_levels(n::Integer, cnorm)
     dz = (zmax - zmin) / (n + 1)
     range(zmin + dz; step = dz, length = n)
 end
+
+function to_levels(ticks::Makie.AbstractTicks, cnorm)
+    zmin, zmax = cnorm
+    return Makie.get_tickvalues(ticks, zmin, zmax)
+end
+
+
+"""
+    format_contour_label(labels, levels, level)
+
+Format the contour label for the level `level` and return a string or `Makie.RichText`.
+
+## Arguments
+- `labels`: the value provided to `plot.labelformatter`.
+- `levels`: all levels determined by the contour plot.  Useful if one wants to synchronize label lengths.
+- `level`: the level for which the label is desired.
+"""
+format_contour_label(labels, levels, level) = labels(level)
+format_contour_label(::Makie.Automatic, levels, level) = contour_label_formatter(level)
+function format_contour_label(labels::AbstractVector, levels, level)
+    if length(labels) != length(levels)
+        @warn("""
+            `length(labels) != length(levels) ($(length(labels)) != $(length(levels))).  
+            Ensure the array you passed to `labels` in `contour` is the same length as the array you passed to `levels`.
+            Falling back to the default contour label formatter.
+            """)
+        return contour_label_formatter(level)
+    end
+    return labels[findfirst(==(level), levels)]
+end
+
 
 conversion_trait(::Type{<: Contour3d}) = VertexGrid()
 conversion_trait(::Type{<: Contour}) = VertexGrid()
@@ -286,7 +317,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             end
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, rot_from_vert)
-            push!(lbl, labelformatter(lev))
+            push!(lbl, format_contour_label(labelformatter, plot.levels[], lev))
             p = p2  # try to position label around center
             isnan(p) && (p = p1)
             isnan(p) && (p = p3)
