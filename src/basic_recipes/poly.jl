@@ -146,7 +146,7 @@ function to_lines(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)

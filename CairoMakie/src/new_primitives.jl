@@ -135,12 +135,15 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
            p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
 
+    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+    transform_marker, model, markerspace, space, clip_planes = args
+
     attr = p.args[1]
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker[]),)
     end
 
-    if !haskey(attr.outputs, :cairo_indices) # TODO: Why?
+    if !haskey(attr.outputs, :cairo_indices) # TODO: Why is this necessary? Is it still necessary?
         Makie.register_computation!(attr,
             [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
             [:cairo_indices]
@@ -160,33 +163,28 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     #     return (pos,)
     # end
     indices = p.cairo_indices[]
-    positions = project_position(
-        scene, p.space[], p.positions_transformed_f32c[],
-        indices, p.model_f32c[]
-    )
+    transform = Makie.clip_to_space(scene.camera, p.markerspace[]) *
+        Makie.space_to_clip(scene.camera, p.space[]) * p.model_f32c[]
+    positions = p.positions_transformed_f32c[]
     isempty(positions) && return
-
-    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-        transform_marker, model, markerspace, space, clip_planes = args
 
     marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
-    size_model = transform_marker ? model : Mat4d(I)
+    size_model = transform_marker ? model[Vec(1,2,3), Vec(1,2,3)] : Mat3d(I)
 
     font = p.font[]
     colors = cairo_colors(p)
-    space = p.space[]
+    billboard = p.rotation[] isa Billboard
 
     return draw_atomic_scatter(
-        scene, ctx, positions, indices, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, size_model, font, markerspace
+        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, size_model, font, markerspace, billboard
         )
 end
 
 function draw_atomic_scatter(
-        scene, ctx, positions, indices, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, size_model, font,
-        markerspace
+        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        marker, marker_offset, rotation, size_model, font, markerspace, billboard
     )
 
     Makie.broadcast_foreach_index(positions, indices, colors, markersize, strokecolor,
@@ -195,22 +193,29 @@ function draw_atomic_scatter(
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
+        isnan(markersize) && return
 
-        scale = project_scale(scene, markerspace, markersize, size_model)
-        offset = project_scale(scene, markerspace, mo, size_model)
+        p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1) # to markerspace
+        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ size_model * to_ndim(Vec3d, mo, 0)
+        proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
+            markersize, rotation, size_model, billboard) # to pixel space
+
+        # mat and jl_mat are the same matrix, once as a CairoMatrix, once as a Mat2f
+        # They both describe an approximate basis transformation matrix from
+        # marker space to pixel space with scaling appropriate to markersize.
+        # Markers that can be drawn from points/vertices of shape (e.g. Rect)
+        # could be projected more accurately by projecting each point individually
+        # and then building the shape.
+
+        # Enclosed area of the marker must be at least 1 pixel?
+        (abs(det(jl_mat)) < 1) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-
         Cairo.save(ctx)
-        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
-        # At least it stops drawing any marker afterwards
-        # TODO, maybe there's something wrong somewhere else?
-        if !(isnan(scale) || norm(scale) ≈ 0.0)
-            if m isa Char
-                draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
-            else
-                draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
-            end
+        if m isa Char
+            draw_marker(ctx, m, best_font(m, font), proj_pos, strokecolor, strokewidth, jl_mat, mat)
+        else
+            draw_marker(ctx, m, proj_pos, strokecolor, strokewidth, mat)
         end
         Cairo.restore(ctx)
     end

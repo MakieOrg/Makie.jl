@@ -95,12 +95,20 @@ function initialize_block!(ax::Axis3)
     add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
     add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
 
-    xgridline1, xgridline2, xframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.xreversed, ax.yreversed, ax.zreversed)
-    ygridline1, ygridline2, yframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.xreversed, ax.yreversed, ax.zreversed)
-    zgridline1, zgridline2, zframelines =
-        add_gridlines_and_frames!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.xreversed, ax.yreversed, ax.zreversed)
+    # This exists as a bandaid for WGLMakie. See add_gridlines_and_frames!()
+    overlay = Scene(
+        blockscene, scenearea, clear = false, backgroundcolor = :transparent,
+        camera = scene.camera, transformation = scene.transformation)
+
+    xgridline1, xgridline2, xframelines = add_gridlines_and_frames!(
+        blockscene, scene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        ax.xreversed, ax.yreversed, ax.zreversed)
+    ygridline1, ygridline2, yframelines = add_gridlines_and_frames!(
+        blockscene, scene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        ax.xreversed, ax.yreversed, ax.zreversed)
+    zgridline1, zgridline2, zframelines = add_gridlines_and_frames!(
+        blockscene, scene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        ax.xreversed, ax.yreversed, ax.zreversed)
 
     xticks, xticklabels, xlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
@@ -392,7 +400,7 @@ function dim2(dim)
     end
 end
 
-function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
+function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -455,16 +463,61 @@ function add_gridlines_and_frames!(topscene, scene, ax, dim::Int, limits, tickno
         p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
         p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
         p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        # p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
 
         return [p1, p2, p3, p4, p5, p6]
     end
+    framepoints_front_spines = lift(limits, min1, min2, xreversed, yreversed, zreversed
+            ) do lims, mi1, mi2, xrev, yrev, zrev
+
+        rev1 = (xrev, yrev, zrev)[d1]
+        rev2 = (xrev, yrev, zrev)[d2]
+
+        mi1 = mi1 ⊻ rev1
+        mi2 = mi2 ⊻ rev2
+
+        f(mi) = mi ? minimum : maximum
+
+        p7 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+        p8 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(!mi2)(lims)[d2])
+
+        return [p7, p8]
+    end
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
+
     framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
+
+    front_framelines = linesegments!(overlay, framepoints_front_spines, color = attr(:spinecolor_4),
+        linewidth = attr(:spinewidth), visible = map((a,b) -> a && b, ax.front_spines, attr(:spinesvisible)),
+        transparency = true, inspectable = false,
+        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
+
+    #= On transparency and render order
+    We have transparency = true here mostly for render order and depth testing
+    reasons.
+    In GLMakie:
+    - transparency = true gets rendered after transparency = false. This fixes
+      artifacts of the line AA, which mixes with the current background. (I.e.
+      if lines render first they will mix with the scene background color rather
+      than plots)
+    - transparency = true turns off depth writes which means the frame lines don't
+      see the grid lines and draw over them. This fixes grid lines poking through
+      frame lines, and also fixes mixing issues where frame lines meet. This
+      could also be fixed by explicit order with overdraw = true
+    - Note that transparency = true causes frame lines to never be 100% opaque
+      in GLMakie
+    In WGLMakie:
+    - transparency = true also turns off depth writes, see above
+    - transparency = true does not affect render order. Since it does turn off
+      depth writes other things will draw over the front frame lines. To fix this
+      we add an overlay scene which renders after the main scene, i.e. after
+      grid lines, back frame lines and user plots.
+    In CairoMakie:
+    - transparency does not matter, only plot order does. The overlay scene
+      forces does the same as in WGLMakie
+    =#
 
     return gridline1, gridline2, framelines
 end
