@@ -134,9 +134,9 @@ function plot!(plot::Violin)
             if show_median
                 # interpolate median bounds between corresponding points
                 xm = spec.median
-                ip = findfirst(>(xm), spec.kde.x)
-                ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
-                xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
+                ip = Base.max(2, something(findfirst(>(xm), spec.kde.x), length(spec.kde.x)))
+                ym₋, ym₊ = spec.kde.density[ip], spec.kde.density[ip]
+                xm₋, xm₊ = spec.kde.x[ip], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
                 median_left = point_func(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
                 median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
