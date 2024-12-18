@@ -317,6 +317,8 @@ add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr
 # TODO: error tracking would be better if we didn't wrap the user function
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
+    haskey(attr.inputs, key) && return # TODO: Should this error/warn?
+
     output = Computed(key, RefValue{Any}())
     input = Input(key, value, (v) -> conversion_func(key, v), output)
     output.parent = input
