@@ -214,7 +214,7 @@ end
 
 @testset "Minor tick skip" begin
     # Verify that minor ticks aren't calculated if they are not needed
-    f,a,p = scatter(1:10);
+    f,a,_ = scatter(1:10, axis = (xticksmirrored = true,));
     a.xminortickcolor[] = :red
     Makie.update_state_before_display!(f)
     plots = filter(p -> p.color[] == :red, a.blockscene.plots)
