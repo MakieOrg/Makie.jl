@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 in vec4 frag_color;
 in vec2 frag_uv;
 
@@ -92,12 +95,16 @@ float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 

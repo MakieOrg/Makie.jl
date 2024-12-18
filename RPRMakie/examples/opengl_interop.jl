@@ -9,14 +9,15 @@ u = range(0; stop=2π, length=150)
 v = range(0; stop=2π, length=150)
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1)),
+          AmbientLight(RGBf(0.5, 0.5, 0.5))]
 
 fig = Figure(; size=(1500, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
 screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Northstar, resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0)
 material = RPR.UberMaterial(screen.matsys)
 
-surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
+surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); diffuse=Vec3f(1), specular=0.5,
          colormap=:balance, material=material)
 
 function Input(fig, val::RGB)
