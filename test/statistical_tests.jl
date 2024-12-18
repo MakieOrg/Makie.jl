@@ -296,10 +296,7 @@ end
     @test p2.plots[2][:visible][] === :false
 
     # median edge case #4675
-    @test let
-        f,a,p = violin(fill(1, 1000), push!(fill(0, 999), 1), show_median=true, datalimits=(-0.001,Inf))
-        true
-    end
+    @test violin(fill(1, 1000), push!(fill(0, 999), 1), show_median=true, datalimits=(-0.001,Inf)) !== nothing
     # And some others
     @test violin(fill(1, 1000),fill(0, 1000), show_median=true) !== nothing
     @test violin([1], [1], show_median=true) !== nothing
