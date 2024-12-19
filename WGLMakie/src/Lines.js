@@ -1131,11 +1131,15 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
             new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
         ); // xyz3
     }
+    // make sure the interleaved buffer is accessible from the geometry for updating!
+    geometry.interleaved_attributes[attr_name] = buffer;
     return buffer;
 }
 
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
+    // track our interleaved buffers for updates!
+    geometry.interleaved_attributes = {};
     // (-1, -1) to (+1, +1) quad
     const instance_positions = [-1,-1, 1,-1, 1,1,   -1,-1, 1,1, -1,1];
     geometry.setAttribute(
@@ -1215,7 +1219,6 @@ export function _create_line(scene, line_data, is_segments) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
 
-    attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
 

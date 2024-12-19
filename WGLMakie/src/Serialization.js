@@ -29,6 +29,136 @@ function update_uniform(uniform, new_value) {
         }
     }
 }
+function re_create_buffer(buffer, is_segments) {
+    // interleaved buffer attribute is special, since we
+    // Manually re-create the (shared) InterleavedBuffer before calling re_create_buffer
+    // So we just need to create a copy
+    if (buffer instanceof THREE.InterleavedBufferAttribute) {
+        return new THREE.InterleavedBufferAttribute(
+            buffer.data,
+            buffer.itemSize,
+            buffer.offset
+        );
+    }
+    let { new_data } = buffer;
+
+    if (!new_data) {
+        // only re-create buffers with new data;
+        new_data = buffer.array;
+    }
+    let new_buffer;
+    if (buffer instanceof THREE.InstancedInterleavedBuffer) {
+        // Recreate InstancedInterleavedBuffer
+        new_buffer = new THREE.InstancedInterleavedBuffer(
+            new_data,
+            buffer.stride,
+            buffer.meshPerAttribute
+        );
+        new_buffer.count = Math.max(
+            0,
+            is_segments
+                ? Math.floor(new_buffer.count - 1)
+                : new_buffer.count - 3
+        );
+    } else if (buffer instanceof THREE.InstancedBufferAttribute) {
+        // Recreate InstancedBufferAttribute
+        new_buffer = new THREE.InstancedBufferAttribute(
+            new_data,
+            buffer.itemSize,
+            buffer.normalized,
+            buffer.meshPerAttribute
+        );
+    } else if (buffer instanceof THREE.BufferAttribute) {
+        // Recreate BufferAttribute (fallback for standard attributes)
+        new_buffer = new THREE.BufferAttribute(
+            new_data,
+            buffer.itemSize,
+            buffer.normalized
+        );
+    } else {
+        throw new Error(
+            "Unsupported buffer type. Must be THREE.BufferAttribute, THREE.InstancedBufferAttribute, or THREE.InstancedInterleavedBuffer."
+        );
+    }
+
+    // Copy common properties from the original buffer
+    if (buffer.usage) {
+        new_buffer.usage = buffer.usage;
+    }
+    if (buffer.updateRange) {
+        new_buffer.updateRange = {
+            offset: buffer.updateRange.offset,
+            count: buffer.updateRange.count,
+        };
+    }
+    // now that we have created the new one we dispose of the old
+    // This is done here, since this function hides if we re-use the old buffer or create a new one
+    return new_buffer;
+}
+
+function re_create_geometry(geometry, is_segments) {
+    let new_geometry;
+    if (geometry instanceof THREE.InstancedBufferGeometry) {
+        new_geometry = new THREE.InstancedBufferGeometry();
+    } else {
+        new_geometry = new THREE.BufferGeometry();
+    }
+    new_geometry.boundingSphere = new THREE.Sphere();
+    // don't use intersection / culling
+    new_geometry.boundingSphere.radius = 10000000000000;
+    new_geometry.frustumCulled = false;
+
+    const interleaved_attributes = new Map(); // To avoid duplicating interleaved buffers
+    // Recreate all attributes of the geometry
+    let instance_count = geometry.instanceCount;
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+        let new_attribute;
+        if (attribute.isInterleavedBufferAttribute) {
+            const old_buffer = attribute.data;
+            let new_buffer;
+            if (!interleaved_attributes.has(old_buffer)) {
+                new_buffer = re_create_buffer(old_buffer, is_segments);
+                interleaved_attributes.set(old_buffer, new_buffer);
+            } else {
+                new_buffer = interleaved_attributes.get(old_buffer);
+            }
+            attribute.data = new_buffer;
+            new_attribute = re_create_buffer(attribute, is_segments); // maybe needs re-recreate?
+            instance_count = new_attribute.count;
+        } else {
+            new_attribute = re_create_buffer(attribute, is_segments);
+        }
+        new_geometry.setAttribute(name, new_attribute);
+        if (new_attribute instanceof THREE.InstancedBufferAttribute) {
+            instance_count = new_attribute.count;
+        }
+    }
+    if (geometry.interleaved_attributes) {
+        new_geometry.interleaved_attributes = {};
+        Object.keys(geometry.interleaved_attributes).forEach((name) => {
+            const old = geometry.interleaved_attributes[name];
+            new_geometry.interleaved_attributes[name] = interleaved_attributes.get(old)
+        })
+    }
+    if (geometry instanceof THREE.InstancedBufferGeometry) {
+        geometry.instanceCount = instance_count;
+    }
+    if (geometry.index) {
+        new_geometry.index = re_create_buffer(geometry.index, is_segments);
+    }
+
+    return new_geometry;
+}
+
+function find_interleaved_attribute(geometry, buffer) {
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+        if (attribute.data === buffer) {
+            return attribute;
+        }
+    }
+    return null; // Return null if no matching attribute is found
+}
+
 
 
 class Plot {
@@ -39,15 +169,19 @@ class Plot {
     is_instanced = false;
     geometry_needs_recreation = false;
     plot_data = {};
+    type = "";
 
     constructor(scene, data) {
         this.plot_data = data;
 
         connect_plot(scene, this);
 
+        this.type = data.plot_type;
         if (data.plot_type === "lines") {
+            this.is_instanced = true;
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
+            this.is_instanced = true;
             this.mesh = create_linesegments(scene, this.plot_data);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
@@ -112,15 +246,16 @@ class Plot {
     }
 
     update(data) {
-        const {uniforms} = this.mesh.material;
-        const {attributes} = this.mesh.geometry
-        console.log(data);
+        const { mesh } = this;
+        const { geometry } = mesh;
+        const { attributes, interleaved_attributes } = geometry;
+        const { uniforms } = mesh.material;
         data.forEach(([key, value]) => {
             if (key in uniforms) {
                 this.update_uniform(key, value);
-            } else if (key in attributes) {
-                console.log(attributes)
-                this.update_geometry(key, value);
+            } else if (key in attributes || (interleaved_attributes &&
+                key in interleaved_attributes)) {
+                this.update_buffer(key, value);
             } else if (key === "faces") {
                 this.update_faces(value);
             } else if (key === "visible") {
@@ -141,36 +276,59 @@ class Plot {
         update_uniform(uniform, new_data);
     }
 
-    update_geometry(name, new_data) {
-        const buffer = this.mesh.geometry.attributes[name];
+    update_buffer(name, new_data) {
+        const {geometry} = this.mesh;
+        let buffer = geometry.attributes[name];
+
         if (!buffer) {
-            throw new Error(
-                `Buffer ${name} doesn't exist in Plot: ${this.name}`
-            );
+            buffer = geometry.interleaved_attributes[name];
+            if (!buffer) {
+                throw new Error(
+                    `Buffer ${name} doesn't exist in Plot: ${this.name}`
+                );
+            }
         }
         const old_length = buffer.array.length;
+        const is_interleaved =  buffer instanceof THREE.InstancedInterleavedBuffer;
+        const attribute = is_interleaved ? find_interleaved_attribute(geometry, buffer) : buffer;
+        if (attribute == null) {
+            console.log(name)
+            console.log(geometry.interleaved_attributes);
+            console.log(geometry.attributes);
+        }
+        const new_count = new_data.length / attribute.itemSize;
         if (new_data.length <= old_length) {
             buffer.set(new_data);
+            buffer.count = new_count;
+            const is_segments = this.type == "linesegments";
+            if (this.type == "lines" || is_segments) {
+                const skipped = new_count / (buffer.stride / attribute.itemSize);
+                buffer.count = Math.max(
+                    0,
+                    is_segments ? Math.floor(skipped - 1) : skipped - 3
+                );
+            }
             buffer.needsUpdate = true;
         } else {
             // if we have a larger size we need resizing + recreation of the buffer geometry
-            console.log(`updating ${name} with new data: ${new_data}`)
-            buffer.to_update = new_data;
+            buffer.new_data = new_data;
             this.geometry_needs_recreation = true;
         }
         if (this.is_instanced) {
-            this.mesh.geometry.instanceCount = new_data.length / buffer.itemSize;
+            this.mesh.geometry.instanceCount = attribute.count;
         }
     }
 
     apply_updates() {
-        console.log(`needs recreation: ${this.geometry_needs_recreation}`)
         if (this.geometry_needs_recreation) {
-            if (this.is_instanced) {
-                recreate_instanced_geometry(this.mesh);
-            } else {
-                recreate_geometry(this.mesh);
-            }
+            const { geometry } = this.mesh;
+            const new_geometry = re_create_geometry(
+                geometry,
+                this.type == "linesegments"
+            );
+            geometry.dispose();
+            this.mesh.geometry = new_geometry;
+            this.mesh.needsUpdate = true;
         }
         this.geometry_needs_recreation = false;
     }
@@ -182,13 +340,17 @@ class Plot {
 
 
 function recreate_instanced_geometry(mesh) {
+    const {geometry} = mesh;
     const buffer_geometry = new THREE.InstancedBufferGeometry();
+    if (geometry.interleaved_attributes) {
+        geometry.interleaved_attributes = {};
+    }
     const vertexarrays = {};
     const instance_attributes = {};
-    const n_instances = mesh.geometry.instanceCount;
-    const faces = [...mesh.geometry.index.array];
-    Object.keys(mesh.geometry.attributes).forEach((name) => {
-        const buffer = mesh.geometry.attributes[name];
+    const n_instances = geometry.instanceCount;
+    const faces = [...geometry.index.array];
+    Object.keys(geometry.attributes).forEach((name) => {
+        const buffer = geometry.attributes[name];
         // really dont know why copying an array is considered rocket science in JS
         const copy = buffer.to_update
             ? buffer.to_update
@@ -205,6 +367,7 @@ function recreate_instanced_geometry(mesh) {
             };
         }
     });
+
     attach_geometry(buffer_geometry, vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, instance_attributes);
     mesh.geometry.dispose();
@@ -519,7 +682,6 @@ function re_create_texture(old_texture, buffer, size) {
     }
     return tex;
 }
-
 
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);

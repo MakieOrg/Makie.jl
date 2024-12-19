@@ -58,7 +58,7 @@ function nan_free_points_indices((inpoints,), changed, last)
         end
     end
     indices_changed = indices != last_indices
-    points_changed = changed[1] && indices_changed
+    points_changed = changed[1] || indices_changed
     return (points_changed ? points[indices] : nothing, indices == last_indices ? nothing : indices)
 end
 
@@ -161,15 +161,18 @@ const LINE_INPUTS = [
 
 function create_lines_robj(islines, args, changed, last)
     inputs = copy(LINE_INPUTS)
+    r = Dict{Symbol, Symbol}()
     if islines
         push!(inputs, :joinstyle, :gl_miter_limit)
     end
     if isnothing(last)
-        return (create_lines_data(islines, (; zip(inputs, args)...)),)
+        return (create_lines_data(islines, (; zip(inputs, args)...)), Observable([]))
     else
-        indices = [i for i in 1:length(inputs) if changed[i]]
-        new_values = Pair{Symbol, Any}.(inputs[indices], getindex.(args[indices]))
-        @show new_values
+        new_values = [
+            [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for i in 1:length(inputs) if changed[i]
+        ]
+        updater = last[2][]
+        updater[] = new_values
         return nothing
     end
 end
@@ -191,12 +194,14 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         nan_free_points_indices, attr, [:positions_transformed_f32c], [:linepoint, :lineindex]
     )
 
-    register_computation!((args...)-> create_lines_robj(islines, args...), attr, inputs, [:wgl_renderobject])
+    register_computation!(
+        (args...) -> create_lines_robj(islines, args...), attr, inputs, [:wgl_renderobject, :wgl_update_obs]
+    )
 
     dict = attr[:wgl_renderobject][]
     dict[:uuid] = js_uuid(plot)
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    dict[:uniform_updater] = uniform_updater(plot, dict[:uniforms])
+    dict[:updater] = attr[:wgl_update_obs][]
     on(attr.onchange) do _
         attr[:wgl_renderobject][]
         return
