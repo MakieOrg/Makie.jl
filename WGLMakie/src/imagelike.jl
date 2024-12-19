@@ -54,37 +54,37 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
-    f32c, model = Makie.patch_model(plot)
-    mesh = limits_to_uvmesh(plot, f32c)
-    uniforms = Dict(
-        :normal => Vec3f(0),
-        :shading => false,
-        :diffuse => Vec3f(0),
-        :specular => Vec3f(0),
-        :shininess => 0.0f0,
-        :backlight => 0.0f0,
-        :model => model,
-        :PICKING_INDEX_FROM_UV => true
-    )
+# function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
+#     f32c, model = Makie.patch_model(plot)
+#     mesh = limits_to_uvmesh(plot, f32c)
+#     uniforms = Dict(
+#         :normal => Vec3f(0),
+#         :shading => false,
+#         :diffuse => Vec3f(0),
+#         :specular => Vec3f(0),
+#         :shininess => 0.0f0,
+#         :backlight => 0.0f0,
+#         :model => model,
+#         :PICKING_INDEX_FROM_UV => true
+#     )
 
-    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
-    if plot isa Image
-        uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
-            M = convert_attribute(x, Key{:uv_transform}(), Key{:image}())
-            # Why transpose?
-            if M === nothing
-                return Mat3f(0,1,0, 1,0,0, 0,0,1)
-            else
-                return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
-            end
-        end
-    else
-        uniforms[:uv_transform] = Observable(Mat3f(0,1,0, -1,0,0, 1,0,1))
-    end
+#     # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+#     if plot isa Image
+#         uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+#             M = convert_attribute(x, Key{:uv_transform}(), Key{:image}())
+#             # Why transpose?
+#             if M === nothing
+#                 return Mat3f(0,1,0, 1,0,0, 0,0,1)
+#             else
+#                 return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+#             end
+#         end
+#     else
+#         uniforms[:uv_transform] = Observable(Mat3f(0,1,0, -1,0,0, 1,0,1))
+#     end
 
-    return draw_mesh(mscene, mesh, plot, uniforms)
-end
+#     return draw_mesh(mscene, mesh, plot, uniforms)
+# end
 
 function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
@@ -104,8 +104,6 @@ function create_shader(mscene::Scene, plot::Volume)
     diffuse = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
-
-
 
     uniforms = Dict{Symbol, Any}(
         :modelinv => modelinv,
@@ -131,8 +129,6 @@ function create_shader(mscene::Scene, plot::Volume)
     handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
-
-
 
 xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
 xy_convert(x::AbstractArray, n) = x

@@ -264,7 +264,7 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
 """
 @recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
                  y::Union{EndPoints,RealVector, RealMatrix},
-                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+                 image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...

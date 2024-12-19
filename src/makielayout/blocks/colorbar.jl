@@ -33,7 +33,7 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
         return nothing
     end
 end
-extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)::ColorMapping
+extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
 
 function extract_colormap(plot::Union{Arrows, StreamPlot})
     return extract_colormap(plot.plots[1])

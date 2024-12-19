@@ -645,6 +645,7 @@ function empty_channel!(channel::Channel)
 end
 
 function Makie.plot!(p::HeatmapShader)
+    println("henlooo?!?")
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
     limits_slow = Observable(limits[])

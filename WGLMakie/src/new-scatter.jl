@@ -160,3 +160,116 @@ function serialize_three(scene::Scene, plot::Scatter)
     delete!(mesh, :uniform_updater)
     return mesh
 end
+
+function add_uv_mesh!(attr)
+    register_computation!(attr, [:data_limits], [:data_limit_points]) do (rect,), changed, last
+        return (decompose(Point2f, Rect2f(rect[])),)
+    end
+    register_computation!(
+        attr, [:data_limit_points, :f32c, :transform_func, :space], [:data_limit_points_transformed]
+    ) do (points, f32c, func, space), changed, last
+        return (apply_transform(func[], points[], space[]),)
+    end
+end
+
+function create_image_mesh(attr)
+    i = Vec(1, 2, 3)
+    uniforms = Dict(
+        :color => false,
+        :uniform_color => Sampler(attr.image[]),
+        :colorrange => Vec2f(attr.scaled_colorrange[]),
+        :colormap => Sampler(attr.colormap[]),
+        :highclip => attr._highclip[],
+        :lowclip => attr._lowclip[],
+        :nan_color => attr.nan_color[],
+        :pattern => false,
+
+        :normal => Vec3f(0),
+        :shading => false,
+        :diffuse => Vec3f(0),
+        :specular => Vec3f(0),
+        :shininess => 0.0f0,
+        :backlight => 0.0f0,
+        :model => Mat4f(attr.model[]),
+        :PICKING_INDEX_FROM_UV => true,
+        :uv_transform => Mat3f(0, 1, 0, -1, 0, 0, 1, 0, 1),
+        :depth_shift => attr.depth_shift[],
+        :normalmatrix => Mat3f(transpose(inv(attr.model[][i, i]))),
+        :shading => false,
+        :ambient => Vec3f(1),
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
+        :interpolate_in_fragment_shader => true
+    )
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+    rect = Rect2f(0, 0, 1, 1)
+    faces = decompose(GLTriangleFace, rect)
+    uv = decompose_uv(rect)
+    mesh = GeometryBasics.Mesh(attr.data_limit_points_transformed[], faces; uv=uv)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
+end
+
+
+const IMAGE_INPUTS = [
+    :data_limit_points_transformed,
+    :image,
+    :colormap,
+    :scaled_colorrange,
+    :model,
+    :transparency,
+    :depth_shift,
+    :nan_color,
+    :_highclip,
+    :_lowclip,
+    :visible,
+]
+
+function create_shader(scene::Scene, plot::Union{Heatmap,Image})
+    attr = plot.args[1]
+    add_uv_mesh!(attr)
+    register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        inputs = IMAGE_INPUTS
+        r = Dict()
+        if isnothing(last)
+            program = create_image_mesh((; zip(inputs, args)...))
+            return (program, Observable([]))
+        else
+            updater = last[2][]
+            new_values = [
+                [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for
+                i in 1:length(inputs) if changed[i]
+            ]
+            if !isempty(new_values)
+                updater[] = new_values
+            end
+            return nothing
+        end
+    end
+    on(attr.onchange) do _
+        attr[:wgl_renderobject][]
+        return nothing
+    end
+    return attr[:wgl_renderobject][]
+end
+
+
+function serialize_three(scene::Scene, plot::Union{Heatmap,Image})
+    program = create_shader(scene, plot)
+    mesh = serialize_three(plot, program)
+    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:visible] = Observable(plot.visible[])
+    mesh[:uuid] = js_uuid(plot)
+    mesh[:updater] = plot.args[1][:wgl_update_obs][]
+
+    mesh[:overdraw] = Observable(plot.overdraw[])
+    mesh[:transparency] = Observable(plot.transparency[])
+    mesh[:cam_space] = plot.space[]
+    mesh[:space] = Observable(plot.space[])
+    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
+    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
+
+    delete!(mesh, :uniform_updater)
+    return mesh
+end

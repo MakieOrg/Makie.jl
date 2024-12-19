@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -52,7 +52,7 @@ function add_alpha(color, alpha)
     return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
 end
 
-function register_colormapping!(attr::ComputeGraph)
+function register_colormapping!(attr::ComputeGraph, colorname=:color)
     register_computation!(attr, [:colormap, :alpha],
                           [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), changed, last
         icm = colormap[] # the raw input colormap e.g. :viridis
@@ -78,8 +78,10 @@ function register_colormapping!(attr::ComputeGraph)
         end
     end
 
-    register_computation!(attr, [:color, :colorrange], [:_colorrange]) do (color, colorrange), changed, last
-        (color[] isa AbstractVector{<:Real} || color[] isa Real) || return nothing
+    register_computation!(
+        attr, [colorname, :colorrange], [:_colorrange]
+    ) do (color, colorrange), changed, last
+        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
         if colorrange[] === automatic
             (Vec2d(distinct_extrema_nan(color[])),)
         else
@@ -93,7 +95,9 @@ function register_colormapping!(attr::ComputeGraph)
         return (Vec2f(apply_scale(colorscale[], colorrange[])),)
     end
 
-    register_computation!(attr, [:color, :colorscale, :alpha],
+    register_computation!(
+        attr,
+        [colorname, :colorscale, :alpha],
                           [:scaled_color]) do (color, colorscale, alpha), changed, last
 
         if color[] isa Union{AbstractArray{<: Real}, Real}
@@ -105,6 +109,48 @@ function register_colormapping!(attr::ComputeGraph)
         end
     end
 end
+
+function register_position_transforms!(attr)
+    haskey(attr.outputs, :positions) || return
+    register_computation!(attr, [:positions, :transform_func, :space],
+                        [:positions_transformed]) do (positions, func, space), changed, last
+        return (apply_transform(func[], positions[], space[]),)
+    end
+
+    # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
+    register_computation!(attr,
+        [:positions_transformed, :model, :f32c],
+        [:positions_transformed_f32c, :model_f32c]
+    ) do (positions, model, f32c), changed, last
+        # TODO: this should be done in one nice function
+        # This is simplified, skipping what's commented out
+
+        # trans, scale = decompose_translation_scale_matrix(model)
+        # is_rot_free = is_translation_scale_matrix(model)
+        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
+            m = changed[2] ? Mat4f(model[]) : nothing
+            return (el32convert(positions[]), m)
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        # elseif is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            # TODO: avoid reallocating?
+            output = Vector{Point3f}(undef, length(positions[]))
+            @inbounds for i in eachindex(output)
+                p4d = to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0), 1)
+                p4d = model[] * p4d
+                output[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)])
+            end
+            m = isnothing(last) ? Mat4f(I) : nothing
+            return (output, m)
+        end
+    end
+end
+
 
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
     # TODO expand_dims + dim_converts
@@ -171,45 +217,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     #   probably need specialization, e.g. for heatmap, image, surface
     # - recipe plots may want this too for boundingbox
     if P <: PrimitivePlotTypes
-
-        register_computation!(attr, [:positions, :transform_func, :space],
-                            [:positions_transformed]) do (positions, func, space), changed, last
-            return (apply_transform(func[], positions[], space[]),)
-        end
-
-        # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
-        register_computation!(attr,
-            [:positions_transformed, :model, :f32c],
-            [:positions_transformed_f32c, :model_f32c]
-        ) do (positions, model, f32c), changed, last
-            # TODO: this should be done in one nice function
-            # This is simplified, skipping what's commented out
-
-            # trans, scale = decompose_translation_scale_matrix(model)
-            # is_rot_free = is_translation_scale_matrix(model)
-            if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
-                m = changed[2] ? Mat4f(model[]) : nothing
-                return (el32convert(positions[]), m)
-            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
-                # edge case: positions not float safe, model not float safe but result in float safe range
-                # (this means positions -> world not float safe, but appears float safe)
-            # elseif is_float_safe(scale, trans) && is_rot_free
-                # fast path: can swap order of f32c and model, i.e. apply model on GPU
-            # elseif is_rot_free
-                # fast path: can merge model into f32c and skip applying model matrix on CPU
-            else
-                # TODO: avoid reallocating?
-                output = Vector{Point3f}(undef, length(positions[]))
-                @inbounds for i in eachindex(output)
-                    p4d = to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0), 1)
-                    p4d = model[] * p4d
-                    output[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)])
-                end
-                m = isnothing(last) ? Mat4f(I) : nothing
-                return (output, m)
-            end
-        end
-
+        register_position_transforms!(attr)
     end
 end
 
@@ -229,7 +237,7 @@ end
 
 # TODO: this won't work because Text is both primitive and not
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
-    MeshScatter, Heatmap, Image, Surface, Voxels, Volume}
+    MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
 obs_to_value(obs::Observables.AbstractObservable) = to_value(obs)
 obs_to_value(x) = x
@@ -365,7 +373,6 @@ function computed_plot!(parent, plot::T) where {T}
             end
         end
     end
-
     return
 end
 
@@ -402,6 +409,45 @@ Base.setindex!(plot::ComputePlots, val, key::Symbol) = setproperty!(plot, key, v
 
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 
+Makie.data_limits(x::Union{Image, Heatmap}) = x[:data_limits][]
+
+function Image(args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Image, attr, user_kw)
+    register_arguments!(Image, attr, user_kw, args...)
+    register_colormapping!(attr, :image)
+    register_computation!(
+        attr,
+        [:x, :y],
+        [:data_limits],
+    ) do args, changed, _
+        mini_maxi = args[1][], args[2][]
+        mini = Vec3d(first.(mini_maxi)..., 0)
+        maxi = Vec3d(last.(mini_maxi)..., 0)
+        return (Rect3d(mini, maxi .- mini),)
+    end
+    T = typeof((attr[:x][], attr[:y][], attr[:image][]))
+    p = Plot{image,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+function Heatmap(args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Heatmap, attr, user_kw)
+    register_arguments!(Heatmap, attr, user_kw, args...)
+    register_colormapping!(attr, :image)
+    register_computation!(attr, [:x, :y], [:data_limits]) do args, changed, _
+        mini_maxi = args[1][], args[2][]
+        mini = Vec3d(first.(mini_maxi)..., 0)
+        maxi = Vec3d(last.(mini_maxi)..., 0)
+        return (Rect3d(mini, maxi .- mini),)
+    end
+    T = typeof((attr[:x][], attr[:y][], attr[:image][]))
+    p = Plot{heatmap,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
 
 function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
@@ -477,33 +523,63 @@ function ComputePipeline.update!(plot::ComputePlots; args...)
     return ComputePipeline.update!(plot.args[1]; args...)
 end
 
+get_colormapping(plot::Plot) = get_colormapping(plot, plot.args[1])
+function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
+    isnothing(attr[:_colorrange][]) && return nothing
+    register_computation!(attr, [:colormap], [:colormapping_type]) do args, changed, last
+        return (colormapping_type(args[1][]),)
+    end
+    attributes = [:color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :_colorrange, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
+    register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
+        dict = Dict(zip(attributes, getindex.(args)))
 
-get_colormapping(plot::Plot) = get_colormapping(plot.args[1])
-function get_colormapping(attr::ComputePipeline.ComputeGraph)
-    # None of these are needed by the computation
-    register_computation!(attr, Symbol[], [:cb_colormapping]) do args, changed, cached
-        N = ndims(attr[:color][])
-        Cin = typeof(attr[:color][])
-        Cout = typeof(attr[:scaled_color][])
+        N = ndims(dict[:color])
+        Cin = typeof(dict[:color])
+        Cout = typeof(dict[:scaled_color])
+
         if isnothing(cached)
-            cm = ColorMapping{N,Cin,Cout}(
-                map(_ -> attr[:color][], attr.onchange), # input color (typed)
-                map(_ -> attr[:alpha_colormap][], attr.onchange), # converted + alpha
-                map(_ -> attr[:raw_colormap][], attr.onchange), # _converted + alpha
-                map(_ -> attr[:colorscale][], attr.onchange), # typed as Function
-                map(_ -> attr[:color_mapping][], attr.onchange), # typed as Function
-                map(_ -> attr[:_colorrange][], attr.onchange), # unscaled but not automatic
-                map(_ -> attr[:lowclip][], attr.onchange), # automatic NOT replaced
-                map(_ -> attr[:highclip][], attr.onchange), # automatic NOT replaced
-                map(_ -> attr[:nan_color][], attr.onchange), # after color convert
-                map(_ -> colormapping_type(attr[:colormap][]), attr.onchange),
-                map(_ -> attr[:scaled_colorrange][], attr.onchange), # fully processed
-                map(_ -> attr[:scaled_color][], attr.onchange), # fully processed
-            )
-            return (cm,)
+            observables = map(attributes) do name
+                Observable(dict[name])
+            end
+            observable_dict = Dict(zip(attributes, observables))
+            cm = ColorMapping{N,Cin,Cout}(observables...)
+            return (cm, observable_dict)
         else
-            return (cached[],)
+            observable_dict = cached[2][]
+            for (name, value, ischanged) in zip(attributes, args, changed)
+                if ischanged
+                    observable_dict[name][] = value[]
+                end
+            end
+            return (cached[1][], nothing)
         end
     end
+    on(plot, attr.onchange) do _
+        attr[:cb_colormapping][]
+    end
     return attr[:cb_colormapping][]
+end
+
+
+function apply_transform_and_model(plot::Heatmap, data, output_type=Point3d)
+    return apply_transform_and_model(
+        to_value(plot.model[]), plot.transform_func[], data, to_value(get(plot, :space, :data)), output_type
+    )
+end
+
+
+function boundingbox(plot::Heatmap, space::Symbol=:data)
+    # Assume primitive plot
+    if isempty(plot.plots)
+        raw_bb = apply_transform_and_model(plot, data_limits(plot))
+        return raw_bb
+    end
+
+    # Assume combined plot
+    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
+    end
+
+    return bb_ref[]
 end

@@ -188,6 +188,7 @@ class Plot {
             this.mesh = create_instanced_mesh(scene, this.plot_data);
         } else {
             this.mesh = create_mesh(scene, this.plot_data);
+            console.log(this.mesh)
         }
 
         this.name = data.name;

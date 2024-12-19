@@ -190,6 +190,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
     end
+
     register_computation!(
         nan_free_points_indices, attr, [:positions_transformed_f32c], [:linepoint, :lineindex]
     )
