@@ -151,6 +151,12 @@ end
     linesegments!(ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
+    poly!(ax, [Polygon(decompose(Point2f, Rect2f(150, 0, 100, 100))), Polygon(decompose(Point2f, Circle(Point2f(350, 200), 50)))],
+        color=:gray, strokewidth=10, strokecolor=:red)
+    # single objects
+    poly!(ax, Circle(Point2f(50, 350), 50), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Rect2f(0, 150, 100, 100), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Polygon(decompose(Point2f, Rect2f(150, 300, 100, 100))), color=:gray, strokewidth=10, strokecolor=:red)
     fig
 end
 
@@ -709,8 +715,8 @@ end
     # Test depth (this part is expected to fail in CairoMakie)
     p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
     translate!(p, 0, 0, 100)
-    mesh!(ax, 
-        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
+    mesh!(ax,
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4],
         shading = NoShading, color = :orange)
     fig
 end
@@ -865,6 +871,29 @@ end
     f
 end
 
+@reference_test "contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
+    ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
 @reference_test "contour labels 3D" begin
     fig = Figure()
     Axis3(fig[1, 1])
@@ -876,14 +905,6 @@ end
     contour3d!(-zs; levels = -levels, labels = true, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
-end
-
-@reference_test "marker offset in data space" begin
-    f = Figure()
-    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
-    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
-    lines!(ax, Rect(0, 0, 1, 10), color=:red)
-    f
 end
 
 @reference_test "trimspine" begin

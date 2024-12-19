@@ -17,7 +17,9 @@ end
 
 set_theme!(size=(800, 600))
 
+GC.gc()
 create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+GC.gc()
 display_time = @ctime colorbuffer(fig; px_per_unit=1)
 
 using JSON

@@ -181,9 +181,18 @@ end
     # This is too internal and fragile, so we won't actually test this
     # @test leg.scene.plots[2].marker[] == :circle
     # @test leg.scene.plots[3].marker[] == :rect
-    
+
     # Test that the legend has the correct labels.
     # Again, I consider this too fragile to work with!
     # @test contents(contents(leg.grid)[1])[2].text[] == "A"
     # @test contents(contents(leg.grid)[2])[4].text[] == "B"
+end
+
+@recipe(TestRecipeForSpecApi) do scene
+    return Attributes()
+end
+
+@testset "External Recipe compatibility (#4295)" begin
+    @test_nowarn S.TestRecipeForSpecApi
+    @test_nowarn S.TestRecipeForSpecApi(1, 2, 3; a = 4, b = 5)
 end

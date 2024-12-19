@@ -191,8 +191,8 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
-    "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
     "picking", # Not implemented
+    "MetaMesh (Sponza)", # makes little sense without per pixel depth order
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -281,4 +281,36 @@ end
     tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
     events(f).tick[] = tick
     @test events(f).tick[] == tick
+end
+
+@testset "line projection" begin
+    # Check #4627
+    f = Figure(size = (600, 450))
+    a, p = stephist(f[1, 1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
+    Makie.update_state_before_display!(f)
+    lp = p.plots[1].plots[1]
+    ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
+    # Points 1, 2, 5, 6 are on the clipping boundary, 7 is a duplicate of 6.
+    # The output may drop 1, 6, 7 and adjust 2, 5 if these points are recognized
+    # as outside. The adjustment of 2, 5 should be negligible.
+    necessary_points = Vec{2, Float32}[[0.0, 89.77272], [275.5, 89.77272], [275.5, 17.95454], [551.0, 17.95454]]
+    @test length(ps) >= 4
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
+    ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
+    ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
+    @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    # Check that `reinterpret`ed arrays of points are handled correctly
+    # ref. https://github.com/MakieOrg/Makie.jl/issues/4661
+
+    data = reinterpret(Point2f, rand(Point2f, 10) .=> rand(Point2f, 10))
+
+    f, a, p = lines(data)
+    Makie.update_state_before_display!(f)
+    ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
+    @test length(ps) == length(data) # this should never clip!
+
 end

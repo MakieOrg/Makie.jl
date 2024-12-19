@@ -10,6 +10,7 @@ function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2
 end
 
 function process_axis_event(ax, event)
+    ax.scene.visible[] || return Consume(false)
     for (active, interaction) in values(ax.interactions)
         if active
             maybe_consume = process_interaction(interaction, event, ax)
@@ -975,9 +976,13 @@ yautolimits(ax::Axis) = autolimits(ax, 2)
 
 Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
+function linkaxes!(axes::Vector{<:Axis})
+    linkxaxes!(axes)
+    linkyaxes!(axes)
+end
+
 function linkaxes!(a::Axis, others...)
-    linkxaxes!(a, others...)
-    linkyaxes!(a, others...)
+    linkaxes!([a, others...])
 end
 
 function adjustlimits!(la)
@@ -1029,26 +1034,28 @@ function adjustlimits!(la)
     return
 end
 
-function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
-    axes = Axis[a; others...]
+linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
 
+function linkaxes!(dir::Symbol, axes::Vector{Axis})
     all_links = Set{Axis}(axes)
     for ax in axes
-        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
+        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
         for ax in links
             push!(all_links, ax)
         end
     end
-
+    links_changed = false
     for ax in all_links
-        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
+        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
         for linked_ax in all_links
-            if linked_ax !== ax && linked_ax ∉ links
+            if linked_ax !== ax && !(linked_ax in links)
+                links_changed = true
                 push!(links, linked_ax)
             end
         end
     end
-    reset_limits!(a)
+    reset_limits!(first(axes))
+    return
 end
 
 """
@@ -1056,14 +1063,16 @@ end
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
+linkxaxes!(axes::Vector{Axis}) = linkaxes!(:x, axes)
+linkxaxes!(a::Axis, others...) = linkaxes!(:x, [a, others...])
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
+linkyaxes!(axes::Vector{Axis}) = linkaxes!(:y, axes)
+linkyaxes!(a::Axis, others...) = linkaxes!(:y, [a, others...])
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
@@ -1850,13 +1859,16 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
     if update
         update_state_before_display!(ax)
     end
+    root_scene = root(ax.scene)
+    img = colorbuffer(root_scene; update=false, colorbuffer_kws...)
+    scale_factor = first(size(img) ./ reverse(size(root_scene)))
     bb = if include_decorations
         bb = axis_bounds_with_decoration(ax)
-        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+        Rect2{Int}(round.(Int, minimum(bb) .* scale_factor) .+ 1, round.(Int, widths(bb) .* scale_factor))
     else
-        viewport(ax.scene)[]
+        vp = viewport(ax.scene)[]
+        mini, wh = minimum(vp), widths(vp)
+        Rect2(round.(Int, mini .* scale_factor), round.(Int, wh .* scale_factor))
     end
-
-    img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)
     return get_sub_picture(img, JuliaNative, bb)
 end

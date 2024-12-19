@@ -72,6 +72,7 @@ function draw_mesh_particle(screen, p, data)
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
+        f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
 
@@ -90,7 +91,7 @@ function draw_mesh_particle(screen, p, data)
                 return output
             end => TextureBuffer
         end
-    else 
+    else
         # handled automatically
     end
 
@@ -104,6 +105,7 @@ function draw_mesh_particle(screen, p, data)
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
+        scale_primitive = false
         interpolate_in_fragment_shader = false
         backlight = 0f0
 
@@ -140,6 +142,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         vertex       = position => GLBuffer
         color_map    = nothing => Texture
         color        = nothing => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -227,7 +230,7 @@ function draw_scatter(screen, (marker, position), data)
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
-        marker_offset = Vec3f(0) => GLBuffer;
+        marker_offset = Vec3f(0) => GLBuffer
         scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture

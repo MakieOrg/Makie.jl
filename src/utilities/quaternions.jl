@@ -157,6 +157,8 @@ function quaternion_to_2d_angle(quat::Quaternion)
 end
 
 Base.isinf(q::Quaternion) = any(isinf, q.data)
+Base.isnan(q::Quaternion) = any(isnan, q.data)
+Base.isfinite(q::Quaternion) = all(isfinite, q.data)
 Base.abs2(q::Quaternion) = mapreduce(*, +, q.data, q.data)
 function Base.inv(q::Quaternion)
     if isinf(q)

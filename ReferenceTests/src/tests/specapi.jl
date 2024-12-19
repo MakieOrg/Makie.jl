@@ -183,3 +183,31 @@ end
     image!(s, imgs; space=:pixel)
     s
 end
+
+@reference_test "Axis links" begin
+    axiis = broadcast(1:2, (1:2)') do x, y
+        S.Axis(; title="$x, $y")
+    end
+    f, _, pl = plot(
+        S.GridLayout(axiis; xaxislinks=vec(axiis[1:2, 1]), yaxislinks=vec(axiis[1:2, 2]));
+        figure=(; size=(500, 250)),
+    )
+    for ax in f.content[[1, 3]]
+        limits!(ax, 2, 3, 2, 3)
+    end
+
+    img1 = rotr90(colorbuffer(f; update=false))
+    for ax in f.content
+        limits!(ax, 0, 10, 0, 10)
+    end
+    pl[1] = S.GridLayout(axiis; xaxislinks=vec(axiis[1:2, 2]), yaxislinks=vec(axiis[1:2, 1]))
+    for ax in f.content[[1, 3]]
+        limits!(ax, 2, 3, 2, 3)
+    end
+    sleep(0.1)
+    img2 = rotr90(colorbuffer(f; update=false))
+    large = hcat(img2, img1)
+    s = Scene(; size=size(large))
+    image!(s, large; space=:pixel)
+    s
+end

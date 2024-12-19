@@ -134,6 +134,9 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     end
 end
 
+max_auto_ticklabel_spacing!(ax) = nothing
+
+
 function update_ticklabel_node(
         closure_args,
         ticklabel_annotation_obs::Observable,
@@ -318,6 +321,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end

@@ -9,6 +9,8 @@ end
 
 Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
+
+`x` and `y` can also be Matrices that define a curvilinear grid, similar to how [`surface`](@ref) works.
 """
 @recipe Contour begin
     """
@@ -197,6 +199,13 @@ function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels,
     # Compute contours
     xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)
     contours = Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
+    return contourlines(T, contours, level_colors, labels)
+end
+
+# Overload for matrix-like x and y lookups for contours
+# Just removes the `to_vector` invocation
+function contourlines(x::AbstractMatrix{<: Real}, y::AbstractMatrix{<: Real}, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+    contours = Contours.contours(x, y, z, convert(Vector{ET}, levels))
     return contourlines(T, contours, level_colors, labels)
 end
 

@@ -1078,14 +1078,16 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     end
     a = inspector.attributes
     tt = inspector.plot
-    pos = position_on_plot(scatter, idx; apply_transform=false)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
-
+    idx2d = spy._index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(pos)
+        z = spy.z[][idx2d...]
+        tt.text[] = @sprintf(
+            "x: %0.6f\ny: %0.6f\nz: %0.6f",
+            idx2d..., z
+        )
     else
-        idx2d = spy._index_map[][idx]
         tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
     end
     tt.offset[] = ifelse(a.apply_tooltip_offset[],
