@@ -371,10 +371,21 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
 end
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
-to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
-function to_endpoints(x, dim)
-    x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
+function to_endpoints(x::AbstractVector, side, trait)
+    throw_range_error(x, side, trait)
+end
+function to_endpoints(x, side, trait)
     return to_endpoints(x)
+end
+
+function throw_range_error(value, side, trait)
+    error(
+        "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for
+        the `$trait` conversion. Using an `AbstractVector` to specify one dimension of an `$trait`
+        is deprecated because `$trait` sides always need exactly two values, start and stop. Use
+        interval notation `start .. stop`, a two-element tuple `(start, stop)` or
+        `Makie.EndPoints(start, stop)` instead."
+    )
 end
 
 function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
@@ -411,17 +422,10 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
-function print_range_warning(side::String, value)
-    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
-        Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
-        Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
-end
-
-
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    x = to_endpoints(xs, "x")
-    y = to_endpoints(ys, "y")
+    x = to_endpoints(xs, "x", ImageLike)
+    y = to_endpoints(ys, "y", ImageLike)
     return (x, y, el32convert(data))
 end
 
@@ -470,7 +474,8 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(data))
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
 
 """
@@ -481,7 +486,8 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
-    (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(i))
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(i))
 end
 
 ################################################################################
@@ -580,7 +586,7 @@ function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where 
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
     m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
-        geom; pointtype = Point{N, float_type(T)}, 
+        geom; pointtype = Point{N, float_type(T)},
         uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
     ))
     return (m,)
@@ -646,6 +652,12 @@ function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::Re
     return (vec(points), vec(f_out))
 end
 
+is_regularly_spaced(x::AbstractRange) = true
+function is_regularly_spaced(x::AbstractVector)
+    delta = x[2] - x[1]
+    return all(i -> x[i] - x[i-1] ≈ delta, 3:length(x))
+end
+
 """
     convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
 
@@ -654,15 +666,20 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
+    # Verify grid regularity
+    is_regularly_spaced(x) || throw_range_error(x, "x", VolumeLike)
+    is_regularly_spaced(y) || throw_range_error(y, "y", VolumeLike)
+    is_regularly_spaced(z) || throw_range_error(z, "z", VolumeLike)
+
     _x, _y, _z = ntuple(Val(3)) do i
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
+
     return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
