@@ -369,7 +369,6 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
     return EndPoints(T.(x))
 end
-to_endpoints(x::AbstractRange) = EndPoints(first(x), last(x))
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
 
@@ -678,7 +677,7 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
 
-    return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
