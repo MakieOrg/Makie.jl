@@ -369,22 +369,19 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
     T = float_type(x...)
     return EndPoints(T.(x))
 end
+to_endpoints(x::AbstractRange) = EndPoints(first(x), last(x))
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
-function to_endpoints(x::AbstractVector, side, trait)
-    throw_range_error(x, side, trait)
-end
-function to_endpoints(x, side, trait)
-    return to_endpoints(x)
-end
 
-function throw_range_error(value, side, trait)
+to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
+to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+function throw_range_error(value::T, side, trait) where {T}
     error(
-        "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for
-        the `$trait` conversion. Using an `AbstractVector` to specify one dimension of an `$trait`
-        is deprecated because `$trait` sides always need exactly two values, start and stop. Use
-        interval notation `start .. stop`, a two-element tuple `(start, stop)` or
-        `Makie.EndPoints(start, stop)` instead."
+        "Encountered `$T` with value $value on side $side in `convert_arguments` for the `$trait`
+        conversion. Using `$T` to specify one dimension of `$trait` is deprecated because `$trait`
+        sides always need exactly two values, start and stop. Use interval notation `start .. stop`,
+        a two-element tuple `(start, stop)` or `Makie.EndPoints(start, stop)` instead."
     )
 end
 
@@ -652,6 +649,7 @@ function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::Re
     return (vec(points), vec(f_out))
 end
 
+# Note: AbstractRange must be linear
 is_regularly_spaced(x::AbstractRange) = true
 function is_regularly_spaced(x::AbstractVector)
     delta = x[2] - x[1]
