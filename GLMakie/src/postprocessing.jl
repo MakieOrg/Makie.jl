@@ -290,7 +290,10 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
         glBindFramebuffer(GL_FRAMEBUFFER, default_id)
-        glViewport(0, 0, framebuffer_size(screen)...)
+        # This includes px_per_unit scaling. The final output does not, so it
+        # needs to be removed (also true for size(screen), size(framebuffer), ...)
+        w, h = framebuffer_size(screen) ./ screen.px_per_unit[]
+        glViewport(0, 0, w, h)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
     end
