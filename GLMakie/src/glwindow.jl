@@ -10,89 +10,33 @@ end
 Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
 Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
-mutable struct GLFramebuffer
-    resolution::Observable{NTuple{2, Int}}
-    id::GLuint
-
-    buffer_ids::Dict{Symbol, GLuint}
-    buffers::Dict{Symbol, Texture}
+mutable struct Framebuffer
+    fb::GLFramebuffer
     render_buffer_ids::Vector{GLuint}
 end
 
 # it's guaranteed, that they all have the same size
-Base.size(fb::GLFramebuffer) = size(fb.buffers[:color])
-Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.buffers, key)
-Base.getindex(fb::GLFramebuffer, key::Symbol) = fb.buffer_ids[key] => fb.buffers[key]
+# forwards... for now
+Base.size(fb::Framebuffer) = size(fb.fb)
+Base.haskey(fb::Framebuffer, key::Symbol) = haskey(fb.fb, key)
+GLAbstraction.get_attachment(fb::Framebuffer, key::Symbol) = get_attachment(fb.fb, key)
+GLAbstraction.get_buffer(fb::Framebuffer, key::Symbol) = get_buffer(fb.fb, key)
+GLAbstraction.bind(fb::Framebuffer) = GLAbstraction.bind(fb.fb)
 
-function getfallback(fb::GLFramebuffer, key::Symbol, fallback_key::Symbol)
-    haskey(fb, key) ? fb[key] : fb[fallback_key]
+function getfallback_attachment(fb::Framebuffer, key::Symbol, fallback_key::Symbol)
+    haskey(fb, key) ? get_attachment(fb, key) : get_attachment(fb, fallback_key)
+end
+function getfallback_buffer(fb::Framebuffer, key::Symbol, fallback_key::Symbol)
+    haskey(fb, key) ? get_buffer(fb, key) : get_buffer(fb, fallback_key)
 end
 
 
-function attach_framebuffer(t::Texture{T, 2}, attachment) where T
-    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
-end
-
-# attach texture as color attachment with automatic id picking
-function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where T
-    if haskey(fb.buffer_ids, key) || haskey(fb.buffers, key)
-        error("Key $key already exists.")
-    end
-
-    max_color_id = GL_COLOR_ATTACHMENT0
-    for id in values(fb.buffer_ids)
-        if GL_COLOR_ATTACHMENT0 <= id <= GL_COLOR_ATTACHMENT15 && id > max_color_id
-            max_color_id = id
-        end
-    end
-    next_color_id = max_color_id + 0x1
-    if next_color_id > GL_COLOR_ATTACHMENT15
-        error("Ran out of color buffers.")
-    end
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, next_color_id, GL_TEXTURE_2D, t.id, 0)
-    push!(fb.buffer_ids, key => next_color_id)
-    push!(fb.buffers, key => t)
-    return next_color_id
-end
-
-function enum_to_error(s)
-    s == GL_FRAMEBUFFER_COMPLETE && return
-    s == GL_FRAMEBUFFER_UNDEFINED &&
-        error("GL_FRAMEBUFFER_UNDEFINED: The specified framebuffer is the default read or draw framebuffer, but the default framebuffer does not exist.")
-    s == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: At least one of the framebuffer attachment points is incomplete.")
-    s == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: The framebuffer does not have at least one image attached to it.")
-    s == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: The value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for any color attachment point(s) specified by GL_DRAW_BUFFERi.")
-    s == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: GL_READ_BUFFER is not GL_NONE and the value of GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE is GL_NONE for the color attachment point specified by GL_READ_BUFFER.")
-    s == GL_FRAMEBUFFER_UNSUPPORTED &&
-        error("GL_FRAMEBUFFER_UNSUPPORTED: The combination of internal formats of the attached images violates a driver implementation-dependent set of restrictions. Check your OpenGL driver!")
-    s == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: The value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers;
-if the value of GL_TEXTURE_SAMPLES is not the same for all attached textures; or, if the attached images consist of a mix of renderbuffers and textures,
-    the value of GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES.
-    GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE is also returned if the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not consistent across all attached textures;
-        or, if the attached images include a mix of renderbuffers and textures, the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not set to GL_TRUE for all attached textures.")
-    s == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS &&
-        error("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Any framebuffer attachment is layered, and any populated attachment is not layered, or if all populated color attachments are not from textures of the same target.")
-    return error("Unknown framebuffer completion error code: $s")
-end
-
-function check_framebuffer()
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    return enum_to_error(status)
-end
-
-Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
+Makie.@noconstprop function Framebuffer(context, fb_size::NTuple{2, Int})
     ShaderAbstractions.switch_context!(context)
     require_context(context)
 
     # Create framebuffer
-    frambuffer_id = glGenFramebuffers()
-    glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
+    fb = GLFramebuffer(fb_size)
 
     # Buffers we always need
     # Holds the image that eventually gets displayed
@@ -118,64 +62,20 @@ Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
         context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
-    attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
-    attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
-    attach_framebuffer(HDR_color_buffer, GL_COLOR_ATTACHMENT2)
-    attach_framebuffer(OIT_weight_buffer, GL_COLOR_ATTACHMENT3)
-    attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
-    attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
+    # attach buffers
+    color_attachment = attach_colorbuffer(fb, :color, color_buffer)
+    objectid_attachment = attach_colorbuffer(fb, :objectid, objectid_buffer)
+    attach_colorbuffer(fb, :HDR_color, HDR_color_buffer)
+    attach_colorbuffer(fb, :OIT_weight, OIT_weight_buffer)
+    attach_depthbuffer(fb, :depth, depth_buffer)
+    attach_stencilbuffer(fb, :stencil, depth_buffer)
 
     check_framebuffer()
 
-    fb_size_node = Observable(fb_size)
-
-    # To allow adding postprocessors in various combinations we need to keep
-    # track of the buffer ids that are already in use. We may also want to reuse
-    # buffers so we give them names for easy fetching.
-    buffer_ids = Dict{Symbol,GLuint}(
-        :color    => GL_COLOR_ATTACHMENT0,
-        :objectid => GL_COLOR_ATTACHMENT1,
-        :HDR_color => GL_COLOR_ATTACHMENT2,
-        :OIT_weight => GL_COLOR_ATTACHMENT3,
-        :depth    => GL_DEPTH_ATTACHMENT,
-        :stencil  => GL_STENCIL_ATTACHMENT,
-    )
-    buffers = Dict{Symbol, Texture}(
-        :color => color_buffer,
-        :objectid => objectid_buffer,
-        :HDR_color => HDR_color_buffer,
-        :OIT_weight => OIT_weight_buffer,
-        :depth => depth_buffer,
-        :stencil => depth_buffer
-    )
-
-    return GLFramebuffer(
-        fb_size_node, frambuffer_id,
-        buffer_ids, buffers,
-        [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
-    )::GLFramebuffer
+    return Framebuffer(fb, [color_attachment, objectid_attachment])
 end
 
-function destroy!(fb::GLFramebuffer)
-    # context required via free(tex)
-    @assert !isempty(fb.buffers)
-    for tex in values(fb.buffers)
-        GLAbstraction.free(tex)
-    end
-    id = [fb.id]
-    glDeleteFramebuffers(1, id)
-    fb.id = 0
-    return
-end
-
-function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
-    (w > 0 && h > 0 && (w, h) != size(fb)) || return
-    for (name, buffer) in fb.buffers
-        resize_nocopy!(buffer, (w, h))
-    end
-    fb.resolution[] = (w, h)
-    return nothing
-end
+Base.resize!(fb::Framebuffer, w::Int, h::Int) = resize!(fb.fb, w, h)
 
 
 struct MonitorProperties

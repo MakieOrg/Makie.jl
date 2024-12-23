@@ -53,7 +53,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     end
 
     # prepare stencil (for sub-scenes)
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+    GLAbstraction.bind(fb)
     glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
@@ -72,7 +72,7 @@ function render_frame(screen::Screen; resize_buffers=true)
 
 
     # render no SSAO
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glDrawBuffers(2, [get_attachment(fb, :color), get_attachment(fb, :objectid)])
     # render all non ssao
     GLAbstraction.render(screen) do robj
         return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
@@ -80,15 +80,15 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # TRANSPARENT RENDER
     # clear sums to 0
-    glDrawBuffer(GL_COLOR_ATTACHMENT2)
+    glDrawBuffer(get_attachment(fb, :HDR_color))
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
     # clear alpha product to 1
-    glDrawBuffer(GL_COLOR_ATTACHMENT3)
+    glDrawBuffer(get_attachment(fb, :OIT_weight))
     glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     # draw
-    glDrawBuffers(3, [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT3])
+    glDrawBuffers(3, [get_attachment(fb, :HDR_color), get_attachment(fb, :objectid), get_attachment(fb, :OIT_weight)])
     # Render only transparent objects
     GLAbstraction.render(screen) do robj
         return Bool(robj[:transparency][])

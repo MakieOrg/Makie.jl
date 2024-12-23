@@ -162,7 +162,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     owns_glscreen::Bool
     shader_cache::GLAbstraction.ShaderCache
-    framebuffer::GLFramebuffer
+    framebuffer::Framebuffer
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
@@ -190,7 +190,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen::GLWindow,
             owns_glscreen::Bool,
             shader_cache::GLAbstraction.ShaderCache,
-            framebuffer::GLFramebuffer,
+            framebuffer::Framebuffer,
             config::Union{Nothing, ScreenConfig},
             stop_renderloop::Bool,
             rendertask::Union{Nothing, Task},
@@ -217,7 +217,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     end
 end
 
-framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
+framebuffer_size(screen::Screen) = size(screen.framebuffer)
 
 Makie.isvisible(screen::Screen) = screen.config.visible
 
@@ -279,7 +279,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(initial_resolution)
+    fb = Framebuffer(window, initial_resolution)
 
     screen = Screen(
         window, owns_glscreen, shader_cache, fb,
@@ -788,7 +788,7 @@ function depthbuffer(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
-    source = screen.framebuffer.buffers[:depth]
+    source = get_buffer(screen.framebuffer, :depth)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -801,7 +801,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     ShaderAbstractions.switch_context!(screen.glscreen)
-    ctex = screen.framebuffer.buffers[:color]
+    ctex = get_buffer(screen.framebuffer, :color)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)
