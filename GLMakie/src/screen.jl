@@ -172,7 +172,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    postprocessors::Vector{PostProcessor}
+    render_pipeline::Vector{AbstractRenderStep}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
@@ -198,7 +198,6 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
-            postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt32, AbstractPlot},
             reuse::Bool
@@ -209,7 +208,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen, owns_glscreen, shader_cache, framebuffer,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
-            screens, renderlist, postprocessors, cache, cache2plot,
+            screens, renderlist, AbstractRenderStep[], cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
@@ -280,13 +279,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(window, initial_resolution)
-    postprocessors = [
-        empty_postprocessor(),
-        empty_postprocessor(),
-        empty_postprocessor(),
-        to_screen_postprocessor(fb, shader_cache)
-    ]
+    fb = GLFramebuffer(initial_resolution)
 
     screen = Screen(
         window, owns_glscreen, shader_cache, fb,
@@ -295,11 +288,15 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
-        postprocessors,
         Dict{UInt64, RenderObject}(),
         Dict{UInt32, AbstractPlot}(),
         reuse,
     )
+
+    push!(screen.render_pipeline, EmptyRenderStep())
+    push!(screen.render_pipeline, EmptyRenderStep())
+    push!(screen.render_pipeline, EmptyRenderStep())
+    push!(screen.render_pipeline, BlitToScreen(screen))
 
     if owns_glscreen
         GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
@@ -390,20 +387,18 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
 
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
-    function replace_processor!(postprocessor, idx)
-        fb = screen.framebuffer
-        shader_cache = screen.shader_cache
-        post = screen.postprocessors[idx]
-        if post.constructor !== postprocessor
-            destroy!(screen.postprocessors[idx])
-            screen.postprocessors[idx] = postprocessor(fb, shader_cache)
+    function replace_renderpass!(pass, idx)
+        prev = screen.render_pipeline[idx]
+        if typeof(prev) !== pass
+            destroy!(prev)
+            screen.render_pipeline[idx] = pass(screen)
         end
         return
     end
 
-    replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
-    replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
-    replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+    replace_renderpass!(config.ssao ? RenderPass{:SSAO} : EmptyRenderStep, 1)
+    replace_renderpass!(config.oit  ? RenderPass{:OIT}  : EmptyRenderStep, 2)
+    replace_renderpass!(config.fxaa ? RenderPass{:FXAA} : EmptyRenderStep, 3)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 

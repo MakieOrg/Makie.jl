@@ -68,7 +68,8 @@ function render_frame(screen::Screen; resize_buffers=true)
         return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
     end
     # SSAO
-    screen.postprocessors[1].render(screen)
+    run_step(screen, nothing, screen.render_pipeline[1])
+
 
     # render no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
@@ -94,13 +95,13 @@ function render_frame(screen::Screen; resize_buffers=true)
     end
 
     # TRANSPARENT BLEND
-    screen.postprocessors[2].render(screen)
+    run_step(screen, nothing, screen.render_pipeline[2])
 
     # FXAA
-    screen.postprocessors[3].render(screen)
+    run_step(screen, nothing, screen.render_pipeline[3])
 
     # transfer everything to the screen
-    screen.postprocessors[4].render(screen)
+    run_step(screen, nothing, screen.render_pipeline[4])
 
     GLAbstraction.require_context(nw)
 

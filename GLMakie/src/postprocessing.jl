@@ -18,27 +18,50 @@ end
 
 rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
 
-struct PostProcessor{F}
-    robjs::Vector{RenderObject}
-    render::F
-    constructor::Any
+abstract type AbstractRenderStep end
+prepare_step(screen, glscene, ::AbstractRenderStep) = nothing
+run_step(screen, glscene, ::AbstractRenderStep) = nothing
+
+struct RenderPipeline
+    steps::Vector{AbstractRenderStep}
 end
 
-function empty_postprocessor(args...; kwargs...)
-    PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
+function render_frame(screen, glscene, pipeline::RenderPipeline)
+    for step in pipeline.steps
+        prepare_step(screen, glscene, step)
+    end
+    for step in pipeline.steps
+        run_step(screen, glscene, step)
+    end
+    return
 end
 
+# TODO: temporary, we should get to the point where this is not needed
+struct EmptyRenderStep <: AbstractRenderStep end
 
-function OIT_postprocessor(framebuffer, shader_cache)
+# Vaguely leaning on Vulkan Terminology
+struct RenderPass{Name} <: AbstractRenderStep
+    framebuffer::GLFramebuffer
+    passes::Vector{RenderObject}
+    renames::Dict{Symbol, Symbol} # TODO: temporary until GLFramebuffer not shared
+end
+function RenderPass{Name}(framebuffer::GLFramebuffer, passes::Vector{RenderObject}) where {Name}
+    return RenderPass{Name}(framebuffer, passes, Dict{Symbol, Symbol}())
+end
+
+function RenderPass{:OIT}(screen)
+    @debug "Creating OIT postprocessor"
+
+    framebuffer = screen.framebuffer
+
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
     shader = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
     data = Dict{Symbol, Any}(
-        # :opaque_color => framebuffer[:color][2],
         :sum_color => framebuffer[:HDR_color][2],
         :prod_alpha => framebuffer[:OIT_weight][2],
     )
@@ -61,26 +84,29 @@ function OIT_postprocessor(framebuffer, shader_cache)
     )
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    color_id = framebuffer[:color][1]
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+    return RenderPass{:OIT}(framebuffer, RenderObject[pass])
+end
 
-        # Blend transparent onto opaque
-        glDrawBuffer(color_id)
-        glViewport(0, 0, w, h)
-        GLAbstraction.render(pass)
-    end
-
-    PostProcessor(RenderObject[pass], full_render, OIT_postprocessor)
+function run_step(screen, glscene, step::RenderPass{:OIT})
+    # Blend transparent onto opaque
+    wh = size(screen.framebuffer)
+    glViewport(0, 0, wh[1], wh[2])
+    glDrawBuffer(step.framebuffer[:color][1])
+    GLAbstraction.render(step.passes[1])
+    return
 end
 
 
+function RenderPass{:SSAO}(screen)
+    @debug "Creating SSAO postprocessor"
+    framebuffer = screen.framebuffer
+    renames = Dict{Symbol, Symbol}()
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
     ShaderAbstractions.switch_context!(shader_cache.context)
     require_context(shader_cache.context)
+
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -97,8 +123,10 @@ function ssao_postprocessor(framebuffer, shader_cache)
                 shader_cache.context, Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
             )
             normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
+            renames[:normal_occlusion] = :normal_occlusion
         else
             normal_occ_id = framebuffer[:HDR_color][1]
+            renames[:normal_occlusion] = :HDR_color
         end
         push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
@@ -115,7 +143,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
 
     # compute occlusion
     shader1 = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO.frag"),
         view = Dict(
@@ -141,7 +169,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
 
     # blur occlusion and combine with color
     shader2 = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO_blur.frag")
     )
@@ -154,61 +182,56 @@ function ssao_postprocessor(framebuffer, shader_cache)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
-    color_id = framebuffer[:color][1]
 
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
-
-        # Setup rendering
-        # SSAO - calculate occlusion
-        glDrawBuffer(normal_occ_id)  # occlusion buffer
-        glViewport(0, 0, w, h)
-        glEnable(GL_SCISSOR_TEST)
-        ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
-
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            # This should be per scene because projection may vary between
-            # scenes. It should be a leaf scene to avoid repeatedly shading
-            # the same region (though this is not guaranteed...)
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data1[:projection] = Mat4f(scene.camera.projection[])
-            data1[:bias] = scene.ssao.bias[]
-            data1[:radius] = scene.ssao.radius[]
-            GLAbstraction.render(pass1)
-        end
-
-        # SSAO - blur occlusion and apply to color
-        glDrawBuffer(color_id)  # color buffer
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data2[:blur_range] = scene.ssao.blur
-            GLAbstraction.render(pass2)
-        end
-        glDisable(GL_SCISSOR_TEST)
-    end
-
-    require_context(shader_cache.context)
-
-    PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
+    return RenderPass{:SSAO}(framebuffer, [pass1, pass2], renames)
 end
 
-"""
-    fxaa_postprocessor(framebuffer, shader_cache)
+function run_step(screen, glscene, step::RenderPass{:SSAO})
+    wh = size(screen.framebuffer)
 
-Returns a PostProcessor that handles fxaa.
-"""
-function fxaa_postprocessor(framebuffer, shader_cache)
-    ShaderAbstractions.switch_context!(shader_cache.context)
-    require_context(shader_cache.context)
+    glViewport(0, 0, wh[1], wh[2])
+    glDrawBuffer(step.framebuffer[step.renames[:normal_occ_id]][1])  # occlusion buffer
+    glEnable(GL_SCISSOR_TEST)
+    ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
+
+    data1 = step.passes[1].uniforms
+    for (screenid, scene) in screen.screens
+        # Select the area of one leaf scene
+        # This should be per scene because projection may vary between
+        # scenes. It should be a leaf scene to avoid repeatedly shading
+        # the same region (though this is not guaranteed...)
+        isempty(scene.children) || continue
+        a = viewport(scene)[]
+        glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+        # update uniforms
+        data1[:projection] = scene.camera.projection[]
+        data1[:bias] = scene.ssao.bias[]
+        data1[:radius] = scene.ssao.radius[]
+        GLAbstraction.render(step.passes[1])
+    end
+
+    # SSAO - blur occlusion and apply to color
+    glDrawBuffer(step.framebuffer[:color][1])  # color buffer
+    data2 = step.passes[2].uniforms
+    for (screenid, scene) in screen.screens
+        # Select the area of one leaf scene
+        isempty(scene.children) || continue
+        a = viewport(scene)[]
+        glScissor(ppu(minimum(a))..., ppu(widths(a))...)
+        # update uniforms
+        data2[:blur_range] = scene.ssao.blur
+        GLAbstraction.render(step.passes[2])
+    end
+    glDisable(GL_SCISSOR_TEST)
+
+    return
+end
+
+
+function RenderPass{:FXAA}(screen)
+    @debug "Creating FXAA postprocessor"
+    framebuffer = screen.framebuffer
+    renames = Dict{Symbol, Symbol}()
 
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
@@ -218,14 +241,16 @@ function fxaa_postprocessor(framebuffer, shader_cache)
                 shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
             )
             luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
+            renames[:color_luma] = :color_luma
         else
             luma_id = framebuffer[:HDR_color][1]
+            renames[:color_luma] = :HDR_color
         end
     end
 
     # calculate luma for FXAA
     shader1 = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/postprocess.frag")
     )
@@ -238,7 +263,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
 
     # perform FXAA
     shader2 = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/fxaa.frag")
     )
@@ -249,42 +274,42 @@ function fxaa_postprocessor(framebuffer, shader_cache)
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
-    color_id = framebuffer[:color][1]
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
-
-        # FXAA - calculate LUMA
-        glDrawBuffer(luma_id)
-        glViewport(0, 0, w, h)
-        # necessary with negative SSAO bias...
-        glClearColor(1, 1, 1, 1)
-        glClear(GL_COLOR_BUFFER_BIT)
-        GLAbstraction.render(pass1)
-
-        # FXAA - perform anti-aliasing
-        glDrawBuffer(color_id)  # color buffer
-        GLAbstraction.render(pass2)
-    end
-
-    require_context(shader_cache.context)
-
-    PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
+    return RenderPass{:FXAA}(framebuffer, RenderObject[pass1, pass2], renames)
 end
 
+function run_step(screen, glscene, step::RenderPass{:FXAA})
+    # TODO: make scissor explicit?
+    wh = size(screen.framebuffer)
+    glViewport(0, 0, wh[1], wh[2])
 
-"""
-    to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
+    # FXAA - calculate LUMA
+    glDrawBuffer(step.framebuffer[step.renames[:color_luma]][1])
+    # necessary with negative SSAO bias...
+    glClearColor(1, 1, 1, 1)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(step.passes[1])
 
-Sets up a Postprocessor which copies the color buffer to the screen. Used as a
-final step for displaying the screen. The argument `screen_fb_id` can be used
-to pass in a reference to the framebuffer ID of the screen. If `nothing` is
-used (the default), 0 is used.
-"""
-function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
+    # FXAA - perform anti-aliasing
+    glDrawBuffer(step.framebuffer[:color][1])  # color buffer
+    GLAbstraction.render(step.passes[2])
+
+    return
+end
+
+struct BlitToScreen <: AbstractRenderStep
+    framebuffer::GLFramebuffer
+    pass::RenderObject
+    screen_framebuffer_id::Int
+end
+
+# TODO: replacement for CImGUI?
+function BlitToScreen(screen, screen_framebuffer_id = 0)
+    @debug "Creating to screen postprocessor"
+    framebuffer = screen.framebuffer
+
     # draw color buffer
     shader = LazyShader(
-        shader_cache,
+        screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/copy.frag")
     )
@@ -294,20 +319,36 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     pass = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    full_render = screen -> begin
-        # transfer everything to the screen
-        default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
-        # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
-        glBindFramebuffer(GL_FRAMEBUFFER, default_id)
-        glViewport(0, 0, framebuffer_size(screen)...)
-        glClear(GL_COLOR_BUFFER_BIT)
-        GLAbstraction.render(pass) # copy postprocess
-    end
-
-    PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
+    return BlitToScreen(framebuffer, pass, screen_framebuffer_id)
 end
 
-function destroy!(pp::PostProcessor)
-    foreach(destroy!, pp.robjs)
+function run_step(screen, ::Nothing, step::BlitToScreen)
+    # TODO: Is this an observable? Can this be static?
+    # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
+    glBindFramebuffer(GL_FRAMEBUFFER, step.screen_framebuffer_id)
+    glViewport(0, 0, framebuffer_size(screen)...)
+    # glScissor(0, 0, wh[1], wh[2])
+
+    # clear target
+    # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
+    # TODO: Should this be cleared if we don't own the target?
+    glClearColor(1,1,1,1)
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    # transfer everything to the screen
+    GLAbstraction.render(step.pass) # copy postprocess
+
+    return
+end
+
+function destroy!(step::T) where {T <: AbstractRenderStep}
+    @debug "Default destructor of $T"
+    if hasfield(T, :passes)
+        while !isempty(step.passes)
+            destroy!(pop!(step.passes))
+        end
+    elseif hasfield(T, :pass)
+        destroy!(step.pass)
+    end
     return
 end
