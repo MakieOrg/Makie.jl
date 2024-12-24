@@ -68,6 +68,92 @@ end
 struct EmptyRenderStep <: AbstractRenderStep end
 
 
+@enum FilterOptions begin
+    FilterFalse = 0
+    FilterTrue = 1
+    FilterAny = 2
+end
+compare(val::Bool, filter::FilterOptions)    = (filter == FilterAny) || (val == Int(filter))
+compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
+
+struct RenderPlots <: AbstractRenderStep
+    framebuffer::GLFramebuffer
+    targets::Vector{GLuint}
+    clear::Vector{Pair{Int, Vec4f}} # target index -> color
+
+    ssao::FilterOptions
+    transparency::FilterOptions
+    fxaa::FilterOptions
+end
+
+function RenderPlots(screen, stage)
+    fb = screen.framebuffer
+    if stage === :SSAO
+        return RenderPlots(
+            fb.fb, fb.render_buffer_ids, [3 => Vec4f(0), 4 => Vec4f(0)],
+            FilterTrue, FilterFalse, FilterAny)
+    elseif stage === :FXAA
+        return RenderPlots(
+            fb.fb, get_attachment.(Ref(fb), [:color, :objectid]), Pair{Int, Vec4f}[],
+            FilterFalse, FilterFalse, FilterAny)
+    elseif stage === :OIT
+        targets = get_attachment.(Ref(fb), [:HDR_color, :objectid, :OIT_weight])
+        # HDR_color containing sums clears to 0
+        # OIT_weight containing products clears to 1
+        clear = [1 => Vec4f(0), 3 => Vec4f(1)]
+        return RenderPlots(fb.fb, targets, clear, FilterAny, FilterTrue, FilterAny)
+    else
+        error("Incorrect stage = $stage given. Should be :SSAO, :FXAA or :OIT.")
+    end
+end
+
+function id2scene(screen, id1)
+    # TODO maybe we should use a different data structure
+    for (id2, scene) in screen.screens
+        id1 == id2 && return true, scene
+    end
+    return false, nothing
+end
+
+function run_step(screen, glscene, step::RenderPlots)
+    # Somehow errors in here get ignored silently!?
+    try
+        GLAbstraction.bind(step.framebuffer)
+
+        for (idx, color) in step.clear
+            idx <= length(step.targets) || continue
+            glDrawBuffer(step.targets[idx])
+            glClearColor(color...)
+            glClear(GL_COLOR_BUFFER_BIT)
+        end
+
+        glDrawBuffers(length(step.targets), step.targets)
+
+        for (zindex, screenid, elem) in screen.renderlist
+            should_render = elem.visible &&
+                compare(elem[:ssao][], step.ssao) &&
+                compare(elem[:transparency][], step.transparency) &&
+                compare(elem[:fxaa][], step.fxaa)
+            should_render || continue
+
+            found, scene = id2scene(screen, screenid)
+            (found && scene.visible[]) || continue
+
+            ppu = screen.px_per_unit[]
+            a = viewport(scene)[]
+            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            render(elem)
+        end
+    catch e
+        @error "Error while rendering!" exception = e
+        rethrow(e)
+    end
+    return
+end
+
+
+
+
 # TODO: maybe call this a PostProcessor?
 # Vaguely leaning on Vulkan Terminology
 struct RenderPass{Name} <: AbstractRenderStep
@@ -78,6 +164,8 @@ end
 function RenderPass{Name}(framebuffer::GLFramebuffer, passes::Vector{RenderObject}) where {Name}
     return RenderPass{Name}(framebuffer, passes, Dict{Symbol, Symbol}())
 end
+
+
 
 function RenderPass{:OIT}(screen)
     @debug "Creating OIT postprocessor"
@@ -328,6 +416,7 @@ function run_step(screen, glscene, step::RenderPass{:FXAA})
 
     return
 end
+
 
 
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct

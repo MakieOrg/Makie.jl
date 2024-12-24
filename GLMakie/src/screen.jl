@@ -293,7 +293,10 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         reuse,
     )
 
+    push!(screen.render_pipeline, RenderPlots(screen, :SSAO))
     push!(screen.render_pipeline, EmptyRenderStep())
+    push!(screen.render_pipeline, RenderPlots(screen, :FXAA))
+    push!(screen.render_pipeline, RenderPlots(screen, :OIT))
     push!(screen.render_pipeline, EmptyRenderStep())
     push!(screen.render_pipeline, EmptyRenderStep())
     push!(screen.render_pipeline, BlitToScreen(screen))
@@ -396,9 +399,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         return
     end
 
-    replace_renderpass!(config.ssao ? RenderPass{:SSAO} : EmptyRenderStep, 1)
-    replace_renderpass!(config.oit  ? RenderPass{:OIT}  : EmptyRenderStep, 2)
-    replace_renderpass!(config.fxaa ? RenderPass{:FXAA} : EmptyRenderStep, 3)
+    replace_renderpass!(config.ssao ? RenderPass{:SSAO} : EmptyRenderStep, 2)
+    replace_renderpass!(config.oit  ? RenderPass{:OIT}  : EmptyRenderStep, 5)
+    replace_renderpass!(config.fxaa ? RenderPass{:FXAA} : EmptyRenderStep, 6)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 

@@ -52,89 +52,37 @@ function render_frame(screen::Screen; resize_buffers=true)
         resize!(fb, round.(Int, ppu .* size(screen.scene))...)
     end
 
-    # prepare stencil (for sub-scenes)
+    # clear global buffers
     GLAbstraction.bind(fb)
-    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
+    glDrawBuffers(2, get_attachment.(Ref(fb), [:color, :objectid]))
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
 
-    glDrawBuffer(fb.render_buffer_ids[1])
+    # draw backgrounds
+    glDrawBuffer(get_attachment(fb, :color))
     setup!(screen)
-    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
 
     # render with SSAO
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    GLAbstraction.render(screen) do robj
-        return !Bool(robj[:transparency][]) && Bool(robj[:ssao][])
-    end
-    # SSAO
     run_step(screen, nothing, screen.render_pipeline[1])
-
-
-    # render no SSAO
-    glDrawBuffers(2, [get_attachment(fb, :color), get_attachment(fb, :objectid)])
-    # render all non ssao
-    GLAbstraction.render(screen) do robj
-        return !Bool(robj[:transparency][]) && !Bool(robj[:ssao][])
-    end
-
-    # TRANSPARENT RENDER
-    # clear sums to 0
-    glDrawBuffer(get_attachment(fb, :HDR_color))
-    glClearColor(0, 0, 0, 0)
-    glClear(GL_COLOR_BUFFER_BIT)
-    # clear alpha product to 1
-    glDrawBuffer(get_attachment(fb, :OIT_weight))
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
-    # draw
-    glDrawBuffers(3, [get_attachment(fb, :HDR_color), get_attachment(fb, :objectid), get_attachment(fb, :OIT_weight)])
-    # Render only transparent objects
-    GLAbstraction.render(screen) do robj
-        return Bool(robj[:transparency][])
-    end
-
-    # TRANSPARENT BLEND
+    # run SSAO
     run_step(screen, nothing, screen.render_pipeline[2])
 
-    # FXAA
+    # render all plots without SSAO and transparency
     run_step(screen, nothing, screen.render_pipeline[3])
 
-    # transfer everything to the screen
+    # Render only transparent objects
     run_step(screen, nothing, screen.render_pipeline[4])
+
+    # TRANSPARENT BLEND
+    run_step(screen, nothing, screen.render_pipeline[5])
+
+    # FXAA
+    run_step(screen, nothing, screen.render_pipeline[6])
+
+    # transfer everything to the screen
+    run_step(screen, nothing, screen.render_pipeline[7])
 
     GLAbstraction.require_context(nw)
 
-    return
-end
-
-function id2scene(screen, id1)
-    # TODO maybe we should use a different data structure
-    for (id2, scene) in screen.screens
-        id1 == id2 && return true, scene
-    end
-    return false, nothing
-end
-
-function GLAbstraction.render(filter_elem_func, screen::Screen)
-    # Somehow errors in here get ignored silently!?
-    try
-        GLAbstraction.require_context(screen.glscreen)
-        for (zindex, screenid, elem) in screen.renderlist
-            filter_elem_func(elem)::Bool || continue
-
-            found, scene = id2scene(screen, screenid)
-            found || continue
-            scene.visible[] || continue
-            ppu = screen.px_per_unit[]
-            a = viewport(scene)[]
-            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-            render(elem)
-        end
-        GLAbstraction.require_context(screen.glscreen)
-    catch e
-        @error "Error while rendering!" exception = e
-        rethrow(e)
-    end
     return
 end
