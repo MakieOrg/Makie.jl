@@ -5,12 +5,14 @@ function setup!(screen::Screen, resize_buffers)
     GLAbstraction.require_context(nw)
 
     # Resize framebuffer to window size
-    fb = screen.framebuffer
-    GLAbstraction.bind(fb)
+    fb = screen.framebuffer_factory.fb
     if resize_buffers && !isnothing(screen.scene)
         ppu = screen.px_per_unit[]
-        resize!(fb, round.(Int, ppu .* size(screen.scene))...)
+        resize!(screen.framebuffer_factory, round.(Int, ppu .* size(screen.scene))...)
     end
+
+    GLAbstraction.bind(fb)
+    glViewport(0, 0, size(fb)...)
 
     # clear objectid, depth and stencil
     glDrawBuffer(get_attachment(fb, :objectid))

@@ -76,6 +76,7 @@ function bind(fb::GLFramebuffer)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
     return
 end
+unbind(::GLFramebuffer) = glBindFramebuffer(GL_FRAMEBUFFER, 0)
 
 function unsafe_free(x::GLFramebuffer)
     # don't free if already freed
@@ -113,6 +114,7 @@ end
 attach_colorbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, get_next_colorbuffer_attachment(fb))
 attach_depthbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_DEPTH_ATTACHMENT)
 attach_stencilbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_STENCIL_ATTACHMENT)
+attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_DEPTH_STENCIL_ATTACHMENT)
 
 function attach(fb::GLFramebuffer, key::Symbol, buffer, attachment::GLenum)
     haskey(fb, key) && error("Cannot attach $key to Framebuffer because it is already set.")
@@ -121,6 +123,8 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, attachment::GLenum)
             type = "depth"
         elseif attachment == GL_STENCIL_ATTACHMENT
             type = "stencil"
+        elseif attachment == GL_DEPTH_STENCIL_ATTACHMENT
+            type = "depth-stencil"
         else
             type = "color"
         end
@@ -178,7 +182,7 @@ function Base.show(io::IO, fb::GLFramebuffer)
     X, Y = fb.size
     print(io, "$X×$Y GLFrameBuffer(:")
     join(io, string.(keys(fb.buffers)), ", :")
-    print(io, ")")
+    print(io, ") with id ", fb.id)
 end
 
 function attachment_enum_to_string(x::GLenum)
@@ -190,7 +194,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
     X, Y = fb.size
-    print(io, "$X×$Y GLFrameBuffer()")
+    print(io, "$X×$Y GLFrameBuffer() with id ", fb.id)
 
     ks = collect(keys(fb.buffers))
     key_strings = [":$k" for k in ks]

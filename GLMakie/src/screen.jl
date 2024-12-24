@@ -162,7 +162,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
     owns_glscreen::Bool
     shader_cache::GLAbstraction.ShaderCache
-    framebuffer::Framebuffer
+    framebuffer_factory::FramebufferFactory
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
@@ -190,7 +190,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen::GLWindow,
             owns_glscreen::Bool,
             shader_cache::GLAbstraction.ShaderCache,
-            framebuffer::Framebuffer,
+            framebuffer_factory::FramebufferFactory,
             config::Union{Nothing, ScreenConfig},
             stop_renderloop::Bool,
             rendertask::Union{Nothing, Task},
@@ -203,9 +203,9 @@ mutable struct Screen{GLWindow} <: MakieScreen
             reuse::Bool
         ) where {GLWindow}
 
-        s = size(framebuffer)
+        s = size(framebuffer_factory)
         screen = new{GLWindow}(
-            glscreen, owns_glscreen, shader_cache, framebuffer,
+            glscreen, owns_glscreen, shader_cache, framebuffer_factory,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, AbstractRenderStep[], cache, cache2plot,
@@ -217,7 +217,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     end
 end
 
-framebuffer_size(screen::Screen) = size(screen.framebuffer)
+framebuffer_size(screen::Screen) = size(screen.framebuffer_factory)
 
 Makie.isvisible(screen::Screen) = screen.config.visible
 
@@ -279,7 +279,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = Framebuffer(window, initial_resolution)
+    fb = FramebufferFactory(window, initial_resolution)
 
     screen = Screen(
         window, owns_glscreen, shader_cache, fb,
@@ -510,7 +510,7 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-Base.size(x::Screen) = size(x.framebuffer)
+Base.size(x::Screen) = size(x.framebuffer_factory)
 
 function add_scene!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
@@ -763,7 +763,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     # independently of the window scale factor.
     fbscale = screen.px_per_unit[]
     fbw, fbh = round.(Int, fbscale .* (w, h))
-    resize!(screen.framebuffer, fbw, fbh)
+    resize!(screen.framebuffer_factory, fbw, fbh)
     return nothing
 end
 
@@ -795,7 +795,7 @@ function depthbuffer(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(screen.framebuffer, :depth)
+    source = get_buffer(screen.framebuffer_factory, :depth)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -808,7 +808,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     ShaderAbstractions.switch_context!(screen.glscreen)
-    ctex = get_buffer(screen.framebuffer, :color)
+    ctex = get_buffer(screen.framebuffer_factory, :color)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)

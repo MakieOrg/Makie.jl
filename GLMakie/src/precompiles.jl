@@ -59,7 +59,7 @@ let
 end
 
 precompile(Screen, (Scene, ScreenConfig))
-precompile(Framebuffer, (NTuple{2,Int},))
+precompile(FramebufferFactory, (NTuple{2,Int},))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{Float32}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBAf}))
 precompile(glTexImage, (GLenum, Int, GLenum, Int, Int, Int, GLenum, GLenum, Ptr{RGBf}))

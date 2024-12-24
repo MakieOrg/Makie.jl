@@ -10,33 +10,32 @@ end
 Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
 Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
-mutable struct Framebuffer
+mutable struct FramebufferFactory
     fb::GLFramebuffer
+    buffers::Dict{Symbol, Texture} # TODO: temp, should be unnamed collection
     render_buffer_ids::Vector{GLuint}
+    children::Vector{GLFramebuffer} # TODO: how else can we handle resizing?
 end
 
 # it's guaranteed, that they all have the same size
-# forwards... for now
-Base.size(fb::Framebuffer) = size(fb.fb)
-Base.haskey(fb::Framebuffer, key::Symbol) = haskey(fb.fb, key)
-GLAbstraction.get_attachment(fb::Framebuffer, key::Symbol) = get_attachment(fb.fb, key)
-GLAbstraction.get_buffer(fb::Framebuffer, key::Symbol) = get_buffer(fb.fb, key)
-GLAbstraction.bind(fb::Framebuffer) = GLAbstraction.bind(fb.fb)
-GLAbstraction.attach_colorbuffer(fb::Framebuffer, key, val) = GLAbstraction.attach_colorbuffer(fb.fb, key, val)
-function getfallback_attachment(fb::Framebuffer, key::Symbol, fallback_key::Symbol)
-    haskey(fb, key) ? get_attachment(fb, key) : get_attachment(fb, fallback_key)
-end
-function getfallback_buffer(fb::Framebuffer, key::Symbol, fallback_key::Symbol)
-    haskey(fb, key) ? get_buffer(fb, key) : get_buffer(fb, fallback_key)
+# TODO: forwards... for now
+Base.size(fb::FramebufferFactory) = size(fb.fb)
+Base.haskey(fb::FramebufferFactory, key::Symbol) = haskey(fb.buffers, key)
+GLAbstraction.get_buffer(fb::FramebufferFactory, key::Symbol) = fb.buffers[key]
+GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
+
+function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
+    foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), values(fb.buffers))
+    resize!(fb.fb, w, h)
+    filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok?
+    foreach(fb -> resize!(fb, w, h), fb.children)
+    return
 end
 
 
-Makie.@noconstprop function Framebuffer(context, fb_size::NTuple{2, Int})
+Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
     ShaderAbstractions.switch_context!(context)
     require_context(context)
-
-    # Create framebuffer
-    fb = GLFramebuffer(fb_size)
 
     # Buffers we always need
     # Holds the image that eventually gets displayed
@@ -62,20 +61,65 @@ Makie.@noconstprop function Framebuffer(context, fb_size::NTuple{2, Int})
         context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
+    buffers = Dict{Symbol, Texture}(
+        :color => color_buffer,
+        :objectid => objectid_buffer,
+        :HDR_color => HDR_color_buffer,
+        :OIT_weight => OIT_weight_buffer,
+        :depth_stencil => depth_buffer,
+    )
+
+    # Create render framebuffer
+    fb = GLFramebuffer(fb_size)
+
     # attach buffers
     color_attachment = attach_colorbuffer(fb, :color, color_buffer)
     objectid_attachment = attach_colorbuffer(fb, :objectid, objectid_buffer)
-    attach_colorbuffer(fb, :HDR_color, HDR_color_buffer)
-    attach_colorbuffer(fb, :OIT_weight, OIT_weight_buffer)
-    attach_depthbuffer(fb, :depth, depth_buffer)
-    attach_stencilbuffer(fb, :stencil, depth_buffer)
+    attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
+    attach_colorbuffer(fb, :HDR_color, HDR_color_buffer) # TODO: framebuffer for RenderPlots
+    attach_colorbuffer(fb, :OIT_weight, OIT_weight_buffer) # TODO: framebuffer for RenderPlots
 
     check_framebuffer()
 
-    return Framebuffer(fb, [color_attachment, objectid_attachment])
+    return FramebufferFactory(fb, buffers, [color_attachment, objectid_attachment], GLFramebuffer[])
 end
 
-Base.resize!(fb::Framebuffer, w::Int, h::Int) = resize!(fb.fb, w, h)
+# TODO: temporary
+function Base.push!(factory::FramebufferFactory, kv::Pair{Symbol, <: Texture})
+    if haskey(factory.buffers, kv[1])
+        @error("Pushed buffer $(kv[1]) already assigned.")
+        return
+    end
+    push!(factory.buffers, kv)
+    return
+end
+
+function generate_framebuffer(factory::FramebufferFactory, names...)
+    filter!(fb -> fb.id != 0, factory.children) # cleanup?
+
+    parse_arg(name::Symbol) = name => name
+    parse_arg(p::Pair{Symbol, Symbol}) = p
+    parse_arg(x::Any) = error("$x not accepted")
+
+    fb = GLFramebuffer(size(factory.fb))
+    attach_depthstencilbuffer(fb, :depth_stencil, factory.buffers[:depth_stencil])
+
+    for arg in names
+        lookup, name = parse_arg(arg)
+        haskey(factory.buffers, lookup) || error("Add buffers yourself for now")
+        haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")
+        in(lookup, [:depth, :stencil]) && error("Depth and stencil always exist under the same name.")
+
+        attach_colorbuffer(fb, name, factory.buffers[lookup])
+    end
+
+    check_framebuffer()
+
+    push!(factory.children, fb)
+
+    return fb
+end
+
 
 
 struct MonitorProperties
