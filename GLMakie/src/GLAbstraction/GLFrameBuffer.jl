@@ -173,3 +173,37 @@ function check_framebuffer()
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     return enum_to_error(status)
 end
+
+function Base.show(io::IO, fb::GLFramebuffer)
+    X, Y = fb.size
+    print(io, "$X×$Y GLFrameBuffer(:")
+    join(io, string.(keys(fb.buffers)), ", :")
+    print(io, ")")
+end
+
+function attachment_enum_to_string(x::GLenum)
+    x == GL_DEPTH_ATTACHMENT && return "GL_DEPTH_ATTACHMENT"
+    x == GL_STENCIL_ATTACHMENT && return "GL_STENCIL_ATTACHMENT"
+    i = Int(x - GL_COLOR_ATTACHMENT0)
+    return "GL_COLOR_ATTACHMENT$i"
+end
+
+function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
+    X, Y = fb.size
+    print(io, "$X×$Y GLFrameBuffer()")
+
+    ks = collect(keys(fb.buffers))
+    key_strings = [":$k" for k in ks]
+    key_pad = mapreduce(length, max, key_strings)
+    key_strings = rpad.(key_strings, key_pad)
+
+    attachments = map(key -> attachment_enum_to_string(get_attachment(fb, key)), ks)
+    idxs = sortperm(attachments)
+    attachment_pad = mapreduce(length, max, attachments)
+    attachments = rpad.(attachments, attachment_pad)
+
+    for i in idxs
+        T = typeof(get_buffer(fb, ks[i]))
+        print(io, "\n  ", key_strings[i], " => ", attachments[i], " ::", T)
+    end
+end
