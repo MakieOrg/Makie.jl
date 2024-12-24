@@ -18,9 +18,36 @@ end
 
 rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
 
+
+# or maybe Task? Stage?
+"""
+    AbstractRenderStep
+
+Represents a task or step that needs to run when rendering a frame. These
+tasks are collected in the RenderPipeline.
+
+Each task may implement:
+- `prepare_step(screen, glscene, step)`: Initialize the task.
+- `run_step(screen, glscene, step)`: Run the task.
+
+Initialization is grouped together and runs before all run steps. If you need
+to initialize just before your run, bundle it with the run.
+"""
 abstract type AbstractRenderStep end
 prepare_step(screen, glscene, ::AbstractRenderStep) = nothing
 run_step(screen, glscene, ::AbstractRenderStep) = nothing
+
+function destroy!(step::T) where {T <: AbstractRenderStep}
+    @debug "Default destructor of $T"
+    if hasfield(T, :passes)
+        while !isempty(step.passes)
+            destroy!(pop!(step.passes))
+        end
+    elseif hasfield(T, :pass)
+        destroy!(step.pass)
+    end
+    return
+end
 
 struct RenderPipeline
     steps::Vector{AbstractRenderStep}
@@ -36,9 +63,12 @@ function render_frame(screen, glscene, pipeline::RenderPipeline)
     return
 end
 
+
 # TODO: temporary, we should get to the point where this is not needed
 struct EmptyRenderStep <: AbstractRenderStep end
 
+
+# TODO: maybe call this a PostProcessor?
 # Vaguely leaning on Vulkan Terminology
 struct RenderPass{Name} <: AbstractRenderStep
     framebuffer::GLFramebuffer
@@ -299,59 +329,40 @@ function run_step(screen, glscene, step::RenderPass{:FXAA})
     return
 end
 
+
+# TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
 struct BlitToScreen <: AbstractRenderStep
     framebuffer::GLFramebuffer
-    pass::RenderObject
     screen_framebuffer_id::Int
-end
 
-# TODO: replacement for CImGUI?
-function BlitToScreen(screen, screen_framebuffer_id = 0)
-    @debug "Creating to screen postprocessor"
-    framebuffer = screen.framebuffer
-
-    # draw color buffer
-    shader = LazyShader(
-        screen.shader_cache,
-        loadshader("postprocessing/fullscreen.vert"),
-        loadshader("postprocessing/copy.frag")
-    )
-    data = Dict{Symbol, Any}(
-        :color_texture => get_buffer(framebuffer, :color)
-    )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
-    pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
-
-    return BlitToScreen(framebuffer.fb, pass, screen_framebuffer_id)
+    # Screen not available yet
+    function BlitToScreen(screen, screen_framebuffer_id::Integer = 0)
+        @debug "Creating to screen postprocessor"
+        return new(screen.framebuffer.fb, screen_framebuffer_id)
+    end
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
+    # Set source
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
+    glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
+
     # TODO: Is this an observable? Can this be static?
     # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
-    glBindFramebuffer(GL_FRAMEBUFFER, step.screen_framebuffer_id)
-    glViewport(0, 0, framebuffer_size(screen)...)
-    # glScissor(0, 0, wh[1], wh[2])
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.screen_framebuffer_id)
 
-    # clear target
-    # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
-    # TODO: Should this be cleared if we don't own the target?
-    glClearColor(1,1,1,1)
-    glClear(GL_COLOR_BUFFER_BIT)
-
-    # transfer everything to the screen
-    GLAbstraction.render(step.pass) # copy postprocess
-
-    return
-end
-
-function destroy!(step::T) where {T <: AbstractRenderStep}
-    @debug "Default destructor of $T"
-    if hasfield(T, :passes)
-        while !isempty(step.passes)
-            destroy!(pop!(step.passes))
-        end
-    elseif hasfield(T, :pass)
-        destroy!(step.pass)
+    src_w, src_h = framebuffer_size(screen)
+    if isnothing(screen.scene)
+        trg_w, trg_h = src_w, src_h
+    else
+        trg_w, trg_h = widths(screen.scene.viewport[])
     end
+
+    glBlitFramebuffer(
+        0, 0, src_w, src_h,
+        0, 0, trg_w, trg_h,
+        GL_COLOR_BUFFER_BIT, GL_LINEAR
+    )
+
     return
 end
