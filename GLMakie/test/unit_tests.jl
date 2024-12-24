@@ -326,7 +326,7 @@ end
     screen = display(GLMakie.Screen(visible = true, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 2f0  # inherited from scale factor
-    @test size(screen.framebuffer) == (2W, 2H)
+    @test size(screen.framebuffer_factory) == (2W, 2H)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
     # check that picking works through the resized GL buffers
@@ -353,7 +353,7 @@ end
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 1f0
-    @test size(screen.framebuffer) == (W, H)
+    @test size(screen.framebuffer_factory) == (W, H)
 
     # decrease the scale factor after-the-fact
     screen.scalefactor[] = 1
