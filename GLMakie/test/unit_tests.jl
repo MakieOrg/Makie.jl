@@ -11,39 +11,39 @@ end
     screen = display(GLMakie.Screen(visible = false), Figure())
     cache = screen.shader_cache;
     # Postprocessing shaders
-    @test length(cache.shader_cache) == 5
-    @test length(cache.template_cache) == 5
-    @test length(cache.program_cache) == 4
+    @test length(cache.shader_cache) == 4
+    @test length(cache.template_cache) == 4
+    @test length(cache.program_cache) == 3
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == 17
+    @test length(cache.template_cache) == 17
+    @test length(cache.program_cache) == 10
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == 17
+    @test length(cache.template_cache) == 17
+    @test length(cache.program_cache) == 10
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    @test length(cache.shader_cache) == 17
+    @test length(cache.template_cache) == 17
+    @test length(cache.program_cache) == 10
 
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 12
+    @test length(cache.shader_cache) == 19
+    @test length(cache.template_cache) == 19
+    @test length(cache.program_cache) == 11
 
     # For second time no new shaders should be added
     display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
-    @test length(cache.shader_cache) == 20
-    @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 12
+    @test length(cache.shader_cache) == 19
+    @test length(cache.template_cache) == 19
+    @test length(cache.program_cache) == 11
 end
 
 @testset "unit tests" begin
