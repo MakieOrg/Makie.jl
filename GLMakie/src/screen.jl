@@ -293,6 +293,10 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         reuse,
     )
 
+    # NOTE
+    # The transparent color buffer is reused by SSAO and FXAA. Changing the
+    # render order here may introduce artifacts because of that.
+    push!(screen.render_pipeline, SortPlots())
     push!(screen.render_pipeline, RenderPlots(screen, :SSAO))
     push!(screen.render_pipeline, EmptyRenderStep())
     push!(screen.render_pipeline, RenderPlots(screen, :FXAA))
@@ -399,9 +403,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         return
     end
 
-    replace_renderpass!(config.ssao ? RenderPass{:SSAO} : EmptyRenderStep, 2)
-    replace_renderpass!(config.oit  ? RenderPass{:OIT}  : EmptyRenderStep, 5)
-    replace_renderpass!(config.fxaa ? RenderPass{:FXAA} : EmptyRenderStep, 6)
+    replace_renderpass!(config.ssao ? RenderPass{:SSAO} : EmptyRenderStep, 3)
+    replace_renderpass!(config.oit  ? RenderPass{:OIT}  : EmptyRenderStep, 6)
+    replace_renderpass!(config.fxaa ? RenderPass{:FXAA} : EmptyRenderStep, 7)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 

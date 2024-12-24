@@ -68,6 +68,25 @@ end
 struct EmptyRenderStep <: AbstractRenderStep end
 
 
+
+struct SortPlots <: AbstractRenderStep end
+
+function run_step(screen, glscene, ::SortPlots)
+    function sortby(x)
+        robj = x[3]
+        plot = screen.cache2plot[robj.id]
+        # TODO, use actual boundingbox
+        # ~7% faster than calling zvalue2d doing the same thing?
+        return Makie.transformationmatrix(plot)[][3, 4]
+        # return Makie.zvalue2d(plot)
+    end
+
+    sort!(screen.renderlist; by=sortby)
+    return
+end
+
+
+
 @enum FilterOptions begin
     FilterFalse = 0
     FilterTrue = 1
