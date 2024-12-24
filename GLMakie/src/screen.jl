@@ -795,7 +795,7 @@ function depthbuffer(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(screen.framebuffer_factory, :depth)
+    source = get_buffer(screen.framebuffer_factory, :depth_stencil)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
