@@ -48,8 +48,9 @@ mutable struct GLFramebuffer
 
     context::GLContext
 
-    attachments::Dict{Symbol, GLenum}
-    buffers::Dict{Symbol, Texture}
+    name2idx::Dict{Symbol, Int}
+    attachments::Vector{GLenum}
+    buffers::Vector{Texture}
     counter::UInt32 # for color attachments
 
     function GLFramebuffer(size::NTuple{2, Int})
@@ -59,9 +60,7 @@ mutable struct GLFramebuffer
 
         obj = new(
             id, size, current_context(),
-            Dict{Symbol, GLuint}(),
-            Dict{Symbol, Texture}(),
-            UInt32(0)
+            Dict{Symbol, Int}(), GLenum[], Texture[], UInt32(0)
         )
         finalizer(free, obj)
 
@@ -69,14 +68,32 @@ mutable struct GLFramebuffer
     end
 end
 
-function bind(fb::GLFramebuffer)
+function bind(fb::GLFramebuffer, target = fb.id)
     if fb.id == 0
         error("Binding freed GLFramebuffer")
     end
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
+    glBindFramebuffer(GL_FRAMEBUFFER, target)
     return
 end
-unbind(::GLFramebuffer) = glBindFramebuffer(GL_FRAMEBUFFER, 0)
+
+"""
+    draw_buffers(fb::GLFrameBuffer[, N::Int])
+
+Activates the first N color buffers attached to the given GLFramebuffer. If N
+is not given all color attachments are activated.
+"""
+function set_draw_buffers(fb::GLFramebuffer, N::Integer = fb.counter)
+    bind(fb)
+    glDrawBuffers(N, fb.attachments)
+end
+function set_draw_buffers(fb::GLFramebuffer, key::Symbol)
+    bind(fb)
+    glDrawBuffer(get_attachment(fb, key))
+end
+function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
+    bind(fb)
+    glDrawBuffer(get_attachment.(Ref(fb), keys))
+end
 
 function unsafe_free(x::GLFramebuffer)
     # don't free if already freed
@@ -91,11 +108,11 @@ function unsafe_free(x::GLFramebuffer)
 end
 
 Base.size(fb::GLFramebuffer) = fb.size
-Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.buffers, key)
+Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.name2idx, key)
 
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
-    for (key, buffer) in fb.buffers
+    for buffer in fb.buffers
         resize_nocopy!(buffer, (w, h))
     end
     fb.size = (w, h)
@@ -108,17 +125,25 @@ function get_next_colorbuffer_attachment(fb::GLFramebuffer)
     end
     attachment = GL_COLOR_ATTACHMENT0 + fb.counter
     fb.counter += 1
-    return attachment
+    return (fb.counter, attachment)
 end
 
-attach_colorbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, get_next_colorbuffer_attachment(fb))
-attach_depthbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_DEPTH_ATTACHMENT)
-attach_stencilbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_STENCIL_ATTACHMENT)
-attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer) = attach(fb, key, buffer, GL_DEPTH_STENCIL_ATTACHMENT)
+function attach_colorbuffer(fb::GLFramebuffer, key::Symbol, buffer)
+    return attach(fb, key, buffer, get_next_colorbuffer_attachment(fb)...)
+end
+function attach_depthbuffer(fb::GLFramebuffer, key::Symbol, buffer)
+    return attach(fb, key, buffer, length(fb.attachments) + 1, GL_DEPTH_ATTACHMENT)
+end
+function attach_stencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
+    return attach(fb, key, buffer, length(fb.attachments) + 1, GL_STENCIL_ATTACHMENT)
+end
+function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
+    return attach(fb, key, buffer, length(fb.attachments) + 1, GL_DEPTH_STENCIL_ATTACHMENT)
+end
 
-function attach(fb::GLFramebuffer, key::Symbol, buffer, attachment::GLenum)
+function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
     haskey(fb, key) && error("Cannot attach $key to Framebuffer because it is already set.")
-    if in(attachment, keys(fb.buffers))
+    if attachment in fb.attachments
         if attachment == GL_DEPTH_ATTACHMENT
             type = "depth"
         elseif attachment == GL_STENCIL_ATTACHMENT
@@ -132,21 +157,27 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, attachment::GLenum)
     end
 
     bind(fb)
-    _attach(buffer, attachment)
-    fb.attachments[key] = attachment
-    fb.buffers[key] = buffer
+    gl_attach(buffer, attachment)
+    # keep depth/stenctil/depth_stencil at end so that we can directly use
+    # fb.attachments when setting drawbuffers
+    for (k, v) in fb.name2idx
+        fb.name2idx[k] = ifelse(v < idx, v, v+1)
+    end
+    fb.name2idx[key] = idx
+    insert!(fb.attachments, idx, attachment)
+    insert!(fb.buffers, idx, buffer)
     return attachment
 end
 
-function _attach(t::Texture{T, 2}, attachment::GLenum) where {T}
+function gl_attach(t::Texture{T, 2}, attachment::GLenum) where {T}
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
-function _attach(buffer::RenderBuffer, attachment::GLenum)
+function gl_attach(buffer::RenderBuffer, attachment::GLenum)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
 end
 
-get_attachment(fb::GLFramebuffer, key::Symbol) = fb.attachments[key]
-get_buffer(fb::GLFramebuffer, key::Symbol) = fb.buffers[key]
+get_attachment(fb::GLFramebuffer, key::Symbol) = fb.attachments[fb.name2idx[key]]
+get_buffer(fb::GLFramebuffer, key::Symbol) = fb.buffers[fb.name2idx[key]]
 
 function enum_to_error(s)
     s == GL_FRAMEBUFFER_COMPLETE && return
@@ -181,7 +212,7 @@ end
 function Base.show(io::IO, fb::GLFramebuffer)
     X, Y = fb.size
     print(io, "$X×$Y GLFrameBuffer(:")
-    join(io, string.(keys(fb.buffers)), ", :")
+    join(io, string.(keys(fb.name2idx)), ", :")
     print(io, ") with id ", fb.id)
 end
 
@@ -196,18 +227,17 @@ function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
     X, Y = fb.size
     print(io, "$X×$Y GLFrameBuffer() with id ", fb.id)
 
-    ks = collect(keys(fb.buffers))
+    ks = collect(keys(fb.name2idx))
+    sort!(ks, by = k -> fb.name2idx[k])
     key_strings = [":$k" for k in ks]
     key_pad = mapreduce(length, max, key_strings)
     key_strings = rpad.(key_strings, key_pad)
 
-    attachments = map(key -> attachment_enum_to_string(get_attachment(fb, key)), ks)
-    idxs = sortperm(attachments)
+    attachments = attachment_enum_to_string(fb.attachments)
     attachment_pad = mapreduce(length, max, attachments)
     attachments = rpad.(attachments, attachment_pad)
 
-    for i in idxs
-        T = typeof(get_buffer(fb, ks[i]))
-        print(io, "\n  ", key_strings[i], " => ", attachments[i], " ::", T)
+    for (key, attachment, buffer) in zip(key_strings, attachments, fb.buffers)
+        print(io, "\n  ", key, " => ", attachment, " ::", typeof(buffer))
     end
 end

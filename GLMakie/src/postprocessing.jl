@@ -223,10 +223,9 @@ end
 
 function run_step(screen, glscene, step::RenderPass{:OIT})
     # Blend transparent onto opaque
-    GLAbstraction.bind(step.framebuffer)
     wh = size(step.framebuffer)
+    set_draw_buffers(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
-    glDrawBuffer(get_attachment(step.framebuffer, :color))
     GLAbstraction.render(step.passes[1])
     return
 end
@@ -312,11 +311,10 @@ function ssao_postprocessor(framebuffer, shader_cache)
 end
 
 function run_step(screen, glscene, step::RenderPass{:SSAO})
-    GLAbstraction.bind(step.framebuffer)
-    wh = size(step.framebuffer)
+    set_draw_buffers(step.framebuffer, :normal_occlusion)  # occlusion buffer
 
+    wh = size(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
-    glDrawBuffer(get_attachment(step.framebuffer, :normal_occlusion))  # occlusion buffer
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
@@ -338,7 +336,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
     end
 
     # SSAO - blur occlusion and apply to color
-    glDrawBuffer(get_attachment(step.framebuffer, :color))  # color buffer
+    set_draw_buffers(step.framebuffer, :color)  # color buffer
     data2 = step.passes[2].uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
@@ -391,21 +389,18 @@ function RenderPass{:FXAA}(screen)
 end
 
 function run_step(screen, glscene, step::RenderPass{:FXAA})
-    GLAbstraction.bind(step.framebuffer)
-
+    # FXAA - calculate LUMA
+    set_draw_buffers(step.framebuffer, :color_luma)
     # TODO: make scissor explicit?
     wh = size(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
-
-    # FXAA - calculate LUMA
-    glDrawBuffer(get_attachment(step.framebuffer, :color_luma))
     # necessary with negative SSAO bias...
     glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(step.passes[1])
 
     # FXAA - perform anti-aliasing
-    glDrawBuffer(get_attachment(step.framebuffer, :color))  # color buffer
+    set_draw_buffers(step.framebuffer, :color)  # color buffer
     step.passes[2][:RCPFrame] = rcpframe(size(step.framebuffer))
     GLAbstraction.render(step.passes[2])
 
