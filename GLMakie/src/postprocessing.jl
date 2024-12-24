@@ -62,8 +62,8 @@ function RenderPass{:OIT}(screen)
         loadshader("postprocessing/OIT_blend.frag")
     )
     data = Dict{Symbol, Any}(
-        :sum_color     => get_buffer(framebuffer, :HDR_color),
-        :transmittance => get_buffer(framebuffer, :OIT_weight),
+        :sum_color  => get_buffer(framebuffer, :HDR_color),
+        :prod_alpha => get_buffer(framebuffer, :OIT_weight),
     )
     pass = RenderObject(
         data, shader,
@@ -207,6 +207,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
         data1[:projection] = scene.camera.projection[]
         data1[:bias] = scene.ssao.bias[]
         data1[:radius] = scene.ssao.radius[]
+        datas1[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
         GLAbstraction.render(step.passes[1])
     end
 
@@ -220,6 +221,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
         data2[:blur_range] = scene.ssao.blur
+        data2[:inv_texel_size] = rcpframe(size(framebuffer))
         GLAbstraction.render(step.passes[2])
     end
     glDisable(GL_SCISSOR_TEST)
