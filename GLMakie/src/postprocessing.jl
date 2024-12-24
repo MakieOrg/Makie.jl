@@ -293,7 +293,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     )
     data2 = Dict{Symbol, Any}(
         :normal_occlusion => getfallback_buffer(framebuffer, :normal_occlusion, :HDR_color),
-        :color_texture => get_output(framebuffer, :color),
+        :color_texture => get_buffer(framebuffer, :color),
         :ids => get_buffer(framebuffer, :objectid),
         :inv_texel_size => rcpframe(size(framebuffer)),
         :blur_range => Int32(2)
@@ -308,7 +308,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
     wh = size(screen.framebuffer)
 
     glViewport(0, 0, wh[1], wh[2])
-    glDrawBuffer(get_attachment(step.framebuffer, step.renames[:normal_occ_id]))  # occlusion buffer
+    glDrawBuffer(get_attachment(step.framebuffer, step.renames[:normal_occlusion]))  # occlusion buffer
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
@@ -322,10 +322,10 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
         a = viewport(scene)[]
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
-        data1[:projection] = scene.camera.projection[]
+        data1[:projection] = Mat4f(scene.camera.projection[])
         data1[:bias] = scene.ssao.bias[]
         data1[:radius] = scene.ssao.radius[]
-        datas1[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
+        data1[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
         GLAbstraction.render(step.passes[1])
     end
 
@@ -339,7 +339,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
         data2[:blur_range] = scene.ssao.blur
-        data2[:inv_texel_size] = rcpframe(size(framebuffer))
+        data2[:inv_texel_size] = rcpframe(size(step.framebuffer))
         GLAbstraction.render(step.passes[2])
     end
     glDisable(GL_SCISSOR_TEST)

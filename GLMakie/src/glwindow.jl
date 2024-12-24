@@ -22,7 +22,7 @@ Base.haskey(fb::Framebuffer, key::Symbol) = haskey(fb.fb, key)
 GLAbstraction.get_attachment(fb::Framebuffer, key::Symbol) = get_attachment(fb.fb, key)
 GLAbstraction.get_buffer(fb::Framebuffer, key::Symbol) = get_buffer(fb.fb, key)
 GLAbstraction.bind(fb::Framebuffer) = GLAbstraction.bind(fb.fb)
-
+GLAbstraction.attach_colorbuffer(fb::Framebuffer, key, val) = GLAbstraction.attach_colorbuffer(fb.fb, key, val)
 function getfallback_attachment(fb::Framebuffer, key::Symbol, fallback_key::Symbol)
     haskey(fb, key) ? get_attachment(fb, key) : get_attachment(fb, fallback_key)
 end
