@@ -176,6 +176,16 @@ function gl_attach(buffer::RenderBuffer, attachment::GLenum)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
 end
 
+function Base.delete!(fb::GLFramebuffer, key::Symbol)
+    idx = fb.name2idx[key]
+    attachment = fb.attachments[idx]
+    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, 0, 0)
+    deleteat!(fb.attachments, idx)
+    deleteat!(fb.buffers, idx)
+    delete!(fb, key)
+    return fb
+end
+
 get_attachment(fb::GLFramebuffer, key::Symbol) = fb.attachments[fb.name2idx[key]]
 get_buffer(fb::GLFramebuffer, key::Symbol) = fb.buffers[fb.name2idx[key]]
 
