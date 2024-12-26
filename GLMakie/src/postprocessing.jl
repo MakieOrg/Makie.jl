@@ -177,7 +177,7 @@ end
 # Vaguely leaning on Vulkan Terminology
 struct RenderPass{Name} <: AbstractRenderStep
     framebuffer::GLFramebuffer
-    passes::Vector{RenderObject}
+    robj::RenderObject
 end
 
 
@@ -199,7 +199,7 @@ function RenderPass{:OIT}(screen)
         :sum_color  => get_buffer(factory.fb, :HDR_color),
         :prod_alpha => get_buffer(factory.fb, :OIT_weight),
     )
-    pass = RenderObject(
+    robj = RenderObject(
         data, shader,
         () -> begin
             glDepthMask(GL_TRUE)
@@ -216,9 +216,9 @@ function RenderPass{:OIT}(screen)
         end,
         nothing, shader_cache.context
     )
-    pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
+    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
-    return RenderPass{:OIT}(framebuffer, RenderObject[pass])
+    return RenderPass{:OIT}(framebuffer, robj)
 end
 
 function run_step(screen, glscene, step::RenderPass{:OIT})
@@ -226,34 +226,41 @@ function run_step(screen, glscene, step::RenderPass{:OIT})
     wh = size(step.framebuffer)
     set_draw_buffers(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
-    GLAbstraction.render(step.passes[1])
+    GLAbstraction.render(step.robj)
     return
 end
 
 
-function RenderPass{:SSAO}(screen)
+function add_ssao_buffers(screen)
     @debug "Creating SSAO postprocessor"
 
     factory = screen.framebuffer_factory
 
+    if length(factory.render_buffer_ids) < 4
+        ShaderAbstractions.switch_context!(shader_cache.context)
+        require_context(shader_cache.context)
 
-function ssao_postprocessor(framebuffer, shader_cache)
-    ShaderAbstractions.switch_context!(shader_cache.context)
-    require_context(shader_cache.context)
+        # Add missing buffers
+        pos_tex = Texture(shader_cache.context, Vec3f, size(screen), minfilter = :nearest, x_repeat = :clamp_to_edge)
+        push!(factory, :position => pos_tex)
+        # HDR_color always exists...
 
-    # Add missing buffers
-    pos_tex = Texture(shader_cache.context, Vec3f, size(screen), minfilter = :nearest, x_repeat = :clamp_to_edge)
-    push!(factory, :position => pos_tex)
-    # HDR_color always exists...
+        # TODO: temp - update renderbuffers and main renderbuffer
+        # eventually RenderPlots should have dedicated GLFramebuffers too, which
+        # derive their draw buffers from the abstracted render pipeline
+        pos_id = attach_colorbuffer(factory.fb, :position, pos_tex)
+        normal_id = attach_colorbuffer(factory.fb, :normal, get_buffer(factory, :HDR_color))
+        push!(factory.render_buffer_ids, pos_id, normal_id)
+    end
 
-    # TODO: temp - update renderbuffers and main renderbuffer
-    # eventually RenderPlots should have dedicated GLFramebuffers too, which
-    # derive their draw buffers from the abstracted render pipeline
-    pos_id = attach_colorbuffer(factory.fb, :position, pos_tex)
-    normal_id = attach_colorbuffer(factory.fb, :normal, get_buffer(factory, :HDR_color))
-    push!(factory.render_buffer_ids, pos_id, normal_id)
+    return
+end
 
-    framebuffer = generate_framebuffer(factory, :color, :HDR_color => :normal_occlusion)
+function RenderPass{:SSAO1}(screen)
+    factory = screen.framebuffer_factory
+    framebuffer = generate_framebuffer(factory, :HDR_color => :normal_occlusion)
+
+    add_ssao_buffers(screen)
 
     # SSAO setup
     N_samples = 64
@@ -266,7 +273,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     end
 
     # compute occlusion
-    shader1 = LazyShader(
+    shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO.frag"),
@@ -274,9 +281,9 @@ function ssao_postprocessor(framebuffer, shader_cache)
             "N_samples" => "$N_samples"
         )
     )
-    data1 = Dict{Symbol, Any}(
-        :position_buffer         => get_buffer(factory.fb, :position),
-        :normal_occlusion_buffer => get_buffer(factory.fb, :normal),
+    data = Dict{Symbol, Any}(
+        :position_buffer         => get_buffer(factory, :position),
+        :normal_occlusion_buffer => get_buffer(factory, :HDR_color),
         :kernel => kernel,
         :noise => Texture(
             shader_cache.context, [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -287,38 +294,46 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :bias => 0.025f0,
         :radius => 0.5f0
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
-    pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
+    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
+    return RenderPass{:SSAO1}(framebuffer, robj)
+end
+
+function RenderPass{:SSAO2}(screen)
+    factory = screen.framebuffer_factory
+    framebuffer = generate_framebuffer(factory, :color)
+
+    add_ssao_buffers(screen)
 
     # blur occlusion and combine with color
-    shader2 = LazyShader(
+    shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO_blur.frag")
     )
-    data2 = Dict{Symbol, Any}(
-        :normal_occlusion => get_buffer(framebuffer, :normal_occlusion),
-        :color_texture    => get_buffer(factory.fb, :color),
-        :ids              => get_buffer(factory.fb, :objectid),
+    data = Dict{Symbol, Any}(
+        :normal_occlusion => get_buffer(factory, :HDR_color),
+        :color_texture    => get_buffer(factory, :color),
+        :ids              => get_buffer(factory, :objectid),
         :inv_texel_size => rcpframe(size(screen)),
         :blur_range => Int32(2)
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
-    pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
+    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
-    return RenderPass{:SSAO}(framebuffer, [pass1, pass2])
+    return RenderPass{:SSAO2}(framebuffer, robj)
 end
 
-function run_step(screen, glscene, step::RenderPass{:SSAO})
-    set_draw_buffers(step.framebuffer, :normal_occlusion)  # occlusion buffer
+function run_step(screen, glscene, step::RenderPass{:SSAO1})
+    set_draw_buffers(step.framebuffer)  # occlusion buffer
 
     wh = size(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
-    data1 = step.passes[1].uniforms
+    data = step.robj.uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
         # This should be per scene because projection may vary between
@@ -328,25 +343,30 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
         a = viewport(scene)[]
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
-        data1[:projection] = Mat4f(scene.camera.projection[])
-        data1[:bias] = scene.ssao.bias[]
-        data1[:radius] = scene.ssao.radius[]
-        data1[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
-        GLAbstraction.render(step.passes[1])
+        data[:projection] = Mat4f(scene.camera.projection[])
+        data[:bias] = scene.ssao.bias[]
+        data[:radius] = scene.ssao.radius[]
+        data[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
+        GLAbstraction.render(step.robj)
     end
 
+    return
+end
+
+function run_step(screen, glscene, step::RenderPass{:SSAO2})
     # SSAO - blur occlusion and apply to color
-    set_draw_buffers(step.framebuffer, :color)  # color buffer
-    data2 = step.passes[2].uniforms
+    set_draw_buffers(step.framebuffer)  # color buffer
+    ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
+    data = step.robj.uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
         isempty(scene.children) || continue
         a = viewport(scene)[]
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
-        data2[:blur_range] = scene.ssao.blur
-        data2[:inv_texel_size] = rcpframe(size(step.framebuffer))
-        GLAbstraction.render(step.passes[2])
+        data[:blur_range] = scene.ssao.blur
+        data[:inv_texel_size] = rcpframe(size(step.framebuffer))
+        GLAbstraction.render(step.robj)
     end
     glDisable(GL_SCISSOR_TEST)
 
@@ -354,56 +374,64 @@ function run_step(screen, glscene, step::RenderPass{:SSAO})
 end
 
 
-function RenderPass{:FXAA}(screen)
-    @debug "Creating FXAA postprocessor"
+function RenderPass{:FXAA1}(screen)
     factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :color, :HDR_color => :color_luma)
+    framebuffer = generate_framebuffer(factory, :HDR_color => :color_luma)
 
     # calculate luma for FXAA
-    shader1 = LazyShader(
+    shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/postprocess.frag")
     )
-    data1 = Dict{Symbol, Any}(
-        :color_texture => get_buffer(factory.fb, :color),
-        :object_ids    => get_buffer(factory.fb, :objectid)
+    data = Dict{Symbol, Any}(
+        :color_texture => get_buffer(factory, :color),
+        :object_ids    => get_buffer(factory, :objectid)
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
-    pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
+    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+
+    return RenderPass{:FXAA1}(framebuffer, robj)
+end
+
+function RenderPass{:FXAA2}(screen)
+    factory = screen.framebuffer_factory
+    framebuffer = generate_framebuffer(factory, :color)
 
     # perform FXAA
-    shader2 = LazyShader(
+    shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/fxaa.frag")
     )
-    data2 = Dict{Symbol, Any}(
-        :color_texture => get_buffer(framebuffer, :color_luma),
+    data = Dict{Symbol, Any}(
+        :color_texture => get_buffer(factory, :HDR_color),
         :RCPFrame      => rcpframe(size(framebuffer)),
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
-    pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
+    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
-    return RenderPass{:FXAA}(framebuffer, RenderObject[pass1, pass2])
+    return RenderPass{:FXAA2}(framebuffer, robj)
 end
 
-function run_step(screen, glscene, step::RenderPass{:FXAA})
+function run_step(screen, glscene, step::RenderPass{:FXAA1})
     # FXAA - calculate LUMA
-    set_draw_buffers(step.framebuffer, :color_luma)
+    set_draw_buffers(step.framebuffer)
     # TODO: make scissor explicit?
     wh = size(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
     # necessary with negative SSAO bias...
     glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(step.passes[1])
+    GLAbstraction.render(step.robj)
+    return
+end
 
+function run_step(screen, glscene, step::RenderPass{:FXAA2})
     # FXAA - perform anti-aliasing
-    set_draw_buffers(step.framebuffer, :color)  # color buffer
-    step.passes[2][:RCPFrame] = rcpframe(size(step.framebuffer))
-    GLAbstraction.render(step.passes[2])
-
+    set_draw_buffers(step.framebuffer)  # color buffer
+    step.robj[:RCPFrame] = rcpframe(size(step.framebuffer))
+    GLAbstraction.render(step.robj)
     return
 end
 

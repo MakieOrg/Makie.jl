@@ -446,7 +446,7 @@ end
 ################################################################################
 
 
-SortStage() = Stage("z-sort")
+SortStage() = Stage(:ZSort)
 
 # I guess we should have multiple versions of this? Because SSAO render and OIT render don't really fit?
 # SSAO   color     objectid position normal
@@ -459,7 +459,7 @@ function RenderStage()
         :position => Format(3, Float16),
         :normal => Format(3, Float16),
     )
-    Stage("render", outputs = outputs)
+    Stage(:Render, outputs = outputs)
 end
 function TransparentRenderStage()
     outputs = (
@@ -467,7 +467,7 @@ function TransparentRenderStage()
         :objectid => Format(2, UInt32),
         :alpha_product => Format(1, Float8),
     )
-    Stage("transparent render", outputs = outputs)
+    Stage(:TransparentRender, outputs = outputs)
 end
 
 # Want a MultiSzage kinda thing
@@ -476,10 +476,10 @@ function SSAOStage()
         :position => Format(3, Float32),
         :normal => Format(3, Float16)
     )
-    stage1 = Stage("SSAO occlusion"; inputs, outputs = (:occlusion => Format(1, Float8),))
+    stage1 = Stage(:SSAO1; inputs, outputs = (:occlusion => Format(1, Float8),))
 
     inputs = (:occlusion => Format(1, Float8), :color => Format(4, Float8), :objectid => Format(2, UInt32))
-    stage2 = Stage("SSAO blur", inputs = inputs, outputs = (:color => Format(),))
+    stage2 = Stage(:SSAO2, inputs = inputs, outputs = (:color => Format(),))
 
     pipeline = Pipeline(stage1, stage2)
     connect!(pipeline, 1, :occlusion, 2, :occlusion)
@@ -490,17 +490,17 @@ end
 function OITStage()
     inputs = (:weighted_color_sum => Format(4, Float16), :alpha_product => Format(1, Float8))
     outputs = (:color => Format(4, Float8),)
-    return Stage("OIT"; inputs, outputs)
+    return Stage(:OIT; inputs, outputs)
 end
 
 function FXAAStage()
     inputs = (:color => Format(4, Float8), :objectid => Format(2, UInt32))
     outputs = (:color_luma => Format(4, Float8),)
-    stage1 = Stage("FXAA luma"; inputs, outputs)
+    stage1 = Stage(:FXAA1; inputs, outputs)
 
     inputs = (:color_luma => Format(4, Float8),)
     outputs = (:color => Format(4, Float8),)
-    stage2 = Stage("FXAA apply"; inputs, outputs)
+    stage2 = Stage(:FXAA2; inputs, outputs)
 
     pipeline = Pipeline(stage1, stage2)
     connect!(pipeline, 1, :color_luma, 2, :color_luma)
@@ -510,7 +510,7 @@ end
 
 function DisplayStage()
     inputs = (:color => Format(4, Float8), :objectid => Format(2, UInt32))
-    return Stage("display"; inputs)
+    return Stage(:Display; inputs)
 end
 
 
