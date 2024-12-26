@@ -10,26 +10,26 @@ _promote_type(::Type{Float16}, ::Type{Float8}) = Float16
 
 # TODO: consider adding a "reuse immediately" flag so Stage can communicate that
 #       it allows output = input
-struct Format
+struct BufferFormat
     dims::Int
     type::DataType
-    Format(dims = 4, type = Float8) = new(dims, type)
+    BufferFormat(dims = 4, type = Float8) = new(dims, type)
 end
 
-function Format(input::Format, output::Format)
+function BufferFormat(input::BufferFormat, output::BufferFormat)
     if is_compatible(input, output)
         dims = max(input.dims, output.dims)
         type = _promote_type(input.type, output.type)
-        return Format(dims, type)
+        return BufferFormat(dims, type)
     end
-    error("Could not generate compatible Format between $input and $output")
+    error("Could not generate compatible BufferFormat between $input and $output")
 end
 
-function is_compatible(f1::Format, f2::Format)
+function is_compatible(f1::BufferFormat, f2::BufferFormat)
     is_compatible_with(f1.type, f2.type) || is_compatible_with(f2.type, f1.type)
 end
 
-function is_compatible_with(f::Format, requirement::Format)
+function is_compatible_with(f::BufferFormat, requirement::BufferFormat)
     return (f.dims <= requirement.dims) && is_compatible_with(f.type, requirement.type)
 end
 
@@ -54,7 +54,7 @@ is_compatible_with(::Type, ::Type) = false
 struct ConnectionT{T}
     inputs::Dict{T, Int}  # stage => output Index
     outputs::Dict{T, Int} # stage => input Index
-    format::Format # derived from inputs & outputs formats
+    format::BufferFormat # derived from inputs & outputs formats
 end
 
 struct Stage
@@ -63,8 +63,8 @@ struct Stage
     # order matters for outputs
     inputs::Dict{Symbol, Int}
     outputs::Dict{Symbol, Int}
-    input_formats::Vector{Format}
-    output_formats::Vector{Format}
+    input_formats::Vector{BufferFormat}
+    output_formats::Vector{BufferFormat}
     # ^ technically all of these are constants
 
     # v these are not
@@ -74,10 +74,10 @@ end
 
 const Connection = ConnectionT{Stage}
 
-function Stage(name; inputs = NTuple{0, Pair{Symbol, Format}}(), outputs = NTuple{0, Pair{Symbol, Format}}())
+function Stage(name; inputs = NTuple{0, Pair{Symbol, BufferFormat}}(), outputs = NTuple{0, Pair{Symbol, BufferFormat}}())
     stage = Stage(Symbol(name),
         Dict{Symbol, Int}(), Dict{Symbol, Int}(),
-        Format[], Format[],
+        BufferFormat[], BufferFormat[],
         Connection[], Connection[]
     )
     foreach(enumerate(inputs)) do (i, (k, v))
@@ -92,7 +92,7 @@ function Stage(name; inputs = NTuple{0, Pair{Symbol, Format}}(), outputs = NTupl
 end
 
 function Connection(source::Stage, input::Integer, target::Stage, output::Integer)
-    format = Format(source.output_formats[input], target.input_formats[output])
+    format = BufferFormat(source.output_formats[input], target.input_formats[output])
     return Connection(Dict(source => input), Dict(target => output), format)
 end
 
@@ -100,7 +100,7 @@ function Base.merge(c1::Connection, c2::Connection)
     return Connection(
         merge!(c1.inputs, c2.inputs),
         merge!(c1.outputs, c2.outputs),
-        Format(c1.format, c2.format)
+        BufferFormat(c1.format, c2.format)
     )
 end
 
@@ -220,7 +220,7 @@ function verify(pipeline::Pipeline)
 end
 
 format_complexity(c::Connection) = format_complexity(c.format)
-format_complexity(f::Format) = f.dims * sizeof(f.type)
+format_complexity(f::BufferFormat) = f.dims * sizeof(f.type)
 
 function generate_buffers(pipeline::Pipeline)
     # TODO: is this necessary?
@@ -239,7 +239,7 @@ function generate_buffers(pipeline::Pipeline)
         end
     end
 
-    buffers = Format[]
+    buffers = BufferFormat[]
     connection2idx = Dict{Connection, Int}() # into buffer
     needs_buffer = Connection[]
     available = Int[]
@@ -283,7 +283,7 @@ function generate_buffers(pipeline::Pipeline)
                     # - using it is cheaper than creating a new buffer
                     # - it is more compatible than the last when both are 0 cost
                     #   (i.e prefer 3, Float16 over 3 Float8 for 3 Float16 target)
-                    updated_comp = format_complexity(Format(buffers[i], connection.format))
+                    updated_comp = format_complexity(BufferFormat(buffers[i], connection.format))
                     buffer_comp = format_complexity(buffers[i])
                     delta = updated_comp - buffer_comp
                     is_cheaper = (delta < prev_delta) && (delta <= conn_comp)
@@ -302,7 +302,7 @@ function generate_buffers(pipeline::Pipeline)
                 best_match = length(buffers)
             elseif buffers[best_match] != connection.format
                 # found upgradeable format, upgrade it (or use it)
-                new_format = Format(buffers[best_match], connection.format)
+                new_format = BufferFormat(buffers[best_match], connection.format)
                 buffers[best_match] = new_format
             end
 
@@ -331,8 +331,8 @@ end
 ################################################################################
 
 
-function Base.show(io::IO, format::Format)
-    print(io, "Format($(format.dims), $(format.type))")
+function Base.show(io::IO, format::BufferFormat)
+    print(io, "BufferFormat($(format.dims), $(format.type))")
 end
 
 Base.show(io::IO, stage::Stage) = print(io, "Stage($(stage.name))")
@@ -454,18 +454,18 @@ SortStage() = Stage(:ZSort)
 # OIT    HDR_color objectid weight
 function RenderStage()
     outputs = (
-        :color => Format(4, Float8),
-        :objectid => Format(2, UInt32),
-        :position => Format(3, Float16),
-        :normal => Format(3, Float16),
+        :color => BufferFormat(4, Float8),
+        :objectid => BufferFormat(2, UInt32),
+        :position => BufferFormat(3, Float16),
+        :normal => BufferFormat(3, Float16),
     )
     Stage(:Render, outputs = outputs)
 end
 function TransparentRenderStage()
     outputs = (
-        :weighted_color_sum => Format(4, Float16),
-        :objectid => Format(2, UInt32),
-        :alpha_product => Format(1, Float8),
+        :weighted_color_sum => BufferFormat(4, Float16),
+        :objectid => BufferFormat(2, UInt32),
+        :alpha_product => BufferFormat(1, Float8),
     )
     Stage(:TransparentRender, outputs = outputs)
 end
@@ -473,13 +473,13 @@ end
 # Want a MultiSzage kinda thing
 function SSAOStage()
     inputs = (
-        :position => Format(3, Float32),
-        :normal => Format(3, Float16)
+        :position => BufferFormat(3, Float32),
+        :normal => BufferFormat(3, Float16)
     )
-    stage1 = Stage(:SSAO1; inputs, outputs = (:occlusion => Format(1, Float8),))
+    stage1 = Stage(:SSAO1; inputs, outputs = (:occlusion => BufferFormat(1, Float8),))
 
-    inputs = (:occlusion => Format(1, Float8), :color => Format(4, Float8), :objectid => Format(2, UInt32))
-    stage2 = Stage(:SSAO2, inputs = inputs, outputs = (:color => Format(),))
+    inputs = (:occlusion => BufferFormat(1, Float8), :color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
+    stage2 = Stage(:SSAO2, inputs = inputs, outputs = (:color => BufferFormat(),))
 
     pipeline = Pipeline(stage1, stage2)
     connect!(pipeline, 1, :occlusion, 2, :occlusion)
@@ -488,18 +488,18 @@ function SSAOStage()
 end
 
 function OITStage()
-    inputs = (:weighted_color_sum => Format(4, Float16), :alpha_product => Format(1, Float8))
-    outputs = (:color => Format(4, Float8),)
+    inputs = (:weighted_color_sum => BufferFormat(4, Float16), :alpha_product => BufferFormat(1, Float8))
+    outputs = (:color => BufferFormat(4, Float8),)
     return Stage(:OIT; inputs, outputs)
 end
 
 function FXAAStage()
-    inputs = (:color => Format(4, Float8), :objectid => Format(2, UInt32))
-    outputs = (:color_luma => Format(4, Float8),)
+    inputs = (:color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
+    outputs = (:color_luma => BufferFormat(4, Float8),)
     stage1 = Stage(:FXAA1; inputs, outputs)
 
-    inputs = (:color_luma => Format(4, Float8),)
-    outputs = (:color => Format(4, Float8),)
+    inputs = (:color_luma => BufferFormat(4, Float8),)
+    outputs = (:color => BufferFormat(4, Float8),)
     stage2 = Stage(:FXAA2; inputs, outputs)
 
     pipeline = Pipeline(stage1, stage2)
@@ -509,7 +509,7 @@ function FXAAStage()
 end
 
 function DisplayStage()
-    inputs = (:color => Format(4, Float8), :objectid => Format(2, UInt32))
+    inputs = (:color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
     return Stage(:Display; inputs)
 end
 
