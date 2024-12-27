@@ -55,8 +55,11 @@ function unsafe_empty!(factory::FramebufferFactory)
     empty!(factory.buffer_key2idx)
     empty!(factory.buffers)
     empty!(factory.children)
-    haskey(factory.fb, :color) && GLAbstraction.pop_colorbuffer!(factory.fb)
-    haskey(factory.fb, :objectid) && GLAbstraction.pop_colorbuffer!(factory.fb)
+    # haskey(factory.fb, :color) && GLAbstraction.pop_colorbuffer!(factory.fb)
+    # haskey(factory.fb, :objectid) && GLAbstraction.pop_colorbuffer!(factory.fb)
+    fb = GLFramebuffer(size(factory))
+    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    factory.fb = fb
     return factory
 end
 
@@ -78,7 +81,7 @@ function generate_framebuffer(factory::FramebufferFactory, names::Pair{Symbol, S
     return generate_framebuffer(factory, remapped...)
 end
 
-function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, Symbol}...)
+Makie.@noconstprop function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, Symbol}...)
     filter!(fb -> fb.id != 0, factory.children) # cleanup?
 
     fb = GLFramebuffer(size(factory))
