@@ -63,9 +63,15 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             # TODO: hacky
             prev = last(render_pipeline)
             framebuffer = prev.framebuffer
-            idx = connection2idx[stage.input_connections[stage.inputs[:color]]]
-            attachment = framebuffer.attachments[idx]
-            factory.buffer_key2idx[:color_output] = idx
+            # TODO: Technically need to find connection from prev to this stage
+            #       that ends up in :color
+            # Assuming that connection attached to a :color output:
+            attachment = get_attachment(framebuffer, :color)
+            buffer_idx = stage.inputs[:color]
+            factory.buffer_key2idx[:color_output] = buffer_idx
+            # idx = stage.input_connections[stage.inputs[:color]].inputs
+            # attachment = framebuffer.attachments[idx]
+            # factory.buffer_key2idx[:color_output] = idx
             BlitToScreen(framebuffer, attachment)
         elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
             RenderPass{stage.name}(screen, framebuffer, inputs)

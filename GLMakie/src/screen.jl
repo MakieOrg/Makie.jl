@@ -411,7 +411,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     # replace_renderpass!(config.fxaa ? RenderPass{:FXAA1} : EmptyRenderStep, 8)
     # replace_renderpass!(config.fxaa ? RenderPass{:FXAA2} : EmptyRenderStep, 9)
 
-    gl_render_pipeline!(screen, Makie.default_pipeline())
+    # gl_render_pipeline!(screen, Makie.default_pipeline())
+    gl_render_pipeline!(screen, Makie.default_SSAO_pipeline())
 
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters

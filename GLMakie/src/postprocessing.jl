@@ -244,7 +244,7 @@ function RenderPass{:SSAO1}(screen, framebuffer, inputs)
     )
     data = Dict{Symbol, Any}(
         :position_buffer         => inputs[:position],
-        :normal_occlusion_buffer => inputs[:normal],
+        :normal_buffer => inputs[:normal],
         :kernel => kernel,
         :noise => Texture(
             shader_cache.context, [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -269,7 +269,7 @@ function RenderPass{:SSAO2}(screen, framebuffer, inputs)
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data = Dict{Symbol, Any}(
-        :normal_occlusion => inputs[:occlusion],
+        :occlusion => inputs[:occlusion],
         :color_texture    => inputs[:color],
         :ids              => inputs[:objectid],
         :inv_texel_size => rcpframe(size(screen)),

@@ -158,7 +158,7 @@ function output_buffers(screen::Screen, transparency = false)
     elseif screen.config.ssao
         """
         layout(location=2) out vec3 fragment_position;
-        layout(location=3) out vec3 fragment_normal_occlusion;
+        layout(location=3) out vec3 fragment_normal;
         """
     else
         ""
@@ -178,7 +178,7 @@ function output_buffer_writes(screen::Screen, transparency = false)
         """
         fragment_color = color;
         fragment_position = o_view_pos;
-        fragment_normal_occlusion.xyz = o_view_normal;
+        fragment_normal.xyz = o_view_normal;
         """
     else
         "fragment_color = color;"

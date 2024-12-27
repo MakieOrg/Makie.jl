@@ -116,13 +116,14 @@ function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, S
     filter!(fb -> fb.id != 0, factory.children) # cleanup?
 
     fb = GLFramebuffer(size(factory))
-    attach_depthstencilbuffer(fb, :depth_stencil, factory.core_buffers[:depth_stencil])
 
     for (idx, name) in idx2name
         haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")
         # in(lookup, [:depth, :stencil]) && error("Depth and stencil always exist under the same name.")
         attach_colorbuffer(fb, name, factory.buffers[idx])
     end
+
+    attach_depthstencilbuffer(fb, :depth_stencil, factory.core_buffers[:depth_stencil])
 
     push!(factory.children, fb)
 

@@ -1,7 +1,7 @@
 {{GLSL_VERSION}}
 
 // occlusion.w is the occlusion value
-uniform sampler2D normal_occlusion;
+uniform sampler2D occlusion;
 uniform sampler2D color_texture;
 uniform usampler2D ids;
 uniform vec2 inv_texel_size;
@@ -33,7 +33,7 @@ void main(void)
             // shine effect.
             uvec2 id = texture(ids, frag_uv + offset).xy;
             float valid = float(id == id0);
-            blurred_occlusion += valid * texture(normal_occlusion, frag_uv + offset).w;
+            blurred_occlusion += valid * texture(occlusion, frag_uv + offset).x;
             weight += valid;
         }
     }
