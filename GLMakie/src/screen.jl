@@ -293,20 +293,6 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         reuse,
     )
 
-    # NOTE
-    # The transparent color buffer is reused by SSAO and FXAA. Changing the
-    # render order here may introduce artifacts because of that.
-    # push!(screen.render_pipeline, SortPlots())
-    # push!(screen.render_pipeline, RenderPlots(screen, :SSAO))
-    # push!(screen.render_pipeline, EmptyRenderStep())
-    # push!(screen.render_pipeline, EmptyRenderStep())
-    # push!(screen.render_pipeline, RenderPlots(screen, :FXAA))
-    # push!(screen.render_pipeline, RenderPlots(screen, :OIT))
-    # push!(screen.render_pipeline, EmptyRenderStep())
-    # push!(screen.render_pipeline, EmptyRenderStep())
-    # push!(screen.render_pipeline, EmptyRenderStep())
-    # push!(screen.render_pipeline, BlitToScreen(screen))
-
     if owns_glscreen
         GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
         GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
@@ -396,24 +382,13 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
 
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
-    function replace_renderpass!(pass, idx)
-        prev = screen.render_pipeline[idx]
-        if typeof(prev) !== pass
-            destroy!(prev)
-            screen.render_pipeline[idx] = pass(screen)
-        end
-        return
+
+    # TODO: FXAA, OIT on-off
+    if config.ssao
+        gl_render_pipeline!(screen, Makie.default_SSAO_pipeline())
+    else
+        gl_render_pipeline!(screen, Makie.default_pipeline())
     end
-
-    # replace_renderpass!(config.ssao ? RenderPass{:SSAO1} : EmptyRenderStep, 3)
-    # replace_renderpass!(config.ssao ? RenderPass{:SSAO2} : EmptyRenderStep, 4)
-    # replace_renderpass!(config.oit  ? RenderPass{:OIT}   : EmptyRenderStep, 7)
-    # replace_renderpass!(config.fxaa ? RenderPass{:FXAA1} : EmptyRenderStep, 8)
-    # replace_renderpass!(config.fxaa ? RenderPass{:FXAA2} : EmptyRenderStep, 9)
-
-    # gl_render_pipeline!(screen, Makie.default_pipeline())
-    gl_render_pipeline!(screen, Makie.default_SSAO_pipeline())
-
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 
@@ -803,7 +778,7 @@ function depthbuffer(screen::Screen)
     ShaderAbstractions.switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(screen.framebuffer_factory, :depth_stencil)
+    source = get_buffer(screen.framebuffer_factory.fb, :depth_stencil)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -816,7 +791,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     ShaderAbstractions.switch_context!(screen.glscreen)
-    ctex = get_buffer(screen.framebuffer_factory, :color_output)
+    ctex = get_buffer(screen.framebuffer_factory.fb, :color)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)

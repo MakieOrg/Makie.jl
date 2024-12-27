@@ -26,9 +26,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         create_buffer!(factory, format)
     end
 
-    # TODO: Well looks like we do need to bundle?
-    #       Otherwise resolving stage -> Postprocessor is going to be hard/annoying
-    #       Well, or I just split them up I guess
+    first_render = true
+
     for stage in pipeline.stages
         inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
@@ -53,9 +52,13 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             SortPlots()
         elseif stage.name == :Render
             # TODO:
-            buffer_idx = connection2idx[stage.output_connections[stage.outputs[:objectid]]]
-            factory.buffer_key2idx[:objectid] = buffer_idx
-            RenderPlots(screen, framebuffer, inputs, N == 2 ? (:FXAA) : (:SSAO))
+            if first_render
+                attach_colorbuffer(factory.fb, :objectid, get_buffer(framebuffer, :objectid))
+                first_render = false
+                RenderPlots(screen, framebuffer, inputs, :SSAO)
+            else
+                RenderPlots(screen, framebuffer, inputs, :FXAA)
+            end
         elseif stage.name == :TransparentRender
             RenderPlots(screen, framebuffer, inputs, :OIT)
         elseif stage.name == :Display
@@ -66,14 +69,12 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             #       that ends up in :color
             # Assuming that connection attached to a :color output:
             attachment = get_attachment(framebuffer, :color)
-            buffer_idx = stage.inputs[:color]
-            factory.buffer_key2idx[:color_output] = buffer_idx
-            # idx = stage.input_connections[stage.inputs[:color]].inputs
-            # attachment = framebuffer.attachments[idx]
-            # factory.buffer_key2idx[:color_output] = idx
+            attach_colorbuffer(factory.fb, :color, get_buffer(framebuffer, :color))
             BlitToScreen(framebuffer, attachment)
         elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
             RenderPass{stage.name}(screen, framebuffer, inputs)
+        else
+            error("Unknown stage $(stage.name)")
         end
 
         # I guess stage should also have extra information for settings? Or should

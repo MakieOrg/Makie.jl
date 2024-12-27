@@ -1,11 +1,15 @@
 function setup!(screen::Screen, resize_buffers)
+    isempty(screen.framebuffer_factory.children) && return
+
     # Make sure this context is active (for multi-window rendering)
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
     GLAbstraction.require_context(nw)
 
     # Resize framebuffer to window size
-    # TODO: Hack?
+    # TODO: Hacky, assumes our first draw is a render (ZSort doesn't draw) and
+    #       no earlier stage uses color or objectid
+    #       Also assumes specific names
     fb = screen.framebuffer_factory.children[1]
     if resize_buffers && !isnothing(screen.scene)
         ppu = screen.px_per_unit[]
@@ -42,6 +46,7 @@ function setup!(screen::Screen, resize_buffers)
         end
     end
     glDisable(GL_SCISSOR_TEST)
+
     return
 end
 

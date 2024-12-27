@@ -204,13 +204,23 @@ function gl_attach(buffer::RenderBuffer, attachment::GLenum)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
 end
 
-function Base.delete!(fb::GLFramebuffer, key::Symbol)
-    idx = fb.name2idx[key]
-    attachment = fb.attachments[idx]
+# Need to be careful with counter here
+# We have [colorbuffers..., depth/stencil]
+#                       ^- counter = last before depth/stencil
+# And also with the GLFramebuffer being ordered
+# So we only allow pop! for colorbuffers, no delete!()
+function pop_colorbuffer!(fb::GLFramebuffer)
+    attachment = fb.attachments[fb.counter]
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, 0, 0)
-    deleteat!(fb.attachments, idx)
-    deleteat!(fb.buffers, idx)
-    delete!(fb, key)
+    deleteat!(fb.attachments, fb.counter)
+    deleteat!(fb.buffers, fb.counter)
+    key = :unknown
+    for (k, v) in fb.name2idx
+        (v == fb.counter) && (key = k)
+        (v > fb.counter) && (fb.name2idx[k] = v-1)
+    end
+    delete!(fb.name2idx, key)
+    fb.counter -= 1
     return fb
 end
 

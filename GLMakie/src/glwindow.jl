@@ -11,26 +11,19 @@ Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(
 Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
 mutable struct FramebufferFactory
-    size::Tuple{Int, Int}
+    fb::GLFramebuffer # core framebuffer (more or less for #4150)
+    # holding depth, stencil, objectid[, output_color]
+
     buffer_key2idx::Dict{Symbol, Int} # TODO: temp, should be unnamed collection
     buffers::Vector{Texture}
-    core_buffers::Dict{Symbol, Texture} # Not managed by render pipeline
     children::Vector{GLFramebuffer} # TODO: how else can we handle resizing?
 end
 
-# it's guaranteed, that they all have the same size
-# TODO: forwards... for now
-Base.size(fb::FramebufferFactory) = fb.size
+Base.size(fb::FramebufferFactory) = size(fb.fb)
 Base.haskey(fb::FramebufferFactory, key::Symbol) = haskey(fb.buffer_key2idx, key)
-function GLAbstraction.get_buffer(fb::FramebufferFactory, key::Symbol)
-    if haskey(fb.core_buffers, key)
-        return fb.core_buffers[key]
-    else
-        return fb.buffers[fb.buffer_key2idx[key]]
-    end
-end
+GLAbstraction.get_buffer(fb::FramebufferFactory, key::Symbol) = fb.buffers[fb.buffer_key2idx[key]]
 GLAbstraction.get_buffer(fb::FramebufferFactory, idx::Int) = fb.buffers[idx]
-# GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
+GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
 
 Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
     ShaderAbstractions.switch_context!(context)
@@ -44,18 +37,16 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
         format = GL_DEPTH_STENCIL
     )
 
-    return FramebufferFactory(
-        fb_size, Dict{Symbol, Int}(), Texture[],
-        Dict(:depth_stencil => depth_buffer), GLFramebuffer[]
-    )
+    fb = GLFramebuffer(fb_size)
+    attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
+
+    return FramebufferFactory(fb, Dict{Symbol, Int}(), Texture[], GLFramebuffer[])
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
     foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), fb.buffers)
-    foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), values(fb.core_buffers))
-    # resize!(fb.fb, w, h)
-    fb.size = (w, h)
-    filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok?
+    resize!(fb.fb, w, h)
+    filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok for cleanup?
     foreach(fb -> resize!(fb, w, h), fb.children)
     return
 end
@@ -64,6 +55,8 @@ function unsafe_empty!(factory::FramebufferFactory)
     empty!(factory.buffer_key2idx)
     empty!(factory.buffers)
     empty!(factory.children)
+    haskey(factory.fb, :color) && GLAbstraction.pop_colorbuffer!(factory.fb)
+    haskey(factory.fb, :objectid) && GLAbstraction.pop_colorbuffer!(factory.fb)
     return factory
 end
 
@@ -96,7 +89,7 @@ function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, S
         attach_colorbuffer(fb, name, factory.buffers[idx])
     end
 
-    attach_depthstencilbuffer(fb, :depth_stencil, factory.core_buffers[:depth_stencil])
+    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
 
     push!(factory.children, fb)
 
