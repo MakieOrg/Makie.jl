@@ -6,7 +6,8 @@ function create_buffer!(factory::FramebufferFactory, format::Makie.BufferFormat)
     else
         Vec{format.dims, format.type}
     end
-    tex = Texture(T, size(factory), minfilter = :nearest, x_repeat = :clamp_to_edge)
+    tex = Texture(T, size(factory), minfilter = :linear, x_repeat = :clamp_to_edge)
+    # tex = Texture(T, size(factory), minfilter = :nearest, x_repeat = :clamp_to_edge)
     push!(factory, tex)
 end
 
@@ -29,13 +30,11 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     #       Otherwise resolving stage -> Postprocessor is going to be hard/annoying
     #       Well, or I just split them up I guess
     for stage in pipeline.stages
-        # TODO: Do want vectors for these
         inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
             return key => get_buffer(factory, connection2idx[connection])
         end)
 
-        # TODO: Switch over Framebuffer factory to just indices
         N = length(stage.output_connections)
         if N == 0
             framebuffer = nothing

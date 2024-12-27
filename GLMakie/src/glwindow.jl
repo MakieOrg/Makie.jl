@@ -36,15 +36,6 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
     ShaderAbstractions.switch_context!(context)
     require_context(context)
 
-    # Buffers we always need
-    # Holds the image that eventually gets displayed
-    color_buffer = Texture(
-        context, RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
-    )
-    # Holds a (plot id, element id) for point picking
-    objectid_buffer = Texture(
-        context, Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
-    )
     # holds depth and stencil values
     depth_buffer = Texture(
         context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
@@ -52,18 +43,11 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
-    # Order Independent Transparency
-    HDR_color_buffer = Texture(
-        context, RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
-    )
-    OIT_weight_buffer = Texture(
-        context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
-    )
 
-    name2idx = Dict(:color => 1, :objectid => 2, :HDR_color => 3, :OIT_weight => 4)
-    buffers = [color_buffer, objectid_buffer, HDR_color_buffer, OIT_weight_buffer]
-
-    return FramebufferFactory(fb_size, name2idx, buffers, Dict(:depth_stencil => depth_buffer), GLFramebuffer[])
+    return FramebufferFactory(
+        fb_size, Dict{Symbol, Int}(), Texture[],
+        Dict(:depth_stencil => depth_buffer), GLFramebuffer[]
+    )
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
@@ -80,17 +64,6 @@ function unsafe_empty!(factory::FramebufferFactory)
     empty!(factory.buffer_key2idx)
     empty!(factory.buffers)
     empty!(factory.children)
-    return factory
-end
-
-# TODO: temporary
-function Base.push!(factory::FramebufferFactory, kv::Pair{Symbol, <: Texture})
-    if haskey(factory.buffer_key2idx, kv[1])
-        @error("Pushed buffer $(kv[1]) already assigned.")
-        return
-    end
-    push!(factory, kv[2])
-    push!(factory.buffer_key2idx, kv[1] => length(factory.buffers))
     return factory
 end
 

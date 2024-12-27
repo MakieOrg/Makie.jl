@@ -370,9 +370,10 @@ function run_step(screen, glscene, step::RenderPass{:FXAA1})
     # TODO: make scissor explicit?
     wh = size(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
+    # TODO: is this still true?
     # necessary with negative SSAO bias...
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
+    # glClearColor(1, 1, 1, 1)
+    # glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(step.robj)
     return
 end
