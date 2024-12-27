@@ -1,5 +1,5 @@
 function Base.show(io::IO, obj::RenderObject)
-    println(io, "RenderObject with ID: ", obj.id)
+    print(io, "RenderObject with ID: ", obj.id)
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]

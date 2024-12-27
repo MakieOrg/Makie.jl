@@ -1,30 +1,61 @@
 function create_buffer!(factory::FramebufferFactory, format::Makie.BufferFormat)
-    T = if format.dims == 1
-        format.type
-    elseif format.type == Makie.Float8
-        (RGB, RGBA)[format.dims-2]{format.type}
-    else
-        Vec{format.dims, format.type}
-    end
+    T = format_to_type(format)
     tex = Texture(T, size(factory), minfilter = :linear, x_repeat = :clamp_to_edge)
     # tex = Texture(T, size(factory), minfilter = :nearest, x_repeat = :clamp_to_edge)
     push!(factory, tex)
 end
 
+function format_to_type(format::Makie.BufferFormat)
+    return format.dims == 1 ? format.type : Vec{format.dims, format.type}
+end
+
+function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
+    # empty!(factory.buffer_key2idx)
+    empty!(factory.children)
+
+    # reuse buffers that match formats (and make sure that factory.buffers
+    # follows the order of formats)
+    buffers = copy(factory.buffers)
+    empty!(factory.buffers)
+    for format in formats
+        T = format_to_type(format)
+        found = false
+        for (i, buffer) in enumerate(buffers)
+            if T == eltype(buffer) # TODO: && extra parameters match...
+                found = true
+                push!(factory.buffers, popat!(buffers, i))
+                break
+            end
+        end
+
+        if !found
+            tex = Texture(T, size(factory), minfilter = :linear, x_repeat = :clamp_to_edge)
+            push!(factory.buffers, tex)
+        end
+    end
+
+    # Always rebuild this though, since we don't know which buffers are the
+    # final output buffers
+    fb = GLFramebuffer(size(factory))
+    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    factory.fb = fb
+
+    return factory
+end
+
+
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
+    # TODO: check if pipeline is different from the last one before replacing it
     render_pipeline = screen.render_pipeline
     factory = screen.framebuffer_factory
 
     empty!(render_pipeline)
-    unsafe_empty!(factory)
 
     # Resolve pipeline
     buffers, connection2idx = Makie.generate_buffers(pipeline)
 
     # Add required buffers
-    for format in buffers
-        create_buffer!(factory, format)
-    end
+    reset!(factory, buffers)
 
     first_render = true
 

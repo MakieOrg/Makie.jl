@@ -14,14 +14,11 @@ mutable struct FramebufferFactory
     fb::GLFramebuffer # core framebuffer (more or less for #4150)
     # holding depth, stencil, objectid[, output_color]
 
-    buffer_key2idx::Dict{Symbol, Int} # TODO: temp, should be unnamed collection
     buffers::Vector{Texture}
     children::Vector{GLFramebuffer} # TODO: how else can we handle resizing?
 end
 
 Base.size(fb::FramebufferFactory) = size(fb.fb)
-Base.haskey(fb::FramebufferFactory, key::Symbol) = haskey(fb.buffer_key2idx, key)
-GLAbstraction.get_buffer(fb::FramebufferFactory, key::Symbol) = fb.buffers[fb.buffer_key2idx[key]]
 GLAbstraction.get_buffer(fb::FramebufferFactory, idx::Int) = fb.buffers[idx]
 GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
 
@@ -40,7 +37,7 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
     fb = GLFramebuffer(fb_size)
     attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
 
-    return FramebufferFactory(fb, Dict{Symbol, Int}(), Texture[], GLFramebuffer[])
+    return FramebufferFactory(fb, Texture[], GLFramebuffer[])
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
@@ -52,11 +49,8 @@ function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
 end
 
 function unsafe_empty!(factory::FramebufferFactory)
-    empty!(factory.buffer_key2idx)
     empty!(factory.buffers)
     empty!(factory.children)
-    # haskey(factory.fb, :color) && GLAbstraction.pop_colorbuffer!(factory.fb)
-    # haskey(factory.fb, :objectid) && GLAbstraction.pop_colorbuffer!(factory.fb)
     fb = GLFramebuffer(size(factory))
     attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
     factory.fb = fb
@@ -76,11 +70,6 @@ function generate_framebuffer(factory::FramebufferFactory, args...)
     return generate_framebuffer(factory, parse_arg.(args)...)
 end
 
-function generate_framebuffer(factory::FramebufferFactory, names::Pair{Symbol, Symbol}...)
-    remapped = map(kv -> factory.buffer_key2idx[kv[1]] => kv[2], names)
-    return generate_framebuffer(factory, remapped...)
-end
-
 Makie.@noconstprop function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, Symbol}...)
     filter!(fb -> fb.id != 0, factory.children) # cleanup?
 
@@ -88,7 +77,6 @@ Makie.@noconstprop function generate_framebuffer(factory::FramebufferFactory, id
 
     for (idx, name) in idx2name
         haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")
-        # in(lookup, [:depth, :stencil]) && error("Depth and stencil always exist under the same name.")
         attach_colorbuffer(fb, name, factory.buffers[idx])
     end
 
