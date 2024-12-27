@@ -296,16 +296,16 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
     # render order here may introduce artifacts because of that.
-    push!(screen.render_pipeline, SortPlots())
-    push!(screen.render_pipeline, RenderPlots(screen, :SSAO))
-    push!(screen.render_pipeline, EmptyRenderStep())
-    push!(screen.render_pipeline, EmptyRenderStep())
-    push!(screen.render_pipeline, RenderPlots(screen, :FXAA))
-    push!(screen.render_pipeline, RenderPlots(screen, :OIT))
-    push!(screen.render_pipeline, EmptyRenderStep())
-    push!(screen.render_pipeline, EmptyRenderStep())
-    push!(screen.render_pipeline, EmptyRenderStep())
-    push!(screen.render_pipeline, BlitToScreen(screen))
+    # push!(screen.render_pipeline, SortPlots())
+    # push!(screen.render_pipeline, RenderPlots(screen, :SSAO))
+    # push!(screen.render_pipeline, EmptyRenderStep())
+    # push!(screen.render_pipeline, EmptyRenderStep())
+    # push!(screen.render_pipeline, RenderPlots(screen, :FXAA))
+    # push!(screen.render_pipeline, RenderPlots(screen, :OIT))
+    # push!(screen.render_pipeline, EmptyRenderStep())
+    # push!(screen.render_pipeline, EmptyRenderStep())
+    # push!(screen.render_pipeline, EmptyRenderStep())
+    # push!(screen.render_pipeline, BlitToScreen(screen))
 
     if owns_glscreen
         GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
@@ -405,11 +405,14 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         return
     end
 
-    replace_renderpass!(config.ssao ? RenderPass{:SSAO1} : EmptyRenderStep, 3)
-    replace_renderpass!(config.ssao ? RenderPass{:SSAO2} : EmptyRenderStep, 4)
-    replace_renderpass!(config.oit  ? RenderPass{:OIT}   : EmptyRenderStep, 7)
-    replace_renderpass!(config.fxaa ? RenderPass{:FXAA1} : EmptyRenderStep, 8)
-    replace_renderpass!(config.fxaa ? RenderPass{:FXAA2} : EmptyRenderStep, 9)
+    # replace_renderpass!(config.ssao ? RenderPass{:SSAO1} : EmptyRenderStep, 3)
+    # replace_renderpass!(config.ssao ? RenderPass{:SSAO2} : EmptyRenderStep, 4)
+    # replace_renderpass!(config.oit  ? RenderPass{:OIT}   : EmptyRenderStep, 7)
+    # replace_renderpass!(config.fxaa ? RenderPass{:FXAA1} : EmptyRenderStep, 8)
+    # replace_renderpass!(config.fxaa ? RenderPass{:FXAA2} : EmptyRenderStep, 9)
+
+    gl_render_pipeline!(screen, Makie.default_pipeline())
+
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 
@@ -812,7 +815,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     ShaderAbstractions.switch_context!(screen.glscreen)
-    ctex = get_buffer(screen.framebuffer_factory, :color)
+    ctex = get_buffer(screen.framebuffer_factory, :color_output)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)

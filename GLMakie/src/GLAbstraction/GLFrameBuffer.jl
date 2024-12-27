@@ -141,6 +141,28 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
     return attach(fb, key, buffer, length(fb.attachments) + 1, GL_DEPTH_STENCIL_ATTACHMENT)
 end
 
+const ATTACHMENT_LOOKUP = Dict{Int, Symbol}(
+    GL_DEPTH_ATTACHMENT => :GL_DEPTH_ATTACHMENT,
+    GL_STENCIL_ATTACHMENT => :GL_STENCIL_ATTACHMENT,
+    GL_DEPTH_STENCIL_ATTACHMENT => :GL_DEPTH_STENCIL_ATTACHMENT,
+    GL_COLOR_ATTACHMENT0 => :GL_COLOR_ATTACHMENT0,
+    GL_COLOR_ATTACHMENT1 => :GL_COLOR_ATTACHMENT1,
+    GL_COLOR_ATTACHMENT2 => :GL_COLOR_ATTACHMENT2,
+    GL_COLOR_ATTACHMENT3 => :GL_COLOR_ATTACHMENT3,
+    GL_COLOR_ATTACHMENT4 => :GL_COLOR_ATTACHMENT4,
+    GL_COLOR_ATTACHMENT5 => :GL_COLOR_ATTACHMENT5,
+    GL_COLOR_ATTACHMENT6 => :GL_COLOR_ATTACHMENT6,
+    GL_COLOR_ATTACHMENT7 => :GL_COLOR_ATTACHMENT7,
+    GL_COLOR_ATTACHMENT8 => :GL_COLOR_ATTACHMENT8,
+    GL_COLOR_ATTACHMENT9 => :GL_COLOR_ATTACHMENT9,
+    GL_COLOR_ATTACHMENT10 => :GL_COLOR_ATTACHMENT10,
+    GL_COLOR_ATTACHMENT11 => :GL_COLOR_ATTACHMENT11,
+    GL_COLOR_ATTACHMENT12 => :GL_COLOR_ATTACHMENT12,
+    GL_COLOR_ATTACHMENT13 => :GL_COLOR_ATTACHMENT13,
+    GL_COLOR_ATTACHMENT14 => :GL_COLOR_ATTACHMENT14,
+    GL_COLOR_ATTACHMENT15 => :GL_COLOR_ATTACHMENT15
+)
+
 function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
     haskey(fb, key) && error("Cannot attach $key to Framebuffer because it is already set.")
     if attachment in fb.attachments
@@ -156,8 +178,14 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
         error("Cannot attach $key as a $type attachment as it is already attached.")
     end
 
-    bind(fb)
-    gl_attach(buffer, attachment)
+    try
+        bind(fb)
+        gl_attach(buffer, attachment)
+        check_framebuffer()
+    catch e
+        @info "$key -> $attachment = $(get(ATTACHMENT_LOOKUP, attachment, :UNKNOWN)) failed, with framebuffer id = $(fb.id)"
+        rethrow(e)
+    end
     # keep depth/stenctil/depth_stencil at end so that we can directly use
     # fb.attachments when setting drawbuffers
     for (k, v) in fb.name2idx

@@ -5,7 +5,8 @@ function setup!(screen::Screen, resize_buffers)
     GLAbstraction.require_context(nw)
 
     # Resize framebuffer to window size
-    fb = screen.framebuffer_factory.fb
+    # TODO: Hack?
+    fb = screen.framebuffer_factory.children[1]
     if resize_buffers && !isnothing(screen.scene)
         ppu = screen.px_per_unit[]
         resize!(screen.framebuffer_factory, round.(Int, ppu .* size(screen.scene))...)

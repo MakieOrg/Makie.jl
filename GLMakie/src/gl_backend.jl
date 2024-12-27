@@ -82,6 +82,7 @@ end
 include("glwindow.jl")
 include("postprocessing.jl")
 include("screen.jl")
+include("render_pipeline.jl")
 include("glshaders/visualize_interface.jl")
 include("glshaders/lines.jl")
 include("glshaders/image_like.jl")

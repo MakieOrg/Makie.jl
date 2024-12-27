@@ -97,7 +97,6 @@ compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == 
 
 struct RenderPlots <: AbstractRenderStep
     framebuffer::GLFramebuffer
-    targets::Vector{GLuint}
     clear::Vector{Pair{Int, Vec4f}} # target index -> color
 
     ssao::FilterOptions
@@ -105,22 +104,16 @@ struct RenderPlots <: AbstractRenderStep
     fxaa::FilterOptions
 end
 
-function RenderPlots(screen, stage)
-    fb = screen.framebuffer_factory.fb
+function RenderPlots(screen, framebuffer, inputs, stage)
     if stage === :SSAO
-        return RenderPlots(
-            fb, screen.framebuffer_factory.render_buffer_ids, [3 => Vec4f(0), 4 => Vec4f(0)],
-            FilterTrue, FilterFalse, FilterAny)
+        return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], FilterTrue, FilterFalse, FilterAny)
     elseif stage === :FXAA
-        return RenderPlots(
-            fb, get_attachment.(Ref(fb), [:color, :objectid]), Pair{Int, Vec4f}[],
-            FilterFalse, FilterFalse, FilterAny)
+        return RenderPlots(framebuffer, Pair{Int, Vec4f}[], FilterFalse, FilterFalse, FilterAny)
     elseif stage === :OIT
-        targets = get_attachment.(Ref(fb), [:HDR_color, :objectid, :OIT_weight])
         # HDR_color containing sums clears to 0
         # OIT_weight containing products clears to 1
         clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-        return RenderPlots(fb, targets, clear, FilterAny, FilterTrue, FilterAny)
+        return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny)
     else
         error("Incorrect stage = $stage given. Should be :SSAO, :FXAA or :OIT.")
     end
@@ -140,13 +133,14 @@ function run_step(screen, glscene, step::RenderPlots)
         GLAbstraction.bind(step.framebuffer)
 
         for (idx, color) in step.clear
-            idx <= length(step.targets) || continue
-            glDrawBuffer(step.targets[idx])
+            # TODO: Hacky
+            idx <= step.framebuffer.counter || continue
+            glDrawBuffer(step.framebuffer.attachments[idx])
             glClearColor(color...)
             glClear(GL_COLOR_BUFFER_BIT)
         end
 
-        glDrawBuffers(length(step.targets), step.targets)
+        set_draw_buffers(step.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
             should_render = elem.visible &&
@@ -182,11 +176,8 @@ end
 
 
 
-function RenderPass{:OIT}(screen)
+function RenderPass{:OIT}(screen, framebuffer, inputs)
     @debug "Creating OIT postprocessor"
-
-    factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :color)
 
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
@@ -195,9 +186,10 @@ function RenderPass{:OIT}(screen)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
+    # TODO: rename in shader
     data = Dict{Symbol, Any}(
-        :sum_color  => get_buffer(factory.fb, :HDR_color),
-        :prod_alpha => get_buffer(factory.fb, :OIT_weight),
+        :sum_color  => inputs[:weighted_color_sum],
+        :prod_alpha => inputs[:alpha_product],
     )
     robj = RenderObject(
         data, shader,
@@ -230,38 +222,7 @@ function run_step(screen, glscene, step::RenderPass{:OIT})
     return
 end
 
-
-function add_ssao_buffers(screen)
-    @debug "Creating SSAO postprocessor"
-
-    factory = screen.framebuffer_factory
-
-    if length(factory.render_buffer_ids) < 4
-        ShaderAbstractions.switch_context!(shader_cache.context)
-        require_context(shader_cache.context)
-
-        # Add missing buffers
-        pos_tex = Texture(shader_cache.context, Vec3f, size(screen), minfilter = :nearest, x_repeat = :clamp_to_edge)
-        push!(factory, :position => pos_tex)
-        # HDR_color always exists...
-
-        # TODO: temp - update renderbuffers and main renderbuffer
-        # eventually RenderPlots should have dedicated GLFramebuffers too, which
-        # derive their draw buffers from the abstracted render pipeline
-        pos_id = attach_colorbuffer(factory.fb, :position, pos_tex)
-        normal_id = attach_colorbuffer(factory.fb, :normal, get_buffer(factory, :HDR_color))
-        push!(factory.render_buffer_ids, pos_id, normal_id)
-    end
-
-    return
-end
-
-function RenderPass{:SSAO1}(screen)
-    factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :HDR_color => :normal_occlusion)
-
-    add_ssao_buffers(screen)
-
+function RenderPass{:SSAO1}(screen, framebuffer, inputs)
     # SSAO setup
     N_samples = 64
     lerp_min = 0.1f0
@@ -282,8 +243,8 @@ function RenderPass{:SSAO1}(screen)
         )
     )
     data = Dict{Symbol, Any}(
-        :position_buffer         => get_buffer(factory, :position),
-        :normal_occlusion_buffer => get_buffer(factory, :HDR_color),
+        :position_buffer         => inputs[:position],
+        :normal_occlusion_buffer => inputs[:normal],
         :kernel => kernel,
         :noise => Texture(
             shader_cache.context, [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -300,12 +261,7 @@ function RenderPass{:SSAO1}(screen)
     return RenderPass{:SSAO1}(framebuffer, robj)
 end
 
-function RenderPass{:SSAO2}(screen)
-    factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :color)
-
-    add_ssao_buffers(screen)
-
+function RenderPass{:SSAO2}(screen, framebuffer, inputs)
     # blur occlusion and combine with color
     shader = LazyShader(
         screen.shader_cache,
@@ -313,9 +269,9 @@ function RenderPass{:SSAO2}(screen)
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data = Dict{Symbol, Any}(
-        :normal_occlusion => get_buffer(factory, :HDR_color),
-        :color_texture    => get_buffer(factory, :color),
-        :ids              => get_buffer(factory, :objectid),
+        :normal_occlusion => inputs[:occlusion],
+        :color_texture    => inputs[:color],
+        :ids              => inputs[:objectid],
         :inv_texel_size => rcpframe(size(screen)),
         :blur_range => Int32(2)
     )
@@ -374,10 +330,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO2})
 end
 
 
-function RenderPass{:FXAA1}(screen)
-    factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :HDR_color => :color_luma)
-
+function RenderPass{:FXAA1}(screen, framebuffer, inputs)
     # calculate luma for FXAA
     shader = LazyShader(
         screen.shader_cache,
@@ -385,8 +338,8 @@ function RenderPass{:FXAA1}(screen)
         loadshader("postprocessing/postprocess.frag")
     )
     data = Dict{Symbol, Any}(
-        :color_texture => get_buffer(factory, :color),
-        :object_ids    => get_buffer(factory, :objectid)
+        :color_texture => inputs[:color],
+        :object_ids    => inputs[:objectid],
     )
     robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
@@ -394,10 +347,7 @@ function RenderPass{:FXAA1}(screen)
     return RenderPass{:FXAA1}(framebuffer, robj)
 end
 
-function RenderPass{:FXAA2}(screen)
-    factory = screen.framebuffer_factory
-    framebuffer = generate_framebuffer(factory, :color)
-
+function RenderPass{:FXAA2}(screen, framebuffer, inputs)
     # perform FXAA
     shader = LazyShader(
         screen.shader_cache,
@@ -405,7 +355,7 @@ function RenderPass{:FXAA2}(screen)
         loadshader("postprocessing/fxaa.frag")
     )
     data = Dict{Symbol, Any}(
-        :color_texture => get_buffer(factory, :HDR_color),
+        :color_texture => inputs[:color_luma],
         :RCPFrame      => rcpframe(size(framebuffer)),
     )
     robj = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
@@ -440,19 +390,20 @@ end
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
 struct BlitToScreen <: AbstractRenderStep
     framebuffer::GLFramebuffer
+    attachment::GLuint
     screen_framebuffer_id::Int
 
     # Screen not available yet
-    function BlitToScreen(screen, screen_framebuffer_id::Integer = 0)
+    function BlitToScreen(framebuffer, attachment, screen_framebuffer_id::Integer = 0)
         @debug "Creating to screen postprocessor"
-        return new(screen.framebuffer_factory.fb, screen_framebuffer_id)
+        return new(framebuffer, attachment, screen_framebuffer_id)
     end
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
     # Set source
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
-    glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
+    glReadBuffer(step.attachment) # for safety
 
     # TODO: Is this an observable? Can this be static?
     # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering

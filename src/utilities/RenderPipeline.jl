@@ -1,5 +1,5 @@
-using FixedPointNumbers
-Float8 = N0f8
+import FixedPointNumbers
+Float8 = FixedPointNumbers.N0f8
 
 _promote_type(T1, T2) = promote_type(T1, T2)
 # otherwise you get Float32 here... maybe there's a better solution for this?
@@ -142,20 +142,23 @@ function Base.push!(pipeline::Pipeline, other::Pipeline)
 end
 
 
-# function connect!(source::Stage, output::Symbol, target::Stage, input::Symbol)
-function connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
+function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
     source = pipeline.stages[src]
     target = pipeline.stages[trg]
 
     haskey(source.outputs, output) || error("output $output does not exist in source stage")
     haskey(target.inputs, input) || error("input $input does not exist in target stage")
 
-    # intialize if not yet initialized
-    isempty(source.output_connections) && resize!(source.output_connections, length(source.output_formats))
-    isempty(target.input_connections) && resize!(target.input_connections, length(target.input_formats))
-
     output_idx = source.outputs[output]
     input_idx = target.inputs[input]
+
+    # resize if too small (this allows later connections to be skipped)
+    if length(source.output_connections) < output_idx
+        resize!(source.output_connections, output_idx)
+    end
+    if length(target.input_connections) < input_idx
+        resize!(target.input_connections, input_idx)
+    end
 
     # create requested connection
     connection = Connection(source, output_idx, target, input_idx)
