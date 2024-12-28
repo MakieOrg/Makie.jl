@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
+- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 
 ## [0.22.0] - 2024-12-12
 
