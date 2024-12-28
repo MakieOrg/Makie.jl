@@ -1,46 +1,3 @@
-# For completion sake
-
-# Doesn't implement getindex, setindex etc I think?
-mutable struct GLRenderbuffer
-    id::GLuint
-    size::NTuple{2, Int}
-    format::GLenum
-    context::GLContext
-
-    function GLRenderbuffer(size, format::GLenum)
-        renderbuffer = GLuint[0]
-        glGenRenderbuffers(1, renderbuffer)
-        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1])
-        glRenderbufferStorage(GL_RENDERBUFFER, format, size...)
-
-        obj = new(renderbuffer[1], size, format, current_context())
-        finalizer(free, obj)
-
-        return obj
-    end
-end
-
-function bind(buffer::GLRenderbuffer)
-    if buffer.id == 0
-        error("Binding freed GLRenderbuffer")
-    end
-    glBindRenderbuffer(GL_RENDERBUFFER, buffer.id)
-    return
-end
-
-function unsafe_free(x::GLRenderbuffer)
-    # don't free if already freed
-    x.id == 0 && return
-    # don't free from other context
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
-    id = Ref(x.id)
-    glDeleteRenderbuffers(1, id)
-    x.id = 0
-    return
-end
-
-
 # TODO: Add RenderBuffer, resize!() with renderbuffer (recreate?)
 mutable struct GLFramebuffer
     id::GLuint
@@ -76,6 +33,10 @@ function bind(fb::GLFramebuffer, target = fb.id)
     return
 end
 
+# This allows you to just call `set_draw_buffers(framebuffer)` with a framebuffer
+# dedicated to a specific (type of) draw call, i.e. one that only contains
+# attachments matching the outputs of the draw call. But it restricts how you
+# can modify the framebuffer a bit (1)
 """
     draw_buffers(fb::GLFrameBuffer[, N::Int])
 
@@ -123,6 +84,8 @@ function get_next_colorbuffer_attachment(fb::GLFramebuffer)
     if fb.counter >= 15
         error("The framebuffer has exhausted its maximum number of color attachments.")
     end
+    # (1) Disallows random deletion as that can change the order of buffers. As
+    # a result we don't have to worry about counter pointing to an existing item here.
     attachment = GL_COLOR_ATTACHMENT0 + fb.counter
     fb.counter += 1
     return (fb.counter, attachment)
@@ -141,26 +104,27 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
     return attach(fb, key, buffer, length(fb.attachments) + 1, GL_DEPTH_STENCIL_ATTACHMENT)
 end
 
+# for error messages
 const ATTACHMENT_LOOKUP = Dict{Int, Symbol}(
-    GL_DEPTH_ATTACHMENT => :GL_DEPTH_ATTACHMENT,
-    GL_STENCIL_ATTACHMENT => :GL_STENCIL_ATTACHMENT,
-    GL_DEPTH_STENCIL_ATTACHMENT => :GL_DEPTH_STENCIL_ATTACHMENT,
-    GL_COLOR_ATTACHMENT0 => :GL_COLOR_ATTACHMENT0,
-    GL_COLOR_ATTACHMENT1 => :GL_COLOR_ATTACHMENT1,
-    GL_COLOR_ATTACHMENT2 => :GL_COLOR_ATTACHMENT2,
-    GL_COLOR_ATTACHMENT3 => :GL_COLOR_ATTACHMENT3,
-    GL_COLOR_ATTACHMENT4 => :GL_COLOR_ATTACHMENT4,
-    GL_COLOR_ATTACHMENT5 => :GL_COLOR_ATTACHMENT5,
-    GL_COLOR_ATTACHMENT6 => :GL_COLOR_ATTACHMENT6,
-    GL_COLOR_ATTACHMENT7 => :GL_COLOR_ATTACHMENT7,
-    GL_COLOR_ATTACHMENT8 => :GL_COLOR_ATTACHMENT8,
-    GL_COLOR_ATTACHMENT9 => :GL_COLOR_ATTACHMENT9,
-    GL_COLOR_ATTACHMENT10 => :GL_COLOR_ATTACHMENT10,
-    GL_COLOR_ATTACHMENT11 => :GL_COLOR_ATTACHMENT11,
-    GL_COLOR_ATTACHMENT12 => :GL_COLOR_ATTACHMENT12,
-    GL_COLOR_ATTACHMENT13 => :GL_COLOR_ATTACHMENT13,
-    GL_COLOR_ATTACHMENT14 => :GL_COLOR_ATTACHMENT14,
-    GL_COLOR_ATTACHMENT15 => :GL_COLOR_ATTACHMENT15
+    GL_DEPTH_ATTACHMENT => "GL_DEPTH_ATTACHMENT",
+    GL_STENCIL_ATTACHMENT => "GL_STENCIL_ATTACHMENT",
+    GL_DEPTH_STENCIL_ATTACHMENT => "GL_DEPTH_STENCIL_ATTACHMENT",
+    GL_COLOR_ATTACHMENT0 => "GL_COLOR_ATTACHMENT0",
+    GL_COLOR_ATTACHMENT1 => "GL_COLOR_ATTACHMENT1",
+    GL_COLOR_ATTACHMENT2 => "GL_COLOR_ATTACHMENT2",
+    GL_COLOR_ATTACHMENT3 => "GL_COLOR_ATTACHMENT3",
+    GL_COLOR_ATTACHMENT4 => "GL_COLOR_ATTACHMENT4",
+    GL_COLOR_ATTACHMENT5 => "GL_COLOR_ATTACHMENT5",
+    GL_COLOR_ATTACHMENT6 => "GL_COLOR_ATTACHMENT6",
+    GL_COLOR_ATTACHMENT7 => "GL_COLOR_ATTACHMENT7",
+    GL_COLOR_ATTACHMENT8 => "GL_COLOR_ATTACHMENT8",
+    GL_COLOR_ATTACHMENT9 => "GL_COLOR_ATTACHMENT9",
+    GL_COLOR_ATTACHMENT10 => "GL_COLOR_ATTACHMENT10",
+    GL_COLOR_ATTACHMENT11 => "GL_COLOR_ATTACHMENT11",
+    GL_COLOR_ATTACHMENT12 => "GL_COLOR_ATTACHMENT12",
+    GL_COLOR_ATTACHMENT13 => "GL_COLOR_ATTACHMENT13",
+    GL_COLOR_ATTACHMENT14 => "GL_COLOR_ATTACHMENT14",
+    GL_COLOR_ATTACHMENT15 => "GL_COLOR_ATTACHMENT15"
 )
 
 function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
@@ -183,11 +147,11 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
         gl_attach(buffer, attachment)
         check_framebuffer()
     catch e
-        @info "$key -> $attachment = $(get(ATTACHMENT_LOOKUP, attachment, :UNKNOWN)) failed, with framebuffer id = $(fb.id)"
+        @info "$key -> $attachment = $(get(ATTACHMENT_LOOKUP, attachment, "UNKNOWN")) failed, with framebuffer id = $(fb.id)"
         rethrow(e)
     end
-    # keep depth/stenctil/depth_stencil at end so that we can directly use
-    # fb.attachments when setting drawbuffers
+    # (1) requires us to keep depth/stenctil/depth_stencil at end so that the first
+    # fb.counter buffers are usable draw buffers.
     for (k, v) in fb.name2idx
         fb.name2idx[k] = ifelse(v < idx, v, v+1)
     end
@@ -204,12 +168,10 @@ function gl_attach(buffer::RenderBuffer, attachment::GLenum)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
 end
 
-# Need to be careful with counter here
-# We have [colorbuffers..., depth/stencil]
-#                       ^- counter = last before depth/stencil
-# And also with the GLFramebuffer being ordered
-# So we only allow pop! for colorbuffers, no delete!()
+# (1) disallows random deletion because that could disrupt the order of draw buffers -> no delete!()
 function pop_colorbuffer!(fb::GLFramebuffer)
+    # (1) depth, stencil are attached after the last colorbuffer, after fb.counter.
+    # Need to fix their indices after deletion
     attachment = fb.attachments[fb.counter]
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, 0, 0)
     deleteat!(fb.attachments, fb.counter)
