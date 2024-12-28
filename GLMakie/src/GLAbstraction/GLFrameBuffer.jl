@@ -267,6 +267,8 @@ end
 function attachment_enum_to_string(x::GLenum)
     x == GL_DEPTH_ATTACHMENT && return "GL_DEPTH_ATTACHMENT"
     x == GL_STENCIL_ATTACHMENT && return "GL_STENCIL_ATTACHMENT"
+    x == GL_DEPTH_STENCIL_ATTACHMENT && return "GL_DEPTH_STENCIL_ATTACHMENT"
+    x == GL_STENCIL_ATTACHMENT && return "GL_STENCIL_ATTACHMENT"
     i = Int(x - GL_COLOR_ATTACHMENT0)
     return "GL_COLOR_ATTACHMENT$i"
 end
@@ -281,7 +283,7 @@ function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
     key_pad = mapreduce(length, max, key_strings)
     key_strings = rpad.(key_strings, key_pad)
 
-    attachments = attachment_enum_to_string(fb.attachments)
+    attachments = attachment_enum_to_string.(fb.attachments)
     attachment_pad = mapreduce(length, max, attachments)
     attachments = rpad.(attachments, attachment_pad)
 

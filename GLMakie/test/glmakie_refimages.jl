@@ -168,3 +168,45 @@ end
 
     scene
 end
+
+@reference_test "Arrows 3D debug" begin
+    function SphericalToCartesian(r::T, θ::T, ϕ::T) where T <: AbstractArray
+        x = @.r * sin(θ) * cos(ϕ)
+        y = @.r * sin(θ) * sin(ϕ)
+        z = @.r * cos(θ)
+        Point3f.(x, y, z)
+    end
+    n = 100^2 # number of points to generate
+    r = ones(n);
+    θ = acos.(1 .- 2 .* RNG.rand(n))
+    φ = 2π * RNG.rand(n)
+    pts = SphericalToCartesian(r, θ, φ)
+    f,a,p = arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize=0.02, linecolor=:green, arrowcolor=:darkblue)
+    screen = display(f, visible = false)
+
+    display(screen.render_pipeline)
+    println()
+    display(screen.render_pipeline[end-2].framebuffer)
+    display(screen.render_pipeline[end-2].robj.uniforms)
+    println()
+    display(screen.render_pipeline[end-1].framebuffer)
+    display(screen.render_pipeline[end-1].robj.uniforms)
+    println()
+    display(screen.framebuffer_factory.fb)
+    println()
+    display(screen.framebuffer_factory.buffers)
+    println()
+    display(screen.framebuffer_factory.children)
+
+    cb = Makie.colorbuffer(f)
+    db = GLMakie.depthbuffer(screen)
+    ob = GLMakie.pick_native(screen, Rect2i(0,0,500,500))
+    s = Scene(size = (1000, 1000))
+    image!(s, -1..0, 0..1, cb)
+    image!(s, 0..1, 0..1, db)
+    image!(s, -1..0, -1..0, getfield.(ob, :id))
+    image!(s, 0..1, -1..0,  getfield.(ob, :index))
+    @info unique(getfield.(ob, :id))
+    @info extrema(getfield.(ob, :index))
+    s
+end
