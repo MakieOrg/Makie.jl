@@ -56,6 +56,9 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
     previous_pipeline = screen.render_pipeline
 
+    # Exit early if the pipeline is already up to date
+    previous_pipeline.parent == pipeline && return
+
     # TODO: check if pipeline is different from the last one before replacing it
     factory = screen.framebuffer_factory
 
