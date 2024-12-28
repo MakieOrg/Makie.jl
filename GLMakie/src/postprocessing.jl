@@ -47,7 +47,7 @@ end
 function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) where {T <: AbstractRenderStep}
     # @debug "reconstruct() not defined for $T, calling construct()"
     destroy!(old)
-    return construct(Val(parent.name), screen, framebuffer, input, parent)
+    return construct(Val(parent.name), screen, framebuffer, inputs, parent)
 end
 
 
@@ -182,7 +182,7 @@ end
 
 function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.Stage) where {RP <: RenderPass}
     for (k, v) in inputs
-        if haskey(pass.uniforms, k)
+        if haskey(pass.robj.uniforms, k)
             pass.robj.uniforms[k] = v
         else
             @error("Input $k does not exist in recreated RenderPass.")

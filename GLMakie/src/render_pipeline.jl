@@ -54,6 +54,7 @@ end
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
+    previous_pipeline = screen.render_pipeline
 
     # TODO: check if pipeline is different from the last one before replacing it
     factory = screen.framebuffer_factory
@@ -91,7 +92,20 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             end
         end
 
-        pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
+        # can we reconstruct? (reconstruct should update framebuffer, and replace
+        # inputs if necessary, i.e. handle differences in connections and attributes)
+        idx = findfirst(previous_pipeline.parent.stages) do old
+            (old.name == stage.name) &&
+            (old.inputs == stage.inputs) && (old.outputs == stage.outputs) &&
+            (old.input_formats == stage.input_formats) &&
+            (old.output_formats == stage.output_formats)
+        end
+
+        if idx === nothing
+            pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
+        else
+            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
+        end
 
         # I guess stage should also have extra information for settings? Or should
         # that be in scene.theme?

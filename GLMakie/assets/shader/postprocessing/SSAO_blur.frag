@@ -14,7 +14,7 @@ out vec4 fragment_color;
 void main(void)
 {
     // occlusion blur
-    uvec2 id0 = texture(objectid, frag_uv).xy;
+    uvec2 id0 = texture(objectid_buffer, frag_uv).xy;
     if (id0.x == uint(0)){
         fragment_color = texture(color_buffer, frag_uv);
         // fragment_color = vec4(1,0,1,1); // show discarded
