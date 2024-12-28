@@ -593,6 +593,46 @@ function Base.show(io::IO, ::MIME"text/plain", connection::Connection)
     return
 end
 
+function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
+    println(io, "Pipeline():")
+    print(io, "Stages:")
+    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
+    pad = 1 + floor(Int, log10(length(pipeline.connections)))
+
+    for stage in pipeline.stages
+        print(io, "\n  Stage($(stage.name))")
+        if !isempty(stage.input_connections)
+            print(io, "\n    inputs: ")
+            # keep order
+            strs = map(eachindex(stage.input_connections)) do i
+                k = findfirst(==(i), stage.inputs)
+                c = stage.input_connections[i]
+                ci = string(conn2idx[c])
+                return "[$ci] $k"
+            end
+            join(io, strs, ", ")
+        end
+        if !isempty(stage.output_connections)
+            print(io, "\n    outputs: ")
+            strs = map(eachindex(stage.output_connections)) do i
+                k = findfirst(==(i), stage.outputs)
+                c = stage.output_connections[i]
+                ci = string(conn2idx[c])
+                return "[$ci] $k"
+            end
+            join(io, strs, ", ")
+        end
+    end
+
+    println(io, "\nConnections:")
+    for (i, c) in enumerate(pipeline.connections)
+        s = lpad("$i", pad)
+        println(io, "  [$s] ", c)
+    end
+
+    return
+end
+
 
 ################################################################################
 ### Defaults
@@ -706,7 +746,7 @@ function default_pipeline()
         connect!(pipeline, render1, display, :objectid)
         connect!(pipeline, render2, oit)
         connect!(pipeline, render2, display, :objectid)
-        connect!(pipeline, oit,  display, :color)
+        connect!(pipeline, oit,  fxaa, :color)
         connect!(pipeline, fxaa, display, :color)
 
         return pipeline
