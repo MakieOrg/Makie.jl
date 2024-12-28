@@ -48,10 +48,9 @@ function render_frame(screen::Screen; resize_buffers=true)
     # render order here may introduce artifacts because of that.
 
     fb = screen.framebuffer
-    screen_size = size(screen.scene::Scene)
     if resize_buffers
         ppu = screen.px_per_unit[]
-        resize!(fb, round.(Int, ppu .* screen_size)...)
+        resize!(fb, round.(Int, ppu .* size(screen.scene::Scene))...)
     end
 
     # prepare stencil (for sub-scenes)
@@ -102,7 +101,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     screen.postprocessors[3].render(screen)
 
     # transfer everything to the screen
-    screen.postprocessors[4].render(screen, screen_size)
+    screen.postprocessors[4].render(screen)
 
     return
 end

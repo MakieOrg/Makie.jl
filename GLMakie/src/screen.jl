@@ -160,7 +160,9 @@ $(Base.doc(MakieScreen))
 """
 mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
+    size::Tuple{Int, Int}
     owns_glscreen::Bool
+
     shader_cache::GLAbstraction.ShaderCache
     framebuffer::GLFramebuffer
     config::Union{Nothing, ScreenConfig}
@@ -206,7 +208,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
         s = size(framebuffer)
         screen = new{GLWindow}(
-            glscreen, owns_glscreen, shader_cache, framebuffer,
+            glscreen, (10,10), owns_glscreen, shader_cache, framebuffer,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
@@ -706,6 +708,12 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     window = to_native(screen)
     (w > 0 && h > 0 && isopen(window)) || return nothing
 
+    # Then resize the underlying rendering framebuffers as well, which can be scaled
+    # independently of the window scale factor.
+    fbscale = screen.px_per_unit[]
+    fbw, fbh = round.(Int, fbscale .* (w, h))
+    resize!(screen.framebuffer, fbw, fbh)
+
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
         #
@@ -723,13 +731,13 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
         end
+        screen.size = (winw, winh)
+    else
+        # TODO: This should be the size of the target framebuffer... But what is
+        #       that?
+        screen.size = (fbw, fbh)
     end
 
-    # Then resize the underlying rendering framebuffers as well, which can be scaled
-    # independently of the window scale factor.
-    fbscale = screen.px_per_unit[]
-    fbw, fbh = round.(Int, fbscale .* (w, h))
-    resize!(screen.framebuffer, fbw, fbh)
     return nothing
 end
 
