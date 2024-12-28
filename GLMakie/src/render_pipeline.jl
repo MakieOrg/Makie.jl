@@ -53,6 +53,8 @@ end
 
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
+    pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
+
     # TODO: check if pipeline is different from the last one before replacing it
     factory = screen.framebuffer_factory
 
@@ -62,11 +64,18 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # Add required buffers
     reset!(factory, buffers)
 
+    # Add back output color and objectid attachments
+    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :color)]
+    attach_colorbuffer(factory.fb, :color, get_buffer(factory, buffer_idx))
+    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :objectid)]
+    attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
+
+
     render_pipeline = AbstractRenderStep[]
     for stage in pipeline.stages
-        inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
+        inputs = Dict{Symbol, Any}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
-            return key => get_buffer(factory, connection2idx[connection])
+            return Symbol(key, :_buffer) => get_buffer(factory, connection2idx[connection])
         end)
 
         N = length(stage.output_connections)
@@ -82,25 +91,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             end
         end
 
-        # TODO: hmm...
-        pass = if stage.name == :ZSort
-            SortPlots()
-        elseif stage.name == :Render
-            # TODO:
-            RenderPlots(screen, framebuffer, inputs, stage.attributes[:target]::Symbol)
-        elseif stage.name == :TransparentRender
-            RenderPlots(screen, framebuffer, inputs, :OIT)
-        elseif stage.name == :Display
-            # Need these for colorbuffer() and picking
-            attach_colorbuffer(factory.fb, :color,    get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :color)]))
-            attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :objectid)]))
-
-            BlitToScreen(factory.fb, get_attachment(factory.fb, :color))
-        elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
-            RenderPass{stage.name}(screen, framebuffer, inputs)
-        else
-            error("Unknown stage $(stage.name)")
-        end
+        pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
 
         # I guess stage should also have extra information for settings? Or should
         # that be in scene.theme?

@@ -1019,7 +1019,7 @@ FxaaFloat4 FxaaPixelShader(
 
 precision highp float;
 
-uniform sampler2D color_texture;
+uniform sampler2D color_luma_buffer;
 uniform vec2 RCPFrame;
 in vec2 frag_uv;
 
@@ -1031,20 +1031,20 @@ void main(void)
     // fragment_color = texture(color_texture, frag_uv);
     fragment_color.rgb = FxaaPixelShader(
         frag_uv,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsolePosPos,
-        color_texture,                            // FxaaTex tex,
-        color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegOne,
-        color_texture,                            // FxaaTex fxaaConsole360TexExpBiasNegTwo,
-        RCPFrame,                            // FxaaFloat2 fxaaQualityRcpFrame,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
-        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),        // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsolePosPos,
+        color_luma_buffer,                        // FxaaTex tex,
+        color_luma_buffer,                        // FxaaTex fxaaConsole360TexExpBiasNegOne,
+        color_luma_buffer,                        // FxaaTex fxaaConsole360TexExpBiasNegTwo,
+        RCPFrame,                                 // FxaaFloat2 fxaaQualityRcpFrame,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsoleRcpFrameOpt,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsoleRcpFrameOpt2,
+        FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsole360RcpFrameOpt2,
         0.75f,                                    // FxaaFloat fxaaQualitySubpix,
-        0.166f,                                    // FxaaFloat fxaaQualityEdgeThreshold,
-        0.0833f,                                // FxaaFloat fxaaQualityEdgeThresholdMin,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeSharpness,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThreshold,
-        0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
+        0.166f,                                   // FxaaFloat fxaaQualityEdgeThreshold,
+        0.0833f,                                  // FxaaFloat fxaaQualityEdgeThresholdMin,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeSharpness,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeThreshold,
+        0.0f,                                     // FxaaFloat fxaaConsoleEdgeThresholdMin,
         FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
     ).rgb;
 }

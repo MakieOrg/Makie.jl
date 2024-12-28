@@ -22,7 +22,7 @@ out float o_occlusion;
 void main(void)
 {
     vec3 view_pos = texture(position_buffer, frag_uv).xyz;
-    vec3 normal  = texture(normal_buffer, frag_uv).xyz;
+    vec3 _normal  = texture(normal_buffer, frag_uv).xyz;
 
     // The normal buffer gets cleared every frame. (also position, color etc)
     // If normal == vec3(1) then there is no geometry at this fragment.
@@ -79,7 +79,7 @@ void main(void)
             sample_frag_pos.xy += (frag_uv - 0.5) * clip_pos_w / sample_clip_pos_w;
 
 
-            float sample_depth = texture(position_buffer, sample_frag_pos.xy).z;
+            float sample_depth = texture(position, sample_frag_pos.xy).z;
             float range_check = smoothstep(0.0, 1.0, radius / abs(view_pos.z - sample_depth));
             occlusion += (sample_depth >= sample_view_offset.z + view_pos.z + bias ? 1.0 : 0.0) * range_check;
         }

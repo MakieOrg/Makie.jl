@@ -1,9 +1,9 @@
 {{GLSL_VERSION}}
 
 // occlusion.w is the occlusion value
-uniform sampler2D occlusion;
-uniform sampler2D color_texture;
-uniform usampler2D ids;
+uniform sampler2D occlusion_buffer;
+uniform sampler2D color_buffer;
+uniform usampler2D objectid_buffer;
 uniform vec2 inv_texel_size;
 // Settings/Attributes
 uniform int blur_range;
@@ -14,9 +14,9 @@ out vec4 fragment_color;
 void main(void)
 {
     // occlusion blur
-    uvec2 id0 = texture(ids, frag_uv).xy;
+    uvec2 id0 = texture(objectid, frag_uv).xy;
     if (id0.x == uint(0)){
-        fragment_color = texture(color_texture, frag_uv);
+        fragment_color = texture(color_buffer, frag_uv);
         // fragment_color = vec4(1,0,1,1); // show discarded
         return;
     }
@@ -24,6 +24,7 @@ void main(void)
     float blurred_occlusion = 0.0;
     float weight = 0;
 
+    // TODO: Could use :linear filtering and/ro mipmap to simplify this maybe?
     for (int x = -blur_range; x <= blur_range; ++x){
         for (int y = -blur_range; y <= blur_range; ++y){
             vec2 offset = vec2(float(x), float(y)) * inv_texel_size;
@@ -31,14 +32,14 @@ void main(void)
             // Without this, a high (low) occlusion from one object can bleed
             // into the low (high) occlusion of another, giving an unwanted
             // shine effect.
-            uvec2 id = texture(ids, frag_uv + offset).xy;
+            uvec2 id = texture(objectid_buffer, frag_uv + offset).xy;
             float valid = float(id == id0);
-            blurred_occlusion += valid * texture(occlusion, frag_uv + offset).x;
+            blurred_occlusion += valid * texture(occlusion_buffer, frag_uv + offset).x;
             weight += valid;
         }
     }
     blurred_occlusion = 1.0 - blurred_occlusion / weight;
-    fragment_color = texture(color_texture, frag_uv) * blurred_occlusion;
+    fragment_color = texture(color_buffer, frag_uv) * blurred_occlusion;
     // Display occlusion instead:
     // fragment_color = vec4(vec3(blurred_occlusion), 1.0);
 }
