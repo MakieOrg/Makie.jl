@@ -172,7 +172,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    render_pipeline::Vector{AbstractRenderStep}
+    render_pipeline::GLRenderPipeline
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
@@ -208,7 +208,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen, owns_glscreen, shader_cache, framebuffer_factory,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
-            screens, renderlist, AbstractRenderStep[], cache, cache2plot,
+            screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )

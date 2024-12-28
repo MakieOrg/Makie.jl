@@ -51,14 +51,12 @@ function setup!(screen::Screen, resize_buffers)
 end
 
 """
-Renders a single frame of a `window`
+    render_frame(screen[; resize_buffer = true])
+
+Renders a single frame of a `screen`
 """
 function render_frame(screen::Screen; resize_buffers=true)
     setup!(screen, resize_buffers)
-
-    for step in screen.render_pipeline
-        run_step(screen, nothing, step)
-    end
-
+    render_frame(screen, nothing, screen.render_pipeline)
     return
 end

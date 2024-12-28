@@ -54,10 +54,7 @@ end
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # TODO: check if pipeline is different from the last one before replacing it
-    render_pipeline = screen.render_pipeline
     factory = screen.framebuffer_factory
-
-    empty!(render_pipeline)
 
     # Resolve pipeline
     buffers, connection2idx = Makie.generate_buffers(pipeline)
@@ -65,8 +62,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # Add required buffers
     reset!(factory, buffers)
 
-    first_render = true
-
+    render_pipeline = AbstractRenderStep[]
     for stage in pipeline.stages
         inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
@@ -112,5 +108,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         push!(render_pipeline, pass)
     end
 
-    return render_pipeline
+    screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
+
+    return
 end

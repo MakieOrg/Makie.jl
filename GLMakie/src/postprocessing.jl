@@ -34,7 +34,6 @@ Initialization is grouped together and runs before all run steps. If you need
 to initialize just before your run, bundle it with the run.
 """
 abstract type AbstractRenderStep end
-prepare_step(screen, glscene, ::AbstractRenderStep) = nothing
 run_step(screen, glscene, ::AbstractRenderStep) = nothing
 
 function destroy!(step::T) where {T <: AbstractRenderStep}
@@ -49,14 +48,13 @@ function destroy!(step::T) where {T <: AbstractRenderStep}
     return
 end
 
-struct RenderPipeline
+struct GLRenderPipeline
+    parent::Makie.Pipeline
     steps::Vector{AbstractRenderStep}
 end
+GLRenderPipeline() = GLRenderPipeline(Makie.Pipeline(), AbstractRenderStep[])
 
-function render_frame(screen, glscene, pipeline::RenderPipeline)
-    for step in pipeline.steps
-        prepare_step(screen, glscene, step)
-    end
+function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline.steps
         run_step(screen, glscene, step)
     end
