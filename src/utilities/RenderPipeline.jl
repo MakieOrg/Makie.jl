@@ -1,14 +1,43 @@
-import FixedPointNumbers
-Float8 = FixedPointNumbers.N0f8
+# Note: This file could easily be moved out into a mini-package.
 
-# TODO: consider adding a "reuse immediately" flag so Stage can communicate that
-#       it allows output = input
+import FixedPointNumbers: N0f8
+
+# TODO: try `BufferFormat{T} ... type::Type{T}` for better performance?
+# TODO: consider adding a "immediately reusable" flag here or to Stage so that
+#       Stage can communicate that it allows output = input
 struct BufferFormat
     dims::Int
     type::DataType
-    BufferFormat(dims::Integer = 4, type::DataType = Float8) = new(dims, type)
+    extras::Dict{Symbol, Any}
 end
 
+"""
+    BufferFormat([dims = 4, type = N0f8]; extras...)
+
+Creates a `BufferFormat` which encodes requirements for an input or output of a
+`Stage`. For example, a color output may require 3 (RGB) N0f8's (8 bit "float"
+normalized to a 0..1 range).
+
+The `BufferFormat` may also include extra requirements such as
+`x_minfilter = :nearest` or `mipmap = true`.
+"""
+function BufferFormat(dims::Integer = 4, type::DataType = N0f8; extras...)
+    return BufferFormat(dims, type, Dict{Symbol, Any}(extras))
+end
+
+"""
+    BufferFormat(f1::BufferFormat, f2::BufferFormat)
+
+Creates a new `BufferFormat` combining two given formats. For this the formats
+need to be compatible, but not the same.
+
+Rules:
+- The output size is `dims = max(f1.dims, f2.dims)`
+- Types must come from the same base type (AbstractFloat, Signed, Unsigned) where N0f8 counts as a float.
+- The output type is the larger one of the two
+- Extra requirements must match if both formats have them.
+- If only one format contains a specific extra requirement it is accepted and copied to the output.
+"""
 function BufferFormat(f1::BufferFormat, f2::BufferFormat)
     if is_compatible(f1, f2)
         dims = max(f1.dims, f2.dims)
@@ -16,18 +45,23 @@ function BufferFormat(f1::BufferFormat, f2::BufferFormat)
         type = if T1 == T2;                         T1
         elseif (T1 == Float32) || (T2 == Float32);  Float32
         elseif (T1 == Float16) || (T2 == Float16);  Float16
-        elseif (T1 == Float8)  || (T2 == Float8);   Float8
+        elseif (T1 == N0f8)  || (T2 == N0f8);       N0f8
         elseif (T1 == Int32) || (T2 == Int32);      Int32
         elseif (T1 == Int16) || (T2 == Int16);      Int16
         elseif (T1 == Int8)  || (T2 == Int8);       Int8
         elseif (T1 == UInt32) || (T2 == UInt32);    UInt32
         elseif (T1 == UInt16) || (T2 == UInt16);    UInt16
         elseif (T1 == UInt8)  || (T2 == UInt8);     UInt8
-        else error("Types $T1 and $T2 are not allowed.")
+        else error("Failed to merge BufferFormat: Types $T1 and $T2 are not allowed.")
         end
-        return BufferFormat(dims, type)
+        extras = copy(f1.extras)
+        for (k, v) in f2.extras
+            get!(extras, k, v) == v || error("Failed to merge BufferFormat: Extra requirement $(extras[k]) != $v.")
+        end
+        return BufferFormat(dims, type, extras)
+    else
+        error("Failed to merge BufferFormat: $f1 and $f2 are not compatible.")
     end
-    error("Could not generate compatible BufferFormat between $input and $output")
 end
 
 
@@ -36,9 +70,9 @@ function is_compatible(f1::BufferFormat, f2::BufferFormat)
     # is_compatible(f1.type, f2.type), but still does runtime dispatch on ==
     T1 = f1.type
     T2 = f2.type
-    return(
-        ((T1 == Float8) || (T1 == Float16) || (T1 == Float32)) &&
-        ((T2 == Float8) || (T2 == Float16) || (T2 == Float32))
+    return (
+        ((T1 == N0f8) || (T1 == Float16) || (T1 == Float32)) &&
+        ((T2 == N0f8) || (T2 == Float16) || (T2 == Float32))
     ) || (
         ((T1 == Int8) || (T1 == Int16) || (T1 == Int32)) &&
         ((T2 == Int8) || (T2 == Int16) || (T2 == Int32))
@@ -64,7 +98,7 @@ struct Stage
     outputs::Dict{Symbol, Int}
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
-    # ^ technically all of these are constants
+    # ^ technically all of these are constants (no push, pop, delete, setindex allowed)
 
     # v these are not
     input_connections::Vector{ConnectionT{Stage}}
@@ -73,7 +107,14 @@ end
 
 const Connection = ConnectionT{Stage}
 
-function Stage(name; inputs = NTuple{0, Pair{Symbol, BufferFormat}}(), outputs = NTuple{0, Pair{Symbol, BufferFormat}}())
+"""
+    Stage(name::Symbol[; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[])
+
+Creates a new `Stage` from the given `name`, `inputs` and `outputs`. A `Stage`
+represents an action taken during rendering, e.g. rendering (a subset of) render
+objects, running a post processor or sorting render objects.
+"""
+function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[])
     stage = Stage(Symbol(name),
         Dict{Symbol, Int}(), Dict{Symbol, Int}(),
         BufferFormat[], BufferFormat[],
@@ -90,32 +131,33 @@ function Stage(name; inputs = NTuple{0, Pair{Symbol, BufferFormat}}(), outputs =
     return stage
 end
 
+"""
+    Connection(source::Stage, output::Integer, target::Stage, input::Integer)
+
+Creates a `Connection` between the `output` of a `source` stage and the `input`
+of a `target` Stage. The `output` and `input` can be either the name of that
+output/input or the index.
+
+Note: This constructor does not update the given stages or make any checks. It
+should be considered internal. Use `connect!()` instead.
+"""
 function Connection(source::Stage, input::Integer, target::Stage, output::Integer)
     format = BufferFormat(source.output_formats[input], target.input_formats[output])
     return Connection([source => input], [target => output], format)
-end
-
-function Base.merge(c1::Connection, c2::Connection)
-    for (stage, idx) in c2.inputs
-        any(kv -> kv[1] === stage, c1.inputs) || push!(c1.inputs, stage => idx)
-    end
-    for (stage, idx) in c2.outputs
-        any(kv -> kv[1] === stage, c1.outputs) || push!(c1.outputs, stage => idx)
-    end
-
-    return Connection(c1.inputs, c1.outputs, BufferFormat(c1.format, c2.format))
-end
-
-function Base.hash(stage::Stage, h::UInt)
-    # inputs, outputs are static after init
-    # connections are not, and should not be relevant to identifying a stage
-    return hash(stage.name, hash(stage.inputs, hash(stage.outputs, h)))
 end
 
 struct Pipeline
     stages::Vector{Stage}
     connections::Vector{Connection}
 end
+
+"""
+    Pipeline([stages::Stage...])
+
+Creates a `Pipeline` from the given `stages` or an empty pipeline if none are
+given. The pipeline represents a series of actions (stages) executed during
+rendering.
+"""
 function Pipeline()
     return Pipeline(Stage[], Connection[])
 end
@@ -140,19 +182,93 @@ end
 function Base.push!(pipeline::Pipeline, other::Pipeline)
     append!(pipeline.stages, other.stages)
     append!(pipeline.connections, other.connections)
-    return other.stages # for convernience
+    return other # for convenience
 end
 
 
-function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
-    source = pipeline.stages[src]
-    target = pipeline.stages[trg]
+"""
+    connect!(pipeline::Pipeline, source::Union{Pipeline, Stage}, target::Union{Pipeline, Stage})
 
+Connects every output in `source` to every `input` in `target` that shares the
+same name. For example, if `:a, :b, :c, :d` exist in source and `:b, :d, :e`
+exist in target, `:b, :d` will get connected.
+"""
+function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage}, trg::Union{Pipeline, Stage})
+    stages(pipeline::Pipeline) = pipeline.stages
+    stages(stage::Stage) = [stage]
+
+    outputs = Set(mapreduce(stage -> keys(stage.outputs), union, stages(src)))
+    inputs = Set(mapreduce(stage -> keys(stage.inputs), union, stages(trg)))
+    for key in intersect(outputs, inputs)
+        connect!(pipeline, src, trg, key)
+    end
+    return
+end
+function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage, Integer}, trg::Union{Pipeline, Stage, Integer}, key::Symbol)
+    return connect!(pipeline, src, key, trg, key)
+end
+
+# TODO: Not sure about this... Maybe it should be first/last instead? But what
+#       then it wouldn't really work with e.g. SSAO, which needs color as an
+#       input in step 2.
+"""
+    connect!(pipeline, source, output, target, input)
+
+Connects an `output::Union{Symbol, Integer}` from `source::Union{Stage, Integer}`
+to an `input` of `target`. If either already has a connection the new connection
+will be merged with the old. The source and target stage as well as the pipeline
+will be updated appropriately.
+
+`source` and `target` can also be `Pipeline`s if both output and input are
+`Symbol`s. In this case every stage in source with an appropriately named output
+is connected to every stage in target with an appropriately named input. Use with
+caution.
+"""
+function Observables.connect!(pipeline::Pipeline,
+        src::Union{Pipeline, Stage}, output::Symbol,
+        trg::Union{Pipeline, Stage}, input::Symbol
+    )
+    function sources(pipeline::Pipeline, output)
+        return [(stage, stage.outputs[output]) for stage in pipeline.stages if haskey(stage.outputs, output)]
+    end
+    sources(stage::Stage, output) = [(stage, stage.outputs[output])]
+
+    function targets(pipeline::Pipeline, input)
+        return [(stage, stage.inputs[input]) for stage in pipeline.stages if haskey(stage.inputs, input)]
+    end
+    targets(stage::Stage, input) = [(stage, stage.inputs[input])]
+
+    for (source, output_idx) in sources(src, output)
+        for (target, input_idx) in targets(trg, input)
+            @inbounds connect!(pipeline, source, output_idx, target, input_idx)
+        end
+    end
+
+    return
+end
+
+function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
+    return connect!(pipeline, pipeline.stages[src], output, pipeline.stages[trg], input)
+end
+function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
+    return connect!(pipeline, pipeline.stages[src], output, pipeline.stages[trg], input)
+end
+
+function Observables.connect!(pipeline::Pipeline, source::Stage, output::Symbol, target::Stage, input::Symbol)
     haskey(source.outputs, output) || error("output $output does not exist in source stage")
     haskey(target.inputs, input) || error("input $input does not exist in target stage")
-
     output_idx = source.outputs[output]
     input_idx = target.inputs[input]
+    return @inbounds connect!(pipeline, source, output_idx, target, input_idx)
+end
+
+function Observables.connect!(pipeline::Pipeline,
+        source::Stage, output_idx::Integer, target::Stage, input_idx::Integer)
+
+    @boundscheck begin
+        checkbounds(source.output_formats, output_idx)
+        checkbounds(target.input_formats, input_idx)
+    end
 
     # resize if too small (this allows later connections to be skipped)
     if length(source.output_connections) < output_idx
@@ -160,6 +276,25 @@ function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, 
     end
     if length(target.input_connections) < input_idx
         resize!(target.input_connections, input_idx)
+    end
+
+    # Don't make a new connection if the connection already exists
+    # (the format must be correct if it exists)
+    if isassigned(source.output_connections, output_idx) &&
+        isassigned(target.input_connections, input_idx) &&
+        (source.output_connections[output_idx] === target.input_connections[input_idx])
+        return source.output_connections[output_idx]
+    end
+
+    function unsafe_merge(c1::Connection, c2::Connection)
+        for (stage, idx) in c2.inputs
+            any(kv -> kv[1] === stage, c1.inputs) || push!(c1.inputs, stage => idx)
+        end
+        for (stage, idx) in c2.outputs
+            any(kv -> kv[1] === stage, c1.outputs) || push!(c1.outputs, stage => idx)
+        end
+
+        return Connection(c1.inputs, c1.outputs, BufferFormat(c1.format, c2.format))
     end
 
     # create requested connection
@@ -174,13 +309,13 @@ function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, 
         # near the end?
         idx = findlast(c -> c === old, pipeline.connections)::Int
         deleteat!(pipeline.connections, idx)
-        connection = merge(connection, old)
+        connection = unsafe_merge(connection, old)
     end
     if isassigned(target.input_connections, input_idx)
         old = target.input_connections[input_idx]
         idx = findlast(c -> c === old, pipeline.connections)::Int
         deleteat!(pipeline.connections, idx)
-        connection = merge(connection, old)
+        connection = unsafe_merge(connection, old)
     end
 
     # attach connection to every input and output
@@ -196,8 +331,8 @@ function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, 
     return connection
 end
 
-# TODO: make it impossible to break order
-# TODO: Is this even a necessary condition?
+# This checks that no connection goes backwards, i.e. every connection is written
+# to before being read.
 function verify(pipeline::Pipeline)
     for connection in pipeline.connections
         earliest_input = length(pipeline.stages)
@@ -224,11 +359,18 @@ function verify(pipeline::Pipeline)
     return true
 end
 
-format_complexity(c::Connection) = format_complexity(c.format)
-format_complexity(f::BufferFormat) = f.dims * sizeof(f.type)
+"""
+    generate_buffers(pipeline)
 
+Maps the connections in the given pipeline to a vector of buffer formats and
+returns them together with a connection-to-index map. This will attempt to
+optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
+multiple connections and upgrade them if it is cheaper than creating a new one.
+"""
 function generate_buffers(pipeline::Pipeline)
-    # TODO: is this necessary?
+    format_complexity(c::Connection) = format_complexity(c.format)
+    format_complexity(f::BufferFormat) = f.dims * sizeof(f.type)
+
     verify(pipeline)
 
     # We can make this more efficient later...
@@ -450,33 +592,30 @@ SortStage() = Stage(:ZSort)
 # simple color     objectid
 # OIT    HDR_color objectid weight
 function RenderStage()
-    outputs = (
-        :color => BufferFormat(4, Float8),
+    outputs = [
+        :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
         :position => BufferFormat(3, Float16),
         :normal => BufferFormat(3, Float16),
-    )
+    ]
     Stage(:Render, outputs = outputs)
 end
 function TransparentRenderStage()
-    outputs = (
+    outputs = [
         :weighted_color_sum => BufferFormat(4, Float16),
         :objectid => BufferFormat(2, UInt32),
-        :alpha_product => BufferFormat(1, Float8),
-    )
+        :alpha_product => BufferFormat(1, N0f8),
+    ]
     Stage(:TransparentRender, outputs = outputs)
 end
 
 # Want a MultiSzage kinda thing
 function SSAOStage()
-    inputs = (
-        :position => BufferFormat(3, Float32),
-        :normal => BufferFormat(3, Float16)
-    )
-    stage1 = Stage(:SSAO1; inputs, outputs = (:occlusion => BufferFormat(1, Float8),))
+    inputs = [:position => BufferFormat(3, Float32), :normal => BufferFormat(3, Float16)]
+    stage1 = Stage(:SSAO1; inputs, outputs = [:occlusion => BufferFormat(1, N0f8)])
 
-    inputs = (:occlusion => BufferFormat(1, Float8), :color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
-    stage2 = Stage(:SSAO2, inputs = inputs, outputs = (:color => BufferFormat(),))
+    inputs = [:occlusion => BufferFormat(1, N0f8), :color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
+    stage2 = Stage(:SSAO2, inputs = inputs, outputs = [:color => BufferFormat()])
 
     pipeline = Pipeline(stage1, stage2)
     connect!(pipeline, 1, :occlusion, 2, :occlusion)
@@ -485,18 +624,18 @@ function SSAOStage()
 end
 
 function OITStage()
-    inputs = (:weighted_color_sum => BufferFormat(4, Float16), :alpha_product => BufferFormat(1, Float8))
-    outputs = (:color => BufferFormat(4, Float8),)
+    inputs = [:weighted_color_sum => BufferFormat(4, Float16), :alpha_product => BufferFormat(1, N0f8)]
+    outputs = [:color => BufferFormat(4, N0f8)]
     return Stage(:OIT; inputs, outputs)
 end
 
 function FXAAStage()
-    inputs = (:color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
-    outputs = (:color_luma => BufferFormat(4, Float8),)
+    inputs = [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
+    outputs = [:color_luma => BufferFormat(4, N0f8)]
     stage1 = Stage(:FXAA1; inputs, outputs)
 
-    inputs = (:color_luma => BufferFormat(4, Float8),)
-    outputs = (:color => BufferFormat(4, Float8),)
+    inputs = [:color_luma => BufferFormat(4, N0f8)]
+    outputs = [:color => BufferFormat(4, N0f8)]
     stage2 = Stage(:FXAA2; inputs, outputs)
 
     pipeline = Pipeline(stage1, stage2)
@@ -506,7 +645,7 @@ function FXAAStage()
 end
 
 function DisplayStage()
-    inputs = (:color => BufferFormat(4, Float8), :objectid => BufferFormat(2, UInt32))
+    inputs = [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
     return Stage(:Display; inputs)
 end
 
@@ -518,29 +657,25 @@ function default_SSAO_pipeline()
         # matching master with SSAO enabled
         pipeline = Pipeline()
 
-        push!(pipeline, SortStage())                # 1
-        push!(pipeline, RenderStage())              # 2
-        push!(pipeline, SSAOStage())                # 3, 4
-        push!(pipeline, RenderStage())              # 5
-        push!(pipeline, TransparentRenderStage())   # 6
-        push!(pipeline, OITStage())                 # 7
-        push!(pipeline, FXAAStage())                # 8, 9
-        push!(pipeline, DisplayStage())             # 10
+        push!(pipeline, SortStage())
+        render1 = push!(pipeline, RenderStage())
+        ssao = push!(pipeline, SSAOStage())
+        render2 = push!(pipeline, RenderStage())
+        render3 = push!(pipeline, TransparentRenderStage())
+        oit = push!(pipeline, OITStage())
+        fxaa = push!(pipeline, FXAAStage())
+        display = push!(pipeline, DisplayStage())
 
-        connect!(pipeline, 2, :position, 3, :position)
-        connect!(pipeline, 2, :normal, 3, :normal)
-        connect!(pipeline, 2, :color, 4, :color)
-        connect!(pipeline, 2, :objectid, 4, :objectid)
-        connect!(pipeline, 2, :objectid, 8, :objectid)
-        connect!(pipeline, 2, :objectid, 10, :objectid)
-        connect!(pipeline, 4, :color, 8, :color)
-        connect!(pipeline, 5, :color, 8, :color)
-        connect!(pipeline, 5, :objectid, 10, :objectid) # will get bundled so we don't need to repeat
-        connect!(pipeline, 6, :weighted_color_sum, 7, :weighted_color_sum)
-        connect!(pipeline, 6, :objectid, 10, :objectid)
-        connect!(pipeline, 6, :alpha_product, 7, :alpha_product)
-        connect!(pipeline, 7, :color, 8, :color)
-        connect!(pipeline, 9, :color, 10, :color)
+        connect!(pipeline, render1, ssao)
+        connect!(pipeline, render1, fxaa,    :objectid)
+        connect!(pipeline, render1, display, :objectid)
+        connect!(pipeline, ssao,    fxaa,    :color)
+        connect!(pipeline, render2, fxaa,    :color)
+        connect!(pipeline, render2, display, :objectid) # will get bundled so we don't need to repeat
+        connect!(pipeline, render3, oit)
+        connect!(pipeline, render3, display, :objectid)
+        connect!(pipeline, oit,     fxaa,    :color)
+        connect!(pipeline, fxaa,    display, :color)
 
         return pipeline
     end
@@ -552,23 +687,21 @@ function default_pipeline()
         pipeline = Pipeline()
 
         push!(pipeline, SortStage())
-        push!(pipeline, RenderStage())
-        push!(pipeline, RenderStage())
-        push!(pipeline, TransparentRenderStage())
-        push!(pipeline, OITStage())
-        push!(pipeline, FXAAStage())
-        push!(pipeline, DisplayStage())
+        render1 = push!(pipeline, RenderStage())
+        render2 = push!(pipeline, RenderStage())
+        render3 = push!(pipeline, TransparentRenderStage())
+        oit = push!(pipeline, OITStage())
+        fxaa = push!(pipeline, FXAAStage())
+        display = push!(pipeline, DisplayStage())
 
-        connect!(pipeline, 2, :color, 6, :color)
-        connect!(pipeline, 2, :objectid, 6, :objectid)
-        connect!(pipeline, 2, :objectid, 8, :objectid)
-        connect!(pipeline, 3, :color, 6, :color)
-        connect!(pipeline, 3, :objectid, 8, :objectid)
-        connect!(pipeline, 4, :weighted_color_sum, 5, :weighted_color_sum)
-        connect!(pipeline, 4, :objectid, 8, :objectid)
-        connect!(pipeline, 4, :alpha_product, 5, :alpha_product)
-        connect!(pipeline, 5, :color, 6, :color)
-        connect!(pipeline, 7, :color, 8, :color)
+        connect!(pipeline, render1, fxaa)
+        connect!(pipeline, render1, display, :objectid)
+        connect!(pipeline, render2, fxaa)
+        connect!(pipeline, render2, display, :objectid)
+        connect!(pipeline, render3, oit)
+        connect!(pipeline, render3, display, :objectid)
+        connect!(pipeline, oit,  display, :color)
+        connect!(pipeline, fxaa, display, :color)
 
         return pipeline
     end

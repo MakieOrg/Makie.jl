@@ -105,7 +105,7 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
 end
 
 # for error messages
-const ATTACHMENT_LOOKUP = Dict{Int, Symbol}(
+const ATTACHMENT_LOOKUP = Dict{Int, String}(
     GL_DEPTH_ATTACHMENT => "GL_DEPTH_ATTACHMENT",
     GL_STENCIL_ATTACHMENT => "GL_STENCIL_ATTACHMENT",
     GL_DEPTH_STENCIL_ATTACHMENT => "GL_DEPTH_STENCIL_ATTACHMENT",
