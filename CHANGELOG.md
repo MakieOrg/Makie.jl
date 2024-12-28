@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- fix `px_per_unit != 1` not getting fit to the interactive window size in GLMakie [#4687](https://github.com/MakieOrg/Makie.jl/pull/4687)
+
 ## [0.22.0] - 2024-12-12
 
 - Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)
