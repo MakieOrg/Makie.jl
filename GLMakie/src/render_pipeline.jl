@@ -29,7 +29,9 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
         end
 
         if !found
-            tex = Texture(T, size(factory), minfilter = :linear, x_repeat = :clamp_to_edge)
+            isfloattype = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
+            interp = isfloattype ? (:linear) : (:nearest)
+            tex = Texture(T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
             push!(factory.buffers, tex)
         end
     end
