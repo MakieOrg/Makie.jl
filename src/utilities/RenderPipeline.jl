@@ -103,6 +103,8 @@ struct Stage
     # v these are not
     input_connections::Vector{ConnectionT{Stage}}
     output_connections::Vector{ConnectionT{Stage}}
+
+    attributes::Dict{Symbol, Any}
 end
 
 const Connection = ConnectionT{Stage}
@@ -114,22 +116,30 @@ Creates a new `Stage` from the given `name`, `inputs` and `outputs`. A `Stage`
 represents an action taken during rendering, e.g. rendering (a subset of) render
 objects, running a post processor or sorting render objects.
 """
-function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[])
-    stage = Stage(Symbol(name),
-        Dict{Symbol, Int}(), Dict{Symbol, Int}(),
-        BufferFormat[], BufferFormat[],
-        Connection[], Connection[]
+function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[], kwargs...)
+    return Stage(Symbol(name),
+        Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(inputs)]),
+        BufferFormat[v for (k, v) in inputs],
+        Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(outputs)]),
+        BufferFormat[v for (k, v) in outputs];
+        kwargs...
     )
-    foreach(enumerate(inputs)) do (i, (k, v))
-        stage.inputs[k] = i
-        push!(stage.input_formats, v)
-    end
-    foreach(enumerate(outputs)) do (i, (k, v))
-        stage.outputs[k] = i
-        push!(stage.output_formats, v)
-    end
+end
+function Stage(name, inputs, input_formats, outputs, output_formats; kwargs...)
+    stage = Stage(
+        Symbol(name),
+        inputs, outputs,
+        input_formats, output_formats,
+        Connection[], Connection[],
+        Dict{Symbol, Any}(kwargs)
+    )
     return stage
 end
+
+get_input_connection(stage::Stage, key::Symbol) = stage.input_connections[stage.inputs[key]]
+get_output_connection(stage::Stage, key::Symbol) = stage.output_connections[stage.outputs[key]]
+get_input_format(stage::Stage, key::Symbol) = stage.input_formats[stage.inputs[key]]
+get_output_format(stage::Stage, key::Symbol) = stage.output_formats[stage.outputs[key]]
 
 """
     Connection(source::Stage, output::Integer, target::Stage, input::Integer)
@@ -471,7 +481,11 @@ end
 
 
 function Base.show(io::IO, format::BufferFormat)
-    print(io, "BufferFormat($(format.dims), $(format.type))")
+    print(io, "BufferFormat($(format.dims), $(format.type)")
+    for (k, v) in format.extras
+        print(io, ", :", k, " => ", v)
+    end
+    print(io, ")")
 end
 
 Base.show(io::IO, stage::Stage) = print(io, "Stage($(stage.name))")
@@ -587,66 +601,61 @@ end
 
 SortStage() = Stage(:ZSort)
 
-# I guess we should have multiple versions of this? Because SSAO render and OIT render don't really fit?
-# SSAO   color     objectid position normal
-# simple color     objectid
-# OIT    HDR_color objectid weight
-function RenderStage()
-    outputs = [
-        :color => BufferFormat(4, N0f8),
-        :objectid => BufferFormat(2, UInt32),
-        :position => BufferFormat(3, Float16),
-        :normal => BufferFormat(3, Float16),
-    ]
-    Stage(:Render, outputs = outputs)
+function RenderStage(; kwargs...)
+    outputs = Dict(:color => 1, :objectid => 2, :position => 3, :normal => 4)
+    output_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32), BufferFormat(3, Float16), BufferFormat(3, Float16)]
+    return Stage(:Render, Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats; kwargs...)
 end
+
 function TransparentRenderStage()
-    outputs = [
-        :weighted_color_sum => BufferFormat(4, Float16),
-        :objectid => BufferFormat(2, UInt32),
-        :alpha_product => BufferFormat(1, N0f8),
-    ]
-    Stage(:TransparentRender, outputs = outputs)
+    outputs = Dict(:weighted_color_sum => 1, :objectid => 2, :alpha_product => 3)
+    output_formats = [BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)]
+    return Stage(:TransparentRender, Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats)
 end
 
-# Want a MultiSzage kinda thing
-function SSAOStage()
-    inputs = [:position => BufferFormat(3, Float32), :normal => BufferFormat(3, Float16)]
-    stage1 = Stage(:SSAO1; inputs, outputs = [:occlusion => BufferFormat(1, N0f8)])
+function SSAOStage(; kwargs...)
+    inputs = Dict(:position => 1, :normal => 2)
+    input_formats = [BufferFormat(3, Float32), BufferFormat(3, Float16)]
+    stage1 = Stage(:SSAO1, inputs, input_formats, Dict(:occlusion => 1), [BufferFormat(1, N0f8)]; kwargs...)
 
-    inputs = [:occlusion => BufferFormat(1, N0f8), :color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
-    stage2 = Stage(:SSAO2, inputs = inputs, outputs = [:color => BufferFormat()])
+    inputs = Dict(:occlusion => 1, :color => 2, :objectid => 3)
+    input_formats = [BufferFormat(1, N0f8), BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
+    stage2 = Stage(:SSAO2, inputs, input_formats, Dict(:color => 1), [BufferFormat()]; kwargs...)
 
     pipeline = Pipeline(stage1, stage2)
-    connect!(pipeline, 1, :occlusion, 2, :occlusion)
+    connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
 end
 
-function OITStage()
-    inputs = [:weighted_color_sum => BufferFormat(4, Float16), :alpha_product => BufferFormat(1, N0f8)]
-    outputs = [:color => BufferFormat(4, N0f8)]
-    return Stage(:OIT; inputs, outputs)
+function OITStage(; kwargs...)
+    inputs = Dict(:weighted_color_sum => 1, :alpha_product => 2)
+    input_formats = [BufferFormat(4, Float16), BufferFormat(1, N0f8)]
+    outputs = Dict(:color => 1)
+    output_formats = [BufferFormat(4, N0f8)]
+    return Stage(:OIT, inputs, input_formats, outputs, output_formats; kwargs...)
 end
 
 function FXAAStage()
-    inputs = [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
-    outputs = [:color_luma => BufferFormat(4, N0f8)]
-    stage1 = Stage(:FXAA1; inputs, outputs)
+    inputs = Dict(:color => 1, :objectid => 2)
+    input_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
+    stage1 = Stage(:FXAA1, inputs, input_formats, Dict(:color_luma => 1), [BufferFormat(4, N0f8)])
 
-    inputs = [:color_luma => BufferFormat(4, N0f8)]
-    outputs = [:color => BufferFormat(4, N0f8)]
-    stage2 = Stage(:FXAA2; inputs, outputs)
+    stage2 = Stage(:FXAA2,
+        Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
+        Dict(:color => 1), [BufferFormat(4, N0f8)]
+    )
 
     pipeline = Pipeline(stage1, stage2)
-    connect!(pipeline, 1, :color_luma, 2, :color_luma)
+    connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
 end
 
 function DisplayStage()
-    inputs = [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)]
-    return Stage(:Display; inputs)
+    inputs = Dict(:color => 1, :objectid => 2)
+    input_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
+    return Stage(:Display, inputs, input_formats, Dict{Symbol, Int}(), BufferFormat[])
 end
 
 
@@ -658,9 +667,9 @@ function default_SSAO_pipeline()
         pipeline = Pipeline()
 
         push!(pipeline, SortStage())
-        render1 = push!(pipeline, RenderStage())
+        render1 = push!(pipeline, RenderStage(target = :SSAO))
         ssao = push!(pipeline, SSAOStage())
-        render2 = push!(pipeline, RenderStage())
+        render2 = push!(pipeline, RenderStage(target = :FXAA))
         render3 = push!(pipeline, TransparentRenderStage())
         oit = push!(pipeline, OITStage())
         fxaa = push!(pipeline, FXAAStage())
@@ -687,19 +696,16 @@ function default_pipeline()
         pipeline = Pipeline()
 
         push!(pipeline, SortStage())
-        render1 = push!(pipeline, RenderStage())
-        render2 = push!(pipeline, RenderStage())
-        render3 = push!(pipeline, TransparentRenderStage())
+        render1 = push!(pipeline, RenderStage(target = :FXAA))
+        render2 = push!(pipeline, TransparentRenderStage())
         oit = push!(pipeline, OITStage())
         fxaa = push!(pipeline, FXAAStage())
         display = push!(pipeline, DisplayStage())
 
         connect!(pipeline, render1, fxaa)
         connect!(pipeline, render1, display, :objectid)
-        connect!(pipeline, render2, fxaa)
+        connect!(pipeline, render2, oit)
         connect!(pipeline, render2, display, :objectid)
-        connect!(pipeline, render3, oit)
-        connect!(pipeline, render3, display, :objectid)
         connect!(pipeline, oit,  display, :color)
         connect!(pipeline, fxaa, display, :color)
 

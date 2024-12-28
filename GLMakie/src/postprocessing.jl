@@ -395,7 +395,7 @@ struct BlitToScreen <: AbstractRenderStep
     screen_framebuffer_id::Int
 
     # Screen not available yet
-    function BlitToScreen(framebuffer, attachment, screen_framebuffer_id::Integer = 0)
+    function BlitToScreen(framebuffer::GLFramebuffer, attachment::GLuint, screen_framebuffer_id::Integer = 0)
         @debug "Creating to screen postprocessor"
         return new(framebuffer, attachment, screen_framebuffer_id)
     end

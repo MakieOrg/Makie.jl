@@ -29,8 +29,14 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
         end
 
         if !found
-            isfloattype = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
-            interp = isfloattype ? (:linear) : (:nearest)
+            if haskey(format.extras, :minfilter)
+                interp = format.extras[:minfilter]
+                if !(eltype(T) == N0f8 || eltype(T) <: AbstractFloat) && (interp == :linear)
+                    error("Cannot use :linear interpolation with non float types.")
+                end
+            else
+                interp = :nearest
+            end
             tex = Texture(T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
             push!(factory.buffers, tex)
         end
@@ -85,25 +91,15 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             SortPlots()
         elseif stage.name == :Render
             # TODO:
-            if first_render
-                attach_colorbuffer(factory.fb, :objectid, get_buffer(framebuffer, :objectid))
-                first_render = false
-                RenderPlots(screen, framebuffer, inputs, :SSAO)
-            else
-                RenderPlots(screen, framebuffer, inputs, :FXAA)
-            end
+            RenderPlots(screen, framebuffer, inputs, stage.attributes[:target]::Symbol)
         elseif stage.name == :TransparentRender
             RenderPlots(screen, framebuffer, inputs, :OIT)
         elseif stage.name == :Display
-            # TODO: hacky
-            prev = last(render_pipeline)
-            framebuffer = prev.framebuffer
-            # TODO: Technically need to find connection from prev to this stage
-            #       that ends up in :color
-            # Assuming that connection attached to a :color output:
-            attachment = get_attachment(framebuffer, :color)
-            attach_colorbuffer(factory.fb, :color, get_buffer(framebuffer, :color))
-            BlitToScreen(framebuffer, attachment)
+            # Need these for colorbuffer() and picking
+            attach_colorbuffer(factory.fb, :color,    get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :color)]))
+            attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :objectid)]))
+
+            BlitToScreen(factory.fb, get_attachment(factory.fb, :color))
         elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
             RenderPass{stage.name}(screen, framebuffer, inputs)
         else
