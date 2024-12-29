@@ -34,40 +34,32 @@ Initialization is grouped together and runs before all run steps. If you need
 to initialize just before your run, bundle it with the run.
 """
 abstract type AbstractRenderStep end
+prepare_step(screen, glscene, ::AbstractRenderStep) = nothing
 run_step(screen, glscene, ::AbstractRenderStep) = nothing
 
 function destroy!(step::T) where {T <: AbstractRenderStep}
     @debug "Default destructor of $T"
-    hasfield(T, :robj) && destroy!(step.robj)
-    return
-end
-
-# fore reference:
-# construct(::Val{Name}, screen, framebuffer, inputs, parent::Makie.Stage)
-function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) where {T <: AbstractRenderStep}
-    # @debug "reconstruct() not defined for $T, calling construct()"
-    destroy!(old)
-    return construct(Val(parent.name), screen, framebuffer, inputs, parent)
-end
-
-
-
-struct GLRenderPipeline
-    parent::Makie.Pipeline
-    steps::Vector{AbstractRenderStep}
-end
-GLRenderPipeline() = GLRenderPipeline(Makie.Pipeline(), AbstractRenderStep[])
-
-function render_frame(screen, glscene, pipeline::GLRenderPipeline)
-    for step in pipeline.steps
-        run_step(screen, glscene, step)
+    if hasfield(T, :passes)
+        while !isempty(step.passes)
+            destroy!(pop!(step.passes))
+        end
+    elseif hasfield(T, :pass)
+        destroy!(step.pass)
     end
     return
 end
 
-function destroy!(pipeline::GLRenderPipeline)
-    destroy!.(pipeline.steps)
-    empty!(pipeline.steps)
+struct RenderPipeline
+    steps::Vector{AbstractRenderStep}
+end
+
+function render_frame(screen, glscene, pipeline::RenderPipeline)
+    for step in pipeline.steps
+        prepare_step(screen, glscene, step)
+    end
+    for step in pipeline.steps
+        run_step(screen, glscene, step)
+    end
     return
 end
 
@@ -78,8 +70,6 @@ struct EmptyRenderStep <: AbstractRenderStep end
 
 
 struct SortPlots <: AbstractRenderStep end
-
-construct(::Val{:ZSort}, screen, framebuffer, inputs, parent) = SortPlots()
 
 function run_step(screen, glscene, ::SortPlots)
     function sortby(x)
@@ -114,21 +104,19 @@ struct RenderPlots <: AbstractRenderStep
     fxaa::FilterOptions
 end
 
-function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
-    if parent.attributes[:target] === :SSAO
+function RenderPlots(screen, framebuffer, inputs, stage)
+    if stage === :SSAO
         return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], FilterTrue, FilterFalse, FilterAny)
-    elseif parent.attributes[:target] === :FXAA
+    elseif stage === :FXAA
         return RenderPlots(framebuffer, Pair{Int, Vec4f}[], FilterFalse, FilterFalse, FilterAny)
+    elseif stage === :OIT
+        # HDR_color containing sums clears to 0
+        # OIT_weight containing products clears to 1
+        clear = [1 => Vec4f(0), 3 => Vec4f(1)]
+        return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny)
     else
-        error("Incorrect target = $(parent.target) given. Should be :SSAOor :FXAA.")
+        error("Incorrect stage = $stage given. Should be :SSAO, :FXAA or :OIT.")
     end
-end
-
-function construct(::Val{:TransparentRender}, screen, framebuffer, inputs, parent)
-    # HDR_color containing sums clears to 0
-    # OIT_weight containing products clears to 1
-    clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny)
 end
 
 function id2scene(screen, id1)
@@ -186,18 +174,9 @@ struct RenderPass{Name} <: AbstractRenderStep
     robj::RenderObject
 end
 
-function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.Stage) where {RP <: RenderPass}
-    for (k, v) in inputs
-        if haskey(pass.robj.uniforms, k)
-            pass.robj.uniforms[k] = v
-        else
-            @error("Input $k does not exist in recreated RenderPass.")
-        end
-    end
-    return RP(framebuffer, pass.robj)
-end
 
-function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
+
+function RenderPass{:OIT}(screen, framebuffer, inputs)
     @debug "Creating OIT postprocessor"
 
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
@@ -208,8 +187,12 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/OIT_blend.frag")
     )
     # TODO: rename in shader
+    data = Dict{Symbol, Any}(
+        :sum_color  => inputs[:weighted_color_sum],
+        :prod_alpha => inputs[:alpha_product],
+    )
     robj = RenderObject(
-        inputs, shader,
+        data, shader,
         () -> begin
             glDepthMask(GL_TRUE)
             glDisable(GL_DEPTH_TEST)
@@ -239,7 +222,7 @@ function run_step(screen, glscene, step::RenderPass{:OIT})
     return
 end
 
-function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
+function RenderPass{:SSAO1}(screen, framebuffer, inputs)
     # SSAO setup
     N_samples = 64
     lerp_min = 0.1f0
@@ -247,9 +230,8 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     kernel = map(1:N_samples) do i
         n = normalize([2.0rand() .- 1.0, 2.0rand() .- 1.0, rand()])
         scale = lerp_min + (lerp_max - lerp_min) * (i / N_samples)^2
-        return Vec3f(scale * rand() * n)
+        v = Vec3f(scale * rand() * n)
     end
-    noise = [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4]
 
     # compute occlusion
     shader = LazyShader(
@@ -260,28 +242,40 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
             "N_samples" => "$N_samples"
         )
     )
-    inputs[:kernel] = kernel
-    inputs[:noise] = Texture(screen.glscreen, noise, minfilter = :nearest, x_repeat = :repeat)
-    inputs[:noise_scale] = Vec2f(0.25f0 .* size(screen))
-    inputs[:projection] = Mat4f(I)
-    inputs[:bias] = 0.025f0
-    inputs[:radius] = 0.5f0
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
+    data = Dict{Symbol, Any}(
+        :position_buffer => inputs[:position],
+        :normal_buffer => inputs[:normal],
+        :kernel => kernel,
+        :noise => Texture(
+            [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
+            minfilter = :nearest, x_repeat = :repeat
+        ),
+        :noise_scale => Vec2f(0.25f0 .* size(screen)),
+        :projection => Observable(Mat4f(I)),
+        :bias => 0.025f0,
+        :radius => 0.5f0
+    )
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
     return RenderPass{:SSAO1}(framebuffer, robj)
 end
 
-function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
+function RenderPass{:SSAO2}(screen, framebuffer, inputs)
     # blur occlusion and combine with color
     shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/SSAO_blur.frag")
     )
-    inputs[:inv_texel_size] = rcpframe(size(screen))
-    inputs[:blur_range] = Int32(2)
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
+    data = Dict{Symbol, Any}(
+        :occlusion => inputs[:occlusion],
+        :color_texture    => inputs[:color],
+        :ids              => inputs[:objectid],
+        :inv_texel_size => rcpframe(size(screen)),
+        :blur_range => Int32(2)
+    )
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
     return RenderPass{:SSAO2}(framebuffer, robj)
@@ -312,22 +306,12 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
         GLAbstraction.render(step.robj)
     end
 
-    glDisable(GL_SCISSOR_TEST)
-
     return
 end
 
 function run_step(screen, glscene, step::RenderPass{:SSAO2})
-    # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
-    #       previously used for normals. Figure out a better solution than this:
-    setup!(screen, step.framebuffer)
-
     # SSAO - blur occlusion and apply to color
     set_draw_buffers(step.framebuffer)  # color buffer
-    wh = size(step.framebuffer)
-    glViewport(0, 0, wh[1], wh[2])
-
-    glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = step.robj.uniforms
     for (screenid, scene) in screen.screens
@@ -346,28 +330,35 @@ function run_step(screen, glscene, step::RenderPass{:SSAO2})
 end
 
 
-function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
+function RenderPass{:FXAA1}(screen, framebuffer, inputs)
     # calculate luma for FXAA
     shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/postprocess.frag")
     )
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
+    data = Dict{Symbol, Any}(
+        :color_texture => inputs[:color],
+        :object_ids    => inputs[:objectid],
+    )
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
     return RenderPass{:FXAA1}(framebuffer, robj)
 end
 
-function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
+function RenderPass{:FXAA2}(screen, framebuffer, inputs)
     # perform FXAA
     shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/fxaa.frag")
     )
-    inputs[:RCPFrame] = rcpframe(size(framebuffer))
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
+    data = Dict{Symbol, Any}(
+        :color_texture => inputs[:color_luma],
+        :RCPFrame      => rcpframe(size(framebuffer)),
+    )
+    robj = RenderObject(data, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
     return RenderPass{:FXAA2}(framebuffer, robj)
@@ -400,19 +391,20 @@ end
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
 struct BlitToScreen <: AbstractRenderStep
     framebuffer::GLFramebuffer
+    attachment::GLuint
     screen_framebuffer_id::Int
-end
 
-function construct(::Val{:Display}, screen, ::Nothing, inputs, parent::Makie.Stage)
-    framebuffer = screen.framebuffer_factory.fb
-    id = get(parent.attributes, :screen_framebuffer_id, 0)
-    return BlitToScreen(framebuffer, id)
+    # Screen not available yet
+    function BlitToScreen(framebuffer::GLFramebuffer, attachment::GLuint, screen_framebuffer_id::Integer = 0)
+        @debug "Creating to screen postprocessor"
+        return new(framebuffer, attachment, screen_framebuffer_id)
+    end
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
     # Set source
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
-    glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
+    glReadBuffer(step.attachment) # for safety
 
     # TODO: Is this an observable? Can this be static?
     # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering

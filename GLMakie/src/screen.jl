@@ -172,7 +172,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    render_pipeline::GLRenderPipeline
+    render_pipeline::Vector{AbstractRenderStep}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
@@ -208,7 +208,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen, owns_glscreen, shader_cache, framebuffer_factory,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
-            screens, renderlist, GLRenderPipeline(), cache, cache2plot,
+            screens, renderlist, AbstractRenderStep[], cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0f0), nothing, reuse, true, false
         )
@@ -756,17 +756,6 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
     GLAbstraction.bind(source, 0)
     return
-end
-
-function Makie.colorbuffer(screen::Screen, source::Texture{T, 2}) where T
-    ShaderAbstractions.switch_context!(screen.glscreen)
-    # render_frame(screen, resize_buffers=false) # let it render
-    glFinish() # block until opengl is done rendering
-    img = Matrix{eltype(source)}(undef, size(source))
-    GLAbstraction.bind(source)
-    GLAbstraction.glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, img)
-    GLAbstraction.bind(source, 0)
-    return img
 end
 
 """

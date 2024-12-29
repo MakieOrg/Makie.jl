@@ -10,8 +10,6 @@ end
 Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
 Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
 
-
-
 mutable struct FramebufferFactory
     fb::GLFramebuffer # core framebuffer (more or less for #4150)
     # holding depth, stencil, objectid[, output_color]
@@ -57,14 +55,6 @@ function unsafe_empty!(factory::FramebufferFactory)
     attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
     factory.fb = fb
     return factory
-end
-
-function destroy!(factory::FramebufferFactory)
-    GLAbstraction.free.(factory.buffers)
-    GLAbstraction.free.(factory.children)
-    GLAbstraction.free(factory.fb)
-    empty!(factory.buffers)
-    empty!(factory.children)
 end
 
 function Base.push!(factory::FramebufferFactory, tex::Texture)

@@ -6,16 +6,16 @@
 in vec2 frag_uv;
 
 // contains sum_i C_i * weight(depth_i, alpha_i)
-uniform sampler2D weighted_color_sum_buffer;
+uniform sampler2D sum_color;
 // contains pod_i (1 - alpha_i)
-uniform sampler2D alpha_product_buffer;
+uniform sampler2D prod_alpha;
 
 out vec4 fragment_color;
 
 void main(void)
 {
-    vec4 summed_color_weight = texture(weighted_color_sum_buffer, frag_uv);
-    float transmittance = texture(alpha_product_buffer, frag_uv).r;
+    vec4 summed_color_weight = texture(sum_color, frag_uv);
+    float transmittance = texture(prod_alpha, frag_uv).r;
 
     vec3 weighted_transparent = summed_color_weight.rgb / max(summed_color_weight.a, 0.00001);
     vec3 full_weighted_transparent = weighted_transparent * (1 - transmittance);

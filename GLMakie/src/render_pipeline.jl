@@ -10,6 +10,7 @@ function format_to_type(format::Makie.BufferFormat)
 end
 
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
+    # empty!(factory.buffer_key2idx)
     empty!(factory.children)
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -19,13 +20,13 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     for format in formats
         T = format_to_type(format)
         found = false
-        # for (i, buffer) in enumerate(buffers)
-        #     if T == eltype(buffer) && (get(format.extras, :minfilter, :nearest) == buffer.parameters.minfilter)
-        #         found = true
-        #         push!(factory.buffers, popat!(buffers, i))
-        #         break
-        #     end
-        # end
+        for (i, buffer) in enumerate(buffers)
+            if T == eltype(buffer) # TODO: && extra parameters match...
+                found = true
+                push!(factory.buffers, popat!(buffers, i))
+                break
+            end
+        end
 
         if !found
             if haskey(format.extras, :minfilter)
@@ -44,14 +45,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     # Always rebuild this though, since we don't know which buffers are the
     # final output buffers
     fb = GLFramebuffer(size(factory))
-    depth_buffer = Texture(
-        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(factory),
-        minfilter = :nearest, x_repeat = :clamp_to_edge,
-        internalformat = GL_DEPTH24_STENCIL8,
-        format = GL_DEPTH_STENCIL
-    )
-    attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
-    # attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
     factory.fb = fb
 
     return factory
@@ -59,19 +53,11 @@ end
 
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
-    pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
-    previous_pipeline = screen.render_pipeline
-
-    # Exit early if the pipeline is already up to date
-    previous_pipeline.parent == pipeline && return
-
     # TODO: check if pipeline is different from the last one before replacing it
+    render_pipeline = screen.render_pipeline
     factory = screen.framebuffer_factory
 
-    # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
-    # with an empty one while we mess with it?
-    wait(screen)
-    screen.render_pipeline = GLRenderPipeline()
+    empty!(render_pipeline)
 
     # Resolve pipeline
     buffers, connection2idx = Makie.generate_buffers(pipeline)
@@ -79,18 +65,12 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # Add required buffers
     reset!(factory, buffers)
 
-    # Add back output color and objectid attachments
-    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :color)]
-    attach_colorbuffer(factory.fb, :color, get_buffer(factory, buffer_idx))
-    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :objectid)]
-    attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
+    first_render = true
 
-
-    render_pipeline = AbstractRenderStep[]
     for stage in pipeline.stages
-        inputs = Dict{Symbol, Any}(map(collect(keys(stage.inputs))) do key
+        inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
-            return Symbol(key, :_buffer) => get_buffer(factory, connection2idx[connection])
+            return key => get_buffer(factory, connection2idx[connection])
         end)
 
         N = length(stage.output_connections)
@@ -106,20 +86,25 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             end
         end
 
-        # can we reconstruct? (reconstruct should update framebuffer, and replace
-        # inputs if necessary, i.e. handle differences in connections and attributes)
-        idx = findfirst(previous_pipeline.parent.stages) do old
-            (old.name == stage.name) &&
-            (old.inputs == stage.inputs) && (old.outputs == stage.outputs) &&
-            (old.input_formats == stage.input_formats) &&
-            (old.output_formats == stage.output_formats)
-        end
+        # TODO: hmm...
+        pass = if stage.name == :ZSort
+            SortPlots()
+        elseif stage.name == :Render
+            # TODO:
+            RenderPlots(screen, framebuffer, inputs, stage.attributes[:target]::Symbol)
+        elseif stage.name == :TransparentRender
+            RenderPlots(screen, framebuffer, inputs, :OIT)
+        elseif stage.name == :Display
+            # Need these for colorbuffer() and picking
+            attach_colorbuffer(factory.fb, :color,    get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :color)]))
+            attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :objectid)]))
 
-        # if idx === nothing
-            pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
-        # else
-            # pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
-        # end
+            BlitToScreen(factory.fb, get_attachment(factory.fb, :color))
+        elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
+            RenderPass{stage.name}(screen, framebuffer, inputs)
+        else
+            error("Unknown stage $(stage.name)")
+        end
 
         # I guess stage should also have extra information for settings? Or should
         # that be in scene.theme?
@@ -127,8 +112,5 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         push!(render_pipeline, pass)
     end
 
-    screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
-    screen.requires_update = true
-
-    return
+    return render_pipeline
 end
