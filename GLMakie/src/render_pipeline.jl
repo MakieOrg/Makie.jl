@@ -115,11 +115,11 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             (old.output_formats == stage.output_formats)
         end
 
-        if idx === nothing
+        # if idx === nothing
             pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
-        else
-            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
-        end
+        # else
+            # pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
+        # end
 
         # I guess stage should also have extra information for settings? Or should
         # that be in scene.theme?
