@@ -10,7 +10,7 @@ function format_to_type(format::Makie.BufferFormat)
 end
 
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
-    # empty!(factory.buffer_key2idx)
+    @assert factory.fb.id != 0 "Cannot reset a destroyed FramebufferFactory"
     empty!(factory.children)
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -21,7 +21,9 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
         T = format_to_type(format)
         found = false
         for (i, buffer) in enumerate(buffers)
-            if T == eltype(buffer) # TODO: && extra parameters match...
+            if (buffer.id != 0) && (T == eltype(buffer)) &&
+                (get(format.extras, :minfilter, :nearest) == buffer.parameters.minfilter)
+
                 found = true
                 push!(factory.buffers, popat!(buffers, i))
                 break
@@ -53,11 +55,19 @@ end
 
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
+    pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
+    previous_pipeline = screen.render_pipeline
+
+    # Exit early if the pipeline is already up to date
+    previous_pipeline.parent == pipeline && return
+
     # TODO: check if pipeline is different from the last one before replacing it
-    render_pipeline = screen.render_pipeline
     factory = screen.framebuffer_factory
 
-    empty!(render_pipeline)
+    # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
+    # with an empty one while we mess with it?
+    wait(screen)
+    screen.render_pipeline = GLRenderPipeline()
 
     # Resolve pipeline
     buffers, connection2idx = Makie.generate_buffers(pipeline)
@@ -65,12 +75,18 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # Add required buffers
     reset!(factory, buffers)
 
-    first_render = true
+    # Add back output color and objectid attachments
+    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :color)]
+    attach_colorbuffer(factory.fb, :color, get_buffer(factory, buffer_idx))
+    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :objectid)]
+    attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
 
+
+    render_pipeline = AbstractRenderStep[]
     for stage in pipeline.stages
-        inputs = Dict{Symbol, Texture}(map(collect(keys(stage.inputs))) do key
+        inputs = Dict{Symbol, Any}(map(collect(keys(stage.inputs))) do key
             connection = stage.input_connections[stage.inputs[key]]
-            return key => get_buffer(factory, connection2idx[connection])
+            return Symbol(key, :_buffer) => get_buffer(factory, connection2idx[connection])
         end)
 
         N = length(stage.output_connections)
@@ -86,24 +102,19 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             end
         end
 
-        # TODO: hmm...
-        pass = if stage.name == :ZSort
-            SortPlots()
-        elseif stage.name == :Render
-            # TODO:
-            RenderPlots(screen, framebuffer, inputs, stage.attributes[:target]::Symbol)
-        elseif stage.name == :TransparentRender
-            RenderPlots(screen, framebuffer, inputs, :OIT)
-        elseif stage.name == :Display
-            # Need these for colorbuffer() and picking
-            attach_colorbuffer(factory.fb, :color,    get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :color)]))
-            attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, connection2idx[Makie.get_input_connection(stage, :objectid)]))
+        # can we reconstruct? (reconstruct should update framebuffer, and replace
+        # inputs if necessary, i.e. handle differences in connections and attributes)
+        idx = findfirst(previous_pipeline.parent.stages) do old
+            (old.name == stage.name) &&
+            (old.inputs == stage.inputs) && (old.outputs == stage.outputs) &&
+            (old.input_formats == stage.input_formats) &&
+            (old.output_formats == stage.output_formats)
+        end
 
-            BlitToScreen(factory.fb, get_attachment(factory.fb, :color))
-        elseif stage.name in [:SSAO1, :SSAO2, :FXAA1, :FXAA2, :OIT]
-            RenderPass{stage.name}(screen, framebuffer, inputs)
+        if idx === nothing
+            pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
         else
-            error("Unknown stage $(stage.name)")
+            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
         end
 
         # I guess stage should also have extra information for settings? Or should
@@ -112,5 +123,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         push!(render_pipeline, pass)
     end
 
-    return render_pipeline
+    screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
+    screen.requires_update = true
+
+    return
 end

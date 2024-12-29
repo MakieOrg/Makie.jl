@@ -94,17 +94,18 @@ struct Stage
     name::Symbol
 
     # order matters for outputs
+    # these are "const" after init
     inputs::Dict{Symbol, Int}
     outputs::Dict{Symbol, Int}
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
-    # ^ technically all of these are constants (no push, pop, delete, setindex allowed)
 
-    # v these are not
+    # "const" after setting up connections
     input_connections::Vector{ConnectionT{Stage}}
     output_connections::Vector{ConnectionT{Stage}}
 
-    attributes::Dict{Symbol, Any}
+    # const for caching (which does quite a lot actually)
+    attributes::NamedTuple
 end
 
 const Connection = ConnectionT{Stage}
@@ -126,14 +127,13 @@ function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbo
     )
 end
 function Stage(name, inputs, input_formats, outputs, output_formats; kwargs...)
-    stage = Stage(
+    return Stage(
         Symbol(name),
         inputs, outputs,
         input_formats, output_formats,
         Connection[], Connection[],
-        Dict{Symbol, Any}(kwargs)
+        NamedTuple{keys(kwargs)}(values(kwargs))
     )
-    return stage
 end
 
 get_input_connection(stage::Stage, key::Symbol) = stage.input_connections[stage.inputs[key]]
@@ -594,10 +594,16 @@ function Base.show(io::IO, ::MIME"text/plain", connection::Connection)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
+    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
+    return show_resolved(io, pipeline, pipeline.connections, conn2idx)
+end
+function show_resolved(pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
+    return show_resolved(stdout, pipeline, buffers, conn2idx)
+end
+function show_resolved(io::IO, pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
     println(io, "Pipeline():")
     print(io, "Stages:")
-    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
-    pad = 1 + floor(Int, log10(length(pipeline.connections)))
+    pad = 1 + floor(Int, log10(length(buffers)))
 
     for stage in pipeline.stages
         print(io, "\n  Stage($(stage.name))")
@@ -625,7 +631,7 @@ function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
     end
 
     println(io, "\nConnections:")
-    for (i, c) in enumerate(pipeline.connections)
+    for (i, c) in enumerate(buffers)
         s = lpad("$i", pad)
         println(io, "  [$s] ", c)
     end
@@ -699,6 +705,7 @@ function DisplayStage()
 end
 
 
+# TODO: caching is dangerous with mutable attributes...
 const PIPELINE_CACHE = Dict{Symbol, Pipeline}()
 
 function default_SSAO_pipeline()
