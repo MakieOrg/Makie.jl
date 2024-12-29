@@ -62,6 +62,11 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # TODO: check if pipeline is different from the last one before replacing it
     factory = screen.framebuffer_factory
 
+    # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
+    # with an empty one while we mess with it?
+    wait(screen)
+    screen.render_pipeline = GLRenderPipeline()
+
     # Resolve pipeline
     buffers, connection2idx = Makie.generate_buffers(pipeline)
 
@@ -117,6 +122,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     end
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
+    screen.requires_update = true
 
     return
 end

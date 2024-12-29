@@ -59,6 +59,14 @@ function unsafe_empty!(factory::FramebufferFactory)
     return factory
 end
 
+function destroy!(factory::FramebufferFactory)
+    GLAbstraction.free.(factory.buffers)
+    GLAbstraction.free.(factory.children)
+    GLAbstraction.free(factory.fb)
+    empty!(factory.buffers)
+    empty!(factory.children)
+end
+
 function Base.push!(factory::FramebufferFactory, tex::Texture)
     push!(factory.buffers, tex)
     return factory

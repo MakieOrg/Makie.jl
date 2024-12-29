@@ -648,8 +648,8 @@ function destroy!(screen::Screen)
         empty!(screen)
     end
     @assert screen.rendertask === nothing
-    foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
-    destroy!(screen.framebuffer)
+    destroy!(screen.framebuffer_factory)
+    destroy!(screen.render_pipeline)
     cleanup_texture_atlas!(window)
     GLAbstraction.free(screen.shader_cache)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)

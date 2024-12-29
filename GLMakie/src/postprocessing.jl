@@ -65,6 +65,12 @@ function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     return
 end
 
+function destroy!(pipeline::GLRenderPipeline)
+    destroy!.(pipeline.steps)
+    empty!(pipeline.steps)
+    return
+end
+
 
 # TODO: temporary, we should get to the point where this is not needed
 struct EmptyRenderStep <: AbstractRenderStep end
