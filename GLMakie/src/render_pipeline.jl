@@ -10,7 +10,6 @@ function format_to_type(format::Makie.BufferFormat)
 end
 
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
-    # empty!(factory.buffer_key2idx)
     empty!(factory.children)
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -20,13 +19,13 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     for format in formats
         T = format_to_type(format)
         found = false
-        for (i, buffer) in enumerate(buffers)
-            if T == eltype(buffer) # TODO: && extra parameters match...
-                found = true
-                push!(factory.buffers, popat!(buffers, i))
-                break
-            end
-        end
+        # for (i, buffer) in enumerate(buffers)
+        #     if T == eltype(buffer) && (get(format.extras, :minfilter, :nearest) == buffer.parameters.minfilter)
+        #         found = true
+        #         push!(factory.buffers, popat!(buffers, i))
+        #         break
+        #     end
+        # end
 
         if !found
             if haskey(format.extras, :minfilter)
@@ -45,7 +44,14 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     # Always rebuild this though, since we don't know which buffers are the
     # final output buffers
     fb = GLFramebuffer(size(factory))
-    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    depth_buffer = Texture(
+        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(factory),
+        minfilter = :nearest, x_repeat = :clamp_to_edge,
+        internalformat = GL_DEPTH24_STENCIL8,
+        format = GL_DEPTH_STENCIL
+    )
+    attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
+    # attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
     factory.fb = fb
 
     return factory
