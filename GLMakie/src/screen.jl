@@ -758,6 +758,17 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     return
 end
 
+function Makie.colorbuffer(screen::Screen, source::Texture{T, 2}) where T
+    ShaderAbstractions.switch_context!(screen.glscreen)
+    # render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    img = Matrix{eltype(source)}(undef, size(source))
+    GLAbstraction.bind(source)
+    GLAbstraction.glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, img)
+    GLAbstraction.bind(source, 0)
+    return img
+end
+
 """
     depthbuffer(screen::Screen)
 

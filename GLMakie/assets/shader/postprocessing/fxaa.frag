@@ -1028,7 +1028,8 @@ out vec4 fragment_color;
 
 void main(void)
 {
-    // fragment_color = texture(color_texture, frag_uv);
+    // fragment_color = texture(color_luma_buffer, frag_uv);
+    // fragment_color.rgb = vec3(texture(color_luma_buffer, frag_uv).a);
     fragment_color.rgb = FxaaPixelShader(
         frag_uv,
         FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f),       // FxaaFloat4 fxaaConsolePosPos,

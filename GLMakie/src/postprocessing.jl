@@ -306,12 +306,22 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
         GLAbstraction.render(step.robj)
     end
 
+    glDisable(GL_SCISSOR_TEST)
+
     return
 end
 
 function run_step(screen, glscene, step::RenderPass{:SSAO2})
+    # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
+    #       previously used for normals. Figure out a better solution than this:
+    setup!(screen, step.framebuffer)
+
     # SSAO - blur occlusion and apply to color
     set_draw_buffers(step.framebuffer)  # color buffer
+    wh = size(step.framebuffer)
+    glViewport(0, 0, wh[1], wh[2])
+
+    glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
     data = step.robj.uniforms
     for (screenid, scene) in screen.screens

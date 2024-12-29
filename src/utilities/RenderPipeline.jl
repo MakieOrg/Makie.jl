@@ -594,10 +594,16 @@ function Base.show(io::IO, ::MIME"text/plain", connection::Connection)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
+    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
+    return show_resolved(io, pipeline, pipeline.connections, conn2idx)
+end
+function show_resolved(pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
+    return show_resolved(stdout, pipeline, buffers, conn2idx)
+end
+function show_resolved(io::IO, pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
     println(io, "Pipeline():")
     print(io, "Stages:")
-    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
-    pad = 1 + floor(Int, log10(length(pipeline.connections)))
+    pad = 1 + floor(Int, log10(length(buffers)))
 
     for stage in pipeline.stages
         print(io, "\n  Stage($(stage.name))")
@@ -625,7 +631,7 @@ function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
     end
 
     println(io, "\nConnections:")
-    for (i, c) in enumerate(pipeline.connections)
+    for (i, c) in enumerate(buffers)
         s = lpad("$i", pad)
         println(io, "  [$s] ", c)
     end
