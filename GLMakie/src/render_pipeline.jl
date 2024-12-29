@@ -67,6 +67,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
     # with an empty one while we mess with it?
     wait(screen)
+    ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_pipeline = GLRenderPipeline()
 
     # Resolve pipeline

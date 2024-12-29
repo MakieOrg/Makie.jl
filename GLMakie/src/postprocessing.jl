@@ -60,6 +60,7 @@ GLRenderPipeline() = GLRenderPipeline(Makie.Pipeline(), AbstractRenderStep[])
 
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline.steps
+        ShaderAbstractions.switch_context!(screen.glscreen)
         run_step(screen, glscene, step)
     end
     return
