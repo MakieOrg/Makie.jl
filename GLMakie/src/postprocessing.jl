@@ -116,13 +116,10 @@ struct RenderPlots <: AbstractRenderStep
 end
 
 function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
-    if parent.attributes[:target] === :SSAO
-        return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], FilterTrue, FilterFalse, FilterAny)
-    elseif parent.attributes[:target] === :FXAA
-        return RenderPlots(framebuffer, Pair{Int, Vec4f}[], FilterFalse, FilterFalse, FilterAny)
-    else
-        error("Incorrect target = $(parent.target) given. Should be :SSAOor :FXAA.")
-    end
+    ssao = FilterOptions(get(parent.attributes, :ssao, 2)) # can't do FilterOptions(::FilterOptions) ???
+    fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
+    transparency = FilterOptions(get(parent.attributes, :transparency, 2))
+    return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa)
 end
 
 function construct(::Val{:TransparentRender}, screen, framebuffer, inputs, parent)
