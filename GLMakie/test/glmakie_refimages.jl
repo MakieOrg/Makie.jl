@@ -168,3 +168,38 @@ end
 
     scene
 end
+
+@reference_test "render stage parameters with SSAO postprocessor" begin
+    GLMakie.closeall()
+    GLMakie.activate!(ssao = true)
+    f = Figure()
+    ps = [Point3f(x, y, sin(x * y + y-x)) for x in range(-2, 2, length=21) for y in range(-2, 2, length=21)]
+    for (i, ssao) in zip(1:2, (false, true))
+        for (j, fxaa) in zip(1:2, (false, true))
+            for (k, transparency) in zip(1:2, (false, true))
+                Label(f[2i-1, k + 2(j-1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                a, p = meshscatter(
+                    f[2i, k + 2(j-1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency)
+            end
+        end
+    end
+    f
+end
+
+@reference_test "render stage parameters - without SSAO postprocessor" begin
+    GLMakie.closeall()
+    GLMakie.activate!(ssao = false)
+    f = Figure()
+    for (i, ssao) in zip(1:2, (false, true))
+        for (j, fxaa) in zip(1:2, (false, true))
+            for (k, transparency) in zip(1:2, (false, true))
+                Label(f[2i-1, k + 2(j-1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                a, p = meshscatter(
+                    f[2i, k + 2(j-1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency)
+            end
+        end
+    end
+    f
+end
