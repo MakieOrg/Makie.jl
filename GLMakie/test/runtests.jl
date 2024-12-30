@@ -103,15 +103,23 @@ end
     sleep(0.1)
     GLMakie.closeall()
 
-        # Why does it start with a skipped tick?
+    # Screen initalizes with `requires_update = false`, so it may skip renders
     i = 1
     while tick_record[i].state == Makie.SkippedRenderTick
         check_tick(tick_record[1], Makie.SkippedRenderTick, i)
         i += 1
     end
 
+    # apply_config!() and scene insertion cause renders
+    # (number of ticks is probably performance sensitive here so require 1, allow 1..3)
     check_tick(tick_record[i], Makie.RegularRenderTick, i)
     i += 1
+    for j in 1:2
+        if tick_record[i].state == Makie.RegularRenderTick
+            check_tick(tick_record[i], Makie.RegularRenderTick, i)
+            i += 1
+        end
+    end
 
     while tick_record[i].state == Makie.SkippedRenderTick
             check_tick(tick_record[i], Makie.SkippedRenderTick, i)

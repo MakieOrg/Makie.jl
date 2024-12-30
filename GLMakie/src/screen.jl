@@ -365,6 +365,7 @@ end
 
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool=true)
     @debug("Applying screen config! to existing screen")
+
     glw = screen.glscreen
 
     if screen.owns_glscreen
@@ -403,6 +404,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         resize!(screen, size(screen.scene)...)
     end
     set_screen_visibility!(screen, config.visible)
+
+    screen.requires_update = true
+
     return screen
 end
 

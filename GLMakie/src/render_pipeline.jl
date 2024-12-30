@@ -125,7 +125,6 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     end
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
-    screen.requires_update = true
 
     return
 end
