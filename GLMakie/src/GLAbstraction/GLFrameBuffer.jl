@@ -104,29 +104,6 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
     return attach(fb, key, buffer, length(fb.attachments) + 1, GL_DEPTH_STENCIL_ATTACHMENT)
 end
 
-# for error messages
-const ATTACHMENT_LOOKUP = Dict{Int, String}(
-    GL_DEPTH_ATTACHMENT => "GL_DEPTH_ATTACHMENT",
-    GL_STENCIL_ATTACHMENT => "GL_STENCIL_ATTACHMENT",
-    GL_DEPTH_STENCIL_ATTACHMENT => "GL_DEPTH_STENCIL_ATTACHMENT",
-    GL_COLOR_ATTACHMENT0 => "GL_COLOR_ATTACHMENT0",
-    GL_COLOR_ATTACHMENT1 => "GL_COLOR_ATTACHMENT1",
-    GL_COLOR_ATTACHMENT2 => "GL_COLOR_ATTACHMENT2",
-    GL_COLOR_ATTACHMENT3 => "GL_COLOR_ATTACHMENT3",
-    GL_COLOR_ATTACHMENT4 => "GL_COLOR_ATTACHMENT4",
-    GL_COLOR_ATTACHMENT5 => "GL_COLOR_ATTACHMENT5",
-    GL_COLOR_ATTACHMENT6 => "GL_COLOR_ATTACHMENT6",
-    GL_COLOR_ATTACHMENT7 => "GL_COLOR_ATTACHMENT7",
-    GL_COLOR_ATTACHMENT8 => "GL_COLOR_ATTACHMENT8",
-    GL_COLOR_ATTACHMENT9 => "GL_COLOR_ATTACHMENT9",
-    GL_COLOR_ATTACHMENT10 => "GL_COLOR_ATTACHMENT10",
-    GL_COLOR_ATTACHMENT11 => "GL_COLOR_ATTACHMENT11",
-    GL_COLOR_ATTACHMENT12 => "GL_COLOR_ATTACHMENT12",
-    GL_COLOR_ATTACHMENT13 => "GL_COLOR_ATTACHMENT13",
-    GL_COLOR_ATTACHMENT14 => "GL_COLOR_ATTACHMENT14",
-    GL_COLOR_ATTACHMENT15 => "GL_COLOR_ATTACHMENT15"
-)
-
 function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
     haskey(fb, key) && error("Cannot attach $key to Framebuffer because it is already set.")
     if attachment in fb.attachments
@@ -147,7 +124,12 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
         gl_attach(buffer, attachment)
         check_framebuffer()
     catch e
-        @info "$key -> $attachment = $(get(ATTACHMENT_LOOKUP, attachment, "UNKNOWN")) failed, with framebuffer id = $(fb.id)"
+        if GL_COLOR_ATTACHMENT0 <= attachment <= GL_COLOR_ATTACHMENT15
+            # If we failed to attach correctly we should probably overwrite
+            # the attachment next time we try?
+            fb.counter -= 1
+        end
+        @info "$key -> $(GLENUM(attachment).name) failed with framebuffer id = $(fb.id)"
         rethrow(e)
     end
     # (1) requires us to keep depth/stenctil/depth_stencil at end so that the first
