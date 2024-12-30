@@ -187,10 +187,11 @@ end
     f
 end
 
-@reference_test "render stage parameters - without SSAO postprocessor" begin
+@reference_test "render stage parameters without SSAO postprocessor" begin
     GLMakie.closeall()
     GLMakie.activate!(ssao = false)
     f = Figure()
+    ps = [Point3f(x, y, sin(x * y + y-x)) for x in range(-2, 2, length=21) for y in range(-2, 2, length=21)]
     for (i, ssao) in zip(1:2, (false, true))
         for (j, fxaa) in zip(1:2, (false, true))
             for (k, transparency) in zip(1:2, (false, true))
