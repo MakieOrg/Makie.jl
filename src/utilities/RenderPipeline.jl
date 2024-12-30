@@ -514,6 +514,14 @@ function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
         end
     end
 
+    if !isempty(stage.attributes)
+        print(io, "\nattributes:")
+        pad = mapreduce(k -> length(":$k"), max, keys(stage.attributes))
+        for (k, v) in pairs(stage.attributes)
+            print(io, "\n  ", lpad(":$k", pad), " = ", v)
+        end
+    end
+
     return
 end
 
@@ -682,14 +690,15 @@ function OITStage(; kwargs...)
     return Stage(:OIT, inputs, input_formats, outputs, output_formats; kwargs...)
 end
 
-function FXAAStage()
-    inputs = Dict(:color => 1, :objectid => 2)
-    input_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
-    stage1 = Stage(:FXAA1, inputs, input_formats, Dict(:color_luma => 1), [BufferFormat(4, N0f8)])
+function FXAAStage(; kwargs...)
+    stage1 = Stage(:FXAA1,
+        Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
+        Dict(:color_luma => 1), [BufferFormat(4, N0f8)]; kwargs...
+    )
 
     stage2 = Stage(:FXAA2,
         Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
-        Dict(:color => 1), [BufferFormat(4, N0f8)]
+        Dict(:color => 1), [BufferFormat(4, N0f8)]; kwargs...
     )
 
     pipeline = Pipeline(stage1, stage2)
@@ -708,53 +717,57 @@ end
 # TODO: caching is dangerous with mutable attributes...
 const PIPELINE_CACHE = Dict{Symbol, Pipeline}()
 
-function default_SSAO_pipeline()
-    return get!(PIPELINE_CACHE, :default_SSAO_pipeline) do
-        # matching master with SSAO enabled
-        pipeline = Pipeline()
+function default_pipeline(; ssao = false, fxaa = true, oit = true)
+    name = Symbol(:default_pipeline, Int(ssao), Int(fxaa), Int(oit))
 
+    # Mimic GLMakie's old hard coded render pipeline
+    get!(PIPELINE_CACHE, name) do
+
+        pipeline = Pipeline()
         push!(pipeline, SortStage())
+
+        # Note - order imporant!
+        # TODO: maybe add insert!()?
         render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
-        ssao = push!(pipeline, SSAOStage())
+        if ssao
+            _ssao = push!(pipeline, SSAOStage())
+        end
         render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
-        render3 = push!(pipeline, TransparentRenderStage()) # implied transparency = true
-        oit = push!(pipeline, OITStage())
-        fxaa = push!(pipeline, FXAAStage())
+        if oit
+            render3 = push!(pipeline, TransparentRenderStage())
+            _oit = push!(pipeline, OITStage())
+        else
+            render3 = push!(pipeline, RenderStage(transparency = true))
+        end
+        if fxaa
+            _fxaa = push!(pipeline, FXAAStage(filter_in_shader = true))
+        end
         display = push!(pipeline, DisplayStage())
 
-        connect!(pipeline, render1, ssao)
-        connect!(pipeline, render1, fxaa,    :objectid)
+
+        if ssao
+            connect!(pipeline, render1, _ssao)
+            connect!(pipeline, _ssao,   fxaa ? _fxaa : display, :color)
+        else
+            connect!(pipeline, render1, fxaa ? _fxaa : display, :color)
+        end
+        connect!(pipeline, render2, fxaa ? _fxaa : display, :color)
+        if oit
+            connect!(pipeline, render3, _oit)
+            connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
+        else
+            connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
+        end
+        if fxaa
+            # will also connect render2, 3  since connections bundle
+            connect!(pipeline, render1, _fxaa, :objectid)
+            connect!(pipeline, _fxaa, display, :color)
+        end
+
+        # generic
         connect!(pipeline, render1, display, :objectid)
-        connect!(pipeline, ssao,    fxaa,    :color)
-        connect!(pipeline, render2, fxaa,    :color)
-        connect!(pipeline, render2, display, :objectid) # will get bundled so we don't need to repeat
-        connect!(pipeline, render3, oit)
-        connect!(pipeline, render3, display, :objectid)
-        connect!(pipeline, oit,     fxaa,    :color)
-        connect!(pipeline, fxaa,    display, :color)
-
-        return pipeline
-    end
-end
-
-function default_pipeline()
-    return get!(PIPELINE_CACHE, :default_pipeline) do
-        # matching master
-        pipeline = Pipeline()
-
-        push!(pipeline, SortStage())
-        render1 = push!(pipeline, RenderStage(transparency = false))
-        render2 = push!(pipeline, TransparentRenderStage())
-        oit = push!(pipeline, OITStage())
-        fxaa = push!(pipeline, FXAAStage())
-        display = push!(pipeline, DisplayStage())
-
-        connect!(pipeline, render1, fxaa)
-        connect!(pipeline, render1, display, :objectid)
-        connect!(pipeline, render2, oit)
         connect!(pipeline, render2, display, :objectid)
-        connect!(pipeline, oit,  fxaa, :color)
-        connect!(pipeline, fxaa, display, :color)
+        connect!(pipeline, render3, display, :objectid)
 
         return pipeline
     end

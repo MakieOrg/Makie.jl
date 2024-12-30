@@ -60,9 +60,7 @@ mutable struct ScreenConfig
     scalefactor::Union{Nothing, Float32}
 
     # Render Constants & Postprocessor
-    oit::Bool
-    fxaa::Bool
-    ssao::Bool
+    render_pipeline::Makie.Pipeline
     transparency_weight_scale::Float32
     max_lights::Int
     max_light_parameters::Int
@@ -87,9 +85,7 @@ mutable struct ScreenConfig
             scalefactor::Union{Makie.Automatic, Number},
 
             # Preprocessor
-            oit::Bool,
-            fxaa::Bool,
-            ssao::Bool,
+            render_pipeline::Makie.Pipeline,
             transparency_weight_scale::Number,
             max_lights::Int,
             max_light_parameters::Int)
@@ -113,9 +109,10 @@ mutable struct ScreenConfig
             scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
             # Preproccessor
             # Preprocessor
-            oit,
-            fxaa,
-            ssao,
+            # oit,
+            # fxaa,
+            # ssao,
+            render_pipeline,
             transparency_weight_scale,
             max_lights,
             max_light_parameters)
@@ -385,11 +382,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
 
     # TODO: FXAA, OIT on-off
-    if config.ssao
-        gl_render_pipeline!(screen, Makie.default_SSAO_pipeline())
-    else
-        gl_render_pipeline!(screen, Makie.default_pipeline())
-    end
+    gl_render_pipeline!(screen, config.render_pipeline)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 

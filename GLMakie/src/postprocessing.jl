@@ -50,6 +50,8 @@ function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) w
     return construct(Val(parent.name), screen, framebuffer, inputs, parent)
 end
 
+# convenience
+Broadcast.broadcastable(x::AbstractRenderStep) = Ref(x)
 
 
 struct GLRenderPipeline
@@ -113,20 +115,22 @@ struct RenderPlots <: AbstractRenderStep
     ssao::FilterOptions
     transparency::FilterOptions
     fxaa::FilterOptions
+
+    for_oit::Bool
 end
 
 function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
     ssao = FilterOptions(get(parent.attributes, :ssao, 2)) # can't do FilterOptions(::FilterOptions) ???
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
     transparency = FilterOptions(get(parent.attributes, :transparency, 2))
-    return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa)
+    return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
 end
 
 function construct(::Val{:TransparentRender}, screen, framebuffer, inputs, parent)
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
     clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny)
+    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, true)
 end
 
 function id2scene(screen, id1)
@@ -137,6 +141,13 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
+function should_render(robj::RenderObject, step::RenderPlots)
+    return robj.visible &&
+        compare(robj[:ssao][], step.ssao) &&
+        compare(robj[:transparency][], step.transparency) &&
+        compare(robj[:fxaa][], step.fxaa)
+end
+
 function run_step(screen, glscene, step::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
@@ -144,7 +155,6 @@ function run_step(screen, glscene, step::RenderPlots)
         GLAbstraction.bind(step.framebuffer)
 
         for (idx, color) in step.clear
-            # TODO: Hacky
             idx <= step.framebuffer.counter || continue
             glDrawBuffer(step.framebuffer.attachments[idx])
             glClearColor(color...)
@@ -154,19 +164,42 @@ function run_step(screen, glscene, step::RenderPlots)
         set_draw_buffers(step.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
-            should_render = elem.visible &&
-                compare(elem[:ssao][], step.ssao) &&
-                compare(elem[:transparency][], step.transparency) &&
-                compare(elem[:fxaa][], step.fxaa)
-            should_render || continue
+            should_render(elem, step) || continue
 
             found, scene = id2scene(screen, screenid)
             (found && scene.visible[]) || continue
 
-            ShaderAbstractions.switch_context!(screen.glscreen)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
+
+            ShaderAbstractions.switch_context!(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+
+            # TODO: Can we move this outside the loop?
+            if step.for_oit
+                # disable depth buffer writing
+                glDepthMask(GL_FALSE)
+
+                # Blending
+                glEnable(GL_BLEND)
+                glBlendEquation(GL_FUNC_ADD)
+
+                # buffer 0 contains weight * color.rgba, should do sum
+                # destination <- 1 * source + 1 * destination
+                glBlendFunci(0, GL_ONE, GL_ONE)
+
+                # buffer 1 is objectid, do nothing
+                glDisablei(GL_BLEND, 1)
+
+                # buffer 2 is color.a, should do product
+                # destination <- 0 * source + (source) * destination
+                glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+            else
+                glDepthMask(GL_TRUE)
+                GLAbstraction.enabletransparency()
+            end
+
             render(elem)
         end
     catch e

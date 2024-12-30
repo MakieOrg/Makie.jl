@@ -70,6 +70,15 @@ function merge_screen_config(::Type{Config}, config::Dict) where Config
     backend = parentmodule(Config)
     key = nameof(backend)
     backend_defaults = CURRENT_DEFAULT_THEME[key]
+    # To not deprecate ssao, fxaa, oit:
+    if key == :GLMakie
+        get!(config, :render_pipeline) do
+            ssao = to_value(get(config, :ssao, backend_defaults[:ssao]))
+            fxaa = to_value(get(config, :fxaa, backend_defaults[:fxaa]))
+            oit  = to_value(get(config, :oit, backend_defaults[:oit]))
+            return default_pipeline(; ssao, fxaa, oit)
+        end
+    end
     arguments = map(fieldnames(Config)) do name
         if haskey(config, name)
             return config[name]

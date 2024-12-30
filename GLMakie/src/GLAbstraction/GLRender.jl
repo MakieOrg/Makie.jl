@@ -175,8 +175,8 @@ end
 #  Generic render functions
 #####
 function enabletransparency()
+    glDisable(GL_BLEND)
     glEnablei(GL_BLEND, 0)
-    glDisablei(GL_BLEND, 1)
     # This does:
     # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
     # target.a = 0 * source.a + 1 * target.a

@@ -151,11 +151,12 @@ to_index_buffer(ctx, x) = error(
 )
 
 function output_buffers(screen::Screen, transparency = false)
-    if transparency
+    pipeline = screen.config.render_pipeline
+    if transparency && any(stage -> stage.name == :OIT, pipeline.stages)
         """
         layout(location=2) out float coverage;
         """
-    elseif screen.config.ssao
+    elseif any(stage -> stage.name == :SSAO1, pipeline.stages)
         """
         layout(location=2) out vec3 fragment_position;
         layout(location=3) out vec3 fragment_normal;
@@ -166,7 +167,8 @@ function output_buffers(screen::Screen, transparency = false)
 end
 
 function output_buffer_writes(screen::Screen, transparency = false)
-    if transparency
+    pipeline = screen.config.render_pipeline
+    if transparency && any(stage -> stage.name == :OIT, pipeline.stages)
         scale = screen.config.transparency_weight_scale
         """
         float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
@@ -174,7 +176,7 @@ function output_buffer_writes(screen::Screen, transparency = false)
         fragment_color.rgb = weight * color.rgb;
         fragment_color.a = weight;
         """
-    elseif screen.config.ssao
+    elseif any(stage -> stage.name == :SSAO1, pipeline.stages)
         """
         fragment_color = color;
         fragment_position = o_view_pos;
