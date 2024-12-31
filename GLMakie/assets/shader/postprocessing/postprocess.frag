@@ -1,5 +1,7 @@
 {{GLSL_VERSION}}
 
+{{FILTER_IN_SHADER}}
+
 in vec2 frag_uv;
 
 uniform sampler2D color_buffer;
@@ -30,6 +32,8 @@ void main(void)
     // do tonemappings
     //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
     fragment_color.rgb = color.rgb;
+
+#ifdef FILTER_IN_SHADER
     // we store fxaa = true/false in highbit of the object id
     if (unpack_bool(id)) {
         fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
@@ -37,4 +41,7 @@ void main(void)
         // we disable fxaa by setting luma to 1
         fragment_color.a = 1.0;
     }
+#else
+    fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
+#endif
 }

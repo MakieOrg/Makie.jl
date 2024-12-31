@@ -385,13 +385,16 @@ end
 
 
 function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
-    ShaderAbstractions.switch_context!(screen.glscreen)
 
+    filter_fxaa_in_shader = get(parent.attributes, :filter_in_shader, true)
+
+    ShaderAbstractions.switch_context!(screen.glscreen)
     # calculate luma for FXAA
     shader = LazyShader(
         screen.shader_cache,
         loadshader("postprocessing/fullscreen.vert"),
-        loadshader("postprocessing/postprocess.frag")
+        loadshader("postprocessing/postprocess.frag"),
+        view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
     robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
