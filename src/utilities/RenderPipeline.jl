@@ -840,3 +840,15 @@ function test_pipeline_GUI()
 
     return pipeline
 end
+
+function test_pipeline_minimal()
+    pipeline = Pipeline()
+
+    # GUI elements don't need OIT because they are (usually?) layered plot by
+    # plot, rather than element by element. Do need FXAA occasionally, e.g. Toggle
+    render = push!(pipeline, RenderStage())
+    display = push!(pipeline, DisplayStage())
+    connect!(pipeline, render, display)
+
+    return pipeline
+end

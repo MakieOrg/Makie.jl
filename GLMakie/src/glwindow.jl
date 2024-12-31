@@ -62,6 +62,8 @@ end
 function destroy!(factory::FramebufferFactory)
     GLAbstraction.free.(factory.buffers)
     GLAbstraction.free.(factory.children)
+    # make sure depth, stencil get cleared too (and maybe core color buffers in the future)
+    GLAbstraction.free.(factory.fb.buffers)
     GLAbstraction.free(factory.fb)
     empty!(factory.buffers)
     empty!(factory.children)

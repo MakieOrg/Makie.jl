@@ -74,6 +74,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
         renderobject.prerenderfunction()
         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         program = vertexarray.program
+        program.id == 0 && error("Program unloaded")
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)

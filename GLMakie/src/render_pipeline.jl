@@ -11,6 +11,7 @@ end
 
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
     @assert factory.fb.id != 0 "Cannot reset a destroyed FramebufferFactory"
+    GLAbstraction.free.(factory.children)
     empty!(factory.children)
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -43,6 +44,9 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
             push!(factory.buffers, tex)
         end
     end
+
+    # clean up leftovers?
+    GLAbstraction.free.(buffers)
 
     # Always rebuild this though, since we don't know which buffers are the
     # final output buffers
