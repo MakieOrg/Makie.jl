@@ -605,9 +605,10 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot, called_f
 end
 
 function Base.empty!(screen::Screen)
-    @debug("empty screen!")
     # we should never just "empty" an already destroyed screen
     @assert !was_destroyed(screen.glscreen)
+
+    foreach(t -> t[3].visible = false, screen.renderlist)
 
     for plot in collect(values(screen.cache2plot))
         delete!(screen, Makie.rootparent(plot), plot, false)
@@ -682,7 +683,6 @@ function Base.close(screen::Screen; reuse=true)
     empty!(screen)
 
     if reuse && screen.reuse
-        @debug("reusing screen!")
         push!(SCREEN_REUSE_POOL, screen)
     end
 
