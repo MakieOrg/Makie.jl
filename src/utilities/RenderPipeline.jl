@@ -238,19 +238,19 @@ function Observables.connect!(pipeline::Pipeline,
         src::Union{Pipeline, Stage}, output::Symbol,
         trg::Union{Pipeline, Stage}, input::Symbol
     )
-    function sources(pipeline::Pipeline, output)
-        return [(stage, stage.outputs[output]) for stage in pipeline.stages if haskey(stage.outputs, output)]
-    end
-    sources(stage::Stage, output) = [(stage, stage.outputs[output])]
 
-    function targets(pipeline::Pipeline, input)
-        return [(stage, stage.inputs[input]) for stage in pipeline.stages if haskey(stage.inputs, input)]
-    end
-    targets(stage::Stage, input) = [(stage, stage.inputs[input])]
+    iterable(pipeline::Pipeline) = pipeline.stages
+    iterable(stage::Stage) = Ref(stage)
 
-    for (source, output_idx) in sources(src, output)
-        for (target, input_idx) in targets(trg, input)
-            @inbounds connect!(pipeline, source, output_idx, target, input_idx)
+    for source in iterable(src)
+        if haskey(source.outputs, output)
+            output_idx = source.outputs[output]
+            for target in iterable(trg)
+                if haskey(target.inputs, input)
+                    input_idx = target.inputs[input]
+                    connect!(pipeline, source, output_idx, target, input_idx)
+                end
+            end
         end
     end
 
@@ -341,33 +341,10 @@ function Observables.connect!(pipeline::Pipeline,
     return connection
 end
 
-# This checks that no connection goes backwards, i.e. every connection is written
-# to before being read.
-function verify(pipeline::Pipeline)
-    for connection in pipeline.connections
-        earliest_input = length(pipeline.stages)
-        for (stage, _) in connection.inputs
-            idx = findfirst(==(stage), pipeline.stages)
-            isnothing(idx) && error("Could not find $(stage.name) in pipeline.")
-            earliest_input = min(earliest_input, idx)
-        end
-
-        earliest_output = length(pipeline.stages)
-        for (stage, _) in connection.outputs
-            idx = findfirst(==(stage), pipeline.stages)
-            isnothing(idx) && error("Could not find $(stage.name) in pipeline.")
-            earliest_output = min(earliest_output, idx)
-        end
-
-        if earliest_input >= earliest_output
-            inputs = join(("$(stage.name).$idx" for (stage, idx) in connection.inputs), ", ")
-            outputs = join(("$(stage.name).$idx" for (stage, idx) in connection.outputs), ", ")
-            error("Connection ($inputs) -> ($outputs) is read before being written to. Not allowed. ($earliest_input ≥ $earliest_output)")
-        end
-    end
-
-    return true
-end
+format_complexity(c::Connection) = format_complexity(c.format)
+format_complexity(f::BufferFormat) = format_complexity(f.dims, sizeof(f.type))
+format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(sizeof(f1.type), sizeof(f2.type))
+format_complexity(dims, type) = dims * sizeof(type)
 
 """
     generate_buffers(pipeline)
@@ -378,19 +355,15 @@ optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
 function generate_buffers(pipeline::Pipeline)
-    format_complexity(c::Connection) = format_complexity(c.format)
-    format_complexity(f::BufferFormat) = f.dims * sizeof(f.type)
-
-    verify(pipeline)
-
     # We can make this more efficient later...
-    stage2idx = Dict([stage => i for (i, stage) in enumerate(pipeline.stages)])
+    stage2idx = Dict([objectid(stage) => i for (i, stage) in enumerate(pipeline.stages)])
 
     # Group connections that exist between stages
     usage_per_transfer = [Connection[] for _ in 1:length(pipeline.stages)-1]
     for connection in pipeline.connections
-        first = mapreduce(kv -> stage2idx[kv[1]], min, connection.inputs)
-        last = mapreduce(kv -> stage2idx[kv[1]]-1, max, connection.outputs)
+        first = mapreduce(kv -> stage2idx[objectid(kv[1])], min, connection.inputs)
+        last = mapreduce(kv -> stage2idx[objectid(kv[1])]-1, max, connection.outputs)
+        first <= last || error("Connection $connection is read before it is written to. $first $last")
         for i in first:last
             push!(usage_per_transfer[i], connection)
         end
@@ -440,7 +413,7 @@ function generate_buffers(pipeline::Pipeline)
                     # - using it is cheaper than creating a new buffer
                     # - it is more compatible than the last when both are 0 cost
                     #   (i.e prefer 3, Float16 over 3 Float8 for 3 Float16 target)
-                    updated_comp = format_complexity(BufferFormat(buffers[i], connection.format))
+                    updated_comp = format_complexity(buffers[i], connection.format)
                     buffer_comp = format_complexity(buffers[i])
                     delta = updated_comp - buffer_comp
                     is_cheaper = (delta < prev_delta) && (delta <= conn_comp)

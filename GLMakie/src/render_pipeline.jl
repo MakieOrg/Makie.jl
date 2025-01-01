@@ -8,11 +8,33 @@ end
 function format_to_type(format::Makie.BufferFormat)
     return format.dims == 1 ? format.type : Vec{format.dims, format.type}
 end
+function format_to_gl_format(format::Makie.BufferFormat)
+    return format.dims == 1 ? format.type : Vec{format.dims, format.type}
+end
 
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
     @assert factory.fb.id != 0 "Cannot reset a destroyed FramebufferFactory"
     GLAbstraction.free.(factory.children)
     empty!(factory.children)
+
+    # function barrier for types?
+    function get_buffer!(buffers, T, extras)
+        # reuse
+        internalformat = GLAbstraction.default_internalcolorformat(T)
+        for (i, buffer) in enumerate(buffers)
+            if (buffer.id != 0) && (internalformat == buffer.internalformat) &&
+                (get(extras, :minfilter, :nearest) == buffer.parameters.minfilter)
+                return popat!(buffers, i)
+            end
+        end
+
+        # create new
+        interp = get(extras, :minfilter, :nearest)
+        if !(eltype(T) == N0f8 || eltype(T) <: AbstractFloat) && (interp == :linear)
+            error("Cannot use :linear interpolation with non float types.")
+        end
+        return Texture(T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
+    end
 
     # reuse buffers that match formats (and make sure that factory.buffers
     # follows the order of formats)
@@ -20,33 +42,12 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     empty!(factory.buffers)
     for format in formats
         T = format_to_type(format)
-        found = false
-        for (i, buffer) in enumerate(buffers)
-            if (buffer.id != 0) && (T == eltype(buffer)) &&
-                (get(format.extras, :minfilter, :nearest) == buffer.parameters.minfilter)
-
-                found = true
-                push!(factory.buffers, popat!(buffers, i))
-                break
-            end
-        end
-
-        if !found
-            if haskey(format.extras, :minfilter)
-                interp = format.extras[:minfilter]
-                if !(eltype(T) == N0f8 || eltype(T) <: AbstractFloat) && (interp == :linear)
-                    error("Cannot use :linear interpolation with non float types.")
-                end
-            else
-                interp = :nearest
-            end
-            tex = Texture(T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
-            push!(factory.buffers, tex)
-        end
+        tex = get_buffer!(buffers, T, format.extras)
+        push!(factory.buffers, tex)
     end
 
-    # clean up leftovers?
-    GLAbstraction.free.(buffers)
+    # clean up leftovers
+    foreach(GLAbstraction.free, buffers)
 
     # Always rebuild this though, since we don't know which buffers are the
     # final output buffers
@@ -70,7 +71,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
 
     # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
     # with an empty one while we mess with it?
-    wait(screen)
+    was_running = renderloop_running(screen)
+    was_running && stop_renderloop!(screen, true)
     ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_pipeline = GLRenderPipeline()
 
@@ -89,10 +91,11 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
 
     render_pipeline = AbstractRenderStep[]
     for stage in pipeline.stages
-        inputs = Dict{Symbol, Any}(map(collect(keys(stage.inputs))) do key
+        inputs = Dict{Symbol, Any}()
+        for key in keys(stage.inputs)
             connection = stage.input_connections[stage.inputs[key]]
-            return Symbol(key, :_buffer) => get_buffer(factory, connection2idx[connection])
-        end)
+            inputs[Symbol(key, :_buffer)] = get_buffer(factory, connection2idx[connection])
+        end
 
         N = length(stage.output_connections)
         if N == 0
@@ -101,7 +104,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             idx2name = Dict([idx => k for (k, idx) in stage.outputs])
             outputs = [connection2idx[stage.output_connections[i]] => idx2name[i] for i in 1:N]
             try
-                framebuffer = generate_framebuffer(factory,outputs...)
+                framebuffer = generate_framebuffer(factory, outputs...)
             catch e
                 rethrow(e)
             end
@@ -129,6 +132,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     end
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
+    was_running && start_renderloop!(screen)
 
     return
 end
