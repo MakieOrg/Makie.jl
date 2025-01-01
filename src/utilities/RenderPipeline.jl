@@ -25,6 +25,10 @@ function BufferFormat(dims::Integer = 4, type::DataType = N0f8; extras...)
     return BufferFormat(dims, type, Dict{Symbol, Any}(extras))
 end
 
+function Base.:(==)(f1::BufferFormat, f2::BufferFormat)
+    return (f1.dims == f2.dims) && (f1.type == f2.type) && (f1.extras == f2.extras)
+end
+
 """
     BufferFormat(f1::BufferFormat, f2::BufferFormat)
 
@@ -70,7 +74,7 @@ function is_compatible(f1::BufferFormat, f2::BufferFormat)
     # is_compatible(f1.type, f2.type), but still does runtime dispatch on ==
     T1 = f1.type
     T2 = f2.type
-    return (
+    type_compat = (
         ((T1 == N0f8) || (T1 == Float16) || (T1 == Float32)) &&
         ((T2 == N0f8) || (T2 == Float16) || (T2 == Float32))
     ) || (
@@ -80,6 +84,12 @@ function is_compatible(f1::BufferFormat, f2::BufferFormat)
         ((T1 == UInt8) || (T1 == UInt16) || (T1 == UInt32)) &&
         ((T2 == UInt8) || (T2 == UInt16) || (T2 == UInt32))
     )
+    type_compat || return false
+    extras_compat = true
+    for (k, v) in f1.extras
+        extras_compat = extras_compat && (get(f2.extras, k, v) == v)
+    end
+    return extras_compat
 end
 
 # Connections can have multiple inputs and outputs
@@ -140,6 +150,26 @@ get_input_connection(stage::Stage, key::Symbol) = stage.input_connections[stage.
 get_output_connection(stage::Stage, key::Symbol) = stage.output_connections[stage.outputs[key]]
 get_input_format(stage::Stage, key::Symbol) = stage.input_formats[stage.inputs[key]]
 get_output_format(stage::Stage, key::Symbol) = stage.output_formats[stage.outputs[key]]
+
+function Base.:(==)(s1::Stage, s2::Stage)
+    # It's not clear what this actually means for stages...
+
+    # Must match:
+    return (s1.name == s2.name) && (s1.input_formats == s2.input_formats) &&
+    # input names are currently used to generate buffer names in GLMakie but
+    # they could be considered syntax sugar
+        (s1.inputs == s2.inputs) &&
+    # outputs are actually just syntax sugar...
+        (s1.outputs == s2.outputs)
+    # And connections should probably be excluded as they are relevant to the
+    # Pipeline/Graph, not the Stage/Node
+end
+
+
+function Base.:(==)(f1::Connection, f2::Connection)
+    return f1.format == f2.format && all(f1.inputs .=== f2.inputs) && all(f1.outputs .=== f2.outputs)
+end
+
 
 """
     Connection(source::Stage, output::Integer, target::Stage, input::Integer)
@@ -355,8 +385,20 @@ optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
 function generate_buffers(pipeline::Pipeline)
-    # We can make this more efficient later...
-    stage2idx = Dict([objectid(stage) => i for (i, stage) in enumerate(pipeline.stages)])
+    stage2idx = Dict{UInt64, Int64}()
+    for (i, stage) in enumerate(pipeline.stages)
+        # TODO: treat this?
+        # undef inputs should probably not be allowed at all because the shader
+        # need to get something and we don't know a reasonable default
+        # undef (intermediate) outputs could be allowed. They just need to exist
+        # for 1+ transfer, i.e. could be rewritten immediately after
+        valid_inputs = all(i -> isassigned(stage.input_connections, i), eachindex(stage.input_connections))
+        valid_outputs = all(i -> isassigned(stage.output_connections, i), eachindex(stage.output_connections))
+        if !(valid_inputs && valid_outputs)
+            error("$stage has an incomplete set of $(valid_inputs ? "output" : "input") connections")
+        end
+        stage2idx[objectid(stage)] = i
+    end
 
     # Group connections that exist between stages
     usage_per_transfer = [Connection[] for _ in 1:length(pipeline.stages)-1]
@@ -593,9 +635,13 @@ function show_resolved(io::IO, pipeline::Pipeline, buffers, conn2idx::Dict{Conne
             # keep order
             strs = map(eachindex(stage.input_connections)) do i
                 k = findfirst(==(i), stage.inputs)
-                c = stage.input_connections[i]
-                ci = string(conn2idx[c])
-                return "[$ci] $k"
+                if isassigned(stage.input_connections, i)
+                    c = stage.input_connections[i]
+                    ci = string(conn2idx[c])
+                    return "[$ci] $k"
+                else
+                    return "[ ] $k"
+                end
             end
             join(io, strs, ", ")
         end
@@ -603,9 +649,13 @@ function show_resolved(io::IO, pipeline::Pipeline, buffers, conn2idx::Dict{Conne
             print(io, "\n    outputs: ")
             strs = map(eachindex(stage.output_connections)) do i
                 k = findfirst(==(i), stage.outputs)
-                c = stage.output_connections[i]
-                ci = string(conn2idx[c])
-                return "[$ci] $k"
+                if isassigned(stage.output_connections, i)
+                    c = stage.output_connections[i]
+                    ci = string(conn2idx[c])
+                    return "[$ci] $k"
+                else
+                    return "[#undef] $k"
+                end
             end
             join(io, strs, ", ")
         end
@@ -681,9 +731,9 @@ function FXAAStage(; kwargs...)
 end
 
 function DisplayStage()
-    inputs = Dict(:color => 1, :objectid => 2)
-    input_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
-    return Stage(:Display, inputs, input_formats, Dict{Symbol, Int}(), BufferFormat[])
+    return Stage(:Display,
+        Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
+        Dict{Symbol, Int}(), BufferFormat[])
 end
 
 
@@ -701,11 +751,13 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
 
         # Note - order important!
         # TODO: maybe add insert!()?
-        render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
         if ssao
+            render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
             _ssao = push!(pipeline, SSAOStage())
+            render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
+        else
+            render2 = push!(pipeline, RenderStage(transparency = false))
         end
-        render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
         if oit
             render3 = push!(pipeline, TransparentRenderStage())
             _oit = push!(pipeline, OITStage())
@@ -720,27 +772,21 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
 
         if ssao
             connect!(pipeline, render1, _ssao)
-            connect!(pipeline, _ssao,   fxaa ? _fxaa : display, :color)
-        else
-            connect!(pipeline, render1, fxaa ? _fxaa : display, :color)
+            connect!(pipeline, render1, display, :objectid)
+            connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
         end
-        connect!(pipeline, render2, fxaa ? _fxaa : display, :color)
+        connect!(pipeline, render2, fxaa ? _fxaa : display)
+        connect!(pipeline, render2, display, :objectid) # make sure this merges with other objectids
         if oit
             connect!(pipeline, render3, _oit)
             connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
         else
             connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
         end
+        connect!(pipeline, render3, display, :objectid)
         if fxaa
-            # will also connect render2, 3  since connections bundle
-            connect!(pipeline, render1, _fxaa, :objectid)
             connect!(pipeline, _fxaa, display, :color)
         end
-
-        # generic
-        connect!(pipeline, render1, display, :objectid)
-        connect!(pipeline, render2, display, :objectid)
-        connect!(pipeline, render3, display, :objectid)
 
         return pipeline
     end
