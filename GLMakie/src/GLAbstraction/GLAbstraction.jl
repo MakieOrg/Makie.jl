@@ -18,6 +18,10 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
 import Base: merge, resize!, similar, length, getindex, setindex!
 
+# Debug tools
+require_context() = nothing # implemented in GLMakie/glwindow
+export require_context
+
 include("AbstractGPUArray.jl")
 
 #Methods which get overloaded by GLExtendedFunctions.jl:

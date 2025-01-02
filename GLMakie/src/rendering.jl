@@ -101,6 +101,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
 
+    GLAbstraction.require_context(nw)
+
     return
 end
 
@@ -115,6 +117,7 @@ end
 function GLAbstraction.render(filter_elem_func, screen::Screen)
     # Somehow errors in here get ignored silently!?
     try
+        GLAbstraction.require_context(nw)
         for (zindex, screenid, elem) in screen.renderlist
             filter_elem_func(elem)::Bool || continue
 
@@ -126,6 +129,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             render(elem)
         end
+        GLAbstraction.require_context(nw)
     catch e
         @error "Error while rendering!" exception = e
         rethrow(e)

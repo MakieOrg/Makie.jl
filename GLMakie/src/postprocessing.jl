@@ -102,6 +102,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
 
+    require_context(shader_cache.context)
+
     # SSAO setup
     N_samples = 64
     lerp_min = 0.1f0
@@ -195,6 +197,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         glDisable(GL_SCISSOR_TEST)
     end
 
+    require_context(shader_cache.context)
+
     PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
 end
 
@@ -218,6 +222,8 @@ function fxaa_postprocessor(framebuffer, shader_cache)
             luma_id = framebuffer[:HDR_color][1]
         end
     end
+
+    require_context(shader_cache.context)
 
     # calculate luma for FXAA
     shader1 = LazyShader(
@@ -262,6 +268,8 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         glDrawBuffer(color_id)  # color buffer
         GLAbstraction.render(pass2)
     end
+
+    require_context(shader_cache.context)
 
     PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
 end

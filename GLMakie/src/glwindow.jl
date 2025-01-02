@@ -148,6 +148,8 @@ Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
         :stencil => depth_buffer
     )
 
+    require_context(context)
+
     return GLFramebuffer(
         fb_size_node, frambuffer_id,
         buffer_ids, buffers,
@@ -204,6 +206,13 @@ end
 
 function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
+end
+
+# require_context(ctx, current = nothing) = nothing
+function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context())
+    @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
+    @assert !was_destroyed(ctx) "Context $ctx must not be destroyed."
+    @assert ctx.handle == current.handle "Context $ctx must be current, but $current is."
 end
 
 function destroy!(nw::GLFW.Window)
