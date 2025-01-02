@@ -523,3 +523,7 @@ end
 function free(x::GLVertexArray)
     @assert x.id == 0 "Must be freed explicitly"
 end
+
+function free(x::Texture)
+    @assert x.id == 0 "Must be freed explicitly"
+end

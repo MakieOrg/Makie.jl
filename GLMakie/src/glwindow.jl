@@ -157,6 +157,16 @@ Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
     )::GLFramebuffer
 end
 
+function destroy!(fb::GLFramebuffer)
+    for tex in values(fb.buffers)
+        GLAbstraction.unsafe_free(tex)
+    end
+    id = [fb.id]
+    glDeleteFramebuffers(1, id)
+    fb.id = 0
+    return
+end
+
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
     for (name, buffer) in fb.buffers
