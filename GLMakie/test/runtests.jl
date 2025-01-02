@@ -92,7 +92,7 @@ end
     events(f).tick[] = tick
     @test events(f).tick[] == tick
 
-    
+
     f, a, p = scatter(rand(10));
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
@@ -125,3 +125,5 @@ end
 
     @test i == length(tick_record)+1
 end
+
+@test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0

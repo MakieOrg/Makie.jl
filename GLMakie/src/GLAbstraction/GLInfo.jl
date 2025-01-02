@@ -98,8 +98,11 @@ function getProgramInfo(p::GLProgram)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_VARYINGS)
 end
 
+const FAILED_FREE_COUNTER = Ref(0)
+
 function verify_free(obj::T, name = string(T)) where T
     if obj.id != 0
+        FAILED_FREE_COUNTER[] = FAILED_FREE_COUNTER[] + 1
         Threads.@spawn println(stderr, "Error: $name has not been freed.")
     end
 end
