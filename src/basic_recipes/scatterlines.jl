@@ -29,10 +29,10 @@ Plots `scatter` markers and `lines` between them.
     cycle = [:color]
 end
 
-conversion_trait(::Type{<: ScatterLines}) = PointBased()
+conversion_trait(::Type{<:ScatterLines}) = PointBased()
 
 
-function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
+function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where {N}
 
     # markercolor is the same as linecolor if left automatic
     real_markercolor = Observable{Any}()
@@ -54,7 +54,8 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         mcol === automatic ? col : mcol
     end
 
-    lines!(p, p[1:N]...;
+    lines!(
+        p, p[1:N]...;
         color = p.color,
         linestyle = p.linestyle,
         linewidth = p.linewidth,
@@ -66,7 +67,8 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
         colorrange = p.colorrange,
         inspectable = p.inspectable
     )
-    scatter!(p, p[1:N]...;
+    return scatter!(
+        p, p[1:N]...;
         color = real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,

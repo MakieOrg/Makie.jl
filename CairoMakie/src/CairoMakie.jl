@@ -15,7 +15,7 @@ using Makie: numbers_to_colors
 using Makie: Mat3f, Mat4f, Mat3d, Mat4d
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)
@@ -31,7 +31,7 @@ include("primitives.jl")
 include("overrides.jl")
 
 function __init__()
-    activate!()
+    return activate!()
 end
 
 include("precompiles.jl")

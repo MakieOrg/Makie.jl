@@ -1,5 +1,3 @@
-
-
 window_area(scene, native_window) = not_implemented_for(native_window)
 window_open(scene, native_window) = not_implemented_for(native_window)
 mouse_buttons(scene, native_window) = not_implemented_for(native_window)
@@ -61,8 +59,8 @@ Picks a mouse position. Implemented by the backend.
 """
 function pick end
 
-function pick(::Scene, ::Screen, xy) where Screen
-    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog=1
+function pick(::Scene, ::Screen, xy) where {Screen}
+    @warn "Picking not supported yet by $(parentmodule(Screen))" maxlog = 1
     return nothing, 0
 end
 
@@ -90,8 +88,8 @@ end
 
 function next_tick!(tick::Observable{Tick}, state::TickState, start_time::UInt64, last_time::UInt64)
     t = time_ns()
-    since_start = 1e-9 * (t - start_time)
-    delta_time = 1e-9 * (t - last_time)
+    since_start = 1.0e-9 * (t - start_time)
+    delta_time = 1.0e-9 * (t - last_time)
     tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
     return t
 end
@@ -172,23 +170,23 @@ function Base.show(io::IO, op::And)
     show(io, op.left)
     print(io, " & ")
     show(io, op.right)
-    print(io, ")")
+    return print(io, ")")
 end
 function Base.show(io::IO, op::Or)
     print(io, "(")
     show(io, op.left)
     print(io, " | ")
     show(io, op.right)
-    print(io, ")")
+    return print(io, ")")
 end
 function Base.show(io::IO, op::Not)
     print(io, "!")
-    show(io, op.x)
+    return show(io, op.x)
 end
 function Base.show(io::IO, op::Exclusively)
     print(io, "exclusively(")
     join(io, op.x, " & ")
-    print(io, ")")
+    return print(io, ")")
 end
 
 # Constructors
@@ -203,25 +201,25 @@ function Base.:(&)(
         left::Union{BooleanOperator, Keyboard.Button, Mouse.Button},
         right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
     )
-    And(left, right)
+    return And(left, right)
 end
 function Base.:(&)(
         left::Bool,
         right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
     )
-    And(left, right)
+    return And(left, right)
 end
 function Base.:(|)(
         left::Union{BooleanOperator, Keyboard.Button, Mouse.Button},
         right::Union{BooleanOperator, Keyboard.Button, Mouse.Button, Bool}
     )
-    Or(left, right)
+    return Or(left, right)
 end
 function Base.:(|)(
         left::Bool,
         right::Union{BooleanOperator, Keyboard.Button, Mouse.Button}
     )
-    Or(left, right)
+    return Or(left, right)
 end
 Base.:(!)(x::Union{BooleanOperator, Keyboard.Button, Mouse.Button}) = Not(x)
 
@@ -235,13 +233,15 @@ Exclusively(x::And) = Or(Exclusively.(unique(create_sets(x)))...)
 
 # Sets represent `And`, arrays represent `Or`
 function create_sets(x::And)
-    [union(left, right) for left in create_sets(x.left)
-                        for right in create_sets(x.right)]
+    return [
+        union(left, right) for left in create_sets(x.left)
+            for right in create_sets(x.right)
+    ]
 end
 create_sets(x::Or) = vcat(create_sets(x.left), create_sets(x.right))
 create_sets(::Not) = Set{Union{Keyboard.Button, Mouse.Button}}()
 function create_sets(b::Union{Keyboard.Button, Mouse.Button})
-    [Set{Union{Keyboard.Button, Mouse.Button}}((b,))]
+    return [Set{Union{Keyboard.Button, Mouse.Button}}((b,))]
 end
 create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 
@@ -294,7 +294,7 @@ ispressed(parent, key::Keyboard.Button, waspressed = nothing) = ispressed(events
 
 # Boolean Operator evaluation
 ispressed(parent, op::And, waspressed = nothing) = ispressed(parent, op.left, waspressed) && ispressed(parent, op.right, waspressed)
-ispressed(parent, op::Or, waspressed = nothing)  = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
+ispressed(parent, op::Or, waspressed = nothing) = ispressed(parent, op.left, waspressed) || ispressed(parent, op.right, waspressed)
 ispressed(parent, op::Not, waspressed = nothing) = !ispressed(parent, op.x, waspressed)
 ispressed(parent, op::Exclusively, waspressed = nothing) = ispressed(events(parent), op, waspressed)
 ispressed(e::Events, op::Exclusively, waspressed::Union{Mouse.Button, Keyboard.Button}) = op.x == union(e.keyboardstate, e.mousebuttonstate, waspressed)

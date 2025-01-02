@@ -1,5 +1,5 @@
 function Base.show(io::IO, obj::RenderObject)
-    println(io, "RenderObject with ID: ", obj.id)
+    return println(io, "RenderObject with ID: ", obj.id)
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
@@ -9,8 +9,8 @@ Base.getindex(obj::RenderObject, symbol::Symbol, x::Function) = getindex(obj, Va
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x]
 Base.getindex(obj::RenderObject, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x]
 
-Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = setindex!(obj, value, Val(symbol), x)
-Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
+Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function) = setindex!(obj, value, Val(symbol), x)
+Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 
 """
@@ -34,7 +34,7 @@ function (sp::StandardPrerender)()
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 
-    if sp.transparency[]
+    return if sp.transparency[]
         # disable depth buffer writing
         glDepthMask(GL_FALSE)
 
@@ -65,7 +65,7 @@ struct StandardPostrender
 end
 
 function (sp::StandardPostrender)()
-    render(sp.vao, sp.primitive)
+    return render(sp.vao, sp.primitive)
 end
 
 struct StandardPostrenderInstanced

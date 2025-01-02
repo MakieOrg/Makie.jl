@@ -1,5 +1,4 @@
-
-function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle = get_cycle_for_plottype(plot.cycle[]))
     cycler = scene.cycler
     palette = scene.theme.palette
     add_cycle_attributes!(plot, cycle, cycler, palette)
@@ -12,27 +11,27 @@ function color_and_colormap!(plot, colors = plot.color)
         add_cycle_attribute!(plot, scene)
     end
     colors = assemble_colors(colors[], colors, plot)
-    attributes(plot.attributes)[:calculated_colors] = colors
+    return attributes(plot.attributes)[:calculated_colors] = colors
 end
 
-function calculated_attributes!(::Type{<: AbstractPlot}, plot)
+function calculated_attributes!(::Type{<:AbstractPlot}, plot)
     scene = parent_scene(plot)
-    if !isnothing(scene) && haskey(plot, :cycle)
+    return if !isnothing(scene) && haskey(plot, :cycle)
         add_cycle_attribute!(plot, scene)
     end
 end
 
-function calculated_attributes!(::Type{<: Mesh}, plot)
+function calculated_attributes!(::Type{<:Mesh}, plot)
     color = hasproperty(plot.mesh[], :color) ? lift(x -> x.color, plot, plot.mesh) : plot.color
     color_and_colormap!(plot, color)
     return
 end
 
-function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
-    color_and_colormap!(plot, plot[3])
+function calculated_attributes!(::Type{<:Union{Heatmap, Image}}, plot)
+    return color_and_colormap!(plot, plot[3])
 end
 
-function calculated_attributes!(::Type{<: Surface}, plot)
+function calculated_attributes!(::Type{<:Surface}, plot)
     colors = plot[3]
     if haskey(plot, :color)
         color = plot[:color][]
@@ -40,10 +39,10 @@ function calculated_attributes!(::Type{<: Surface}, plot)
             colors = plot[:color]
         end
     end
-    color_and_colormap!(plot, colors)
+    return color_and_colormap!(plot, colors)
 end
 
-function calculated_attributes!(::Type{<: MeshScatter}, plot)
+function calculated_attributes!(::Type{<:MeshScatter}, plot)
     color_and_colormap!(plot)
     return
 end
@@ -58,13 +57,13 @@ function calculated_attributes!(::Type{<:Text}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Scatter}, plot)
+function calculated_attributes!(::Type{<:Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
 
-    replace_automatic!(plot, :markerspace) do
+    return replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms
-            if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
+            if ms isa Pixel || (ms isa AbstractVector && all(x -> ms isa Pixel, ms))
                 return :pixel
             else
                 return :data
@@ -73,7 +72,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     end
 end
 
-function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
+function calculated_attributes!(::Type{T}, plot) where {T <: Union{Lines, LineSegments}}
     pos = plot[1][]
     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
     if T <: LineSegments
@@ -93,20 +92,22 @@ end
 
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
-    lines, surface, volume, heatmap, image, voxels
+    lines, surface, volume, heatmap, image, voxels,
 )
-const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
+const Atomic{Arg} = Union{map(x -> Plot{x, Arg}, atomic_functions)...}
 
 function get_kw_values(func, names, kw)
-    return [Pair{Symbol,Any}(k, func(kw[k]))
-            for k in names if haskey(kw, k)]
+    return [
+        Pair{Symbol, Any}(k, func(kw[k]))
+            for k in names if haskey(kw, k)
+    ]
 end
 
 function get_kw_obs(names, kw)
     isempty(names) && return Observable(Pair{Symbol, Any}[])
     kw_copy = copy(kw)
     init = get_kw_values(to_value, names, kw_copy)
-    obs = Observable(init; ignore_equal_values=true)
+    obs = Observable(init; ignore_equal_values = true)
     in_obs = [kw_copy[k] for k in names if haskey(kw_copy, k)]
     onany(in_obs...) do args...
         obs[] = get_kw_values(to_value, names, kw_copy)
@@ -131,17 +132,17 @@ expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
 
 function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     # Float32, because all ploteable sizes should fit into float32
-    x, y = map(x-> (0f0, Float32(x)), size(data))
+    x, y = map(x -> (0.0f0, Float32(x)), size(data))
     return (x, y, data)
 end
 
-function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
-    x, y = map(x-> (1f0, Float32(x)), size(data))
+function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    x, y = map(x -> (1.0f0, Float32(x)), size(data))
     return (x, y, data)
 end
 
 function expand_dimensions(::VolumeLike, data::RealArray{3})
-    x, y, z = map(x-> (0f0, Float32(x)), size(data))
+    x, y, z = map(x -> (0.0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
 
@@ -156,8 +157,8 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
             for (obs, arg) in zip(new_obs, expanded)
                 obs.val = arg
             end
-            # It should be enough to trigger the first observable since 
-            # this will go into `map(convert_arguments, new_obs...)` 
+            # It should be enough to trigger the first observable since
+            # this will go into `map(convert_arguments, new_obs...)`
             # Without this, we'll get 3 updates for `notify(data)` in `heatmap(data)`
             notify(new_obs[1])
             return
@@ -174,7 +175,7 @@ function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
     new_args_obs = map(Observable, converted)
     fs = onany(kw_obs, args_obs...) do kw, args...
         conv = convert_arguments(P, args...; kw...)
-        if conv isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+        if conv isa Union{PlotSpec, BlockSpec, GridLayoutSpec, AbstractVector{PlotSpec}}
             conv = (conv,) # for PlotSpec
         elseif !(conv isa Tuple)
             error("Returned type of convert_arguments needs to be a PlotSpec or Tuple, got: $(typeof(conv))")
@@ -190,7 +191,7 @@ function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
 end
 
 function got_converted(P::Type, PTrait::ConversionTrait, result)
-    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+    if result isa Union{PlotSpec, BlockSpec, GridLayoutSpec, AbstractVector{PlotSpec}}
         return SpecApi
     end
     types = MakieCore.types_for_plot_arguments(P, PTrait)
@@ -209,7 +210,8 @@ Applies dim_converts, expand_dimensions (in `try_dim_convert`), convert_argument
 """
 function conversion_pipeline(
         P::Type{<:Plot}, used_attrs::Tuple, args::Tuple, kw_obs,
-        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
+        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion = 1
+    )
     if recursion === 3
         error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
         return P, args_obs
@@ -230,19 +232,25 @@ function conversion_pipeline(
         # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
         # This is the case for e.g. convert_arguments returning types that need dim_convert
         new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
-        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
-                                   user_attributes, deregister,
-                                   recursion + 1)
+        return conversion_pipeline(
+            P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
+            user_attributes, deregister,
+            recursion + 1
+        )
     elseif status === false && recursion === 2
-        kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
+        kw_str = isempty(kw) ? "" : " and kw: $(typeof(kw))"
         kw_convert = isempty(kw) ? "" : "; kw..."
         conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
         types = MakieCore.types_for_plot_arguments(P, PTrait)
-        throw(ArgumentError("""
-            Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
-            $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
-            To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
-        """))
+        throw(
+            ArgumentError(
+                """
+                    Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
+                    $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
+                    To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+                """
+            )
+        )
     elseif isnothing(status)
         # No types_for_plot_arguments defined, so we don't know what we need to convert to.
         # This is for backwards compatibility for recipes that don't define argument types
@@ -275,9 +283,10 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     ArgTyp = MakieCore.argtypes(args2)
     FinalPlotFunc = plotfunc(plottype(P, args2...))
     foreach(x -> delete!(user_attributes, x), attr)
-    return Plot{FinalPlotFunc,ArgTyp}(
+    return Plot{FinalPlotFunc, ArgTyp}(
         user_attributes, kw_obs, Any[args_obs...],
-        Observable[converted_obs...], deregister)
+        Observable[converted_obs...], deregister
+    )
 end
 
 """
@@ -309,7 +318,7 @@ used_attributes(args...) = ()
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
 # And plottype(args...) falls back to Plot{plot}
-plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
+plottype(P::Type{<:Plot{T}}, argvalues...) where {T} = plottype(P, plottype(argvalues...))
 plottype(P::Type{<:Plot{T}}) where {T} = P
 plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
@@ -333,8 +342,8 @@ plottype(P::Type{<:Plot{T}}, ::Type{Plot{plot}}) where {T} = P
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
-plottype(::AbstractMatrix{<: Real}) = Heatmap
-plottype(::Array{<: AbstractFloat, 3}) = Volume
+plottype(::AbstractMatrix{<:Real}) = Heatmap
+plottype(::Array{<:AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
 
 plottype(::LineString) = Lines
@@ -354,7 +363,7 @@ clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 const PlotFunc = Type{<:AbstractPlot}
 
 function plot!(::Plot{F, Args}) where {F, Args}
-    if !(F in atomic_functions)
+    return if !(F in atomic_functions)
         error("No recipe for $(F) with args: $(Args)")
     end
 end
@@ -409,7 +418,7 @@ function plot!(scene::SceneLike, plot::Plot)
     return plot
 end
 
-function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
+function apply_theme!(scene::Scene, plot::P) where {P <: Plot}
     raw_attr = attributes(plot.attributes)
     plot_theme = default_theme(scene, P)
     plot_sym = plotsym(P)

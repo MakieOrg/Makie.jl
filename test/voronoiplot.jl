@@ -10,7 +10,7 @@ using Makie, Test
     @test sc2[:_calculated_colors][] == [1, 2, 3, 4]
 
     points = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
-    append!(points, tuple.(rand(50), rand(50))) # just making sure the deleted point is never on the boundary 
+    append!(points, tuple.(rand(50), rand(50))) # just making sure the deleted point is never on the boundary
     tri = Makie.DelTri.triangulate(points)
     vorn = Makie.DelTri.voronoi(tri)
     Makie.DelTri.delete_point!(tri, 17)
@@ -20,4 +20,3 @@ using Makie, Test
     @test sc[:_calculated_colors][] == 1:54
     @test sc2[:_calculated_colors][] == setdiff(1:54, 17)
 end
-

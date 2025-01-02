@@ -2,7 +2,7 @@
 function test_copy(; kw...)
     scene = Scene()
     return Makie.merged_get!(
-        ()-> Makie.default_theme(scene, Lines),
+        () -> Makie.default_theme(scene, Lines),
         :lines, scene, Attributes(kw)
     )
 end
@@ -13,13 +13,13 @@ end
 
 @testset "don't copy in theme merge" begin
     x = Observable{Any}(1)
-    res=test_copy(linewidth=x)
+    res = test_copy(linewidth = x)
     res.linewidth === x
 end
 
 @testset "don't copy observables in when calling merge!" begin
     x = Observable{Any}(1)
-    res=test_copy2(Attributes(linewidth=x))
+    res = test_copy2(Attributes(linewidth = x))
     res.linewidth === x
 end
 
@@ -39,18 +39,18 @@ end
 @testset "Figure / Axis / Gridposition creation test" begin
     @testset "proper errors for wrongly used (non) mutating plot functions" begin
         f = Figure()
-        x = range(0, 10, length=100)
+        x = range(0, 10, length = 100)
         @test_throws ErrorException scatter!(f[1, 1], x, sin)
         @test_throws ErrorException scatter!(f[1, 2][1, 1], x, sin)
         @test_throws ErrorException scatter!(f[1, 2][1, 2], x, sin)
 
-        @test_throws ErrorException meshscatter!(f[2, 1], x, sin; axis=(type=Axis3,))
-        @test_throws ErrorException meshscatter!(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
-        @test_throws ErrorException meshscatter!(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
+        @test_throws ErrorException meshscatter!(f[2, 1], x, sin; axis = (type = Axis3,))
+        @test_throws ErrorException meshscatter!(f[2, 2][1, 1], x, sin; axis = (type = Axis3,))
+        @test_throws ErrorException meshscatter!(f[2, 2][1, 2], x, sin; axis = (type = Axis3,))
 
-        @test_throws ErrorException meshscatter!(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
-        @test_throws ErrorException meshscatter!(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
-        @test_throws ErrorException meshscatter!(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
+        @test_throws ErrorException meshscatter!(f[3, 1], rand(Point3f, 10); axis = (type = LScene,))
+        @test_throws ErrorException meshscatter!(f[3, 2][1, 1], rand(Point3f, 10); axis = (type = LScene,))
+        @test_throws ErrorException meshscatter!(f[3, 2][1, 2], rand(Point3f, 10); axis = (type = LScene,))
 
         sub = f[4, :]
         f = Figure()
@@ -63,7 +63,7 @@ end
 
     @testset "creating plot object for different (non) mutating plotting functions into figure" begin
         f = Figure()
-        x = range(0, 10; length=100)
+        x = range(0, 10; length = 100)
         ax, pl = scatter(f[1, 1], x, sin)
         @test ax isa Axis
         @test pl isa AbstractPlot
@@ -76,24 +76,24 @@ end
         @test ax isa Axis
         @test pl isa AbstractPlot
 
-        ax, pl = meshscatter(f[2, 1], x, sin; axis=(type=Axis3,))
+        ax, pl = meshscatter(f[2, 1], x, sin; axis = (type = Axis3,))
         @test ax isa Axis3
         @test pl isa AbstractPlot
 
-        ax, pl = meshscatter(f[2, 2][1, 1], x, sin; axis=(type=Axis3,))
+        ax, pl = meshscatter(f[2, 2][1, 1], x, sin; axis = (type = Axis3,))
         @test ax isa Axis3
         @test pl isa AbstractPlot
-        ax, pl = meshscatter(f[2, 2][1, 2], x, sin; axis=(type=Axis3,))
+        ax, pl = meshscatter(f[2, 2][1, 2], x, sin; axis = (type = Axis3,))
         @test ax isa Axis3
         @test pl isa AbstractPlot
 
-        ax, pl = meshscatter(f[3, 1], rand(Point3f, 10); axis=(type=LScene,))
+        ax, pl = meshscatter(f[3, 1], rand(Point3f, 10); axis = (type = LScene,))
         @test ax isa LScene
         @test pl isa AbstractPlot
-        ax, pl = meshscatter(f[3, 2][1, 1], rand(Point3f, 10); axis=(type=LScene,))
+        ax, pl = meshscatter(f[3, 2][1, 1], rand(Point3f, 10); axis = (type = LScene,))
         @test ax isa LScene
         @test pl isa AbstractPlot
-        ax, pl = meshscatter(f[3, 2][1, 2], rand(Point3f, 10); axis=(type=LScene,))
+        ax, pl = meshscatter(f[3, 2][1, 2], rand(Point3f, 10); axis = (type = LScene,))
         @test ax isa LScene
         @test pl isa AbstractPlot
 
@@ -113,10 +113,10 @@ end
 
 @testset "Cycled" begin
     # Test for https://github.com/MakieOrg/Makie.jl/issues/3266
-    f, ax, pl = lines(1:4; color=Cycled(2))
+    f, ax, pl = lines(1:4; color = Cycled(2))
     cpalette = ax.scene.theme.palette[:color][]
     @test pl.calculated_colors[] == cpalette[2]
-    pl2 = lines!(ax, 1:4; color=Cycled(1))
+    pl2 = lines!(ax, 1:4; color = Cycled(1))
     @test pl2.calculated_colors[] == cpalette[1]
 end
 
@@ -134,7 +134,7 @@ end
 
 @testset "plot defaults" begin
     plots = test_default([10, 15, 20])
-    @test all(x-> x isa Scatter, plots)
+    @test all(x -> x isa Scatter, plots)
 
     plots = test_default(rand(4, 4))
     @test all(x -> x isa Heatmap, plots)
@@ -181,19 +181,19 @@ import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
     @test textdiff("colorcolor", "color") == "color"
     @test textdiff("cloourm", "color") == "co\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39mr"
     @test textdiff("ssoa", "ssao") == "ss\e[34m\e[1ma\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m"
-end 
+end
 
 @recipe(TestRecipe, x, y) do scene
     Attributes()
 end
 
 function Makie.plot!(p::TestRecipe)
-    lines!(p, p.x, p.y; Makie.attributes(p)...)
+    return lines!(p, p.x, p.y; Makie.attributes(p)...)
 end
 
 @testset "recipe attribute checking" begin
-    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
-    @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
+    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour = :red)
+    @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
 end
 
 @testset "validated attributes for blocks" begin

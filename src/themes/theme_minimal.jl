@@ -1,5 +1,5 @@
 function theme_minimal()
-    Theme(
+    return Theme(
         Axis = (
             backgroundcolor = :transparent,
             xgridvisible = false,
@@ -15,7 +15,7 @@ function theme_minimal()
             xticksvisible = false,
             yticksvisible = false,
             xlabelpadding = 3,
-            ylabelpadding = 3
+            ylabelpadding = 3,
         ),
         Legend = (
             framevisible = false,

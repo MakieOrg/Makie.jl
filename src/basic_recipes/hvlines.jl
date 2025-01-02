@@ -34,8 +34,9 @@ end
 
 function projview_to_2d_limits(plot::AbstractPlot)
     scene = parent_scene(plot)
-    lift(plot, f32_conversion_obs(scene), scene.camera.projectionview, ignore_equal_values = true
-            ) do f32c, pv
+    return lift(
+        plot, f32_conversion_obs(scene), scene.camera.projectionview, ignore_equal_values = true
+    ) do f32c, pv
         xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
         ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
         origin = Vec2d(xmin, ymin)
@@ -78,11 +79,11 @@ function Makie.plot!(p::Union{HLines, VLines})
     notify(p[1])
 
     line_attributes = copy(p.attributes)
-    foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
+    foreach(key -> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
     # Drop transform_func because we handle it manually
     line_attributes[:transformation] = Transformation(p, transform_func = identity)
     linesegments!(p, line_attributes, points)
-    p
+    return p
 end
 
 function data_limits(p::HLines)

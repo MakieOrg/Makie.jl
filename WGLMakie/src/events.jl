@@ -95,7 +95,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
                 end
-                if length(keydown[2])==1 && isascii(keydown[2])
+                if length(keydown[2]) == 1 && isascii(keydown[2])
                     e.unicode_input[] = keydown[2][1]
                 end
             end
@@ -113,7 +113,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 resize!(scene, tuple(resize...))
             end
         catch err
-            @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
+            @warn "Error in window event callback" exception = (err, Base.catch_backtrace())
         end
         return
     end

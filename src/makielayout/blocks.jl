@@ -1,5 +1,3 @@
-
-
 function is_attribute end
 function default_attribute_values end
 function attribute_default_expressions end
@@ -51,7 +49,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     constructor = quote
         function $name($(basefields...))
-            new($(basefields...))
+            return new($(basefields...))
         end
     end
 
@@ -83,7 +81,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         export $name
         $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
         function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
-            sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
+            return sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
         function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
@@ -103,11 +101,13 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         end
 
         function $(Makie)._attribute_docs(::Type{$(name)})
-            Dict(
+            return Dict(
                 $(
-                    (attrs !== nothing ?
-                        [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
-                        [])...
+                    (
+                        attrs !== nothing ?
+                            [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
+                            []
+                    )...
                 )
             )
         end
@@ -118,18 +118,18 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         @doc docstring_modified $name
     end
 
-    esc(q)
+    return esc(q)
 end
 
 _defaultstring(x) = string(MacroTools.striplines(x))
 _defaultstring(x::String) = repr(x)
 
 function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
-    :(Dict())
+    return :(Dict())
 end
 
 function make_block_docstring(T::Type{<:Block}, docstring)
-    """
+    return """
     **`$T <: Block`**
 
     $docstring
@@ -144,7 +144,7 @@ end
 
 function _attribute_list(T)
     ks = sort(collect(keys(_attribute_docs(T))))
-    join(("`$k`" for k in ks), ", ")
+    return join(("`$k`" for k in ks), ", ")
 end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
@@ -177,8 +177,8 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
         :(d[$(QuoteNode(a.symbol))] = $d)
     end
 
-    quote
-        d = Dict{Symbol,Any}()
+    return quote
+        d = Dict{Symbol, Any}()
         $(exprs...)
         d
     end
@@ -187,8 +187,10 @@ end
 
 function extract_attributes!(body)
     i = findfirst(
-        (x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
-            x.args[3] isa Expr && x.args[3].head === :block),
+        (
+            x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
+                x.args[3] isa Expr && x.args[3].head === :block
+        ),
         body.args
     )
     if i === nothing
@@ -232,12 +234,12 @@ function extract_attributes!(body)
         end
     end
 
-    attrs
+    return attrs
 end
 
 # intercept all block constructors and divert to _block(T, ...)
-function (::Type{T})(args...; kwargs...) where {T<:Block}
-    _block(T, args...; kwargs...)
+function (::Type{T})(args...; kwargs...) where {T <: Block}
+    return _block(T, args...; kwargs...)
 end
 
 can_be_current_axis(x) = false
@@ -246,20 +248,22 @@ get_top_parent(gp::GridLayout) = GridLayoutBase.top_parent(gp)
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
-function _block(T::Type{<:Block},
-        gp::Union{GridPosition, GridSubposition}, args...; kwargs...)
+function _block(
+        T::Type{<:Block},
+        gp::Union{GridPosition, GridSubposition}, args...; kwargs...
+    )
 
     top_parent = get_top_parent(gp)
     if top_parent === nothing
         error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
     end
     b = gp[] = _block(T, top_parent, args...; kwargs...)
-    b
+    return b
 end
 
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
-    return _block(T, fig_or_scene, Any[args...], Dict{Symbol,Any}(kwargs), bbox)
+    return _block(T, fig_or_scene, Any[args...], Dict{Symbol, Any}(kwargs), bbox)
 end
 
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
@@ -269,8 +273,8 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     default_attrs = default_attribute_values(B, scene)
     blockname = nameof(B)
     typekey_scene_attrs = get(theme(scene), blockname, Attributes())
-    typekey_attrs = theme(blockname; default=Attributes())::Attributes
-    attributes = Dict{Symbol,Any}()
+    typekey_attrs = theme(blockname; default = Attributes())::Attributes
+    attributes = Dict{Symbol, Any}()
     # make a final attribute dictionary using different priorities
     # for the different themes
     for (key, val) in default_attrs
@@ -314,7 +318,7 @@ function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
     return
 end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
+function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
     check_textsize_deprecation(kwdict)
@@ -359,7 +363,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, clear=false, camera = campixel!)
+    blockscene = Scene(topscene, clear = false, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
@@ -413,8 +417,10 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     end
 
     # forward all layout attributes to the block's layoutobservables
-    connect_block_layoutobservables!(b, layout_width, layout_height, layout_tellwidth,
-        layout_tellheight, layout_halign, layout_valign, layout_alignmode)
+    connect_block_layoutobservables!(
+        b, layout_width, layout_height, layout_tellwidth,
+        layout_tellheight, layout_halign, layout_valign, layout_alignmode
+    )
 
     if fig_or_scene isa Figure
         register_in_figure!(fig_or_scene, b)
@@ -422,7 +428,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
             Makie.current_axis!(fig_or_scene, b)
         end
     end
-    b
+    return b
 end
 
 """
@@ -434,7 +440,7 @@ function get_topscene(s::Scene)
     if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
         error("Can only use scenes with PixelCamera as topscene")
     end
-    s
+    return s
 end
 
 function register_in_figure!(fig::Figure, @nospecialize block::Block)
@@ -444,7 +450,7 @@ function register_in_figure!(fig::Figure, @nospecialize block::Block)
     if !(block in fig.content)
         push!(fig.content, block)
     end
-    nothing
+    return nothing
 end
 
 zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
@@ -460,8 +466,8 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
     return
 end
 
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Block
-    if hasfield(T, key)
+@inline function Base.setproperty!(x::T, key::Symbol, value) where {T <: Block}
+    return if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
                 error("It is disallowed to set `$key`, an Observable field of the $T struct, to an Observable with dot notation (`setproperty!`), because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
@@ -469,7 +475,7 @@ end
             obs = fieldtype(T, key)
             getfield(x, key)[] = convert_for_attribute(observable_type(obs), value)
         else
-        setfield!(x, key, value)
+            setfield!(x, key, value)
         end
     else
         # this will throw correctly
@@ -480,8 +486,8 @@ end
 # treat all blocks as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Block) = Ref(l)
 
-function Base.show(io::IO, ::T) where T <: Block
-    print(io, "$T()")
+function Base.show(io::IO, ::T) where {T <: Block}
+    return print(io, "$T()")
 end
 
 # fallback if block doesn't need specific clean up
@@ -502,7 +508,7 @@ function unhide!(block::Block)
     if !block.blockscene.visible[]
         block.blockscene.visible[] = true
     end
-    if hasproperty(block, :scene) && !block.scene.visible[]
+    return if hasproperty(block, :scene) && !block.scene.visible[]
         block.scene.visible[] = true
     end
 end
@@ -511,7 +517,7 @@ function hide!(block::Block)
     if block.blockscene.visible[]
         block.blockscene.visible[] = false
     end
-    if hasproperty(block, :scene) && block.scene.visible[]
+    return if hasproperty(block, :scene) && block.scene.visible[]
         block.scene.visible[] = false
     end
 end
@@ -539,19 +545,19 @@ function delete_from_parent!(figure::Figure, block::Block)
     if current_axis(figure) === block
         current_axis!(figure, nothing)
     end
-    nothing
+    return nothing
 end
 
 function remove_element(x)
-    delete!(x)
+    return delete!(x)
 end
 
 function remove_element(x::AbstractPlot)
-    delete!(x.parent, x)
+    return delete!(x.parent, x)
 end
 
 function remove_element(xs::AbstractArray)
-    foreach(remove_element, xs)
+    return foreach(remove_element, xs)
 end
 
 function remove_element(::Nothing)
@@ -577,7 +583,7 @@ function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), 
     return block
 end
 
-observable_type(x::Type{Observable{T}}) where T = T
+observable_type(x::Type{Observable{T}}) where {T} = T
 
 convert_for_attribute(t::Any, x) = x
 convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
@@ -589,10 +595,10 @@ Base.@kwdef struct Example
     backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
     svg::Bool = true # only for CairoMakie
     code::String
-    caption::Union{Nothing,String} = nothing
+    caption::Union{Nothing, String} = nothing
 end
 
-function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
+function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}, examples::Vector{Example}, default_str)
     io = IOBuffer()
 
     println(io, "Default value: `$default_str`")
@@ -616,7 +622,7 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
         println(io)
     end
 
-    Markdown.parse(String(take!(io)))
+    return Markdown.parse(String(take!(io)))
 end
 
 # function example(type::Type{<:Block}, attr::Symbol, i::Int)
@@ -628,8 +634,8 @@ end
 #     return
 # end
 
-function attribute_examples(b::Union{Type{<:Block},Type{<:Plot}})
-    Dict{Symbol,Vector{Example}}()
+function attribute_examples(b::Union{Type{<:Block}, Type{<:Plot}})
+    return Dict{Symbol, Vector{Example}}()
 end
 
 # overrides `?Axis.xticks` and similar lookups in the REPL

@@ -14,7 +14,7 @@ end
 function deployparameters(; repo, push_preview, devbranch, devurl)
     cfg = Documenter.GitHubActions()
     deploy_decision = Documenter.deploy_folder(cfg; repo, push_preview, devbranch, devurl)
-    (;
+    return (;
         all_ok = deploy_decision.all_ok,
         branch = deploy_decision.branch,
         repo = deploy_decision.repo,
@@ -34,9 +34,9 @@ function deploy(params; root = Documenter.currentdir(), target)
     deploy_repo = params.repo
 
     # Change to the root directory and try to deploy the docs.
-    cd(root) do
+    return cd(root) do
         sha = readchomp(`$(Documenter.git()) rev-parse --short HEAD`)
-        
+
         @debug "pushing new documentation to remote: '$deploy_repo:$deploy_branch'."
         mktempdir() do temp
             push_build(;
@@ -56,7 +56,7 @@ end
 
 function push_build(;
         root, temp, repo,
-        branch="gh-pages", dirname="", target="site", sha="",
+        branch = "gh-pages", dirname = "", target = "site", sha = "",
         config, subfolder,
         is_preview::Bool
     )
@@ -73,7 +73,7 @@ function push_build(;
     )
 
     # Generate a closure with common commands for ssh and https
-    function git_commands(sshconfig=nothing)
+    function git_commands(sshconfig = nothing)
         # Setup git.
         run(`$(git()) init`)
         run(`$(git()) config user.name "Documenter.jl"`)
@@ -115,9 +115,11 @@ function push_build(;
         Documenter.gitrm_copy(target_dir, deploy_dir)
 
         open(joinpath(deploy_dir, "siteinfo.js"), "w") do io
-            println(io, """
-            var DOCUMENTER_CURRENT_VERSION = "$subfolder";
-            """)
+            println(
+                io, """
+                var DOCUMENTER_CURRENT_VERSION = "$subfolder";
+                """
+            )
         end
 
         all_folders = [x for x in readdir(dirname) if isdir(joinpath(dirname, x))]
@@ -129,10 +131,12 @@ function push_build(;
         max_version = version_folders[begin]
 
         open(joinpath(dirname, "versions.js"), "w") do io
-            println(io, """
-            var DOCUMENTER_NEWEST = "$max_version";
-            var DOCUMENTER_STABLE = "stable";
-            """)
+            println(
+                io, """
+                var DOCUMENTER_NEWEST = "$max_version";
+                var DOCUMENTER_STABLE = "stable";
+                """
+            )
 
             println(io, "var DOC_VERSIONS = [")
             for folder in ["stable"; version_folders; "dev"]
@@ -151,7 +155,7 @@ function push_build(;
 
         # Add, commit, and push the docs to the remote.
         run(`$(git()) add -A .`)
-        if !success(`$(git()) diff --cached --exit-code`)
+        return if !success(`$(git()) diff --cached --exit-code`)
             run(`$(git()) commit -m "build based on $sha"`)
             run(`$(git()) push -q upstream HEAD:$branch`)
         else
@@ -161,23 +165,25 @@ function push_build(;
 
     # upstream is used by the closures above, kind of hard to track
     upstream = Documenter.authenticated_repo_url(config)
-    try
+    return try
         cd(() -> withenv(git_commands, NO_KEY_ENV...), temp)
-        Documenter.post_status(config; repo=repo, type="success", subfolder=subfolder)
+        Documenter.post_status(config; repo = repo, type = "success", subfolder = subfolder)
     catch e
-        @error "Failed to push:" exception=(e, catch_backtrace())
-        Documenter.post_status(config; repo=repo, type="error")
+        @error "Failed to push:" exception = (e, catch_backtrace())
+        Documenter.post_status(config; repo = repo, type = "error")
         rethrow(e)
     end
 end
 
 function generate_sitemap(dirname, max_version)
     folder = joinpath(dirname, max_version)
-    open(joinpath(dirname, "sitemap.xml"), "w") do io
-        println(io, """
-        <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
-        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-        """)
+    return open(joinpath(dirname, "sitemap.xml"), "w") do io
+        println(
+            io, """
+            <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+            <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            """
+        )
 
         for (root, dirs, files) in walkdir(folder)
             for file in files
@@ -185,11 +191,13 @@ function generate_sitemap(dirname, max_version)
                 url = joinpath("https://docs.makie.org/stable", relpath(joinpath(root, file), folder))
                 # canonical links should not have a trailing `index.html`
                 url = replace(url, r"index\.html$" => "")
-                println(io, """
-                <url>
-                    <loc>$url</loc>
-                </url>
-                """)
+                println(
+                    io, """
+                    <url>
+                        <loc>$url</loc>
+                    </url>
+                    """
+                )
             end
         end
 

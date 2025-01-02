@@ -2,7 +2,7 @@
 ### Main Block Initialization
 ################################################################################
 
-function initialize_block!(po::PolarAxis; palette=nothing)
+function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox
     scenearea = map(po.blockscene, cb) do cb
@@ -44,28 +44,28 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     # TODO: Should we include rticks here?
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
-            po.blockscene,
-            rticklabelplot.plots[1].text,
-            rticklabelplot.plots[1].fontsize,
-            rticklabelplot.plots[1].font,
-            po.rticklabelpad,
-            thetaticklabelplot.plots[1].text,
-            thetaticklabelplot.plots[1].fontsize,
-            thetaticklabelplot.plots[1].font,
-            po.thetaticklabelpad,
-            po.overlay.viewport
-        ) do _, _, _, rpad, _, _, _, tpad, area
+        po.blockscene,
+        rticklabelplot.plots[1].text,
+        rticklabelplot.plots[1].fontsize,
+        rticklabelplot.plots[1].font,
+        po.rticklabelpad,
+        thetaticklabelplot.plots[1].text,
+        thetaticklabelplot.plots[1].fontsize,
+        thetaticklabelplot.plots[1].font,
+        po.thetaticklabelpad,
+        po.overlay.viewport
+    ) do _, _, _, rpad, _, _, _, tpad, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in thetaticklabelplot.plots[1].plots[1][1][]
             bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+            max_widths = max.(max_widths, widths(bbox)[Vec(1, 2)])
         end
         for gc in rticklabelplot.plots[1].plots[1][1][]
             bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+            max_widths = max.(max_widths, widths(bbox)[Vec(1, 2)])
         end
 
         max_width, max_height = max_widths
@@ -80,13 +80,13 @@ function initialize_block!(po::PolarAxis; palette=nothing)
 
     # Set up the title position
     title_position = map(
-            po.blockscene,
-            po.target_rlims, po.target_thetalims, po.target_theta_0, po.direction,
-            po.rticklabelsize, po.rticklabelpad,
-            po.thetaticklabelsize, po.thetaticklabelpad,
-            po.overlay.viewport, po.overlay.camera.projectionview,
-            po.titlegap, po.titlesize, po.titlealign
-        ) do rlims, thetalims, theta_0, dir, r_fs, r_pad, t_fs, t_pad, area, pv, gap, size, align
+        po.blockscene,
+        po.target_rlims, po.target_thetalims, po.target_theta_0, po.direction,
+        po.rticklabelsize, po.rticklabelpad,
+        po.thetaticklabelsize, po.thetaticklabelpad,
+        po.overlay.viewport, po.overlay.camera.projectionview,
+        po.titlegap, po.titlesize, po.titlealign
+    ) do rlims, thetalims, theta_0, dir, r_fs, r_pad, t_fs, t_pad, area, pv, gap, size, align
 
         # derive y position
         # transform to pixel space
@@ -139,10 +139,10 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     # Since we handle ticks within out `scenearea` this only needs to reserve
     # space for the title
     protrusions = map(
-            po.blockscene, po.title, po.titlegap, po.titlesize
-        ) do title, gap, size
-        titlespace = po.title[] == "" ? 0f0 : Float32(2gap + size)
-        return GridLayoutBase.RectSides(0f0, 0f0, 0f0, titlespace)
+        po.blockscene, po.title, po.titlegap, po.titlesize
+    ) do title, gap, size
+        titlespace = po.title[] == "" ? 0.0f0 : Float32(2gap + size)
+        return GridLayoutBase.RectSides(0.0f0, 0.0f0, 0.0f0, titlespace)
     end
 
     connect!(po.layoutobservables.protrusions, protrusions)
@@ -166,7 +166,7 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     thetamin, thetamax = thetalims
     rmin, rmax = max.(0.0, rlims .- r0)
 
-    if abs(thetamax - thetamin) > 3pi/2
+    if abs(thetamax - thetamin) > 3pi / 2
         return Rect2d(-rmax, -rmax, 2rmax, 2rmax)
     end
 
@@ -191,14 +191,14 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     bb = update_boundingbox(bb, polar2cartesian(rmax, thetamax))
 
     # only outer circle can update bb
-    if thetamin < -3pi/2 < thetamax || thetamin < pi/2 < thetamax
-        bb = update_boundingbox(bb, polar2cartesian(rmax, pi/2))
+    if thetamin < -3pi / 2 < thetamax || thetamin < pi / 2 < thetamax
+        bb = update_boundingbox(bb, polar2cartesian(rmax, pi / 2))
     end
     if thetamin < -pi < thetamax || thetamin < pi < thetamax
         bb = update_boundingbox(bb, polar2cartesian(rmax, pi))
     end
-    if thetamin < -pi/2 < thetamax || thetamin < 3pi/2 < thetamax
-        bb = update_boundingbox(bb, polar2cartesian(rmax, 3pi/2))
+    if thetamin < -pi / 2 < thetamax || thetamin < 3pi / 2 < thetamax
+        bb = update_boundingbox(bb, polar2cartesian(rmax, 3pi / 2))
     end
     if thetamin < 0 < thetamax
         bb = update_boundingbox(bb, polar2cartesian(rmax, 0))
@@ -213,7 +213,7 @@ function setup_camera_matrices!(po::PolarAxis)
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
     setfield!(po, :target_theta_0, map(identity, po.theta_0))
-    setfield!(po, :target_r0, Observable{Float32}(po.radius_at_origin[] isa Real ? po.radius_at_origin[] : 0f0))
+    setfield!(po, :target_r0, Observable{Float32}(po.radius_at_origin[] isa Real ? po.radius_at_origin[] : 0.0f0))
     reset_limits!(po)
     onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
 
@@ -251,15 +251,15 @@ function setup_camera_matrices!(po::PolarAxis)
     # this just aspect-aware clip space (-1 .. 1, -h/w ... h/w, -max_z ... max_z)
     on(po.blockscene, po.scene.viewport) do area
         aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
+        w = 1.0f0
+        h = 1.0f0 / aspect
         camera(po.scene).projection[] = orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
     on(po.blockscene, po.overlay.viewport) do area
         aspect = Float32((/)(widths(area)...))
-        w = 1f0
-        h = 1f0 / aspect
+        w = 1.0f0
+        h = 1.0f0 / aspect
         camera(po.overlay).projection[] = orthographicprojection(-w, w, -h, h, -max_z, max_z)
     end
 
@@ -271,9 +271,9 @@ function setup_camera_matrices!(po::PolarAxis)
         if is_mouseinside(po.scene) && (!po.rzoomlock[] || !po.thetazoomlock[])
             mp = mouseposition(po.scene)
             r = norm(mp)
-            zoom_scale = (1.0 - po.zoomspeed[]) ^ scroll[2]
+            zoom_scale = (1.0 - po.zoomspeed[])^scroll[2]
             rmin, rmax = po.target_rlims[]
-            thetamin, thetamax =  po.target_thetalims[]
+            thetamin, thetamax = po.target_thetalims[]
 
             # keep circumference to radial length ratio constant by default
             dtheta = thetamax - thetamin
@@ -305,16 +305,16 @@ function setup_camera_matrices!(po::PolarAxis)
                 # angle of mouse position normalized to range
                 theta = po.direction[] * atan(mp[2], mp[1]) - po.target_theta_0[]
                 thetacenter = 0.5 * (thetamin + thetamax)
-                theta = mod(theta, thetacenter-pi .. thetacenter+pi)
+                theta = mod(theta, thetacenter - pi .. thetacenter + pi)
 
                 w = (theta - thetamin) / (thetamax - thetamin)
                 dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 0, 2pi)
                 thetamin = thetamin + w * dtheta
-                thetamax = thetamax - (1-w) * dtheta
+                thetamax = thetamax - (1 - w) * dtheta
 
                 if !ispressed(e, po.rzoomkey[]) && !po.thetazoomlock[]
                     if po.normalize_theta_ticks[]
-                        if thetamax - thetamin < 2pi - 1e-5
+                        if thetamax - thetamin < 2pi - 1.0e-5
                             po.target_thetalims[] = normalize_thetalims(thetamin, thetamax)
                         else
                             po.target_thetalims[] = (0.0, 2pi)
@@ -324,14 +324,14 @@ function setup_camera_matrices!(po::PolarAxis)
                     end
                 end
 
-            # don't open a gap when zooming a full circle near the center
+                # don't open a gap when zooming a full circle near the center
             elseif r > 0.1rmax && zoom_scale < 1
 
                 # open angle on the opposite site of theta
                 theta = po.direction[] * atan(mp[2], mp[1]) - po.target_theta_0[]
                 theta = theta + pi + thetamin # (-pi, pi) -> (thetamin, thetamin+2pi)
 
-                dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 1e-6, 2pi)
+                dtheta = (thetamax - thetamin) - clamp(aspect * (rmax - rmin) / r, 1.0e-6, 2pi)
                 thetamin = theta + 0.5 * dtheta
                 thetamax = theta + 2pi - 0.5 * dtheta
 
@@ -358,7 +358,7 @@ function setup_camera_matrices!(po::PolarAxis)
             drag_state[] = (
                 ispressed(po.scene, po.r_translation_button[]),
                 ispressed(po.scene, po.theta_translation_button[]),
-                ispressed(po.scene, po.axis_rotation_button[])
+                ispressed(po.scene, po.axis_rotation_button[]),
             )
             last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
@@ -368,7 +368,7 @@ function setup_camera_matrices!(po::PolarAxis)
             drag_state[] = (
                 ispressed(po.scene, po.r_translation_button[]),
                 ispressed(po.scene, po.theta_translation_button[]),
-                ispressed(po.scene, po.axis_rotation_button[])
+                ispressed(po.scene, po.axis_rotation_button[]),
             )
             return Consume(was_pressed)
         end
@@ -380,13 +380,13 @@ function setup_camera_matrices!(po::PolarAxis)
             w = widths(po.scene)
             p0 = (last_px_pos[] .- 0.5w) ./ w
             p1 = Point2f(mouseposition_px(po.scene) .- 0.5w) ./ w
-            if norm(p0) * norm(p1) < 1e-6
+            if norm(p0) * norm(p1) < 1.0e-6
                 Δθ = 0.0
             else
-                Δθ = mod(po.direction[] * (atan(p1[2], p1[1]) - atan(p0[2], p0[1])), -pi..pi)
+                Δθ = mod(po.direction[] * (atan(p1[2], p1[1]) - atan(p0[2], p0[1])), -pi .. pi)
             end
 
-            po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+            po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0 .. 2pi)
 
             last_px_pos[] = Point2f(mouseposition_px(po.scene))
             last_pos[] = Point2f(mouseposition(po.scene))
@@ -396,7 +396,7 @@ function setup_camera_matrices!(po::PolarAxis)
             diff = pos - last_pos[]
             r = norm(last_pos[])
 
-            if r < 1e-6
+            if r < 1.0e-6
                 Δr = norm(pos)
                 Δθ = 0.0
             else
@@ -413,9 +413,9 @@ function setup_camera_matrices!(po::PolarAxis)
             end
             if drag_state[][2]
                 thetamin, thetamax = po.target_thetalims[]
-                if thetamax - thetamin > 2pi - 1e-5
+                if thetamax - thetamin > 2pi - 1.0e-5
                     # full circle -> rotate view
-                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0 .. 2pi)
                 else
                     # partial circle -> rotate and adjust limits
                     thetamin, thetamax = (thetamin, thetamax) .- Δθ
@@ -424,7 +424,7 @@ function setup_camera_matrices!(po::PolarAxis)
                     else
                         po.target_thetalims[] = (thetamin, thetamax)
                     end
-                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0..2pi)
+                    po.target_theta_0[] = mod(po.target_theta_0[] + Δθ, 0 .. 2pi)
                 end
             end
 
@@ -439,7 +439,7 @@ function setup_camera_matrices!(po::PolarAxis)
     # Reset button
     onany(po.blockscene, e.mousebutton, e.keyboardbutton) do e1, e2
         if ispressed(e, po.reset_button[]) && is_mouseinside(po.scene) &&
-            (e1.action == Mouse.press) && (e2.action == Keyboard.press)
+                (e1.action == Mouse.press) && (e2.action == Keyboard.press)
             old_thetalims = po.target_thetalims[]
             if ispressed(e, Keyboard.left_shift)
                 autolimits!(po)
@@ -450,7 +450,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 notify(po.theta_0)
             else
                 diff = 0.5 * sum(po.target_thetalims[] .- old_thetalims)
-                po.target_theta_0[] = mod(po.target_theta_0[] - diff, 0..2pi)
+                po.target_theta_0[] = mod(po.target_theta_0[] - diff, 0 .. 2pi)
             end
             return Consume(true)
         end
@@ -522,7 +522,7 @@ function reset_limits!(po::PolarAxis)
         end
 
         # apply
-        po.target_rlims[]     = ifelse.(isnothing.(rlimits),          (rmin, rmax),         rlimits)
+        po.target_rlims[] = ifelse.(isnothing.(rlimits), (rmin, rmax), rlimits)
         po.target_thetalims[] = ifelse.(isnothing.(po.thetalimits[]), (thetamin, thetamax), po.thetalimits[])
     else # all limits set
         if po.target_rlims[] != rlimits
@@ -544,7 +544,7 @@ end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
-        thetamin, thetamax, steps = 120, outer = 1e4,
+        thetamin, thetamax, steps = 120, outer = 1.0e4,
         exterior = Point2f[(-outer, -outer), (-outer, outer), (outer, outer), (outer, -outer), (-outer, -outer)]
     )
     # make sure we have 2+ points per arc
@@ -576,10 +576,10 @@ function draw_axis!(po::PolarAxis)
     end
 
     onany(
-            po.blockscene,
-            po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
-            po.direction, po.target_rlims, po.target_thetalims, po.sample_density, po.target_r0
-        ) do rticks, rminorticks, rtickformat, rtickangle,
+        po.blockscene,
+        po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
+        po.direction, po.target_rlims, po.target_thetalims, po.sample_density, po.target_r0
+    ) do rticks, rminorticks, rtickformat, rtickangle,
             dir, rlims, thetalims, sample_density, target_r0
 
         # For text:
@@ -602,27 +602,27 @@ function draw_axis!(po::PolarAxis)
 
     # doesn't have a lot of overlap with the inputs above so calculate this independently
     onany(
-            po.blockscene,
-            po.direction, po.target_theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
-            po.rticklabelrotation
-        ) do dir, theta_0, rtickangle, thetalims, pad, rot
-        angle = mod(dir * (default_rtickangle(rtickangle, dir, thetalims) + theta_0), 0..2pi)
-        s, c = sincos(angle - pi/2)
+        po.blockscene,
+        po.direction, po.target_theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
+        po.rticklabelrotation
+    ) do dir, theta_0, rtickangle, thetalims, pad, rot
+        angle = mod(dir * (default_rtickangle(rtickangle, dir, thetalims) + theta_0), 0 .. 2pi)
+        s, c = sincos(angle - pi / 2)
         rtick_offset[] = Point2f(pad * c, pad * s)
         if rot === automatic
             rot = (thetalims[2] - thetalims[1]) > 1.9pi ? (:horizontal) : (:aligned)
         end
         if rot === :horizontal
-            rtick_rotation[] = 0f0
+            rtick_rotation[] = 0.0f0
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         elseif rot === :radial
-            rtick_rotation[] = angle - pi/2
+            rtick_rotation[] = angle - pi / 2
             rtick_align[] = Point2f(0, 0.5)
         elseif rot === :aligned
-            N = trunc(Int, div(angle + pi/4, pi/2)) % 4
-            rtick_rotation[] = angle - N * pi/2 # mod(angle, -pi/4 .. pi/4)
-            rtick_align[] = Point2f((0.5, 0.0, 0.5, 1.0)[N+1], (1.0, 0.5, 0.0, 0.5)[N+1])
+            N = trunc(Int, div(angle + pi / 4, pi / 2)) % 4
+            rtick_rotation[] = angle - N * pi / 2 # mod(angle, -pi/4 .. pi/4)
+            rtick_align[] = Point2f((0.5, 0.0, 0.5, 1.0)[N + 1], (1.0, 0.5, 0.0, 0.5)[N + 1])
         elseif rot isa Real
             rtick_rotation[] = rot
             scale = 1 / max(abs(s), abs(c))
@@ -639,10 +639,10 @@ function draw_axis!(po::PolarAxis)
     thetaminorgridpoints = Observable{Vector{Point2f}}()
 
     onany(
-            po.blockscene,
-            po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.target_theta_0, po.target_rlims, po.target_thetalims, po.target_r0
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, r0
+        po.blockscene,
+        po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
+        po.direction, po.target_theta_0, po.target_rlims, po.target_thetalims, po.target_r0
+    ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, r0
 
         _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
@@ -762,7 +762,7 @@ function draw_axis!(po::PolarAxis)
     onany(po.blockscene, po.target_thetalims, po.direction, po.target_theta_0) do thetalims, dir, theta_0
         thetamin, thetamax = dir .* (thetalims .+ theta_0)
         angle = dir > 0 ? thetamin : thetamax
-        rotate!.((outer_clip_plot, inner_clip_plot), (Vec3f(0,0,1),), angle)
+        rotate!.((outer_clip_plot, inner_clip_plot), (Vec3f(0, 0, 1),), angle)
     end
 
     onany(po.blockscene, po.target_rlims, po.target_r0) do lims, r0
@@ -773,9 +773,10 @@ function draw_axis!(po::PolarAxis)
     notify(po.target_r0)
 
     # spine traces circle sector - inner circle
-    spine_points = map(po.blockscene,
-            po.target_rlims, po.target_thetalims, po.target_r0, po.sample_density
-        ) do (rmin, rmax), thetalims, r0, N
+    spine_points = map(
+        po.blockscene,
+        po.target_rlims, po.target_thetalims, po.target_r0, po.sample_density
+    ) do (rmin, rmax), thetalims, r0, N
         thetamin, thetamax = thetalims
         rmin = (rmin - r0) / (rmax - r0)
         rmax = 1.0
@@ -783,12 +784,12 @@ function draw_axis!(po::PolarAxis)
         # make sure we have 2+ points per arc
         if abs(thetamax - thetamin) ≈ 2pi
             ps = Point2f.(rmax, LinRange(thetamin, thetamax, N))
-            if rmin > 1e-6
+            if rmin > 1.0e-6
                 push!(ps, Point2f(NaN))
                 append!(ps, Point2f.(rmin, LinRange(thetamin, thetamax, N)))
             end
         else
-            ps = sizehint!(Point2f[], 2N+1)
+            ps = sizehint!(Point2f[], 2N + 1)
             for angle in LinRange(thetamin, thetamax, N)
                 push!(ps, Point2f(rmin, angle))
             end
@@ -884,7 +885,7 @@ function normalize_thetalims(thetamin, thetamax)
     diff = thetamax - thetamin
     if diff < 2pi
         # displayed limits may go from -diff .. 0 to 0 .. diff
-        thetamin_norm = mod(thetamin, -diff..(2pi-diff))
+        thetamin_norm = mod(thetamin, -diff .. (2pi - diff))
         thetamax_norm = thetamin_norm + clamp(diff, 0, 2pi)
         return thetamin_norm, thetamax_norm
     else
@@ -914,7 +915,7 @@ end
 function tightlimits!(po::PolarAxis)
     po.rautolimitmargin = (0, 0)
     po.thetaautolimitmargin = (0, 0)
-    reset_limits!(po)
+    return reset_limits!(po)
 end
 
 
@@ -953,7 +954,7 @@ function hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorg
     if grid
         ax.rgridvisible = false
     end
-    if minorgrid
+    return if minorgrid
         ax.rminorgridvisible = false
     end
 end
@@ -971,7 +972,7 @@ function hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, mi
     if grid
         ax.thetagridvisible = false
     end
-    if minorgrid
+    return if minorgrid
         ax.thetaminorgridvisible = false
     end
 end
@@ -985,10 +986,10 @@ Keyword arguments can be used to disable hiding of certain types of decorations.
 See also [`hiderdecorations!`], [`hidethetadecorations!`], [`hidezdecorations!`]
 """
 function hidedecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
-    hiderdecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid,)
-    hidethetadecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid)
+    hiderdecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid)
+    return hidethetadecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid)
 end
 
 function hidespines!(ax::PolarAxis)
-    ax.spinevisible = false
+    return ax.spinevisible = false
 end

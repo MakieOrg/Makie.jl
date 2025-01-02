@@ -11,7 +11,7 @@ if !GLMakie.ModernGL.enable_opengl_debugging
     @warn("TESTING WITHOUT OPENGL DEBUGGING")
 end
 
-GLMakie.activate!(framerate=1.0, scalefactor=1.0)
+GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
 
 @testset "mimes" begin
     Makie.inline!(true)
@@ -42,11 +42,11 @@ end
     function check_tick(tick, state, count)
         @test tick.state == state
         @test tick.count == count
-        @test tick.time > 1e-9
-        @test tick.delta_time > 1e-9
+        @test tick.time > 1.0e-9
+        @test tick.delta_time > 1.0e-9
     end
 
-    f, a, p = scatter(rand(10));
+    f, a, p = scatter(rand(10))
     @test events(f).tick[] == Makie.Tick()
 
     filename = "$(tempname()).png"
@@ -61,7 +61,7 @@ end
         rm(filename)
     end
 
-    f, a, p = scatter(rand(10));
+    f, a, p = scatter(rand(10))
     filename = "$(tempname()).mp4"
     try
         tick_record = Makie.Tick[]
@@ -73,8 +73,8 @@ end
 
         for (i, tick) in enumerate(tick_record[start:end])
             @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == i-1
-            @test tick.time ≈ dt * (i-1)
+            @test tick.count == i - 1
+            @test tick.time ≈ dt * (i - 1)
             @test tick.delta_time ≈ dt
         end
     finally
@@ -82,7 +82,7 @@ end
     end
 
     # test destruction of tick overwrite
-    f, a, p = scatter(rand(10));
+    f, a, p = scatter(rand(10))
     let
         io = VideoStream(f)
         @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
@@ -92,8 +92,8 @@ end
     events(f).tick[] = tick
     @test events(f).tick[] == tick
 
-    
-    f, a, p = scatter(rand(10));
+
+    f, a, p = scatter(rand(10))
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
     screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
@@ -103,7 +103,7 @@ end
     sleep(0.1)
     GLMakie.closeall()
 
-        # Why does it start with a skipped tick?
+    # Why does it start with a skipped tick?
     i = 1
     while tick_record[i].state == Makie.SkippedRenderTick
         check_tick(tick_record[1], Makie.SkippedRenderTick, i)
@@ -114,14 +114,14 @@ end
     i += 1
 
     while tick_record[i].state == Makie.SkippedRenderTick
-            check_tick(tick_record[i], Makie.SkippedRenderTick, i)
-            i += 1
-        end
+        check_tick(tick_record[i], Makie.SkippedRenderTick, i)
+        i += 1
+    end
 
     while (i <= length(tick_record)) && (tick_record[i].state == Makie.PausedRenderTick)
         check_tick(tick_record[i], Makie.PausedRenderTick, i)
         i += 1
     end
 
-    @test i == length(tick_record)+1
+    @test i == length(tick_record) + 1
 end

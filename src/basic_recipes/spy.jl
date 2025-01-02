@@ -64,11 +64,11 @@ function data_limits(plot::Spy)
     return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
 end
 
-function boundingbox(p::Spy, space::Symbol=:data)
+function boundingbox(p::Spy, space::Symbol = :data)
     return apply_transform_and_model(p, data_limits(p))
 end
 
-function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
+function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where {T}
     Tr = Makie.float_type(T)
     return convert_arguments(Spy, Tr.((0, size(matrix, 1))), Tr.((0, size(matrix, 2))), matrix)
 end
@@ -97,9 +97,9 @@ function Makie.plot!(p::Spy)
             msize
         end
     end
-    index_map = Observable(Dict{Int, Tuple{Int, Int}}(); ignore_equal_values=true)
+    index_map = Observable(Dict{Int, Tuple{Int, Int}}(); ignore_equal_values = true)
     p._index_map = index_map
-    xyc = lift(p, p.z; ignore_equal_values=true) do z
+    xyc = lift(p, p.z; ignore_equal_values = true) do z
         x, y, color = SparseArrays.findnz(z)
         index_map[] = Dict(enumerate(zip(x, y)))
         return (x, y, color, size(z))
@@ -126,7 +126,8 @@ function Makie.plot!(p::Spy)
         MakieCore.generic_plot_attributes(p)...
     )
 
-    lines!(p, rect,
+    return lines!(
+        p, rect,
         color = p.framecolor,
         linewidth = p.framesize,
         visible = p.framevisible,

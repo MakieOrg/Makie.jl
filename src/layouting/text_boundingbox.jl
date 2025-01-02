@@ -59,7 +59,7 @@ function string_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}
     return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
 end
 
-function string_boundingbox(x::Union{GlyphCollection,AbstractArray{<:GlyphCollection}}, args...)
+function string_boundingbox(x::Union{GlyphCollection, AbstractArray{<:GlyphCollection}}, args...)
     bb = unchecked_boundingbox(x, args...)
     isfinite_rect(bb) || error("Invalid text boundingbox $bb")
     return bb
@@ -67,11 +67,12 @@ end
 
 # Utility
 function text_bb(str, font, size)
-    rot = Quaternionf(0,0,0,1)
+    rot = Quaternionf(0, 0, 0, 1)
     fonts = nothing # TODO: remove the arg if possible
     layout = layout_text(
         str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
-        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
+        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0.0f0, 0.0f0
+    )
     return string_boundingbox(layout, Point3d(0), rot)
 end
 
@@ -122,7 +123,7 @@ end
 
 function gl_bboxes(gl::GlyphCollection)
     scales = gl.scales.sv isa Vec2 ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
-    map(gl.glyphs, gl.extents, scales) do c, ext, scale
+    return map(gl.glyphs, gl.extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
         # TODO c != 0 filters out all non renderables, which is not always desired
         return Rect2d(origin(hi_bb) * scale, (c != 0) * widths(hi_bb) * scale)

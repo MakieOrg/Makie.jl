@@ -45,13 +45,13 @@ function generic_plot_attributes(attr)
         inspector_label = attr[:inspector_label],
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
-        clip_planes =  attr[:clip_planes]
+        clip_planes = attr[:clip_planes],
 
     )
 end
 
 function mixin_generic_plot_attributes()
-    @DocumentedAttributes begin
+    return @DocumentedAttributes begin
         transformation = automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
@@ -118,12 +118,12 @@ function colormap_attributes(attr)
         lowclip = attr[:lowclip],
         highclip = attr[:highclip],
         nan_color = attr[:nan_color],
-        alpha = attr[:alpha]
+        alpha = attr[:alpha],
     )
 end
 
 function mixin_colormap_attributes()
-    @DocumentedAttributes begin
+    return @DocumentedAttributes begin
         """
         Sets the colormap that is sampled for numeric `color`s.
         `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils.
@@ -162,8 +162,8 @@ function shading_attributes!(attr)
     attr[:diffuse] = 1.0
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
-    attr[:backlight] = 0f0
-    attr[:ssao] = false
+    attr[:backlight] = 0.0f0
+    return attr[:ssao] = false
 end
 
 function shading_attributes(attr)
@@ -173,12 +173,12 @@ function shading_attributes(attr)
         specular = attr[:specular],
         shininess = attr[:shininess],
         backlight = attr[:backlight],
-        ssao = attr[:ssao]
+        ssao = attr[:ssao],
     )
 end
 
 function mixin_shading_attributes()
-    @DocumentedAttributes begin
+    return @DocumentedAttributes begin
         "Sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie."
         shading = automatic
         "Sets how strongly the red, green and blue channel react to diffuse (scattered) light."
@@ -188,7 +188,7 @@ function mixin_shading_attributes()
         "Sets how sharp the reflection is."
         shininess = 32.0f0
         "Sets a weight for secondary light calculation with inverted normals."
-        backlight = 0f0
+        backlight = 0.0f0
         "RPRMakie only attribute to set complex RadeonProRender materials.
         *Warning*, how to set an RPR material may change and other backends will ignore this attribute"
         material = nothing
@@ -205,7 +205,7 @@ calculated_attributes!(trait, plot) = nothing
     `calculated_attributes!(plot::AbstractPlot)`
 Fill in values that can only be calculated when we have all other attributes filled
 """
-calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
+calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 """
     image(x, y, image)
@@ -214,9 +214,10 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
 @recipe Image (
-        x::EndPoints,
-        y::EndPoints,
-        image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+    x::EndPoints,
+    y::EndPoints,
+    image::AbstractMatrix{<:Union{FloatType, Colorant}},
+) begin
     "Sets whether colors should be interpolated between pixels."
     interpolate = true
     mixin_generic_plot_attributes()...
@@ -262,9 +263,11 @@ If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(
 
 Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
 """
-@recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
-                 y::Union{EndPoints,RealVector, RealMatrix},
-                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+@recipe Heatmap (
+    x::Union{EndPoints, RealVector, RealMatrix},
+    y::Union{EndPoints, RealVector, RealMatrix},
+    values::AbstractMatrix{<:Union{FloatType, Colorant}},
+) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -285,11 +288,11 @@ Available algorithms are:
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @recipe Volume (
-        x::EndPoints,
-        y::EndPoints,
-        z::EndPoints,
-        volume::AbstractArray{Float32,3}
-    ) begin
+    x::EndPoints,
+    y::EndPoints,
+    z::EndPoints,
+    volume::AbstractArray{Float32, 3},
+) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip
     "Sets the target value for the IsoValue algorithm."
@@ -301,7 +304,7 @@ Available algorithms are:
     "Enables depth write for Volume, so that volume correctly occludes other objects."
     enable_depth = true
     "Absorption multiplier for algorithm=:absorption. This changes how much light each voxel absorbs."
-    absorption = 1f0
+    absorption = 1.0f0
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -417,7 +420,7 @@ end
 
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 """
-@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh,GeometryBasics.MetaMesh},) begin
+@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh, GeometryBasics.MetaMesh},) begin
     "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
@@ -488,7 +491,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 end
 
 function deprecated_attributes(::Type{<:Scatter})
-    (
+    return (
         (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
     )
 end
@@ -530,7 +533,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 end
 
 function deprecated_attributes(::Type{<:MeshScatter})
-    (
+    return (
         (; attribute = :rotations, message = "`rotations` has been renamed to `rotation` for consistency in Makie v0.21.", error = true),
     )
 end
@@ -586,7 +589,7 @@ Plots one or multiple texts passed via the `text` keyword.
 end
 
 function deprecated_attributes(::Type{<:Text})
-    (
+    return (
         (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true),
     )
 end
@@ -699,7 +702,7 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
 """
 @recipe Wireframe begin
     documented_attributes(LineSegments)...
-    depth_shift = -1f-5
+    depth_shift = -1.0f-5
 end
 
 """
@@ -760,7 +763,7 @@ or other array-like output.
     true the directions are normalized, skipping this scaling."""
     normalize = false
     """Scales the length of the arrow tail."""
-    lengthscale = 1f0
+    lengthscale = 1.0f0
 
     """Defines the number of angle subdivisions used when generating
     the arrow head and tail meshes. Consider lowering this if you have performance

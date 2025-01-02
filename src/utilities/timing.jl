@@ -1,13 +1,11 @@
-
-
 mutable struct BudgetedTimer
     callback::Any
-    
+
     target_delta_time::Float64
     min_sleep::Float64
     budget::Float64
     last_time::UInt64
-    
+
     running::Bool
     task::Union{Nothing, Task}
 
@@ -62,7 +60,7 @@ function start!(callback, timer::BudgetedTimer)
 end
 
 function set_callback!(callback, timer::BudgetedTimer)
-    timer.callback = callback
+    return timer.callback = callback
 end
 
 function stop!(timer::BudgetedTimer)
@@ -72,29 +70,31 @@ end
 
 function Base.close(timer::BudgetedTimer)
     timer.callback = identity
-    stop!(timer)
+    return stop!(timer)
 end
 
 function reset!(timer::BudgetedTimer, delta_time = timer.target_delta_time)
     timer.target_delta_time = delta_time
     timer.budget = 0.0
-    timer.last_time = time_ns()
+    return timer.last_time = time_ns()
 end
 
 function update_budget!(timer::BudgetedTimer)
     # The real time that has passed
     t = time_ns()
-    time_passed = 1e-9 * (t - timer.last_time)
+    time_passed = 1.0e-9 * (t - timer.last_time)
     # Update budget
     diff_to_target = timer.target_delta_time + timer.budget - time_passed
     if diff_to_target > -0.5 * timer.target_delta_time
         # used 0 .. 1.5 delta_time, keep difference (1 .. -0.5 delta times) as budget
         timer.budget = diff_to_target
     else
-        # more than 1.5 delta_time used, get difference to next multiple of 
+        # more than 1.5 delta_time used, get difference to next multiple of
         # delta_time as the budget
-        timer.budget = ((diff_to_target - 0.5 * timer.target_delta_time) 
-            % timer.target_delta_time) + 0.5 * timer.target_delta_time
+        timer.budget = (
+            (diff_to_target - 0.5 * timer.target_delta_time)
+                % timer.target_delta_time
+        ) + 0.5 * timer.target_delta_time
     end
     timer.last_time = t
     return
@@ -112,12 +112,12 @@ This always yields to other tasks.
 """
 function Base.sleep(timer::BudgetedTimer)
     # time since last sleep
-    time_passed = 1e-9 * (time_ns() - timer.last_time)
+    time_passed = 1.0e-9 * (time_ns() - timer.last_time)
     # How much time we should sleep for considering the real time we slept
     # for in the last iteration and biasing for the minimum sleep time
     sleep_time = timer.target_delta_time + timer.budget - time_passed - 0.5 * timer.min_sleep
     if sleep_time > 0.0
-        sleep(sleep_time) 
+        sleep(sleep_time)
     else
         yield()
     end
@@ -139,18 +139,18 @@ This always yields to other tasks.
 """
 function busysleep(timer::BudgetedTimer)
     # use normal sleep as much as possible
-    time_passed = 1e-9 * (time_ns() - timer.last_time)
+    time_passed = 1.0e-9 * (time_ns() - timer.last_time)
     sleep_time = timer.target_delta_time - time_passed + timer.budget - timer.min_sleep
     if sleep_time > 0.0
-        sleep(sleep_time) 
+        sleep(sleep_time)
     else
         yield()
     end
 
     # busy sleep remaining time
-    time_passed = 1e-9 * (time_ns() - timer.last_time)
+    time_passed = 1.0e-9 * (time_ns() - timer.last_time)
     sleep_time = timer.target_delta_time - time_passed + timer.budget
-    while time_ns() < timer.last_time + 1e9 * timer.target_delta_time + timer.budget
+    while time_ns() < timer.last_time + 1.0e9 * timer.target_delta_time + timer.budget
         yield()
     end
 

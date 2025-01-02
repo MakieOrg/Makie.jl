@@ -64,39 +64,41 @@ function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, erro
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4{T}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 RealOrVec
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low::RealOrVec, error_high::RealOrVec)
     T = float_type(x, y, error_low, error_high)
     xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
-    (xyerr,)
+    return (xyerr,)
 end
 
 
-function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low_high::AbstractVector{<:VecTypes{2, T}}) where {T}
     T_out = float_type(float_type(x, y), T)
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,T}},
-                           error_both::RealOrVec) where {T}
+function convert_arguments(
+        ::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}},
+        error_both::RealOrVec
+    ) where {T}
     T_out = float_type(T, float_type(error_both))
     xyerr = broadcast(xy, error_both) do (x, y), e
         Vec4{T_out}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where T
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T}
     T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
 function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
@@ -104,15 +106,15 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where T
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T}
     T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
         Vec4{T_out}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
 ### conversions for rangebars
@@ -123,13 +125,15 @@ function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, 
     return (val_low_high,)
 end
 
-function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
-                           low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
+function convert_arguments(
+        ::Type{<:Rangebars}, val::RealOrVec,
+        low_high::AbstractVector{<:VecTypes{2, T}}
+    ) where {T}
     T_out = float_type(float_type(val), T)
     val_low_high = broadcast(val, low_high) do val, (low, high)
         Vec3{T_out}(val, low, high)
     end
-    (val_low_high,)
+    return (val_low_high,)
 end
 
 Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
@@ -164,7 +168,7 @@ function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
         return output
     end
 
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    return _plot_bars!(plot, linesegpairs, is_in_y_direction)
 end
 
 
@@ -194,9 +198,8 @@ function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
         return output
     end
 
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    return _plot_bars!(plot, linesegpairs, is_in_y_direction)
 end
-
 
 
 function _plot_bars!(plot, linesegpairs, is_in_y_direction)
@@ -205,18 +208,23 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     @extract plot (
         whiskerwidth, color, linewidth, linecap, visible, colormap, colorscale, colorrange,
-        inspectable, transparency)
+        inspectable, transparency,
+    )
 
     scene = parent_scene(plot)
 
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
+    whiskers = lift(
+        plot, linesegpairs, scene.camera.projectionview, plot.model,
+        scene.viewport, transform_func(plot), whiskerwidth
+    ) do endpoints, _, _, _, _, whiskerwidth
 
         screenendpoints = plot_to_screen(plot, endpoints)
 
         screenendpoints_shifted_pairs = map(screenendpoints) do sep
-            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+            (
+                sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth / 2)),
+                sep .+ f_if(is_in_y_direction[], reverse, Point(0, whiskerwidth / 2)),
+            )
         end
 
         return [p for pair in screenendpoints_shifted_pairs for p in pair]
@@ -252,7 +260,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         inspectable = inspectable, transparency = transparency, space = :pixel,
         model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
     )
-    plot
+    return plot
 end
 
 function plot_to_screen(plot, points::AbstractVector)

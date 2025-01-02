@@ -17,9 +17,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?
     if isnothing(to_value(linestyle))
         uniforms[:pattern] = false
-        uniforms[:pattern_length] = 1f0
+        uniforms[:pattern_length] = 1.0f0
     else
-        uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat=:repeat)
+        uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat = :repeat)
         uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), plot, linestyle)
     end
 
@@ -45,8 +45,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     # make the p1 -- p2 segment draw, which is what indices does.
     indices = Observable(UInt32[])
     points_transformed = lift(
-            plot, f32c, transform_func_obs(plot), plot.model, plot[1], plot.space
-        ) do f32c, tf, model, ps, space
+        plot, f32c, transform_func_obs(plot), plot.model, plot[1], plot.space
+    ) do f32c, tf, model, ps, space
 
         transformed_points = apply_transform_and_f32_conversion(f32c, tf, model, ps, space)
         # TODO: Do this in javascript?
@@ -66,7 +66,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                         # does previous point close loop?
                         # loop started && 3+ segments && start == end
                         if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
-                            (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[i-1])
+                                (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[i - 1])
 
                             #               start -v             v- end
                             # adjust from       j  j j+1 .. i-2 i-1
@@ -77,12 +77,12 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                             # be drawn (which we want as that segment would overlap)
 
                             # tweak duplicated vertices to be loop vertices
-                            push!(indices[], indices[][loop_start_idx+1])
-                            indices[][loop_start_idx-1] = i-2
+                            push!(indices[], indices[][loop_start_idx + 1])
+                            indices[][loop_start_idx - 1] = i - 2
                             # nan is inserted at bottom (and not necessary for start/end)
 
                         else # no loop, duplicate end point
-                            push!(indices[], i-1)
+                            push!(indices[], i - 1)
                         end
                     end
                     loop_start_idx = -1
@@ -93,7 +93,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                         # line section start - duplicate point
                         push!(indices[], i)
                         # first point in a potential loop
-                        loop_start_idx = length(indices[])+1
+                        loop_start_idx = length(indices[]) + 1
                     end
                     was_nan = false
                 end
@@ -105,10 +105,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             # Finish line (insert duplicate end point or close loop)
             if !was_nan
                 if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
-                    (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
+                        (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
 
-                    push!(indices[], indices[][loop_start_idx+1])
-                    indices[][loop_start_idx-1] = prevind(transformed_points, lastindex(transformed_points))
+                    push!(indices[], indices[][loop_start_idx + 1])
+                    indices[][loop_start_idx - 1] = prevind(transformed_points, lastindex(transformed_points))
                 else
                     push!(indices[], lastindex(transformed_points))
                 end
@@ -141,31 +141,31 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 # clip -> pixel, but we can skip scene offset
                 scale = Vec2f(0.5 * res[1], 0.5 * res[2])
                 # position of start of first drawn line segment (TODO: deal with multiple nans at start)
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[2], 0f0), 1f0)
+                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[2], 0.0f0), 1.0f0)
                 prev = scale .* Point2f(clip) ./ clip[4]
 
                 # calculate cumulative pixel scale length
-                output[1] = 0f0   # duplicated point
-                output[2] = 0f0   # start of first line segment
-                output[end] = 0f0 # duplicated end point
+                output[1] = 0.0f0   # duplicated point
+                output[2] = 0.0f0   # start of first line segment
+                output[end] = 0.0f0 # duplicated end point
                 i = 3           # end of first line segment, start of second
                 while i < length(ps)
                     if isfinite(ps[i])
-                        clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0f0), 1f0)
+                        clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i], 0.0f0), 1.0f0)
                         current = scale .* Point2f(clip) ./ clip[4]
                         l = norm(current - prev)
-                        output[i] = output[i-1] + l
+                        output[i] = output[i - 1] + l
                         prev = current
                         i += 1
                     else
                         # a vertex section (NaN, A, B, C) does not draw, so
                         # norm(B - A) should not contribute to line length.
                         # (norm(B - A) is 0 for capped lines but not for loops)
-                        output[i] = 0f0
-                        output[i+1] = 0f0
-                        if i+2 <= length(ps)
-                            output[min(end, i+2)] = 0f0
-                            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i+2], 0f0), 1f0)
+                        output[i] = 0.0f0
+                        output[i + 1] = 0.0f0
+                        if i + 2 <= length(ps)
+                            output[min(end, i + 2)] = 0.0f0
+                            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, ps[i + 2], 0.0f0), 1.0f0)
                             prev = scale .* Point2f(clip) ./ clip[4]
                         end
                         i += 3
@@ -201,7 +201,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     uniforms[:clip_planes] = lift(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
-        Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+        Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1.0e9) for _ in 1:8]
 
         if length(planes) > 8
             @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
@@ -213,8 +213,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         for i in 1:min(length(planes), 8)
             output[i] = Makie.gl_plane_format(clip_planes[i])
         end
-        for i in min(length(planes), 8)+1:8
-            output[i] = Vec4f(0, 0, 0, -1e9)
+        for i in (min(length(planes), 8) + 1):8
+            output[i] = Vec4f(0, 0, 0, -1.0e9)
         end
         return output
     end

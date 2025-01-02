@@ -48,8 +48,8 @@ struct DateTimeConversion <: AbstractDimConversion
     # Second entry in tuple is a value we use to normalize the number range,
     # so that they fit into float32
     type::Observable{DataType}
-    function DateTimeConversion(type=Automatic)
-        obs = Observable{DataType}(type; ignore_equal_values=true)
+    function DateTimeConversion(type = Automatic)
+        obs = Observable{DataType}(type; ignore_equal_values = true)
         return new(obs)
     end
 end
@@ -104,7 +104,7 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin
             k_min = 2
             k_max = 3
         end
-        conversion, dates = PlotUtils.optimize_datetime_ticks(vmin, vmax; k_min=k_min, k_max=k_max)
+        conversion, dates = PlotUtils.optimize_datetime_ticks(vmin, vmax; k_min = k_min, k_max = k_max)
         return conversion, dates
     else
         # TODO implement proper ticks for Time Date

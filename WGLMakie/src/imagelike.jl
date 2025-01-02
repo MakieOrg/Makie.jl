@@ -16,26 +16,30 @@ function create_shader(mscene::Scene, plot::Surface)
         apply_transform_and_f32_conversion(plot, f32c, grid_ps)
     end
     positions = Buffer(ps)
-    rect = lift(z -> Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), size(z)), plot, pz)
+    rect = lift(z -> Tessellation(Rect2(0.0f0, 0.0f0, 1.0f0, 1.0f0), size(z)), plot, pz)
     fs = lift(r -> decompose(QuadFace{Int}, r), plot, rect)
     fs = map((ps, fs) -> filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs), plot, ps, fs)
     faces = Buffer(fs)
     # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
     # the center of a texture pixel rather than the edge, fixing
     # https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
-    uv = Buffer(lift(plot, rect) do r
-        Nx, Ny = r.nvertices
-        if (Nx, Ny) == (2, 2)
-            Vec2f[(0,1), (1,1), (1,0), (0,0)]
-        else
-            f = Vec2f(1 / Nx, 1 / Ny)
-            [f .* Vec2f(0.5 + i, 0.5 + j) for j in Ny-1:-1:0 for i in 0:Nx-1]
+    uv = Buffer(
+        lift(plot, rect) do r
+            Nx, Ny = r.nvertices
+            if (Nx, Ny) == (2, 2)
+                Vec2f[(0, 1), (1, 1), (1, 0), (0, 0)]
+            else
+                f = Vec2f(1 / Nx, 1 / Ny)
+                [f .* Vec2f(0.5 + i, 0.5 + j) for j in (Ny - 1):-1:0 for i in 0:(Nx - 1)]
+            end
         end
-    end)
-    normals = Buffer(lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
-        ns = Makie.nan_aware_normals(ps, fs)
-        return invert ? -ns : ns
-    end)
+    )
+    normals = Buffer(
+        lift(plot, ps, fs, plot.invert_normals) do ps, fs, invert
+            ns = Makie.nan_aware_normals(ps, fs)
+            return invert ? -ns : ns
+        end
+    )
 
     per_vertex = Dict(:positions => positions, :faces => faces, :uv => uv, :normal => normals)
     uniforms = Dict(:uniform_color => color, :color => false, :model => model, :PICKING_INDEX_FROM_UV => true)
@@ -45,9 +49,9 @@ function create_shader(mscene::Scene, plot::Surface)
         M = convert_attribute(x, Key{:uv_transform}(), Key{:surface}())
         # Why transpose?
         if M === nothing
-            return Mat3f(0,1,0, 1,0,0, 0,0,1)
+            return Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1)
         else
-            return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+            return Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
         end
     end
 
@@ -74,13 +78,13 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
             M = convert_attribute(x, Key{:uv_transform}(), Key{:image}())
             # Why transpose?
             if M === nothing
-                return Mat3f(0,1,0, 1,0,0, 0,0,1)
+                return Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1)
             else
-                return Mat3f(0,1,0, 1,0,0, 0,0,1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+                return Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
             end
         end
     else
-        uniforms[:uv_transform] = Observable(Mat3f(0,1,0, -1,0,0, 1,0,1))
+        uniforms[:uv_transform] = Observable(Mat3f(0, 1, 0, -1, 0, 0, 1, 0, 1))
     end
 
     return draw_mesh(mscene, mesh, plot, uniforms)
@@ -106,7 +110,6 @@ function create_shader(mscene::Scene, plot::Volume)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
 
 
-
     uniforms = Dict{Symbol, Any}(
         :modelinv => modelinv,
         :isovalue => lift(Float32, plot, plot.isovalue),
@@ -128,10 +131,9 @@ function create_shader(mscene::Scene, plot::Volume)
         :object_id => UInt32(0)
     )
 
-    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
+    handle_color!(plot, uniforms, nothing, :volumedata; permute_tex = false)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
-
 
 
 xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
@@ -167,8 +169,8 @@ function limits_to_uvmesh(plot, f32c)
     # Special path for ranges of length 2 which
     # can be displayed as a rectangle
     t = Makie.transform_func_obs(plot)[]
-    px = lift(identity, plot, px; ignore_equal_values=true)
-    py = lift(identity, plot, py; ignore_equal_values=true)
+    px = lift(identity, plot, px; ignore_equal_values = true)
+    py = lift(identity, plot, py; ignore_equal_values = true)
     if px[] isa Makie.EndPoints && py[] isa Makie.EndPoints && Makie.is_identity_transform(t)
         rect = lift(plot, px, py) do x, y
             xmin, xmax = x
@@ -181,12 +183,12 @@ function limits_to_uvmesh(plot, f32c)
         faces = Buffer(decompose(GLTriangleFace, rect[]))
         uv = Buffer(decompose_uv(rect[]))
     else
-        px = lift((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values=true)
-        py = lift((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values=true)
+        px = lift((x, z) -> xy_convert(x, size(z, 1)), px, pz; ignore_equal_values = true)
+        py = lift((y, z) -> xy_convert(y, size(z, 2)), py, pz; ignore_equal_values = true)
         # TODO: Use Makie.surface2mesh
         grid_ps = lift((x, y) -> Makie.matrix_grid(x, y, zeros(length(x), length(y))), plot, px, py)
         positions = Buffer(apply_transform_and_f32_conversion(plot, f32c, grid_ps))
-        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values=true)
+        resolution = lift((x, y) -> (length(x), length(y)), plot, px, py; ignore_equal_values = true)
         faces = Buffer(lift(fast_faces, plot, resolution))
         uv = Buffer(lift(fast_uv, plot, resolution))
     end

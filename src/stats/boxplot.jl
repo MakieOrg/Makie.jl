@@ -22,7 +22,7 @@ The boxplot has 3 components:
     weights = automatic
     color = @inherit patchcolor
     colormap = @inherit colormap
-    colorscale=identity
+    colorscale = identity
     colorrange = automatic
     "Orientation of box (`:vertical` or `:horizontal`)."
     orientation = :vertical
@@ -73,7 +73,7 @@ _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v
 
 flip_xy(p::Point2f) = reverse(p)
-flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
+flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
     args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
@@ -121,7 +121,7 @@ function Makie.plot!(plot::BoxPlot)
             if !iszero(range)  # if the range is 0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
-                for (value, idx) in zip(values,idxs)
+                for (value, idx) in zip(values, idxs)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
                             push!(outlier_points, (center, value))
@@ -140,7 +140,7 @@ function Makie.plot!(plot::BoxPlot)
             # whiskers
             bw = getuniquevalue(widths, idxs) # Box width
             ww = whiskerwidth === :match ? bw : whiskerwidth * bw # Whisker width
-            lw, rw = center - ww/2, center + ww/2
+            lw, rw = center - ww / 2, center + ww / 2
             push!(t_segments, (center, q2), (center, q1), (lw, q1), (rw, q1)) # lower T
             push!(t_segments, (center, q4), (center, q5), (rw, q5), (lw, q5)) # upper T
 
@@ -214,7 +214,7 @@ function Makie.plot!(plot::BoxPlot)
         t_segments,
         inspectable = plot[:inspectable]
     )
-    crossbar!(
+    return crossbar!(
         plot,
         color = boxcolor,
         colorrange = plot[:colorrange],

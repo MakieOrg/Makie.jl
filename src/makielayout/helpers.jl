@@ -7,11 +7,11 @@ function round_to_IRect2D(r::Rect{2})
     newori = round.(Int, minimum(r))
     othercorner = round.(Int, maximum(r))
     newwidth = othercorner .- newori
-    Rect{2, Int}(newori, newwidth)
+    return Rect{2, Int}(newori, newwidth)
 end
 
 function sceneareanode!(finalbbox, limits, aspect)
-    return map(finalbbox, limits, aspect; ignore_equal_values=true) do bbox, limits, aspect
+    return map(finalbbox, limits, aspect; ignore_equal_values = true) do bbox, limits, aspect
 
         w = width(bbox)
         h = height(bbox)
@@ -67,26 +67,26 @@ function roundedrectvertices(rect, cornerradius, cornersegments)
     htouching = height(rect) / 2 == cr
 
     cstr = if wtouching
-        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
+        anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs), cr)
     else
-        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs)[1:end-1], cr)
+        anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs)[1:(end - 1)], cr)
     end
     cstl = if htouching
-        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
+        anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs), cr)
     else
-        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs)[1:end-1], cr)
+        anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs)[1:(end - 1)], cr)
     end
     csbl = if wtouching
-        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs), cr)
     else
-        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs)[1:end-1], cr)
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs)[1:(end - 1)], cr)
     end
     csbr = if htouching
-        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
+        anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs), cr)
     else
-        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs)[1:end-1], cr)
+        anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs)[1:(end - 1)], cr)
     end
-    arr = [cstr; cstl; csbl; csbr]
+    return arr = [cstr; cstl; csbl; csbr]
 end
 
 """
@@ -97,7 +97,7 @@ Sets the autolimit margins to zero on all sides.
 function tightlimits!(la::Axis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
-    reset_limits!(la)
+    return reset_limits!(la)
 end
 
 """
@@ -115,35 +115,38 @@ function tightlimits!(la::Axis, sides::Union{Left, Right, Bottom, Top}...)
     for s in sides
         tightlimits!(la, s)
     end
+    return
 end
 
 function tightlimits!(la::Axis, ::Left)
     la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 1)
-    autolimits!(la)
+    return autolimits!(la)
 end
 
 function tightlimits!(la::Axis, ::Right)
     la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 2)
-    autolimits!(la)
+    return autolimits!(la)
 end
 
 function tightlimits!(la::Axis, ::Bottom)
     la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 1)
-    autolimits!(la)
+    return autolimits!(la)
 end
 
 function tightlimits!(la::Axis, ::Top)
     la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 2)
-    autolimits!(la)
+    return autolimits!(la)
 end
 
 function GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...)
-    return GridLayout(args...; bbox=lift(Rect2f, viewport(scene)), kwargs...)
+    return GridLayout(args...; bbox = lift(Rect2f, viewport(scene)), kwargs...)
 end
 
-function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
-    leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
-    rightspinecolor, bottomspinecolor)
+function axislines!(
+        scene, rect, spinewidth, topspinevisible, rightspinevisible,
+        leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
+        rightspinecolor, bottomspinecolor
+    )
 
     bottomline = lift(scene, rect, spinewidth) do r, sw
         y = bottom(r)
@@ -173,18 +176,28 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    (lines!(scene, bottomline, linewidth = spinewidth,
-        visible = bottomspinevisible, color = bottomspinecolor),
-    lines!(scene, leftline, linewidth = spinewidth,
-        visible = leftspinevisible, color = leftspinecolor),
-    lines!(scene, rightline, linewidth = spinewidth,
-        visible = rightspinevisible, color = rightspinecolor),
-    lines!(scene, topline, linewidth = spinewidth,
-        visible = topspinevisible, color = topspinecolor))
+    return (
+        lines!(
+            scene, bottomline, linewidth = spinewidth,
+            visible = bottomspinevisible, color = bottomspinecolor
+        ),
+        lines!(
+            scene, leftline, linewidth = spinewidth,
+            visible = leftspinevisible, color = leftspinecolor
+        ),
+        lines!(
+            scene, rightline, linewidth = spinewidth,
+            visible = rightspinevisible, color = rightspinecolor
+        ),
+        lines!(
+            scene, topline, linewidth = spinewidth,
+            visible = topspinevisible, color = topspinecolor
+        ),
+    )
 end
 
 
-function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
+function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where {T}
     n = length(vec1)
     @assert n == length(vec2)
 
@@ -194,7 +207,7 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
         vec[k + 1] = vec1[i]
         vec[k + 2] = vec2[i]
     end
-    vec
+    return vec
 end
 
 """
@@ -249,23 +262,37 @@ macro documented_attributes(exp)
     end
 
     # make a dictionary of :variable_name => docstring_expression
-    exp_docdict = Expr(:call, :Dict,
-        (Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
-            for (name, _, strexp) in vars_and_exps)...)
+    exp_docdict = Expr(
+        :call, :Dict,
+        (
+            Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
+                for (name, _, strexp) in vars_and_exps
+        )...
+    )
 
     # make a dictionary of :variable_name => docstring_expression
-    defaults_dict = Expr(:call, :Dict,
-        (Expr(:call, Symbol("=>"), QuoteNode(name), exp isa String ? "\"$exp\"" : string(exp))
-            for (name, exp, _) in vars_and_exps)...)
+    defaults_dict = Expr(
+        :call, :Dict,
+        (
+            Expr(:call, Symbol("=>"), QuoteNode(name), exp isa String ? "\"$exp\"" : string(exp))
+                for (name, exp, _) in vars_and_exps
+        )...
+    )
 
     # make an Attributes instance with of variable_name = variable_expression
-    exp_attrs = Expr(:call, :Attributes,
-        (Expr(:kw, name, exp)
-            for (name, exp, _) in vars_and_exps)...)
+    exp_attrs = Expr(
+        :call, :Attributes,
+        (
+            Expr(:kw, name, exp)
+                for (name, exp, _) in vars_and_exps
+        )...
+    )
 
-    esc(quote
-        ($exp_attrs, $exp_docdict, $defaults_dict)
-    end)
+    return esc(
+        quote
+            ($exp_attrs, $exp_docdict, $defaults_dict)
+        end
+    )
 end
 
 """
@@ -278,7 +305,7 @@ function docvarstring(docdict, defaultdict)
     for (var, doc) in sort(collect(pairs(docdict)))
         print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
     end
-    String(take!(buffer))
+    return String(take!(buffer))
 end
 
 
@@ -287,7 +314,7 @@ function subtheme(scene, key::Symbol)
     if !(sub isa Attributes)
         error("Subtheme is not of type Attributes but is $sub")
     end
-    sub
+    return sub
 end
 
 
@@ -318,14 +345,16 @@ ls = labelslider!(scene, "Voltage:", 0:10; format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
 """
-function labelslider!(scene, label, range; format = string,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
+function labelslider!(
+        scene, label, range; format = string,
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...
+    )
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
     valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
-    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
+    Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead.", :labelslider!, force = true)
 
     if value_column_width === automatic
         maxwidth = 0.0
@@ -344,7 +373,7 @@ function labelslider!(scene, label, range; format = string,
         colsize!(layout, 3, value_column_width)
     end
 
-    (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
+    return (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
 
 
@@ -377,16 +406,20 @@ ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -
 layout[1, 1] = ls.layout
 ```
 """
-function labelslidergrid!(scene, labels, ranges; formats = [string], value_column_width = automatic,
-        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
+function labelslidergrid!(
+        scene, labels, ranges; formats = [string], value_column_width = automatic,
+        sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...
+    )
 
-    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslidergrid!, force = true)
+    Base.depwarn("labelslidergrid! is deprecated and will be removed in the future. Use SliderGrid instead.", :labelslidergrid!, force = true)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); halign=:right,
-                           valuekw...)
+        valuelabel = Label(
+            scene, lift(x -> apply_format(x, format), scene, slider.value); halign = :right,
+            valuekw...
+        )
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -420,15 +453,15 @@ function labelslidergrid!(scene, labels, ranges; formats = [string], value_colum
         colsize!(layout, 3, value_column_width)
     end
 
-    (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
+    return (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
 
 function apply_format(value, format)
-    format(value)
+    return format(value)
 end
 
 function apply_format(value, formatstring::String)
-    Format.format(formatstring, value)
+    return Format.format(formatstring, value)
 end
 
 Makie.get_scene(ax::Axis) = ax.scene

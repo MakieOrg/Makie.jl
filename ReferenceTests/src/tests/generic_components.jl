@@ -3,7 +3,7 @@
 @reference_test "picking" begin
     scene = Scene(size = (230, 370))
     campixel!(scene)
-    
+
     sc1 = scatter!(scene, [20, NaN, 20], [20, NaN, 50], marker = Rect, markersize = 20)
     sc2 = scatter!(scene, [50, 50, 20, 50], [20, 50, 80, 80], marker = Circle, markersize = 20, color = [:red, :red, :transparent, :red])
     ms = meshscatter!(scene, [20, NaN, 50], [110, NaN, 110], markersize = 10)
@@ -13,21 +13,22 @@
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
     t = tp.plots[1]
 
-    i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
-    s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
+    i = image!(scene, 80 .. 140, 20 .. 50, rand(RGBf, 3, 2), interpolate = false)
+    s = surface!(scene, 80 .. 140, 80 .. 110, rand(3, 2), interpolate = false)
     hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 4; 2 5; 3 6])
     # mesh coloring should match triangle placements
-    m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
-    vx = voxels!(scene, [65, 155], [245, 305], [-1, 1], reshape([1,2,3,4,5,6], (3,2,1)), shading = NoShading)
-    vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
-    
+    m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1, 1, 1, 2])
+    vx = voxels!(scene, [65, 155], [245, 305], [-1, 1], reshape([1, 2, 3, 4, 5, 6], (3, 2, 1)), shading = NoShading)
+    vol = volume!(scene, 80 .. 110, 320 .. 350, -1 .. 1, rand(2, 2, 2))
+
     # reversed axis
-    i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
-    s2 = surface!(scene, 210..180, 80..110, [1 2; 3 4], interpolate = false)
+    i2 = image!(scene, 210 .. 180, 20 .. 50, rand(RGBf, 2, 2))
+    s2 = surface!(scene, 210 .. 180, 80 .. 110, [1 2; 3 4], interpolate = false)
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
     # for ranged picks
-    m2 = mesh!(scene, 
+    m2 = mesh!(
+        scene,
         Point2f[(190, 330), (200, 330), (190, 340), (200, 340)],
         [1 2 4; 1 4 3]
     )
@@ -35,7 +36,7 @@
     scene # for easy reviewing of the plot
 
     # render one frame to generate picking texture
-    colorbuffer(scene, px_per_unit = 2);
+    colorbuffer(scene, px_per_unit = 2)
 
     # verify that heatmap path is used for heatmaps
     if Symbol(Makie.current_backend()) == :WGLMakie
@@ -52,7 +53,7 @@
     else
         error("picking tests are only meant to run on GLMakie & WGLMakie")
     end
-    
+
     # raw picking tests
     @testset "pick(scene, point)" begin
         @testset "scatter" begin
@@ -93,14 +94,14 @@
         end
 
         @testset "linesegments" begin
-            @test pick(scene,  8, 260) == (nothing, 0) # off by a pixel due to AA
+            @test pick(scene, 8, 260) == (nothing, 0) # off by a pixel due to AA
             @test pick(scene, 10, 260) == (ls, 2)
             @test pick(scene, 30, 269) == (ls, 2)
             @test pick(scene, 30, 271) == (nothing, 0)
             @test pick(scene, 59, 260) == (ls, 2)
             @test pick(scene, 61, 260) == (nothing, 0)
 
-            @test pick(scene,  8, 290) == (nothing, 0) # off by a pixel due to AA
+            @test pick(scene, 8, 290) == (nothing, 0) # off by a pixel due to AA
             @test pick(scene, 10, 290) == (ls, 6)
             @test pick(scene, 30, 280) == (ls, 6)
             @test pick(scene, 30, 278) == (nothing, 0) # off by a pixel due to AA
@@ -108,7 +109,7 @@
             @test pick(scene, 61, 290) == (nothing, 0)
         end
 
-        @testset "text" begin        
+        @testset "text" begin
             @test pick(scene, 15, 320) == (t, 1)
             @test pick(scene, 13, 320) == (nothing, 0)
             # edge checks, further outside due to AA
@@ -131,25 +132,25 @@
                 )
                 @test pick(scene, p) == (nothing, 0)
             end
-            
+
             # cell centered checks
-            @test pick(scene,  90, 30) == (i, 1)
+            @test pick(scene, 90, 30) == (i, 1)
             @test pick(scene, 110, 30) == (i, 2)
             @test pick(scene, 130, 30) == (i, 3)
-            @test pick(scene,  90, 40) == (i, 4)
+            @test pick(scene, 90, 40) == (i, 4)
             @test pick(scene, 110, 40) == (i, 5)
             @test pick(scene, 130, 40) == (i, 6)
 
             # precise check (around cell intersection)
-            @test pick(scene, 100-1, 35-1) == (i, 1)
-            @test pick(scene, 100+1, 35-1) == (i, 2)
-            @test pick(scene, 100-1, 35+1) == (i, 4)
-            @test pick(scene, 100+1, 35+1) == (i, 5)
-            
-            @test pick(scene, 120-1, 35-1) == (i, 2)
-            @test pick(scene, 120+1, 35-1) == (i, 3)
-            @test pick(scene, 120-1, 35+1) == (i, 5)
-            @test pick(scene, 120+1, 35+1) == (i, 6)
+            @test pick(scene, 100 - 1, 35 - 1) == (i, 1)
+            @test pick(scene, 100 + 1, 35 - 1) == (i, 2)
+            @test pick(scene, 100 - 1, 35 + 1) == (i, 4)
+            @test pick(scene, 100 + 1, 35 + 1) == (i, 5)
+
+            @test pick(scene, 120 - 1, 35 - 1) == (i, 2)
+            @test pick(scene, 120 + 1, 35 - 1) == (i, 3)
+            @test pick(scene, 120 - 1, 35 + 1) == (i, 5)
+            @test pick(scene, 120 + 1, 35 + 1) == (i, 6)
 
             # reversed axis check
             @test pick(scene, 200, 30) == (i2, 1)
@@ -166,29 +167,29 @@
                 )
                 @test pick(scene, p) == (nothing, 0)
             end
-            
+
             # cell centered checks
-            @test pick(scene,  90,  90) == (s, 1)
-            @test pick(scene, 110,  90) == (s, 2)
-            @test pick(scene, 130,  90) == (s, 3)
-            @test pick(scene,  90, 100) == (s, 4)
+            @test pick(scene, 90, 90) == (s, 1)
+            @test pick(scene, 110, 90) == (s, 2)
+            @test pick(scene, 130, 90) == (s, 3)
+            @test pick(scene, 90, 100) == (s, 4)
             @test pick(scene, 110, 100) == (s, 5)
             @test pick(scene, 130, 100) == (s, 6)
 
             # precise check (around cell intersection)
-            @test pick(scene,  95-1, 95-1) == (s, 1)
-            @test pick(scene,  95+1, 95-1) == (s, 2)
-            @test pick(scene,  95-1, 95+1) == (s, 4)
-            @test pick(scene,  95+1, 95+1) == (s, 5)
-            
-            @test pick(scene, 125-1, 95-1) == (s, 2)
-            @test pick(scene, 125+1, 95-1) == (s, 3)
-            @test pick(scene, 125-1, 95+1) == (s, 5)
-            @test pick(scene, 125+1, 95+1) == (s, 6)
+            @test pick(scene, 95 - 1, 95 - 1) == (s, 1)
+            @test pick(scene, 95 + 1, 95 - 1) == (s, 2)
+            @test pick(scene, 95 - 1, 95 + 1) == (s, 4)
+            @test pick(scene, 95 + 1, 95 + 1) == (s, 5)
+
+            @test pick(scene, 125 - 1, 95 - 1) == (s, 2)
+            @test pick(scene, 125 + 1, 95 - 1) == (s, 3)
+            @test pick(scene, 125 - 1, 95 + 1) == (s, 5)
+            @test pick(scene, 125 + 1, 95 + 1) == (s, 6)
 
             # reversed axis check
-            @test pick(scene, 200,  90) == (s2, 1)
-            @test pick(scene, 190,  90) == (s2, 2)
+            @test pick(scene, 200, 90) == (s2, 1)
+            @test pick(scene, 190, 90) == (s2, 2)
             @test pick(scene, 200, 100) == (s2, 3)
             @test pick(scene, 190, 100) == (s2, 4)
         end
@@ -201,12 +202,12 @@
                 )
                 @test pick(scene, p) == (nothing, 0)
             end
-            
+
             # cell centered checks
-            @test pick(scene,  80, 140) == (hm, 1)
+            @test pick(scene, 80, 140) == (hm, 1)
             @test pick(scene, 110, 140) == (hm, 2)
             @test pick(scene, 140, 140) == (hm, 3)
-            @test pick(scene,  80, 170) == (hm, 4)
+            @test pick(scene, 80, 170) == (hm, 4)
             @test pick(scene, 110, 170) == (hm, 5)
             @test pick(scene, 140, 170) == (hm, 6)
 
@@ -215,7 +216,7 @@
             @test pick(scene, 96, 154) == (hm, 2)
             @test pick(scene, 94, 156) == (hm, 4)
             @test pick(scene, 96, 156) == (hm, 5)
-            
+
             @test pick(scene, 124, 154) == (hm, 2)
             @test pick(scene, 126, 154) == (hm, 3)
             @test pick(scene, 124, 156) == (hm, 5)
@@ -232,10 +233,10 @@
             @test pick(scene, 80, 200)[1] == m
             @test pick(scene, 79, 200) == (nothing, 0)
             @test pick(scene, 80, 199) == (nothing, 0)
-            @test pick(scene,  81, 201) == (m, 3)
-            @test pick(scene,  81, 225) == (m, 3)
+            @test pick(scene, 81, 201) == (m, 3)
+            @test pick(scene, 81, 225) == (m, 3)
             @test pick(scene, 105, 201) == (m, 3)
-            @test pick(scene,  85, 229) == (m, 4)
+            @test pick(scene, 85, 229) == (m, 4)
             @test pick(scene, 109, 205) == (m, 4)
             @test pick(scene, 109, 229) == (m, 4)
             @test pick(scene, 109, 229)[1] == m
@@ -251,35 +252,35 @@
                 )
                 @test pick(scene, p) == (nothing, 0)
             end
-            
+
             # cell centered checks
-            @test pick(scene,  80, 260) == (vx, 1)
+            @test pick(scene, 80, 260) == (vx, 1)
             @test pick(scene, 110, 260) == (vx, 2)
             @test pick(scene, 140, 260) == (vx, 3)
-            @test pick(scene,  80, 290) == (vx, 4)
+            @test pick(scene, 80, 290) == (vx, 4)
             @test pick(scene, 110, 290) == (vx, 5)
             @test pick(scene, 140, 290) == (vx, 6)
 
             # precise check (around cell intersection)
-            @test pick(scene,  94, 274) == (vx, 1)
-            @test pick(scene,  96, 274) == (vx, 2)
-            @test pick(scene,  94, 276) == (vx, 4)
-            @test pick(scene,  96, 276) == (vx, 5)
-            
+            @test pick(scene, 94, 274) == (vx, 1)
+            @test pick(scene, 96, 274) == (vx, 2)
+            @test pick(scene, 94, 276) == (vx, 4)
+            @test pick(scene, 96, 276) == (vx, 5)
+
             @test pick(scene, 124, 274) == (vx, 2)
             @test pick(scene, 126, 274) == (vx, 3)
             @test pick(scene, 124, 276) == (vx, 5)
             @test pick(scene, 126, 276) == (vx, 6)
         end
-        
+
         @testset "volume" begin
-            # volume doesn't produce indices because we can't resolve the depth of 
+            # volume doesn't produce indices because we can't resolve the depth of
             # the pick
-            @test pick(scene,  80, 320)[1] == vol
-            @test pick(scene,  79, 320) == (nothing, 0)
-            @test pick(scene,  80, 319) == (nothing, 0)
-            @test pick(scene,  81, 321) == (vol, 0)
-            @test pick(scene,  81, 349) == (vol, 0)
+            @test pick(scene, 80, 320)[1] == vol
+            @test pick(scene, 79, 320) == (nothing, 0)
+            @test pick(scene, 80, 319) == (nothing, 0)
+            @test pick(scene, 81, 321) == (vol, 0)
+            @test pick(scene, 81, 349) == (vol, 0)
             @test pick(scene, 109, 321) == (vol, 0)
             @test pick(scene, 109, 349) == (vol, 0)
             @test pick(scene, 109, 349)[1] == vol
@@ -301,27 +302,27 @@
             @test pick(scene, 40, 218, 10) == (l2, 5)
         end
         @testset "linesegments" begin
-            @test pick(scene,  5, 280, 10) == (ls, 6)
+            @test pick(scene, 5, 280, 10) == (ls, 6)
         end
-        @testset "text" begin        
+        @testset "text" begin
             @test pick(scene, 32, 320, 10) == (t, 1)
             @test pick(scene, 35, 320, 10) == (t, 3)
         end
         @testset "image" begin
-            @test pick(scene,  98, 15, 10) == (i, 1)
+            @test pick(scene, 98, 15, 10) == (i, 1)
             @test pick(scene, 102, 15, 10) == (i, 2)
             @test pick(scene, 200, 15, 10) == (i2, 1)
             @test pick(scene, 190, 15, 10) == (i2, 2)
         end
         @testset "surface" begin
-            @test pick(scene,  93, 75, 10) == (s, 1)
-            @test pick(scene,  97, 75, 10) == (s, 2)
+            @test pick(scene, 93, 75, 10) == (s, 1)
+            @test pick(scene, 97, 75, 10) == (s, 2)
             @test pick(scene, 200, 75, 10) == (s2, 1)
             @test pick(scene, 190, 75, 10) == (s2, 2)
         end
         @testset "heatmap" begin
-            @test pick(scene,  93, 120, 10) == (hm, 1)
-            @test pick(scene,  97, 120, 10) == (hm, 2)
+            @test pick(scene, 93, 120, 10) == (hm, 1)
+            @test pick(scene, 97, 120, 10) == (hm, 2)
             @test pick(scene, 200, 120, 10) == (hm2, 1)
             @test pick(scene, 190, 120, 10) == (hm2, 2)
         end
@@ -329,11 +330,11 @@
             @test pick(scene, 115, 230, 10) == (m, 4)
         end
         @testset "voxel" begin
-            @test pick(scene,  93, 240, 10) == (vx, 1)
-            @test pick(scene,  97, 240, 10) == (vx, 2)
+            @test pick(scene, 93, 240, 10) == (vx, 1)
+            @test pick(scene, 97, 240, 10) == (vx, 2)
         end
         @testset "volume" begin
-            @test pick(scene,  75, 320, 10) == (vol, 0)
+            @test pick(scene, 75, 320, 10) == (vol, 0)
         end
         @testset "range" begin
             # mesh!(scene, Rect2f(200, 330, 10, 10))
@@ -418,7 +419,7 @@
     # pick(scene, Rect)
     # grab all indices and generate a plot for them (w/ fixed px_per_unit)
     full_screen = last.(pick(scene, scene.viewport[]))
-    
+
     scene2 = Scene(size = 2.0 .* widths(scene.viewport[]))
     campixel!(scene2)
     image!(scene2, full_screen, colormap = :viridis)
