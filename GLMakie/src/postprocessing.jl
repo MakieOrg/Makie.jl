@@ -310,8 +310,6 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
 end
 
 function destroy!(pp::PostProcessor)
-    while !isempty(pp.robjs)
-        destroy!(pop!(pp.robjs))
-    end
+    foreach(destroy!, pp.robjs)
     return
 end
