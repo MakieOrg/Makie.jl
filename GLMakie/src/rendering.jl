@@ -28,6 +28,7 @@ Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
+    GLAbstraction.require_context(nw)
     ShaderAbstractions.switch_context!(nw)
 
     function sortby(x)

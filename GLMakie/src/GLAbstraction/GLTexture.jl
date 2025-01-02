@@ -39,6 +39,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             context,
             Observables.ObserverFunction[]
         )
+        GLAbstraction.require_context(context)
         finalizer(verify_free, tex)
         tex
     end

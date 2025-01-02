@@ -18,7 +18,7 @@ const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
 function cleanup_texture_atlas!(context)
     to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
-    require_context(context)
+    # require_context(context)
     for (atlas, ctx) in to_delete
         tex, func = pop!(atlas_texture_cache, (atlas, ctx))
         Makie.remove_font_render_callback!(atlas, func)

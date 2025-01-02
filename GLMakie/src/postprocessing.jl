@@ -79,6 +79,7 @@ end
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
+    require_context(shader_cache.context)
     ShaderAbstractions.switch_context!(shader_cache.context)
     # Add missing buffers
     if !haskey(framebuffer, :position)
@@ -101,8 +102,6 @@ function ssao_postprocessor(framebuffer, shader_cache)
         end
         push!(framebuffer.render_buffer_ids, normal_occ_id)
     end
-
-    require_context(shader_cache.context)
 
     # SSAO setup
     N_samples = 64
@@ -208,6 +207,7 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
+    require_context(shader_cache.context)
     ShaderAbstractions.switch_context!(shader_cache.context)
 
     # Add missing buffers
@@ -222,8 +222,6 @@ function fxaa_postprocessor(framebuffer, shader_cache)
             luma_id = framebuffer[:HDR_color][1]
         end
     end
-
-    require_context(shader_cache.context)
 
     # calculate luma for FXAA
     shader1 = LazyShader(

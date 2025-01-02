@@ -346,6 +346,7 @@ function RenderObject(
         pre::Pre, post,
         context=current_context()
     ) where Pre
+    require_context(context)
     switch_context!(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
@@ -374,6 +375,7 @@ function RenderObject(
             # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
             # In these cases an explicit conversion target is required
             if targets[k] isa GPUArray
+                GLAbstraction.require_context(nw)
                 data[k] = gl_convert(context, targets[k], v)
             else
                 data[k] = gl_convert(targets[k], v)
