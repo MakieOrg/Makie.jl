@@ -319,6 +319,7 @@ function reopen!(screen::Screen)
     @debug("reopening screen")
     gl = screen.glscreen
     @assert !was_destroyed(gl)
+    @assert GLAbstraction.context_alive(gl)
     if GLFW.WindowShouldClose(gl)
         GLFW.SetWindowShouldClose(gl, false)
     end
@@ -330,30 +331,39 @@ function reopen!(screen::Screen)
 end
 
 function screen_from_pool(debugging; window=nothing)
-    screen = if isempty(SCREEN_REUSE_POOL)
-        @debug("create empty screen for pool")
-        empty_screen(debugging; window)
-    else
-        @debug("get old screen from pool")
-        pop!(SCREEN_REUSE_POOL)
+    while !isempty(SCREEN_REUSE_POOL)
+        screen = pop!(SCREEN_REUSE_POOL)
+        if GLAbstraction.context_alive(screen.glscreen)
+            @debug("get old screen from pool")
+            return reopen!(screen)
+        else
+            destroy!(screen)
+        end
     end
-    return reopen!(screen)
+
+    @debug("create empty screen for pool")
+    return reopen!(empty_screen(debugging; window))
 end
 
 const SINGLETON_SCREEN = Screen[]
 
 function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
-        @debug("reusing singleton screen")
-        screen = SINGLETON_SCREEN[1]
-        stop_renderloop!(screen; close_after_renderloop=false)
-        empty!(screen)
-    else
-        @debug("new singleton screen")
-        # reuse=false, because we "manually" re-use the singleton screen!
-        screen = empty_screen(debugging; reuse=false)
-        push!(SINGLETON_SCREEN, screen)
+        if GLAbstraction.context_alive(SINGLETON_SCREEN[1].glscreen)
+            @debug("reusing singleton screen")
+            screen = SINGLETON_SCREEN[1]
+            stop_renderloop!(screen; close_after_renderloop=false)
+            empty!(screen)
+            return reopen!(screen)
+        else
+            destroy!(pop!(SINGLETON_SCREEN))
+        end
     end
+
+    @debug("new singleton screen")
+    # reuse=false, because we "manually" re-use the singleton screen!
+    screen = empty_screen(debugging; reuse=false)
+    push!(SINGLETON_SCREEN, screen)
     return reopen!(screen)
 end
 
