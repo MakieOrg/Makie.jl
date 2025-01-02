@@ -455,6 +455,7 @@ function unsafe_free(x::GLProgram)
     GLAbstraction.context_alive(x.context) || return
     GLAbstraction.switch_context!(x.context)
     glDeleteProgram(x.id)
+    x.id = 0
     return
 end
 
@@ -463,6 +464,7 @@ function unsafe_free(x::Shader)
     GLAbstraction.context_alive(x.context) || return
     GLAbstraction.switch_context!(x.context)
     glDeleteShader(x.id)
+    x.id = 0
     return
 end
 
@@ -504,4 +506,12 @@ function unsafe_free(x::GLVertexArray)
     glDeleteVertexArrays(1, id)
     x.id = 0
     return
+end
+
+function free(x::Shader)
+    @assert x.id == 0 "Must be freed explicitly"
+end
+
+function free(x::GLProgram)
+    @assert x.id == 0 "Must be freed explicitly"
 end

@@ -580,13 +580,13 @@ function destroy!(rob::RenderObject)
             # TODO, refcounting, or leaving freeing to GC...
             # GC is a bit tricky with active contexts, so immediate free is preferred.
             # I guess as long as we make it hard for users to share buffers directly, this should be fine!
-            GLAbstraction.free(v)
+            GLAbstraction.unsafe_free(v)
         end
     end
     for obs in rob.observables
         Observables.clear(obs)
     end
-    GLAbstraction.free(rob.vertexarray)
+    GLAbstraction.unsafe_free(rob.vertexarray)
 end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
@@ -647,6 +647,7 @@ function destroy!(screen::Screen)
     GLFW.SetWindowRefreshCallback(window, nothing)
     GLFW.SetWindowContentScaleCallback(window, nothing)
     cleanup_texture_atlas!(window)
+    GLAbstraction.unsafe_free(screen.shader_cache)
     destroy!(window)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)

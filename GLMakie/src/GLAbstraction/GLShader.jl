@@ -103,6 +103,20 @@ function ShaderCache(context)
     )
 end
 
+function unsafe_free(cache::ShaderCache)
+    require_context(cache.context)
+    for (k, v) in cache.shader_cache
+        for (k2, shader) in v
+            unsafe_free(shader)
+        end
+    end
+    for program in values(cache.program_cache)
+        unsafe_free(program)
+    end
+    require_context(cache.context)
+    return
+end
+
 abstract type AbstractLazyShader end
 
 struct LazyShader <: AbstractLazyShader
