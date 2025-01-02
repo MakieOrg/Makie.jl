@@ -177,7 +177,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             a = viewport(scene)[]
             glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
-            data1[:projection] = scene.camera.projection[]
+            data1[:projection] = Mat4f(scene.camera.projection[])
             data1[:bias] = scene.ssao.bias[]
             data1[:radius] = scene.ssao.radius[]
             GLAbstraction.render(pass1)
