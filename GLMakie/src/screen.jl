@@ -641,22 +641,27 @@ end
 
 function destroy!(screen::Screen)
     @debug("Destroy screen!")
-    close(screen; reuse=false)
-    @assert screen.rendertask === nothing
     window = screen.glscreen
-    GLFW.SetWindowRefreshCallback(window, nothing)
-    GLFW.SetWindowContentScaleCallback(window, nothing)
+    if context_alive(window)
+        close(screen; reuse=false)
+        GLFW.SetWindowRefreshCallback(window, nothing)
+        GLFW.SetWindowContentScaleCallback(window, nothing)
+    else
+        stop_renderloop!(screen; close_after_renderloop=false)
+        empty!(screen)
+    end
+    @assert screen.rendertask === nothing
     foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
     destroy!(screen.framebuffer)
     cleanup_texture_atlas!(window)
     GLAbstraction.free(screen.shader_cache)
-    destroy!(window)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)
     delete!(ALL_SCREENS, screen)
     if screen in SINGLETON_SCREEN
         empty!(SINGLETON_SCREEN)
     end
+    destroy!(window)
     return
 end
 
@@ -668,15 +673,15 @@ Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=t
 """
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
+    if !context_alive(screen.glscene)
+        destroy!(screen)
+    end
+
     # TODO: CI sometimes fails to adjust visibility with a GLFW init error
     # This should not stop us from cleaning up OpenGL objects!
-    try
-        set_screen_visibility!(screen, false)
-        if screen.window_open[] # otherwise we trigger an infinite loop of closing
-            screen.window_open[] = false
-        end
-    catch e
-        @error exception = e
+    set_screen_visibility!(screen, false)
+    if screen.window_open[] # otherwise we trigger an infinite loop of closing
+        screen.window_open[] = false
     end
 
     stop_renderloop!(screen; close_after_renderloop=false)

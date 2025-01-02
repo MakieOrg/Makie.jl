@@ -442,8 +442,9 @@ include("GLRenderObject.jl")
 function free(x)
     # don't free if already freed
     x.id == 0 && return
-    # error if the context is incorrect
-    require_context(x.context)
+    # warn if the context is incorrect
+    # require_context(x.context)
+    context_alive(x.context) || @warn "Context died before OpenGL objects were freed."
     try
         unsafe_free(x)
     catch e

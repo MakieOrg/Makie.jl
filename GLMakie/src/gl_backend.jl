@@ -47,6 +47,7 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
     end
 
     tex, func = get!(atlas_texture_cache, (atlas, context)) do
+        require_context(context)
         tex = Texture(
             context, atlas.data,
             minfilter = :linear,
