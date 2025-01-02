@@ -118,7 +118,7 @@ end
 
 gl_convert(shader::GLProgram, data) = shader
 
-function compile_shader(source::ShaderSource, template_src::String)
+function compile_shader(context, source::ShaderSource, template_src::String)
     name = source.name
     shaderid = createshader(source.typ)
     glShaderSource(shaderid, template_src)
@@ -127,7 +127,7 @@ function compile_shader(source::ShaderSource, template_src::String)
         GLAbstraction.print_with_lines(template_src)
         @warn("shader $(name) didn't compile. \n$(GLAbstraction.getinfolog(shaderid))")
     end
-    return Shader(name, Vector{UInt8}(template_src), source.typ, shaderid)
+    return Shader(name, Vector{UInt8}(template_src), source.typ, shaderid, context)
 end
 
 
@@ -137,14 +137,14 @@ function get_shader!(cache::ShaderCache, src::ShaderSource, template_replacement
     return get!(shader_dict, template_replacement) do
         templated_source = mustache_replace(template_replacement, src.source)
         ShaderAbstractions.switch_context!(cache.context)
-        return compile_shader(src, templated_source)
+        return compile_shader(cache.context, src, templated_source)
     end::Shader
 end
 
 function get_template!(cache::ShaderCache, src::ShaderSource, view, attributes)
     return get!(cache.template_cache, src.name) do
         templated_source, replacements = template2source(src.source, view, attributes)
-        shader = compile_shader(src, templated_source)
+        shader = compile_shader(cache.context, src, templated_source)
         template_keys = collect(keys(replacements))
         template_replacements = collect(values(replacements))
         # can't yet be in here, since we didn't even have template keys

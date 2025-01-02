@@ -57,7 +57,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
             # opaque.a   = 0 * src.a   + 1 * opaque.a
             glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
         end,
-        nothing
+        nothing, shader_cache.context
     )
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
@@ -79,6 +79,7 @@ end
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
+    ShaderAbstractions.switch_context!(shader_cache.context)
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -133,7 +134,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :bias => 0.025f0,
         :radius => 0.5f0
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
+    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
 
 
@@ -150,7 +151,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
         :blur_range => Int32(2)
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
+    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
 
@@ -203,6 +204,8 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
+    ShaderAbstractions.switch_context!(shader_cache.context)
+
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
@@ -226,7 +229,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         :color_texture => framebuffer[:color][2],
         :object_ids => framebuffer[:objectid][2]
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
+    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
 
     # perform FXAA
@@ -239,7 +242,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         :color_texture => getfallback(framebuffer, :color_luma, :HDR_color)[2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
+    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
     color_id = framebuffer[:color][1]
@@ -282,7 +285,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     data = Dict{Symbol, Any}(
         :color_texture => framebuffer[:color][2]
     )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
     full_render = screen -> begin

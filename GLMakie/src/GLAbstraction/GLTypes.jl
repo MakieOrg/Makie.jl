@@ -27,9 +27,10 @@ struct Shader
     typ::GLenum
     id::GLuint
     context::GLContext
-    function Shader(name, source, typ, id)
-        new(Symbol(name), source, typ, id, current_context())
-    end
+end
+
+function Shader(name, source, typ, id)
+    new(Symbol(name), source, typ, id, current_context())
 end
 
 function Shader(name, source::Vector{UInt8}, typ)

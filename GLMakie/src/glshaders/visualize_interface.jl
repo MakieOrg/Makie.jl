@@ -105,7 +105,7 @@ function assemble_shader(data)
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
 
-    robj = RenderObject(data, shader, pre, shader.screen.glscreen)
+    robj = RenderObject(data, shader, pre, nothing, shader.screen.glscreen)
 
     post = if haskey(data, :instances)
         GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)

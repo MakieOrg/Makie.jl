@@ -280,7 +280,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     ShaderAbstractions.switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(initial_resolution)
+    fb = GLFramebuffer(window, initial_resolution)
     postprocessors = [
         empty_postprocessor(),
         empty_postprocessor(),
@@ -642,10 +642,7 @@ end
 function destroy!(screen::Screen)
     @debug("Destroy screen!")
     close(screen; reuse=false)
-    # wait for rendertask to finish
-    # otherwise, during rendertask clean up we may run into a destroyed window
-    wait(screen)
-    screen.rendertask = nothing
+    @assert screen.rendertask === nothing
     window = screen.glscreen
     GLFW.SetWindowRefreshCallback(window, nothing)
     GLFW.SetWindowContentScaleCallback(window, nothing)
@@ -671,8 +668,9 @@ function Base.close(screen::Screen; reuse=true)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
         screen.window_open[] = false
     end
-    empty!(screen)
+
     stop_renderloop!(screen; close_after_renderloop=false)
+    empty!(screen)
 
     if reuse && screen.reuse
         @debug("reusing screen!")
