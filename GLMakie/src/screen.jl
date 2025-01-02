@@ -706,6 +706,12 @@ function closeall(; empty_shader=true)
         screen = pop!(ALL_SCREENS)
         destroy!(screen)
     end
+
+    if !isempty(atlas_texture_cache)
+        @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
+        empty!(atlas_texture_cache)
+    end
+
     empty!(SINGLETON_SCREEN)
     empty!(SCREEN_REUSE_POOL)
     return
