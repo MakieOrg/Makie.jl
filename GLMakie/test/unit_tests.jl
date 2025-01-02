@@ -488,6 +488,8 @@ end
 end
 
 @testset "gl Object deletion" begin
+    GLMakie.closeall()
+
     # image so we have a user generated texture in the mix
     # texture atlas is triggered by text
     # include SSAO to make sure its cleanup works too
@@ -509,6 +511,7 @@ end
     GLMakie.destroy!(screen)
 
     @testset "Texture Atlas" begin
+        @test !isempty(atlas_textures)
         for tex in atlas_textures
             @test tex.id == 0
         end
@@ -516,15 +519,18 @@ end
 
     @testset "Framebuffer" begin
         @test framebuffer.id == 0
+        @test !isempty(framebuffer_textures)
         for (k, tex) in framebuffer_textures
             @test tex.id == 0
         end
     end
 
     @testset "ShaderCache" begin
+        @test !isempty(shaders)
         for shader in shaders
             @test shader.id == 0
         end
+        @test !isempty(programs)
         for program in programs
             @test program.id == 0
         end
@@ -559,6 +565,7 @@ end
     end
 
     @testset "RenderObjects" begin
+        @test !isempty(robjs)
         for robj in robjs
             validate_robj(robj)
         end
