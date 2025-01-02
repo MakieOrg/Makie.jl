@@ -87,8 +87,8 @@ function check_framebuffer()
 end
 
 Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
-    require_context(context)
     ShaderAbstractions.switch_context!(context)
+    require_context(context)
 
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()

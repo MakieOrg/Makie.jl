@@ -346,8 +346,8 @@ function RenderObject(
         pre::Pre, post,
         context=current_context()
     ) where Pre
-    require_context(context)
     switch_context!(context)
+    require_context(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
     # not rendering on demand. A cleaner implementation should probably go
