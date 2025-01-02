@@ -36,7 +36,7 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
             return true
         else
             @error("Cached atlas textures should be removed explicitly! $ctx")
-            println("Reason:", GLFW.is_initialized() ? "" : " not initialized", was_destroyed(x) ? " destroyed" : "")
+            println("Reason:", GLFW.is_initialized() ? "" : " not initialized", was_destroyed(ctx) ? " destroyed" : "")
             Base.show_backtrace(stdout, Base.catch_backtrace())
             flush(stdout)
             tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
