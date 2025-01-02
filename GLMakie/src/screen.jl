@@ -569,7 +569,7 @@ function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
-    tex = get_texture!(gl_texture_atlas())
+    tex = get_texture!(rob.context, gl_texture_atlas())
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)
@@ -646,6 +646,7 @@ function destroy!(screen::Screen)
     window = screen.glscreen
     GLFW.SetWindowRefreshCallback(window, nothing)
     GLFW.SetWindowContentScaleCallback(window, nothing)
+    cleanup_texture_atlas!(window)
     destroy!(window)
     # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)

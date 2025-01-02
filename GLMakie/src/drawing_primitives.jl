@@ -431,7 +431,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 gl_attributes[:shape] = shape
                 get!(gl_attributes, :distancefield) do
                     if shape[] === Cint(DISTANCEFIELD)
-                        return get_texture!(atlas)
+                        return get_texture!(screen.glscreen, atlas)
                     else
                         return nothing
                     end
@@ -642,7 +642,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:quad_offset] = quad_offset
         gl_attributes[:marker_offset] = char_offset
         gl_attributes[:uv_offset_width] = uv_offset_width
-        gl_attributes[:distancefield] = get_texture!(atlas)
+        gl_attributes[:distancefield] = get_texture!(screen.glscreen, atlas)
         gl_attributes[:visible] = plot.visible
         gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
         gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
@@ -740,7 +740,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-    
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -760,7 +760,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     elseif to_value(color) isa ShaderAbstractions.Sampler
         gl_attributes[:image] = Texture(lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)    
+        delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)

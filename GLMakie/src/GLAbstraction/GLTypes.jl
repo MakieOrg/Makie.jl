@@ -21,16 +21,18 @@ cardinality(x) = length(x)
 cardinality(x::Number) = 1
 cardinality(x::Type{T}) where {T <: Number} = 1
 
-struct Shader
+mutable struct Shader
     name::Symbol
     source::Vector{UInt8}
     typ::GLenum
     id::GLuint
     context::GLContext
-end
 
-function Shader(name, source, typ, id)
-    new(Symbol(name), source, typ, id, current_context())
+    function Shader(name, source, typ, id, context = current_context())
+        obj = new(Symbol(name), source, typ, id, context)
+        finalizer(free, obj)
+        return obj
+    end
 end
 
 function Shader(name, source::Vector{UInt8}, typ)
@@ -453,6 +455,14 @@ function unsafe_free(x::GLProgram)
     GLAbstraction.context_alive(x.context) || return
     GLAbstraction.switch_context!(x.context)
     glDeleteProgram(x.id)
+    return
+end
+
+function unsafe_free(x::Shader)
+    x.id == 0 && return
+    GLAbstraction.context_alive(x.context) || return
+    GLAbstraction.switch_context!(x.context)
+    glDeleteShader(x.id)
     return
 end
 

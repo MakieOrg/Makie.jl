@@ -16,23 +16,32 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function get_texture!(atlas::Makie.TextureAtlas)
-    current_ctx = GLAbstraction.current_context()
-    if !GLAbstraction.context_alive(current_ctx)
-        return nothing
+function cleanup_texture_atlas!(context)
+    to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
+    require_context(context)
+    for (atlas, ctx) in to_delete
+        tex, func = pop!(atlas_texture_cache, (atlas, ctx))
+        Makie.remove_font_render_callback!(atlas, func)
+        GLAbstraction.free(tex)
     end
+    return
+end
+
+function get_texture!(context, atlas::Makie.TextureAtlas)
+    require_context(context)
 
     # clean up dead context!
     filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
             return true
         else
+            @error("Cached atlas textures should be removed explicitly! $ctx")
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
     end
 
-    tex, func = get!(atlas_texture_cache, (pointer(atlas.data), current_ctx)) do
+    tex, func = get!(atlas_texture_cache, (atlas, context)) do
         tex = Texture(
                 atlas.data,
                 minfilter = :linear,
