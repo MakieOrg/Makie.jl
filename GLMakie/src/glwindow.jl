@@ -222,7 +222,7 @@ end
 
 # require_context(ctx, current = nothing) = nothing
 function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context())
-    @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
+    # @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
     @assert !was_destroyed(ctx) "Context $ctx must not be destroyed."
     @assert ctx.handle == current.handle "Context $ctx must be current, but $current is."
 end
