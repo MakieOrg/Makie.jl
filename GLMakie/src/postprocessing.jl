@@ -84,7 +84,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         position_buffer = Texture(
-            Vec3f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+            shader_cache.context, Vec3f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
         pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
         push!(framebuffer.render_buffer_ids, pos_id)
@@ -93,7 +93,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             normal_occlusion_buffer = Texture(
-                Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+                shader_cache.context, Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
             )
             normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
         else
@@ -128,7 +128,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :normal_occlusion_buffer => getfallback(framebuffer, :normal_occlusion, :HDR_color)[2],
         :kernel => kernel,
         :noise => Texture(
-            [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
+            shader_cache.context, [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
             minfilter = :nearest, x_repeat = :repeat
         ),
         :noise_scale => map(s -> Vec2f(s ./ 4.0), framebuffer.resolution),
@@ -215,7 +215,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             color_luma_buffer = Texture(
-                RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
+                shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
             )
             luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
         else

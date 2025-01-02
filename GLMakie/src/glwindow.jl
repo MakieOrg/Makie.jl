@@ -96,25 +96,25 @@ Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
     # Buffers we always need
     # Holds the image that eventually gets displayed
     color_buffer = Texture(
-        RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # Holds a (plot id, element id) for point picking
     objectid_buffer = Texture(
-        Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # holds depth and stencil values
     depth_buffer = Texture(
-        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
+        context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
         minfilter = :nearest, x_repeat = :clamp_to_edge,
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
     # Order Independent Transparency
     HDR_color_buffer = Texture(
-        RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
+        context, RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
     )
     OIT_weight_buffer = Texture(
-        N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)

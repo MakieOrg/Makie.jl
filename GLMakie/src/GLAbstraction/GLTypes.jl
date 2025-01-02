@@ -178,7 +178,7 @@ mutable struct GLVertexArray{T}
     indices::T
     context::GLContext
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
-        va = new(program, id, bufferlength, buffers, indices, current_context())
+        va = new(program, id, bufferlength, buffers, indices, program.context)
         return va
     end
 end
@@ -251,6 +251,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
 end
 using ShaderAbstractions: Buffer
 function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
+    ShaderAbstractions.switch_context!(program.context)
     # get the size of the first array, to assert later, that all have the same size
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -258,7 +259,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
         array = getproperty(buffers, property_name)
         attribute = string(property_name)
         # TODO: use glVertexAttribDivisor to allow multiples of the longest buffer
-        buffer = GLBuffer(array)
+        buffer = GLBuffer(program.context, array)
         bind(buffer)
         attribLocation = get_attribute_location(program.id, attribute)
         if attribLocation == -1
@@ -372,7 +373,11 @@ function RenderObject(
             # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
             # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
             # In these cases an explicit conversion target is required
-            data[k] = gl_convert(targets[k], v)
+            if targets[k] isa GPUArray
+                data[k] = gl_convert(context, targets[k], v)
+            else
+                data[k] = gl_convert(targets[k], v)
+            end
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
 

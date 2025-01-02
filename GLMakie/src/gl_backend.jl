@@ -45,15 +45,15 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
 
     tex, func = get!(atlas_texture_cache, (atlas, context)) do
         tex = Texture(
-                atlas.data,
-                minfilter = :linear,
-                magfilter = :linear,
-                # TODO: Consider alternatives to using the builtin anisotropic
-                # samplers for signed distance fields; the anisotropic
-                # filtering should happen *after* the SDF thresholding, but
-                # with the builtin sampler it happens before.
-                anisotropic = 16f0,
-                mipmap = true
+            context, atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            # TODO: Consider alternatives to using the builtin anisotropic
+            # samplers for signed distance fields; the anisotropic
+            # filtering should happen *after* the SDF thresholding, but
+            # with the builtin sampler it happens before.
+            anisotropic = 16f0,
+            mipmap = true
         )
         # update the texture, whenever a new font is added to the atlas
         function callback(distance_field, rectangle)

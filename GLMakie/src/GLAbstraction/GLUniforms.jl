@@ -198,7 +198,7 @@ gl_convert(x::T) where {T <: AbstractMesh} = gl_convert(x)
 gl_convert(x::T) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 gl_convert(x::Observable{T}) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 
-gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
+gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(current_context(), s)
 gl_convert(s::Nothing) = s
 
 
@@ -246,7 +246,7 @@ gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)
 gl_convert(x::Vector) = x
 
 function gl_convert(T::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}
-    T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
+    T(current_context(), convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
 end
 
 gl_convert(::Type{<: GLBuffer}, x::GLBuffer; kw_args...) = x
@@ -254,14 +254,14 @@ gl_convert(::Type{Texture}, x::Texture) = x
 gl_convert(::Type{<: GPUArray}, x::GPUArray) = x
 
 function gl_convert(::Type{T}, a::Vector{Array{X, 2}}; kw_args...) where {T <: Texture, X}
-    T(a; kw_args...)
+    T(current_context(), a; kw_args...)
 end
 gl_convert(::Type{<: GPUArray}, a::Observable{<: StaticVector}) = gl_convert(a)
 
 function gl_convert(::Type{T}, a::Observable{<: AbstractArray{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
-    T(s; kw_args...)
+    T(current_context(), s; kw_args...)
 end
 
 gl_convert(f::Function, a) = f(a)
