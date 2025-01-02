@@ -667,23 +667,30 @@ Closes screen and empties it.
 Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
-    @debug("Close screen!")
-    set_screen_visibility!(screen, false)
-    if screen.window_open[] # otherwise we trigger an infinite loop of closing
-        screen.window_open[] = false
-    end
+    try
+        @debug("Close screen!")
+        set_screen_visibility!(screen, false)
+        if screen.window_open[] # otherwise we trigger an infinite loop of closing
+            screen.window_open[] = false
+        end
 
-    stop_renderloop!(screen; close_after_renderloop=false)
-    empty!(screen)
+        stop_renderloop!(screen; close_after_renderloop=false)
+        empty!(screen)
 
-    if reuse && screen.reuse
-        @debug("reusing screen!")
-        push!(SCREEN_REUSE_POOL, screen)
+        if reuse && screen.reuse
+            @debug("reusing screen!")
+            push!(SCREEN_REUSE_POOL, screen)
+        end
+        GLFW.SetWindowShouldClose(screen.glscreen, true)
+        GLFW.PollEvents()
+        # Somehow, on osx, we need to hide the screen a second time!
+        set_screen_visibility!(screen, false)
+    catch e
+        # TODO: CI sometimes fails to adjust visibility with a GLFW init error
+        # This should not stop us from cleaning up OpenGL objects!
+        empty!(screen)
+        rethrow(e)
     end
-    GLFW.SetWindowShouldClose(screen.glscreen, true)
-    GLFW.PollEvents()
-    # Somehow, on osx, we need to hide the screen a second time!
-    set_screen_visibility!(screen, false)
     return
 end
 
