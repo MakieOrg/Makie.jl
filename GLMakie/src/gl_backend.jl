@@ -36,6 +36,8 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
             return true
         else
             @error("Cached atlas textures should be removed explicitly! $ctx")
+            Base.show_backtrace(stdout, Base.catch_backtrace())
+            tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
