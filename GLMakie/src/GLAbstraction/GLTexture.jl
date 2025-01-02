@@ -25,7 +25,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             internalformat  ::GLenum,
             format          ::GLenum,
             parameters      ::TextureParameters{NDIM},
-            size            ::NTuple{NDIM, Int}
+            size            ::NTuple{NDIM, Int},
+            context = current_context()
         )  where {T, NDIM}
         tex = new(
             id,
@@ -35,10 +36,10 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format,
             parameters,
             size,
-            current_context(),
+            context,
             Observables.ObserverFunction[]
         )
-        finalizer(free, tex)
+        finalizer(verify_free, tex)
         tex
     end
 end
@@ -64,9 +65,9 @@ end
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
 
-function unsafe_free(tb::TextureBuffer)
-    unsafe_free(tb.texture)
-    unsafe_free(tb.buffer)
+function free(tb::TextureBuffer)
+    free(tb.texture)
+    free(tb.buffer)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY

@@ -30,7 +30,7 @@ mutable struct Shader
 
     function Shader(name, source, typ, id, context = current_context())
         obj = new(Symbol(name), source, typ, id, context)
-        finalizer(free, obj)
+        finalizer(verify_free, obj)
         return obj
     end
 end
@@ -66,7 +66,7 @@ mutable struct GLProgram
     context::GLContext
     function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple})
         obj = new(id, shader, nametype, uniformloc, current_context())
-        finalizer(free, obj)
+        finalizer(verify_free, obj)
         obj
     end
 end
@@ -246,7 +246,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         indexes = len
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-    finalizer(free, obj)
+    finalizer(verify_free, obj)
     return obj
 end
 using ShaderAbstractions: Buffer
@@ -271,7 +271,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
     glBindVertexArray(0)
     indices = indexbuffer(triangles)
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indices)
-    finalizer(free, obj)
+    finalizer(verify_free, obj)
     return obj
 end
 
@@ -432,7 +432,12 @@ include("GLRenderObject.jl")
 
 ####################################################################################
 # freeing
+
 function free(x)
+    # don't free if already freed
+    x.id == 0 && return
+    # error if the context is incorrect
+    require_context(x.context)
     try
         unsafe_free(x)
     catch e
@@ -451,30 +456,19 @@ end
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
-    x.id == 0 && return
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     glDeleteProgram(x.id)
     x.id = 0
     return
 end
 
 function unsafe_free(x::Shader)
-    x.id == 0 && return
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     glDeleteShader(x.id)
     x.id = 0
     return
 end
 
 function unsafe_free(x::GLBuffer)
-    # don't free if already freed
-    x.id == 0 && return
     clean_up_observables(x)
-    # don't free from other context
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteBuffers(1, id)
     x.id = 0
@@ -482,10 +476,7 @@ function unsafe_free(x::GLBuffer)
 end
 
 function unsafe_free(x::Texture)
-    x.id == 0 && return
     clean_up_observables(x)
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteTextures(x.id)
     x.id = 0
@@ -493,9 +484,6 @@ function unsafe_free(x::Texture)
 end
 
 function unsafe_free(x::GLVertexArray)
-    x.id == 0 && return
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     for (key, buffer) in x.buffers
         unsafe_free(buffer)
     end
@@ -506,24 +494,4 @@ function unsafe_free(x::GLVertexArray)
     glDeleteVertexArrays(1, id)
     x.id = 0
     return
-end
-
-function free(x::Shader)
-    @assert x.id == 0 "Must be freed explicitly"
-end
-
-function free(x::GLProgram)
-    @assert x.id == 0 "Must be freed explicitly"
-end
-
-function free(x::GLBuffer)
-    @assert x.id == 0 "Must be freed explicitly"
-end
-
-function free(x::GLVertexArray)
-    @assert x.id == 0 "Must be freed explicitly"
-end
-
-function free(x::Texture)
-    @assert x.id == 0 "Must be freed explicitly"
 end

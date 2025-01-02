@@ -7,7 +7,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     # TODO maybe also delay upload to when render happens?
     observers::Vector{Observables.ObserverFunction}
 
-    function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
+    function GLBuffer{T}(ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum, context = current_context()) where T
         id = glGenBuffers()
         glBindBuffer(buffertype, id)
         # size of 0 can segfault it seems
@@ -18,7 +18,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         obj = new(
             id, (buff_length,), buffertype, usage, current_context(),
             Observables.ObserverFunction[])
-        finalizer(free, obj)
+        finalizer(verify_free, obj)
         obj
     end
 end

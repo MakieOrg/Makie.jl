@@ -158,8 +158,10 @@ Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
 end
 
 function destroy!(fb::GLFramebuffer)
+    # context required via free(tex)
+    @assert !isempty(fb.buffers)
     for tex in values(fb.buffers)
-        GLAbstraction.unsafe_free(tex)
+        GLAbstraction.free(tex)
     end
     id = [fb.id]
     glDeleteFramebuffers(1, id)

@@ -22,7 +22,7 @@ function cleanup_texture_atlas!(context)
     for (atlas, ctx) in to_delete
         tex, func = pop!(atlas_texture_cache, (atlas, ctx))
         Makie.remove_font_render_callback!(atlas, func)
-        GLAbstraction.unsafe_free(tex)
+        GLAbstraction.free(tex)
     end
     return
 end

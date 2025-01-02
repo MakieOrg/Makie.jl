@@ -97,3 +97,9 @@ function getProgramInfo(p::GLProgram)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_BUFFER_MODE)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_VARYINGS)
 end
+
+function verify_free(obj::T, name = string(T)) where T
+    if obj.id != 0
+        Threads.@spawn println(stderr, "Error: $name has not been freed.")
+    end
+end
