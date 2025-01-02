@@ -646,6 +646,7 @@ function destroy!(screen::Screen)
     window = screen.glscreen
     GLFW.SetWindowRefreshCallback(window, nothing)
     GLFW.SetWindowContentScaleCallback(window, nothing)
+    foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
     cleanup_texture_atlas!(window)
     GLAbstraction.unsafe_free(screen.shader_cache)
     destroy!(window)

@@ -497,10 +497,10 @@ function unsafe_free(x::GLVertexArray)
     GLAbstraction.context_alive(x.context) || return
     GLAbstraction.switch_context!(x.context)
     for (key, buffer) in x.buffers
-        free(buffer)
+        unsafe_free(buffer)
     end
     if x.indices isa GPUArray
-        free(x.indices)
+        unsafe_free(x.indices)
     end
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
@@ -513,5 +513,13 @@ function free(x::Shader)
 end
 
 function free(x::GLProgram)
+    @assert x.id == 0 "Must be freed explicitly"
+end
+
+function free(x::GLBuffer)
+    @assert x.id == 0 "Must be freed explicitly"
+end
+
+function free(x::GLVertexArray)
     @assert x.id == 0 "Must be freed explicitly"
 end
