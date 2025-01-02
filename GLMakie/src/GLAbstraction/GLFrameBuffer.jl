@@ -44,23 +44,33 @@ Activates the first N color buffers attached to the given GLFramebuffer. If N
 is not given all color attachments are activated.
 """
 function set_draw_buffers(fb::GLFramebuffer, N::Integer = fb.counter)
+    require_context(fb.context)
     bind(fb)
     glDrawBuffers(N, fb.attachments)
+    return
 end
 function set_draw_buffers(fb::GLFramebuffer, key::Symbol)
+    require_context(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment(fb, key))
+    return
 end
 function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
+    require_context(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment.(Ref(fb), keys))
+    return
 end
 
 function unsafe_free(x::GLFramebuffer)
     # don't free if already freed
     x.id == 0 && return
     # don't free from other context
-    GLAbstraction.context_alive(x.context) || return
+    if require_cleanup_before_context_deletion()
+        GLAbstraction.context_alive(x.context) || error("Can't delete Program - context not alive.")
+    else
+        GLAbstraction.context_alive(x.context) || return
+    end
     GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteFramebuffers(1, id)
@@ -105,7 +115,8 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
 end
 
 function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
-    haskey(fb, key) && error("Cannot attach $key to Framebuffer because it is already set.")
+    require_context(fb.context)
+    haskey(fb, key) && error("Cannot attach " * string(key) * " to Framebuffer because it is already set.")
     if attachment in fb.attachments
         if attachment == GL_DEPTH_ATTACHMENT
             type = "depth"
@@ -116,13 +127,15 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
         else
             type = "color"
         end
-        error("Cannot attach $key as a $type attachment as it is already attached.")
+        error("Cannot attach " * string(key) * " as a " * type * " attachment as it is already attached.")
     end
 
     try
+        require_context(fb.context)
         bind(fb)
         gl_attach(buffer, attachment)
         check_framebuffer()
+        require_context(fb.context)
     catch e
         if GL_COLOR_ATTACHMENT0 <= attachment <= GL_COLOR_ATTACHMENT15
             # If we failed to attach correctly we should probably overwrite

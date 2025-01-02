@@ -62,7 +62,7 @@ GLRenderPipeline() = GLRenderPipeline(Makie.Pipeline(), AbstractRenderStep[])
 
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline.steps
-        ShaderAbstractions.switch_context!(screen.glscreen)
+        require_context(screen.glscreen)
         run_step(screen, glscene, step)
     end
     return
@@ -151,7 +151,7 @@ end
 function run_step(screen, glscene, step::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
-        ShaderAbstractions.switch_context!(screen.glscreen)
+        require_context(screen.glscreen)
         GLAbstraction.bind(step.framebuffer)
 
         for (idx, color) in step.clear
@@ -172,7 +172,7 @@ function run_step(screen, glscene, step::RenderPlots)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
 
-            ShaderAbstractions.switch_context!(screen.glscreen)
+            require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
 
             # TODO: Can we move this outside the loop?
@@ -232,7 +232,7 @@ end
 
 function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
     @debug "Creating OIT postprocessor"
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
 
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
@@ -274,7 +274,7 @@ function run_step(screen, glscene, step::RenderPass{:OIT})
 end
 
 function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
 
     # SSAO setup
     N_samples = 64
@@ -309,7 +309,7 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
 end
 
 function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
 
     # blur occlusion and combine with color
     shader = LazyShader(
@@ -388,7 +388,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
 
     filter_fxaa_in_shader = get(parent.attributes, :filter_in_shader, true)
 
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
     # calculate luma for FXAA
     shader = LazyShader(
         screen.shader_cache,
@@ -403,7 +403,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
 end
 
 function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
 
     # perform FXAA
     shader = LazyShader(
@@ -449,7 +449,7 @@ struct BlitToScreen <: AbstractRenderStep
 end
 
 function construct(::Val{:Display}, screen, ::Nothing, inputs, parent::Makie.Stage)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    require_context(screen.glscreen)
     framebuffer = screen.framebuffer_factory.fb
     id = get(parent.attributes, :screen_framebuffer_id, 0)
     return BlitToScreen(framebuffer, id)
