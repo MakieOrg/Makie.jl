@@ -38,10 +38,10 @@ end
 conversion_trait(::Type{<:Stem}) = PointBased()
 
 
-trunkpoint(stempoint::P, offset::Number) where P <: Point2 = P(stempoint[1], offset)
-trunkpoint(stempoint::P, offset::Point2) where P <: Point2 = P(offset...)
-trunkpoint(stempoint::P, offset::Number) where P <: Point3 = P(stempoint[1], stempoint[2], offset)
-trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
+trunkpoint(stempoint::P, offset::Number) where {P <: Point2} = P(stempoint[1], offset)
+trunkpoint(stempoint::P, offset::Point2) where {P <: Point2} = P(offset...)
+trunkpoint(stempoint::P, offset::Number) where {P <: Point3} = P(stempoint[1], stempoint[2], offset)
+trunkpoint(stempoint::P, offset::Point3) where {P <: Point3} = P(offset...)
 
 
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
@@ -53,7 +53,8 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
 
     trunkpoints = lift(st -> last.(st), s, stemtuples)
 
-    lines!(s, trunkpoints,
+    lines!(
+        s, trunkpoints,
         linewidth = s.trunkwidth,
         color = s.trunkcolor,
         colormap = s.trunkcolormap,
@@ -61,8 +62,10 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         colorrange = s.trunkcolorrange,
         visible = s.visible,
         linestyle = s.trunklinestyle,
-        inspectable = s.inspectable)
-    linesegments!(s, stemtuples,
+        inspectable = s.inspectable
+    )
+    linesegments!(
+        s, stemtuples,
         linewidth = s.stemwidth,
         color = s.stemcolor,
         colormap = s.stemcolormap,
@@ -70,8 +73,10 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         colorrange = s.stemcolorrange,
         visible = s.visible,
         linestyle = s.stemlinestyle,
-        inspectable = s.inspectable)
-    scatter!(s, s[1],
+        inspectable = s.inspectable
+    )
+    scatter!(
+        s, s[1],
         color = s.color,
         colormap = s.colormap,
         colorscale = s.colorscale,
@@ -81,6 +86,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         strokecolor = s.strokecolor,
         strokewidth = s.strokewidth,
         visible = s.visible,
-        inspectable = s.inspectable)
-    s
+        inspectable = s.inspectable
+    )
+    return s
 end

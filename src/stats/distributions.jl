@@ -4,24 +4,24 @@ The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 
 # pick a nice default x range given a distribution
-function default_range(dist::Distribution, alpha=0.0001)
+function default_range(dist::Distribution, alpha = 0.0001)
     minval = isfinite(minimum(dist)) ? minimum(dist) : quantile(dist, alpha)
     maxval = isfinite(maximum(dist)) ? maximum(dist) : quantile(dist, 1 - alpha)
-    minval..maxval
+    return minval .. maxval
 end
 
 isdiscrete(::Distribution) = false
-isdiscrete(::Distribution{<:VariateForm,<:Discrete}) = true
+isdiscrete(::Distribution{<:VariateForm, <:Discrete}) = true
 
 support(dist::Distribution) = default_range(dist)
-support(dist::Distribution{<:VariateForm,<:Discrete}) = UnitRange(endpoints(default_range(dist))...)
+support(dist::Distribution{<:VariateForm, <:Discrete}) = UnitRange(endpoints(default_range(dist))...)
 
 convert_arguments(P::Type{<:AbstractPlot}, dist::Distribution) = convert_arguments(P, support(dist), dist)
 
-function convert_arguments(P::Type{<:AbstractPlot}, x::Union{Interval,AbstractVector}, dist::Distribution)
+function convert_arguments(P::Type{<:AbstractPlot}, x::Union{Interval, AbstractVector}, dist::Distribution)
     default_ptype = isdiscrete(dist) ? ScatterLines : Lines
     ptype = plottype(P, default_ptype)
-    to_plotspec(ptype, convert_arguments(ptype, x, x -> pdf(dist, x)))
+    return to_plotspec(ptype, convert_arguments(ptype, x, x -> pdf(dist, x)))
 end
 # -----------------------------------------------------------------------------
 # qqplots (M. K. Borregaard implementation from StatPlots)
@@ -97,8 +97,10 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
-function convert_arguments(::Type{<:QQPlot}, points::AbstractVector{<:Point2},
-                           lines::AbstractVector{<:Point2}; qqline = :none)
+function convert_arguments(
+        ::Type{<:QQPlot}, points::AbstractVector{<:Point2},
+        lines::AbstractVector{<:Point2}; qqline = :none
+    )
     return (points, lines)
 end
 
@@ -125,7 +127,8 @@ function Makie.plot!(p::QQPlot)
         return to_color(markercolor === automatic ? color : markercolor)
     end
 
-    scatter!(p, points;
+    scatter!(
+        p, points;
         color = real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
@@ -133,7 +136,8 @@ function Makie.plot!(p::QQPlot)
         markersize = p.markersize,
         inspectable = p.inspectable
     )
-    linesegments!(p, line;
+    return linesegments!(
+        p, line;
         color = p.color,
         linestyle = p.linestyle,
         linewidth = p.linewidth,

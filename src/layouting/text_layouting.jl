@@ -31,7 +31,6 @@ function attribute_per_char(string, attribute)
 end
 
 
-
 """
     layout_text(
         string::AbstractString, fontsize::Union{AbstractVector, Number},
@@ -74,7 +73,8 @@ function glyph_collection(
 
     isempty(str) && return GlyphCollection(
         [], NativeFont[], Point3f[], FreeTypeAbstraction.FontExtent{Float32}[],
-        Vec2f[], Float32[], RGBAf[], RGBAf[], 0f0)
+        Vec2f[], Float32[], RGBAf[], RGBAf[], 0.0f0
+    )
 
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
@@ -83,7 +83,7 @@ function glyph_collection(
             font = font,
             scale = scale,
             lineheight = Float32(font.height / font.units_per_EM * lineheight_factor * last(scale)),
-            extent = GlyphExtent(font, char)
+            extent = GlyphExtent(font, char),
         )
     end
 
@@ -95,8 +95,8 @@ function glyph_collection(
 
         last_space_local_idx = 0
         last_space_global_idx = 0
-        newline_offset = 0f0
-        x = 0f0
+        newline_offset = 0.0f0
+        x = 0.0f0
         xs = [Float32[]]
 
         # If word_wrap_width > 0:
@@ -117,17 +117,19 @@ function glyph_collection(
                     ((ci.char in (' ', '\n')) || i == length(charinfos))
 
                 newline_offset = xs[end][last_space_local_idx + 1]
-                push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
-                xs[end-1] = xs[end-1][1:last_space_local_idx]
+                push!(xs, xs[end][(last_space_local_idx + 1):end] .- newline_offset)
+                xs[end - 1] = xs[end - 1][1:last_space_local_idx]
                 push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
-                last_line_start = last_space_global_idx+1
+                last_line_start = last_space_global_idx + 1
                 x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
 
                 # TODO Do we need to redo the metrics for newlines?
                 charinfos[last_space_global_idx] = let
                     _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
-                    (char = '\n', font = font, scale = scale,
-                        lineheight = lineheight, extent = extent)
+                    (
+                        char = '\n', font = font, scale = scale,
+                        lineheight = lineheight, extent = extent,
+                    )
                 end
             end
 
@@ -135,8 +137,8 @@ function glyph_collection(
                 push!(xs, Float32[])
                 push!(lineinfos, view(charinfos, last_line_start:i))
                 last_space_local_idx = 0
-                last_line_start = i+1
-                x = 0f0
+                last_line_start = i + 1
+                x = 0.0f0
             elseif i == length(charinfos)
                 push!(lineinfos, view(charinfos, last_line_start:i))
             end
@@ -230,7 +232,7 @@ function glyph_collection(
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
     function scalar_or_vec(attr)
-        attr # attribute_per_char returns generators
+        return attr # attribute_per_char returns generators
     end
     return GlyphCollection(
         [FreeTypeAbstraction.glyph_index(x.font, x.char) for x in charinfos],
@@ -246,7 +248,7 @@ function glyph_collection(
 end
 
 # function to concatenate vectors with a value between every pair
-function padded_vcat(arrs::AbstractVector{T}, fillvalue) where T <: AbstractVector{S} where S
+function padded_vcat(arrs::AbstractVector{T}, fillvalue) where {T <: AbstractVector{S}} where {S}
     n = sum(length.(arrs))
     arr = fill(convert(S, fillvalue), n + length(arrs) - 1)
 
@@ -258,7 +260,7 @@ function padded_vcat(arrs::AbstractVector{T}, fillvalue) where T <: AbstractVect
         end
         counter += 1
     end
-    arr
+    return arr
 end
 
 # Backend data
@@ -318,7 +320,7 @@ function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection
     return pos, char_offsets, quad_offsets, uvs, scales
 end
 
-function text_quads(atlas::TextureAtlas, positions::Vector, gcs::Vector{<: GlyphCollection}, offset)
+function text_quads(atlas::TextureAtlas, positions::Vector, gcs::Vector{<:GlyphCollection}, offset)
     pos = [to_ndim(Point3f, p, 0) for (p, gc) in zip(positions, gcs) for _ in gc.origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph

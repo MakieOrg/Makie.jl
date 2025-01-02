@@ -32,7 +32,7 @@ using Base.Iterators: repeated, drop
 using LinearAlgebra
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)
@@ -78,6 +78,7 @@ function load_all_shaders(folder)
             loadshader(replace(path, "\\" => "/"))
         end
     end
+    return
 end
 
 
@@ -92,7 +93,7 @@ load_all_shaders(SHADER_DIR)
 WARN_ON_LOAD[] = true
 
 function __init__()
-    activate!()
+    return activate!()
 end
 
 include("precompiles.jl")

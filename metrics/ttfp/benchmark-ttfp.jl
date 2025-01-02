@@ -15,12 +15,12 @@ if Package === :WGLMakie
     Bonito.use_electron_display()
 end
 
-set_theme!(size=(800, 600))
+set_theme!(size = (800, 600))
 
 GC.gc()
-create_time = @ctime fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
+create_time = @ctime fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
 GC.gc()
-display_time = @ctime colorbuffer(fig; px_per_unit=1)
+display_time = @ctime colorbuffer(fig; px_per_unit = 1)
 
 using JSON
 using Pkg
@@ -41,7 +41,7 @@ macro simple_median_time(expr)
         Float64(elapsedtime)
     end
 
-    quote
+    return quote
         times = Float64[]
         for i in 1:101
             t = Core.eval(Main, $(QuoteNode(time_expr)))
@@ -52,16 +52,16 @@ macro simple_median_time(expr)
         median(times)
     end
 end
-@time "creating figure" figure_time = @simple_median_time fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-fig = scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
-@time "colorbuffer" colorbuffer_time = @simple_median_time colorbuffer(fig; px_per_unit=1)
+@time "creating figure" figure_time = @simple_median_time fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+fig = scatter(1:4; color = 1:4, colormap = :turbo, markersize = 20, visible = true)
+@time "colorbuffer" colorbuffer_time = @simple_median_time colorbuffer(fig; px_per_unit = 1)
 
 using Statistics
 
 push!(old[4], figure_time)
 push!(old[5], colorbuffer_time)
 
-open(io-> JSON.print(io, old), result, "w")
+open(io -> JSON.print(io, old), result, "w")
 
 try
     rm("test.png")

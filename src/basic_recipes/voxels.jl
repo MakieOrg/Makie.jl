@@ -1,22 +1,26 @@
-function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
-    X, Y, Z = map(x-> (-0.5*x, 0.5*x), size(chunk))
+function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<:Real, 3})
+    X, Y, Z = map(x -> (-0.5 * x, 0.5 * x), size(chunk))
     return convert_arguments(T, X, Y, Z, chunk)
 end
 
-function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
+function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<:Real, 3})
     xi = Float32.(to_endpoints(xs))
     yi = Float32.(to_endpoints(ys))
     zi = Float32.(to_endpoints(zs))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
 
-function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints, zs::EndPoints,
-                           chunk::Array{<:Real,3})
+function convert_arguments(
+        ::Type{<:Voxels}, xs::EndPoints, ys::EndPoints, zs::EndPoints,
+        chunk::Array{<:Real, 3}
+    )
     return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
 end
 
-function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
-                           zs::EndPoints, chunk::Array{UInt8,3})
+function convert_arguments(
+        ::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
+        zs::EndPoints, chunk::Array{UInt8, 3}
+    )
     return (xs, ys, zs, chunk)
 end
 
@@ -29,8 +33,8 @@ function calculated_attributes!(::Type{<:Voxels}, plot)
                     c = to_color(color[i])
                     output[i] = RGBAf(Colors.color(c), Colors.alpha(c) * a)
                 end
-                for i in min(255, length(color))+1 : 255
-                    output[i] = RGBAf(0,0,0,0)
+                for i in (min(255, length(color)) + 1):255
+                    output[i] = RGBAf(0, 0, 0, 0)
                 end
             elseif color isa AbstractArray
                 output = similar(color, RGBAf)
@@ -107,7 +111,7 @@ function local_update(plot::Voxels, is, js, ks)
     mini, maxi = apply_scale(plot.colorscale[], plot._limits[])
     input = plot.args[end][]
     for k in ks, j in js, i in is
-        idx = i + _size[1] * ((j-1) + _size[2] * (k-1))
+        idx = i + _size[1] * ((j - 1) + _size[2] * (k - 1))
         _update_voxel(plot.converted[end].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
     end
     plot._local_update[] = (is, js, ks)
@@ -221,9 +225,9 @@ function voxel_positions(p::Voxels)
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
-        Point3f(mini .+ step .* (i-0.5, j-0.5, k-0.5))
-        for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
-        if voxel_id[i, j, k] !== 0x00
+        Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
+            for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
+            if voxel_id[i, j, k] !== 0x00
     ]
 end
 

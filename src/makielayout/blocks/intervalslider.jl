@@ -19,12 +19,16 @@ function initialize_block!(isl::IntervalSlider)
 
         if horizontal
             y = bottom(bb) + h / 2
-            [Point2f(left(bb) + h/2, y),
-             Point2f(right(bb) - h/2, y)]
+            [
+                Point2f(left(bb) + h / 2, y),
+                Point2f(right(bb) - h / 2, y),
+            ]
         else
             x = left(bb) + w / 2
-            [Point2f(x, bottom(bb) + w/2),
-             Point2f(x, top(bb) - w/2)]
+            [
+                Point2f(x, bottom(bb) + w / 2),
+                Point2f(x, top(bb) - w / 2),
+            ]
         end
     end
 
@@ -87,11 +91,15 @@ function initialize_block!(isl::IntervalSlider)
         [ci, ci]
     end
 
-    endbuttons = scatter!(blockscene, endpoints, color = endbuttoncolors,
-        markersize = isl.linewidth, strokewidth = 0, inspectable = false, marker = Circle)
+    endbuttons = scatter!(
+        blockscene, endpoints, color = endbuttoncolors,
+        markersize = isl.linewidth, strokewidth = 0, inspectable = false, marker = Circle
+    )
 
-    linesegs = linesegments!(blockscene, linepoints, color = linecolors,
-        linewidth = isl.linewidth, inspectable = false)
+    linesegs = linesegments!(
+        blockscene, linepoints, color = linecolors,
+        linewidth = isl.linewidth, inspectable = false
+    )
 
     state = Observable(:none)
     button_magnifications = lift(state) do state
@@ -106,8 +114,10 @@ function initialize_block!(isl::IntervalSlider)
         end
     end
     buttonsizes = @lift($(isl.linewidth) .* $button_magnifications)
-    buttons = scatter!(blockscene, middlepoints, color = isl.color_active, strokewidth = 0,
-        markersize = buttonsizes, inspectable = false, marker = Circle)
+    buttons = scatter!(
+        blockscene, middlepoints, color = isl.color_active, strokewidth = 0,
+        markersize = buttonsizes, inspectable = false, marker = Circle
+    )
 
     mouseevents = addmouseevents!(blockscene, isl.layoutobservables.computedbbox)
 
@@ -268,5 +278,5 @@ function set_close_to!(intervalslider::IntervalSlider, v1, v2)
     mima = minmax(v1, v2)
     indices = closest_index.(Ref(intervalslider.range[]), mima)
     intervalslider.selected_indices[] = indices
-    getindex.(Ref(intervalslider.range[]), indices)
+    return getindex.(Ref(intervalslider.range[]), indices)
 end

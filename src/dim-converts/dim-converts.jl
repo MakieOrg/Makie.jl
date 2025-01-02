@@ -3,10 +3,10 @@ abstract type AbstractDimConversion end
 struct NoDimConversion <: AbstractDimConversion end
 
 struct DimConversions
-    conversions::NTuple{3,Observable{Union{Nothing,AbstractDimConversion}}}
+    conversions::NTuple{3, Observable{Union{Nothing, AbstractDimConversion}}}
     function DimConversions()
         conversions = map((1, 2, 3)) do i
-            Observable{Union{Nothing,AbstractDimConversion}}(nothing)
+            Observable{Union{Nothing, AbstractDimConversion}}(nothing)
         end
         return new(conversions)
     end
@@ -19,7 +19,7 @@ function Base.getindex(conversions::DimConversions, i::Int)
 end
 
 function Base.setindex!(conversions::DimConversions, value::Observable, i::Int)
-    on(value; update=true) do val
+    return on(value; update = true) do val
         conversions[i] = val
     end
 end
@@ -66,7 +66,7 @@ end
 
 # get_ticks needs overloading for Dim Conversion
 # Which gets ignored for no conversion/nothing
-function get_ticks(::Union{Nothing,NoDimConversion}, ticks, scale, formatter, vmin, vmax)
+function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
 
@@ -132,12 +132,14 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
             end
         end
     end
+    return
 end
 
 function connect_conversions!(conversions::DimConversions, new_conversions::DimConversions)
     for i in 1:3
         conversions[i] = new_conversions.conversions[i]
     end
+    return
 end
 
 # If axis conversion has global state which needs an update of the tick values,
@@ -194,7 +196,7 @@ end
 
 function convert_dim_observable(conversions::DimConversions, dim::Int, value::Observable, deregister)
     conversion = conversions[dim]
-    if !(conversion isa Union{Nothing,NoDimConversion})
+    if !(conversion isa Union{Nothing, NoDimConversion})
         return convert_dim_observable(conversion, value, deregister)
     end
     c = dim_conversion_from_args(value[])

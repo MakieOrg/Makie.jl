@@ -27,8 +27,10 @@ function initialize_block!(tbox::Textbox)
     hovering = Observable(false)
     realbordercolor = Observable{RGBAf}()
 
-    map!(topscene, realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
-        tbox.bordercolor_focused_invalid, tbox.bordercolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
+    map!(
+        topscene, realbordercolor, tbox.bordercolor, tbox.bordercolor_focused,
+        tbox.bordercolor_focused_invalid, tbox.bordercolor_hover, tbox.focused, displayed_is_valid, hovering
+    ) do bc, bcf, bcfi, bch, focused, valid, hovering
         c = if focused
             valid ? bcf : bcfi
         else
@@ -38,8 +40,10 @@ function initialize_block!(tbox::Textbox)
     end
 
     realboxcolor = Observable{RGBAf}()
-    map!(topscene, realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
-        tbox.boxcolor_focused_invalid, tbox.boxcolor_hover, tbox.focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
+    map!(
+        topscene, realboxcolor, tbox.boxcolor, tbox.boxcolor_focused,
+        tbox.boxcolor_focused_invalid, tbox.boxcolor_hover, tbox.focused, displayed_is_valid, hovering
+    ) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         c = if focused
             valid ? bcf : bcfi
@@ -49,24 +53,30 @@ function initialize_block!(tbox::Textbox)
         return to_color(c)
     end
 
-    box = poly!(topscene, roundedrectpoints, strokewidth = tbox.borderwidth,
+    box = poly!(
+        topscene, roundedrectpoints, strokewidth = tbox.borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, inspectable = false)
+        color = realboxcolor, inspectable = false
+    )
 
     displayed_chars = lift(ds -> [c for c in ds], topscene, tbox.displayed_string)
 
     realtextcolor = Observable{RGBAf}()
-    map!(topscene, realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
-         tbox.stored_string, tbox.displayed_string) do tc, tcph, foc, cont, disp
+    map!(
+        topscene, realtextcolor, tbox.textcolor, tbox.textcolor_placeholder, tbox.focused,
+        tbox.stored_string, tbox.displayed_string
+    ) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored
         return to_color(foc || cont == disp ? tc : tcph)
     end
 
-    t = Label(scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
+    t = Label(
+        scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
-        fontsize = tbox.fontsize, padding = tbox.textpadding)
+        fontsize = tbox.fontsize, padding = tbox.textpadding
+    )
 
     textplot = t.blockscene.plots[1]
     displayed_charbbs = lift(topscene, textplot.text, textplot[1]) do _, _
@@ -91,7 +101,7 @@ function initialize_block!(tbox::Textbox)
         end
 
         if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+            [leftline(bbs[ci + 1])...]
         elseif ci == 0
             [leftline(bbs[1])...]
         else
@@ -149,7 +159,7 @@ function initialize_block!(tbox::Textbox)
             pos = state.data
         end
         closest_charindex = argmin(
-            [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
+            [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
         )
         # set cursor to index of closest char if right of center, or previous char if left of center
         cursorindex[] = if (pos .- center(displayed_charbbs[][closest_charindex]))[1] > 0
@@ -184,17 +194,17 @@ function initialize_block!(tbox::Textbox)
             empty!(displayed_chars[])
             index = 1
         end
-        newchars = [displayed_chars[][1:index-1]; c; displayed_chars[][index:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
         tbox.displayed_string[] = join(newchars)
-        cursorindex[] = index
+        return cursorindex[] = index
     end
 
     function appendchar!(c)
-        insertchar!(c, length(tbox.displayed_string[]))
+        return insertchar!(c, length(tbox.displayed_string[]))
     end
 
     function removechar!(index)
-        newchars = [displayed_chars[][1:index-1]; displayed_chars[][index+1:end]]
+        newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
 
         if isempty(newchars)
             newchars = [' ']
@@ -204,10 +214,10 @@ function initialize_block!(tbox::Textbox)
             cursorindex[] = max(0, cursorindex[] - 1)
         end
 
-        tbox.displayed_string[] = join(newchars)
+        return tbox.displayed_string[] = join(newchars)
     end
 
-    on(topscene, events(scene).unicode_input; priority=60) do char
+    on(topscene, events(scene).unicode_input; priority = 60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
             insertchar!(char, cursorindex[] + 1)
             return Consume(true)
@@ -217,7 +227,7 @@ function initialize_block!(tbox::Textbox)
 
     function reset_to_stored()
         cursorindex[] = 0
-        if isnothing(tbox.stored_string[])
+        return if isnothing(tbox.stored_string[])
             tbox.displayed_string[] = tbox.placeholder[]
         else
             tbox.displayed_string[] = tbox.stored_string[]
@@ -225,17 +235,17 @@ function initialize_block!(tbox::Textbox)
     end
 
     function cursor_forward()
-        if tbox.displayed_string[] != " "
+        return if tbox.displayed_string[] != " "
             cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
         end
     end
 
     function cursor_backward()
-        cursorindex[] = max(0, cursorindex[] - 1)
+        return cursorindex[] = max(0, cursorindex[] - 1)
     end
 
 
-    on(topscene, events(scene).keyboardbutton; priority=60) do event
+    on(topscene, events(scene).keyboardbutton; priority = 60) do event
         if tbox.focused[]
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v
             if ispressed(scene, ctrl_v)
@@ -286,7 +296,7 @@ function initialize_block!(tbox::Textbox)
 
         return Consume(false)
     end
-    tbox
+    return tbox
 end
 
 
@@ -303,29 +313,29 @@ function charbbs(text)
         fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
         push!(bbs, fr)
     end
-    bbs
+    return bbs
 end
 
 function validate_textbox(str, validator::Function)
-    validator(str)
+    return validator(str)
 end
 
 function validate_textbox(str, T::Type)
-    !isnothing(tryparse(T, str))
+    return !isnothing(tryparse(T, str))
 end
 
 function validate_textbox(str, validator::Regex)
     m = match(validator, str)
     # check that the validator matches the whole string
-    !isnothing(m) && m.match == str
+    return !isnothing(m) && m.match == str
 end
 
 function is_allowed(char, restriction::Nothing)
-    true
+    return true
 end
 
 function is_allowed(char, restriction::Function)
-    allowed::Bool = restriction(char)
+    return allowed::Bool = restriction(char)
 end
 
 """
@@ -336,7 +346,7 @@ function reset!(tb::Textbox)
     tb.stored_string.val = nothing
     tb.displayed_string = tb.placeholder[]
     defocus!(tb)
-    nothing
+    return nothing
 end
 
 """
@@ -350,7 +360,7 @@ function set!(tb::Textbox, string::String)
 
     tb.displayed_string = string
     tb.stored_string = string
-    nothing
+    return nothing
 end
 
 """
@@ -365,8 +375,10 @@ function focus!(tb::Textbox)
             Animations.Animation(
                 [0, 1.0],
                 [Colors.alphacolor(COLOR_ACCENT[], 0), Colors.alphacolor(COLOR_ACCENT[], 1)],
-                Animations.sineio(n = 2, yoyo = true, postwait = 0.2)),
-                0.0, 0.0, 1000)
+                Animations.sineio(n = 2, yoyo = true, postwait = 0.2)
+            ),
+            0.0, 0.0, 1000
+        )
 
         if !isnothing(tb.cursoranimtask)
             Animations.stop(tb.cursoranimtask)
@@ -377,7 +389,7 @@ function focus!(tb::Textbox)
             tb.cursorcolor = color
         end
     end
-    nothing
+    return nothing
 end
 
 """
@@ -396,5 +408,5 @@ function defocus!(tb::Textbox)
     end
     tb.cursorcolor = :transparent
     tb.focused = false
-    nothing
+    return nothing
 end

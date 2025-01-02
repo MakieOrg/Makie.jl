@@ -1,12 +1,14 @@
 try
     using GLFW
 catch e
-    @warn("""
-        OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
-        This likely means, you're on a headless server without having OpenGL support setup correctly.
-        Have a look at the troubleshooting section in the readme:
-        https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-    """)
+    @warn(
+        """
+            OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
+            This likely means, you're on a headless server without having OpenGL support setup correctly.
+            Have a look at the troubleshooting section in the readme:
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        """
+    )
     rethrow(e)
 end
 
@@ -34,20 +36,20 @@ function get_texture!(atlas::Makie.TextureAtlas)
 
     tex, func = get!(atlas_texture_cache, (pointer(atlas.data), current_ctx)) do
         tex = Texture(
-                atlas.data,
-                minfilter = :linear,
-                magfilter = :linear,
-                # TODO: Consider alternatives to using the builtin anisotropic
-                # samplers for signed distance fields; the anisotropic
-                # filtering should happen *after* the SDF thresholding, but
-                # with the builtin sampler it happens before.
-                anisotropic = 16f0,
-                mipmap = true
+            atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            # TODO: Consider alternatives to using the builtin anisotropic
+            # samplers for signed distance fields; the anisotropic
+            # filtering should happen *after* the SDF thresholding, but
+            # with the builtin sampler it happens before.
+            anisotropic = 16.0f0,
+            mipmap = true
         )
         # update the texture, whenever a new font is added to the atlas
         function callback(distance_field, rectangle)
             ctx = tex.context
-            if GLAbstraction.context_alive(ctx)
+            return if GLAbstraction.context_alive(ctx)
                 prev_ctx = GLAbstraction.current_context()
                 ShaderAbstractions.switch_context!(ctx)
                 tex[rectangle] = distance_field

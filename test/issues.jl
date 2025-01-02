@@ -1,11 +1,10 @@
-
 @testset "Issues" begin
     @testset "#659 Volume errors if data is not a cube" begin
-        fig, ax, vplot = volume(1..8, 1..8, 1..10, rand(8, 8, 10))
+        fig, ax, vplot = volume(1 .. 8, 1 .. 8, 1 .. 10, rand(8, 8, 10))
         lims = Makie.data_limits(vplot)
         lo, hi = extrema(lims)
         @test all(lo .<= 1)
-        @test all(hi .>= (8,8,10))
+        @test all(hi .>= (8, 8, 10))
     end
 
     @testset "#3979 lossy matrix multiplication" begin
@@ -13,14 +12,14 @@
         f, a, p = scatter(ps)
         Makie.update_state_before_display!(f)
         # sanity check: old behavior should fail
-        M = Makie.Mat4f(Makie.clip_to_space(a.scene.camera, :data)) * 
+        M = Makie.Mat4f(Makie.clip_to_space(a.scene.camera, :data)) *
             Makie.Mat4f(Makie.space_to_clip(a.scene.camera, :data))
         @test !(M ≈ I)
         # this should not
         M = Makie.clip_to_space(a.scene.camera, :data) * Makie.space_to_clip(a.scene.camera, :data)
-        @test M ≈ I atol = 1e-4
+        @test M ≈ I atol = 1.0e-4
     end
-    
+
     @testset "#4416 Merging attributes" begin
         # See https://github.com/MakieOrg/Makie.jl/pull/4416
         theme1 = Theme(Axis = (; titlesize = 10))

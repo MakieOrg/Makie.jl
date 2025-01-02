@@ -8,62 +8,62 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
 @recipe Triplot (triangles,) begin
     # Toggles
     "Determines whether to plot the individual points. Note that this will only plot points included in the triangulation."
-    show_points=false
+    show_points = false
     "Determines whether to plot the convex hull."
-    show_convex_hull=false
+    show_convex_hull = false
     "Determines whether to plot the ghost edges."
-    show_ghost_edges=false
+    show_ghost_edges = false
     "Determines whether to plot the constrained edges."
-    show_constrained_edges=false
+    show_constrained_edges = false
     "Determines whether to recompute the representative points for the ghost edge orientation. Note that this will mutate `tri.representative_point_list` directly."
-    recompute_centers=false
+    recompute_centers = false
 
     # Mesh settings
     "Sets the size of the points."
-    markersize= @inherit markersize
+    markersize = @inherit markersize
     "Sets the shape of the points."
-    marker= @inherit marker
+    marker = @inherit marker
     "Sets the color of the points."
-    markercolor= @inherit markercolor
+    markercolor = @inherit markercolor
     "Sets the color of triangle edges."
-    strokecolor= @inherit patchstrokecolor
+    strokecolor = @inherit patchstrokecolor
     "Sets the linewidth of triangle edges."
-    strokewidth=1
+    strokewidth = 1
     "Sets the linestyle of triangle edges."
-    linestyle=:solid
+    linestyle = :solid
     "Sets the color of the triangles."
-    triangle_color= :transparent
+    triangle_color = :transparent
     linecap = @inherit linecap
     joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
 
     # Convex hull settings
     "Sets the color of the convex hull."
-    convex_hull_color=:red
+    convex_hull_color = :red
     "Sets the linestyle of the convex hull."
-    convex_hull_linestyle=:dash
+    convex_hull_linestyle = :dash
     "Sets the width of the convex hull."
-    convex_hull_linewidth= @inherit linewidth
+    convex_hull_linewidth = @inherit linewidth
 
     # Ghost edge settings
     "Sets the color of the ghost edges."
-    ghost_edge_color=:blue
+    ghost_edge_color = :blue
     "Sets the linestyle of the ghost edges."
-    ghost_edge_linestyle= @inherit linestyle
+    ghost_edge_linestyle = @inherit linestyle
     "Sets the width of the ghost edges."
-    ghost_edge_linewidth= @inherit linewidth
+    ghost_edge_linewidth = @inherit linewidth
     "Sets the extension factor for the rectangle that the exterior ghost edges are extended onto."
-    ghost_edge_extension_factor=0.1
+    ghost_edge_extension_factor = 0.1
     "Sets the bounding box for truncating ghost edges which can be a `Rect2` (or `BBox`) or a tuple of the form `(xmin, xmax, ymin, ymax)`. By default, the rectangle will be given by `[a - eΔx, b + eΔx] × [c - eΔy, d + eΔy]` where `e` is the `ghost_edge_extension_factor`, `Δx = b - a` and `Δy = d - c` are the lengths of the sides of the rectangle, and `[a, b] × [c, d]` is the bounding box of the points in the triangulation."
-    bounding_box=automatic
+    bounding_box = automatic
 
     # Constrained edge settings
     "Sets the color of the constrained edges."
-    constrained_edge_color=:magenta
+    constrained_edge_color = :magenta
     "Sets the linestyle of the constrained edges."
-    constrained_edge_linestyle= @inherit linestyle
+    constrained_edge_linestyle = @inherit linestyle
     "Sets the width of the constrained edges."
-    constrained_edge_linewidth= @inherit linewidth
+    constrained_edge_linewidth = @inherit linewidth
 end
 
 function get_all_triangulation_points!(points, tri)
@@ -103,13 +103,17 @@ function get_triangulation_ghost_edges!(ghost_edges, extent, tri, bounding_box)
     sizehint!(ghost_edges, 2DelTri.num_ghost_edges(tri))
     if bounding_box === automatic
         if DelTri.has_boundary_nodes(tri)
-            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_boundary_nodes(tri),
-                                                           Val(true))
+            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(
+                DelTri.get_points(tri),
+                DelTri.get_boundary_nodes(tri),
+                Val(true)
+            )
         else
-            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(DelTri.get_points(tri),
-                                                           DelTri.get_convex_hull_vertices(tri),
-                                                           Val(true))
+            xmin, xmax, ymin, ymax = DelTri.polygon_bounds(
+                DelTri.get_points(tri),
+                DelTri.get_convex_hull_vertices(tri),
+                Val(true)
+            )
         end
         Δx = xmax - xmin
         Δy = ymax - ymin
@@ -184,7 +188,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
         return DelTri.triangulate(transformed, randomise = false)
     end
 
-    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
+    attr[:transformation] = Transformation(p.transformation; transform_func = identity)
     triplot!(p, attr, tri)
     return
 end
@@ -214,25 +218,39 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
         p.show_convex_hull[] && get_triangulation_convex_hull!(convex_hull_2f[], tri)
         p.show_constrained_edges[] && get_triangulation_constrained_edges!(constrained_edges_2f[], tri)
 
-        foreach(notify,
-                (points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
-                 constrained_edges_2f))
+        foreach(
+            notify,
+            (
+                points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
+                constrained_edges_2f,
+            )
+        )
         return nothing
     end
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly!(p, points_2f, triangles_3f; strokewidth=p.strokewidth, strokecolor=p.strokecolor,
-          color=p.triangle_color, linestyle=p.linestyle)
-    linesegments!(p, ghost_edges_2f; color=p.ghost_edge_color, linewidth=p.ghost_edge_linewidth,
-                  linecap=p.linecap, linestyle=p.ghost_edge_linestyle, xautolimits=false, yautolimits=false)
-    lines!(p, convex_hull_2f; color=p.convex_hull_color, linewidth=p.convex_hull_linewidth,
-           linecap = p.linecap, joinstyle = p.joinstyle, miter_limit = p.miter_limit,
-           linestyle=p.convex_hull_linestyle, depth_shift=-1.0f-5)
-    linesegments!(p, constrained_edges_2f; color=p.constrained_edge_color, depth_shift=-2.0f-5,
-                  linecap=p.linecap, linewidth=p.constrained_edge_linewidth, linestyle=p.constrained_edge_linestyle)
-    scatter!(p, present_points_2f; markersize=p.markersize, color=p.markercolor,
-             strokecolor=p.strokecolor, marker=p.marker, visible=p.show_points, depth_shift=-3.0f-5)
+    poly!(
+        p, points_2f, triangles_3f; strokewidth = p.strokewidth, strokecolor = p.strokecolor,
+        color = p.triangle_color, linestyle = p.linestyle
+    )
+    linesegments!(
+        p, ghost_edges_2f; color = p.ghost_edge_color, linewidth = p.ghost_edge_linewidth,
+        linecap = p.linecap, linestyle = p.ghost_edge_linestyle, xautolimits = false, yautolimits = false
+    )
+    lines!(
+        p, convex_hull_2f; color = p.convex_hull_color, linewidth = p.convex_hull_linewidth,
+        linecap = p.linecap, joinstyle = p.joinstyle, miter_limit = p.miter_limit,
+        linestyle = p.convex_hull_linestyle, depth_shift = -1.0f-5
+    )
+    linesegments!(
+        p, constrained_edges_2f; color = p.constrained_edge_color, depth_shift = -2.0f-5,
+        linecap = p.linecap, linewidth = p.constrained_edge_linewidth, linestyle = p.constrained_edge_linestyle
+    )
+    scatter!(
+        p, present_points_2f; markersize = p.markersize, color = p.markercolor,
+        strokecolor = p.strokecolor, marker = p.marker, visible = p.show_points, depth_shift = -3.0f-5
+    )
     return p
 end
 

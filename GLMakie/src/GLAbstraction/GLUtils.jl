@@ -1,9 +1,9 @@
 function print_with_lines(out::IO, text::AbstractString)
     io = IOBuffer()
-    for (i,line) in enumerate(split(text, "\n"))
+    for (i, line) in enumerate(split(text, "\n"))
         println(io, @sprintf("%-4d: %s", i, line))
     end
-    write(out, take!(io))
+    return write(out, take!(io))
 end
 print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
@@ -18,7 +18,7 @@ matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
-signal_convert(T1, y::T2) where {T2<:Observable} = lift(convert, Observable(T1), y)
+signal_convert(T1, y::T2) where {T2 <: Observable} = lift(convert, Observable(T1), y)
 
 
 """
@@ -50,8 +50,8 @@ macro gen_defaults!(dict, args)
     # @gen_defaults can be used multiple times, so we need to reuse gl_convert_targets if already in here
     for (i, elem) in enumerate(tuple_list)
         opengl_convert_target = :() # is optional, so first is an empty expression
-        convert_target        = :() # is optional, so first is an empty expression
-        doc_strings           = :()
+        convert_target = :() # is optional, so first is an empty expression
+        doc_strings = :()
         if Meta.isexpr(elem, :(=))
             key_name, value_expr = elem.args
             if isa(key_name, Expr) && key_name.head === :(::) # we need to convert to a julia type
@@ -97,7 +97,7 @@ macro gen_defaults!(dict, args)
     end
     #push!(return_expression.args, :($dictsym[:gl_convert_targets] = gl_convert_targets)) #just pass the targets via the dict
     push!(return_expression.args, :($dictsym)) #return dict
-    esc(return_expression)
+    return esc(return_expression)
 end
 export @gen_defaults!
 

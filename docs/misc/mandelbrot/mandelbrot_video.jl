@@ -1,13 +1,18 @@
 function mandelbrot(x, y)
-    z = c = x + y*im
-    for i in 1:100.0; abs(z) > 2 && return i; z = z^2 + c; end; 0
+    z = c = x + y * im
+    for i in 1:100.0
+        abs(z) > 2 && return i; z = z^2 + c
+    end
+    return 0
 end
 
 x = Observable(range(-2, 1, length = 400))
 y = Observable(range(-1, 1, length = 300))
 
-fig, ax, img = heatmap(x, y, mandelbrot, colormap = Reverse(:deep),
-    figure = (size = (400, 300),))
+fig, ax, img = heatmap(
+    x, y, mandelbrot, colormap = Reverse(:deep),
+    figure = (size = (400, 300),)
+)
 hidedecorations!(ax)
 
 record(fig, "mandelbrot.mp4", 1:200) do frame

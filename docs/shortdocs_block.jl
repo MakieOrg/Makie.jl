@@ -1,8 +1,8 @@
 abstract type ShortDocsBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 
-Documenter.Selectors.order(::Type{ShortDocsBlocks})  = 3.0 # like @docs
-Documenter.Selectors.matcher(::Type{ShortDocsBlocks},  node, page, doc) = Documenter.iscode(node, r"^@shortdocs")
+Documenter.Selectors.order(::Type{ShortDocsBlocks}) = 3.0 # like @docs
+Documenter.Selectors.matcher(::Type{ShortDocsBlocks}, node, page, doc) = Documenter.iscode(node, r"^@shortdocs")
 
 function unlink_with_all_following_siblings!(node)
     next = node.next
@@ -47,4 +47,5 @@ function Documenter.Selectors.runner(::Type{ShortDocsBlocks}, node, page, doc)
             error("Found no Attributes section in above markdown ast")
         end
     end
+    return
 end

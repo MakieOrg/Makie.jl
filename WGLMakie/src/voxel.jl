@@ -45,12 +45,13 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
 
     # adjust model matrix with placement matrix
     uniform_dict[:model] = map(
-            plot, plot.converted...,  plot.model
-        ) do xs, ys, zs, chunk, model
+        plot, plot.converted..., plot.model
+    ) do xs, ys, zs, chunk, model
         mini = minimum.((xs, ys, zs))
         width = maximum.((xs, ys, zs)) .- mini
-        return Mat4f(model *
-            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+        return Mat4f(
+            model *
+                Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
         )
     end
 
@@ -90,14 +91,16 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
         if N_instances != length(dummy_data[]) # avoid updating unnecessarily
-            dummy_data[] = [0f0 for _ in 1:N_instances]
+            dummy_data[] = [0.0f0 for _ in 1:N_instances]
         end
         return
     end
     notify(plot.gap)
 
-    instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
+    instance = GeometryBasics.mesh(Rect2(0.0f0, 0.0f0, 1.0f0, 1.0f0))
 
-    return InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
-                        instance, VertexArray(dummy = dummy_data), uniform_dict)
+    return InstancedProgram(
+        WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
+        instance, VertexArray(dummy = dummy_data), uniform_dict
+    )
 end

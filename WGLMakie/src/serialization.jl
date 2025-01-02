@@ -52,8 +52,8 @@ function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
 
-function serialize_three(array::AbstractArray{T}) where {T<:Union{N0f8,UInt8,Int32,UInt32,Float32,Float16,Float64}}
-    vec(convert(Array, array))
+function serialize_three(array::AbstractArray{T}) where {T <: Union{N0f8, UInt8, Int32, UInt32, Float32, Float16, Float64}}
+    return vec(convert(Array, array))
 end
 
 function serialize_three(p::Makie.AbstractPattern)
@@ -65,10 +65,10 @@ three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
 three_format(::Type{<:RGBA}) = "RGBAFormat"
 
-three_format(::Type{<: Makie.VecTypes{1}}) = "RedFormat"
-three_format(::Type{<: Makie.VecTypes{2}}) = "RGFormat"
-three_format(::Type{<: Makie.VecTypes{3}}) = "RGBFormat"
-three_format(::Type{<: Makie.VecTypes{4}}) = "RGBAFormat"
+three_format(::Type{<:Makie.VecTypes{1}}) = "RedFormat"
+three_format(::Type{<:Makie.VecTypes{2}}) = "RGFormat"
+three_format(::Type{<:Makie.VecTypes{3}}) = "RGBFormat"
+three_format(::Type{<:Makie.VecTypes{4}}) = "RGBAFormat"
 
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
@@ -92,17 +92,19 @@ function three_repeat(s::Symbol)
     error("Unknown repeat mode '$s'")
 end
 
-function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", 
-               :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], 
-               :three_format => three_format(T),
-               :three_type => three_type(eltype(T)),
-               :minFilter => three_filter(color.minfilter),
-               :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), 
-               :mipmap => color.mipmap,
-               :anisotropy => color.anisotropic)
+function serialize_three(color::Sampler{T, N}) where {T, N}
+    tex = Dict(
+        :type => "Sampler",
+        :data => serialize_three(color.data),
+        :size => Int32[size(color.data)...],
+        :three_format => three_format(T),
+        :three_type => three_type(eltype(T)),
+        :minFilter => three_filter(color.minfilter),
+        :magFilter => three_filter(color.magfilter),
+        :wrapS => three_repeat(color.repeat[1]),
+        :mipmap => color.mipmap,
+        :anisotropy => color.anisotropic
+    )
     if N > 1
         tex[:wrapT] = three_repeat(color.repeat[2])
     end
@@ -113,7 +115,7 @@ function serialize_three(color::Sampler{T,N}) where {T,N}
 end
 
 function serialize_uniforms(dict::Dict)
-    result = Dict{Symbol,Any}()
+    result = Dict{Symbol, Any}()
     for (k, v) in dict
         # we don't send observables and instead use
         # uniform_updater(dict)
@@ -123,7 +125,6 @@ function serialize_uniforms(dict::Dict)
 end
 
 
-
 """
     flatten_buffer(array::AbstractArray)
 
@@ -131,7 +132,7 @@ Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
 """
-function flatten_buffer(array::AbstractArray{<: Number})
+function flatten_buffer(array::AbstractArray{<:Number})
     return array
 end
 function flatten_buffer(array::AbstractArray{<:AbstractFloat})
@@ -141,7 +142,7 @@ function flatten_buffer(array::Buffer)
     return flatten_buffer(getfield(array, :data))
 end
 
-function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
+function flatten_buffer(array::AbstractArray{T}) where {T <: N0f8}
     return collect(reinterpret(UInt8, array))
 end
 
@@ -159,13 +160,17 @@ isscalar(x::Billboard) = isscalar(x.rotation)
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
-function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
-                                        ::Type{<:Makie.Quaternion})
+function ShaderAbstractions.type_string(
+        ::ShaderAbstractions.AbstractContext,
+        ::Type{<:Makie.Quaternion}
+    )
     return "vec4"
 end
 
-function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext,
-                                            t::Quaternion)
+function ShaderAbstractions.convert_uniform(
+        ::ShaderAbstractions.AbstractContext,
+        t::Quaternion
+    )
     return convert(Quaternion, t)
 end
 
@@ -187,9 +192,11 @@ function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
 end
 
 function serialize_named_buffer(va::ShaderAbstractions.VertexArray)
-    return Dict(map(ShaderAbstractions.buffers(va)) do (name, buff)
-                    return name => serialize_buffer_attribute(buff)
-                end)
+    return Dict(
+        map(ShaderAbstractions.buffers(va)) do (name, buff)
+            return name => serialize_buffer_attribute(buff)
+        end
+    )
 end
 
 function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers::ShaderAbstractions.VertexArray)
@@ -265,12 +272,14 @@ function serialize_three(@nospecialize(plot), program::Program)
     register_geometry_updates(plot, attribute_updater, program)
     # TODO, make this configurable in ShaderAbstractions
     update_shader(x) = replace(x, "#version 300 es" => "")
-    return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
-                :faces => indices, :uniforms => uniforms,
-                :vertex_source => update_shader(program.vertex_source),
-                :fragment_source => update_shader(program.fragment_source),
-                :uniform_updater => uniform_updater(plot, program.uniforms),
-                :attribute_updater => attribute_updater)
+    return Dict(
+        :vertexarrays => serialize_named_buffer(program.vertexarray),
+        :faces => indices, :uniforms => uniforms,
+        :vertex_source => update_shader(program.vertex_source),
+        :fragment_source => update_shader(program.fragment_source),
+        :uniform_updater => uniform_updater(plot, program.uniforms),
+        :attribute_updater => attribute_updater
+    )
 end
 
 function serialize_scene(scene::Scene)
@@ -289,7 +298,7 @@ function serialize_scene(scene::Scene)
         nothing
     end
 
-    children = map(child-> serialize_scene(child), scene.children)
+    children = map(child -> serialize_scene(child), scene.children)
 
     dirlight = Makie.get_directional_light(scene)
     light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
@@ -312,7 +321,7 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result = [])
     for plot in plots
         # if no plots inserted, this truly is an atomic
         if isempty(plot.plots)
@@ -370,10 +379,10 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     if plot isa Voxels
 
         clip_planes = map(
-                plot, plot.converted..., plot.model, plot.clip_planes, plot.space
-            ) do xs, ys, zs, chunk, model, planes, space
+            plot, plot.converted..., plot.model, plot.clip_planes, plot.space
+        ) do xs, ys, zs, chunk, model, planes, space
 
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1.0e9) for _ in 1:8]
 
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
@@ -384,18 +393,20 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
                 Makie.scalematrix(Vec3f(width ./ size(chunk))) *
                 Makie.translationmatrix(Vec3f(mini))
             modelinv = inv(_model)
-            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+            @assert isapprox(modelinv[4, 4], 1, atol = 1.0e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(_model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
+                distance = dot(
+                    Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3])
+                )
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
+            for i in (min(length(planes), 8) + 1):8
+                output[i] = Vec4f(0, 0, 0, -1.0e9)
             end
 
             return output
@@ -413,24 +424,26 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         end
 
         clip_planes = map(plot, model2, plot.clip_planes, plot.space) do model, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1.0e9) for _ in 1:8]
 
             # model/modelinv has no perspective projection so we should be fine
             # with just applying it to the plane origin and transpose(inv(modelinv))
             # to plane.normal
             modelinv = inv(model)
-            @assert isapprox(modelinv[4, 4], 1, atol = 1e-6)
+            @assert isapprox(modelinv[4, 4], 1, atol = 1.0e-6)
 
             output = Vector{Vec4f}(undef, 8)
             for i in 1:min(length(planes), 8)
                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
                 normal = transpose(model2[]) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
+                distance = dot(
+                    Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+                    Vec3f(normal[1], normal[2], normal[3])
+                )
                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
             end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
+            for i in (min(length(planes), 8) + 1):8
+                output[i] = Vec4f(0, 0, 0, -1.0e9)
             end
 
             return output
@@ -439,7 +452,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     else
 
         clip_planes = map(plot, plot.clip_planes, plot.space) do planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1.0e9) for _ in 1:8]
 
             if length(planes) > 8
                 @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
@@ -449,8 +462,8 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             for i in 1:min(length(planes), 8)
                 output[i] = Makie.gl_plane_format(planes[i])
             end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e10)
+            for i in (min(length(planes), 8) + 1):8
+                output[i] = Vec4f(0, 0, 0, -1.0e10)
             end
 
             return output

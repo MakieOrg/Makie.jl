@@ -1,5 +1,5 @@
 function theme_dark()
-    Theme(
+    return Theme(
         backgroundcolor = :gray10,
         textcolor = :gray45,
         linecolor = :gray60,
@@ -16,7 +16,7 @@ function theme_dark()
             xticksvisible = false,
             yticksvisible = false,
             xlabelpadding = 3,
-            ylabelpadding = 3
+            ylabelpadding = 3,
         ),
         Legend = (
             framevisible = false,

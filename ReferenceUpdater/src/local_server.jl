@@ -51,7 +51,7 @@ function serve_update_page_from_dir(folder)
         end
 
         @info "Uploading updated reference images under tag \"$tag\""
-        try
+        return try
             upload_reference_images(tempdir, tag)
             @info "Upload successful. You can ctrl+c out now."
             HTTP.Response(200, "Upload successful")
@@ -87,7 +87,7 @@ function serve_update_page_from_dir(folder)
     HTTP.register!(router, "GET", "/**", serve_local_file)
 
     @info "Starting server. Open http://localhost:8849 in your browser to view. Ctrl+C to quit."
-    try
+    return try
         HTTP.serve(router, HTTP.Sockets.localhost, 8849)
     catch e
         if e isa InterruptException
@@ -175,11 +175,13 @@ function download_artifacts(; commit = nothing, pr = nothing)
         end
     end
 
-    error("""
-        No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
-        This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
-        Artifacts are only available for complete runs.
-    """)
+    error(
+        """
+            No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
+            This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
+            Artifacts are only available for complete runs.
+        """
+    )
 end
 
 """
@@ -210,7 +212,8 @@ update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22
 """
 function update_from_previous_version(;
         source_version::String, target_version::String,
-        commit = nothing, pr = nothing, score_threshold = 0.03)
+        commit = nothing, pr = nothing, score_threshold = 0.03
+    )
 
     tmpdir = download_artifacts(commit = commit, pr = pr)
 
@@ -254,8 +257,10 @@ function update_from_previous_version(;
         return
     end
 
-    update_from_previous_version(changed_or_missing;
-        source_version = source_version, target_version = target_version)
+    update_from_previous_version(
+        changed_or_missing;
+        source_version = source_version, target_version = target_version
+    )
 
     return
 end
@@ -273,7 +278,8 @@ github release version.
 """
 function update_from_previous_version(
         changed_or_missing::Vector{String};
-        source_version::String, target_version::String)
+        source_version::String, target_version::String
+    )
 
     # Merge new and old
     @info "Downloading new reference image set (target)"
@@ -310,15 +316,15 @@ function update_from_previous_version(
 end
 
 function unzip(file, exdir = "")
-    fileFullPath = isabspath(file) ?  file : joinpath(pwd(),file)
+    fileFullPath = isabspath(file) ? file : joinpath(pwd(), file)
     basePath = dirname(fileFullPath)
-    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(),exdir)))
+    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(), exdir)))
     isdir(outPath) ? "" : mkdir(outPath)
     @info "Extracting zip file $file to $outPath"
     zarchive = ZipFile.Reader(fileFullPath)
     for f in zarchive.files
-        fullFilePath = joinpath(outPath,f.name)
-        if (endswith(f.name,"/") || endswith(f.name,"\\"))
+        fullFilePath = joinpath(outPath, f.name)
+        if (endswith(f.name, "/") || endswith(f.name, "\\"))
             mkdir(fullFilePath)
         else
             mkpath(dirname(fullFilePath))
@@ -326,7 +332,7 @@ function unzip(file, exdir = "")
         end
     end
     close(zarchive)
-    @info "Extracted zip file"
+    return @info "Extracted zip file"
 end
 
 
@@ -366,7 +372,8 @@ function group_scores(path)
     open(joinpath(path, "scores_table.tsv"), "w") do file
         for (filename, scores) in data_vec
             skip = scores .== -1.0
-            println(file,
+            println(
+                file,
                 ifelse(skip[1], "0.0", scores[1]), '\t', ifelse(skip[1], "", "GLMakie/$filename"), '\t',
                 ifelse(skip[2], "0.0", scores[2]), '\t', ifelse(skip[2], "", "CairoMakie/$filename"), '\t',
                 ifelse(skip[3], "0.0", scores[3]), '\t', ifelse(skip[3], "", "WGLMakie/$filename")
@@ -405,7 +412,8 @@ function group_files(path, input_filename, output_filename)
     # generate new structured file
     open(joinpath(path, output_filename), "w") do file
         for (filename, valid) in data
-            println(file,
+            println(
+                file,
                 ifelse(valid[1], "GLMakie/$filename", "INVALID"), '\t',
                 ifelse(valid[2], "CairoMakie/$filename", "INVALID"), '\t',
                 ifelse(valid[3], "WGLMakie/$filename", "INVALID")

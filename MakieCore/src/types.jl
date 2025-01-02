@@ -1,4 +1,3 @@
-
 """
     abstract type Transformable
 This is a bit of a weird name, but all scenes and plots are transformable,
@@ -68,8 +67,8 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     transformation::Union{Nothing, Transformable}
 
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
-    kw::Dict{Symbol,Any}
-    kw_obs::Observable{Vector{Pair{Symbol,Any}}}
+    kw::Dict{Symbol, Any}
+    kw_obs::Observable{Vector{Pair{Symbol, Any}}}
     args::Vector{Any}
 
     converted::Vector{Observable}
@@ -78,26 +77,26 @@ mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
 
     plots::Vector{Plot}
     deregister_callbacks::Vector{Observables.ObserverFunction}
-    parent::Union{AbstractScene,Plot}
+    parent::Union{AbstractScene, Plot}
 
-    function Plot{Typ,T}(
-                kw::Dict{Symbol,Any}, kw_obs::Observable{Vector{Pair{Symbol,Any}}},
-                args::Vector{Any}, converted::Vector{Observable},
-                deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
-            ) where {Typ,T}
-        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
+    function Plot{Typ, T}(
+            kw::Dict{Symbol, Any}, kw_obs::Observable{Vector{Pair{Symbol, Any}}},
+            args::Vector{Any}, converted::Vector{Observable},
+            deregister_callbacks::Vector{Observables.ObserverFunction} = Observables.ObserverFunction[]
+        ) where {Typ, T}
+        return new{Typ, T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
     end
 end
 
 function Base.show(io::IO, plot::Plot)
-    print(io, typeof(plot))
+    return print(io, typeof(plot))
 end
 
 Base.parent(x::AbstractPlot) = x.parent
 
 struct Key{K} end
 macro key_str(arg)
-    :(Key{$(QuoteNode(Symbol(arg)))})
+    return :(Key{$(QuoteNode(Symbol(arg)))})
 end
 Base.broadcastable(x::Key) = (x,)
 
@@ -137,7 +136,7 @@ Can be used for rotation.
 struct Billboard{T <: Union{Float32, Vector{Float32}}}
     rotation::T
 end
-Billboard() = Billboard(0f0)
+Billboard() = Billboard(0.0f0)
 Billboard(angle::Real) = Billboard(Float32(angle))
 Billboard(angles::Vector) = Billboard(Float32.(angles))
 
@@ -147,10 +146,10 @@ Billboard(angles::Vector) = Billboard(Float32.(angles))
     MultiLightShading
 end
 
-const RealArray{T,N} = AbstractArray{T,N} where {T<:Real}
+const RealArray{T, N} = AbstractArray{T, N} where {T <: Real}
 const RealVector{T} = RealArray{1}
 const RealMatrix{T} = RealArray{2}
-const FloatType = Union{Float32,Float64}
+const FloatType = Union{Float32, Float64}
 
 # This could be simply a tuple or ClosedInterval
 # But ClosedInterval doesn't support all operations/constructions we need
@@ -158,7 +157,7 @@ const FloatType = Union{Float32,Float64}
 # E.g. (0, 3) becomes (-0.5, 3.5) for a 3x3 heatmap, so if we have a tuple as input we need to do this calculation
 # And only if it's an EndPoint type, we can be sure its already in the correct format.
 struct EndPoints{T} <: AbstractVector{T}
-    data::NTuple{2,T}
+    data::NTuple{2, T}
 end
 EndPoints(a::Number, b::Number) = EndPoints((a, b))
 EndPoints{T}(a::Number, b::Number) where {T} = EndPoints{T}((T(a), T(b)))
@@ -169,4 +168,4 @@ Base.broadcasted(f, a::EndPoints, b) = EndPoints(f.(a.data, b))
 Base.broadcasted(f, a, b::EndPoints) = EndPoints(f.(a, b.data))
 Base.:(==)(a::EndPoints, b::NTuple{2}) = a.data == b
 # Something we can convert to an EndPoints type
-const EndPointsLike = Union{ClosedInterval,Tuple{Real,Real}}
+const EndPointsLike = Union{ClosedInterval, Tuple{Real, Real}}

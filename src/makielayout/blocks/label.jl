@@ -6,18 +6,21 @@ function initialize_block!(l::Label)
     layoutobservables = l.layoutobservables
 
     textpos = Observable(Point3f(0, 0, 0))
-    word_wrap_width = Observable(-1f0)
+    word_wrap_width = Observable(-1.0f0)
 
     t = text!(
         topscene, textpos, text = l.text, fontsize = l.fontsize, font = l.font, color = l.color,
         visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,
         justification = l.justification, lineheight = l.lineheight, word_wrap_width = word_wrap_width,
-        inspectable = false)
+        inspectable = false
+    )
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
-    onany(topscene, l.text, l.fontsize, l.font, l.rotation, word_wrap_width,
-          l.padding) do _, _, _, _, _, pad
+    onany(
+        topscene, l.text, l.fontsize, l.font, l.rotation, word_wrap_width,
+        l.padding
+    ) do _, _, _, _, _, pad
         padding = to_lrbt_padding(pad)
         textbb[] = Rect2f(boundingbox(t, :data))
         autowidth = width(textbb[]) + padding[1] + padding[2]
@@ -60,5 +63,5 @@ function initialize_block!(l::Label)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    l
+    return l
 end

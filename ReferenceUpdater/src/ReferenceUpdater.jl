@@ -11,7 +11,7 @@ import TOML
 using Dates
 
 function github_token()
-    get(ENV, "GITHUB_TOKEN") do
+    return get(ENV, "GITHUB_TOKEN") do
         try
             readchomp(`gh auth token`)
         catch
@@ -27,7 +27,7 @@ basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 
 function __init__()
     # cleanup downloaded files when julia closes
-    atexit(wipe_cache!)
+    return atexit(wipe_cache!)
 end
 
 end

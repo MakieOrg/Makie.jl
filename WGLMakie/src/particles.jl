@@ -1,4 +1,3 @@
-
 function handle_color_getter!(uniform_dict, per_instance)
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
@@ -35,14 +34,16 @@ function handle_color_getter!(uniform_dict, per_instance)
     return
 end
 
-const IGNORE_KEYS = Set([
-    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
-    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :light_direction, :light_color,
-    :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label, :axis_cyclerr, :dim_conversions, :material, :clip_planes
-    # TODO add model here since we generally need to apply patch_model?
-])
+const IGNORE_KEYS = Set(
+    [
+        :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
+        :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
+        :light_direction, :light_color,
+        :cycle, :label, :inspector_clear, :inspector_hover,
+        :inspector_label, :axis_cyclerr, :dim_conversions, :material, :clip_planes,
+        # TODO add model here since we generally need to apply patch_model?
+    ]
+)
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -62,7 +63,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         return (!haskey(per_instance, k)) && isscalar(v[])
     end
 
-    uniform_dict = Dict{Symbol,Any}()
+    uniform_dict = Dict{Symbol, Any}()
     color_keys = Set([:color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale, :calculated_colors])
     for (k, v) in uniforms
         k in IGNORE_KEYS && continue
@@ -97,14 +98,14 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:normal] = Vec3f(0)
     end
 
-    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0.0f0))
     uniform_dict[:backlight] = plot.backlight
 
     # Make sure these exist
     get!(uniform_dict, :ambient, Vec3f(0.1))
     get!(uniform_dict, :diffuse, Vec3f(0.9))
     get!(uniform_dict, :specular, Vec3f(0.3))
-    get!(uniform_dict, :shininess, 8f0)
+    get!(uniform_dict, :shininess, 8.0f0)
     get!(uniform_dict, :light_direction, Vec3f(1))
     get!(uniform_dict, :light_color, Vec3f(1))
     get!(uniform_dict, :PICKING_INDEX_FROM_UV, false)
@@ -120,7 +121,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uv_transform = map(plot, plot[:uv_transform]) do x
         M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
         # why transpose?
-        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
+        T = Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1)
         if M === nothing
             return T
         elseif M isa Mat
@@ -136,8 +137,10 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:uv_transform] = uv_transform
     end
 
-    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+    return InstancedProgram(
+        WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
+        instance, VertexArray(; per_instance...), uniform_dict
+    )
 end
 
 using Makie: to_spritemarker
@@ -154,22 +157,26 @@ struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
 end
 
 function serialize_three(fta::NoDataTextureAtlas)
-    tex = Dict(:type => "Sampler", :data => "texture_atlas",
-               :size => [fta.dims...], :three_format => three_format(Float16),
-               :three_type => three_type(Float16),
-               :minFilter => three_filter(:linear),
-               :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+    tex = Dict(
+        :type => "Sampler", :data => "texture_atlas",
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16.0f0
+    )
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
 
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
-    per_instance_keys = (:pos, :rotation, :markersize, :color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset)
-    uniform_dict = Dict{Symbol,Any}()
+    per_instance_keys = (
+        :pos, :rotation, :markersize, :color, :intensity,
+        :uv_offset_width, :quad_offset, :marker_offset,
+    )
+    uniform_dict = Dict{Symbol, Any}()
     uniform_dict[:image] = false
     marker = nothing
     atlas = wgl_texture_atlas()
@@ -204,8 +211,12 @@ function scatter_shader(scene::Scene, attributes, plot)
         return !haskey(per_instance, k)
     end
 
-    color_keys = Set([:color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale,
-                      :calculated_colors])
+    color_keys = Set(
+        [
+            :color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale,
+            :calculated_colors,
+        ]
+    )
 
     for (k, v) in uniforms
         k in IGNORE_KEYS && continue
@@ -215,7 +226,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
-            return lift(plot, marker; ignore_equal_values=true) do marker
+            return lift(plot, marker; ignore_equal_values = true) do marker
                 return Cint(Makie.marker_to_sdf_shape(to_spritemarker(marker)))
             end
         end
@@ -226,7 +237,7 @@ function scatter_shader(scene::Scene, attributes, plot)
         uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
-        uniform_dict[:atlas_texture_size] = 0f0
+        uniform_dict[:atlas_texture_size] = 0.0f0
         uniform_dict[:distancefield] = Observable(false)
     end
 
@@ -237,27 +248,29 @@ function scatter_shader(scene::Scene, attributes, plot)
         to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
     end
 
-    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1f0, 1f0))
+    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
     # Don't send obs, since it's overwritten in JS to be updated by the camera
     uniform_dict[:resolution] = to_value(scene.camera.resolution)
-    uniform_dict[:px_per_unit] = 1f0
+    uniform_dict[:px_per_unit] = 1.0f0
 
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     uniform_dict[:picking] = false
     uniform_dict[:object_id] = UInt32(0)
 
     # Make sure these exist
-    get!(uniform_dict, :strokewidth, 0f0)
+    get!(uniform_dict, :strokewidth, 0.0f0)
     get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
-    get!(uniform_dict, :glowwidth, 0f0)
+    get!(uniform_dict, :glowwidth, 0.0f0)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
     _, arr = first(per_instance)
-    if any(v-> length(arr) != length(v), values(per_instance))
+    if any(v -> length(arr) != length(v), values(per_instance))
         lens = [k => length(v) for (k, v) in per_instance]
         error("Not all have the same length: $(lens)")
     end
-    return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
+    return InstancedProgram(
+        WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
+        instance, VertexArray(; per_instance...), uniform_dict
+    )
 end
 
 function create_shader(scene::Scene, plot::Scatter)
@@ -275,7 +288,7 @@ function create_shader(scene::Scene, plot::Scatter)
 
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = model
-    attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+    attributes[:depth_shift] = get(plot, :depth_shift, Observable(0.0f0))
 
     delete!(attributes, :uv_offset_width)
     filter!(kv -> !(kv[2] isa Function), attributes)
@@ -294,27 +307,31 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     offset = plot.offset
 
     atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
+    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values = true) do pos, gc, offset
         Makie.text_quads(atlas, pos, to_value(gc), offset)
     end
 
     # unpack values from the one signal:
     positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        return lift(getindex, plot, glyph_data, i; ignore_equal_values=true)
+        return lift(getindex, plot, glyph_data, i; ignore_equal_values = true)
     end
 
-    uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
+    uniform_color = lift(plot, glyphcollection; ignore_equal_values = true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
-                    init=RGBAf[])
+            reduce(
+                vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
+                init = RGBAf[]
+            )
         else
             gc.colors.sv
         end
     end
-    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
+    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values = true) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
-                    init=Quaternionf[])
+            reduce(
+                vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
+                init = Quaternionf[]
+            )
         else
             gc.rotations.sv
         end
@@ -334,7 +351,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :uv_offset_width => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
-        :depth_shift => get(plot, :depth_shift, Observable(0f0)),
+        :depth_shift => get(plot, :depth_shift, Observable(0.0f0)),
         :glowwidth => plot.glowwidth,
         :glowcolor => plot.glowcolor,
     )

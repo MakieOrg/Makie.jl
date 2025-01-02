@@ -1,4 +1,3 @@
-
 #########################################
 # Backend interface to Makie #
 #########################################
@@ -28,17 +27,17 @@ function openurl(url::String)
     tryrun(`python -mwebbrowser $(url)`) && return
     # our last hope
     tryrun(`python3 -mwebbrowser $(url)`) && return
-    @warn("Can't find a way to open a browser, open $(url) manually!")
+    return @warn("Can't find a way to open a browser, open $(url) manually!")
 end
 
-function Base.display(screen::Screen, scene::Scene; connect=false)
+function Base.display(screen::Screen, scene::Scene; connect = false)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false, screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(screen_config))
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false, screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     screen = Makie.apply_screen_config!(screen, config, scene)
     path = joinpath(mktempdir(), "display.png")
     Makie.push_screen!(scene, screen)
@@ -75,7 +74,7 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     # across svgs when embedding them on websites.
     # the hash and therefore the salt will always be the same for the same file
     # so the output is deterministic
-    salt = repr(CRC32c.crc32c(svg))[end-7:end]
+    salt = repr(CRC32c.crc32c(svg))[(end - 7):end]
 
     # matches:
     # id="someid"
@@ -111,15 +110,17 @@ end
 # Disabling mimes and showable
 
 const DISABLED_MIMES = Set{String}()
-const SUPPORTED_MIMES = Set([
-    map(x->string(x()), Makie.WEB_MIMES)...,
-    "image/svg+xml",
-    "application/pdf",
-    "application/postscript",
-    "image/png"
-])
+const SUPPORTED_MIMES = Set(
+    [
+        map(x -> string(x()), Makie.WEB_MIMES)...,
+        "image/svg+xml",
+        "application/pdf",
+        "application/postscript",
+        "image/png",
+    ]
+)
 
-function Makie.backend_showable(::Type{Screen}, ::MIME{SYM}) where SYM
+function Makie.backend_showable(::Type{Screen}, ::MIME{SYM}) where {SYM}
     supported_mimes = Base.setdiff(SUPPORTED_MIMES, DISABLED_MIMES)
     return string(SYM) in supported_mimes
 end

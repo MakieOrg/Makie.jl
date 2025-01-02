@@ -76,7 +76,7 @@ function clear!(handle::MouseEventHandle)
     foreach(Observables.off, handle.observerfuncs)
     empty!(handle.observerfuncs)
     empty!(handle.obs.listeners)
-    nothing
+    return nothing
 end
 
 
@@ -89,7 +89,7 @@ for eventtype in instances(MouseEventType)
         a MouseEvent with `event.type === $($eventtype)`.
         """
         function $onfunctionname(f, mev::MouseEventHandle; priority = 0)
-            on(mev.obs, priority = priority) do event
+            return on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
                     return f(event)
                 end
@@ -122,11 +122,11 @@ end
 """
 function addmouseevents!(scene, elements...; priority = 1)
     is_mouse_over_relevant_area() = isempty(elements) ? Makie.is_mouseinside(scene) : mouseover(scene, elements...)
-    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
-function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2}; priority = 1)
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<:Rect2}; priority = 1)
     is_mouse_over_relevant_area() = Makie.mouseposition_px(scene) in bbox[]
-    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+    return _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 end
 
 
@@ -208,7 +208,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     last_click_was_double = Ref(false)
 
     # react to mouse position changes
-    mousepos_observerfunc = on(scene, events(scene).mouseposition; priority=priority) do mp
+    mousepos_observerfunc = on(scene, events(scene).mouseposition; priority = priority) do mp
         consumed = false
         t = time()
         data = mouseposition(scene)
@@ -226,7 +226,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
             if drag_ongoing[]
                 # continue the drag
                 event = to_drag_event(mouse_downed_button[])
-                x = setindex!(mouseevent,
+                x = setindex!(
+                    mouseevent,
                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                 )
                 consumed = consumed || x
@@ -236,13 +237,15 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 if mouse_downed_inside[] && norm(mouse_downed_at[] - px) >= drag_threshold
                     drag_ongoing[] = true
                     event = to_drag_start_event(mouse_downed_button[])
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
 
                     event = to_drag_event(mouse_downed_button[])
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
@@ -251,18 +254,21 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         else
             if mouse_inside
                 x = if mouse_was_inside[]
-                    setindex!(mouseevent,
+                    setindex!(
+                        mouseevent,
                         MouseEvent(MouseEventTypes.over, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                 else
-                    setindex!(mouseevent,
+                    setindex!(
+                        mouseevent,
                         MouseEvent(MouseEventTypes.enter, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                 end
                 consumed = consumed || x
             else
                 if mouse_was_inside[]
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
@@ -279,7 +285,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
 
     # react to mouse button changes
-    mousedrag_observerfunc = on(scene, events(scene).mousebutton, priority=priority) do event
+    mousedrag_observerfunc = on(scene, events(scene).mousebutton, priority = priority) do event
         consumed = false
         t = time()
         data = prev_data[]
@@ -298,14 +304,16 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 if mouse_was_inside[]
                     mouse_downed_at[] = px
                     event = to_down_event(mouse_downed_button[])
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
                     mouse_downed_inside[] = true
                 else
                     mouse_downed_inside[] = false
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(MouseEventTypes.downoutside, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
@@ -324,7 +332,8 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
                 if drag_ongoing[]
                     event = to_drag_stop_event(mouse_downed_button[])
-                    x = setindex!(mouseevent,
+                    x = setindex!(
+                        mouseevent,
                         MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     )
                     consumed = consumed || x
@@ -333,13 +342,15 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                     if mouse_was_inside[]
                         # up after drag done over element
                         event = to_up_event(mouse_downed_button[])
-                        x = setindex!(mouseevent,
+                        x = setindex!(
+                            mouseevent,
                             MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                         )
                         consumed = consumed || x
                     else
                         # mouse could be not over elements after drag is over
-                        x = setindex!(mouseevent,
+                        x = setindex!(
+                            mouseevent,
                             MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
                         )
                         consumed = consumed || x
@@ -355,14 +366,16 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                                     mouse_downed_button[] == b_last_click[]
 
                                 event = to_doubleclick_event(mouse_downed_button[])
-                                x = setindex!(mouseevent,
+                                x = setindex!(
+                                    mouseevent,
                                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                                 )
                                 consumed = consumed || x
                                 last_click_was_double[] = true
                             else
                                 event = to_click_event(mouse_downed_button[])
-                                x = setindex!(mouseevent,
+                                x = setindex!(
+                                    mouseevent,
                                     MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                                 )
                                 consumed = consumed || x
@@ -374,8 +387,9 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                         mouse_downed_inside[] = false
 
                         # up after click
-                        event =  to_up_event(mouse_downed_button[])
-                        x = setindex!(mouseevent,
+                        event = to_up_event(mouse_downed_button[])
+                        x = setindex!(
+                            mouseevent,
                             MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                         )
                         consumed = consumed || x
@@ -391,5 +405,5 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         return Consume(consumed)
     end
 
-    MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
+    return MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
 end

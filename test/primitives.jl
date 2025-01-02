@@ -13,8 +13,8 @@ end
     # https://github.com/MakieOrg/Makie.jl/issues/3273
     directions = decompose(Point2f, Circle(Point2f(0), 1))
     points = decompose(Point2f, Circle(Point2f(0), 0.5))
-    color = range(0, 1, length=length(directions))
-    fig, ax, pl = arrows(points, directions; color=color)
+    color = range(0, 1, length = length(directions))
+    fig, ax, pl = arrows(points, directions; color = color)
     cbar = Colorbar(fig[1, 2], pl)
     @test cbar.limits[] == Vec2f(0, 1)
     pl.colorrange = (0.5, 0.6)
@@ -22,7 +22,7 @@ end
 end
 
 @testset "voxels" begin
-    data = reshape(collect(range(0.3, 1.8, length=6*5*4)), 6, 5, 4)
+    data = reshape(collect(range(0.3, 1.8, length = 6 * 5 * 4)), 6, 5, 4)
     f, a, p = voxels(
         data,
         lowclip = RGBf(1, 0, 1), highclip = RGBf(0, 1, 0),
@@ -45,11 +45,11 @@ end
     # colormap
     cc = p.calculated_colors[]
     @test length(cc.colormap[]) == 255
-    @test cc.colormap[][1] == RGBAf(1,0,1,1)
-    @test cc.colormap[][2] == RGBAf(0,0,0,1)
-    @test cc.colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
-    @test cc.colormap[][end-1] == RGBAf(1,1,1,1)
-    @test cc.colormap[][end] == RGBAf(0,1,0,1)
+    @test cc.colormap[][1] == RGBAf(1, 0, 1, 1)
+    @test cc.colormap[][2] == RGBAf(0, 0, 0, 1)
+    @test cc.colormap[][2:(end - 1)] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
+    @test cc.colormap[][end - 1] == RGBAf(1, 1, 1, 1)
+    @test cc.colormap[][end] == RGBAf(0, 1, 0, 1)
 
     # voxels-as-meshscatter helpers
     @test Makie.voxel_size(p) ≈ Vec3f(0.9)
@@ -92,7 +92,7 @@ end
 @testset "scalar color for scatterlines" begin
     colorrange = (1, 5)
     colormap = :Blues
-    f, ax, sl = scatterlines(1:10,1:10,color=3,colormap=colormap,colorrange=colorrange)
+    f, ax, sl = scatterlines(1:10, 1:10, color = 3, colormap = colormap, colorrange = colorrange)
     l = sl.plots[1]::Lines
     sc = sl.plots[2]::Scatter
     @test l.color[] == 3

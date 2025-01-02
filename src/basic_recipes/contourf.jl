@@ -48,12 +48,12 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
     @assert issorted(edges)
-    edges
+    return edges
 end
 
 conversion_trait(::Type{<:Contourf}) = VertexGrid()
@@ -77,8 +77,10 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     colorrange = lift(c, c._computed_levels) do levels
         minimum(levels), maximum(levels)
     end
-    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
+    computed_colormap = lift(
+        compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
+        c.extendhigh
+    )
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
@@ -103,7 +105,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         # zs needs to be transposed to match rest of makie
@@ -131,7 +133,8 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-    poly!(c,
+    return poly!(
+        c,
         polys,
         colormap = c._computed_colormap,
         colorrange = colorrange,
@@ -167,8 +170,9 @@ function _group_polys(points, ids)
     # check if a single point is contained, saving some computation time
     containment_matrix = [
         p1 != p2 &&
-        PolygonOps.inpolygon(first(p1), p2) == 1
-        for p1 in polys_lastdouble, p2 in polys_lastdouble]
+            PolygonOps.inpolygon(first(p1), p2) == 1
+            for p1 in polys_lastdouble, p2 in polys_lastdouble
+    ]
 
     unclassified_polyindices = collect(1:size(containment_matrix, 1))
     # @show unclassified_polyindices
@@ -217,5 +221,5 @@ function _group_polys(points, ids)
         unclassified_polyindices = unclassified_polyindices[to_keep]
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
-    groups
+    return groups
 end

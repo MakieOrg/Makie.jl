@@ -12,7 +12,7 @@
 
     to = gl2[1, 4] = Toggle(fig)
     te = fig[0, :] = Label(fig, "A super title")
-    me = fig[end + 1, :] = Menu(fig, options=["one", "two", "three"])
+    me = fig[end + 1, :] = Menu(fig, options = ["one", "two", "three"])
     tb = fig[end + 1, :] = Textbox(fig)
     is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
@@ -43,7 +43,7 @@ end
     cb = Colorbar(fig[1, 2], hm)
 
     @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
-    @test cb.limits[] == Vec(-.5, .5)
+    @test cb.limits[] == Vec(-0.5, 0.5)
 
     hm.colorrange = Float32.((-1, 1))
     @test cb.limits[] == Vec(-1, 1)
@@ -113,63 +113,63 @@ end
     @test ax.limits[] == (nothing, [5, 7])
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
-    @test_throws MethodError limits!(f[1,1], -1, 1, -1, 1)
+    @test_throws MethodError limits!(f[1, 1], -1, 1, -1, 1)
 end
 
 # issue 3240
 @testset "Axis limits 4-tuple" begin
     fig = Figure()
-    ax = Axis(fig[1,1],limits=(0,600,0,15))
-    xlims!(ax,100,400)
-    @test ax.limits[] == ((100,400),(0,15))
+    ax = Axis(fig[1, 1], limits = (0, 600, 0, 15))
+    xlims!(ax, 100, 400)
+    @test ax.limits[] == ((100, 400), (0, 15))
     xlims!()
-    @test ax.limits[] == ((nothing,nothing),(0,15))
+    @test ax.limits[] == ((nothing, nothing), (0, 15))
 
-    ax = Axis(fig[1,1],limits=(0,600,0,15))
-    ylims!(ax,1,13)
-    @test ax.limits[] == ((0,600),(1,13))
+    ax = Axis(fig[1, 1], limits = (0, 600, 0, 15))
+    ylims!(ax, 1, 13)
+    @test ax.limits[] == ((0, 600), (1, 13))
     ylims!()
-    @test ax.limits[] == ((0,600),(nothing,nothing))
+    @test ax.limits[] == ((0, 600), (nothing, nothing))
 
-    ax = Axis(fig[1,1],limits=(0,600,0,15))
-    limits!(ax,350,700,2,14)
-    @test ax.limits[] == ((350,700),(2,14))
+    ax = Axis(fig[1, 1], limits = (0, 600, 0, 15))
+    limits!(ax, 350, 700, 2, 14)
+    @test ax.limits[] == ((350, 700), (2, 14))
 end
 
 @testset "Axis3 limits 6-tuple" begin
     fig = Figure()
-    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
-    xlims!(ax,1,2)
-    @test ax.limits[] == ((1,2),(0,2),(0,3))
+    ax = Axis3(fig[1, 1], limits = (0, 1, 0, 2, 0, 3))
+    xlims!(ax, 1, 2)
+    @test ax.limits[] == ((1, 2), (0, 2), (0, 3))
     xlims!()
-    @test ax.limits[] == ((nothing,nothing),(0,2),(0,3))
+    @test ax.limits[] == ((nothing, nothing), (0, 2), (0, 3))
 
-    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
-    ylims!(ax,1,3)
-    @test ax.limits[] == ((0,1),(1,3),(0,3))
+    ax = Axis3(fig[1, 1], limits = (0, 1, 0, 2, 0, 3))
+    ylims!(ax, 1, 3)
+    @test ax.limits[] == ((0, 1), (1, 3), (0, 3))
     ylims!()
-    @test ax.limits[] == ((0,1),(nothing,nothing),(0,3))
+    @test ax.limits[] == ((0, 1), (nothing, nothing), (0, 3))
 
-    ax = Axis3(fig[1,1],limits=(0,1,0,2,0,3))
-    zlims!(ax,1,5)
-    @test ax.limits[] == ((0,1),(0,2),(1,5))
+    ax = Axis3(fig[1, 1], limits = (0, 1, 0, 2, 0, 3))
+    zlims!(ax, 1, 5)
+    @test ax.limits[] == ((0, 1), (0, 2), (1, 5))
     zlims!()
-    @test ax.limits[] == ((0,1),(0,2),(nothing,nothing))
+    @test ax.limits[] == ((0, 1), (0, 2), (nothing, nothing))
 end
 
 @testset "Axis limits intervals" begin
     fig = Figure()
-    ax = Axis(fig[1,1],limits=(0..600,0..15))
-    xlims!(ax, 100..400)
-    @test ax.limits[] == ((100,400),(0,15))
-    ylims!(ax, 1..13)
-    @test ax.limits[] == ((100,400),(1,13))
-    limits!(ax, 1..3, 1..2)
-    @test ax.limits[] == ((1,3),(1,2))
-    ax3 = Axis3(fig[1,1],limits=(0..1,0..2,0..3))
-    xlims!(ax3, 10..20)
-    zlims!(ax3, 1..2)
-    @test ax3.limits[] == ((10,20),(0,2),(1,2))
+    ax = Axis(fig[1, 1], limits = (0 .. 600, 0 .. 15))
+    xlims!(ax, 100 .. 400)
+    @test ax.limits[] == ((100, 400), (0, 15))
+    ylims!(ax, 1 .. 13)
+    @test ax.limits[] == ((100, 400), (1, 13))
+    limits!(ax, 1 .. 3, 1 .. 2)
+    @test ax.limits[] == ((1, 3), (1, 2))
+    ax3 = Axis3(fig[1, 1], limits = (0 .. 1, 0 .. 2, 0 .. 3))
+    xlims!(ax3, 10 .. 20)
+    zlims!(ax3, 1 .. 2)
+    @test ax3.limits[] == ((10, 20), (0, 2), (1, 2))
 end
 
 @testset "Colorbar plot object kwarg clash" begin
@@ -214,8 +214,8 @@ end
 
 @testset "MultiplesTicks strip_zero" begin
     default = MultiplesTicks(5, pi, "π")
-    strip = MultiplesTicks(5, pi, "π"; strip_zero=true)
-    no_strip = MultiplesTicks(5, pi, "π"; strip_zero=false)
+    strip = MultiplesTicks(5, pi, "π"; strip_zero = true)
+    no_strip = MultiplesTicks(5, pi, "π"; strip_zero = false)
 
     @test default == no_strip
     zero_default = Makie.get_ticks(default, nothing, Makie.Automatic(), -7, 7)[2][3]
@@ -227,33 +227,33 @@ end
 @testset "Colorbars" begin
     fig = Figure()
     hmap = heatmap!(Axis(fig[1, 1]), rand(4, 4))
-    cb1 = Colorbar(fig[1,2], hmap; height = Relative(0.65))
+    cb1 = Colorbar(fig[1, 2], hmap; height = Relative(0.65))
     @test cb1.height[] == Relative(0.65)
     @testset "conversion" begin
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
-        cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
+        cbar = Colorbar(fig[1, 1], colormap = :viridis, colorrange = Vec2f(0, 1))
         ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
     @testset "errors" begin
         f, ax, pl1 = scatter(rand(10))
-        pl2 = scatter!(ax, rand(10); color=rand(RGBf, 10))
-        pl3 = barplot!(ax, 1:3; colorrange=(0, 1))
+        pl2 = scatter!(ax, rand(10); color = rand(RGBf, 10))
+        pl3 = barplot!(ax, 1:3; colorrange = (0, 1))
         @test_throws ErrorException Colorbar(f[1, 2], pl1)
         @test_throws ErrorException Colorbar(f[1, 2], pl2)
         @test_throws ErrorException Colorbar(f[1, 2], pl3)
     end
     @testset "Recipes" begin
-        f, ax, pl = barplot(1:3; color=1:3)
+        f, ax, pl = barplot(1:3; color = 1:3)
         cbar = Colorbar(f[1, 2], pl)
         @test cbar.limits[] == Vec(1.0, 3.0)
 
-        let data = fill(1.0, 2,2,2)
+        let data = fill(1.0, 2, 2, 2)
             data[1] = 3.0
             f, ax, pl = volumeslices(1:2, 1:2, 1:2, data)
-            cbar = Colorbar(f[1,2], pl)
+            cbar = Colorbar(f[1, 2], pl)
             @test cbar.limits[] == Vec(1.0, 3.0)
         end
     end
@@ -274,14 +274,14 @@ end
     # triggering a conversion error
     # So we just check that the same scenario doesn't error again
     f = Figure()
-    ax = Axis(f[1,1], xticks = 20:10:80)
+    ax = Axis(f[1, 1], xticks = 20:10:80)
     scatter!(ax, 30:10:100, rand(Float64, 8), color = :red)
 end
 
 # issues 1958 and 2006
 @testset "axislegend number align" begin
     f = Figure()
-    ax = Axis(f[1,1], xticks = 20:10:80)
+    ax = Axis(f[1, 1], xticks = 20:10:80)
     lines!(ax, 1:10, label = "A line")
     leg = axislegend(ax, position = (0.4, 0.8))
     @test leg.halign[] == 0.4
@@ -363,7 +363,7 @@ end
 end
 
 copy_listeners(obs::Observable) = copy(obs.listeners)
-function iterate_observable_fields(f, x::T) where T
+function iterate_observable_fields(f, x::T) where {T}
     for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
         fieldtype <: Observable || continue
         f(fieldname, getfield(x, fieldname))
@@ -379,10 +379,11 @@ function iterate_attributes(f, a::Attributes, prefix = "")
             f("$prefix:$key", value)
         end
     end
+    return
 end
 
 function listener_dict(s::Scene)
-    d = Dict{String,Vector}()
+    d = Dict{String, Vector}()
     iterate_observable_fields(s) do fieldname, field
         d["$fieldname"] = copy_listeners(field)
     end
@@ -401,10 +402,10 @@ end
 function dictdiff(before, after)
     kd = setdiff(keys(before), keys(after))
     isempty(kd) || error("Mismatching keys: $kd")
-    d = Dict{String,Vector}()
+    d = Dict{String, Vector}()
     for key in keys(after)
         befset = Set(last.(before[key]))
-        v = filter(after[key]) do (prio,func)
+        v = filter(after[key]) do (prio, func)
             func ∉ befset
         end
         isempty(v) || (d[key] = v)
@@ -413,7 +414,7 @@ function dictdiff(before, after)
 end
 
 function get_difference_dict(blockfunc)
-    s = Scene(camera = campixel!);
+    s = Scene(camera = campixel!)
     before = listener_dict(s)
     block = blockfunc(s)
     delete!(block)
@@ -429,22 +430,27 @@ end
     end
     @testset "Slidergrid" begin
         d = get_difference_dict() do scene
-            SliderGrid(scene,
+            SliderGrid(
+                scene,
                 (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
                 (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
-                (label = "Phase", range = 0:0.01:2pi,
-                    format = x -> string(round(x/pi, digits = 2), "π"))
+                (
+                    label = "Phase", range = 0:0.01:2pi,
+                    format = x -> string(round(x / pi, digits = 2), "π"),
+                )
             )
         end
         @test isempty(d)
     end
     @testset "Legend" begin
         d = get_difference_dict() do scene
-            Legend(scene, [
-                MarkerElement(marker = :cross),
-                LineElement(),
-                PolyElement(),
-            ], ["Label 1", "Label 2", "Label 3"])
+            Legend(
+                scene, [
+                    MarkerElement(marker = :cross),
+                    LineElement(),
+                    PolyElement(),
+                ], ["Label 1", "Label 2", "Label 3"]
+            )
         end
         @test isempty(d)
     end
@@ -452,13 +458,14 @@ end
 
 @testset "Legend with rich text" begin
     fig = Figure()
-    ax = Axis(fig[1,1])
-    l1 = lines!( 0..2π , sin )
+    ax = Axis(fig[1, 1])
+    l1 = lines!(0 .. 2π, sin)
     @test_nowarn Legend(
-        fig[1,2],
+        fig[1, 2],
         [l1],
         [rich("some", subscript("entry"))],
-        rich("title", color = :red, font = :bold_italic))
+        rich("title", color = :red, font = :bold_italic)
+    )
 end
 
 @testset "Legend for hist with labels" begin
@@ -469,10 +476,10 @@ end
 
 @testset "Legend with plotlists" begin
     Axis(Figure()[1, 1])
-    plotlist!([Makie.SpecApi.Scatter(1:10)], label="MyPlot 1")
+    plotlist!([Makie.SpecApi.Scatter(1:10)], label = "MyPlot 1")
     @test_nowarn axislegend()
 
-    plotlist([Makie.SpecApi.Scatter(1:10)], label="MyPlot 2")
+    plotlist([Makie.SpecApi.Scatter(1:10)], label = "MyPlot 2")
     @test_nowarn axislegend()
 end
 
@@ -495,7 +502,7 @@ end
 # end
 
 @testset "Colorscales" begin
-    x = 10.0.^(1:0.1:4)
+    x = 10.0 .^ (1:0.1:4)
     y = 1.0:0.1:5.0
     z = broadcast((x, y) -> x, x, y')
 
@@ -550,7 +557,7 @@ end
 
 @testset "Toggle" begin
     f = Figure()
-    Toggle(f[1,1])
-    Toggle(f[2,1], orientation=:vertical)
-    Toggle(f[3,1], orientation=pi/4)
+    Toggle(f[1, 1])
+    Toggle(f[2, 1], orientation = :vertical)
+    Toggle(f[3, 1], orientation = pi / 4)
 end

@@ -21,19 +21,21 @@ import Electron
     @test !showable("blaaa", f)
 end
 
-excludes = Set([
-    "Image on Surface Sphere", # TODO: texture rotated 180°
-    # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
-    "Array of Images Scatter", # scatter does not support texture images
+excludes = Set(
+    [
+        "Image on Surface Sphere", # TODO: texture rotated 180°
+        # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
+        "Array of Images Scatter", # scatter does not support texture images
 
-    "Order Independent Transparency",
-    "fast pixel marker",
-    "Textured meshscatter", # not yet implemented
-    "3D Contour with 2D contour slices", # looks like a z-fighting issue
-])
+        "Order Independent Transparency",
+        "fast pixel marker",
+        "Textured meshscatter", # not yet implemented
+        "3D Contour with 2D contour slices", # looks like a z-fighting issue
+    ]
+)
 
 Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(devtools=true)
+edisplay = Bonito.use_electron_display(devtools = true)
 
 @testset "reference tests" begin
     @testset "refimages" begin
@@ -48,15 +50,15 @@ edisplay = Bonito.use_electron_display(devtools=true)
         Makie.CURRENT_FIGURE[] = nothing
         app = App(nothing)
         display(edisplay, app)
-        GC.gc(true);
+        GC.gc(true)
         # Somehow this may take a while to get emptied completely
         p_key = "Object.keys(WGL.plot_cache)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout=50)
+        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout = 50)
         @show run(edisplay.window, p_key)
         @test value == :success
 
         s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout=50)
+        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout = 50)
         @show run(edisplay.window, s_keys)
         @show app.session[].id
         @show app.session[].parent
@@ -103,11 +105,11 @@ edisplay = Bonito.use_electron_display(devtools=true)
         function check_tick(tick, state, count)
             @test tick.state == state
             @test tick.count == count
-            @test tick.time > 1e-9
-            @test tick.delta_time > 1e-9
+            @test tick.time > 1.0e-9
+            @test tick.delta_time > 1.0e-9
         end
 
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         @test events(f).tick[] == Makie.Tick()
 
         filename = "$(tempname()).png"
@@ -127,7 +129,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         end
 
 
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         filename = "$(tempname()).mp4"
         try
             tick_record = Makie.Tick[]
@@ -139,8 +141,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
             for (i, tick) in enumerate(tick_record[start:end])
                 @test tick.state == Makie.OneTimeRenderTick
-                @test tick.count == i-1
-                @test tick.time ≈ dt * (i-1)
+                @test tick.count == i - 1
+                @test tick.time ≈ dt * (i - 1)
                 @test tick.delta_time ≈ dt
             end
         finally
@@ -148,7 +150,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         end
 
         # test destruction of tick overwrite
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         let
             io = VideoStream(f)
             @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)

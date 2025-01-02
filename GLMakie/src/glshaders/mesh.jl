@@ -1,11 +1,11 @@
-function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
+function to_opengl_mesh!(result, mesh_obs::TOrSignal{<:GeometryBasics.Mesh})
     m = convert(Observable, mesh_obs)
-    
-    result[:faces]    = indexbuffer(map(faces, m))
+
+    result[:faces] = indexbuffer(map(faces, m))
     result[:vertices] = GLBuffer(map(coordinates, m))
 
     function to_buffer(name, target)
-        if hasproperty(m[], name)
+        return if hasproperty(m[], name)
             val = getproperty(m[], name)
             if mesh_obs isa Observable
                 val = map(m -> getproperty(m, name), m)
@@ -31,7 +31,7 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
         to_buffer(:normal, :normals)
     end
     to_buffer(:attribute_id, :attribute_id)
-    
+
     return result
 end
 
@@ -41,7 +41,7 @@ function draw_mesh(screen, data::Dict)
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
         normals = nothing => GLBuffer
-        backlight = 0f0
+        backlight = 0.0f0
         vertex_color = nothing => GLBuffer
         image = nothing => Texture
         matcap = nothing => Texture
@@ -49,7 +49,7 @@ function draw_mesh(screen, data::Dict)
         color_norm = nothing
         fetch_pixel = false
         texturecoordinates = Vec2f(0) => GLBuffer
-        uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
+        uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(

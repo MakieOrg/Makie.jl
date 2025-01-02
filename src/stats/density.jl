@@ -1,19 +1,19 @@
 function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.UnivariateKDE)
     ptype = plottype(P, Lines) # choose the more concrete one
-    to_plotspec(ptype, convert_arguments(ptype, d.x, d.density))
+    return to_plotspec(ptype, convert_arguments(ptype, d.x, d.density))
 end
 
 function convert_arguments(::Type{<:Poly}, d::KernelDensity.UnivariateKDE)
     points = Vector{Point2f}(undef, length(d.x) + 2)
     points[1] = Point2f(d.x[1], 0)
-    points[2:end-1] .= Point2f.(d.x, d.density)
+    points[2:(end - 1)] .= Point2f.(d.x, d.density)
     points[end] = Point2f(d.x[end], 0)
-    (points,)
+    return (points,)
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.BivariateKDE)
     ptype = plottype(P, Heatmap)
-    to_plotspec(ptype, convert_arguments(ptype, d.x, d.y, d.density))
+    return to_plotspec(ptype, convert_arguments(ptype, d.x, d.y, d.density))
 end
 
 """
@@ -54,10 +54,13 @@ end
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
-    lowerupper = lift(plot, x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth, plot.weights) do x, dir, bound, offs, n, bw, weights
+    lowerupper = lift(
+        plot, x, plot.direction, plot.boundary, plot.offset,
+        plot.npoints, plot.bandwidth, plot.weights
+    ) do x, dir, bound, offs, n, bw, weights
 
-        k = KernelDensity.kde(x;
+        k = KernelDensity.kde(
+            x;
             npoints = n,
             (bound === automatic ? NamedTuple() : (boundary = bound,))...,
             (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
@@ -111,10 +114,14 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    band!(plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
-        colorrange = plot.colorrange, inspectable = plot.inspectable)
-    l = lines!(plot, linepoints, color = plot.strokecolor,
+    band!(
+        plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
+        colorrange = plot.colorrange, inspectable = plot.inspectable
+    )
+    l = lines!(
+        plot, linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,
-        inspectable = plot.inspectable)
-    plot
+        inspectable = plot.inspectable
+    )
+    return plot
 end

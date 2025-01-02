@@ -1,4 +1,3 @@
-
 const Theme = Attributes
 
 Base.broadcastable(x::AbstractScene) = Ref(x)
@@ -10,9 +9,9 @@ value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
 
 # We transform a tuple of observables into a Observable(tuple(values...))
-function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
+function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where {N}
     result = Observable(to_value.(x))
-    onany((args...)-> args, x...)
+    onany((args...) -> args, x...)
     return result
 end
 
@@ -20,7 +19,7 @@ value_convert(x::NamedTuple) = Attributes(x)
 
 # Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
 node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
-                               isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
+    isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
@@ -80,22 +79,22 @@ end
 Base.merge(target::Attributes, args::Attributes...) = merge!(deepcopy(target), args...)
 
 function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
-    if hasfield(typeof(x), key)
+    return if hasfield(typeof(x), key)
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
 
-function Base.setproperty!(x::Union{Attributes,AbstractPlot}, key::Symbol, value::NamedTuple)
-    x[key] = Attributes(value)
+function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value::NamedTuple)
+    return x[key] = Attributes(value)
 end
 function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
     return x[key] = Attributes(value)
 end
 
 function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
-    if hasfield(typeof(x), key)
+    return if hasfield(typeof(x), key)
         setfield!(x, key, value)
     else
         setindex!(x, value, key)
@@ -110,7 +109,7 @@ function Base.getindex(x::Attributes, key::Symbol)
 end
 
 function Base.setindex!(x::Attributes, value, key::Symbol)
-    if haskey(x, key)
+    return if haskey(x, key)
         x.attributes[key][] = value
     else
         x.attributes[key] = node_any(value)
@@ -123,7 +122,7 @@ end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
 
-function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
+function Base.show(io::IO, ::MIME"text/plain", attr::Attributes)
 
     io = IOContext(io, :compact => true)
 
@@ -150,6 +149,7 @@ function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
             print(io, to_value(attr[k]))
         end
     end
+    return
 end
 
 Base.show(io::IO, attr::Attributes) = show(io, MIME"text/plain"(), attr)
@@ -170,9 +170,9 @@ function Base.get!(f::Function, x::AttributeOrPlot, key::Symbol)
         return x[key]
     end
 end
-Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
+Base.get!(x::AttributeOrPlot, key::Symbol, default) = get!(() -> default, x, key)
 Base.get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
-Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
+Base.get(x::AttributeOrPlot, key::Symbol, default) = get(() -> default, x, key)
 
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
 # and not a plot for integer indexing. But, we want to treat plots as "atomic"
@@ -198,13 +198,13 @@ end
 function Base.getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
     dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
-    dict[key2, rest...]
+    return dict[key2, rest...]
 end
 
 function Base.setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
     dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
-    dict[key2, rest...] = value
+    return dict[key2, rest...] = value
 end
 
 function Base.setindex!(x::AbstractPlot, value, key::Symbol)
@@ -230,7 +230,7 @@ function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function get_attribute(dict, key, default=nothing)
+function get_attribute(dict, key, default = nothing)
     if haskey(dict, key)
         value = to_value(dict[key])
         value isa Automatic && return default

@@ -6,15 +6,15 @@
 using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
     broadcast_foreach_index, is_clipped, is_visible
 
-function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
+function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where {T}
     # use transform func
     point = Makie.apply_transform(transform_func, point, space)
-    _project_position(scene, space, point, model, yflip)
+    return _project_position(scene, space, point, model, yflip)
 end
 
 # much faster than dot-ing `project_position` because it skips all the repeated mat * mat
 function project_position(
-        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}},
+        scene::Scene, space::Symbol, ps::Vector{<:VecTypes{N, T1}},
         indices::Vector{<:Integer}, model::Mat4, yflip::Bool = true
     ) where {N, T1}
 
@@ -22,10 +22,10 @@ function project_position(
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+        px_scale = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
         M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+        M[Vec(1, 2, 4), Vec(1, 2, 3, 4)] # skip z, i.e. calculate (x, y, w)
     end
 
     output = Vector{Point2f}(undef, length(indices))
@@ -39,12 +39,12 @@ function project_position(
     return output
 end
 
-function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+function _project_position(scene::Scene, space, ps::AbstractArray{<:VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     return project_position(scene, space, ps, eachindex(ps), model, yflip)
 end
 
 function project_position(
-        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}},
+        scene::Scene, space::Symbol, ps::AbstractArray{<:VecTypes{N, T1}},
         indices::Base.OneTo, model::Mat4, yflip::Bool = true
     ) where {N, T1}
 
@@ -52,10 +52,10 @@ function project_position(
         f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
         M = Makie.space_to_clip(scene.camera, space) * f32convert * model
         res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+        px_scale = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
         px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
         M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+        M[Vec(1, 2, 4), Vec(1, 2, 3, 4)] # skip z, i.e. calculate (x, y, w)
     end
 
     output = similar(ps, Point2f)
@@ -79,9 +79,9 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
-        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
+        p_yflip = Vec2f(p[1], (1.0f0 - 2.0f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+        p_0_to_1 = (p_yflip .+ 1.0f0) ./ 2.0f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
@@ -89,12 +89,12 @@ end
 
 function project_position(@nospecialize(scenelike), space, point, model, yflip::Bool = true)
     scene = Makie.get_scene(scenelike)
-    project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
+    return project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
 function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
     scale3 = to_ndim(Vec2d, scale, first(scale))
-    model33 = model[Vec(1,2,3), Vec(1,2,3)]
+    model33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     origin3 = to_ndim(Point3d, origin, 0)
     return project_marker(scene, markerspace, origin3, scale3, rotation, model33, Mat4d(I), billboard)
 end
@@ -111,8 +111,8 @@ function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation
 
     if billboard && Makie.is_data_space(markerspace)
         p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
-        xproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, id, true)
-        yproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, id, true)
+        xproj = _project_position(scene, :eye, p4d[Vec(1, 2, 3)] / p4d[4] + xvec, id, true)
+        yproj = _project_position(scene, :eye, p4d[Vec(1, 2, 3)] / p4d[4] + yvec, id, true)
     else
         xproj = _project_position(scene, markerspace, origin + xvec, id, true)
         yproj = _project_position(scene, markerspace, origin + yvec, id, true)
@@ -195,25 +195,25 @@ function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, c
     ext_proj = PT[project(p) for p in clip_poly(clip_planes, ext, space, model)]
     interiors_proj = Vector{PT}[
         PT[project(p) for p in clip_poly(clip_planes, decompose(PT, points), space, model)]
-        for points in poly.interiors]
+            for points in poly.interiors
+    ]
 
     return Polygon(ext_proj, interiors_proj)
 end
 
-function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, clip_planes, model) where MP <: MultiPolygon
+function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, clip_planes, model) where {MP <: MultiPolygon}
     return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(clip_planes), Ref(model)))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 function clip2screen(p, res)
-    s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4].+ 0.5f0
+    s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4] .+ 0.5f0
     return res .* s
 end
 
 
-
-function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+function project_line_points(scene, plot::T, positions::AbstractArray{<:Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
 
     # Standard transform from input space to clip space
     # Note that this is type unstable, so there is a function barrier in place.
@@ -223,7 +223,7 @@ function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.V
     return project_transformed_line_points(scene, plot, points, colors, linewidths)
 end
 
-function project_transformed_line_points(scene, plot::T, points::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+function project_transformed_line_points(scene, plot::T, points::AbstractArray{<:Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
     # Note that here, `points` has already had `transform_func` applied.
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
@@ -251,34 +251,35 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
     # Fix lines with points far outside the clipped region not drawing at all
     # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1
     #      directly and calculating intersections directly (1D)
-    push!(clip_planes,
-        Plane3f(Vec3f(-1, 0, 0), -1f0), Plane3f(Vec3f(+1, 0, 0), -1f0),
-        Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
+    push!(
+        clip_planes,
+        Plane3f(Vec3f(-1, 0, 0), -1.0f0), Plane3f(Vec3f(+1, 0, 0), -1.0f0),
+        Plane3f(Vec3f(0, -1, 0), -1.0f0), Plane3f(Vec3f(0, +1, 0), -1.0f0)
     )
 
 
     # outputs
     screen_points = sizehint!(Vec2f[], length(clip_points))
     color_output = sizehint!(eltype(colors)[], length(clip_points))
-    skipped_color = RGBAf(1,0,1,1) # for debug purposes, should not show
+    skipped_color = RGBAf(1, 0, 1, 1) # for debug purposes, should not show
     linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
 
     # Handling one segment per iteration
     if plot isa Lines
 
         last_is_nan = true
-        for i in 1:length(clip_points)-1
+        for i in 1:(length(clip_points) - 1)
             hidden = false
             disconnect1 = false
             disconnect2 = false
 
             if per_point_colors
                 c1 = colors[i]
-                c2 = colors[i+1]
+                c2 = colors[i + 1]
             end
 
             p1 = clip_points[i]
-            p2 = clip_points[i+1]
+            p2 = clip_points[i + 1]
             v = p2 - p1
 
             # Handle near/far clipping
@@ -304,7 +305,7 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
                 if (d1 < 0.0) && (d2 < 0.0)
                     # start and end clipped by one plane -> not visible
                     hidden = true
-                    break;
+                    break
                 elseif (d1 < 0.0)
                     # p1 clipped, move it towards p2 until unclipped
                     disconnect1 = true
@@ -362,7 +363,7 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
                     last_is_nan = true
                     push!(screen_points, clip2screen(p2, res), Vec2f(NaN))
                     if per_point_linewidths
-                        push!(linewidth_output, linewidths[i+1], linewidths[i+1])
+                        push!(linewidth_output, linewidths[i + 1], linewidths[i + 1])
                     end
                     if per_point_colors
                         push!(color_output, c2, c2) # relevant, irrelevant
@@ -377,7 +378,7 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
         if !last_is_nan
             push!(screen_points, clip2screen(clip_points[end], res))
             if per_point_linewidths
-                    push!(linewidth_output, linewidths[end])
+                push!(linewidth_output, linewidths[end])
             end
             if per_point_colors
                 push!(color_output, colors[end])
@@ -386,14 +387,14 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
 
     else  # LineSegments
 
-        for i in 1:2:length(clip_points)-1
+        for i in 1:2:(length(clip_points) - 1)
             if per_point_colors
                 c1 = colors[i]
-                c2 = colors[i+1]
+                c2 = colors[i + 1]
             end
 
             p1 = clip_points[i]
-            p2 = clip_points[i+1]
+            p2 = clip_points[i + 1]
             v = p2 - p1
 
             # Handle near/far clipping
@@ -419,7 +420,7 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
                     # to keep index order we just set p1 and p2 to NaN and insert anyway
                     p1 = Vec4f(NaN)
                     p2 = Vec4f(NaN)
-                    break;
+                    break
                 elseif (d1 < 0.0)
                     # p1 clipped, move it towards p2 until unclipped
                     p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
@@ -460,7 +461,7 @@ end
 
 function to_2d_rotation(::Makie.Billboard)
     @warn "This should not be reachable!"
-    0
+    return 0
 end
 
 remove_billboard(x) = x
@@ -486,7 +487,7 @@ to_2d_rotation(n::Real) = n
 
 function rgbatuple(c::Colorant)
     rgba = RGBA(c)
-    red(rgba), green(rgba), blue(rgba), alpha(rgba)
+    return red(rgba), green(rgba), blue(rgba), alpha(rgba)
 end
 
 function rgbatuple(c)
@@ -502,7 +503,7 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 # handle patterns
 function Cairo.CairoPattern(color::Makie.AbstractPattern)
     # the Cairo y-coordinate are fliped
-    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims = 2)
     cairoimage = Cairo.CairoImageSurface(bitmappattern)
     cairopattern = Cairo.CairoPattern(cairoimage)
     return cairopattern
@@ -512,14 +513,14 @@ end
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector{<:Number}, Number}, plot_object)
     cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
     return to_color(to_value(cmap))
 end
 
 function to_cairo_color(color::Makie.AbstractPattern, plot_object)
     cairopattern = Cairo.CairoPattern(color)
-    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT)
     return cairopattern
 end
 
@@ -553,7 +554,7 @@ cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
 ########################################
 
 
-to_cairo_image(img::AbstractMatrix{<: Colorant}) =  to_cairo_image(to_uint32_color.(img))
+to_cairo_image(img::AbstractMatrix{<:Colorant}) = to_cairo_image(to_uint32_color.(img))
 
 function to_cairo_image(img::Matrix{UInt32})
     # we need to convert from column-major to row-major storage,
@@ -572,16 +573,16 @@ struct FaceIterator{Iteration, T, F, ET} <: AbstractVector{ET}
 end
 
 function (::Type{FaceIterator{Typ}})(data::T, faces::F) where {Typ, T, F}
-    FaceIterator{Typ, T, F}(data, faces)
+    return FaceIterator{Typ, T, F}(data, faces)
 end
 function (::Type{FaceIterator{Typ, T, F}})(data::AbstractVector, faces::F) where {Typ, F, T}
-    FaceIterator{Typ, T, F, NTuple{3, eltype(data)}}(data, faces)
+    return FaceIterator{Typ, T, F, NTuple{3, eltype(data)}}(data, faces)
 end
 function (::Type{FaceIterator{Typ, T, F}})(data::T, faces::F) where {Typ, T, F}
-    FaceIterator{Typ, T, F, NTuple{3, T}}(data, faces)
+    return FaceIterator{Typ, T, F, NTuple{3, T}}(data, faces)
 end
 function FaceIterator(data::AbstractVector, faces)
-    if length(data) == length(faces)
+    return if length(data) == length(faces)
         FaceIterator{:PerFace}(data, faces)
     else
         FaceIterator{:PerVert}(data, faces)
@@ -591,7 +592,7 @@ end
 Base.size(fi::FaceIterator) = size(fi.faces)
 Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
-Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
+Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i -> fi.data, 3)
 
 color_or_nothing(c) = isnothing(c) ? nothing : to_color(c)
 function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
@@ -604,19 +605,19 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
         cvec = map(normals) do n
-            muv = 0.5n[Vec(1,2)] .+ Vec2f(0.5)
+            muv = 0.5n[Vec(1, 2)] .+ Vec2f(0.5)
             x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
             return matcap[end - (y - 1), x]
         end
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractVector{<: Colorant}
+    elseif color isa AbstractVector{<:Colorant}
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
         # let next level extend and fill with CairoPattern
         return color
-    elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
+    elseif color isa AbstractMatrix{<:Colorant} && !isnothing(uv)
         wsize = size(color)
         wh = wsize .- 1
         # nearest
@@ -632,7 +633,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
 end
 
 function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
-    Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
+    return Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
 end
 
 ################################################################################

@@ -50,17 +50,19 @@ end
 
     # This is just repeating code from Makie
     unit_extents = [FreeTypeAbstraction.get_extent(font, char) for char in chars]
-    origins = cumsum(20f0 * Float32[
-        0,
-        unit_extents[1].advance[1],
-        unit_extents[2].advance[1],
-        unit_extents[3].advance[1]
-    ])
+    origins = cumsum(
+        20.0f0 * Float32[
+            0,
+            unit_extents[1].advance[1],
+            unit_extents[2].advance[1],
+            unit_extents[3].advance[1],
+        ]
+    )
 
     @test glyph_collection isa Makie.GlyphCollection
     @test glyph_collection.glyphs == FreeTypeAbstraction.glyph_index.(font, chars)
     @test glyph_collection.fonts.sv == [font for _ in 1:4]
-    @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol=1e-10))
+    @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
     @test glyph_collection.scales.sv == Vec2f(p.fontsize[])
     @test glyph_collection.rotations.sv == Quaternionf(0, 0, 0, 1)
     @test glyph_collection.colors.sv == RGBAf(0, 0, 0, 1)
@@ -102,10 +104,10 @@ end
         Vec2f(mini .+ 2 * atlas.glyph_padding * 20.0 / atlas.pix_per_glyph)
     end
 
-    @test all(isequal(to_ndim(Point3f, p.position[], 0f0)), positions)
+    @test all(isequal(to_ndim(Point3f, p.position[], 0.0f0)), positions)
     @test char_offsets == glyph_collection.origins
     @test quad_offsets == fta_quad_offsets
-    @test scales  == fta_scales
+    @test scales == fta_scales
 end
 
 

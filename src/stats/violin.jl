@@ -52,11 +52,15 @@ end
 
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
-    args = @extract plot (width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
-        datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation)
-    signals = lift(plot, x, y,
-                   args...) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
-                               dodge, n_dodge, gap, dodge_gap, orientation
+    args = @extract plot (
+        width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
+        datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation,
+    )
+    signals = lift(
+        plot, x, y,
+        args...
+    ) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
+            dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all components
@@ -74,7 +78,8 @@ function plot!(plot::Violin)
 
         specs = map(StructArrays.finduniquesorted(sa)) do (key, idxs)
             v = view(y, idxs)
-            k = KernelDensity.kde(v;
+            k = KernelDensity.kde(
+                v;
                 npoints = n,
                 (bound === automatic ? NamedTuple() : (boundary = bound,))...,
                 (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
@@ -135,8 +140,8 @@ function plot!(plot::Violin)
                 # interpolate median bounds between corresponding points
                 xm = spec.median
                 ip = findfirst(>(xm), spec.kde.x)
-                ym₋, ym₊ = spec.kde.density[ip-1], spec.kde.density[ip]
-                xm₋, xm₊ = spec.kde.x[ip-1], spec.kde.x[ip]
+                ym₋, ym₊ = spec.kde.density[ip - 1], spec.kde.density[ip]
+                xm₋, xm₊ = spec.kde.x[ip - 1], spec.kde.x[ip]
                 ym = (xm * (ym₊ - ym₋) + xm₊ * ym₋ - xm₋ * ym₊) / (xm₊ - xm₋)
                 median_left = point_func(spec.side == 1 ? spec.x : spec.x - ym * scale, xm)
                 median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
@@ -152,11 +157,11 @@ function plot!(plot::Violin)
     poly!(
         plot,
         lift(s -> s.vertices, plot, signals);
-        color=lift(s -> s.colors, plot, signals),
+        color = lift(s -> s.colors, plot, signals),
         strokecolor = plot[:strokecolor],
         strokewidth = plot[:strokewidth],
     )
-    linesegments!(
+    return linesegments!(
         plot,
         lift(s -> s.lines, plot, signals);
         color = plot[:mediancolor],

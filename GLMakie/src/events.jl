@@ -23,18 +23,18 @@ Makie.window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function Makie.window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
-        @print_error begin
+        return @print_error begin
             @debug("Closing event from GLFW")
             event[] = false
         end
     end
     disconnect!(window, window_open)
     event[] = isopen(window)
-    GLFW.SetWindowCloseCallback(window, windowclose)
+    return GLFW.SetWindowCloseCallback(window, windowclose)
 end
 
 function Makie.disconnect!(window::GLFW.Window, ::typeof(window_open))
-    GLFW.SetWindowCloseCallback(window, nothing)
+    return GLFW.SetWindowCloseCallback(window, nothing)
 end
 
 function Makie.window_area(scene::Scene, screen::Screen)
@@ -100,30 +100,30 @@ Makie.mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(scree
 function Makie.mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebutton
     function mousebuttons(window, button, action, mods)
-        @print_error begin
+        return @print_error begin
             event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
         end
     end
     disconnect!(window, mouse_buttons)
-    GLFW.SetMouseButtonCallback(window, mousebuttons)
+    return GLFW.SetMouseButtonCallback(window, mousebuttons)
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
-    GLFW.SetMouseButtonCallback(window, nothing)
+    return GLFW.SetMouseButtonCallback(window, nothing)
 end
 Makie.keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function Makie.keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbutton
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
-        @print_error begin
+        return @print_error begin
             event[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
         end
     end
     disconnect!(window, keyboard_buttons)
-    GLFW.SetKeyCallback(window, keyoardbuttons)
+    return GLFW.SetKeyCallback(window, keyoardbuttons)
 end
 
 function Makie.disconnect!(window::GLFW.Window, ::typeof(keyboard_buttons))
-    GLFW.SetKeyCallback(window, nothing)
+    return GLFW.SetKeyCallback(window, nothing)
 end
 
 """
@@ -135,16 +135,16 @@ Makie.dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(scree
 function Makie.dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
     function droppedfiles(window, files)
-        @print_error begin
+        return @print_error begin
             event[] = String.(files)
         end
     end
     disconnect!(window, dropped_files)
     event[] = String[]
-    GLFW.SetDropCallback(window, droppedfiles)
+    return GLFW.SetDropCallback(window, droppedfiles)
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(dropped_files))
-    GLFW.SetDropCallback(window, nothing)
+    return GLFW.SetDropCallback(window, nothing)
 end
 
 """
@@ -157,17 +157,17 @@ Makie.unicode_input(scene::Scene, screen) = unicode_input(scene, to_native(scree
 function Makie.unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
     function unicodeinput(window, c::Char)
-        @print_error begin
+        return @print_error begin
             event[] = c
         end
     end
     disconnect!(window, unicode_input)
     # x = Char[]; sizehint!(x, 1)
     # event[] = x
-    GLFW.SetCharCallback(window, unicodeinput)
+    return GLFW.SetCharCallback(window, unicodeinput)
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(unicode_input))
-    GLFW.SetCharCallback(window, nothing)
+    return GLFW.SetCharCallback(window, nothing)
 end
 
 function correct_mouse(screen::Screen, w, h)
@@ -218,7 +218,7 @@ function Makie.disconnect!(screen::Screen, ::typeof(mouse_position))
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(mouse_position))
     error("disconnect!(::Screen, ::mouse_position) should be called instead of disconnect!(::GLFW.Window, ::mouseposition)!")
-    nothing
+    return nothing
 end
 
 """
@@ -245,10 +245,10 @@ end
 function Makie.scroll(scene::Scene, window::GLFW.Window)
     updater = ScrollUpdater(scene.events.scroll, true)
     disconnect!(window, scroll)
-    GLFW.SetScrollCallback(window, updater)
+    return GLFW.SetScrollCallback(window, updater)
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(scroll))
-    GLFW.SetScrollCallback(window, nothing)
+    return GLFW.SetScrollCallback(window, nothing)
 end
 
 """
@@ -261,17 +261,17 @@ Makie.hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function Makie.hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
     function hasfocuscb(window, focus::Bool)
-        @print_error begin
+        return @print_error begin
             event[] = focus
         end
     end
     disconnect!(window, hasfocus)
     GLFW.SetWindowFocusCallback(window, hasfocuscb)
     event[] = GLFW.GetWindowAttrib(window, GLFW.FOCUSED)
-    nothing
+    return nothing
 end
 function Makie.disconnect!(window::GLFW.Window, ::typeof(hasfocus))
-    GLFW.SetWindowFocusCallback(window, nothing)
+    return GLFW.SetWindowFocusCallback(window, nothing)
 end
 
 """
@@ -284,26 +284,26 @@ Makie.entered_window(scene::Scene, screen) = entered_window(scene, to_native(scr
 function Makie.entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     function enteredwindowcb(window, entered::Bool)
-        @print_error begin
+        return @print_error begin
             event[] = entered
         end
     end
     disconnect!(window, entered_window)
-    GLFW.SetCursorEnterCallback(window, enteredwindowcb)
+    return GLFW.SetCursorEnterCallback(window, enteredwindowcb)
 end
 
 function Makie.disconnect!(window::GLFW.Window, ::typeof(entered_window))
-    GLFW.SetCursorEnterCallback(window, nothing)
+    return GLFW.SetCursorEnterCallback(window, nothing)
 end
 
 function Makie.frame_tick(scene::Scene, screen::Screen)
     # Separating screen ticks from event ticks allows us to sanitize:
-    # Internal on-tick event updates happen first (mouseposition), 
+    # Internal on-tick event updates happen first (mouseposition),
     # consuming in event.tick listeners doesn't affect backend ticks,
     # more control/consistent order
-    on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
+    return on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))
 end
 function Makie.disconnect!(screen::Screen, ::typeof(Makie.frame_tick))
     connections = filter(x -> x[2] isa Makie.TickCallback, screen.render_tick.listeners)
-    foreach(x -> off(screen.render_tick, x[2]), connections)
+    return foreach(x -> off(screen.render_tick, x[2]), connections)
 end

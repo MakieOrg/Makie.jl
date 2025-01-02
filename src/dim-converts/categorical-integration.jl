@@ -29,23 +29,25 @@ struct CategoricalConversion <: AbstractDimConversion
     # I've run into problems with OrderedCollections.jl
     # Which seems to be the only ordered set/dict implementation
     # It's another dependency as well, so right now we just use vectors
-    sets::Vector{Pair{String,Vector{Any}}}
-    category_to_int::Observable{Dict{Any,Int}}
-    int_to_category::Vector{Pair{Int,Any}}
-    sortby::Union{Nothing,Function}
+    sets::Vector{Pair{String, Vector{Any}}}
+    category_to_int::Observable{Dict{Any, Int}}
+    int_to_category::Vector{Pair{Int, Any}}
+    sortby::Union{Nothing, Function}
 end
 
-function CategoricalConversion(; sortby=nothing)
-    return CategoricalConversion(Pair{String,Vector{Any}}[],
-                              Observable(Dict{Any,Int}(); ignore_equal_values=true),
-                              Pair{Int,Any}[],
-                              sortby)
+function CategoricalConversion(; sortby = nothing)
+    return CategoricalConversion(
+        Pair{String, Vector{Any}}[],
+        Observable(Dict{Any, Int}(); ignore_equal_values = true),
+        Pair{Int, Any}[],
+        sortby
+    )
 end
 
 expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
 needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
 MakieCore.should_dim_convert(::Type{Categorical}) = true
-create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
+create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby = identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)
     all_categories = []
@@ -54,7 +56,7 @@ function recalculate_categories!(conversion::CategoricalConversion)
     end
     unique!(all_categories)
     if !isnothing(conversion.sortby)
-        sort!(all_categories; by=conversion.sortby)
+        sort!(all_categories; by = conversion.sortby)
     end
     empty!(conversion.category_to_int[])
     empty!(conversion.int_to_category)
@@ -85,7 +87,7 @@ end
 
 function dict_setindex!(dict, key, value)
     idx = findfirst(x -> x[1] == key, dict)
-    if isnothing(idx)
+    return if isnothing(idx)
         push!(dict, key => value)
     else
         dict[idx] = key => value
@@ -121,7 +123,7 @@ function convert_dim_observable(conversion::CategoricalConversion, values_obs::O
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
     update_needed = Observable(nothing)
-    f = on(values_obs; update=true) do values
+    f = on(values_obs; update = true) do values
         new_values = unique!(Any[get_values(values)...])
         if new_values != prev_values
             dict_setindex!(conversion.sets, values_obs.id, new_values)

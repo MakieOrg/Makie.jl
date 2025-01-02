@@ -9,9 +9,11 @@
 end
 
 function plot!(roundrect::RoundedRect)
-    @extract(roundrect, (
-        rect, cornerradius, cornersegments, color, strokecolor
-    ))
+    @extract(
+        roundrect, (
+            rect, cornerradius, cornersegments, color, strokecolor,
+        )
+    )
 
     heightattr = roundrect.height
     widthattr = roundrect.width
@@ -27,13 +29,13 @@ function plot!(roundrect::RoundedRect)
         icbl = bottomleft(rect) .+ Point2(cr, cr)
         icbr = bottomright(rect) .+ Point2(-cr, cr)
 
-        cstr = anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
-        cstl = anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
-        csbl = anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
-        csbr = anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
+        cstr = anglepoint.(Ref(ictr), LinRange(0, pi / 2, csegs), cr)
+        cstl = anglepoint.(Ref(ictl), LinRange(pi / 2, pi, csegs), cr)
+        csbl = anglepoint.(Ref(icbl), LinRange(pi, 3pi / 2, csegs), cr)
+        csbr = anglepoint.(Ref(icbr), LinRange(3pi / 2, 2pi, csegs), cr)
 
         return [cstr; cstl; csbl; csbr]
     end
 
-    poly!(roundrect, roundedrectpoints, color = color, strokecolor = strokecolor)
+    return poly!(roundrect, roundedrectpoints, color = color, strokecolor = strokecolor)
 end

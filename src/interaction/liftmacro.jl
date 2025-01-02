@@ -18,7 +18,7 @@ find_observable_expressions(x) = Set()
 
 is_interpolated_observable(x) = false
 function is_interpolated_observable(e::Expr)
-    e.head == Symbol(:$) && length(e.args) == 1
+    return e.head == Symbol(:$) && length(e.args) == 1
 end
 
 """

@@ -1,15 +1,15 @@
-function convert_arguments(::Type{<: Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (ngrid(x, y)..., z)
+function convert_arguments(::Type{<:Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    return (ngrid(x, y)..., z)
 end
 
 xvector(x::AbstractVector, len) = x
-xvector(x::ClosedInterval, len) = range(minimum(x), stop=maximum(x), length=len)
+xvector(x::ClosedInterval, len) = range(minimum(x), stop = maximum(x), length = len)
 xvector(x::AbstractMatrix, len) = x
 
 yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
-function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
+function plot!(plot::Wireframe{<:Tuple{<:Any, <:Any, <:AbstractMatrix}})
     points_faces = lift(plot, plot[1:3]...) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
@@ -18,10 +18,10 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         faces = decompose(LineFace{GLIndex}, Tessellation(Rect2(0, 0, 1, 1), (M, N)))
         connect(points, faces)
     end
-    linesegments!(plot, Attributes(plot), points_faces)
+    return linesegments!(plot, Attributes(plot), points_faces)
 end
 
-function plot!(plot::Wireframe{Tuple{T}}) where T
+function plot!(plot::Wireframe{Tuple{T}}) where {T}
     points = lift(plot, plot[1]) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
@@ -33,5 +33,5 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
             return connect(points, indices)
         end
     end
-    linesegments!(plot, Attributes(plot), points)
+    return linesegments!(plot, Attributes(plot), points)
 end
