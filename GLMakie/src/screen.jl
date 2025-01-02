@@ -642,7 +642,7 @@ end
 function destroy!(screen::Screen)
     @debug("Destroy screen!")
     window = screen.glscreen
-    if context_alive(window)
+    if GLAbstraction.context_alive(window)
         close(screen; reuse=false)
         GLFW.SetWindowRefreshCallback(window, nothing)
         GLFW.SetWindowContentScaleCallback(window, nothing)
@@ -673,7 +673,7 @@ Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=t
 """
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
-    if !context_alive(screen.glscene)
+    if !GLAbstraction.context_alive(screen.glscreen)
         destroy!(screen)
     end
 
