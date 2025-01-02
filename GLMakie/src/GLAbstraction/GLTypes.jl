@@ -408,6 +408,7 @@ function RenderObject(
     special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
     for k in setdiff(keys(data), keys(program.nametype))
         if !(k in special)
+            data[k] isa GPUArray && free(data[k])
             delete!(data, k)
         end
     end

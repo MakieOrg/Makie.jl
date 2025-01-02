@@ -129,7 +129,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
-        pattern_sections    = pattern => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
