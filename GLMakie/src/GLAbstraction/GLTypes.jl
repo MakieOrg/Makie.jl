@@ -448,6 +448,7 @@ function free(x::T, called_from_finalizer = false) where {T}
     if called_from_finalizer
         if !context_alive(x.context)
             Threads.@spawn println(stderr, "Warning: free(::$T) called with dead context from scene finalizer.")
+            x.id = 0
             return
         end
         try
@@ -456,6 +457,11 @@ function free(x::T, called_from_finalizer = false) where {T}
             Threads.@spawn Base.showerror(stderr, e)
         end
     else
+        if !context_alive(x.context)
+            @warn "free(::$T) called with dead context."
+            x.id = 0
+            return
+        end
         # context must be valid
         require_context(x.context)
         unsafe_free(x)
