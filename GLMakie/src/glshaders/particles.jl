@@ -224,7 +224,7 @@ function draw_scatter(screen, (marker, position), data)
                 p4d[3] / p4d[4]
             end
             UInt32.(sortperm(depth_vals, rev = true) .- 1)
-        end |> indexbuffer
+        end
     end
 
     @gen_defaults! data begin
