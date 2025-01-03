@@ -28,8 +28,6 @@ function cleanup_texture_atlas!(context)
 end
 
 function get_texture!(context, atlas::Makie.TextureAtlas)
-    require_context(context)
-
     # clean up dead context!
     filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
@@ -46,7 +44,9 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         end
     end
 
-    tex, func = get!(atlas_texture_cache, (atlas, context)) do
+    if haskey(atlas_texture_cache, (atlas, context))
+        return atlas_texture_cache[(atlas, context)][1]
+    else
         require_context(context)
         tex = Texture(
             context, atlas.data,
@@ -59,7 +59,7 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
             anisotropic = 16f0,
             mipmap = true
         )
-        # update the texture, whenever a new font is added to the atlas
+
         function callback(distance_field, rectangle)
             ctx = tex.context
             if GLAbstraction.context_alive(ctx)
@@ -70,9 +70,9 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
             end
         end
         Makie.font_render_callback!(callback, atlas)
-        return (tex, callback)
+        atlas_texture_cache[(atlas, context)] = (tex, callback)
+        return tex
     end
-    return tex
 end
 
 include("glwindow.jl")

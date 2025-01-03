@@ -579,7 +579,12 @@ function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
-    tex = get_texture!(rob.context, gl_texture_atlas())
+    tex = try
+        get_texture!(rob.context, gl_texture_atlas())
+    catch e
+        @error exception = e
+        nothing
+    end
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)
