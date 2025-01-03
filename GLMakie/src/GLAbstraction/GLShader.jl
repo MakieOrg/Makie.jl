@@ -128,7 +128,7 @@ struct LazyShader <: AbstractLazyShader
     end
 end
 
-gl_convert(shader::GLProgram, data) = shader
+gl_convert(::GLContext, shader::GLProgram, data) = shader
 
 function compile_shader(context, source::ShaderSource, template_src::String)
     name = source.name
@@ -139,7 +139,7 @@ function compile_shader(context, source::ShaderSource, template_src::String)
         GLAbstraction.print_with_lines(template_src)
         @warn("shader $(name) didn't compile. \n$(GLAbstraction.getinfolog(shaderid))")
     end
-    return Shader(name, Vector{UInt8}(template_src), source.typ, shaderid, context)
+    return Shader(context, name, Vector{UInt8}(template_src), source.typ, shaderid)
 end
 
 
@@ -191,7 +191,7 @@ function compile_program(shaders::Vector{Shader}, fragdatalocation)
     # generate the link locations
     nametypedict = uniform_name_type(program)
     uniformlocationdict = uniformlocations(nametypedict, program)
-    GLProgram(program, shaders, nametypedict, uniformlocationdict)
+    return GLProgram(program, shaders, nametypedict, uniformlocationdict)
 end
 
 function get_view(kw_dict)
@@ -202,12 +202,13 @@ function get_view(kw_dict)
     _view
 end
 
-gl_convert(lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
-function gl_convert(lazyshader::LazyShader, data)
-    gl_convert(lazyshader.shader_cache, lazyshader, data)
+gl_convert(::GLContext, lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
+function gl_convert(ctx::GLContext, lazyshader::LazyShader, data)
+    gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
 end
 
-function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+    require_context(cache.context, ctx)
     kw_dict = lazyshader.kw_args
     paths = lazyshader.paths
 

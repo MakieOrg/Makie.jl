@@ -28,15 +28,15 @@ mutable struct Shader
     id::GLuint
     context::GLContext
 
-    function Shader(name, source, typ, id, context = current_context())
+    function Shader(context, name, source, typ, id)
         obj = new(Symbol(name), source, typ, id, context)
         finalizer(verify_free, obj)
         return obj
     end
 end
 
-function Shader(name, source::Vector{UInt8}, typ)
-    compile_shader(source, typ, name)
+function Shader(context, name, source::Vector{UInt8}, typ)
+    return compile_shader(context, source, typ, name)
 end
 
 name(s::Shader) = s.name
@@ -64,8 +64,8 @@ mutable struct GLProgram
     nametype::Dict{Symbol,GLenum}
     uniformloc::Dict{Symbol,Tuple}
     context::GLContext
-    function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple})
-        obj = new(id, shader, nametype, uniformloc, current_context())
+    function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple}, context = first(shader).context)
+        obj = new(id, shader, nametype, uniformloc, context)
         finalizer(verify_free, obj)
         obj
     end
@@ -344,7 +344,7 @@ end
 function RenderObject(
         data::Dict{Symbol,Any}, program,
         pre::Pre, post,
-        context=current_context()
+        context
     ) where Pre
     switch_context!(context)
     require_context(context)
@@ -374,25 +374,20 @@ function RenderObject(
             # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
             # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
             # In these cases an explicit conversion target is required
-            if targets[k] isa GPUArray
-                GLAbstraction.require_context(nw)
-                data[k] = gl_convert(context, targets[k], v)
-            else
-                data[k] = gl_convert(targets[k], v)
-            end
+            data[k] = gl_convert(context, targets[k], v)
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
 
             # structs are decomposed into fields
             #     $k.$fieldname -> v.$fieldname
             if isa_gl_struct(v)
-                merge!(data, gl_convert_struct(v, k))
+                merge!(data, gl_convert_struct(context, v, k))
                 delete!(data, k)
 
             # try direct conversion
-            elseif applicable(gl_convert, v)
+            elseif applicable(gl_convert, context, v)
                 try
-                    data[k] = gl_convert(v)
+                    data[k] = gl_convert(context, v)
                 catch e
                     @error "gl_convert for key `$k` failed"
                     rethrow(e)
@@ -407,7 +402,7 @@ function RenderObject(
     end
 
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
-    program = gl_convert(to_value(program), data) # "compile" lazyshader
+    program = gl_convert(context, to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
 
     # remove all uniforms not occurring in shader

@@ -25,7 +25,7 @@ vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotat
 vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
-GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f(rotation.data)
+GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion)= Vec4f(rotation.data)
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 struct PointSizeRender

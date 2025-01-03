@@ -45,9 +45,9 @@ import ModernGL.glGetShaderiv
 import ModernGL.glViewport
 import ModernGL.glScissor
 
+include("shaderabstraction.jl")
 include("GLUtils.jl")
 
-include("shaderabstraction.jl")
 include("GLTypes.jl")
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array

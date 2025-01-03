@@ -94,9 +94,9 @@ end
 
 
 function indexbuffer(
-        buffer::VectorTypes{T}; usage::GLenum = GL_STATIC_DRAW
+        context, buffer::VectorTypes{T}; usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
-    return GLBuffer(current_context(), buffer, buffertype = GL_ELEMENT_ARRAY_BUFFER, usage=usage)
+    return GLBuffer(context, buffer, buffertype = GL_ELEMENT_ARRAY_BUFFER, usage=usage)
 end
 # GPUArray interface
 function gpu_data(b::GLBuffer{T}) where T

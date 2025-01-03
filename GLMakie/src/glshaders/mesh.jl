@@ -1,7 +1,7 @@
 function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     m = convert(Observable, mesh_obs)
 
-    result[:faces]    = indexbuffer(map(faces, m))
+    result[:faces]    = indexbuffer(context, map(faces, m))
     result[:vertices] = GLBuffer(context, map(coordinates, m))
 
     function to_buffer(name, target)

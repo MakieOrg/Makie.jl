@@ -8,13 +8,16 @@ end
 print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
 
+# Using nothing as a stand-in for GLContext = Any
+@assert GLContext === Any "matches_target() needs to be updates to check the correct type"
+
 """
 Needed to match the lazy gl_convert exceptions.
     `Target`: targeted OpenGL type
     `x`: the variable that gets matched
 """
-matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
-matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
+matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, nothing, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
+matches_target(::Type{Target}, x::Observable{T}) where {Target, T} = applicable(gl_convert, nothing, Target, x)  || T <: Target
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
