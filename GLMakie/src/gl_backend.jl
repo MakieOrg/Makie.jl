@@ -16,28 +16,30 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function cleanup_texture_atlas!(context)
+function cleanup_texture_atlas!(context, called_from_finalizer = false)
     to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
-    # require_context(context)
+    called_from_finalizer || require_context(context)
     for (atlas, ctx) in to_delete
         tex, func = pop!(atlas_texture_cache, (atlas, ctx))
         Makie.remove_font_render_callback!(atlas, func)
-        GLAbstraction.free(tex)
+        GLAbstraction.free(tex, called_from_finalizer)
     end
     return
 end
 
-function get_texture!(context, atlas::Makie.TextureAtlas)
+function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer = false)
     # clean up dead context!
     filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            flush(stdout)
-            @error("Cached atlas textures should be removed explicitly! $ctx")
-            println("Reason:", GLFW.is_initialized() ? "" : " not initialized", was_destroyed(ctx) ? " destroyed" : "")
-            Base.show_backtrace(stdout, Base.catch_backtrace())
-            flush(stdout)
+            if !called_from_finalizer
+                @error("Cached atlas textures should be removed explicitly! $ctx")
+                println("Reason:", GLFW.is_initialized() ? "" : " not initialized", was_destroyed(ctx) ? " destroyed" : "")
+                Base.show_backtrace(stderr, Base.catch_backtrace())
+            else
+                Threads.@spawn println(stderr, "Cached atlas textures did not get cleaned up for context ", ctx)
+            end
             tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
@@ -46,6 +48,8 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
 
     if haskey(atlas_texture_cache, (atlas, context))
         return atlas_texture_cache[(atlas, context)][1]
+    elseif called_from_finalizer
+        return nothing
     else
         require_context(context)
         tex = Texture(
