@@ -436,7 +436,7 @@ function delete_scene!(scene::Scene)
 end
 
 function free(scene::Scene, called_from_finalizer = false)
-    empty!(scene; free=true)
+    empty!(scene, called_from_finalizer; free=true)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
     end
