@@ -441,18 +441,26 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
-function free(x)
+# This may be called from the scene finalizer in which case no errors, no printing allowed
+function free(x::T, called_from_finalizer = false) where {T}
     # don't free if already freed
     x.id == 0 && return
-    # warn if the context is incorrect
-    # require_context(x.context)
-    context_alive(x.context) || @warn "Context died before OpenGL objects were freed."
-    try
+    if called_from_finalizer
+        if !context_alive(x.context)
+            Threads.@spawn println(stderr, "Warning: free(::$T) called with dead context from scene finalizer.")
+            return
+        end
+        try
+            unsafe_free(x)
+        catch e
+            Threads.@spawn Base.showerror(stderr, e)
+        end
+    else
+        # context must be valid
+        require_context(x.context)
         unsafe_free(x)
-    catch e
-        isa(e, ContextNotAvailable) && return # if context got destroyed no need to worry!
-        rethrow(e)
     end
+    return
 end
 
 function clean_up_observables(x::T) where T

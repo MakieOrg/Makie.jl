@@ -103,14 +103,14 @@ function ShaderCache(context)
     )
 end
 
-function free(cache::ShaderCache)
+function free(cache::ShaderCache, called_from_finalizer = false)
     for (k, v) in cache.shader_cache
         for (k2, shader) in v
-            free(shader)
+            free(shader, called_from_finalizer)
         end
     end
     for program in values(cache.program_cache)
-        free(program)
+        free(program, called_from_finalizer)
     end
     return
 end

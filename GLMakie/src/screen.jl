@@ -536,12 +536,13 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
     end
 end
 
-function Base.delete!(screen::Screen, scene::Scene)
+# Note: called from scene finalizer, must not error
+function Base.delete!(screen::Screen, scene::Scene, called_from_finalizer::Bool = true)
     for child in scene.children
-        delete!(screen, child)
+        delete!(screen, child, called_from_finalizer)
     end
     for plot in scene.plots
-        delete!(screen, scene, plot)
+        delete!(screen, scene, plot, called_from_finalizer)
     end
     filter!(x -> x !== screen, scene.current_screens)
     if haskey(screen.screen2scene, WeakRef(scene))
@@ -575,7 +576,7 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-function destroy!(rob::RenderObject)
+function destroy!(rob::RenderObject, called_from_finalizer = false)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     GLAbstraction.switch_context!(rob.context)
@@ -595,16 +596,17 @@ function destroy!(rob::RenderObject)
             # TODO, refcounting, or leaving freeing to GC...
             # GC can cause random context switches, so immediate free is necessary.
             # I guess as long as we make it hard for users to share buffers directly, this should be fine!
-            GLAbstraction.free(v)
+            GLAbstraction.free(v, called_from_finalizer)
         end
     end
     for obs in rob.observables
         Observables.clear(obs)
     end
-    GLAbstraction.free(rob.vertexarray)
+    GLAbstraction.free(rob.vertexarray, called_from_finalizer)
 end
 
-function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+# Note: called from scene finalizer, must not error
+function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot, called_from_finalizer::Bool = true)
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
         for cplot in Makie.collect_atomic_plots(plot)
@@ -615,7 +617,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         # TODO, is it?
         renderobject = get(screen.cache, objectid(plot), nothing)
         if !isnothing(renderobject)
-            destroy!(renderobject)
+            destroy!(renderobject, called_from_finalizer)
             filter!(x-> x[3] !== renderobject, screen.renderlist)
             delete!(screen.cache2plot, renderobject.id)
         end
@@ -631,12 +633,12 @@ function Base.empty!(screen::Screen)
     @assert !was_destroyed(screen.glscreen)
 
     for plot in collect(values(screen.cache2plot))
-        delete!(screen, Makie.rootparent(plot), plot)
+        delete!(screen, Makie.rootparent(plot), plot, false)
     end
 
     if !isnothing(screen.scene)
         Makie.disconnect_screen(screen.scene, screen)
-        delete!(screen, screen.scene)
+        delete!(screen, screen.scene, false)
         screen.scene = nothing
     end
 
