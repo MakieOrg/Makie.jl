@@ -1,7 +1,7 @@
 using Makie
 using Makie: BufferFormat, N0f8, is_compatible, BFT
 using Makie: Stage, get_input_connection, get_output_connection, get_input_format, get_output_format
-using Makie: Connection, Pipeline, connect!
+using Makie: Pipeline, connect!
 using Makie: generate_buffers, default_pipeline
 
 @testset "Render Pipeline" begin
@@ -80,9 +80,7 @@ using Makie: generate_buffers, default_pipeline
         @test stage.outputs == Dict{Symbol, Int}()
         @test stage.input_formats == BufferFormat[]
         @test stage.output_formats == BufferFormat[]
-        @test stage.input_connections == Connection[]
-        @test stage.output_connections == Connection[]
-        @test stage.attributes == NamedTuple()
+        @test stage.attributes == Dict{Symbol, Any}()
 
         stage = Stage(:test,
             inputs = [:a => BufferFormat(), :b => BufferFormat(2)],
@@ -93,9 +91,7 @@ using Makie: generate_buffers, default_pipeline
         @test stage.outputs == Dict(:c => 1)
         @test stage.input_formats == [BufferFormat(), BufferFormat(2)]
         @test stage.output_formats == [BufferFormat(1, Int8)]
-        @test stage.input_connections == Connection[]
-        @test stage.output_connections == Connection[]
-        @test stage.attributes == (attr = 17f0,)
+        @test stage.attributes == Dict{Symbol, Any}(:attr => 17f0)
 
         @test get_input_format(stage, :a) == stage.input_formats[stage.inputs[:a]]
         @test get_output_format(stage, :c) == stage.output_formats[stage.outputs[:c]]
@@ -105,7 +101,8 @@ using Makie: generate_buffers, default_pipeline
         pipeline = Pipeline()
 
         @test isempty(pipeline.stages)
-        @test isempty(pipeline.connections)
+        @test isempty(pipeline.stageio2idx)
+        @test isempty(pipeline.formats)
 
         stage1 = Stage(:stage1, outputs = [:a => BufferFormat(), :b => BufferFormat(2)])
         stage2 = Stage(:stage2,
@@ -123,63 +120,54 @@ using Makie: generate_buffers, default_pipeline
         push!(pipeline, stage5)
 
         @test all(pipeline.stages .== [stage1, stage2, stage3, stage4, stage5])
-        @test isempty(pipeline.connections)
+        @test isempty(pipeline.stageio2idx)
+        @test isempty(pipeline.formats)
 
-        connect!(pipeline, stage1, stage2)
+        for _ in 1:2 # also verify that double-connect doesn't ruin things
+            connect!(pipeline, stage1, stage2)
 
-        @test length(pipeline.connections) == 1
-        c1 = pipeline.connections[end]
-        @test c1.format == BufferFormat(2)
-        @test c1.inputs == [stage1 => 2]
-        @test c1.outputs == [stage2 => 1]
-        @test stage1.output_connections[2] == c1
-        @test stage2.input_connections[1] == c1
+            @test length(pipeline.formats) == 1
+            @test length(pipeline.stageio2idx) == 2
+            @test pipeline.formats[end] == BufferFormat(2)
+            @test pipeline.stageio2idx[(1, 2)] == 1
+            @test pipeline.stageio2idx[(2, -1)] == 1
+        end
 
         connect!(pipeline, stage2, stage3, :c)
 
-        @test length(pipeline.connections) == 2
-        c2 = pipeline.connections[end]
-        @test c2.format == BufferFormat(2, Int16)
-        @test c2.inputs == [stage2 => 1]
-        @test c2.outputs == [stage3 => 2]
-        @test stage2.output_connections[1] == c2
-        @test stage3.input_connections[2] == c2
+        @test length(pipeline.formats) == 2
+        @test length(pipeline.stageio2idx) == 4
+        @test pipeline.formats[end] == BufferFormat(2, Int16)
+        @test pipeline.stageio2idx[(2, 1)] == 2
+        @test pipeline.stageio2idx[(3, -2)] == 2
 
         connect!(pipeline, stage1, stage3, :b)
 
-        @test length(pipeline.connections) == 2
-        c3 = pipeline.connections[end]
-        @test c1 !== c3
-        @test c2 !== c3
-        @test c3.format == BufferFormat(4, Float16)
-        @test c3.inputs == [stage1 => 2]
-        @test c3.outputs == [stage3 => 1, stage2 => 1] # technically order irrelevant
-        @test stage1.output_connections[2] == c3
-        @test stage2.input_connections[1] == c3
-        @test stage3.input_connections[1] == c3
+        @test length(pipeline.formats) == 2
+        @test length(pipeline.stageio2idx) == 5
+        @test pipeline.formats[pipeline.stageio2idx[(1, 2)]] == BufferFormat(4, Float16)
+        @test pipeline.stageio2idx[(1, 2)] == 1
+        @test pipeline.stageio2idx[(2, -1)] == 1
+        @test pipeline.stageio2idx[(3, -1)] == 1
 
         # Stage 1 incomplete - if output 2 is connected all previous outputs must be connected too
         @test_throws Exception generate_buffers(pipeline)
 
         connect!(pipeline, stage1, :a, stage4, :x)
 
-        @test length(pipeline.connections) == 3
-        c4 = pipeline.connections[end]
-        @test c4.format == BufferFormat()
-        @test c4.inputs == [stage1 => 1]
-        @test c4.outputs == [stage4 => 1]
-        @test stage1.output_connections[1] == c4
-        @test stage4.input_connections[1] == c4
+        @test length(pipeline.formats) == 3
+        @test length(pipeline.stageio2idx) == 7
+        @test pipeline.formats[end] == BufferFormat()
+        @test pipeline.stageio2idx[(1, 1)] == 3
+        @test pipeline.stageio2idx[(4, -1)] == 3
 
         connect!(pipeline, stage4, :y, stage5, :z)
 
-        @test length(pipeline.connections) == 4
-        c5 = pipeline.connections[end]
-        @test c5.format == BufferFormat()
-        @test c5.inputs == [stage4 => 1]
-        @test c5.outputs == [stage5 => 1]
-        @test stage4.output_connections[1] == c5
-        @test stage5.input_connections[1] == c5
+        @test length(pipeline.formats) == 4
+        @test length(pipeline.stageio2idx) == 9
+        @test pipeline.formats[end] == BufferFormat()
+        @test pipeline.stageio2idx[(4, 1)] == 4
+        @test pipeline.stageio2idx[(5, -1)] == 4
 
         #=
         1       2       3    4      5  (stages)
@@ -187,16 +175,17 @@ using Makie: generate_buffers, default_pipeline
         b -+----------> b
            '-> b c ---> c
         =#
-        buffers, conn2idx = generate_buffers(pipeline)
+        buffers, remap = generate_buffers(pipeline)
         @test length(buffers) == 3 # 3 buffer textures are needed for transfers
-        @test length(conn2idx) == 4 # 4 connections map to them
-        @test buffers[conn2idx[c2]] == c2.format
-        @test buffers[conn2idx[c3]] == c3.format
-        @test buffers[conn2idx[c4]] == c4.format
-        # 1 a --> 4 x not yet available for reuse
-        # 1 b --> 2 b, 3b available, upgrades
-        # 2 c --> 3 c not allowed, incompatible types
-        @test buffers[conn2idx[c5]] == c3.format
+        @test length(remap) == 4 # 4 connections map to them
+        @test buffers[remap[1]] == pipeline.formats[1]
+        @test buffers[remap[2]] == pipeline.formats[2]
+        @test buffers[remap[3]] == pipeline.formats[3]
+        # reuse from (4 x --> 5 z):
+        # (1 a --> 4 x)     not yet available for reuse
+        # (1 b --> 2 b, 3b) available, upgrades
+        # (2 c --> 3 c)     not allowed, incompatible types (int16)
+        @test buffers[remap[4]] == pipeline.formats[1]
     end
 
     @testset "default pipeline" begin
@@ -218,49 +207,59 @@ using Makie: generate_buffers, default_pipeline
             Dict(:color => 1), [BufferFormat(4, N0f8)])
         @test pipeline.stages[5] == Stage(:FXAA1,
             Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
-            Dict(:color_luma => 1), [BufferFormat(4, N0f8)])
+            Dict(:color_luma => 1), [BufferFormat(4, N0f8)], filter_in_shader = true)
         @test pipeline.stages[6] == Stage(:FXAA2,
             Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
-            Dict(:color => 1), [BufferFormat(4, N0f8)])
+            Dict(:color => 1), [BufferFormat(4, N0f8)], filter_in_shader = true)
         @test pipeline.stages[7] == Stage(:Display,
             Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
             Dict{Symbol, Int}(), BufferFormat[])
 
         # Note: Order technically irrelevant but it's easier to test with order
         # Same for inputs and outputs here
-        @test length(pipeline.connections) == 6
-        stage1, stage2, stage3, stage4, stage5, stage6, stage7 = pipeline.stages
-        @test pipeline.connections[1] == Connection([stage5 => 1], [stage6 => 1], BufferFormat(4, N0f8, minfilter = :linear))
-        @test pipeline.connections[2] == Connection([stage3 => 1], [stage4 => 1], BufferFormat(4, Float16))
-        @test pipeline.connections[3] == Connection([stage3 => 3], [stage4 => 2], BufferFormat(1, N0f8))
-        @test pipeline.connections[4] == Connection([stage4 => 1, stage2 => 1], [stage5 => 1], BufferFormat(4, N0f8))
-        @test pipeline.connections[5] == Connection([stage3 => 2, stage2 => 2], [stage7 => 2, stage5 => 2], BufferFormat(2, UInt32))
-        @test pipeline.connections[6] == Connection([stage6 => 1], [stage7 => 1], BufferFormat(4, N0f8))
+        @test length(pipeline.formats) == 6
+        @test length(pipeline.stageio2idx) == 15
+        @test pipeline.formats[pipeline.stageio2idx[(5,  1)]] == BufferFormat(4, N0f8, minfilter = :linear)
+        @test pipeline.formats[pipeline.stageio2idx[(6, -1)]] == BufferFormat(4, N0f8, minfilter = :linear)
+        @test pipeline.formats[pipeline.stageio2idx[(3, 1)]] == BufferFormat(4, Float16)
+        @test pipeline.formats[pipeline.stageio2idx[(4, -1)]] == BufferFormat(4, Float16)
+        @test pipeline.formats[pipeline.stageio2idx[(3, 3)]] == BufferFormat(1, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(4, -2)]] == BufferFormat(1, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(4, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(2, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(5, -1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(3, 2)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(2, 2)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(7, -2)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(5, -2)]] == BufferFormat(2, UInt32)
+        @test pipeline.formats[pipeline.stageio2idx[(6, 1)]] == BufferFormat(4, N0f8)
+        @test pipeline.formats[pipeline.stageio2idx[(7, -1)]] == BufferFormat(4, N0f8)
 
         # Verify buffer generation with this more complex example
-        buffers, conn2idx = generate_buffers(pipeline)
+        buffers, remap = generate_buffers(pipeline)
 
-        # Order irrelevant
+        # Order in buffers irrelevant as long as the mapping works
+        # Note: all outputs are unique so we don't have to explicitly test
+        #       which one we hit
+        # Note: Changes to generate_buffers could change how formats get merged
+        #       and cause different correct results
         @test length(buffers) == 4
-        formats = [
-            :color => BufferFormat(), :objectid => BufferFormat(2, UInt32), :weight => BufferFormat(1, N0f8),
-            :HDR => BufferFormat(4, Float16, minfilter = :linear)
-        ]
-        lookup = Dict{Symbol, Int}()
-        for (name, format) in formats
-            idx = findfirst(==(format), buffers)
-            @test idx !== nothing
-            lookup[name] = idx::Int
-        end
-        # Sanity check for assumption that none of the formats are equal
-        @test sum(values(lookup)) == 1 + 2 + 3 + 4
+        @test length(remap) == 6
 
-        @test length(conn2idx) == 6
-        @test conn2idx[pipeline.connections[1]] == lookup[:HDR]
-        @test conn2idx[pipeline.connections[2]] == lookup[:HDR] # compatible and no overlap with connection (1)
-        @test conn2idx[pipeline.connections[3]] == lookup[:weight]
-        @test conn2idx[pipeline.connections[4]] == lookup[:color]
-        @test conn2idx[pipeline.connections[5]] == lookup[:objectid]
-        @test conn2idx[pipeline.connections[6]] == lookup[:color] # compatible and no overlap with (4)
+        @test buffers[remap[pipeline.stageio2idx[(5,  1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(6, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(3, 1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(4, -1)]]] == BufferFormat(4, Float16, minfilter = :linear)
+        @test buffers[remap[pipeline.stageio2idx[(3, 3)]]] == BufferFormat(1, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(4, -2)]]] == BufferFormat(1, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(4, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(2, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(5, -1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(3, 2)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(2, 2)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(7, -2)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(5, -2)]]] == BufferFormat(2, UInt32)
+        @test buffers[remap[pipeline.stageio2idx[(6, 1)]]] == BufferFormat(4, N0f8)
+        @test buffers[remap[pipeline.stageio2idx[(7, -1)]]] == BufferFormat(4, N0f8)
     end
 end

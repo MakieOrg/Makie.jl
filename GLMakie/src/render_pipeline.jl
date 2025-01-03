@@ -65,33 +65,44 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     screen.render_pipeline = GLRenderPipeline()
 
     # Resolve pipeline
-    buffers, connection2idx = Makie.generate_buffers(pipeline)
+    buffers, remap = Makie.generate_buffers(pipeline)
 
     # Add required buffers
     reset!(factory, buffers)
 
     # Add back output color and objectid attachments
-    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :color)]
+    N = length(pipeline.stages)
+    buffer_idx = remap[pipeline.stageio2idx[(N, -1)]]
     attach_colorbuffer(factory.fb, :color, get_buffer(factory, buffer_idx))
-    buffer_idx = connection2idx[Makie.get_input_connection(pipeline.stages[end], :objectid)]
+    buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
     attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
 
 
     render_pipeline = AbstractRenderStep[]
-    for stage in pipeline.stages
+    for (stage_idx, stage) in enumerate(pipeline.stages)
         inputs = Dict{Symbol, Any}()
-        for key in keys(stage.inputs)
-            connection = stage.input_connections[stage.inputs[key]]
-            inputs[Symbol(key, :_buffer)] = get_buffer(factory, connection2idx[connection])
+        for (key, input_idx) in stage.inputs
+            idx = remap[pipeline.stageio2idx[(stage_idx, -input_idx)]]
+            inputs[Symbol(key, :_buffer)] = get_buffer(factory, idx)
         end
 
-        N = length(stage.output_connections)
-        if N == 0
+        connection_indices = map(eachindex(stage.output_formats)) do output_idx
+            return get(pipeline.stageio2idx, (stage_idx, output_idx), -1)
+        end
+
+        N = length(connection_indices) + 1
+        while (N > 1) && (connection_indices[N-1] == -1)
+            N = N-1
+        end
+
+        if isempty(connection_indices)
             framebuffer = nothing
         else
-            idx2name = Dict([idx => k for (k, idx) in stage.outputs])
-            outputs = [connection2idx[stage.output_connections[i]] => idx2name[i] for i in 1:N]
             try
+                idx2name = Dict([idx => k for (k, idx) in stage.outputs])
+                outputs = ntuple(N-1) do n
+                    remap[connection_indices[n]] => idx2name[n]
+                end
                 framebuffer = generate_framebuffer(factory, outputs...)
             catch e
                 rethrow(e)
@@ -100,12 +111,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
 
         # can we reconstruct? (reconstruct should update framebuffer, and replace
         # inputs if necessary, i.e. handle differences in connections and attributes)
-        idx = findfirst(previous_pipeline.parent.stages) do old
-            (old.name == stage.name) &&
-            (old.inputs == stage.inputs) && (old.outputs == stage.outputs) &&
-            (old.input_formats == stage.input_formats) &&
-            (old.output_formats == stage.output_formats)
-        end
+        idx = findfirst(==(stage), previous_pipeline.parent.stages)
 
         if idx === nothing
             pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)

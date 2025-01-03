@@ -97,13 +97,6 @@ function format_to_type(format::BufferFormat)
     return format.dims == 1 ? eltype : Vec{format.dims, eltype}
 end
 
-# Connections can have multiple inputs and outputs
-# e.g. multiple Renders write to objectid and FXAA, SSAO, Display/pick read it
-struct ConnectionT{T}
-    inputs::Vector{Pair{T, Int}}
-    outputs::Vector{Pair{T, Int}}
-    format::BufferFormat # derived from inputs & outputs formats
-end
 
 struct Stage
     name::Symbol
@@ -115,15 +108,9 @@ struct Stage
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
 
-    # "const" after setting up connections
-    input_connections::Vector{ConnectionT{Stage}}
-    output_connections::Vector{ConnectionT{Stage}}
-
     # const for caching (which does quite a lot actually)
-    attributes::NamedTuple
+    attributes::Dict{Symbol, Any} # TODO: rename -> settings?
 end
-
-const Connection = ConnectionT{Stage}
 
 """
     Stage(name::Symbol[; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[])
@@ -146,56 +133,34 @@ function Stage(name, inputs, input_formats, outputs, output_formats; kwargs...)
         Symbol(name),
         inputs, outputs,
         input_formats, output_formats,
-        Connection[], Connection[],
-        NamedTuple{keys(kwargs)}(values(kwargs))
+        Dict{Symbol, Any}(pairs(kwargs))
     )
 end
 
-get_input_connection(stage::Stage, key::Symbol) = stage.input_connections[stage.inputs[key]]
-get_output_connection(stage::Stage, key::Symbol) = stage.output_connections[stage.outputs[key]]
 get_input_format(stage::Stage, key::Symbol) = stage.input_formats[stage.inputs[key]]
 get_output_format(stage::Stage, key::Symbol) = stage.output_formats[stage.outputs[key]]
 
 function Base.:(==)(s1::Stage, s2::Stage)
-    # It's not clear what this actually means for stages...
-
-    # Must match:
+    # For two stages to be equal:
+    # name & format must match as they define the backend implementation and required buffers
+    # outputs don't strictly need to match as they are just names.
+    # inputs do as they are used as uniform names (could change)
+    # attributes probably should match because they change uniforms and compile time constants
+    # (this may allow us to merge pipelines later)
     return (s1.name == s2.name) && (s1.input_formats == s2.input_formats) &&
-    # input names are currently used to generate buffer names in GLMakie but
-    # they could be considered syntax sugar
-        (s1.inputs == s2.inputs) &&
-    # outputs are actually just syntax sugar...
-        (s1.outputs == s2.outputs)
-    # And connections should probably be excluded as they are relevant to the
-    # Pipeline/Graph, not the Stage/Node
-end
-
-
-function Base.:(==)(f1::Connection, f2::Connection)
-    return (f1.format == f2.format) &&
-        (length(f1.inputs) == length(f2.inputs)) && all(f1.inputs .=== f2.inputs) &&
-        (length(f1.outputs) == length(f2.outputs)) && all(f1.outputs .=== f2.outputs)
-end
-
-
-"""
-    Connection(source::Stage, output::Integer, target::Stage, input::Integer)
-
-Creates a `Connection` between the `output` of a `source` stage and the `input`
-of a `target` Stage. The `output` and `input` can be either the name of that
-output/input or the index.
-
-Note: This constructor does not update the given stages or make any checks. It
-should be considered internal. Use `connect!()` instead.
-"""
-function Connection(source::Stage, input::Integer, target::Stage, output::Integer)
-    format = BufferFormat(source.output_formats[input], target.input_formats[output])
-    return Connection([source => input], [target => output], format)
+        (s1.output_formats == s2.output_formats) &&
+        (s1.inputs == s2.inputs) && (s1.outputs == s2.outputs) &&
+        (s1.attributes == s2.attributes)
 end
 
 struct Pipeline
     stages::Vector{Stage}
-    connections::Vector{Connection}
+
+    # (stage_idx, negative input index or positive output index) -> connection format index
+    stageio2idx::Dict{Tuple{Int, Int}, Int}
+    formats::Vector{BufferFormat} # of connections
+    # TODO: consider adding:
+    # endpoints::Vector{Tuple{Int, Int}}
 end
 
 """
@@ -206,7 +171,7 @@ given. The pipeline represents a series of actions (stages) executed during
 rendering.
 """
 function Pipeline()
-    return Pipeline(Stage[], Connection[])
+    return Pipeline(Stage[], Dict{Tuple{Int, Int}, Int}(), BufferFormat[])
 end
 function Pipeline(stages::Stage...)
     pipeline = Pipeline()
@@ -221,14 +186,16 @@ end
 # render -> effect 2 -'
 # where render is the same (name/task, inputs, outputs)
 function Base.push!(pipeline::Pipeline, stage::Stage)
-    isempty(stage.input_connections) || error("Pushed stage $(stage.name) must not have input connections.")
-    isempty(stage.output_connections) || error("Pushed stage $(stage.name) must not have output connections.")
     push!(pipeline.stages, stage)
     return stage # for convenience
 end
 function Base.push!(pipeline::Pipeline, other::Pipeline)
+    N = length(pipeline.stages); M = length(pipeline.formats)
     append!(pipeline.stages, other.stages)
-    append!(pipeline.connections, other.connections)
+    for ((stage_idx, io_idx), format_idx) in other.stageio2idx
+        pipeline.stageio2idx[(stage_idx + N, io_idx)] = M + format_idx
+    end
+    append!(pipeline.formats, other.formats)
     return other # for convenience
 end
 
@@ -295,10 +262,12 @@ function Observables.connect!(pipeline::Pipeline,
 end
 
 function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
-    return connect!(pipeline, pipeline.stages[src], output, pipeline.stages[trg], input)
+    return connect!(pipeline, src, output, trg, input)
 end
-function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
-    return connect!(pipeline, pipeline.stages[src], output, pipeline.stages[trg], input)
+function Observables.connect!(pipeline::Pipeline, source::Stage, output::Integer, target::Stage, input::Integer)
+    src = findfirst(x -> x === source, pipeline.stages)
+    trg = findfirst(x -> x === target, pipeline.stages)
+    return connect!(pipeline, src, output, trg, input)
 end
 
 function Observables.connect!(pipeline::Pipeline, source::Stage, output::Symbol, target::Stage, input::Symbol)
@@ -306,79 +275,75 @@ function Observables.connect!(pipeline::Pipeline, source::Stage, output::Symbol,
     haskey(target.inputs, input) || error("input $input does not exist in target stage")
     output_idx = source.outputs[output]
     input_idx = target.inputs[input]
-    return @inbounds connect!(pipeline, source, output_idx, target, input_idx)
+    return connect!(pipeline, source, output_idx, target, input_idx)
 end
 
-function Observables.connect!(pipeline::Pipeline,
-        source::Stage, output_idx::Integer, target::Stage, input_idx::Integer)
+function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
+    @boundscheck begin
+        checkbounds(pipeline.stages, src)
+        checkbounds(pipeline.stages, trg)
+    end
 
     @boundscheck begin
-        checkbounds(source.output_formats, output_idx)
-        checkbounds(target.input_formats, input_idx)
-    end
-
-    # resize if too small (this allows later connections to be skipped)
-    if length(source.output_connections) < output_idx
-        resize!(source.output_connections, output_idx)
-    end
-    if length(target.input_connections) < input_idx
-        resize!(target.input_connections, input_idx)
+        checkbounds(pipeline.stages[src].output_formats, output)
+        checkbounds(pipeline.stages[trg].input_formats, input)
     end
 
     # Don't make a new connection if the connection already exists
     # (the format must be correct if it exists)
-    if isassigned(source.output_connections, output_idx) &&
-        isassigned(target.input_connections, input_idx) &&
-        (source.output_connections[output_idx] === target.input_connections[input_idx])
-        return source.output_connections[output_idx]
+    if get(pipeline.stageio2idx, (src, output), 0) ===
+        get(pipeline.stageio2idx, (trg, -input), -1)
+        return
     end
 
-    function unsafe_merge(c1::Connection, c2::Connection)
-        for (stage, idx) in c2.inputs
-            any(kv -> kv[1] === stage, c1.inputs) || push!(c1.inputs, stage => idx)
+    # format for the requested connection
+    format = BufferFormat(pipeline.stages[src].output_formats[output], pipeline.stages[trg].input_formats[input])
+
+    # Resolve format and update existing connection of src & trg
+    if haskey(pipeline.stageio2idx, (src, output))
+        # at least src exists, update format
+        format_idx = pipeline.stageio2idx[(src, output)]
+        format = BufferFormat(pipeline.formats[format_idx], format)
+        pipeline.formats[format_idx] = format
+
+        if haskey(pipeline.stageio2idx, (trg, -input))
+            # both exist - update
+            other_idx = pipeline.stageio2idx[(src, output)]
+            format = BufferFormat(pipeline.formats[other_idx], format)
+            # replace format of lower index
+            format_idx, other_idx = minmax(format_idx, other_idx)
+            pipeline.formats[format_idx] = format
+            # connect higher index to format and adjust later indices
+            for (k, v) in pipeline.stageio2idx
+                pipeline.stage2idx[k] = ifelse(v == other_idx, format_idx, ifelse(v > other_idx, v - 1, v))
+            end
+            # remove orphaned format
+            deleteat!(pipeline.formats, other_idx)
+        else
+            # src exists, trg doesn't -> connect trg
+            pipeline.stageio2idx[(trg, -input)] = format_idx
         end
-        for (stage, idx) in c2.outputs
-            any(kv -> kv[1] === stage, c1.outputs) || push!(c1.outputs, stage => idx)
-        end
 
-        return Connection(c1.inputs, c1.outputs, BufferFormat(c1.format, c2.format))
+    elseif haskey(pipeline.stageio2idx, (trg, -input))
+
+        # src doesn't exist, trg does, modify target and connect src
+        format_idx = pipeline.stageio2idx[(trg, -input)]
+        format = BufferFormat(pipeline.formats[format_idx], format)
+        pipeline.formats[format_idx] = format
+        pipeline.stageio2idx[(src, output)] = format_idx
+
+    else
+
+        # neither exists, add new and connect both
+        push!(pipeline.formats, format)
+        pipeline.stageio2idx[(src, output)] = length(pipeline.formats)
+        pipeline.stageio2idx[(trg, -input)] = length(pipeline.formats)
+
     end
 
-    # create requested connection
-    connection = Connection(source, output_idx, target, input_idx)
-
-    # if the input or output already has an edge, merge it with the create edge
-    # e.g. the color output of source is used for a second stage
-    # or   the color input of target is written to by second stage
-    if isassigned(source.output_connections, output_idx)
-        old = source.output_connections[output_idx]
-        # There should be exactly one matching connection, and it's probably
-        # near the end?
-        idx = findlast(c -> c === old, pipeline.connections)::Int
-        deleteat!(pipeline.connections, idx)
-        connection = unsafe_merge(connection, old)
-    end
-    if isassigned(target.input_connections, input_idx)
-        old = target.input_connections[input_idx]
-        idx = findlast(c -> c === old, pipeline.connections)::Int
-        deleteat!(pipeline.connections, idx)
-        connection = unsafe_merge(connection, old)
-    end
-
-    # attach connection to every input and output
-    for (stage, idx) in connection.inputs
-        stage.output_connections[idx] = connection
-    end
-    for (stage, idx) in connection.outputs
-        stage.input_connections[idx] = connection
-    end
-
-    push!(pipeline.connections, connection)
-
-    return connection
+    return
 end
 
-format_complexity(c::Connection) = format_complexity(c.format)
 format_complexity(f::BufferFormat) = format_complexity(f.dims, f.type)
 format_complexity(dims, type) = dims * BFT.bytesize(type)
 # complexity of merged, not max of either
@@ -393,35 +358,43 @@ optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
 function generate_buffers(pipeline::Pipeline)
-    stage2idx = Dict{UInt64, Int64}()
-    for (i, stage) in enumerate(pipeline.stages)
-        # TODO: treat this?
-        # undef inputs should probably not be allowed at all because the shader
-        # need to get something and we don't know a reasonable default
-        # undef (intermediate) outputs could be allowed. They just need to exist
-        # for 1+ transfer, i.e. could be rewritten immediately after
-        valid_inputs = all(i -> isassigned(stage.input_connections, i), eachindex(stage.input_connections))
-        valid_outputs = all(i -> isassigned(stage.output_connections, i), eachindex(stage.output_connections))
-        if !(valid_inputs && valid_outputs)
-            error("$stage has an incomplete set of $(valid_inputs ? "output" : "input") connections")
+    # Verify that outputs are continuously connected (i.e. if N then 1..N-1 as well)
+    output_max = zeros(Int, length(pipeline.stages))
+    output_sum = zeros(Int, length(pipeline.stages))
+    for (stage_idx, io_idx) in keys(pipeline.stageio2idx)
+        io_idx > 0 || continue # inputs irrelevant
+        output_max[stage_idx] = max(output_max[stage_idx], io_idx)
+        output_sum[stage_idx] = output_sum[stage_idx] + io_idx # or use max(0, io_idx) and skip continue?
+    end
+    # sum must be 1 + 2 + ... + n = n(n+1)/2
+    for i in eachindex(output_sum)
+        s = output_sum[i]; m = output_max[i]
+        if s != div(m*(m+1), 2)
+            error("Stage $i has an incomplete set of output connections.")
         end
-        stage2idx[objectid(stage)] = i
     end
 
     # Group connections that exist between stages
-    usage_per_transfer = [Connection[] for _ in 1:length(pipeline.stages)-1]
-    for connection in pipeline.connections
-        first = mapreduce(kv -> stage2idx[objectid(kv[1])], min, connection.inputs)
-        last = mapreduce(kv -> stage2idx[objectid(kv[1])]-1, max, connection.outputs)
-        first <= last || error("Connection $connection is read before it is written to. $first $last")
-        for i in first:last
-            push!(usage_per_transfer[i], connection)
+    endpoints = [(999_999, 0) for _ in pipeline.formats]
+    for ((stage_idx, io_idx), format_idx) in pipeline.stageio2idx
+        start, stop = endpoints[format_idx]
+        start = min(start, stage_idx + (io_idx < 0) * 999_999) # always pick start if stage_idx is input
+        stop = max(stop, (io_idx < 0) * stage_idx - 1) # pick stop if io_idx is output
+        endpoints[format_idx] = (start, stop)
+    end
+    filter!(x -> x != (999_999, 0), endpoints)
+
+    usage_per_transfer = [Int[] for _ in 1:length(pipeline.stages)-1]
+    for (conn_idx, (start, stop)) in enumerate(endpoints)
+        start <= stop || error("Connection $conn_idx is read before it is written to. $start $stop")
+        for i in start:stop
+            push!(usage_per_transfer[i], conn_idx)
         end
     end
 
     buffers = BufferFormat[]
-    connection2idx = Dict{Connection, Int}() # into buffer
-    needs_buffer = Connection[]
+    conn2merged = fill(-1, length(pipeline.formats))
+    needs_buffer = Int[]
     available = Int[]
 
     # Let's simplify to get correct behavior first...
@@ -434,36 +407,37 @@ function generate_buffers(pipeline::Pipeline)
         empty!(needs_buffer)
         for j in max(1, i-1):i
         # for j in i:min(length(usage_per_transfer), i+1) # reverse
-            for connection in usage_per_transfer[j]
-                if haskey(connection2idx, connection)
-                    idx = connection2idx[connection]
+            for conn_idx in usage_per_transfer[j]
+                if conn2merged[conn_idx] != -1
+                    idx = conn2merged[conn_idx]
                     filter!(!=(idx), available)
                 elseif j == i
-                    push!(needs_buffer, connection)
+                    push!(needs_buffer, conn_idx)
                 end
             end
         end
 
         # Handle most expensive connections first
-        sort!(needs_buffer, by = format_complexity, rev = true)
+        sort!(needs_buffer, by = i -> format_complexity(pipeline.formats[i]), rev = true)
 
-        for connection in needs_buffer
+        for conn_idx in needs_buffer
             # search for most compatible buffer
             best_match = 0
             prev_comp = 999999
             prev_delta = 999999
-            conn_comp = format_complexity(connection.format)
+            conn_format = pipeline.formats[conn_idx]
+            conn_comp = format_complexity(conn_format)
             for i in available
-                if buffers[i] == connection.format # exact match
+                if buffers[i] == conn_format # exact match
                     best_match = i
                     break
-                elseif is_compatible(buffers[i], connection.format)
+                elseif is_compatible(buffers[i], conn_format)
                     # found compatible buffer, but we only use it if
                     # - using it is cheaper than using the last
                     # - using it is cheaper than creating a new buffer
                     # - it is more compatible than the last when both are 0 cost
                     #   (i.e prefer 3, Float16 over 3 Float8 for 3 Float16 target)
-                    updated_comp = format_complexity(buffers[i], connection.format)
+                    updated_comp = format_complexity(buffers[i], conn_format)
                     buffer_comp = format_complexity(buffers[i])
                     delta = updated_comp - buffer_comp
                     is_cheaper = (delta < prev_delta) && (delta <= conn_comp)
@@ -478,23 +452,23 @@ function generate_buffers(pipeline::Pipeline)
 
             if best_match == 0
                 # nothing compatible found/available, add format
-                push!(buffers, connection.format)
+                push!(buffers, conn_format)
                 best_match = length(buffers)
-            elseif buffers[best_match] != connection.format
+            elseif buffers[best_match] != conn_format
                 # found upgradeable format, upgrade it (or use it)
-                new_format = BufferFormat(buffers[best_match], connection.format)
+                new_format = BufferFormat(buffers[best_match], conn_format)
                 buffers[best_match] = new_format
             end
 
             # Link to new found or upgraded format
-            connection2idx[connection] = best_match
+            conn2merged[conn_idx] = best_match
 
             # Can't use a buffer twice in one transfer
             filter!(!=(best_match), available)
         end
     end
 
-    return buffers, connection2idx
+    return buffers, conn2merged
 end
 
 
@@ -521,8 +495,7 @@ function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
         sort!(ks, by = k -> stage.inputs[k])
         pad = mapreduce(k -> length(string(k)), max, ks)
         for (i, k) in enumerate(ks)
-            mark = isassigned(stage.input_connections, i) ? 'x' : ' '
-            print(io, "\n  [$mark] ", lpad(string(k), pad), "::", stage.input_formats[i])
+            print(io, "\n  [?] ", lpad(string(k), pad), "::", stage.input_formats[i])
         end
     end
 
@@ -532,8 +505,7 @@ function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
         sort!(ks, by = k -> stage.outputs[k])
         pad = mapreduce(k -> length(string(k)), max, ks)
         for (i, k) in enumerate(ks)
-            mark = isassigned(stage.output_connections, i) ? 'x' : ' '
-            print(io, "\n  [$mark] ", lpad(string(k), pad), "::", stage.output_formats[i])
+            print(io, "\n  [?] ", lpad(string(k), pad), "::", stage.output_formats[i])
         end
     end
 
@@ -548,128 +520,58 @@ function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
     return
 end
 
-function _names(connection::Connection)
-    names = Set{Symbol}()
-    for (stage, idx) in connection.inputs
-        for (k, i) in stage.outputs
-            if idx == i
-                push!(names, k)
-                break
-            end
-        end
-    end
-    for (stage, idx) in connection.outputs
-        for (k, i) in stage.inputs
-            if idx == i
-                push!(names, k)
-                break
-            end
-        end
-    end
-    return collect(names)
-end
-
-function Base.show(io::IO, connection::Connection)
-    names = _names(connection)
-    print(io, "Connection(")
-    if length(names) == 1
-        print(io, names[1])
-    else
-        print(io, names)
-    end
-    print(io, " -> $(connection.format))")
-end
-
-function Base.show(io::IO, ::MIME"text/plain", connection::Connection)
-    print(io, "Connection($(connection.format))")
-
-    if !isempty(connection.inputs)
-        print(io, "\ninputs:")
-        elements = map(connection.inputs) do (stage, idx)
-            key = :temp
-            for (k, i) in stage.outputs
-                if idx == i
-                    key = k
-                    break
-                end
-            end
-            return (string(stage.name), string(key), stage.output_formats[idx])
-        end
-        pad1 = mapreduce(x -> length(x[1]), max, elements)
-        pad2 = mapreduce(x -> length(x[2]), max, elements)
-        for (name, key, format) in elements
-            print(io, "\n  ", rpad(name, pad1), " -> ", lpad(key, pad2), "::", format)
-        end
-    end
-
-    if !isempty(connection.outputs)
-        print(io, "\noutputs:")
-        elements = map(connection.outputs) do (stage, idx)
-            key = :temp
-            for (k, i) in stage.inputs
-                if idx == i
-                    key = k
-                    break
-                end
-            end
-            return (string(stage.name), string(key), stage.input_formats[idx])
-        end
-        pad1 = mapreduce(x -> length(x[1]), max, elements)
-        pad2 = mapreduce(x -> length(x[2]), max, elements)
-        for (name, key, format) in elements
-            print(io, "\n  ", rpad(name, pad1), " -> ", lpad(key, pad2), "::", format)
-        end
-    end
-
-    return
-end
-
 function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
-    conn2idx = Dict{Connection, Int}([c => i for (i, c) in enumerate(pipeline.connections)])
-    return show_resolved(io, pipeline, pipeline.connections, conn2idx)
+    return show_resolved(io, pipeline, pipeline.formats, collect(eachindex(pipeline.formats)))
 end
-function show_resolved(pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
-    return show_resolved(stdout, pipeline, buffers, conn2idx)
+
+function show_resolved(pipeline::Pipeline, buffers, remap)
+    return show_resolved(stdout, pipeline, buffers, remap)
 end
-function show_resolved(io::IO, pipeline::Pipeline, buffers, conn2idx::Dict{Connection, Int})
+
+function show_resolved(io::IO, pipeline::Pipeline, buffers, remap)
     println(io, "Pipeline():")
     print(io, "Stages:")
-    pad = 1 + floor(Int, log10(length(buffers)))
+    pad = isempty(buffers) ? 0 : 1 + floor(Int, log10(length(buffers)))
 
-    for stage in pipeline.stages
+    for (stage_idx, stage) in enumerate(pipeline.stages)
         print(io, "\n  Stage($(stage.name))")
-        if !isempty(stage.input_connections)
+
+        if !isempty(stage.input_formats)
             print(io, "\n    inputs: ")
-            # keep order
-            strs = map(eachindex(stage.input_connections)) do i
+            strs = map(eachindex(stage.input_formats)) do i
                 k = findfirst(==(i), stage.inputs)
-                if isassigned(stage.input_connections, i)
-                    c = stage.input_connections[i]
-                    ci = string(conn2idx[c])
-                    return "[$ci] $k"
+                if haskey(pipeline.stageio2idx, (stage_idx, -i))
+                    conn = string(remap[pipeline.stageio2idx[(stage_idx, -i)]])
                 else
-                    return "[ ] $k"
+                    conn = " "
                 end
+                return "[$conn] $k"
+            end
+            while length(strs) > 0 && startswith(last(strs), "[ ]")
+                pop!(strs)
             end
             join(io, strs, ", ")
         end
-        if !isempty(stage.output_connections)
+
+        if !isempty(stage.output_formats)
             print(io, "\n    outputs: ")
-            strs = map(eachindex(stage.output_connections)) do i
+            strs = map(eachindex(stage.output_formats)) do i
                 k = findfirst(==(i), stage.outputs)
-                if isassigned(stage.output_connections, i)
-                    c = stage.output_connections[i]
-                    ci = string(conn2idx[c])
-                    return "[$ci] $k"
+                if haskey(pipeline.stageio2idx, (stage_idx, i))
+                    conn = string(remap[pipeline.stageio2idx[(stage_idx, i)]])
                 else
-                    return "[#undef] $k"
+                    conn = "#undef"
                 end
+                return "[$conn] $k"
+            end
+            while length(strs) > 0 && startswith(last(strs), "[#undef]")
+                pop!(strs)
             end
             join(io, strs, ", ")
         end
     end
 
-    println(io, "\nConnections:")
+    println(io, "\nConnection Formats:")
     for (i, c) in enumerate(buffers)
         s = lpad("$i", pad)
         println(io, "  [$s] ", c)
