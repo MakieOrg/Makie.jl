@@ -2,12 +2,35 @@
 
 import FixedPointNumbers: N0f8
 
+module BFT
+    import FixedPointNumbers: N0f8
+
+    @enum BufferFormatType::UInt8 begin
+        float8 = 0; float16 = 1; float32 = 3;
+        int8 = 4; int16 = 5; int32 = 7;
+        uint8 = 8; uint16 = 9; uint32 = 11;
+    end
+
+    # lowest 2 bits do variation between 8, 16 and 32 bit types, others do variation of base type
+    is_compatible(a::BufferFormatType, b::BufferFormatType) = (UInt8(a) & 0b11111100) == (UInt8(b) & 0b11111100)
+
+    # assuming compatible types (max is a bitwise thing here btw)
+    _promote(a::BufferFormatType, b::BufferFormatType) = BufferFormatType(max(UInt8(a), UInt8(b)))
+
+    # we matched the lowest 2 bits to bytesize
+    bytesize(x::BufferFormatType) = Int((UInt8(x) & 0b11) + 1)
+
+    const type_lookup = (N0f8, Float16, Nothing, Float32, Int8, Int16, Nothing, Int32, UInt8, UInt16, Nothing, UInt32)
+    to_type(t::BufferFormatType) = type_lookup[Int(t) + 1]
+end
+
+
 # TODO: try `BufferFormat{T} ... type::Type{T}` for better performance?
 # TODO: consider adding a "immediately reusable" flag here or to Stage so that
 #       Stage can communicate that it allows output = input
 struct BufferFormat
     dims::Int
-    type::DataType
+    type::BFT.BufferFormatType
     extras::Dict{Symbol, Any}
 end
 
@@ -23,6 +46,10 @@ The `BufferFormat` may also include extra requirements such as
 """
 function BufferFormat(dims::Integer = 4, type::DataType = N0f8; extras...)
     return BufferFormat(dims, type, Dict{Symbol, Any}(extras))
+end
+@generated function BufferFormat(dims::Integer, ::Type{T}, extras::Dict{Symbol, Any}) where {T}
+    type = BFT.BufferFormatType(UInt8(findfirst(x -> x === T, BFT.type_lookup)) - 0x01)
+    return :(BufferFormat(dims, $type, extras))
 end
 
 function Base.:(==)(f1::BufferFormat, f2::BufferFormat)
@@ -43,22 +70,10 @@ Rules:
 - If only one format contains a specific extra requirement it is accepted and copied to the output.
 """
 function BufferFormat(f1::BufferFormat, f2::BufferFormat)
-    if is_compatible(f1, f2)
+    if BFT.is_compatible(f1.type, f2.type)
         dims = max(f1.dims, f2.dims)
-        T1 = f1.type; T2 = f2.type
-        type = if T1 == T2;                         T1
-        elseif (T1 == Float32) || (T2 == Float32);  Float32
-        elseif (T1 == Float16) || (T2 == Float16);  Float16
-        elseif (T1 == N0f8)  || (T2 == N0f8);       N0f8
-        elseif (T1 == Int32) || (T2 == Int32);      Int32
-        elseif (T1 == Int16) || (T2 == Int16);      Int16
-        elseif (T1 == Int8)  || (T2 == Int8);       Int8
-        elseif (T1 == UInt32) || (T2 == UInt32);    UInt32
-        elseif (T1 == UInt16) || (T2 == UInt16);    UInt16
-        elseif (T1 == UInt8)  || (T2 == UInt8);     UInt8
-        else error("Failed to merge BufferFormat: Types $T1 and $T2 are not allowed.")
-        end
-        extras = copy(f1.extras)
+        type = BFT._promote(f1.type, f2.type)
+        extras = deepcopy(f1.extras)
         for (k, v) in f2.extras
             get!(extras, k, v) == v || error("Failed to merge BufferFormat: Extra requirement $(extras[k]) != $v.")
         end
@@ -68,28 +83,18 @@ function BufferFormat(f1::BufferFormat, f2::BufferFormat)
     end
 end
 
-
 function is_compatible(f1::BufferFormat, f2::BufferFormat)
-    # About 10% faster for default_SSAO_pipeline() (with no caching) than
-    # is_compatible(f1.type, f2.type), but still does runtime dispatch on ==
-    T1 = f1.type
-    T2 = f2.type
-    type_compat = (
-        ((T1 == N0f8) || (T1 == Float16) || (T1 == Float32)) &&
-        ((T2 == N0f8) || (T2 == Float16) || (T2 == Float32))
-    ) || (
-        ((T1 == Int8) || (T1 == Int16) || (T1 == Int32)) &&
-        ((T2 == Int8) || (T2 == Int16) || (T2 == Int32))
-    ) || (
-        ((T1 == UInt8) || (T1 == UInt16) || (T1 == UInt32)) &&
-        ((T2 == UInt8) || (T2 == UInt16) || (T2 == UInt32))
-    )
-    type_compat || return false
+    BFT.is_compatible(f1.type, f2.type) || return false
     extras_compat = true
     for (k, v) in f1.extras
         extras_compat = extras_compat && (get(f2.extras, k, v) == v)
     end
     return extras_compat
+end
+
+function format_to_type(format::BufferFormat)
+    eltype = BFT.to_type(format.type)
+    return format.dims == 1 ? eltype : Vec{format.dims, eltype}
 end
 
 # Connections can have multiple inputs and outputs
@@ -167,7 +172,9 @@ end
 
 
 function Base.:(==)(f1::Connection, f2::Connection)
-    return f1.format == f2.format && all(f1.inputs .=== f2.inputs) && all(f1.outputs .=== f2.outputs)
+    return (f1.format == f2.format) &&
+        (length(f1.inputs) == length(f2.inputs)) && all(f1.inputs .=== f2.inputs) &&
+        (length(f1.outputs) == length(f2.outputs)) && all(f1.outputs .=== f2.outputs)
 end
 
 
@@ -372,9 +379,10 @@ function Observables.connect!(pipeline::Pipeline,
 end
 
 format_complexity(c::Connection) = format_complexity(c.format)
-format_complexity(f::BufferFormat) = format_complexity(f.dims, sizeof(f.type))
-format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(sizeof(f1.type), sizeof(f2.type))
-format_complexity(dims, type) = dims * sizeof(type)
+format_complexity(f::BufferFormat) = format_complexity(f.dims, f.type)
+format_complexity(dims, type) = dims * BFT.bytesize(type)
+# complexity of merged, not max of either
+format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(BFT.bytesize(f1.type), BFT.bytesize(f2.type))
 
 """
     generate_buffers(pipeline)

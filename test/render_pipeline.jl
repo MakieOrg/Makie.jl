@@ -1,5 +1,5 @@
 using Makie
-using Makie: BufferFormat, N0f8, is_compatible
+using Makie: BufferFormat, N0f8, is_compatible, BFT
 using Makie: Stage, get_input_connection, get_output_connection, get_input_format, get_output_format
 using Makie: Connection, Pipeline, connect!
 using Makie: generate_buffers, default_pipeline
@@ -10,12 +10,12 @@ using Makie: generate_buffers, default_pipeline
         @testset "Constructors" begin
             f = BufferFormat()
             @test f.dims == 4
-            @test f.type == N0f8
+            @test f.type == BFT.float8
             @test isempty(f.extras)
 
             f = BufferFormat(1, Float16, a = 1, b = 2)
             @test f.dims == 1
-            @test f.type == Float16
+            @test f.type == BFT.float16
             @test haskey(f.extras, :a) && (f.extras[:a] == 1)
             @test haskey(f.extras, :b) && (f.extras[:b] == 2)
             @test length(keys(f.extras)) == 2
@@ -240,20 +240,27 @@ using Makie: generate_buffers, default_pipeline
         # Verify buffer generation with this more complex example
         buffers, conn2idx = generate_buffers(pipeline)
 
-        # Order irrelevant but the mapping between connections and buffers needs
-        # to be correct. Easier to test with order as well
+        # Order irrelevant
         @test length(buffers) == 4
-        @test buffers[1] == BufferFormat()
-        @test buffers[2] == BufferFormat(2, UInt32)
-        @test buffers[3] == BufferFormat(4, Float16, minfilter = :linear)
-        @test buffers[4] == BufferFormat(1, N0f8)
+        formats = [
+            :color => BufferFormat(), :objectid => BufferFormat(2, UInt32), :weight => BufferFormat(1, N0f8),
+            :HDR => BufferFormat(4, Float16, minfilter = :linear)
+        ]
+        lookup = Dict{Symbol, Int}()
+        for (name, format) in formats
+            idx = findfirst(==(format), buffers)
+            @test idx !== nothing
+            lookup[name] = idx::Int
+        end
+        # Sanity check for assumption that none of the formats are equal
+        @test sum(values(lookup)) == 1 + 2 + 3 + 4
 
         @test length(conn2idx) == 6
-        @test conn2idx[pipeline.connections[1]] == 3
-        @test conn2idx[pipeline.connections[2]] == 3 # compatible and no overlap with connection (1)
-        @test conn2idx[pipeline.connections[3]] == 4
-        @test conn2idx[pipeline.connections[4]] == 1
-        @test conn2idx[pipeline.connections[5]] == 2
-        @test conn2idx[pipeline.connections[6]] == 1 # compatible and no overlap with (4)
+        @test conn2idx[pipeline.connections[1]] == lookup[:HDR]
+        @test conn2idx[pipeline.connections[2]] == lookup[:HDR] # compatible and no overlap with connection (1)
+        @test conn2idx[pipeline.connections[3]] == lookup[:weight]
+        @test conn2idx[pipeline.connections[4]] == lookup[:color]
+        @test conn2idx[pipeline.connections[5]] == lookup[:objectid]
+        @test conn2idx[pipeline.connections[6]] == lookup[:color] # compatible and no overlap with (4)
     end
 end

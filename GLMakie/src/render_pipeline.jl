@@ -1,17 +1,3 @@
-function create_buffer!(factory::FramebufferFactory, format::Makie.BufferFormat)
-    T = format_to_type(format)
-    tex = Texture(T, size(factory), minfilter = :linear, x_repeat = :clamp_to_edge)
-    # tex = Texture(T, size(factory), minfilter = :nearest, x_repeat = :clamp_to_edge)
-    push!(factory, tex)
-end
-
-function format_to_type(format::Makie.BufferFormat)
-    return format.dims == 1 ? format.type : Vec{format.dims, format.type}
-end
-function format_to_gl_format(format::Makie.BufferFormat)
-    return format.dims == 1 ? format.type : Vec{format.dims, format.type}
-end
-
 function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
     @assert factory.fb.id != 0 "Cannot reset a destroyed FramebufferFactory"
     GLAbstraction.free.(factory.children)
@@ -41,7 +27,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     buffers = copy(factory.buffers)
     empty!(factory.buffers)
     for format in formats
-        T = format_to_type(format)
+        T = Makie.format_to_type(format)
         tex = get_buffer!(buffers, T, format.extras)
         push!(factory.buffers, tex)
     end
@@ -72,8 +58,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     # TODO: OpengGL ERRORS
     # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
     # with an empty one while we mess with it?
-    was_running = renderloop_running(screen)
-    was_running && stop_renderloop!(screen, false)
+    # was_running = renderloop_running(screen)
+    # was_running && stop_renderloop!(screen, close_after_renderloop = false)
     ShaderAbstractions.switch_context!(screen.glscreen)
 
     screen.render_pipeline = GLRenderPipeline()
@@ -134,7 +120,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     end
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
-    was_running && start_renderloop!(screen)
+    # was_running && start_renderloop!(screen)
 
     return
 end
