@@ -225,7 +225,6 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     if indexes == -1
         indexes = len
     end
-    require_context(program.context)
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
     finalizer(verify_free, obj)
     return obj
@@ -299,7 +298,6 @@ mutable struct RenderObject{Pre}
             prerenderfunctions, postrenderfunctions,
             visible
         ) where Pre
-        require_context(context, vertexarray.context)
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
         # Store fxaa in ID, so we can access it in the shader to create a mask
@@ -396,7 +394,6 @@ function RenderObject(
             delete!(data, k)
         end
     end
-    require_context(context)
 
     robj = RenderObject{Pre}(
         context,
@@ -436,8 +433,7 @@ function free(x::T, called_from_finalizer = false) where {T}
         end
     else
         if !context_alive(x.context)
-            # @warn "free(::$T) called with dead context."
-            error("free(::$T) called with dead context.")
+            @warn "free(::$T) called with dead context."
             x.id = 0
             return
         end

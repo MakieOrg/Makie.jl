@@ -233,9 +233,7 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
             shaders[i] = get_shader!(cache, shader_source, tr)
         end
         ShaderAbstractions.switch_context!(cache.context)
-        x = compile_program(shaders, fragdatalocation)
-        require_context(cache.context)
-        return x
+        return compile_program(shaders, fragdatalocation)
     end
 end
 

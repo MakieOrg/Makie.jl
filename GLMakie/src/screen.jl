@@ -107,11 +107,6 @@ mutable struct ScreenConfig
             monitor,
             visible,
             scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
-            # Preproccessor
-            # Preprocessor
-            # oit,
-            # fxaa,
-            # ssao,
             render_pipeline,
             transparency_weight_scale,
             max_lights,
@@ -381,7 +376,6 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
 
-    # TODO: FXAA, OIT on-off
     gl_render_pipeline!(screen, config.render_pipeline)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
@@ -645,11 +639,13 @@ function destroy!(screen::Screen)
         empty!(screen)
     end
     @assert screen.rendertask === nothing
+    # before texture atlas, otherwise it regenerates
     destroy!(screen.framebuffer_factory)
     destroy!(screen.render_pipeline)
     cleanup_texture_atlas!(window)
     GLAbstraction.free(screen.shader_cache)
-    # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
+    # Since those are sets, we can just delete them from there, even if they
+    # weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)
     delete!(ALL_SCREENS, screen)
     if screen in SINGLETON_SCREEN
