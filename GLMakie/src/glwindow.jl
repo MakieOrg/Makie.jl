@@ -230,13 +230,19 @@ end
 function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context(); async = false)
     if async
         if !GLFW.is_initialized()
-            Threads.@spawn "Failed to require context:" exception = (ErrorException("Context $ctx must be initialized, but is not."), backtrace())
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be initialized, but is not."), backtrace())
+            end
         end
         if GLAbstraction.GLMAKIE_DEBUG[] && was_destroyed(ctx)
-            Threads.@spawn "Failed to require context:" exception = (ErrorException("Context $ctx must not be destroyed."), backtrace())
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must not be destroyed."), backtrace())
+            end
         end
         if ctx != current
-            Threads.@spawn "Failed to require context:" exception = (ErrorException("Context $ctx must be current, but $current is."), backtrace())
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be current, but $current is."), backtrace())
+            end
         end
     else
         @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
