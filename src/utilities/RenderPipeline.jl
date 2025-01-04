@@ -315,7 +315,7 @@ function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer,
             pipeline.formats[format_idx] = format
             # connect higher index to format and adjust later indices
             for (k, v) in pipeline.stageio2idx
-                pipeline.stage2idx[k] = ifelse(v == other_idx, format_idx, ifelse(v > other_idx, v - 1, v))
+                pipeline.stageio2idx[k] = ifelse(v == other_idx, format_idx, ifelse(v > other_idx, v - 1, v))
             end
             # remove orphaned format
             deleteat!(pipeline.formats, other_idx)
