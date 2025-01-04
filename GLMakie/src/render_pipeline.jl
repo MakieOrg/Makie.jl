@@ -4,7 +4,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     empty!(factory.children)
 
     # function barrier for types?
-    function get_buffer!(buffers, T, extras)
+    function get_buffer!(context, buffers, T, extras)
         # reuse
         internalformat = GLAbstraction.default_internalcolorformat(T)
         for (i, buffer) in enumerate(buffers)
@@ -19,7 +19,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
         if !(eltype(T) == N0f8 || eltype(T) <: AbstractFloat) && (interp == :linear)
             error("Cannot use :linear interpolation with non float types.")
         end
-        return Texture(T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
+        return Texture(context, T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
     end
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -28,7 +28,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     empty!(factory.buffers)
     for format in formats
         T = Makie.format_to_type(format)
-        tex = get_buffer!(buffers, T, format.extras)
+        tex = get_buffer!(factory.fb.context, buffers, T, format.extras)
         push!(factory.buffers, tex)
     end
 
@@ -37,8 +37,9 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
 
     # Always rebuild this though, since we don't know which buffers are the
     # final output buffers
-    fb = GLFramebuffer(size(factory))
+    fb = GLFramebuffer(factory.fb.context, size(factory))
     attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    GLAbstraction.free(factory.fb)
     factory.fb = fb
 
     return factory
@@ -77,8 +78,9 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
     attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
 
-
+    needs_cleanup = collect(eachindex(previous_pipeline.steps))
     render_pipeline = AbstractRenderStep[]
+
     for (stage_idx, stage) in enumerate(pipeline.stages)
         inputs = Dict{Symbol, Any}()
         for (key, input_idx) in stage.inputs
@@ -117,6 +119,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
             pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
         else
             pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
+            filter!(!=(idx), needs_cleanup)
         end
 
         # I guess stage should also have extra information for settings? Or should
@@ -124,6 +127,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         # Maybe just leave it there for now
         push!(render_pipeline, pass)
     end
+
+    foreach(i -> destroy!(previous_pipeline.steps[i]), needs_cleanup)
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
     # was_running && start_renderloop!(screen)

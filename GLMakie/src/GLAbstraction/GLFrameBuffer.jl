@@ -10,16 +10,18 @@ mutable struct GLFramebuffer
     buffers::Vector{Texture}
     counter::UInt32 # for color attachments
 
-    function GLFramebuffer(size::NTuple{2, Int})
+    function GLFramebuffer(context, size::NTuple{2, Int})
+        require_context(context)
+
         # Create framebuffer
         id = glGenFramebuffers()
         glBindFramebuffer(GL_FRAMEBUFFER, id)
 
         obj = new(
-            id, size, current_context(),
+            id, size, context,
             Dict{Symbol, Int}(), GLenum[], Texture[], UInt32(0)
         )
-        finalizer(free, obj)
+        finalizer(verify_free, obj)
 
         return obj
     end
@@ -63,15 +65,6 @@ function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
 end
 
 function unsafe_free(x::GLFramebuffer)
-    # don't free if already freed
-    x.id == 0 && return
-    # don't free from other context
-    if require_cleanup_before_context_deletion()
-        GLAbstraction.context_alive(x.context) || error("Can't delete Program - context not alive.")
-    else
-        GLAbstraction.context_alive(x.context) || return
-    end
-    GLAbstraction.switch_context!(x.context)
     id = Ref(x.id)
     glDeleteFramebuffers(1, id)
     x.id = 0
@@ -131,11 +124,9 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
     end
 
     try
-        require_context(fb.context)
         bind(fb)
         gl_attach(buffer, attachment)
         check_framebuffer()
-        require_context(fb.context)
     catch e
         if GL_COLOR_ATTACHMENT0 <= attachment <= GL_COLOR_ATTACHMENT15
             # If we failed to attach correctly we should probably overwrite

@@ -45,15 +45,6 @@ function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer 
             return false
         end
     end
-end
-
-function get_texture!(atlas::Makie.TextureAtlas)
-    current_ctx = GLAbstraction.current_context()
-    if !GLAbstraction.context_alive(current_ctx)
-        return nothing
-    end
-
-    cleanup_texture_atlas(current_ctx, atlas)
 
     if haskey(atlas_texture_cache, (atlas, context))
         return atlas_texture_cache[(atlas, context)][1]

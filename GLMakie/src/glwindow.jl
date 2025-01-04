@@ -36,7 +36,7 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
         format = GL_DEPTH_STENCIL
     )
 
-    fb = GLFramebuffer(fb_size)
+    fb = GLFramebuffer(context, fb_size)
     attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
 
     return FramebufferFactory(fb, Texture[], GLFramebuffer[])
@@ -85,7 +85,7 @@ end
 Makie.@noconstprop function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, Symbol}...)
     filter!(fb -> fb.id != 0, factory.children) # cleanup?
 
-    fb = GLFramebuffer(size(factory))
+    fb = GLFramebuffer(factory.fb.context, size(factory))
 
     for (idx, name) in idx2name
         haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")

@@ -436,7 +436,8 @@ function free(x::T, called_from_finalizer = false) where {T}
         end
     else
         if !context_alive(x.context)
-            @warn "free(::$T) called with dead context."
+            # @warn "free(::$T) called with dead context."
+            error("free(::$T) called with dead context.")
             x.id = 0
             return
         end
