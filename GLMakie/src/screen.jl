@@ -579,7 +579,7 @@ end
 function destroy!(rob::RenderObject, called_from_finalizer = false)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
-    GLAbstraction.switch_context!(rob.context)
+    ShaderAbstractions.switch_context!(rob.context)
     tex = get_texture!(rob.context, gl_texture_atlas(), called_from_finalizer)
     for (k, v) in rob.uniforms
         if v isa Observable
@@ -598,6 +598,8 @@ function destroy!(rob::RenderObject, called_from_finalizer = false)
         Observables.clear(obs)
     end
     GLAbstraction.free(rob.vertexarray, called_from_finalizer)
+    # avoid try .. catch at call site (call site usually destroys multipel renderobjects)
+    GLAbstraction.require_context_no_error(rob.context; async = called_from_finalizer)
 end
 
 # Note: called from scene finalizer, must not error
@@ -663,16 +665,20 @@ function destroy!(screen::Screen)
         empty!(screen)
     end
     @assert screen.rendertask === nothing
-    foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
-    destroy!(screen.framebuffer)
-    cleanup_texture_atlas!(window)
-    GLAbstraction.free(screen.shader_cache)
-    # Since those are sets, we can just delete them from there, even if they weren't in there (e.g. reuse=false)
+
+    # Since those are sets, we can just delete them from there, even if they
+    # weren't in there (e.g. reuse=false)
     delete!(SCREEN_REUSE_POOL, screen)
     delete!(ALL_SCREENS, screen)
     if screen in SINGLETON_SCREEN
         empty!(SINGLETON_SCREEN)
     end
+
+    foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
+    destroy!(screen.framebuffer)
+    cleanup_texture_atlas!(window)
+    GLAbstraction.free(screen.shader_cache)
+
     destroy!(window)
     return
 end
@@ -685,12 +691,13 @@ Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=t
 """
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
+
+    # If the context is dead we should completely destroy the screen
     if !GLAbstraction.context_alive(screen.glscreen)
         destroy!(screen)
+        return
     end
 
-    # TODO: CI sometimes fails to adjust visibility with a GLFW init error
-    # This should not stop us from cleaning up OpenGL objects!
     set_screen_visibility!(screen, false)
     if screen.window_open[] # otherwise we trigger an infinite loop of closing
         screen.window_open[] = false

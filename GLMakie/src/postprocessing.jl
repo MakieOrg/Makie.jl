@@ -80,7 +80,8 @@ end
 
 function ssao_postprocessor(framebuffer, shader_cache)
     ShaderAbstractions.switch_context!(shader_cache.context)
-    require_context(shader_cache.context)
+    require_context(shader_cache.context) # for framebuffer, uniform textures
+
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -208,7 +209,7 @@ Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
     ShaderAbstractions.switch_context!(shader_cache.context)
-    require_context(shader_cache.context)
+    require_context(shader_cache.context) # for framebuffer, uniform textures
 
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)

@@ -92,7 +92,6 @@ Makie.@noconstprop function Texture(
         mipmap = false,
         parameters... # rest should be texture parameters
     ) where {T, NDim}
-    require_context(context)
     texparams = TextureParameters(T, NDim; parameters...)
     id = glGenTextures()
     glBindTexture(texturetype, id)
@@ -160,7 +159,6 @@ function Texture(
         format::GLenum         = default_colorformat(T),
         parameters...
     ) where T <: GLArrayEltypes
-    require_context(context)
     texparams = TextureParameters(T, 2; parameters...)
     id = glGenTextures()
 
@@ -188,13 +186,12 @@ function Texture(
         tuple(maxdims...)
     )
     set_parameters(texture)
-    texture
+    return texture
 end
 
 
 
 function TextureBuffer(buffer::GLBuffer{T}) where T <: GLArrayEltypes
-    require_context(buffer.context)
     texture_type = GL_TEXTURE_BUFFER
     id = glGenTextures()
     glBindTexture(texture_type, id)
@@ -359,13 +356,11 @@ gpu_getindex(t::TextureBuffer{T}, i::UnitRange{Int64}) where {T} = t.buffer[i]
 
 similar(t::Texture{T, NDim}, newdims::Int...) where {T, NDim} = similar(t, newdims)
 function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
-    require_context(t.texture.context)
     buff = similar(t.buffer, newdims...)
     return TextureBuffer(buff)
 end
 
 function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
-    require_context(t.context)
     id = glGenTextures()
     glBindTexture(t.texturetype, id)
     glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)

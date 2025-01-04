@@ -16,14 +16,14 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function cleanup_texture_atlas!(context, called_from_finalizer = false)
+function cleanup_texture_atlas!(context)
     to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
-    called_from_finalizer || require_context(context)
     for (atlas, ctx) in to_delete
         tex, func = pop!(atlas_texture_cache, (atlas, ctx))
         Makie.remove_font_render_callback!(atlas, func)
-        GLAbstraction.free(tex, called_from_finalizer)
+        GLAbstraction.free(tex)
     end
+    GLAbstraction.require_context_no_error(context) # avoid try .. catch at call site
     return
 end
 
@@ -33,12 +33,17 @@ function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer 
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            if !called_from_finalizer
-                @error("Cached atlas textures should be removed explicitly! $ctx")
-                println("Reason:", GLFW.is_initialized() ? "" : " not initialized", was_destroyed(ctx) ? " destroyed" : "")
-                Base.show_backtrace(stderr, Base.catch_backtrace())
-            else
-                Threads.@spawn println(stderr, "Cached atlas textures did not get cleaned up for context ", ctx)
+            # Adding extra context, so no require_context_no_error(ctx, async = called_from_finalizer)
+            try
+                require_context(ctx)
+            catch e
+                if called_from_finalizer
+                    Threads.@spawn begin
+                        @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
+                    end
+                else
+                    @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
+                end
             end
             tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
             Makie.remove_font_render_callback!(atlas, tex_func[2])
@@ -51,7 +56,7 @@ function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer 
     elseif called_from_finalizer
         return nothing
     else
-        require_context(context)
+        require_context(context, async = called_from_finalizer)
         tex = Texture(
             context, atlas.data,
             minfilter = :linear,

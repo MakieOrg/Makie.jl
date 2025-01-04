@@ -404,6 +404,18 @@ function RenderObject(
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
     program = gl_convert(context, to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
+    require_context(context)
+
+    # Validate context of things in RenderObject
+    if GLMAKIE_DEBUG[]
+        require_context(program.context, context)
+        require_context(vertexarray.context, context)
+        for v in values(data)
+            if v isa GPUArray
+                require_context(v.context, context)
+            end
+        end
+    end
 
     # remove all uniforms not occurring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
@@ -440,20 +452,19 @@ function free(x::T, called_from_finalizer = false) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
     x.id == 0 && return
 
-    # This may be called from the scene finalizer in which case no errors, no printing allowed
+    # Note: context is checked higher up in the call stack but isn't guaranteed
+    #       to be active or alive here, because unsafe_free() may also do
+    #       cleanup that doesn't depend on context
+
+    # This may be called from the scene finalizer in which case no errors and
+    # no printing allowed from the current task
     if called_from_finalizer
-        if GLMAKIE_DEBUG[] && !context_alive(x.context)
-            Threads.@spawn println(stderr, "Warning: free(::$T) called with dead context from scene finalizer.")
-        end
         try
             unsafe_free(x)
         catch e
             Threads.@spawn Base.showerror(stderr, e)
         end
     else
-        # This should be called with a valid, active context, but we shouldn't error
-        # here because unsafe_free() also sometimes cleans up observables
-        require_context_no_error(x.context)
         unsafe_free(x)
     end
     return
@@ -498,7 +509,6 @@ function unsafe_free(x::Texture)
     clean_up_observables(x)
     x.id = ifelse(context_alive(x.context), x.id, 0)
     is_context_active(x.context) || return
-    id = Ref(x.id)
     glDeleteTextures(x.id)
     x.id = 0
     return
