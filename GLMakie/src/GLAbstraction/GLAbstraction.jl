@@ -19,8 +19,21 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 import Base: merge, resize!, similar, length, getindex, setindex!
 
 # Debug tools
-require_context() = nothing # implemented in GLMakie/glwindow
-export require_context
+const GLMAKIE_DEBUG = Ref(false)
+
+require_context() = nothing # implemented in GLMakie/glwindow.jl
+function require_context_no_error(args...; async = false)
+    if async
+        require_context(args..., async = true)
+    else
+        try
+            require_context(args...)
+        catch e
+            @error exception = (e, Base.catch_backtrace())
+        end
+    end
+end
+export require_context, check_context
 
 include("AbstractGPUArray.jl")
 

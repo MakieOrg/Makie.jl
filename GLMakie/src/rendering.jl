@@ -65,5 +65,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     setup!(screen, fb)
 
     render_frame(screen, nothing, screen.render_pipeline)
+
+    GLAbstraction.require_context(nw)
+
     return
 end

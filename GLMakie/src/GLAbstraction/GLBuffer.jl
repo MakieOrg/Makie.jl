@@ -8,6 +8,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(context, ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
+        require_context(context)
         id = glGenBuffers()
         glBindBuffer(buffertype, id)
         # size of 0 can segfault it seems
@@ -18,7 +19,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         obj = new(
             id, (buff_length,), buffertype, usage, context,
             Observables.ObserverFunction[])
-        finalizer(verify_free, obj)
+        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
         obj
     end
 end
@@ -34,7 +35,6 @@ end
 bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
 
 function similar(x::GLBuffer{T}, buff_length::Int) where T
-    require_context(x.context)
     return GLBuffer{T}(x.context, Ptr{T}(C_NULL), buff_length, x.buffertype, x.usage)
 end
 

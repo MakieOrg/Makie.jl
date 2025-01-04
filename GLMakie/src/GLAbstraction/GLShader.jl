@@ -103,15 +103,17 @@ function ShaderCache(context)
     )
 end
 
-function free(cache::ShaderCache, called_from_finalizer = false)
+function free(cache::ShaderCache)
+    ShaderAbstractions.switch_context!(cache.context)
     for (k, v) in cache.shader_cache
         for (k2, shader) in v
-            free(shader, called_from_finalizer)
+            free(shader)
         end
     end
     for program in values(cache.program_cache)
-        free(program, called_from_finalizer)
+        free(program)
     end
+    require_context_no_error(cache.context) # just so we don't need try .. catch at call site
     return
 end
 

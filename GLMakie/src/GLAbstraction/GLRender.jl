@@ -14,6 +14,7 @@ function setup_clip_planes(N::Integer)
     end
 end
 
+# Note: context required in renderloop, not per renderobject here
 
 """
 When rendering a specialised list of Renderables, we can do some optimizations
@@ -21,7 +22,6 @@ When rendering a specialised list of Renderables, we can do some optimizations
 function render(list::Vector{RenderObject{Pre}}) where Pre
     isempty(list) && return nothing
     first(list).prerenderfunction()
-    require_context(first(list).context)
     vertexarray = first(list).vertexarray
     program = vertexarray.program
     glUseProgram(program.id)
@@ -51,7 +51,6 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
             end
         end
         renderobject.postrenderfunction()
-        require_context(renderobject.context)
     end
     # we need to assume, that we're done here, which is why
     # we need to bind VertexArray to 0.
@@ -70,7 +69,6 @@ a lot of objects.
 """
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if renderobject.visible
-        require_context(renderobject.context)
         renderobject.prerenderfunction()
         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         program = vertexarray.program
@@ -94,7 +92,6 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
         bind(vertexarray)
         renderobject.postrenderfunction()
         glBindVertexArray(0)
-        require_context(renderobject.context)
     end
     return
 end

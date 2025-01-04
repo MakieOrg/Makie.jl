@@ -30,7 +30,7 @@ mutable struct Shader
 
     function Shader(context, name, source, typ, id)
         obj = new(Symbol(name), source, typ, id, context)
-        finalizer(verify_free, obj)
+        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
 end
@@ -66,7 +66,7 @@ mutable struct GLProgram
     context::GLContext
     function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple}, context = first(shader).context)
         obj = new(id, shader, nametype, uniformloc, context)
-        finalizer(verify_free, obj)
+        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
         obj
     end
 end
@@ -226,7 +226,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         indexes = len
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-    finalizer(verify_free, obj)
+    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 using ShaderAbstractions: Buffer
@@ -252,7 +252,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
     glBindVertexArray(0)
     indices = indexbuffer(triangles)
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indices)
-    finalizer(verify_free, obj)
+    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 
@@ -384,6 +384,21 @@ function RenderObject(
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
     program = gl_convert(context, to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
+    require_context(context)
+
+    # Validate context of things in RenderObject
+    if GLMAKIE_DEBUG[]
+        require_context(program.context, context)
+        require_context(vertexarray.context, context)
+        for v in values(data)
+            if v isa TextureBuffer
+                require_context(v.buffer.context, context)
+                require_context(v.texture.context, context)
+            elseif v isa GPUArray
+                require_context(v.context, context)
+            end
+        end
+    end
 
     # remove all uniforms not occurring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
@@ -416,29 +431,23 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
-# This may be called from the scene finalizer in which case no errors, no printing allowed
 function free(x::T, called_from_finalizer = false) where {T}
-    # don't free if already freed
+    # don't free if already freed (this should only be set by unsafe_free)
     x.id == 0 && return
+
+    # Note: context is checked higher up in the call stack but isn't guaranteed
+    #       to be active or alive here, because unsafe_free() may also do
+    #       cleanup that doesn't depend on context
+
+    # This may be called from the scene finalizer in which case no errors and
+    # no printing allowed from the current task
     if called_from_finalizer
-        if !context_alive(x.context)
-            Threads.@spawn println(stderr, "Warning: free(::$T) called with dead context from scene finalizer.")
-            x.id = 0
-            return
-        end
         try
             unsafe_free(x)
         catch e
             Threads.@spawn Base.showerror(stderr, e)
         end
     else
-        if !context_alive(x.context)
-            @warn "free(::$T) called with dead context."
-            x.id = 0
-            return
-        end
-        # context must be valid
-        require_context(x.context)
         unsafe_free(x)
     end
     return
@@ -454,12 +463,16 @@ end
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
+    x.id = ifelse(context_alive(x.context), x.id, 0)
+    is_context_active(x.context) || return
     glDeleteProgram(x.id)
     x.id = 0
     return
 end
 
 function unsafe_free(x::Shader)
+    x.id = ifelse(context_alive(x.context), x.id, 0)
+    is_context_active(x.context) || return
     glDeleteShader(x.id)
     x.id = 0
     return
@@ -467,6 +480,8 @@ end
 
 function unsafe_free(x::GLBuffer)
     clean_up_observables(x)
+    x.id = ifelse(context_alive(x.context), x.id, 0)
+    is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteBuffers(1, id)
     x.id = 0
@@ -475,7 +490,8 @@ end
 
 function unsafe_free(x::Texture)
     clean_up_observables(x)
-    id = Ref(x.id)
+    x.id = ifelse(context_alive(x.context), x.id, 0)
+    is_context_active(x.context) || return
     glDeleteTextures(x.id)
     x.id = 0
     return
@@ -488,6 +504,8 @@ function unsafe_free(x::GLVertexArray)
     if x.indices isa GPUArray
         unsafe_free(x.indices)
     end
+    x.id = ifelse(context_alive(x.context), x.id, 0)
+    is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
     x.id = 0

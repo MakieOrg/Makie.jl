@@ -99,7 +99,6 @@ function getProgramInfo(p::GLProgram)
 end
 
 const FAILED_FREE_COUNTER = Ref(0)
-
 function verify_free(obj::T, name = T) where T
     if obj.id != 0
         FAILED_FREE_COUNTER[] = FAILED_FREE_COUNTER[] + 1

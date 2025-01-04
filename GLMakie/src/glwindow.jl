@@ -43,6 +43,7 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
+    ShaderAbstractions.switch_context!(first(values(fb.buffers)).context)
     foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), fb.buffers)
     resize!(fb.fb, w, h)
     filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok for cleanup?
@@ -60,6 +61,11 @@ function unsafe_empty!(factory::FramebufferFactory)
 end
 
 function destroy!(factory::FramebufferFactory)
+    ctx = factory.fb.context
+    ShaderAbstractions.switch_context!(ctx)
+    # avoid try .. catch at call site, and allow cleanup to run
+    GLAbstraction.require_context_no_error(ctx)
+
     GLAbstraction.free.(factory.buffers)
     GLAbstraction.free.(factory.children)
     # make sure depth, stencil get cleared too (and maybe core color buffers in the future)
@@ -67,6 +73,7 @@ function destroy!(factory::FramebufferFactory)
     GLAbstraction.free(factory.fb)
     empty!(factory.buffers)
     empty!(factory.children)
+    return
 end
 
 function Base.push!(factory::FramebufferFactory, tex::Texture)
@@ -142,11 +149,28 @@ function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
 end
 
-# require_context(ctx, current = nothing) = nothing
-function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context(); warn = false)
-    @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
-    @assert !was_destroyed(ctx) "Context $ctx must not be destroyed."
-    @assert ctx.handle == current.handle "Context $ctx must be current, but $current is."
+function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context(); async = false)
+    if async
+        if !GLFW.is_initialized()
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be initialized, but is not."), backtrace())
+            end
+        end
+        if GLAbstraction.GLMAKIE_DEBUG[] && was_destroyed(ctx)
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must not be destroyed."), backtrace())
+            end
+        end
+        if ctx != current
+            Threads.@spawn begin
+                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be current, but $current is."), backtrace())
+            end
+        end
+    else
+        @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
+        @assert !GLAbstraction.GLMAKIE_DEBUG[] || !was_destroyed(ctx) "Context $ctx must not be destroyed."
+        @assert ctx == current "Context $ctx must be current, but $current is."
+    end
 end
 
 function destroy!(nw::GLFW.Window)

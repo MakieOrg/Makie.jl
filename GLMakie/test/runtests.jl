@@ -6,6 +6,9 @@ using GeometryBasics: origin
 using Random
 using ReferenceTests
 
+# verify OpenGL object cleanup
+GLMakie.GLAbstraction.GLMAKIE_DEBUG[] = true
+
 if !GLMakie.ModernGL.enable_opengl_debugging
     # can't error, since we can't enable debugging for users
     @warn("TESTING WITHOUT OPENGL DEBUGGING")
