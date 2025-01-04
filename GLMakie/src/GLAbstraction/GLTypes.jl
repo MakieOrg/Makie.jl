@@ -411,7 +411,10 @@ function RenderObject(
         require_context(program.context, context)
         require_context(vertexarray.context, context)
         for v in values(data)
-            if v isa GPUArray
+            if v isa TextureBuffer
+                require_context(v.buffer.context, context)
+                require_context(v.texture.context, context)
+            elseif v isa GPUArray
                 require_context(v.context, context)
             end
         end

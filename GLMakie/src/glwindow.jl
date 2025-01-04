@@ -178,6 +178,8 @@ end
 
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    isempty(fb.buffers) && return # or error?
+    ShaderAbstractions.switch_context!(first(values(fb.buffers)).context)
     for (name, buffer) in fb.buffers
         resize_nocopy!(buffer, (w, h))
     end

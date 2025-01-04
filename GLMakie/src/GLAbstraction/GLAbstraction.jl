@@ -24,7 +24,7 @@ const GLMAKIE_DEBUG = Ref(false)
 require_context() = nothing # implemented in GLMakie/glwindow.jl
 function require_context_no_error(args...; async = false)
     if async
-        require_context(args..., true)
+        require_context(args..., async = true)
     else
         try
             require_context(args...)
