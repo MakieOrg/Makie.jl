@@ -648,13 +648,13 @@ end
 
 
 # TODO: caching is dangerous with mutable attributes...
-const PIPELINE_CACHE = Dict{Symbol, Pipeline}()
+# const PIPELINE_CACHE = Dict{Symbol, Pipeline}()
 
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
-    name = Symbol(:default_pipeline, Int(ssao), Int(fxaa), Int(oit))
+    # name = Symbol(:default_pipeline, Int(ssao), Int(fxaa), Int(oit))
 
     # Mimic GLMakie's old hard coded render pipeline
-    get!(PIPELINE_CACHE, name) do
+    # get!(PIPELINE_CACHE, name) do
 
         pipeline = Pipeline()
         push!(pipeline, SortStage())
@@ -699,7 +699,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
         end
 
         return pipeline
-    end
+    # end
 end
 
 function test_pipeline_3D()
