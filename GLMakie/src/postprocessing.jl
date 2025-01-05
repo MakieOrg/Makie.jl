@@ -126,7 +126,7 @@ function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
     return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
 end
 
-function construct(::Val{:TransparentRender}, screen, framebuffer, inputs, parent)
+function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, parent)
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
     clear = [1 => Vec4f(0), 3 => Vec4f(1)]

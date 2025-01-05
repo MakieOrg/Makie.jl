@@ -595,9 +595,9 @@ function RenderStage(; kwargs...)
 end
 
 function TransparentRenderStage()
-    outputs = Dict(:weighted_color_sum => 1, :objectid => 2, :alpha_product => 3)
+    outputs = Dict(:color_sum => 1, :objectid => 2, :transmittance => 3)
     output_formats = [BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)]
-    return Stage(:TransparentRender, Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats)
+    return Stage(Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats)
 end
 
 function SSAOStage(; kwargs...)
@@ -616,7 +616,7 @@ function SSAOStage(; kwargs...)
 end
 
 function OITStage(; kwargs...)
-    inputs = Dict(:weighted_color_sum => 1, :alpha_product => 2)
+    inputs = Dict(:color_sum => 1, :transmittance => 2)
     input_formats = [BufferFormat(4, Float16), BufferFormat(1, N0f8)]
     outputs = Dict(:color => 1)
     output_formats = [BufferFormat(4, N0f8)]

@@ -199,11 +199,11 @@ using Makie: generate_buffers, default_pipeline
             Dict(:color => 1, :objectid => 2, :position => 3, :normal => 4),
             [BufferFormat(4, N0f8), BufferFormat(2, UInt32), BufferFormat(3, Float16), BufferFormat(3, Float16)],
             transparency = false)
-        @test pipeline.stages[3] == Stage(:TransparentRender, Dict{Symbol, Int}(), BufferFormat[],
-            Dict(:weighted_color_sum => 1, :objectid => 2, :alpha_product => 3),
+        @test pipeline.stages[3] == Stage(Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[],
+            Dict(:color_sum => 1, :objectid => 2, :transmittance => 3),
             [BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)])
         @test pipeline.stages[4] == Stage(:OIT,
-            Dict(:weighted_color_sum => 1, :alpha_product => 2), [BufferFormat(4, Float16), BufferFormat(1, N0f8)],
+            Dict(:color_sum => 1, :transmittance => 2), [BufferFormat(4, Float16), BufferFormat(1, N0f8)],
             Dict(:color => 1), [BufferFormat(4, N0f8)])
         @test pipeline.stages[5] == Stage(:FXAA1,
             Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
