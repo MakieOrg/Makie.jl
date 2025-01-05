@@ -186,6 +186,23 @@ using Makie: generate_buffers, default_pipeline
         # (1 b --> 2 b, 3b) available, upgrades
         # (2 c --> 3 c)     not allowed, incompatible types (int16)
         @test buffers[remap[4]] == pipeline.formats[1]
+
+        # text connecting two nodes that each have connections
+        connect!(pipeline, stage1, :b, stage5, :z)
+
+        @test length(pipeline.formats) == 3
+        @test length(pipeline.stageio2idx) == 9
+        @test pipeline.formats == [BufferFormat(4, Float16), BufferFormat(2, Int16), BufferFormat(4, N0f8)]
+        for (k, v) in [(3, -1) => 1, (1, 2)  => 1, (1, 1)  => 3, (4, -1) => 3, (5, -1) => 1, (4, 1)  => 1, (2, -1) => 1, (2, 1)  => 2, (3, -2) => 2]
+            @test pipeline.stageio2idx[k] == v
+        end
+
+        buffers, remap = generate_buffers(pipeline)
+        @test length(buffers) == 3
+        @test length(remap) == 3
+        @test buffers[remap[1]] == pipeline.formats[1]
+        @test buffers[remap[2]] == pipeline.formats[2]
+        @test buffers[remap[3]] == pipeline.formats[3]
     end
 
     @testset "default pipeline" begin

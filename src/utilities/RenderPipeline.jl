@@ -308,7 +308,7 @@ function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer,
 
         if haskey(pipeline.stageio2idx, (trg, -input))
             # both exist - update
-            other_idx = pipeline.stageio2idx[(src, output)]
+            other_idx = pipeline.stageio2idx[(trg, -input)]
             format = BufferFormat(pipeline.formats[other_idx], format)
             # replace format of lower index
             format_idx, other_idx = minmax(format_idx, other_idx)
