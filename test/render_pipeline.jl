@@ -1,6 +1,6 @@
 using Makie
 using Makie: BufferFormat, N0f8, is_compatible, BFT
-using Makie: Stage, get_input_connection, get_output_connection, get_input_format, get_output_format
+using Makie: Stage, get_input_format, get_output_format
 using Makie: Pipeline, connect!
 using Makie: generate_buffers, default_pipeline
 

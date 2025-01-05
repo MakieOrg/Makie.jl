@@ -552,7 +552,7 @@ function Base.delete!(screen::Screen, scene::Scene, called_from_finalizer::Bool 
     return
 end
 
-function destroy!(rob::RenderObject, called_from_finalizer = false)
+function destroy!(rob::RenderObject, called_from_finalizer = false, keep_alive = UInt32[])
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     ShaderAbstractions.switch_context!(rob.context)
@@ -560,7 +560,7 @@ function destroy!(rob::RenderObject, called_from_finalizer = false)
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)
-        elseif v isa GPUArray && v !== tex
+        elseif v isa GPUArray && (v !== tex) && !in(v.id, keep_alive)
             # We usually don't share gpu data and it should be hard for users to share buffers..
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 

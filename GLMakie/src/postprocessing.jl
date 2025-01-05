@@ -36,17 +36,17 @@ to initialize just before your run, bundle it with the run.
 abstract type AbstractRenderStep end
 run_step(screen, glscene, ::AbstractRenderStep) = nothing
 
-function destroy!(step::T) where {T <: AbstractRenderStep}
+function destroy!(step::T, keep_alive) where {T <: AbstractRenderStep}
     @debug "Default destructor of $T"
-    hasfield(T, :robj) && destroy!(step.robj)
+    hasfield(T, :robj) && destroy!(step.robj, false, keep_alive)
     return
 end
 
 # fore reference:
 # construct(::Val{Name}, screen, framebuffer, inputs, parent::Makie.Stage)
-function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) where {T <: AbstractRenderStep}
+function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage, keep_alive) where {T <: AbstractRenderStep}
     # @debug "reconstruct() not defined for $T, calling construct()"
-    destroy!(old)
+    destroy!(old, keep_alive)
     return construct(Val(parent.name), screen, framebuffer, inputs, parent)
 end
 
@@ -69,7 +69,7 @@ function render_frame(screen, glscene, pipeline::GLRenderPipeline)
 end
 
 function destroy!(pipeline::GLRenderPipeline)
-    destroy!.(pipeline.steps)
+    destroy!.(pipeline.steps, Ref(UInt32[]))
     empty!(pipeline.steps)
     return
 end

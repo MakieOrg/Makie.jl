@@ -78,6 +78,12 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
     buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
     attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
 
+    # Careful - framebuffer attachments are used as inputs so they need to be
+    #           filtered when destroying the stage! (Which may include other
+    #           other textures that do need cleanup)
+    keep_alive = [tex.id for tex in screen.framebuffer_factory.buffers]
+    push!(keep_alive, get_buffer(factory.fb, :depth_stencil).id)
+
     needs_cleanup = collect(eachindex(previous_pipeline.steps))
     render_pipeline = AbstractRenderStep[]
 
@@ -118,7 +124,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         if idx === nothing
             pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
         else
-            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
+            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage, keep_alive)
             filter!(!=(idx), needs_cleanup)
         end
 
@@ -128,7 +134,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
         push!(render_pipeline, pass)
     end
 
-    foreach(i -> destroy!(previous_pipeline.steps[i]), needs_cleanup)
+    # Cleanup orphaned stages
+    foreach(i -> destroy!(previous_pipeline.steps[i], keep_alive), needs_cleanup)
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
     # was_running && start_renderloop!(screen)

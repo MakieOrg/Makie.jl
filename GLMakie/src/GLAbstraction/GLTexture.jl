@@ -231,7 +231,7 @@ Creates a texture from an Image
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
 # https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589
 
-Base.show(io::IO, t::Texture) = show(IOContext(io), MIME"text/plain"(), t)
+Base.show(io::IO, t::Texture{T, D}) where {T, D} = print(io, "Texture{$T, $D}(ID: $(t.id), Size: $(size(t)))")
 
 function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T,D}) where {T,D}
     if get(io, :compact, false)
