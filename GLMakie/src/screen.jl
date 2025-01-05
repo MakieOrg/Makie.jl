@@ -560,7 +560,7 @@ function destroy!(rob::RenderObject, called_from_finalizer = false, keep_alive =
     for (k, v) in rob.uniforms
         if v isa Observable
             Observables.clear(v)
-        elseif v isa GPUArray && (v !== tex) && !in(v.id, keep_alive)
+        elseif v isa GPUArray && (v !== tex) && (!(v isa Texture) || !in(v.id, keep_alive))
             # We usually don't share gpu data and it should be hard for users to share buffers..
             # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 
