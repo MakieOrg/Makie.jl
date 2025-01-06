@@ -155,9 +155,9 @@ renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced
 Renders `amount` instances of an indexed geometry
 """
 function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
-    N_elements = length(vao)
-    N_elements * amount == 0 && return nothing
-    glDrawElementsInstanced(primitive, N_elements, julia2glenum(T), C_NULL, amount)
+    N = length(vao.indices) * cardinality(vao.indices)
+    N * amount == 0 && return nothing
+    glDrawElementsInstanced(primitive, N, julia2glenum(T), C_NULL, amount)
     return nothing
 end
 
