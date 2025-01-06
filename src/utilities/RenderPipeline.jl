@@ -797,6 +797,9 @@ function pipeline_gui!(ax, pipeline)
     output      = Vector{Tuple{String, Point2f}}[]
     stageio_lookup = Tuple{Int, Int}[]
 
+    max_size = 0
+    max_size2 = 0
+
     for (idx, stage) in enumerate(pipeline.stages)
         output_height = length(stage.outputs)
         height = length(stage.inputs) + output_height
@@ -816,9 +819,46 @@ function pipeline_gui!(ax, pipeline)
         push!(marker_pos, vcat(last.(ips), last.(ops)))
         append!(stageio_lookup, [(idx, -i) for i in 1:length(stage.inputs)])
         append!(stageio_lookup, [(idx,  i) for i in 1:length(stage.outputs)])
+
+        if max_size < length(stage.inputs) + length(stage.outputs)
+            max_size2 = max_size
+            max_size = length(stage.inputs) + length(stage.outputs)
+        end
     end
 
+
     origins = Observable([Point2f(8x, 0) for x in eachindex(pipeline.stages)])
+
+    # Do something to get better starting layout...
+    begin
+        shift = 0.5 * (4 + max_size + max_size2 + 1)
+        # vector[connection idx] = [(stage idx, input/output index)] (- input, + output)
+        conn2stageio = [Tuple{Int, Int}[] for _ in eachindex(pipeline.formats)]
+        for (stageio, conn) in pipeline.stageio2idx
+            push!(conn2stageio[conn], stageio)
+        end
+
+        for i in length(pipeline.stages):-1:1
+            targets = Int[]
+            for j in eachindex(pipeline.stages[i].input_formats)
+                if haskey(pipeline.stageio2idx, (i, -j))
+                    conn_idx = pipeline.stageio2idx[(i, -j)]
+                    for (stage_idx, io) in conn2stageio[conn_idx]
+                        if io > 0 # is output
+                            push!(targets, stage_idx)
+                        end
+                    end
+                end
+            end
+
+            if !isempty(targets)
+                y0 = 0.5 * (length(targets)+1)
+                for (j, stage_idx) in enumerate(targets)
+                    origins[][stage_idx] = Point2f(origins[][stage_idx][1], origins[][i][2]) + Point2f(0, shift * (y0 - j))
+                end
+            end
+        end
+    end
 
     rects_obs = Observable(Rect2f[])
     header_line_obs = Observable(Point2f[])
