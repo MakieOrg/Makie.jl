@@ -74,7 +74,8 @@ function merge_screen_config(::Type{Config}, _config::Dict) where Config
     if key == :GLMakie
         config = Dict{Symbol, Any}(_config)
         get!(config, :render_pipeline) do
-            if any(in(keys(config)), [:ssao, :fxaa, :oit]) || (backend_defaults[:render_pipeline] == automatic)
+            if any(in(keys(config)), [:ssao, :fxaa, :oit]) ||
+                    (to_value(backend_defaults[:render_pipeline]) == automatic)
                 ssao = to_value(get(config, :ssao, backend_defaults[:ssao]))
                 fxaa = to_value(get(config, :fxaa, backend_defaults[:fxaa]))
                 oit  = to_value(get(config, :oit, backend_defaults[:oit]))
