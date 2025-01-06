@@ -179,7 +179,7 @@ function output_buffer_writes(screen::Screen, transparency = false)
     elseif any(stage -> stage.name == :SSAO1, pipeline.stages)
         """
         fragment_color = color;
-        fragment_position = o_view_pos;
+        fragment_position.xyz = o_view_pos;
         fragment_normal.xyz = o_view_normal;
         """
     else

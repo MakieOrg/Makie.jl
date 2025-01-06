@@ -27,7 +27,7 @@ void main(void)
     // The normal buffer gets cleared every frame. (also position, color etc)
     // If normal == vec3(1) then there is no geometry at this fragment.
     // Therefore skip SSAO calculation
-    if (normal != vec3(1)) {
+    if (normal != vec3(0)) {
         vec3 rand_vec = vec3(texture(noise, frag_uv * noise_scale).xy, 0.0);
         vec3 tangent = normalize(rand_vec - normal * dot(rand_vec, normal));
         vec3 bitangent = cross(normal, tangent);
@@ -78,6 +78,7 @@ void main(void)
             sample_frag_pos.xyz = sample_frag_pos.xyz * 0.5 + 0.5;
             sample_frag_pos.xy += (frag_uv - 0.5) * clip_pos_w / sample_clip_pos_w;
 
+            if (texture(normal_buffer, sample_frag_pos.xy).xyz == vec3(0)) continue;
 
             float sample_depth = texture(position_buffer, sample_frag_pos.xy).z;
             float range_check = smoothstep(0.0, 1.0, radius / abs(view_pos.z - sample_depth));

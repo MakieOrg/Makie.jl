@@ -339,7 +339,10 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
         # This should be per scene because projection may vary between
         # scenes. It should be a leaf scene to avoid repeatedly shading
         # the same region (though this is not guaranteed...)
-        isempty(scene.children) || continue
+        if !isempty(scene.children) || isempty(scene.plots) ||
+            !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
+            continue
+        end
         a = viewport(scene)[]
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms

@@ -33,7 +33,7 @@ void write2framebuffer(vec4 color, uvec2 id){
 
     // // if transparency == false && ssao = true
     // fragment_color = color;
-    // fragment_position = o_view_pos;
+    // fragment_position.xyz = o_view_pos;
     // fragment_normal_occlusion.xyz = o_view_normal;
 
     // // else
