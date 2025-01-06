@@ -118,6 +118,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         oit = true,
         fxaa = true,
         ssao = false,
+        render_pipeline = default_pipeline(),
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.

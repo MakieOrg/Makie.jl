@@ -48,11 +48,36 @@ struct ShaderSource
     name::String
 end
 
-function ShaderSource(path)
+"""
+    ShaderSource(filepath::String)
+
+Loads the source code from the given filepath. The shader type is derived from
+the file extension (.vert, .frag, .geom or .comp).
+"""
+function ShaderSource(path::String)
     typ = GLAbstraction.shadertype(splitext(path)[2])
     source = read(path, String)
     name = String(path)
     return ShaderSource(typ, source, name)
+end
+
+const shader_counter = Ref(0)
+function next_shader_num()
+    shader_counter[] = shader_counter[] + 1
+    return shader_counter[]
+end
+
+"""
+    ShaderSource(code::String, type::Symbol[, name])
+
+Bundles the given source code with a shader type for later shader compilation.
+`type` can be :vert, :frag, :geom or :comp.
+
+Use `loadshader(filename)` to load a cached shader from GLMakie's assets folder.
+"""
+function ShaderSource(source::String, type::Symbol, name = "inline_shader$(next_shader_num())")
+    type2gltype = (comp = GL_COMPUTE_SHADER, vert = GL_VERTEX_SHADER, frag = GL_FRAGMENT_SHADER, geom = GL_GEOMETRY_SHADER)
+    return ShaderSource(type2gltype[type], source, name)
 end
 
 const SHADER_DIR = normpath(joinpath(@__DIR__, "..", "assets", "shader"))

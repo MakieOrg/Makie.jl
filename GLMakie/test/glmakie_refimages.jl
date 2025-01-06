@@ -204,3 +204,87 @@ end
     end
     f
 end
+
+@reference_test "Custom stage in render pipeline" begin
+    GLMakie.closeall()
+
+    function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, parent)
+        frag_shader = """
+        {{GLSL_VERSION}}
+
+        in vec2 frag_uv;
+        out vec4 fragment_color;
+
+        uniform sampler2D color_buffer; // \$(name of input)_buffer
+        uniform mat3 color_transform;   // from Stage attributes
+
+        void main(void) {
+            vec4 c = texture(color_buffer, frag_uv).rgba;
+            fragment_color = vec4(color_transform * c.rgb, c.a);
+            // fragment_color = vec4(1,0,0, c.a);
+        }
+        """
+
+        shader = GLMakie.LazyShader(
+            screen.shader_cache,
+            GLMakie.loadshader("postprocessing/fullscreen.vert"),
+            GLMakie.ShaderSource(frag_shader, :frag)
+        )
+
+        inputs[:color_transform] = parent.attributes[:color_transform]
+
+        robj = GLMakie.RenderObject(inputs, shader,
+            GLMakie.PostprocessPrerender(), nothing, screen.glscreen
+        )
+        robj.postrenderfunction = () -> GLMakie.draw_fullscreen(robj.vertexarray.id)
+
+        return GLMakie.RenderPass{:Tint}(framebuffer, robj)
+    end
+
+    function GLMakie.run_step(screen, glscene, step::GLMakie.RenderPass{:Tint})
+        # Blend transparent onto opaque
+        wh = size(step.framebuffer)
+        GLMakie.set_draw_buffers(step.framebuffer)
+        GLMakie.glViewport(0, 0, wh[1], wh[2])
+        GLMakie.GLAbstraction.render(step.robj)
+        return
+    end
+
+
+    begin
+        # Pipeline matches test_pipeline_2D up to color_tint
+        pipeline = Makie.Pipeline()
+
+        render1 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = true))
+        render2 = push!(pipeline, Makie.TransparentRenderStage())
+        oit = push!(pipeline, Makie.OITStage())
+        fxaa = push!(pipeline, Makie.FXAAStage(filter_in_shader = false))
+        render3 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = false))
+        color_tint = push!(pipeline, Makie.Stage(:Tint,
+            inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
+            outputs = [:color => Makie.BufferFormat()],
+            color_transform = Observable(Makie.Mat3f(
+                # sepia filter
+                0.393, 0.349, 0.272,
+                0.769, 0.686, 0.534,
+                0.189, 0.168, 0.131
+            ))
+        ))
+        display_stage = push!(pipeline, Makie.DisplayStage())
+
+        connect!(pipeline, render1, fxaa)
+        connect!(pipeline, render1, display_stage, :objectid)
+        connect!(pipeline, render2, oit)
+        connect!(pipeline, render2, display_stage, :objectid)
+        connect!(pipeline, oit,     fxaa,    :color)
+        connect!(pipeline, fxaa,    color_tint, :color)
+        connect!(pipeline, render3, color_tint, :color)
+        connect!(pipeline, render3, display_stage, :objectid)
+        connect!(pipeline, color_tint, display_stage, :color)
+    end
+
+
+    GLMakie.activate!(render_pipeline = pipeline)
+    cow = load(Makie.assetpath("cow.png"))
+    f,a,p = image(rotr90(cow))
+end
