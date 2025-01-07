@@ -561,3 +561,4 @@ end
     tooltip!(t, "I'm a Toggle")
     a, s = scatter(f[1,2], [1,2,3])
     tooltip!(a, "I'm an Axis")
+end
