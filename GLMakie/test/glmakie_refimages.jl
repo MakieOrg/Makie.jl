@@ -170,7 +170,7 @@ end
 end
 
 @reference_test "render stage parameters with SSAO postprocessor" begin
-    GLMakie.closeall()
+    GLMakie.closeall() # (mostly?) for recompilation of plot shaders
     GLMakie.activate!(ssao = true)
     f = Figure()
     ps = [Point3f(x, y, sin(x * y + y-x)) for x in range(-2, 2, length=21) for y in range(-2, 2, length=21)]

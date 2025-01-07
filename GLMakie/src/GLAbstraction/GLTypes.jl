@@ -431,6 +431,8 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
+# const TRACE_FREE = Ref(false)
+
 function free(x::T, called_from_finalizer = false) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
     x.id == 0 && return
@@ -438,6 +440,17 @@ function free(x::T, called_from_finalizer = false) where {T}
     # Note: context is checked higher up in the call stack but isn't guaranteed
     #       to be active or alive here, because unsafe_free() may also do
     #       cleanup that doesn't depend on context
+
+    # if TRACE_FREE[]
+    #     try
+    #         error("tracing...")
+    #     catch e
+    #         bt = catch_backtrace()
+    #         Threads.@spawn begin
+    #             @warn "free(::$T)" exception = (e, bt)
+    #         end
+    #     end
+    # end
 
     # This may be called from the scene finalizer in which case no errors and
     # no printing allowed from the current task

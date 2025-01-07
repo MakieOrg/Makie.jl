@@ -399,6 +399,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/postprocess.frag"),
         view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
+    filter_fxaa_in_shader || pop!(inputs, :objectid_buffer)
     robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
     robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 

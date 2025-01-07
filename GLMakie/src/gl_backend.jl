@@ -39,10 +39,10 @@ function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer 
             catch e
                 if called_from_finalizer
                     Threads.@spawn begin
-                        @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
+                        @error "Cached atlas textures should be removed explicitly! Dropping $(tex_func[1].id)" exception = (e, catch_backtrace())
                     end
                 else
-                    @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
+                    @error "Cached atlas textures should be removed explicitly! Dropping $(tex_func[1].id)" exception = (e, catch_backtrace())
                 end
             end
             tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
