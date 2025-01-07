@@ -203,7 +203,7 @@ end
 """
     connect!(pipeline::Pipeline, source::Union{Pipeline, Stage}, target::Union{Pipeline, Stage})
 
-Connects every output in `source` to every `input` in `target` that shares the
+Connects every output in `source` to every input in `target` that shares the
 same name. For example, if `:a, :b, :c, :d` exist in source and `:b, :d, :e`
 exist in target, `:b, :d` will get connected.
 """
@@ -218,9 +218,19 @@ function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage}, t
     end
     return
 end
+
+"""
+    connect!(pipeline::Pipeline, [source = pipeline, target = pipeline], name::Symbol)
+
+Connects every output in `source` that uses the given `name` to every input in
+`target` with the same `name`. `source` and `target` can be a pipeline, stage
+or integer referring to stage in `pipeline`. If both are omitted inputs and
+outputs from `pipeline` get connected.
+"""
 function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage, Integer}, trg::Union{Pipeline, Stage, Integer}, key::Symbol)
     return connect!(pipeline, src, key, trg, key)
 end
+Observables.connect!(pipeline::Pipeline, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
 
 # TODO: Not sure about this... Maybe it should be first/last instead? But what
 #       then it wouldn't really work with e.g. SSAO, which needs color as an
@@ -682,21 +692,19 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
 
         if ssao
             connect!(pipeline, render1, _ssao)
-            connect!(pipeline, render1, display, :objectid)
             connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
         end
         connect!(pipeline, render2, fxaa ? _fxaa : display)
-        connect!(pipeline, render2, display, :objectid) # make sure this merges with other objectids
         if oit
             connect!(pipeline, render3, _oit)
             connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
         else
             connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
         end
-        connect!(pipeline, render3, display, :objectid)
         if fxaa
             connect!(pipeline, _fxaa, display, :color)
         end
+        connect!(pipeline, :objectid)
 
         return pipeline
     # end
@@ -716,16 +724,13 @@ function test_pipeline_3D()
     display = push!(pipeline, DisplayStage())
 
     connect!(pipeline, render1, ssao)
-    connect!(pipeline, render1, fxaa,    :objectid)
-    connect!(pipeline, render1, display, :objectid)
     connect!(pipeline, ssao,    fxaa,    :color)
     connect!(pipeline, render2, fxaa,    :color)
-    connect!(pipeline, render2, display, :objectid)
     connect!(pipeline, render3, oit)
-    connect!(pipeline, render3, display, :objectid)
     connect!(pipeline, oit,     fxaa,    :color)
     connect!(pipeline, fxaa,    display, :color)
     connect!(pipeline, render4, display)
+    connect!(pipeline, :objectid)
 
     return pipeline
 end
@@ -742,12 +747,11 @@ function test_pipeline_2D()
     display = push!(pipeline, DisplayStage())
 
     connect!(pipeline, render1, fxaa)
-    connect!(pipeline, render1, display, :objectid)
     connect!(pipeline, render2, oit)
-    connect!(pipeline, render2, display, :objectid)
     connect!(pipeline, oit,     fxaa,    :color)
     connect!(pipeline, fxaa,    display, :color)
     connect!(pipeline, render3, display)
+    connect!(pipeline, :objectid)
 
     return pipeline
 end
