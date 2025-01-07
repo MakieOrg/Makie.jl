@@ -27,24 +27,12 @@ function cleanup_texture_atlas!(context)
     return
 end
 
-function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer = false)
+function get_texture!(context, atlas::Makie.TextureAtlas)
     # clean up dead context!
     filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
             return true
         else
-            # Adding extra context, so no require_context_no_error(ctx, async = called_from_finalizer)
-            try
-                require_context(ctx)
-            catch e
-                if called_from_finalizer
-                    Threads.@spawn begin
-                        @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
-                    end
-                else
-                    @error "Cached atlas textures should be removed explicitly!" exception = (e, catch_backtrace())
-                end
-            end
             tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
@@ -53,10 +41,8 @@ function get_texture!(context, atlas::Makie.TextureAtlas, called_from_finalizer 
 
     if haskey(atlas_texture_cache, (atlas, context))
         return atlas_texture_cache[(atlas, context)][1]
-    elseif called_from_finalizer
-        return nothing
     else
-        require_context(context, async = called_from_finalizer)
+        require_context(context)
         tex = Texture(
             context, atlas.data,
             minfilter = :linear,

@@ -21,19 +21,16 @@ import Base: merge, resize!, similar, length, getindex, setindex!
 # Debug tools
 const GLMAKIE_DEBUG = Ref(false)
 
-require_context() = nothing # implemented in GLMakie/glwindow.jl
-function require_context_no_error(args...; async = false)
-    if async
-        require_context(args..., async = true)
-    else
-        try
-            require_context(args...)
-        catch e
-            @error exception = (e, Base.catch_backtrace())
-        end
-    end
+# implemented in GLMakie/glwindow.jl
+function require_context_no_error(args...) end
+
+function require_context(ctx, current = ShaderAbstractions.current_context())
+    msg = require_context_no_error(ctx, current)
+    isnothing(msg) && return nothing
+    error(msg)
 end
-export require_context, check_context
+
+export require_context
 
 include("AbstractGPUArray.jl")
 

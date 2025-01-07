@@ -451,25 +451,14 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
-function free(x::T, called_from_finalizer = false) where {T}
+function free(x::T) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
     x.id == 0 && return
-
-    # Note: context is checked higher up in the call stack but isn't guaranteed
-    #       to be active or alive here, because unsafe_free() may also do
-    #       cleanup that doesn't depend on context
-
-    # This may be called from the scene finalizer in which case no errors and
-    # no printing allowed from the current task
-    if called_from_finalizer
-        try
-            unsafe_free(x)
-        catch e
-            Threads.@spawn Base.showerror(stderr, e)
-        end
-    else
+    clean_up_observables(x)
+    if context_alive(x.context) && is_context_active(x.context)
         unsafe_free(x)
     end
+    x.id = 0
     return
 end
 
@@ -483,25 +472,18 @@ end
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
-    x.id = ifelse(context_alive(x.context), x.id, 0)
-    is_context_active(x.context) || return
     glDeleteProgram(x.id)
     x.id = 0
     return
 end
 
 function unsafe_free(x::Shader)
-    x.id = ifelse(context_alive(x.context), x.id, 0)
-    is_context_active(x.context) || return
     glDeleteShader(x.id)
     x.id = 0
     return
 end
 
 function unsafe_free(x::GLBuffer)
-    clean_up_observables(x)
-    x.id = ifelse(context_alive(x.context), x.id, 0)
-    is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteBuffers(1, id)
     x.id = 0
@@ -509,9 +491,6 @@ function unsafe_free(x::GLBuffer)
 end
 
 function unsafe_free(x::Texture)
-    clean_up_observables(x)
-    x.id = ifelse(context_alive(x.context), x.id, 0)
-    is_context_active(x.context) || return
     glDeleteTextures(x.id)
     x.id = 0
     return
@@ -524,8 +503,6 @@ function unsafe_free(x::GLVertexArray)
     if x.indices isa GPUArray
         unsafe_free(x.indices)
     end
-    x.id = ifelse(context_alive(x.context), x.id, 0)
-    is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
     x.id = 0

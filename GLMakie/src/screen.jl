@@ -537,12 +537,12 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
 end
 
 # Note: called from scene finalizer, must not error
-function Base.delete!(screen::Screen, scene::Scene, called_from_finalizer::Bool = true)
+function Base.delete!(screen::Screen, scene::Scene)
     for child in scene.children
-        delete!(screen, child, called_from_finalizer)
+        delete!(screen, child)
     end
     for plot in scene.plots
-        delete!(screen, scene, plot, called_from_finalizer)
+        delete!(screen, scene, plot)
     end
     filter!(x -> x !== screen, scene.current_screens)
     if haskey(screen.screen2scene, WeakRef(scene))
@@ -576,34 +576,50 @@ function Base.delete!(screen::Screen, scene::Scene, called_from_finalizer::Bool 
     return
 end
 
-function destroy!(rob::RenderObject, called_from_finalizer = false)
+function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
-    ShaderAbstractions.switch_context!(rob.context)
-    tex = get_texture!(rob.context, gl_texture_atlas(), called_from_finalizer)
-    for (k, v) in rob.uniforms
-        if v isa Observable
-            Observables.clear(v)
-        elseif v isa GPUArray && v !== tex
-            # We usually don't share gpu data and it should be hard for users to share buffers..
-            # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
+    with_context(rob.context) do
+        # Get texture for texture atlas directly, to not trigger a new texture creation
+        tex = get(atlas_texture_cache, (gl_texture_atlas(), rob.context), nothing)[1]
+        for (k, v) in rob.uniforms
+            if v isa Observable
+                Observables.clear(v)
+            elseif v isa GPUArray && v !== tex
+                # We usually don't share gpu data and it should be hard for users to share buffers..
+                # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
 
-            # TODO, refcounting, or leaving freeing to GC...
-            # GC can cause random context switches, so immediate free is necessary.
-            # I guess as long as we make it hard for users to share buffers directly, this should be fine!
-            GLAbstraction.free(v, called_from_finalizer)
+                # TODO, refcounting, or leaving freeing to GC...
+                # GC can cause random context switches, so immediate free is necessary.
+                # I guess as long as we make it hard for users to share buffers directly, this should be fine!
+                GLAbstraction.free(v)
+            end
+        end
+        for obs in rob.observables
+            Observables.clear(obs)
+        end
+        GLAbstraction.free(rob.vertexarray)
+    end
+    return
+end
+
+function with_context(f, context)
+    old_ctx = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT[]
+    GLAbstraction.switch_context!(context)
+    try
+        f()
+    finally
+        if isnothing(old_ctx)
+            GLAbstraction.switch_context!()
+        else
+            GLAbstraction.switch_context!(old_ctx)
         end
     end
-    for obs in rob.observables
-        Observables.clear(obs)
-    end
-    GLAbstraction.free(rob.vertexarray, called_from_finalizer)
-    # avoid try .. catch at call site (call site usually destroys multipel renderobjects)
-    GLAbstraction.require_context_no_error(rob.context; async = called_from_finalizer)
 end
 
 # Note: called from scene finalizer, must not error
-function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot, called_from_finalizer::Bool = true)
+function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
         for cplot in Makie.collect_atomic_plots(plot)
@@ -614,9 +630,12 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot, called_f
         # TODO, is it?
         renderobject = get(screen.cache, objectid(plot), nothing)
         if !isnothing(renderobject)
-            destroy!(renderobject, called_from_finalizer)
-            filter!(x-> x[3] !== renderobject, screen.renderlist)
-            delete!(screen.cache2plot, renderobject.id)
+            # Switch to context, so we can delete the renderobjects
+            with_context(screen.glscreen) do
+                destroy!(renderobject)
+                filter!(x-> x[3] !== renderobject, screen.renderlist)
+                delete!(screen.cache2plot, renderobject.id)
+            end
         end
         delete!(screen.cache, objectid(plot))
     end
