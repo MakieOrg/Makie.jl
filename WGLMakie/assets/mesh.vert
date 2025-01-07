@@ -99,7 +99,7 @@ void main(){
     }
     vec4 position_world = model * vec4(vertex_position, 1);
 
-    render(position_world, get_normals(), view, projection);
+    render(position_world, get_normal(), view, projection);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
 

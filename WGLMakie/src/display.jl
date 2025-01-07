@@ -343,6 +343,7 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     plot_data = serialize_plots(scene, Plot[plot])
     plot_sub = Session(session)
     Bonito.init_session(plot_sub)
+    # serialize + evaljs via sub session, so we can keep track of those observables
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
@@ -381,8 +382,11 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
                             session::Union{Nothing,Session})
     main_session = get_screen_session(screen)
     isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
-    isready(main_session) || return
-    Bonito.evaljs(main_session, js"""
+    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+    root = Bonito.root_session(main_session)
+    isready(root) || return nothing
+
+    Bonito.evaljs(root, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
@@ -402,7 +406,9 @@ end
 function delete_js_objects!(screen::Screen, scene::Scene)
     session = get_screen_session(screen)
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
-    isready(session) || return
+    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+    root = Bonito.root_session(session)
+    isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
         if haskey(plot, :__wgl_session)
@@ -410,7 +416,8 @@ function delete_js_objects!(screen::Screen, scene::Scene)
             close(wgl_session)
         end
     end
-    Bonito.evaljs(session, js"""
+
+    Bonito.evaljs(root, js"""
     $(WGL).then(WGL=> {
         WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")

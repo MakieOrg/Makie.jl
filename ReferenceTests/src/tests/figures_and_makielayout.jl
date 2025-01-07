@@ -306,6 +306,72 @@ end
     f
 end
 
+@reference_test "Axis3 fullbox" begin
+    f = Figure(size = (400, 400))
+    a = Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
+    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+
+    for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
+        kwargs = Dict(
+            Symbol(viskey, :spinesvisible) => false,
+            Symbol(colkey, :spinecolor_1) => :red,
+            Symbol(colkey, :spinecolor_2) => :green,
+            Symbol(colkey, :spinecolor_3) => :blue,
+            Symbol(colkey, :spinecolor_4) => :orange,
+        )
+        a = Axis3(
+            f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
+            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
+
+        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+    end
+    f
+end
+
+@reference_test "Axis3 viewmodes, xreversed, aspect, perspectiveness" begin
+    fig = Figure(size = (800, 1200))
+
+    protrusions = (40, 30, 20, 10)
+    perspectiveness = Observable(0.0)
+    cat = GeometryBasics.expand_faceviews(load(Makie.assetpath("cat.obj")))
+    cs = 1:length(Makie.coordinates(cat))
+
+    for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
+        gl = GridLayout(fig[by, bx])
+        Label(gl[0, 1:2], "viewmode = :$viewmode")
+        for (x, rev) in enumerate((true, false))
+            for (y, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
+                ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
+                    protrusions = protrusions, perspectiveness = perspectiveness)
+                mesh!(ax, cat, color = cs)
+
+                # for debug purposes
+                # layout area
+                fullarea = lift(ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+                    mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+                    maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+                    return Rect2f(mini, maxi - mini)
+                end
+                p = poly!(fig.scene, fullarea, color = RGBf(1, 0.8, 0.6), strokecolor = :red, strokewidth = 1.5)
+                translate!(p, 0, 0, -10_000)
+                # axis area = layout area - protrusions
+                p = poly!(fig.scene, ax.layoutobservables.computedbbox, color = RGBf(0.8, 0.9, 1), strokecolor = :blue, strokewidth = 1.5, linestyle = :dash)
+                translate!(p, 0, 0, -10_000)
+            end
+        end
+    end
+
+    fig
+
+    st = Stepper(fig)
+    Makie.step!(st)
+
+    perspectiveness[] = 1.0
+    Makie.step!(st)
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)

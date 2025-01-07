@@ -226,7 +226,11 @@ Makie.isvisible(screen::Screen) = screen.config.visible
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
 
-function empty_screen(debugging::Bool; reuse=true, window=nothing)
+Makie.@noconstprop function empty_screen(debugging::Bool; reuse=true, window=nothing)
+    return empty_screen(debugging, reuse, window)
+end
+
+Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
 
@@ -259,20 +263,17 @@ function empty_screen(debugging::Bool; reuse=true, window=nothing)
             )
         catch e
             @warn("""
-
-            GLFW couldn't create an OpenGL window.
-            This likely means, you don't have an OpenGL capable Graphic Card,
-            or you don't have an OpenGL 3.3 capable video driver installed.
-            Have a look at the troubleshooting section in the GLMakie readme:
-            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-        """)
+                GLFW couldn't create an OpenGL window.
+                This likely means, you don't have an OpenGL capable Graphic Card,
+                or you don't have an OpenGL 3.3 capable video driver installed.
+                Have a look at the troubleshooting section in the GLMakie readme:
+                https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+            """)
             rethrow(e)
         end
 
         # GLFW doesn't support setting the icon on OSX
-        if !Sys.isapple()
-            GLFW.SetWindowIcon(window, Makie.icon())
-        end
+        GLFW.SetWindowIcon(window, Makie.icon())
     end
 
     # tell GLAbstraction that we created a new context.
@@ -345,7 +346,8 @@ function singleton_screen(debugging::Bool)
     if !isempty(SINGLETON_SCREEN)
         @debug("reusing singleton screen")
         screen = SINGLETON_SCREEN[1]
-        close(screen; reuse=false)
+        stop_renderloop!(screen; close_after_renderloop=false)
+        empty!(screen)
     else
         @debug("new singleton screen")
         # reuse=false, because we "manually" re-use the singleton screen!
@@ -448,13 +450,14 @@ function display_scene!(screen::Screen, scene::Scene)
     return
 end
 
-function Screen(scene::Scene; start_renderloop=true, screen_config...)
+Makie.@noconstprop function Screen(scene::Scene; start_renderloop=true, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(scene, config; start_renderloop=start_renderloop)
 end
 
 # Open an interactive window
-function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_renderloop=true)
+Makie.@noconstprop function Screen(scene::Scene, config::ScreenConfig; visible=nothing,
+                                     start_renderloop=true)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)
@@ -463,7 +466,8 @@ function Screen(scene::Scene, config::ScreenConfig; visible=nothing, start_rende
 end
 
 # Screen to save a png/jpeg to file or io
-function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, IO}, typ::MIME; visible=nothing, start_renderloop=false)
+Makie.@noconstprop function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing,String,IO},
+                                     typ::MIME; visible=nothing, start_renderloop=false)
     screen = singleton_screen(config.debugging)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop=start_renderloop)
@@ -472,7 +476,8 @@ function Screen(scene::Scene, config::ScreenConfig, io::Union{Nothing, String, I
 end
 
 # Screen that is efficient for `colorbuffer(screen)`
-function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;  start_renderloop=false)
+Makie.@noconstprop function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat;
+                                     start_renderloop=false)
     screen = singleton_screen(config.debugging)
     config.visible = false
     apply_config!(screen, config; start_renderloop=start_renderloop)
@@ -841,8 +846,6 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
     screen.stop_renderloop[] = true
-    screen.close_after_renderloop = c
-
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
     if Base.current_task() != screen.rendertask
@@ -851,6 +854,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop=screen.close_af
         screen.rendertask = nothing
     end
     # else, we can't do that much in the rendertask itself
+    screen.close_after_renderloop = c
     return
 end
 

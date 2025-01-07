@@ -9,22 +9,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Unio
 
     isempty(positions) && return
 
-    # workaround for a LineSegments object created from a GLNormalMesh
-    # the input argument is a view of points using faces, which results in
-    # a vector of tuples of two points. we convert those to a list of points
-    # so they don't trip up the rest of the pipeline
-    # TODO this shouldn't be necessary anymore!
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
-        positions = let
-            pos = Point3f[]
-            for tup in positions
-                push!(pos, tup[1])
-                push!(pos, tup[2])
-            end
-            pos
-        end
-    end
-
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
     color = to_color(primitive.calculated_colors[])
@@ -341,44 +325,56 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = primitive.markerspace[]
     space = primitive.space[]
     transfunc = Makie.transform_func(primitive)
+    billboard = primitive.rotation[] isa Billboard
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
                                marker_offset, rotation, model, positions, size_model, font, markerspace,
-                               space, clip_planes)
+                               space, clip_planes, billboard)
 end
 
 function draw_atomic_scatter(
         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, model, positions, size_model, font,
-        markerspace, space, clip_planes
+        markerspace, space, clip_planes, billboard
     )
 
     transformed = apply_transform(transfunc, positions, space)
     indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
-    projected_positions = project_position(scene, space, transformed, indices, model)
+    transform = Makie.clip_to_space(scene.camera, markerspace) *
+        Makie.space_to_clip(scene.camera, space) *
+        Makie.f32_convert_matrix(scene.float32convert, space) *
+        model
+    model33 = size_model[Vec(1,2,3), Vec(1,2,3)]
 
-    Makie.broadcast_foreach_index(projected_positions, indices, colors, markersize, strokecolor,
+    Makie.broadcast_foreach_index(view(transformed, indices), indices, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
             markersize, strokecolor, strokewidth, m, mo, rotation
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
+        isnan(markersize) && return
 
-        scale = project_scale(scene, markerspace, markersize, size_model)
-        offset = project_scale(scene, markerspace, mo, size_model)
+        p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Vec3d, mo, 0)
+        proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
+            markersize, rotation, size_model, billboard)
+
+        # mat and jl_mat are the same matrix, once as a CairoMatrix, once as a Mat2f
+        # They both describe an approximate basis transformation matrix from
+        # marker space to pixel space with scaling appropriate to markersize.
+        # Markers that can be drawn from points/vertices of shape (e.g. Rect)
+        # could be projected more accurately by projecting each point individually
+        # and then building the shape.
+
+        # Enclosed area of the marker must be at least 1 pixel?
+        (abs(det(jl_mat)) < 1) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
-
         Cairo.save(ctx)
-        # Setting a markersize of 0.0 somehow seems to break Cairos global state?
-        # At least it stops drawing any marker afterwards
-        # TODO, maybe there's something wrong somewhere else?
-        if !(isnan(scale) || norm(scale) ≈ 0.0)
-            if m isa Char
-                draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
-            else
-                draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
-            end
+        if m isa Char
+            draw_marker(ctx, m, best_font(m, font), proj_pos, strokecolor, strokewidth, jl_mat, mat)
+        else
+            draw_marker(ctx, m, proj_pos, strokecolor, strokewidth, mat)
         end
         Cairo.restore(ctx)
     end
@@ -386,41 +382,30 @@ function draw_atomic_scatter(
     return
 end
 
-function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    # Marker offset is meant to be relative to the
-    # bottom left corner of the box centered at
-    # `pos` with sides defined by `scale`, but
-    # this does not take the character's dimensions
-    # into account.
-    # Here, we reposition the marker offset to be
-    # relative to the center of the char.
-    marker_offset = marker_offset .+ scale ./ 2
-
+function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)
     cairoface = set_ft_font(ctx, font)
 
+    # The given pos includes the user position which corresponds to the center
+    # of the marker and the user marker_offset which may shift the position.
+    # At this point we still need to center the character we draw. For that we
+    # get the character boundingbox where (0,0) is the anchor point:
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
 
-    # scale normalized bbox by font size
-    inkbb_scaled = Rect2f(origin(inkbb) .* scale, widths(inkbb) .* scale)
+    # And calculate an offset to the the center of the marker
+    centering_offset = Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb)
+    # which we then transform from marker space to screen space using the
+    # local coordinate transform derived by project_marker()
+    # (Need yflip because Cairo's y coordinates are reversed)
+    char_offset = Vec2f(jl_mat * ((1, -1) .* centering_offset))
 
-    # flip y for the centering shift of the character because in Cairo y goes down
-    centering_offset = Vec2f(1, -1) .* (-origin(inkbb_scaled) .- 0.5f0 .* widths(inkbb_scaled))
-    # this is the origin where we actually have to place the glyph so it can be centered
-    charorigin = pos .+ Vec2f(marker_offset[1], -marker_offset[2])
-    old_matrix = get_font_matrix(ctx)
-    set_font_matrix(ctx, scale_matrix(scale...))
-
-    # First, we translate to the point where the
-    # marker is supposed to go.
+    # The offset is then applied to pos and the marker placement is set
+    charorigin = pos - char_offset
     Cairo.translate(ctx, charorigin[1], charorigin[2])
-    # Then, we rotate the context by the
-    # appropriate amount,
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    # and apply a centering offset to account for
-    # the fact that text is shown from the (relative)
-    # bottom left corner.
-    Cairo.translate(ctx, centering_offset[1], centering_offset[2])
+
+    # The font matrix takes care of rotation, scaling and shearing of the marker
+    old_matrix = get_font_matrix(ctx)
+    set_font_matrix(ctx, mat)
 
     Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
@@ -434,50 +419,41 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     cairo_font_face_destroy(cairoface)
 
     set_font_matrix(ctx, old_matrix)
+    return
 end
 
-function draw_marker(ctx, ::Type{<: Circle}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    marker_offset = marker_offset + scale ./ 2
-    pos += Point2f(marker_offset[1], -marker_offset[2])
-
-    if scale[1] != scale[2]
-        old_matrix = Cairo.get_matrix(ctx)
-        Cairo.scale(ctx, scale[1], scale[2])
-        Cairo.translate(ctx, pos[1]/scale[1], pos[2]/scale[2])
-        Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
-    else
-        Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
-    end
-
-    Cairo.fill_preserve(ctx)
-
-    Cairo.set_line_width(ctx, Float64(strokewidth))
-
-    sc = to_color(strokecolor)
-    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-    Cairo.stroke(ctx)
-    scale[1] != scale[2] && Cairo.set_matrix(ctx, old_matrix)
-    nothing
-end
-
-function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, scale, strokecolor, strokewidth,
-                     marker_offset, rotation)
-    s2 = Point2((scale .* (1, -1))...)
-    pos = pos .+ Point2f(marker_offset[1], -marker_offset[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.rectangle(ctx, pos[1], pos[2], s2...)
-    Cairo.fill_preserve(ctx)
-    Cairo.set_line_width(ctx, Float64(strokewidth))
-    sc = to_color(strokecolor)
-    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-    Cairo.stroke(ctx)
-end
-
-function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
-    Cairo.save(ctx)
+function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
+    # There are already active transforms so we can't Cairo.set_matrix() here
     Cairo.translate(ctx, pos[1], pos[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.scale(ctx, scale[1], -scale[2]) # flip y for cairo
+    cairo_transform(ctx, mat)
+    Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
+    return
+end
+
+function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, strokecolor, strokewidth, mat)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.rectangle(ctx, -0.5, -0.5, 1, 1)
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    sc = to_color(strokecolor)
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.stroke(ctx)
+    return
+end
+
+function draw_marker(ctx, beziermarker::BezierPath, pos, strokecolor, strokewidth, mat)
+    Cairo.save(ctx)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.scale(ctx, 1, -1) # maybe to transition BezierPath y to Cairo y?
     draw_path(ctx, beziermarker)
     Cairo.fill_preserve(ctx)
     sc = to_color(strokecolor)
@@ -485,6 +461,7 @@ function draw_marker(ctx, beziermarker::BezierPath, pos, scale, strokecolor, str
     Cairo.set_line_width(ctx, Float64(strokewidth))
     Cairo.stroke(ctx)
     Cairo.restore(ctx)
+    return
 end
 
 function draw_path(ctx, bp::BezierPath)
@@ -521,9 +498,9 @@ function path_command(ctx, c::EllipticalArc)
 end
 
 
-function draw_marker(ctx, marker::Matrix{T}, pos, scale,
-        strokecolor #= unused =#, strokewidth #= unused =#,
-        marker_offset, rotation) where T<:Colorant
+function draw_marker(ctx, marker::Matrix{T}, pos,
+    strokecolor #= unused =#, strokewidth #= unused =#,
+    mat) where T<:Colorant
 
     # convert marker to Cairo compatible image data
     marker = permutedims(marker, (2,1))
@@ -531,15 +508,14 @@ function draw_marker(ctx, marker::Matrix{T}, pos, scale,
 
     w, h = size(marker)
 
-    Cairo.translate(ctx,
-                    scale[1]/2 + pos[1] + marker_offset[1],
-                    scale[2]/2 + pos[2] + marker_offset[2])
-    Cairo.rotate(ctx, to_2d_rotation(rotation))
-    Cairo.scale(ctx, scale[1] / w, scale[2] / h)
+    # There are already active transforms so we can't Cairo.set_matrix() here
+    Cairo.translate(ctx, pos[1], pos[2])
+    cairo_transform(ctx, mat)
+    Cairo.scale(ctx, 1.0 / w, 1.0 / h)
     Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
     Cairo.paint(ctx)
+    return
 end
-
 
 ################################################################################
 #                                     Text                                     #
@@ -608,15 +584,15 @@ function draw_glyph_collection(
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
-        p = apply_transform(transform_func, position, space)
+        transformed = apply_transform(transform_func, position, space)
+        p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
 
         Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
 
         Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
         Makie.f32_convert_matrix(scene.float32convert, space) *
-        model *
-        to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+        p
     end
 
     Cairo.save(ctx)
@@ -644,28 +620,8 @@ function draw_glyph_collection(
             return
         end
 
-        scale3 = scale isa Number ? Point3f(scale, scale, 0) : to_ndim(Point3f, scale, 0)
-
-        # the CairoMatrix is found by transforming the right and up vector
-        # of the character into screen space and then subtracting the projected
-        # origin. The resulting vectors give the directions in which the character
-        # needs to be stretched in order to match the 3D projection
-
-        xvec = rotation * (scale3[1] * Point3d(1, 0, 0))
-        yvec = rotation * (scale3[2] * Point3d(0, -1, 0))
-
-        glyphpos = _project_position(scene, markerspace, gp3, id, true)
-        xproj = _project_position(scene, markerspace, gp3 + model33 * xvec, id, true)
-        yproj = _project_position(scene, markerspace, gp3 + model33 * yvec, id, true)
-
-        xdiff = xproj - glyphpos
-        ydiff = yproj - glyphpos
-
-        mat = Cairo.CairoMatrix(
-            xdiff[1], xdiff[2],
-            ydiff[1], ydiff[2],
-            0, 0,
-        )
+        scale2 = scale isa Number ? Vec2d(scale, scale) : scale
+        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33, id)
 
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)
@@ -916,7 +872,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     space = to_value(get(plot, :space, :data))::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, GeometryBasics.metafree(GeometryBasics.coordinates(mesh)), model)::Vector{Point2f}
+    vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
     # Note: This assume the function is only called from mesh plots
@@ -971,17 +927,26 @@ end
 
 nan2zero(x) = !isnan(x) * x
 
+function strip_translation(M::Mat4{T}) where {T}
+    return @inbounds Mat4{T}(
+        M[1], M[2], M[3], M[4],
+        M[5], M[6], M[7], M[8],
+        M[9], M[10], M[11], M[12],
+        0, 0, 0, M[16],
+    )
+end
 
 function draw_mesh3D(
-        scene, screen, attributes, mesh; pos = Vec4f(0), scale = 1f0, rotation = Mat4f(I),
+        scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
         uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
     )
     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
     matcap = to_value(get(attributes, :matcap, nothing))
+    transform_marker = to_value(get(attributes, :transform_marker, true))
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = decompose_normals(mesh)::Vector{Vec3f} # note: can be made NaN-aware.
+    meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
     meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
@@ -994,7 +959,27 @@ function draw_mesh3D(
 
     model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
-    func = Makie.transform_func(attributes)
+
+    if haskey(attributes, :transform_marker)
+        # meshscatter/voxels route:
+        # - transform_func does not apply to vertices (only pos)
+        # - only scaling from float32convert applies to vertices
+        #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
+        # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
+        transform_marker = attributes[:transform_marker][]::Bool
+        f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
+        if !isnothing(scene.float32convert) && Makie.is_data_space(space)
+            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
+        end
+    else
+        # mesh/surface path
+        # - transform_func applies to vertices here
+        # - full float32convert applies to vertices
+        # f32c * model * vertices = f32c_model * vertices
+        transform_marker = true
+        meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
+        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+    end
 
     # TODO: assume Symbol here after this has been deprecated for a while
     if shading isa Bool
@@ -1004,49 +989,54 @@ function draw_mesh3D(
         shading_bool = shading != NoShading
     end
 
-    if to_value(get(attributes, :invert_normals, false))
+    if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
         meshnormals .= -meshnormals
     end
 
     draw_mesh3D(
-        scene, screen, space, func, meshpoints, meshfaces, meshnormals, per_face_col,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading_bool::Bool, diffuse::Vec3f,
+        f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
     )
 end
 
 function draw_mesh3D(
-        scene, screen, space, transform_func, meshpoints, meshfaces, meshnormals, per_face_col,
+        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
         pos, scale, rotation,
-        model, shading, diffuse,
+        f32c_model, shading, diffuse,
         specular, shininess, faceculling, clip_planes
     )
     ctx = screen.context
     projectionview = Makie.space_to_clip(scene.camera, space, true)
     eyeposition = scene.camera.eyeposition[]
 
+    # local_model applies rotation and markersize from meshscatter to vertices
     i = Vec(1, 2, 3)
     local_model = rotation * Makie.scalematrix(Vec3d(scale))
-    normalmatrix = transpose(inv(model[i, i] * local_model[i, i])) # see issue #3702
+    normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
 
-    # pass transform_func as argument to function, so that we get a function barrier
-    # and have `transform_func` be fully typed inside closure
-    model_f32 = model * Makie.f32_convert_matrix(scene.float32convert, space)
-    vs = broadcast(meshpoints, (transform_func,)) do v, f
+    # mesh, surface:        apply f32convert and model to vertices
+    # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
+    # (see previous function)
+    vs = broadcast(meshpoints) do v
         # Should v get a nan2zero?
-        v = Makie.apply_transform(f, v, space)
         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
-        return to_ndim(Vec4f, model_f32 * (local_model * p4d .+ to_ndim(Vec4f, pos, 0f0)), NaN32)
+        p4d = f32c_model * local_model * p4d
+        return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
     end
 
-    valid = if Makie.is_data_space(space)
-        [is_visible(clip_planes, p) for p in vs]
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        valid = Bool[is_visible(clip_planes, p) for p in vs]
     else
-        Bool[]
+        valid = Bool[]
     end
 
-    ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    if isnothing(meshnormals)
+        ns = nothing
+    else
+        ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    end
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
@@ -1092,10 +1082,12 @@ function draw_mesh3D(
     zorder = sortperm(average_zs)
 
     # Face culling
-    if isempty(clip_planes) || !Makie.is_data_space(space)
+    if isempty(valid) && !isnothing(ns)
         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    else
+    elseif !isempty(valid)
         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
     end
 
     draw_pattern(
@@ -1132,7 +1124,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         facecolors = per_face_col[k]
         # light calculation
-        if shading
+        if shading && !isnothing(ns)
             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
                 # these face index expressions currently allocate for SizedVectors
                 # if done like `ns[f]`
@@ -1199,17 +1191,35 @@ end
 ################################################################################
 
 
+function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
+    space = plot.space[]::Symbol
+    model = plot.model[]::Mat4d
+    f32_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+    tf = Makie.transform_func(plot)
+    return _transform_to_world(f32_model, tf, space, pos)
+end
+
+function _transform_to_world(f32_model, tf, space, pos)
+    return map(pos) do p
+        transformed = Makie.apply_transform(tf, p, space)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+        p4d = f32_model * p4d
+        return p4d[Vec(1,2,3)] / p4d[4]
+    end
+end
+
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (model, marker, markersize, rotation))
 
-    pos = primitive[1][]
-    # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(model)
-    view = scene.camera.view[]
+    # We combine vertices and positions in world space. Here we do the
+    # transformation to world space
+    transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
 
-    zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4d, to_ndim(Vec3d, p, 0), 1)
-        cam_pos = (view * model)[Vec(3,4), Vec(1,2,3,4)] * p4d
+    # For correct z-ordering we need to be in view/camera or screen space
+    view = scene.camera.view[]
+    zorder = sortperm(transformed_pos, by = p -> begin
+        p4d = to_ndim(Vec4d, p, 1)
+        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
         cam_pos[1] / cam_pos[2]
     end, rev=false)
 
@@ -1221,14 +1231,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes
+        clip_planes = primitive.clip_planes,
+        transform_marker = primitive.transform_marker
     )
 
-    submesh[:model] = model
-    scales = primitive[:markersize][]
     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
     for i in zorder
-        p = pos[i]
         if color isa AbstractVector
             submesh[:calculated_colors] = color[i]
         end
@@ -1237,7 +1245,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         _uv_transform = Makie.sv_getindex(uv_transform, i)
 
         draw_mesh3D(
-            scene, screen, submesh, marker, pos = p,
+            scene, screen, submesh, marker, pos = transformed_pos[i],
             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
             rotation = _rotation, uv_transform = _uv_transform
         )
@@ -1257,37 +1265,39 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     pos = Makie.voxel_positions(primitive)
     scale = Makie.voxel_size(primitive)
     colors = Makie.voxel_colors(primitive)
-    marker = GeometryBasics.normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1)))
+    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+
+    # transformation to world space
+    transformed_pos = _transform_to_world(scene, primitive, pos)
 
     # Face culling
     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
-        valid = [is_visible(primitive.clip_planes[], p) for p in pos]
-        pos = pos[valid]
+        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+        transformed_pos = transformed_pos[valid]
         colors = colors[valid]
     end
 
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive.model[])
     view = scene.camera.view[]
-
-    zorder = sortperm(pos, by = p -> begin
-        p4d = to_ndim(Vec4f, to_ndim(Vec3f, p, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos[3] / cam_pos[4]
+    zorder = sortperm(transformed_pos, by = p -> begin
+        p4d = to_ndim(Vec4d, p, 1)
+        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+        cam_pos[1] / cam_pos[2]
     end, rev=false)
 
     submesh = Attributes(
-        model = model,
+        model = primitive.model,
         shading = primitive.shading, diffuse = primitive.diffuse,
         specular = primitive.specular, shininess = primitive.shininess,
         faceculling = get(primitive, :faceculling, -10),
         transformation = Makie.transformation(primitive),
-        clip_planes = Plane3f[]
+        clip_planes = Plane3f[],
+        transform_marker = true
     )
 
     for i in zorder
         submesh[:calculated_colors] = colors[i]
-        draw_mesh3D(scene, screen, submesh, marker, pos = pos[i], scale = scale)
+        draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
     end
 
     return nothing

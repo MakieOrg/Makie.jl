@@ -62,38 +62,39 @@ end
 
 # Poly conversion
 function poly_convert(geometries::AbstractVector, transform_func=identity)
-    # TODO is this a problem with Float64 meshes?
-    isempty(geometries) && return typeof(GeometryBasics.Mesh(Point2f[], GLTriangleFace[]))[]
+    isempty(geometries) && return GeometryBasics.SimpleMesh{2, Float64, GLTriangleFace}[]
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{2, T}, transform_func=identity) where {T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{2,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
 
-function poly_convert(polys::AbstractVector{<:Polygon}, transform_func=identity)
-    # GLPlainMesh2D is not concrete?
-    # TODO is this a problem with Float64 meshes?
-    T = GeometryBasics.Mesh{2, Float32, GeometryBasics.Ngon{2, Float32, 3, Point2f}, SimpleFaceView{2, Float32, 3, GLIndex, Point2f, GLTriangleFace}}
-    return isempty(polys) ? T[] : poly_convert.(polys, (transform_func,))
+function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func=identity) where {N, T}
+    MeshType = GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
+    return isempty(polys) ? MeshType[] : poly_convert.(polys, (transform_func,))
 end
 
 function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func=identity)
     return [merge(poly_convert.(multipoly.polygons, (transform_func,))) for multipoly in multipolygons]
 end
 
+function poly_convert(multipolygon::MultiPolygon, transform_func=identity)
+    return poly_convert.(multipolygon.polygons, (transform_func,))
+end
+
 poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
 
 function poly_convert(polygon::Polygon, transform_func=identity)
-    outer = metafree(coordinates(polygon.exterior))
+    outer = coordinates(polygon.exterior)
     # TODO consider applying f32 convert here too. We would need to identify this though...
     PT = float_type(outer)
     points = Vector{PT}[apply_transform(transform_func, outer)]
     points_flat = PT[outer;]
     for inner in polygon.interiors
-        inner_points = metafree(coordinates(inner))
+        inner_points = coordinates(inner)
         append!(points_flat, inner_points)
         push!(points, apply_transform(transform_func, inner_points))
     end
@@ -110,7 +111,7 @@ function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=
     points_transformed = apply_transform(transform_func, points)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{2, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
@@ -145,7 +146,7 @@ function to_lines(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)
@@ -194,7 +195,9 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
+# TODO: for Makie v0.22, GeometryBasics v0.5,
+# switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
     meshes = plot[1]
     attrs = Attributes(
         visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
@@ -244,7 +247,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
     bigmesh = lift(plot, meshes, transform_func) do meshes, tf
         if isempty(meshes)
             # TODO: Float64
-            return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
+            return GeometryBasics.Mesh(Point{N, T}[], GLTriangleFace[])
         else
             triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
             return merge(triangle_meshes)

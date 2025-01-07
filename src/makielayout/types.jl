@@ -194,6 +194,13 @@ end
 struct DragRotate
 end
 
+mutable struct FocusOnCursor
+    last_time::Float64
+    timeout::Float64
+    skip::Int64
+end
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+
 struct ScrollEvent
     x::Float32
     y::Float32
@@ -1576,11 +1583,13 @@ end
 
 @Block Axis3 <: AbstractAxis begin
     scene::Scene
-    finallimits::Observable{Rect3f}
+    finallimits::Observable{Rect3d}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
+    axis_offset::Observable{Vec2d} # center of scene -> center of Axis3
+    zoom_mult::Observable{Float64}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -1624,6 +1633,8 @@ end
         if aesthetics are more important than neutral presentation.
         """
         perspectiveness = 0f0
+        "Sets the minimum value for `near`. Increasing this value will make objects close to the camera clip earlier. Reducing this value too much results in depth values becoming inaccurate. Must be > 0."
+        near = 1e-3
         """
         Controls the lengths of the three axes relative to each other.
 
@@ -1648,6 +1659,10 @@ end
           - `:stretch` pulls the cuboid corners to the frame edges such that the available space is filled completely.
             The chosen `aspect` is not maintained using this setting, so `:stretch` should not be used
             if a particular aspect is needed.
+          - `:free` behaves like `:fit` but changes some interactions. Zooming affects the whole axis rather
+            than just the content. This allows you to zoom in on content without it getting clipped by the 3D
+            bounding box of the Axis3. `zoommode = :cursor` is disabled. Translations can no also affect the axis as
+            a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
         "The background color"
@@ -1783,7 +1798,15 @@ end
         "The color of y spine 3 opposite of the ticks"
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
-        zspinecolor_3 = :black
+        zspinecolor_3 = :black       
+        "Controls if the 4. Spines are created to close the outline box"
+        front_spines = false
+        "The color of x spine 4"
+        xspinecolor_4 = :black
+        "The color of y spine 4"
+        yspinecolor_4 = :black
+        "The color of z spine 4"
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
@@ -1855,7 +1878,7 @@ end
         "Controls if the xz panel is visible"
         xzpanelvisible = true
         "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
-        targetlimits = Rect3f(Vec3f(0, 0, 0), Vec3f(1, 1, 1))
+        targetlimits = Rect3d(Vec3d(0), Vec3d(1))
         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, yhigh, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
         limits = (nothing, nothing, nothing)
         "The relative margins added to the autolimits in x direction."
@@ -1870,6 +1893,45 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+        "Controls whether decorations are cut off outside the layout area assigned to the axis."
+        clip_decorations::Bool = false
+
+        # Interaction
+        "Locks interactive zooming in the x direction."
+        xzoomlock::Bool = false
+        "Locks interactive zooming in the y direction."
+        yzoomlock::Bool = false
+        "Locks interactive zooming in the z direction."
+        zzoomlock::Bool = false
+        "The key for limiting zooming to the x direction."
+        xzoomkey::IsPressedInputType = Keyboard.x
+        "The key for limiting zooming to the y direction."
+        yzoomkey::IsPressedInputType = Keyboard.y
+        "The key for limiting zooming to the z direction."
+        zzoomkey::IsPressedInputType = Keyboard.z
+        """
+        Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor`
+        for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
+        """
+        zoommode::Symbol = :center
+
+        "Locks interactive translation in the x direction."
+        xtranslationlock::Bool = false
+        "Locks interactive translation in the y direction."
+        ytranslationlock::Bool = false
+        "Locks interactive translation in the z direction."
+        ztranslationlock::Bool = false
+        "The key for limiting translation to the x direction."
+        xtranslationkey::IsPressedInputType = Keyboard.x
+        "The key for limiting translations to the y direction."
+        ytranslationkey::IsPressedInputType = Keyboard.y
+        "The key for limiting translations to the y direction."
+        ztranslationkey::IsPressedInputType = Keyboard.z
+        "Sets the key that must be pressed to translate the whole axis (as opposed to the content) with `viewmode = :free`."
+        axis_translation_mod::IsPressedInputType = Keyboard.left_control | Keyboard.right_control
+
+        "Sets the key/button for centering the Axis3 on the currently hovered position."
+        cursorfocuskey::IsPressedInputType = Keyboard.left_alt & Mouse.left
     end
 end
 

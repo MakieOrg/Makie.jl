@@ -9,6 +9,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{color_norm_type}} color_norm;
 {{color_map_type}}  color_map;
 {{scale_type}}      scale;
+{{marker_offset_type}} marker_offset;
 
 uniform vec2 resolution;
 uniform uint objectid;
@@ -59,9 +60,9 @@ void main(){
     vec4 world_position = model * _position(vertex);
     process_clip_planes(world_position.xyz);
     vec4 clip_pos = projectionview * world_position;
-    gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
     if (markerspace == 0) {
         // pixelspace
+        clip_pos += vec4(2.0 * px_per_unit * marker_offset / vec3(resolution, 1), 0);
         gl_PointSize = px_per_unit * scale.x;
     } else {
         // dataspace with 3D camera
@@ -70,7 +71,9 @@ void main(){
         vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
         float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
         gl_PointSize = ceil(0.5 * yup *  resolution.y);
+        clip_pos += projectionview * vec4(marker_offset, 0);
     }
+    gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
 
     colorize(color_map, color, color_norm);
     o_objectid  = uvec2(objectid, gl_VertexID+1);
