@@ -536,7 +536,7 @@ function Makie.insertplots!(screen::Screen, scene::Scene)
     end
 end
 
-# Note: called from scene finalizer, must not error
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function Base.delete!(screen::Screen, scene::Scene)
     for child in scene.children
         delete!(screen, child)
@@ -576,6 +576,7 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
@@ -603,6 +604,7 @@ function destroy!(rob::RenderObject)
     return
 end
 
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function with_context(f, context)
     CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
     old_ctx = isassigned(CTX) ? CTX[] : nothing
@@ -618,7 +620,7 @@ function with_context(f, context)
     end
 end
 
-# Note: called from scene finalizer, must not error
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
     if !isempty(plot.plots)
@@ -650,12 +652,12 @@ function Base.empty!(screen::Screen)
     @assert !was_destroyed(screen.glscreen)
 
     for plot in collect(values(screen.cache2plot))
-        delete!(screen, Makie.rootparent(plot), plot, false)
+        delete!(screen, Makie.rootparent(plot), plot)
     end
 
     if !isnothing(screen.scene)
         Makie.disconnect_screen(screen.scene, screen)
-        delete!(screen, screen.scene, false)
+        delete!(screen, screen.scene)
         screen.scene = nothing
     end
 

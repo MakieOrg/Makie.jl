@@ -451,6 +451,7 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function free(x::T) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
     clean_up_observables(x)
