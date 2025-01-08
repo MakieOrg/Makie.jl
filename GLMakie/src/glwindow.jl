@@ -149,28 +149,17 @@ function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
 end
 
-function GLAbstraction.require_context(ctx, current = ShaderAbstractions.current_context(); async = false)
-    if async
-        if !GLFW.is_initialized()
-            Threads.@spawn begin
-                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be initialized, but is not."), backtrace())
-            end
-        end
-        if GLAbstraction.GLMAKIE_DEBUG[] && was_destroyed(ctx)
-            Threads.@spawn begin
-                @error "Failed to require context:" exception = (ErrorException("Context $ctx must not be destroyed."), backtrace())
-            end
-        end
-        if ctx != current
-            Threads.@spawn begin
-                @error "Failed to require context:" exception = (ErrorException("Context $ctx must be current, but $current is."), backtrace())
-            end
-        end
-    else
-        @assert GLFW.is_initialized() "Context $ctx must be initialized, but is not."
-        @assert !GLAbstraction.GLMAKIE_DEBUG[] || !was_destroyed(ctx) "Context $ctx must not be destroyed."
-        @assert ctx == current "Context $ctx must be current, but $current is."
-    end
+function check_context(ctx)
+    !GLFW.is_initialized() && return "GLFW is not initialized, and therefore $ctx is invalid."
+    was_destroyed(ctx) && return "Context $ctx has been destroyed."
+    return nothing
+end
+
+function GLAbstraction.require_context_no_error(ctx, current = ShaderAbstractions.current_context())
+    msg = check_context(ctx)
+    msg !== nothing && return msg
+    ctx !== current && return "Context $ctx must be current, but $current is."
+    return nothing
 end
 
 function destroy!(nw::GLFW.Window)

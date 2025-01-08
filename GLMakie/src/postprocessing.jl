@@ -38,7 +38,7 @@ run_step(screen, glscene, ::AbstractRenderStep) = nothing
 
 function destroy!(step::T, keep_alive) where {T <: AbstractRenderStep}
     @debug "Default destructor of $T"
-    hasfield(T, :robj) && destroy!(step.robj, false, keep_alive)
+    hasfield(T, :robj) && destroy!(step.robj, keep_alive)
     return
 end
 

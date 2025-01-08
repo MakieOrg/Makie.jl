@@ -140,7 +140,7 @@ mutable struct Scene <: AbstractScene
                 scene.isclosed = true
             end
         end
-        finalizer(x -> free(x, true), scene)
+        finalizer(free, scene)
         return scene
     end
 end
@@ -435,24 +435,37 @@ function delete_scene!(scene::Scene)
     return nothing
 end
 
-function free(scene::Scene, called_from_finalizer = false)
-    empty!(scene, called_from_finalizer; free=true)
-    for field in [:backgroundcolor, :viewport, :visible]
-        Observables.clear(getfield(scene, field))
+function free(scene::Scene)
+    try
+        empty!(scene; free=true)
+        for field in [:backgroundcolor, :viewport, :visible]
+            Observables.clear(getfield(scene, field))
+        end
+        for screen in copy(scene.current_screens)
+            delete!(screen, scene)
+        end
+        empty!(scene.current_screens)
+        scene.parent = nothing
+    catch e
+        # Since this is called from a finalizer task switches are not allowed.
+        # This means no errors, no @error, no printing except to Core.stdout,
+        # which is different from stdout.
+        # Note that any error here means that scene cleanup is incomplete.
+        # Therefore there should be not errors thrown in this call stack.
+        println(Core.stdout, "Failed to finalize Scene:")
+        Base.showerror(Core.stdout, e)
+        println(Core.stdout)
+        Base.show_backtrace(Core.stdout, Base.backtrace())
     end
-    for screen in copy(scene.current_screens)
-        delete!(screen, scene, called_from_finalizer)
-    end
-    empty!(scene.current_screens)
-    scene.parent = nothing
     return
 end
 
-function Base.empty!(scene::Scene, called_from_finalizer = false; free=false)
+# Note: called from scene finalizer if free = true
+function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
     for plot in copy(scene.plots)
-        delete!(scene, plot, called_from_finalizer)
+        delete!(scene, plot)
     end
 
     # clear all child scenes
@@ -493,17 +506,18 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     end
 end
 
-Base.delete!(screen::MakieScreen, scene::Scene, p::AbstractPlot, ::Bool) = delete!(screen, scene, p)
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 
-Base.delete!(screen::MakieScreen, scene::Scene, ::Bool) = delete!(screen, scene)
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
@@ -515,7 +529,8 @@ function free(plot::AbstractPlot)
     return
 end
 
-function Base.delete!(scene::Scene, plot::AbstractPlot, called_from_finalizer = false)
+# Note: can be called from scene finalizer
+function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
@@ -527,7 +542,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot, called_from_finalizer = 
     #     error("$(typeof(plot)) not in scene!")
     # end
     for screen in scene.current_screens
-        delete!(screen, scene, plot, called_from_finalizer)
+        delete!(screen, scene, plot)
     end
     free(plot)
 end
