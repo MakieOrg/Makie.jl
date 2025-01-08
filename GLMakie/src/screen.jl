@@ -60,7 +60,7 @@ mutable struct ScreenConfig
     scalefactor::Union{Nothing, Float32}
 
     # Render Constants & Postprocessor
-    render_pipeline::Makie.Pipeline
+    render_pipeline::Makie.RenderPipeline
     transparency_weight_scale::Float32
     max_lights::Int
     max_light_parameters::Int
@@ -85,7 +85,7 @@ mutable struct ScreenConfig
             scalefactor::Union{Makie.Automatic, Number},
 
             # Preprocessor
-            render_pipeline::Makie.Pipeline,
+            render_pipeline::Makie.RenderPipeline,
             transparency_weight_scale::Number,
             max_lights::Int,
             max_light_parameters::Int)

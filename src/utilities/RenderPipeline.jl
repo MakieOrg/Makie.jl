@@ -153,7 +153,7 @@ function Base.:(==)(s1::Stage, s2::Stage)
         (s1.attributes == s2.attributes)
 end
 
-struct Pipeline
+struct RenderPipeline
     stages::Vector{Stage}
 
     # (stage_idx, negative input index or positive output index) -> connection format index
@@ -164,17 +164,17 @@ struct Pipeline
 end
 
 """
-    Pipeline([stages::Stage...])
+    RenderPipeline([stages::Stage...])
 
-Creates a `Pipeline` from the given `stages` or an empty pipeline if none are
+Creates a `RenderPipeline` from the given `stages` or an empty pipeline if none are
 given. The pipeline represents a series of actions (stages) executed during
 rendering.
 """
-function Pipeline()
-    return Pipeline(Stage[], Dict{Tuple{Int, Int}, Int}(), BufferFormat[])
+function RenderPipeline()
+    return RenderPipeline(Stage[], Dict{Tuple{Int, Int}, Int}(), BufferFormat[])
 end
-function Pipeline(stages::Stage...)
-    pipeline = Pipeline()
+function RenderPipeline(stages::Stage...)
+    pipeline = RenderPipeline()
     foreach(stage -> push!(pipeline, stage), stages)
     return pipeline
 end
@@ -185,11 +185,11 @@ end
 #                     |-> combine
 # render -> effect 2 -'
 # where render is the same (name/task, inputs, outputs)
-function Base.push!(pipeline::Pipeline, stage::Stage)
+function Base.push!(pipeline::RenderPipeline, stage::Stage)
     push!(pipeline.stages, stage)
     return stage # for convenience
 end
-function Base.push!(pipeline::Pipeline, other::Pipeline)
+function Base.push!(pipeline::RenderPipeline, other::RenderPipeline)
     N = length(pipeline.stages); M = length(pipeline.formats)
     append!(pipeline.stages, other.stages)
     for ((stage_idx, io_idx), format_idx) in other.stageio2idx
@@ -201,14 +201,14 @@ end
 
 
 """
-    connect!(pipeline::Pipeline, source::Union{Pipeline, Stage}, target::Union{Pipeline, Stage})
+    connect!(pipeline::RenderPipeline, source::Union{RenderPipeline, Stage}, target::Union{RenderPipeline, Stage})
 
 Connects every output in `source` to every input in `target` that shares the
 same name. For example, if `:a, :b, :c, :d` exist in source and `:b, :d, :e`
 exist in target, `:b, :d` will get connected.
 """
-function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage}, trg::Union{Pipeline, Stage})
-    stages(pipeline::Pipeline) = pipeline.stages
+function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipeline, Stage}, trg::Union{RenderPipeline, Stage})
+    stages(pipeline::RenderPipeline) = pipeline.stages
     stages(stage::Stage) = [stage]
 
     outputs = Set(mapreduce(stage -> keys(stage.outputs), union, stages(src)))
@@ -220,17 +220,17 @@ function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage}, t
 end
 
 """
-    connect!(pipeline::Pipeline, [source = pipeline, target = pipeline], name::Symbol)
+    connect!(pipeline::RenderPipeline, [source = pipeline, target = pipeline], name::Symbol)
 
 Connects every output in `source` that uses the given `name` to every input in
 `target` with the same `name`. `source` and `target` can be a pipeline, stage
 or integer referring to stage in `pipeline`. If both are omitted inputs and
 outputs from `pipeline` get connected.
 """
-function Observables.connect!(pipeline::Pipeline, src::Union{Pipeline, Stage, Integer}, trg::Union{Pipeline, Stage, Integer}, key::Symbol)
+function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipeline, Stage, Integer}, trg::Union{RenderPipeline, Stage, Integer}, key::Symbol)
     return connect!(pipeline, src, key, trg, key)
 end
-Observables.connect!(pipeline::Pipeline, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
+Observables.connect!(pipeline::RenderPipeline, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
 
 # TODO: Not sure about this... Maybe it should be first/last instead? But what
 #       then it wouldn't really work with e.g. SSAO, which needs color as an
@@ -243,17 +243,17 @@ to an `input` of `target`. If either already has a connection the new connection
 will be merged with the old. The source and target stage as well as the pipeline
 will be updated appropriately.
 
-`source` and `target` can also be `Pipeline`s if both output and input are
+`source` and `target` can also be `RenderPipeline`s if both output and input are
 `Symbol`s. In this case every stage in source with an appropriately named output
 is connected to every stage in target with an appropriately named input. Use with
 caution.
 """
-function Observables.connect!(pipeline::Pipeline,
-        src::Union{Pipeline, Stage}, output::Symbol,
-        trg::Union{Pipeline, Stage}, input::Symbol
+function Observables.connect!(pipeline::RenderPipeline,
+        src::Union{RenderPipeline, Stage}, output::Symbol,
+        trg::Union{RenderPipeline, Stage}, input::Symbol
     )
 
-    iterable(pipeline::Pipeline) = pipeline.stages
+    iterable(pipeline::RenderPipeline) = pipeline.stages
     iterable(stage::Stage) = Ref(stage)
 
     for source in iterable(src)
@@ -271,16 +271,16 @@ function Observables.connect!(pipeline::Pipeline,
     return
 end
 
-function Observables.connect!(pipeline::Pipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
+function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::Symbol, trg::Integer, input::Symbol)
     return connect!(pipeline, src, output, trg, input)
 end
-function Observables.connect!(pipeline::Pipeline, source::Stage, output::Integer, target::Stage, input::Integer)
+function Observables.connect!(pipeline::RenderPipeline, source::Stage, output::Integer, target::Stage, input::Integer)
     src = findfirst(x -> x === source, pipeline.stages)
     trg = findfirst(x -> x === target, pipeline.stages)
     return connect!(pipeline, src, output, trg, input)
 end
 
-function Observables.connect!(pipeline::Pipeline, source::Stage, output::Symbol, target::Stage, input::Symbol)
+function Observables.connect!(pipeline::RenderPipeline, source::Stage, output::Symbol, target::Stage, input::Symbol)
     haskey(source.outputs, output) || error("output $output does not exist in source stage")
     haskey(target.inputs, input) || error("input $input does not exist in target stage")
     output_idx = source.outputs[output]
@@ -288,7 +288,7 @@ function Observables.connect!(pipeline::Pipeline, source::Stage, output::Symbol,
     return connect!(pipeline, source, output_idx, target, input_idx)
 end
 
-function Observables.connect!(pipeline::Pipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
+function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::Integer, trg::Integer, input::Integer)
     @boundscheck begin
         checkbounds(pipeline.stages, src)
         checkbounds(pipeline.stages, trg)
@@ -367,7 +367,7 @@ returns them together with a connection-to-index map. This will attempt to
 optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
-function generate_buffers(pipeline::Pipeline)
+function generate_buffers(pipeline::RenderPipeline)
     # Verify that outputs are continuously connected (i.e. if N then 1..N-1 as well)
     output_max = zeros(Int, length(pipeline.stages))
     output_sum = zeros(Int, length(pipeline.stages))
@@ -530,16 +530,16 @@ function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", pipeline::Pipeline)
+function Base.show(io::IO, ::MIME"text/plain", pipeline::RenderPipeline)
     return show_resolved(io, pipeline, pipeline.formats, collect(eachindex(pipeline.formats)))
 end
 
-function show_resolved(pipeline::Pipeline, buffers, remap)
+function show_resolved(pipeline::RenderPipeline, buffers, remap)
     return show_resolved(stdout, pipeline, buffers, remap)
 end
 
-function show_resolved(io::IO, pipeline::Pipeline, buffers, remap)
-    println(io, "Pipeline():")
+function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
+    println(io, "RenderPipeline():")
     print(io, "Stages:")
     pad = isempty(buffers) ? 0 : 1 + floor(Int, log10(length(buffers)))
 
@@ -619,7 +619,7 @@ function SSAOStage(; kwargs...)
     input_formats = [BufferFormat(1, N0f8), BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
     stage2 = Stage(:SSAO2, inputs, input_formats, Dict(:color => 1), [BufferFormat()]; kwargs...)
 
-    pipeline = Pipeline(stage1, stage2)
+    pipeline = RenderPipeline(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
@@ -644,7 +644,7 @@ function FXAAStage(; kwargs...)
         Dict(:color => 1), [BufferFormat(4, N0f8)]; kwargs...
     )
 
-    pipeline = Pipeline(stage1, stage2)
+    pipeline = RenderPipeline(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
 
     return pipeline
@@ -658,7 +658,7 @@ end
 
 
 # TODO: caching is dangerous with mutable attributes...
-# const PIPELINE_CACHE = Dict{Symbol, Pipeline}()
+# const PIPELINE_CACHE = Dict{Symbol, RenderPipeline}()
 
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
     # name = Symbol(:default_pipeline, Int(ssao), Int(fxaa), Int(oit))
@@ -666,7 +666,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
     # Mimic GLMakie's old hard coded render pipeline
     # get!(PIPELINE_CACHE, name) do
 
-        pipeline = Pipeline()
+        pipeline = RenderPipeline()
         push!(pipeline, SortStage())
 
         # Note - order important!
@@ -711,7 +711,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
 end
 
 function test_pipeline_3D()
-    pipeline = Pipeline()
+    pipeline = RenderPipeline()
 
     render1 = push!(pipeline, RenderStage(ssao = true, transparency = false, fxaa = true))
     ssao = push!(pipeline, SSAOStage())
@@ -736,7 +736,7 @@ function test_pipeline_3D()
 end
 
 function test_pipeline_2D()
-    pipeline = Pipeline()
+    pipeline = RenderPipeline()
 
     # dedicated fxaa = false pass + no SSAO
     render1 = push!(pipeline, RenderStage(transparency = false, fxaa = true))
@@ -757,7 +757,7 @@ function test_pipeline_2D()
 end
 
 function test_pipeline_GUI()
-    pipeline = Pipeline()
+    pipeline = RenderPipeline()
 
     # GUI elements don't need OIT because they are (usually?) layered plot by
     # plot, rather than element by element. Do need FXAA occasionally, e.g. Toggle
@@ -775,7 +775,7 @@ function test_pipeline_GUI()
 end
 
 function test_pipeline_minimal()
-    pipeline = Pipeline()
+    pipeline = RenderPipeline()
 
     # GUI elements don't need OIT because they are (usually?) layered plot by
     # plot, rather than element by element. Do need FXAA occasionally, e.g. Toggle
@@ -787,7 +787,7 @@ function test_pipeline_minimal()
 end
 
 ################################################################################
-##  Experimental GUI for Pipeline
+##  Experimental GUI for RenderPipeline
 ################################################################################
 
 function pipeline_gui!(ax, pipeline)
@@ -944,7 +944,7 @@ function pipeline_gui!(ax, pipeline)
 
     notify(origins)
 
-    scale = map(pv -> max(0.5, 10*min(pv[1,1], pv[2,2])), ax.scene.camera.projectionview)
+    scale = map(pv -> max(0.5, 10*min(pv[1,1], pv[2,2])), get_scene(ax).camera.projectionview)
 
     poly!(ax, rects_obs, strokewidth = scale, strokecolor = :black, fxaa = false,
         shading = NoShading, color = :lightgray)

@@ -46,8 +46,8 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
 end
 
 
-function gl_render_pipeline!(screen::Screen, pipeline::Makie.Pipeline)
-    pipeline.stages[end].name === :Display || error("Pipeline must end with a Display stage")
+function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
+    pipeline.stages[end].name === :Display || error("RenderPipeline must end with a Display stage")
     previous_pipeline = screen.render_pipeline
 
     # Exit early if the pipeline is already up to date

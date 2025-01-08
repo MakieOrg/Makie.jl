@@ -55,10 +55,10 @@ Broadcast.broadcastable(x::AbstractRenderStep) = Ref(x)
 
 
 struct GLRenderPipeline
-    parent::Makie.Pipeline
+    parent::Makie.RenderPipeline
     steps::Vector{AbstractRenderStep}
 end
-GLRenderPipeline() = GLRenderPipeline(Makie.Pipeline(), AbstractRenderStep[])
+GLRenderPipeline() = GLRenderPipeline(Makie.RenderPipeline(), AbstractRenderStep[])
 
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline.steps
