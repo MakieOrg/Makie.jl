@@ -453,8 +453,8 @@ include("GLRenderObject.jl")
 
 function free(x::T) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
-    x.id == 0 && return
     clean_up_observables(x)
+    x.id == 0 && return
     if context_alive(x.context) && is_context_active(x.context)
         unsafe_free(x)
     end
@@ -462,13 +462,21 @@ function free(x::T) where {T}
     return
 end
 
-function clean_up_observables(x::T) where T
+function clean_up_observables(x::GLVertexArray) where {T}
+    for (_, buffer) in x.buffers
+        clean_up_observables(buffer)
+    end
+    if x.indices isa GPUArray
+        clean_up_observables(x.indices)
+    end
+end
+
+function clean_up_observables(x::T) where {T}
     if hasfield(T, :observers)
         foreach(off, x.observers)
         empty!(x.observers)
     end
 end
-
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function unsafe_free(x::GLProgram)
