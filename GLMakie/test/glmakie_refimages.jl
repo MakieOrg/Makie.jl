@@ -253,7 +253,7 @@ end
 
     begin
         # Pipeline matches test_pipeline_2D up to color_tint
-        pipeline = Makie.Pipeline()
+        pipeline = Makie.RenderPipeline()
 
         render1 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = true))
         render2 = push!(pipeline, Makie.TransparentRenderStage())

@@ -657,57 +657,48 @@ function DisplayStage()
 end
 
 
-# TODO: caching is dangerous with mutable attributes...
-# const PIPELINE_CACHE = Dict{Symbol, RenderPipeline}()
-
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
-    # name = Symbol(:default_pipeline, Int(ssao), Int(fxaa), Int(oit))
+    pipeline = RenderPipeline()
+    push!(pipeline, SortStage())
 
-    # Mimic GLMakie's old hard coded render pipeline
-    # get!(PIPELINE_CACHE, name) do
-
-        pipeline = RenderPipeline()
-        push!(pipeline, SortStage())
-
-        # Note - order important!
-        # TODO: maybe add insert!()?
-        if ssao
-            render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
-            _ssao = push!(pipeline, SSAOStage())
-            render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
-        else
-            render2 = push!(pipeline, RenderStage(transparency = false))
-        end
-        if oit
-            render3 = push!(pipeline, TransparentRenderStage())
-            _oit = push!(pipeline, OITStage())
-        else
-            render3 = push!(pipeline, RenderStage(transparency = true))
-        end
-        if fxaa
-            _fxaa = push!(pipeline, FXAAStage(filter_in_shader = true))
-        end
-        display = push!(pipeline, DisplayStage())
+    # Note - order important!
+    # TODO: maybe add insert!()?
+    if ssao
+        render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
+        _ssao = push!(pipeline, SSAOStage())
+        render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
+    else
+        render2 = push!(pipeline, RenderStage(transparency = false))
+    end
+    if oit
+        render3 = push!(pipeline, TransparentRenderStage())
+        _oit = push!(pipeline, OITStage())
+    else
+        render3 = push!(pipeline, RenderStage(transparency = true))
+    end
+    if fxaa
+        _fxaa = push!(pipeline, FXAAStage(filter_in_shader = true))
+    end
+    display = push!(pipeline, DisplayStage())
 
 
-        if ssao
-            connect!(pipeline, render1, _ssao)
-            connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
-        end
-        connect!(pipeline, render2, fxaa ? _fxaa : display)
-        if oit
-            connect!(pipeline, render3, _oit)
-            connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
-        else
-            connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
-        end
-        if fxaa
-            connect!(pipeline, _fxaa, display, :color)
-        end
-        connect!(pipeline, :objectid)
+    if ssao
+        connect!(pipeline, render1, _ssao)
+        connect!(pipeline, _ssao, fxaa ? _fxaa : display, :color)
+    end
+    connect!(pipeline, render2, fxaa ? _fxaa : display)
+    if oit
+        connect!(pipeline, render3, _oit)
+        connect!(pipeline, _oit, fxaa ? _fxaa : display, :color)
+    else
+        connect!(pipeline, render3, fxaa ? _fxaa : display, :color)
+    end
+    if fxaa
+        connect!(pipeline, _fxaa, display, :color)
+    end
+    connect!(pipeline, :objectid)
 
-        return pipeline
-    # end
+    return pipeline
 end
 
 function test_pipeline_3D()
@@ -777,8 +768,6 @@ end
 function test_pipeline_minimal()
     pipeline = RenderPipeline()
 
-    # GUI elements don't need OIT because they are (usually?) layered plot by
-    # plot, rather than element by element. Do need FXAA occasionally, e.g. Toggle
     render = push!(pipeline, RenderStage())
     display = push!(pipeline, DisplayStage())
     connect!(pipeline, render, display)
@@ -947,7 +936,7 @@ function pipeline_gui!(ax, pipeline)
     scale = map(pv -> max(0.5, 10*min(pv[1,1], pv[2,2])), get_scene(ax).camera.projectionview)
 
     poly!(ax, rects_obs, strokewidth = scale, strokecolor = :black, fxaa = false,
-        shading = NoShading, color = :lightgray)
+        shading = NoShading, color = :lightgray, transparency = false)
     linesegments!(ax, header_line_obs, linewidth = scale, color = :black)
     text!(ax, header_obs, markerspace = :data, fontsize = 0.8, color = :black,
         align = (:center, :center))
