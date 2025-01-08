@@ -455,6 +455,9 @@ function free(x::T) where {T}
     # don't free if already freed (this should only be set by unsafe_free)
     clean_up_observables(x)
     x.id == 0 && return
+
+    # OpenGL has the annoying habit of reusing id's when creating a new context
+    # We need to make sure to only free the current one
     if context_alive(x.context) && is_context_active(x.context)
         unsafe_free(x)
     end
@@ -477,42 +480,21 @@ function clean_up_observables(x::T) where {T}
         empty!(x.observers)
     end
 end
-# OpenGL has the annoying habit of reusing id's when creating a new context
-# We need to make sure to only free the current one
-function unsafe_free(x::GLProgram)
-    glDeleteProgram(x.id)
-    x.id = 0
-    return
-end
 
-function unsafe_free(x::Shader)
-    glDeleteShader(x.id)
-    x.id = 0
-    return
-end
-
-function unsafe_free(x::GLBuffer)
-    id = Ref(x.id)
-    glDeleteBuffers(1, id)
-    x.id = 0
-    return
-end
-
-function unsafe_free(x::Texture)
-    glDeleteTextures(x.id)
-    x.id = 0
-    return
-end
+unsafe_free(x::GLProgram) = glDeleteProgram(x.id)
+unsafe_free(x::Shader) = glDeleteShader(x.id)
+unsafe_free(x::GLBuffer) = glDeleteBuffers(x.id)
+unsafe_free(x::Texture) = glDeleteTextures(x.id)
 
 function unsafe_free(x::GLVertexArray)
     for (key, buffer) in x.buffers
         unsafe_free(buffer)
+        buffer.id = 0
     end
     if x.indices isa GPUArray
         unsafe_free(x.indices)
+        x.indices.id = 0
     end
-    id = Ref(x.id)
-    glDeleteVertexArrays(1, id)
-    x.id = 0
+    glDeleteVertexArrays(x.id)
     return
 end
