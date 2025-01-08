@@ -581,7 +581,7 @@ function destroy!(rob::RenderObject)
     # remain when the plot is deleted.
     with_context(rob.context) do
         # Get texture for texture atlas directly, to not trigger a new texture creation
-        tex = get(atlas_texture_cache, (gl_texture_atlas(), rob.context), nothing)[1]
+        tex = get(atlas_texture_cache, (gl_texture_atlas(), rob.context), (nothing,))[1]
         for (k, v) in rob.uniforms
             if v isa Observable
                 Observables.clear(v)
@@ -604,7 +604,8 @@ function destroy!(rob::RenderObject)
 end
 
 function with_context(f, context)
-    old_ctx = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT[]
+    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+    old_ctx = isassigned(CTX) ? CTX[] : nothing
     GLAbstraction.switch_context!(context)
     try
         f()
