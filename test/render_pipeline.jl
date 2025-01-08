@@ -1,10 +1,10 @@
 using Makie
 using Makie: BufferFormat, N0f8, is_compatible, BFT
 using Makie: Stage, get_input_format, get_output_format
-using Makie: Pipeline, connect!
+using Makie: RenderPipeline, connect!
 using Makie: generate_buffers, default_pipeline
 
-@testset "Render Pipeline" begin
+@testset "Render RenderPipeline" begin
 
     @testset "BufferFormat" begin
         @testset "Constructors" begin
@@ -97,8 +97,8 @@ using Makie: generate_buffers, default_pipeline
         @test get_output_format(stage, :c) == stage.output_formats[stage.outputs[:c]]
     end
 
-    @testset "Pipeline & Connections" begin
-        pipeline = Pipeline()
+    @testset "RenderPipeline & Connections" begin
+        pipeline = RenderPipeline()
 
         @test isempty(pipeline.stages)
         @test isempty(pipeline.stageio2idx)
