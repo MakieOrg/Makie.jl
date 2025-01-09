@@ -230,7 +230,6 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen, Makie.BackendTick)
     robj = get!(screen.cache, objectid(plot)) do
 
         filtered = filter(plot.attributes) do (k, v)
@@ -344,16 +343,17 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
 end
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
+    # Note: Calling pollevents() here will allow `on(events(scene)...)` to take
+    #       action while a plot is getting created. If the plot is deleted at
+    #       that point the robj will get orphaned.
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
-            pollevents(screen, Makie.BackendTick)
             insert!(screen, scene, x)
         end
     end
@@ -740,7 +740,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-    
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -760,7 +760,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     elseif to_value(color) isa ShaderAbstractions.Sampler
         gl_attributes[:image] = Texture(lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)    
+        delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
