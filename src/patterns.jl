@@ -71,7 +71,7 @@ complex patterns, e.g. a cross-hatching pattern.
 function LinePattern(;
         direction = Vec2f(1), width = 2f0, tilesize = (10,10),
         shift = map(w -> Vec2f(0.5 - 0.5(w%2)), width),
-        linecolor = RGBAf(0,0,0,1), background_color = RGBAf(1,1,1,0)
+        linecolor = RGBAf(0,0,0,1), backgroundcolor = RGBAf(1,1,1,0)
     )
     N = 1
     direction isa Vector{<:Vec2} && (N = length(direction))
@@ -81,7 +81,7 @@ function LinePattern(;
     dirs = direction isa Vector{<:Vec2} ? direction : Vec2f[direction for _ in 1:N]
     widths = width isa Vector ? width : Float32[width for _ in 1:N]
     shifts = shift isa Vector{<:Vec2} ? shift : Vec2f[shift for _ in 1:N]
-    colors = (to_color(linecolor), to_color(background_color))
+    colors = (to_color(linecolor), to_color(backgroundcolor))
 
     return LinePattern(dirs, widths, shifts, tilesize, colors)
 end
@@ -109,7 +109,7 @@ function Pattern(style::Char = '/'; kwargs...)
     elseif style == '+'
         LinePattern(direction=[Vec2f(1, 0), Vec2f(0, 1)]; kwargs...)
     else
-        LinePattern(; kwargs...)
+        throw(ArgumentError("Pattern('$style') not defined, use one of ['/', '\\', '-', '|', 'x', '+']"))
     end
 end
 
