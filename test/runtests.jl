@@ -44,16 +44,16 @@ using Makie: volume
 
     @testset "Conversion & Projection Pipeline" begin
         # TODO: move some things in here
-        include("convert_arguments.jl")
+        include("conversions/convert_arguments.jl")
         # from here
-        include("conversions.jl")
-        include("convert_attributes.jl")
+        include("conversions/conversions.jl")
+        include("conversions/convert_attributes.jl")
 
-        include("dim-converts.jl")
-        include("transformations.jl")
-        include("float32convert.jl")
-        include("cameras.jl")
-        include("projection_math.jl")
+        include("conversions/dim-converts.jl")
+        include("conversions/transformations.jl")
+        include("conversions/float32convert.jl")
+        include("conversions/cameras.jl")
+        include("conversions/projection_math.jl")
     end
 
     include("boundingboxes.jl")
