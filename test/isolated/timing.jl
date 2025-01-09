@@ -46,7 +46,7 @@
 
     @testset "callbacks" begin
         counter = Ref(0)
-        timer = Makie.BudgetedTimer(1.0 / 30.0, false) do
+        timer = Makie.BudgetedTimer(1.0 / 30.0, false) do timing
             counter[] += 1
         end
         sleep(0.5)

@@ -21,7 +21,7 @@ using Makie: volume
         include("isolated/bezier.jl")
         include("isolated/quaternions.jl")
         include("isolated/observables.jl")
-        # include("isolated/timing.jl") # TODO: fix
+        include("isolated/timing.jl")
         include("isolated/Plane.jl")
     end
 
