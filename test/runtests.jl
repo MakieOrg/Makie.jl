@@ -39,7 +39,6 @@ using Makie: volume
         include("SceneLike/figures.jl")
         include("SceneLike/makielayout.jl")
         include("SceneLike/PolarAxis.jl")
-        # include("SceneLike/zoom_pan.jl") # TODO: fix
     end
 
     @testset "Conversion & Projection Pipeline" begin
@@ -56,13 +55,21 @@ using Makie: volume
         include("conversions/projection_math.jl")
     end
 
+    @testset "Interactivity" begin
+        include("interactivity/events.jl")
+        include("interactivity/MouseStateMachine.jl")
+        include("interactivity/camera_controls.jl")
+        include("interactivity/Axis.jl")
+        include("interactivity/Axis3.jl")
+        # include("SceneLike/zoom_pan.jl") # TODO: fix
+    end
+
     include("boundingboxes.jl")
     include("updating.jl")
     include("deprecated.jl")
     include("specapi.jl")
     include("pipeline.jl")
     include("record.jl")
-    include("events.jl")
     include("ray_casting.jl")
 
     # for short tests of resolved issues
