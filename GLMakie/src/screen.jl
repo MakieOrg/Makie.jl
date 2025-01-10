@@ -682,10 +682,11 @@ function destroy!(screen::Screen)
 
     foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
     destroy!(screen.framebuffer)
-    cleanup_texture_atlas!(window)
-    GLAbstraction.free(screen.shader_cache)
-
-    destroy!(window)
+    with_context(window) do
+        cleanup_texture_atlas!(window)
+        GLAbstraction.free(screen.shader_cache)
+        destroy!(window)
+    end
     return
 end
 

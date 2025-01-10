@@ -7,10 +7,6 @@ function print_with_lines(out::IO, text::AbstractString)
 end
 print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
-
-# Using nothing as a stand-in for GLContext = Any
-@assert GLContext === Any "matches_target() needs to be updates to check the correct type"
-
 """
 Needed to match the lazy gl_convert exceptions.
     `Target`: targeted OpenGL type
