@@ -14,6 +14,7 @@ function setup_clip_planes(N::Integer)
     end
 end
 
+# Note: context required in renderloop, not per renderobject here
 
 """
 When rendering a specialised list of Renderables, we can do some optimizations
