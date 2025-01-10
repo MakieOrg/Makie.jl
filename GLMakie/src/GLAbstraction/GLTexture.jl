@@ -39,7 +39,6 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             context,
             Observables.ObserverFunction[]
         )
-        GLAbstraction.require_context(context)
         GLMAKIE_DEBUG[] && finalizer(verify_free, tex)
         tex
     end
@@ -57,6 +56,7 @@ Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
 function bind(t::Texture)
+    require_context(t.context)
     if t.id == 0
         error("Binding freed Texture{$(eltype(t))}")
     end

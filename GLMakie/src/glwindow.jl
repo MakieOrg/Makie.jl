@@ -160,19 +160,17 @@ function destroy!(fb::GLFramebuffer)
     fb.id == 0 && return
     @assert !isempty(fb.buffers) "GLFramebuffer was cleared incorrectly (i.e. not by destroy!())"
     ctx = first(values(fb.buffers)).context
-    ShaderAbstractions.switch_context!(ctx)
-    for tex in values(fb.buffers)
-        GLAbstraction.free(tex)
-    end
-    # avoid try .. catch at call site
-    GLAbstraction.require_context_no_error(ctx)
-    if !ShaderAbstractions.is_context_active(ctx)
+    with_context(ctx) do
+        for buff in values(fb.buffers)
+            GLAbstraction.free(buff)
+        end
+        # Only print error if the context is not alive/active
+        id = fb.id
         fb.id = 0
-        return
+        if GLAbstraction.context_alive(ctx) && id > 0
+            glDeleteFramebuffers(1, Ref(id))
+        end
     end
-    id = [fb.id]
-    glDeleteFramebuffers(1, id)
-    fb.id = 0
     return
 end
 

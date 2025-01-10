@@ -29,8 +29,21 @@ function require_context(ctx, current = ShaderAbstractions.current_context())
     isnothing(msg) && return nothing
     error(msg)
 end
-
-export require_context
+function with_context(f, context)
+    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+    old_ctx = isassigned(CTX) ? CTX[] : nothing
+    GLAbstraction.switch_context!(context)
+    try
+        f()
+    finally
+        if isnothing(old_ctx)
+            GLAbstraction.switch_context!()
+        else
+            GLAbstraction.switch_context!(old_ctx)
+        end
+    end
+end
+export require_context, with_context
 
 include("AbstractGPUArray.jl")
 

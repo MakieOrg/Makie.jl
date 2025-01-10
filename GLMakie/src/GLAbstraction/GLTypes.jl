@@ -466,7 +466,7 @@ function free(x::T) where {T}
     return
 end
 
-function clean_up_observables(x::GLVertexArray) where {T}
+function clean_up_observables(x::GLVertexArray)
     for (_, buffer) in x.buffers
         clean_up_observables(buffer)
     end

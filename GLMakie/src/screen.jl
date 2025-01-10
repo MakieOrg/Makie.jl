@@ -604,23 +604,7 @@ function destroy!(rob::RenderObject)
     return
 end
 
-# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
-function with_context(f, context)
-    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
-    old_ctx = isassigned(CTX) ? CTX[] : nothing
-    GLAbstraction.switch_context!(context)
-    try
-        f()
-    finally
-        if isnothing(old_ctx)
-            GLAbstraction.switch_context!()
-        else
-            GLAbstraction.switch_context!(old_ctx)
-        end
-    end
-end
-
-# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
+# Note: called from scene finalizer, must not error
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
     if !isempty(plot.plots)
