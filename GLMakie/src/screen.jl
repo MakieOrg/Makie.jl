@@ -685,8 +685,8 @@ function destroy!(screen::Screen)
     with_context(window) do
         cleanup_texture_atlas!(window)
         GLAbstraction.free(screen.shader_cache)
-        destroy!(window)
     end
+    destroy!(window)
     return
 end
 
