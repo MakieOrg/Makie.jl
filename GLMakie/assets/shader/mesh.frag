@@ -97,7 +97,6 @@ vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
 }
 
 vec4 get_pattern_color(sampler2D color){
-    vec2 size = textureSize(color, 0);
     vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
     return texture(color, pos);
 }

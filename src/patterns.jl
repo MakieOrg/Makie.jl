@@ -138,7 +138,7 @@ function to_image(p::LinePattern)
     c1 = ifelse(c1.alpha == 0, RGBAf(c2.r, c2.g, c2.b, 0), c1)
     c2 = ifelse(c2.alpha == 0, RGBAf(c1.r, c1.g, c1.b, 0), c2)
     return map(sdf) do dist
-        f = clamp((dist + AA_radius) / (2 * AA_radius), 0, 1)
-        return c1 * (1 - f) + c2 * f
+        f = Float32(clamp((dist + AA_radius) / (2 * AA_radius), 0, 1))
+        return c1 * (1f0 - f) + c2 * f
     end
 end
