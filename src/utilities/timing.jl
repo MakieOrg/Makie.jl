@@ -49,13 +49,11 @@ function start!(timer::BudgetedTimer)
     timer.budget = 0.0
     timer.last_time = time_ns()
     timer.running = true
+    timer.callback(timer) # error check
     timer.task = @async while timer.running
-        timer.callback(timer)
         sleep(timer)
+        timer.callback(timer)
     end
-    # if it errored get the error
-    yield()
-    istaskfailed(timer.task) && wait(timer.task)
     return
 end
 
