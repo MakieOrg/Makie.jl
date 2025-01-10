@@ -106,6 +106,7 @@
 - `PolarAxis` font size now defaults to global figure `fontsize` in the absence of specific `Axis` theming [#4314](https://github.com/MakieOrg/Makie.jl/pull/4314)
 - `MultiplesTicks` accepts new option `strip_zero=true`, allowing labels of the form `0x` to be `0` [#4372](https://github.com/MakieOrg/Makie.jl/pull/4372)
 - Make near/far of WGLMakie JS 3d camera dynamic, for better depth_shift scaling [#4430](https://github.com/MakieOrg/Makie.jl/pull/4430).
+- Fix GLMakie `surface` implementation for 3D `transform_func` [#4243](https://github.com/MakieOrg/Makie.jl/pull/4243)
 
 ## [0.21.12] - 2024-09-28
 

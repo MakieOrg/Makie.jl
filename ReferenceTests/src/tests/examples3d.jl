@@ -707,6 +707,35 @@ end
     f
 end
 
+@reference_test "Surface with 3D transform_func" begin
+    
+    SPHERICAL_TRANSFORM = Makie.PointTrans{3}() do geographic_point
+        # Longitude is directly translatable to a spherical coordinate
+        # θ (azimuth)
+        θ = deg2rad(geographic_point[1])
+        # The polar angle is 90 degrees minus the latitude
+        # ϕ (polar angle)
+        ϕ = deg2rad(90 - geographic_point[2])
+        # Finally, we define the base radius as 1, 
+        # and all z values are offset by 1.
+        r = 1 + geographic_point[3]
+        # and we don't need to multiply by it.
+        return Point3(
+            r * sin(ϕ) * cos(θ),
+            r * sin(ϕ) * sin(θ),
+            r * cos(ϕ)
+        )
+    end
+    
+    xs = -180:180
+    ys = -90:90
+    field = [exp(cosd(x)) + 3(y/90) for x in xs, y in ys] ./ 5
+    
+    f, a, p = surface(xs, ys, field; axis = (; type = LScene,), shading = NoShading)
+    p.transformation.transform_func[] = SPHERICAL_TRANSFORM
+    f
+end
+
 @reference_test "volumeslices" begin
     r = range(-1, 1, length = 10)
     data = RNG.rand(10,10,10)
