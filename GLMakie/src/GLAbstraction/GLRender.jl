@@ -177,10 +177,24 @@ end
 function enabletransparency()
     glEnablei(GL_BLEND, 0)
     glDisablei(GL_BLEND, 1)
+    # We render to a potentially transparent scene here. The final blending 
+    # may look like this:
+    # (s)creen <- (b)ackground <- (r)ender
+    # with the screen being opaque. This should blend as:
+    #   r.a * r.rgb + (1-r.a) * (b.a * b.rgb + (1-b.a) * s.rgb), 1
+    # = r.a * r.rgb + (1-r.a) * b.a * b.rgb + (1-r.a) * (1-b.a) * s.rgb, 1
+    # If we want to run the screen blend at a later stage we can:
+    # - precalculate p = b.a * b.rgb, 1 - b.a in the background buffer
+    # - track (1 - r.a) * p.a as alpha in the buffer
+    # which gives us the following blending rule:
+    # r.a * r.rgb + (1-r.a) * p.rgb, 0 * r.a + (1-r.a) * p.a 
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA)
+
     # This does:
     # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
     # target.a = 0 * source.a + 1 * target.a
     # the latter is required to keep target.a = 1 for the OIT pass
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    # glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     return
 end

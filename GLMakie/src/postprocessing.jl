@@ -25,11 +25,13 @@ struct PostProcessor{F}
 end
 
 function empty_postprocessor(args...; kwargs...)
-    PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
+    PostProcessor(RenderObject[], (args...) -> nothing, empty_postprocessor)
 end
 
 
 function OIT_postprocessor(framebuffer, shader_cache)
+    @debug "Creating OIT postprocessor"
+
     # Based on https://jcgt.org/published/0002/02/09/, see #1390
     # OIT setup
     shader = LazyShader(
@@ -40,7 +42,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
     data = Dict{Symbol, Any}(
         # :opaque_color => framebuffer[:color][2],
         :sum_color => framebuffer[:HDR_color][2],
-        :prod_alpha => framebuffer[:OIT_weight][2],
+        :transmittance => framebuffer[:OIT_weight][2],
     )
     pass = RenderObject(
         data, shader,
@@ -49,13 +51,20 @@ function OIT_postprocessor(framebuffer, shader_cache)
             glDisable(GL_DEPTH_TEST)
             glDisable(GL_CULL_FACE)
             glEnable(GL_BLEND)
-            # shader computes:
-            # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
-            # src.a = prod_alpha
-            # blending: (assumes opaque.a = 1)
-            # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
-            # opaque.a   = 0 * src.a   + 1 * opaque.a
-            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+            # prepare:
+            #   sum_color = 0
+            #   transmittance = 1
+            # main render + blend: (w/o clamping)
+            #   weight = alpha * (factor) * (1 - z)^3
+            #   sum_color  += (weight * rgb, weight)
+            #   transmittance *= (1 - alpha)
+            # postprocessor shader:
+            #   out = (sum_color.rgb / sum_color.w * (1 - transmittance), tranmittance)
+            # blending (here)
+            #   src = out = (pre-multiplied color, transmittance)
+            #   dst = (pre-multiplied color, transmittance) (from non-OIT draw)
+            #   src.rgb + src.a * dst.rgb, src.a * dst.a
+            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA)
         end,
         nothing
     )
@@ -63,12 +72,10 @@ function OIT_postprocessor(framebuffer, shader_cache)
 
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
-
         # Blend transparent onto opaque
+        wh = size(screen.framebuffer)
+        glViewport(0, 0, wh[1], wh[2])
         glDrawBuffer(color_id)
-        glViewport(0, 0, w, h)
         GLAbstraction.render(pass)
     end
 
@@ -79,6 +86,8 @@ end
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
+    @debug "Creating SSAO postprocessor"
+
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
@@ -154,44 +163,19 @@ function ssao_postprocessor(framebuffer, shader_cache)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
 
-    full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+    full_render = (screen, ssao, projection) -> begin
+        wh = size(screen.framebuffer)
+        glViewport(0, 0, wh[1], wh[2])
 
-        # Setup rendering
-        # SSAO - calculate occlusion
         glDrawBuffer(normal_occ_id)  # occlusion buffer
-        glViewport(0, 0, w, h)
-        glEnable(GL_SCISSOR_TEST)
-        ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
+        data1[:projection] = projection
+        data1[:bias] = ssao.bias[]
+        data1[:radius] = ssao.radius[]
+        GLAbstraction.render(pass1)
 
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            # This should be per scene because projection may vary between
-            # scenes. It should be a leaf scene to avoid repeatedly shading
-            # the same region (though this is not guaranteed...)
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data1[:projection] = scene.camera.projection[]
-            data1[:bias] = scene.ssao.bias[]
-            data1[:radius] = scene.ssao.radius[]
-            GLAbstraction.render(pass1)
-        end
-
-        # SSAO - blur occlusion and apply to color
         glDrawBuffer(color_id)  # color buffer
-        for (screenid, scene) in screen.screens
-            # Select the area of one leaf scene
-            isempty(scene.children) || continue
-            a = viewport(scene)[]
-            glScissor(ppu(minimum(a))..., ppu(widths(a))...)
-            # update uniforms
-            data2[:blur_range] = scene.ssao.blur
-            GLAbstraction.render(pass2)
-        end
-        glDisable(GL_SCISSOR_TEST)
+        data2[:blur_range] = ssao.blur[]
+        GLAbstraction.render(pass2)
     end
 
     PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
@@ -203,6 +187,8 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
+    @debug "Creating FXAA postprocessor"
+
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
@@ -239,17 +225,24 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         :color_texture => getfallback(framebuffer, :color_luma, :HDR_color)[2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
+    pass2 = RenderObject(data2, shader2, () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        # keep transmittance from dst
+        glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ZERO, GL_ONE)
+    end, nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
     color_id = framebuffer[:color][1]
     full_render = screen -> begin
-        fb = screen.framebuffer
-        w, h = size(fb)
+        # TODO: make scissor explicit?
+        wh = size(screen.framebuffer)
+        glViewport(0, 0, wh[1], wh[2])
 
         # FXAA - calculate LUMA
         glDrawBuffer(luma_id)
-        glViewport(0, 0, w, h)
         # necessary with negative SSAO bias...
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
@@ -265,14 +258,14 @@ end
 
 
 """
-    to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
+    compose_postprocessor(framebuffer, shader_cache, default_id = nothing)
 
-Sets up a Postprocessor which copies the color buffer to the screen. Used as a
-final step for displaying the screen. The argument `screen_fb_id` can be used
-to pass in a reference to the framebuffer ID of the screen. If `nothing` is
-used (the default), 0 is used.
+Creates a Postprocessor for merging the finished render of a scene with the
+composition buffer which will eventually include all scenes.
 """
-function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
+function compose_postprocessor(framebuffer, shader_cache)
+    @debug "Creating compose postprocessor"
+
     # draw color buffer
     shader = LazyShader(
         shader_cache,
@@ -282,16 +275,79 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     data = Dict{Symbol, Any}(
         :color_texture => framebuffer[:color][2]
     )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass = RenderObject(data, shader, () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        # src format = (a1 * rgb1, 1-a1)
+        # dst format = (a2 * rgb2, 1-a2)
+        # blended = (a1 * rgb1 + (1-a1) * a2 * rgb2, (1-a1) * (1-a2))
+        glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_SRC_ALPHA)
+    end, nothing)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    full_render = screen -> begin
-        # transfer everything to the screen
-        default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
+    composition_buffer_id = framebuffer[:composition][1]
+    full_render = (screen, x, y, w, h) -> begin
+        glDrawBuffer(composition_buffer_id)
+        wh = size(screen.framebuffer)
+        glViewport(0, 0, wh[1], wh[2]) # :color buffer is ful screen
+        glScissor(x, y, w, h) # but we only care about the active section
+        GLAbstraction.render(pass) # copy postprocess
+    end
+
+    PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
+end
+
+"""
+    to_screen_postprocessor(framebuffer, shader_cache, default_id = nothing)
+
+Creates a Postprocessor which maps the composed render of all scenes to the
+screen. Used as a final step for displaying the screen. The argument
+`screen_fb_id` can be used to pass in a reference to the framebuffer ID of the
+screen. If `nothing` is used (the default), 0 is used.
+"""
+function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothing)
+    @debug "Creating to screen postprocessor"
+
+    # draw color buffer
+    shader = LazyShader(
+        shader_cache,
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/copy.frag")
+    )
+    data = Dict{Symbol, Any}(
+        :color_texture => framebuffer[:composition][2]
+    )
+    pass = RenderObject(data, shader, () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        # incoming texture is in format src = (a * c, 1-a)
+        # destination is in format      dst = (bg, 1)
+        # blends to (src.rgb + src.a * dst.rgb, 1 * dst.a) = (a * c + (1-a) * bg, 1)
+        glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+    end, nothing)
+    pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
+
+    full_render = (screen) -> begin
+        # TODO: Is this an observable? Can this be static?
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
-        glBindFramebuffer(GL_FRAMEBUFFER, default_id)
+        OUTPUT_FRAMEBUFFER_ID = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
+
+        # Set target
+        glBindFramebuffer(GL_FRAMEBUFFER, OUTPUT_FRAMEBUFFER_ID)
         glViewport(0, 0, framebuffer_size(screen)...)
+        # glScissor(0, 0, wh[1], wh[2])
+
+        # clear target
+        # TODO: Could be skipped if glscenes[1] clears to opaque (maybe use dedicated shader?)
+        # TODO: Should this be cleared if we don't own the target?
+        glClearColor(1,1,1,1)
         glClear(GL_COLOR_BUFFER_BIT)
+
+        # transfer everything to the screen
         GLAbstraction.render(pass) # copy postprocess
     end
 
@@ -299,6 +355,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
 end
 
 function destroy!(pp::PostProcessor)
+    @debug "Destroying postprocessor"
     while !isempty(pp.robjs)
         destroy!(pop!(pp.robjs))
     end

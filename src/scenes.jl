@@ -78,6 +78,7 @@ mutable struct Scene <: AbstractScene
 
     "Children of the Scene inherit its transformation."
     children::Vector{Scene}
+    overlay_start::Int
 
     """
     The Screens which the Scene is displayed to.
@@ -106,6 +107,7 @@ mutable struct Scene <: AbstractScene
             plots::Vector{AbstractPlot},
             theme::Attributes,
             children::Vector{Scene},
+            overlay_start::Int,
             current_screens::Vector{MakieScreen},
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
@@ -125,6 +127,7 @@ mutable struct Scene <: AbstractScene
             plots,
             theme,
             children,
+            overlay_start,
             current_screens,
             backgroundcolor,
             visible,
@@ -217,6 +220,7 @@ function Scene(;
         transformation::Transformation = Transformation(transform_func),
         plots::Vector{AbstractPlot} = AbstractPlot[],
         children::Vector{Scene} = Scene[],
+        overlay_start::Int = length(children)+1,
         current_screens::Vector{MakieScreen} = MakieScreen[],
         parent = nothing,
         visible = Observable(true),
@@ -255,7 +259,7 @@ function Scene(;
     scene = Scene(
         parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights;
+        children, overlay_start, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks=deregister_callbacks
     )
     camera isa Function && camera(scene)
@@ -307,6 +311,7 @@ function Scene(
         visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
+        overlay::Bool = false,
         kw...
     )
 
@@ -352,7 +357,11 @@ function Scene(
             error("viewport must be an Observable{Rect2} or a Rect2")
         end
     end
-    push!(parent.children, child)
+    if overlay
+        push_overlay!(parent, child)
+    else
+        push!(parent, child)
+    end
     child.parent = parent
     return child
 end
@@ -430,6 +439,7 @@ function getindex(scene::Scene, ::Type{OldAxis})
 end
 
 function delete_scene!(scene::Scene)
+    # TODO: un-deprecate this and make this detach the scene from tree/backend?
     @warn "deprecated in favor of empty!(scene)"
     empty!(scene)
     return nothing
@@ -443,24 +453,36 @@ function free(scene::Scene)
     for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
+    # remove from parent
+    parent = scene.parent
+    if !isnothing(parent)
+        idx = findfirst(==(scene), parent.children)
+        if idx === nothing
+            @warn "Freed scene not a child of it's parent"
+        else
+            # if we are deletinng a normal scene we need to move the overlay start index
+            if !(parent.overlay_start <= idx <= length(parent.children))
+                parent.overlay_start -= 1
+            end
+            deleteat!(parent.children, idx)
+        end
+    end
     empty!(scene.current_screens)
     scene.parent = nothing
     return
 end
 
 function Base.empty!(scene::Scene; free=false)
-    foreach(empty!, copy(scene.children))
+    # since we clear our children all of our children need to get fully detached
+    foreach(Makie.free, copy(scene.children))
+
     # clear plots of this scene
     for plot in copy(scene.plots)
         delete!(scene, plot)
     end
 
-    # clear all child scenes
-    if !isnothing(scene.parent)
-        filter!(x-> x !== scene, scene.parent.children)
-    end
-
     empty!(scene.children)
+    scene.overlay_start = 1
     empty!(scene.plots)
     empty!(scene.theme)
     # conditional, since in free we dont want this!
@@ -479,6 +501,26 @@ function Base.empty!(scene::Scene; free=false)
     return nothing
 end
 
+function Base.push!(parent::Scene, child::Scene)
+    @assert isempty(child.children) "Adding a scene with children to a parent not yet implemented"
+    insert!(parent.children, parent.overlay_start, child)
+    for screen in parent.current_screens
+        Base.invokelatest(insert!, screen, child, parent, parent.overlay_start)
+    end
+    parent.overlay_start += 1
+    return
+end
+
+function push_overlay!(parent::Scene, child::Scene)
+    @assert isempty(child.children) "Adding a scene with children to a parent not yet implemented"
+    push!(parent.children, child)
+    idx = length(parent.children)
+    for screen in parent.current_screens
+        Base.invokelatest(insert!, screen, child, parent, idx)
+    end
+    return
+end
+
 function Base.push!(plot::Plot, subplot)
     MakieCore.validate_attribute_keys(subplot)
     subplot.parent = plot
@@ -491,6 +533,10 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
     end
+end
+
+function Base.insert!(screen::MakieScreen, scene::Scene, parent::Scene, idx::Integer)
+    @debug "Inserting scenes not implemented for backend $(typeof(screen))"
 end
 
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)

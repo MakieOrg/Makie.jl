@@ -1047,4 +1047,5 @@ void main(void)
         0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
         FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
     ).rgb;
+    fragment_color.a = 0.0;
 }

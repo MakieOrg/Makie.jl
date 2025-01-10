@@ -148,13 +148,15 @@ end
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
     @testset "all got freed" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id == 0
+        for glscene in screen.scene_tree.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id == 0
+                    end
                 end
+                @test robj.vertexarray.id == 0
             end
-            @test robj.vertexarray.id == 0
         end
     end
     ax = Axis(fig[1,1])
@@ -162,17 +164,22 @@ end
     lines!(ax, 1:5, rand(5); linewidth=3)
     text!(ax, [Point2f(2)], text=["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id != 0
+        for glscene in screen.scene_tree.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id != 0
+                    end
                 end
+                @test robj.vertexarray.id != 0
             end
-            @test robj.vertexarray.id != 0
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.scene_tree.scenes)
+    @test isempty(screen.scene_tree.depth)
+    @test isempty(screen.scene_tree.scene2index)
+    @test isempty(screen.scene_tree.robj2plot)
 end
 
 @testset "empty!(ax)" begin
@@ -186,7 +193,14 @@ end
 
     @test ax.scene.plots == [hmp, lp, tp]
 
-    robjs = map(x-> screen.cache[objectid(x)], [hmp, lp, tp.plots...])
+    robjs = map([hmp, lp, tp.plots...]) do plot
+        for glscene in screen.scene_tree.scenes
+            if haskey(glscene, plot)
+                return glscene[plot] # TODO: do we keep this syntax?
+            end
+        end
+        error("Failed to retrieve robj")
+    end
 
     empty!(ax)
 
@@ -204,17 +218,22 @@ end
     lines!(ax, 1:5, rand(5); linewidth=3)
     text!(ax, [Point2f(2)], text=["hi"])
     @testset "no freed object after replotting" begin
-        for (_, _, robj) in screen.renderlist
-            for (k, v) in robj.uniforms
-                if v isa GLMakie.GPUArray
-                    @test v.id != 0
+        for glscene in screen.scene_tree.scenes
+            for robj in glscene.renderobjects
+                for (k, v) in robj.uniforms
+                    if v isa GLMakie.GPUArray
+                        @test v.id != 0
+                    end
                 end
+                @test robj.vertexarray.id != 0
             end
-            @test robj.vertexarray.id != 0
         end
     end
     close(screen)
-    @test isempty(screen.renderlist)
+    @test isempty(screen.scene_tree.scenes)
+    @test isempty(screen.scene_tree.depth)
+    @test isempty(screen.scene_tree.scene2index)
+    @test isempty(screen.scene_tree.robj2plot)
 end
 
 @testset "closing" begin
@@ -280,11 +299,10 @@ end
     for screen in screens
         @test !isopen(screen)
 
-        @test isempty(screen.screen2scene)
-        @test isempty(screen.screens)
-        @test isempty(screen.renderlist)
-        @test isempty(screen.cache)
-        @test isempty(screen.cache2plot)
+        @test isempty(screen.scene_tree.scene2index)
+        @test isempty(screen.scene_tree.robj2plot)
+        @test isempty(screen.scene_tree.scenes)
+        @test isempty(screen.scene_tree.depth)
 
         @test isempty(screen.window_open.listeners)
         @test isempty(screen.render_tick.listeners)
@@ -293,7 +311,7 @@ end
 
         @test screen.scene === nothing
         @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.4
+        @test (Base.summarysize(screen) / 10^6) < 1.7
     end
     # All should go to pool after close
     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)
@@ -474,13 +492,14 @@ end
     lines!(ax,sin.(0.0:0.1:2pi))
     text!(ax,10.0,0.0,text="sine wave")
     empty!(ax)
-    ids = [robj.id for (_, _, robj) in screen.renderlist]
+    ids = [robj.id for glscene in screen.scene_tree.scenes for robj in glscene.renderobjects]
 
     lines!(ax, sin.(0.0:0.1:2pi))
     text!(ax,10.0,0.0,text="sine wave")
     resize!(current_figure(), 800, 800)
 
-    robj = filter(x -> !(x.id in ids), last.(screen.renderlist))[1]
+    all_robjs = [robj for glscene in screen.scene_tree.scenes for robj in glscene.renderobjects]
+    robj = filter(x -> !(x.id in ids), all_robjs)[1]
     cam = ax.scene.camera
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]

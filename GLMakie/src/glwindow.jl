@@ -92,8 +92,8 @@ Makie.@noconstprop function GLFramebuffer(fb_size::NTuple{2, Int})
     glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
 
     # Buffers we always need
-    # Holds the image that eventually gets displayed
-    color_buffer = Texture(
+    # Holds the combined image of all plots which eventually gets displayed
+    composition_buffer = Texture(
         RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # Holds a (plot id, element id) for point picking
@@ -107,6 +107,11 @@ Makie.@noconstprop function GLFramebuffer(fb_size::NTuple{2, Int})
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
+
+    # Holds the (temporary) render of a scene
+    color_buffer = Texture(
+        RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+    )
     # Order Independent Transparency
     HDR_color_buffer = Texture(
         RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
@@ -115,10 +120,14 @@ Makie.@noconstprop function GLFramebuffer(fb_size::NTuple{2, Int})
         N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
-    attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
+    # Global Buffers
+    attach_framebuffer(composition_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
-    attach_framebuffer(HDR_color_buffer, GL_COLOR_ATTACHMENT2)
-    attach_framebuffer(OIT_weight_buffer, GL_COLOR_ATTACHMENT3)
+    
+    # Scene local buffers
+    attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT2)
+    attach_framebuffer(HDR_color_buffer, GL_COLOR_ATTACHMENT3)
+    attach_framebuffer(OIT_weight_buffer, GL_COLOR_ATTACHMENT4)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
@@ -130,26 +139,30 @@ Makie.@noconstprop function GLFramebuffer(fb_size::NTuple{2, Int})
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
     buffer_ids = Dict{Symbol,GLuint}(
-        :color    => GL_COLOR_ATTACHMENT0,
+        :composition => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
-        :HDR_color => GL_COLOR_ATTACHMENT2,
-        :OIT_weight => GL_COLOR_ATTACHMENT3,
+        
+        :color    => GL_COLOR_ATTACHMENT2,
+        :HDR_color => GL_COLOR_ATTACHMENT3,
+        :OIT_weight => GL_COLOR_ATTACHMENT4,
         :depth    => GL_DEPTH_ATTACHMENT,
         :stencil  => GL_STENCIL_ATTACHMENT,
     )
     buffers = Dict{Symbol, Texture}(
-        :color => color_buffer,
+        :composition => composition_buffer,
         :objectid => objectid_buffer,
+        
+        :color => color_buffer,
         :HDR_color => HDR_color_buffer,
         :OIT_weight => OIT_weight_buffer,
         :depth => depth_buffer,
-        :stencil => depth_buffer
+        :stencil => depth_buffer,
     )
 
     return GLFramebuffer(
         fb_size_node, frambuffer_id,
         buffer_ids, buffers,
-        [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
+        [GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT1]
     )::GLFramebuffer
 end
 

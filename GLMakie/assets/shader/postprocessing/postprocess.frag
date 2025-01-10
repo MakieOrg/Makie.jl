@@ -21,17 +21,15 @@ bool unpack_bool(uint id) {
 
 void main(void)
 {
+    // color.a is transmittance, i.e. 1 - alpha
     vec4 color = texture(color_texture, frag_uv).rgba;
-    if(color.a <= 0){
-        discard;
-    }
-
     uint id = texture(object_ids, frag_uv).x;
+
     // do tonemappings
     //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
     fragment_color.rgb = color.rgb;
     // we store fxaa = true/false in highbit of the object id
-    if (unpack_bool(id)) {
+    if (unpack_bool(id) && (color.a < 1.0)) {
         fragment_color.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
     } else {
         // we disable fxaa by setting luma to 1
