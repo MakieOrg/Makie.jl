@@ -57,6 +57,7 @@
         sleep(1.0)
         Makie.stop!(timer)
         real_dt = 1e-9 * (time_ns() - t)
+        wait(timer.task)
         N = counter[]
 
         @test real_dt * 30.0 - 2 < counter[] < real_dt * 30.0 + 2
