@@ -114,40 +114,31 @@ function Pattern(style::Char = '/'; kwargs...)
 end
 
 function to_image(p::LinePattern)
-    tilesize = p.tilesize
-    full_mask = zeros(tilesize...)
+    Nx, Ny = p.tilesize
+
+    # positive distance outside, negative inside
+    sdf = fill(Float32(Nx + Ny), Nx, Ny)
     for (dir, width, shift) in zip(p.dirs, p.widths, p.shifts)
-        mask = zeros(tilesize...)
-        width -= 1 # take away center
-        if abs(dir[1]) < abs(dir[2])
-            # m = dx / dy; x = m * (y-1) + 1
-            m = dir[1] / dir[2]
-            for y in 1:tilesize[2]
-                cx = m * (y-shift[2]) + shift[1]
-                r = floor(Int64, cx-0.5width):ceil(Int64, cx+0.5width)
-                for x in r[2:end-1]
-                    mask[mod1(x, tilesize[1]), y] = 1.0
-                end
-                mask[mod1(r[1], tilesize[1]), y] = 1 - abs(cx-0.5width - r[1])
-                mask[mod1(r[end], tilesize[1]), y] = 1 - abs(cx+0.5width - r[end])
-            end
-        else
-            # m = dy / dx; y = m * (x-1) + 1
-            m = dir[2] / dir[1]
-            for x in 1:tilesize[1]
-                cy = m * (x-shift[1]) + shift[2]
-                r = floor(Int64, cy-0.5width):ceil(Int64, cy+0.5width)
-                for y in r[2:end-1]
-                    mask[x, mod1(y, tilesize[2])] = 1.0
-                end
-                mask[x, mod1(r[1], tilesize[2])] = 1 - abs(cy-0.5width - r[1])
-                mask[x, mod1(r[end], tilesize[2])] = 1 - abs(cy+0.5width - r[end])
-            end
+
+        origin = shift
+        normal = Vec2f(-dir[2], dir[1])
+        shift_distances = [abs(dot(v, normal)) for v in [Vec2f(Nx, 0), Vec2f(0, Ny)]]
+        for y in 1:Ny, x in 1:Nx
+            dist = dot(Point2f(x, y) - origin, normal)
+            dist = min(abs(dist), abs(abs(dist) - shift_distances[1]), abs(abs(dist) - shift_distances[2]))
+            sdf[x, y] = min(sdf[x, y], dist - 0.5width)
         end
-        full_mask .+= mask
     end
 
-    return map(full_mask) do x
-        return convert(RGBAf, p.colors[1] * clamp(x, 0, 1) + p.colors[2] * (1-clamp(x, 0, 1)))
+    AA_radius = 1/sqrt(2)
+    c1 = p.colors[1]; c2 = p.colors[2]
+    # If both colors are at the same alpha we want to do: c1 * (1-f) + c2 * f
+    # If c2 is at alpha = 0 we want: RGBAf(c1.rgb, c1.a * (1-f)) (or - f?)
+    # If both have different nonzero alpha... what do we want then?
+    c1 = ifelse(c1.alpha == 0, RGBAf(c2.r, c2.g, c2.b, 0), c1)
+    c2 = ifelse(c2.alpha == 0, RGBAf(c1.r, c1.g, c1.b, 0), c2)
+    return map(sdf) do dist
+        f = clamp((dist + AA_radius) / (2 * AA_radius), 0, 1)
+        return c1 * (1 - f) + c2 * f
     end
 end
