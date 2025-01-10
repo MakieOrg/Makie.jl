@@ -294,8 +294,15 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             return output
         end
 
-        handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
+        handle_intensities!(screen, gl_attributes, plot)
+
+        if gl_attributes[:color][] isa Makie.AbstractPattern
+            gl_attributes[:pattern_origin] = map(plot, scene.camera.projectionview, scene.camera.resolution) do pv, res
+                clip = pv * Point4f(0,0,0,1)
+                return Point2f(res .* clip[Vec(1,2)] / clip[4])
+            end
+        end
 
         # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
@@ -483,8 +490,28 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                     end
                 end
 
-                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-                    gl_attributes[:image] = gl_attributes[:color]
+                if haskey(gl_attributes, :color)
+                    if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
+                        pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
+                        gl_attributes[:image] = Texture(pattern_img, x_repeat=:repeat)
+                        get!(gl_attributes, :fetch_pixel, true)
+                        gl_attributes[:color_map] = nothing
+                        gl_attributes[:color] = nothing
+                        gl_attributes[:color_norm] = nothing
+                        # different default with Patterns (no swapping and flipping of axes)
+                        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+                            if uv_transform === Makie.automatic
+                                return Mat{2,3,Float32}(1,0,0,1,0,0)
+                            else
+                                return convert_attribute(uv_transform, key"uv_transform"())
+                            end
+                        end
+                    elseif to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+                        gl_attributes[:image] = gl_attributes[:color]
+                        gl_attributes[:color_map] = nothing
+                        gl_attributes[:color] = nothing
+                        gl_attributes[:color_norm] = nothing
+                    end
                 end
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
@@ -740,14 +767,14 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-    
+
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa Makie.AbstractPattern
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
+        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat)
         get!(gl_attributes, :fetch_pixel, true)
         # different default with Patterns (no swapping and flipping of axes)
         gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
@@ -760,7 +787,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     elseif to_value(color) isa ShaderAbstractions.Sampler
         gl_attributes[:image] = Texture(lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
-        delete!(gl_attributes, :color_norm)    
+        delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
         gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
@@ -818,11 +845,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
             img = pop!(gl_attributes, :intensity)
         elseif to_value(color) isa Makie.AbstractPattern
             pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
+            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
             gl_attributes[:color_map] = nothing
             gl_attributes[:color] = nothing
             gl_attributes[:color_norm] = nothing
+            # different default with Patterns (no swapping and flipping of axes)
+            gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
+                if uv_transform === Makie.automatic
+                    return Mat{2,3,Float32}(1,0,0,1,0,0)
+                else
+                    return convert_attribute(uv_transform, key"uv_transform"())
+                end
+            end
         elseif isa(to_value(color), AbstractMatrix{<: Colorant})
             img = color
             gl_attributes[:color_map] = nothing

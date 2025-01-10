@@ -89,8 +89,8 @@ vec4 get_particle_color(Nothing color, samplerBuffer intensity, sampler1D color_
     // always look up color in vertex_shader (mesh.frag can switch)
     return get_color_from_cmap(texelFetch(intensity, index).x, color_map, color_norm);
 }
-
-vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+// image should be defined instead
+vec4 get_particle_color(Nothing color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
     return vec4(0);
 }
 
