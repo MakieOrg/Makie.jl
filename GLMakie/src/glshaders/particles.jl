@@ -105,7 +105,6 @@ function draw_mesh_particle(screen, p, data)
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
-        pattern_origin = Point2f(0)
         scale_primitive = false
         interpolate_in_fragment_shader = false
         backlight = 0f0

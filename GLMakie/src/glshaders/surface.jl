@@ -136,7 +136,6 @@ function draw_surface(screen, main, data::Dict)
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
-        pattern_origin = Point2f(0)
         matcap = nothing => Texture
 
         nan_color = RGBAf(1, 0, 0, 1)

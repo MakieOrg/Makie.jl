@@ -48,7 +48,6 @@ function draw_mesh(screen, data::Dict)
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
-        pattern_origin = Point2f(0)
         texturecoordinates = Vec2f(0) => GLBuffer
         uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
