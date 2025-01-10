@@ -1847,3 +1847,21 @@ end
 
     f
 end
+
+@reference_test "Color Patterns" begin
+    f = Figure()
+    a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
+
+    pattern = Makie.Pattern('x', width = 0.7, linecolor = (:red, 0.5), backgroundcolor = (:blue, 0.5))
+    mesh!(a, Circle(Point2f(0, 3), 1f0), color = pattern, shading = NoShading)
+
+    r = range(0, 2pi, length=21)[1:end-1]
+    img = [RGBf(0.5 + 0.5 * sin(x), 0.2, 0.5 + 0.5 * cos(y)) for x in r, y in r]
+    mesh!(a, Circle(Point2f(3, 3), 1f0), color = Makie.Pattern(img), shading = NoShading)
+
+    surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
+    meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
+        color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+
+    f
+end
