@@ -8,22 +8,18 @@ For example, in a plot showing stock prices over time, an inset can be used to d
 
 Let's look at how to create this plot.
 
-### 1. Setup and Import Packages
+### 1. Load the Packages
 
-Start by adding CairoMakie backend package and MakieExtra package into the environment.
+Start by loading the CairoMakie backend package and Random package.
 
 ```@example inset
-using Pkg
-Pkg.add("CairoMakie")
-Pkg.add("MakieExtra")
 using CairoMakie
-using MakieExtra
 using Random
 ```
 
 ### 2. Prepare the Main Plot Data
 
-Then we will generate the data required for the main plot (stock price data over a period of time).
+Then we will generate the data required for the main plot (stock price data over a period of 500 days).
 
 ```@example inset
 Random.seed!(123)
@@ -64,12 +60,13 @@ To adjust the axis size, use `width` and `height` attributes. To adjust the axis
 
 ### 5. Plot Data in the Inset
 
-We need to define the data for the inset. For instance, zoom into a specific time range to show detailed price movement.
+We need to define the data for the inset. For instance, select the data between 50 to 70 days range and corresponding data for the price movement.
 
 ```@figure inset
-time_inset = time[50:70]
-stock_price_inset = stock_price[50:70]
-line_inset = lines!(ax_inset, time_inset, stock_price_inset, color=:red)
+xlims!(ax_inset, 50, 70)
+min_price, max_price = minimum(stock_price[50:70]), maximum(stock_price[50:70])
+ylims!(ax_inset, min_price, max_price)
+line_inset = lines!(ax_inset, time, stock_price, color=:red)
 fig
 ```
 
@@ -78,7 +75,7 @@ fig
 It is important to make sure that the inset plot is rendered above the main plot. This is done by setting the z-value in translate! function to a positive value.
 
 ```@example inset
-translate!(ax_inset.blockscene, 0, 0, 100)
+translate!(ax_inset.blockscene, 0, 0, 150)
 ```
 
 ### 7. Add a Legend
@@ -93,10 +90,17 @@ This adds a legend to the right of the figure, associating the blue line with th
 
 ### 8. Mark the Zoomed Section
 
-Indicate the zoomed section of the main plot and guide the eye to the inset plot using lines.
+Indicate the zoomed section of the main plot by drawing a border around the selected region.
 
 ```@figure inset
-zoom_lines!(ax_main, ax_inset)
+border_points = [
+    Point(50, min_price),
+    Point(70, min_price),
+    Point(70, max_price),
+    Point(50, max_price),
+    Point(50, min_price)
+]
+lines!(ax_main, border_points, color=:black, linewidth=1)
 save("output.png", fig) # hide
 fig
 ```
@@ -106,12 +110,8 @@ fig
 Here’s the complete code snippet.
 
 ```julia
-# Setup and import packages
-using Pkg
-Pkg.add("CairoMakie")
-Pkg.add("MakieExtra")
+# Load the packages
 using CairoMakie
-using MakieExtra
 using Random
 
 # Generate dummy stock price data
@@ -138,20 +138,31 @@ ax_inset = Axis(fig[1, 1],
     valign=0.9,
     title="Zoomed View")
 
-# Zoom into days 50 to 70
-time_inset = time[50:70]
-stock_price_inset = stock_price[50:70]
+# Set xlims for a selected time data range
+xlims!(ax_inset, 50, 70)
 
-line_inset = lines!(ax_inset, time_inset, stock_price_inset, color=:red)
+# Calculate and set ylims dynamically for the selected time data range
+min_price, max_price = minimum(stock_price[50:70]), maximum(stock_price[50:70])
+ylims!(ax_inset, min_price, max_price)
+
+# Plot the data in the inset axis
+line_inset = lines!(ax_inset, time, stock_price, color=:red)
 
 # Z-Ordering for rendering order
-translate!(ax_inset.blockscene, 0, 0, 100)
+translate!(ax_inset.blockscene, 0, 0, 150)
 
 # Legend
 Legend(fig[1, 2], [line_main, line_inset], ["Stock Price", "Zoomed Region"])
 
 # Mark the zoomed section
-zoom_lines!(ax_main, ax_inset)
+border_points = [
+    Point(50, min_price),  # Bottom left
+    Point(70, min_price),  # Bottom right
+    Point(70, max_price),  # Top right
+    Point(50, max_price),  # Top left
+    Point(50, min_price)   # Close the rectangle
+]
+lines!(ax_main, border_points, color=:black, linewidth=1)
 fig
 ```
 
@@ -169,7 +180,13 @@ Example: `width = Relative(0.2)` sets the width to 20% of the parent figure's wi
 
 ### 2. `translate!` Function and Z-Ordering
 
-**z-order** (depth) determines the rendering order of elements, with higher z-values appearing in front of lower ones. This is critical for ensuring that the inset plot is visible above the main plot. By explicitly setting the z-value via translate! function, you can layer elements as needed. If translate! is omitted or the z-value is too low, the inset plot may render behind the main plot, making it invisible or partially obscured.
+**z-order** (depth) determines the rendering order of elements, with higher z-values appearing in front of lower ones. This is critical for ensuring that the inset axis is visible above the main plot and its elements. By explicitly setting the z-value using the translate! function, you can layer elements as needed. If the translate! function is omitted or the z-value is too low, the inset plot may render behind the main plot, making it invisible or partially obscured.
+
+In Makie, the z-order for various elements in an axis typically ranges from -100 to +20; 0 for user plots (by default). For an inset axis to reliably appear in front of the main axis and user plots, it must have a z-value of at least +100. If you are adding custom z-values for the main axis, ensure the inset axis has a z-value greater than the highest z-value in the main axis plus 100.
+
+`main_axis_translate < inset_axis_translate - 100`
+
+The maximum z-value allowed is 10,000.
 
 ```
 translate!(obj, 0, 0, some_positive_z_value)
@@ -177,8 +194,21 @@ translate!(obj, 0, 0, some_positive_z_value)
 
 ### 3. Marking the Section that the Inset Axis Shows
 
-It is often helpful to visually indicate which part of the main plot corresponds to the inset axis. To achieve this we could make use of the zoom_lines! function in `MakieExtra.jl` package. It uses axes' relative positions and their limits to properly draw lines and rectangles.
+It is often helpful to visually indicate which part of the main plot corresponds to the inset axis. To achieve this we could draw a border around the selected region. We create a list of points (`border_points`) that outline the rectangle to mark the region of interest.
+These points are calculated using:
+
+* The x-axis range (e.g., 50 to 70) to mark the time period.
+* The y-axis range (`min_price` and `max_price`) dynamically calculated from the data within this time range.
+
+The border points are connected sequentially, and the final point closes the rectangle by connecting back to the first point. Parameters like color and linewidth can be adjusted for visibility and style.
 
 ```
-zoom_lines!(ax1, ax2)
+border_points = [
+    Point(50, min_price),  # Bottom left
+    Point(70, min_price),  # Bottom right
+    Point(70, max_price),  # Top right
+    Point(50, max_price),  # Top left
+    Point(50, min_price)   # Close the rectangle
+]
+lines!(ax_main, border_points, color=:black, linewidth=1)
 ```
