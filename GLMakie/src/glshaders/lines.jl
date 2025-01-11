@@ -129,7 +129,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
-        pattern_sections    = pattern => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
@@ -158,7 +157,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             if !isa(to_value(pattern), Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
             end
-            tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
+            tex = GLAbstraction.Texture(screen.glscreen, lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
             data[:pattern] = tex
         end
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
@@ -201,7 +200,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         if !isa(to_value(pattern), Vector)
             error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
         end
-        tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
+        tex = GLAbstraction.Texture(screen.glscreen, lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
         data[:pattern] = tex
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
