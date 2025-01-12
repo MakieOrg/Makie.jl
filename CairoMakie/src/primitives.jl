@@ -1067,11 +1067,49 @@ function draw_mesh3D(
         valid = Bool[]
     end
 
+
+    # Camera to screen space
+    ts = map(vs) do v
+        clip = projectionview * v
+        @inbounds begin
+            p = (clip ./ clip[4])[Vec(1, 2)]
+            p_yflip = Vec2f(p[1], -p[2])
+            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+        end
+        p = p_0_to_1 .* scene.camera.resolution[]
+        return Vec3f(p[1], p[2], clip[3])
+    end
+
+    # Approximate zorder
+    average_zs = map(f -> average_z(ts, f), meshfaces)
+    zorder = sortperm(average_zs)
+
     if isnothing(meshnormals)
         ns = nothing
     else
         ns = map(n -> normalize(normalmatrix * n), meshnormals)
     end
+
+    # Face culling
+    if isempty(valid) && !isnothing(ns)
+        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    elseif !isempty(valid)
+        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
+    end
+
+    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
+    # as a color. In this case we don't do shading and fall back to mesh2D
+    # rendering
+    if per_face_col isa Cairo.CairoPattern
+        clip = scene.camera.projectionview[] * Point4f(0,0,0,1)
+        o = (-0.5f0, 0.5f0) .* scene.camera.resolution[] .* clip[Vec(1,2)] / clip[4]
+        T = Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
+        pattern_set_matrix(per_face_col, Cairo.CairoMatrix(T...))
+        return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
+    end
+
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
@@ -1097,40 +1135,8 @@ function draw_mesh3D(
         Vec3f(0)
     end
 
-    # Camera to screen space
-    ts = map(vs) do v
-        clip = projectionview * v
-        @inbounds begin
-            p = (clip ./ clip[4])[Vec(1, 2)]
-            p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-        end
-        p = p_0_to_1 .* scene.camera.resolution[]
-        return Vec3f(p[1], p[2], clip[3])
-    end
-
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(v[i] - eyeposition), vs)
-
-    # Approximate zorder
-    average_zs = map(f -> average_z(ts, f), meshfaces)
-    zorder = sortperm(average_zs)
-
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
-    end
-
-    if per_face_col isa Cairo.CairoPattern
-        clip = scene.camera.projectionview[] * Point4f(0,0,0,1)
-        o = (-0.5f0, 0.5f0) .* scene.camera.resolution[] .* clip[Vec(1,2)] / clip[4]
-        T = Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
-        pattern_set_matrix(per_face_col, Cairo.CairoMatrix(T...))
-    end
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
@@ -1204,10 +1210,6 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.destroy(pattern)
     end
 
-end
-
-function draw_pattern(ctx, zorder, shading, meshfaces, ts, pattern::Cairo.CairoPattern, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
-    draw_mesh2D(ctx, pattern, ts, meshfaces, reverse(zorder))
 end
 
 ################################################################################
