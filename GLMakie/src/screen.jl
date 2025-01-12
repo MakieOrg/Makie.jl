@@ -740,6 +740,11 @@ function closeall(; empty_shader=true)
 
     if !isempty(atlas_texture_cache)
         @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
+        # Manual cleanup - font render callbacks are not yet cleaned up, delete
+        # them here. Contexts should all be dead so there is no point in free(tex)
+        for ((atlas, ctx), (tex, func)) in atlas_texture_cache
+            Makie.remove_font_render_callback!(atlas, func)
+        end
         empty!(atlas_texture_cache)
     end
 
