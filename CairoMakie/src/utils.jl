@@ -505,6 +505,7 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
     bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
     cairoimage = Cairo.CairoImageSurface(bitmappattern)
     cairopattern = Cairo.CairoPattern(cairoimage)
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     return cairopattern
 end
 
@@ -519,7 +520,6 @@ end
 
 function to_cairo_color(color::Makie.AbstractPattern, plot_object)
     cairopattern = Cairo.CairoPattern(color)
-    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     return cairopattern
 end
 
@@ -614,10 +614,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     elseif color isa AbstractVector{<: Colorant}
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
-        img = to_uint32_color.(rotr90(Makie.to_image(color)))
-        pattern = Cairo.CairoPattern(Cairo.CairoARGBSurface(img))
-        Cairo.pattern_set_extend(pattern, Cairo.EXTEND_REPEAT)
-        return pattern
+        return Cairo.CairoPattern(color)
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
         wsize = size(color)
         wh = wsize .- 1
