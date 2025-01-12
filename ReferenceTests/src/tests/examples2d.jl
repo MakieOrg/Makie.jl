@@ -1865,3 +1865,22 @@ end
 
     f
 end
+
+@reference_test "Color patterns in recipes" begin
+    pattern = Makie.Pattern('x', linecolor = :black, backgroundcolor = RGBf(0.7, 0.8, 0.5))
+
+    f = Figure(size = (500, 400))
+    a = Axis(f[1, 1])
+    xlims!(-0.25, 6.6)
+
+    vs = [1, 2, 2, 3, 3, 3]
+    hist!(a, 0.5 .* vs, color = pattern, bins = 3, gap = 0.2, direction = :x)
+    density!(a, vs, color = pattern)
+    poly!(a, [0, 0, 1, 1], [2, 3, 3, 2], color = pattern)
+    band!(a, [2, 3, 4], [2.5, 3, 2], [3.5, 3.5, 3], color = pattern)
+    barplot!(a, [5, 6], [3, 2], color = pattern)
+    pie!(a, 4, 1, vs, radius = 0.5, color = pattern) # TODO: per element
+    hspan!(a, 4, 4.5, color = pattern)
+
+    f
+end
