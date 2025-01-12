@@ -509,6 +509,14 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
     return cairopattern
 end
 
+function align_pattern(pattern::Cairo.CairoPattern, scene, plot)
+    clip = scene.camera.projectionview[] * Point4f(0,0,0,1)
+    o = (-0.5f0, 0.5f0) .* scene.camera.resolution[] .* clip[Vec(1,2)] / clip[4]
+    T = Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
+    pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
+    return
+end
+
 ########################################
 #        Common color utilities        #
 ########################################
@@ -518,8 +526,10 @@ function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_ob
     return to_color(to_value(cmap))
 end
 
-function to_cairo_color(color::Makie.AbstractPattern, plot_object)
+function to_cairo_color(color::Makie.AbstractPattern, plot)
     cairopattern = Cairo.CairoPattern(color)
+    # This should be reset after drawing
+    align_pattern(cairopattern, Makie.parent_scene(plot), plot)
     return cairopattern
 end
 

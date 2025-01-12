@@ -883,10 +883,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     if cols isa Cairo.CairoPattern
-        clip = scene.camera.projectionview[] * Point4f(0,0,0,1)
-        o = (-0.5f0, 0.5f0) .* scene.camera.resolution[] .* clip[Vec(1,2)] / clip[4]
-        T = Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
-        pattern_set_matrix(cols, Cairo.CairoMatrix(T...))
+        align_pattern(cols, scene, plot)
     end
     return draw_mesh2D(screen, cols, vs, fs)
 end
@@ -1103,10 +1100,7 @@ function draw_mesh3D(
     # as a color. In this case we don't do shading and fall back to mesh2D
     # rendering
     if per_face_col isa Cairo.CairoPattern
-        clip = scene.camera.projectionview[] * Point4f(0,0,0,1)
-        o = (-0.5f0, 0.5f0) .* scene.camera.resolution[] .* clip[Vec(1,2)] / clip[4]
-        T = Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
-        pattern_set_matrix(per_face_col, Cairo.CairoMatrix(T...))
+        align_pattern(per_face_col, scene, plot)
         return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
     end
 
