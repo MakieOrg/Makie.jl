@@ -614,8 +614,8 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     elseif color isa AbstractVector{<: Colorant}
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
-        cimg = CairoMakie.to_cairo_image(Makie.to_image(color))
-        pattern = Cairo.CairoPattern(cimg)
+        img = to_uint32_color.(rotr90(Makie.to_image(color)))
+        pattern = Cairo.CairoPattern(Cairo.CairoARGBSurface(img))
         Cairo.pattern_set_extend(pattern, Cairo.EXTEND_REPEAT)
         return pattern
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
