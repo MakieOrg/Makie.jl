@@ -1,8 +1,8 @@
-function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
+function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
     m = convert(Observable, mesh_obs)
 
-    result[:faces]    = indexbuffer(map(faces, m))
-    result[:vertices] = GLBuffer(map(coordinates, m))
+    result[:faces]    = indexbuffer(context, map(faces, m))
+    result[:vertices] = GLBuffer(context, map(coordinates, m))
 
     function to_buffer(name, target)
         if hasproperty(m[], name)
@@ -11,9 +11,9 @@ function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
                 val = map(m -> getproperty(m, name), m)
             end
             if val[] isa AbstractVector
-                result[target] = GLBuffer(val)
+                result[target] = GLBuffer(context, val)
             elseif val[] isa AbstractMatrix
-                result[target] = Texture(val)
+                result[target] = Texture(context, val)
             else
                 error("unsupported attribute: $(name)")
             end

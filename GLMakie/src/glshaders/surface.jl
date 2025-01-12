@@ -118,7 +118,7 @@ end
 
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
-    to_opengl_mesh!(data, primitive)
+    to_opengl_mesh!(screen.glscreen, data, primitive)
     shading = pop!(data, :shading, FastShading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         scale = nothing
