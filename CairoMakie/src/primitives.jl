@@ -885,14 +885,17 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     return draw_mesh2D(screen, cols, vs, fs)
 end
 
-function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
+function draw_mesh2D(screen, color, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
+    return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
+end
 
-    ctx = screen.context
+function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace}, indices)
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
-        t1, t2, t3 =  vs[f] #triangle points
+    for i in indices
+        c1, c2, c3 = per_face_cols[i]
+        t1, t2, t3 =  vs[fs[i]] #triangle points
 
         # don't draw any mesh faces with NaN components.
         if isnan(t1) || isnan(t2) || isnan(t3)
@@ -916,6 +919,31 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
+    end
+    return nothing
+end
+
+function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::Vector, fs::Vector{GLTriangleFace}, indices)
+    # Prioritize colors of the mesh if present
+    # This is a hack, which needs cleaning up in the Mesh plot type!
+    Cairo.set_source(ctx, pattern)
+
+    for i in indices
+        t1, t2, t3 = vs[fs[i]] # triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        # TODO:
+        # - this may create gaps like heatmap?
+        # - for some reason this is liqhter than it should be?
+        Cairo.move_to(ctx, t1[1], t1[2])
+        Cairo.line_to(ctx, t2[1], t2[2])
+        Cairo.line_to(ctx, t3[1], t3[2])
+        Cairo.close_path(ctx)
+        Cairo.fill(ctx);
     end
     return nothing
 end
@@ -1162,6 +1190,10 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.destroy(pattern)
     end
 
+end
+
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, pattern::Cairo.CairoPattern, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
+    draw_mesh2D(ctx, pattern, ts, meshfaces, reverse(zorder))
 end
 
 ################################################################################
