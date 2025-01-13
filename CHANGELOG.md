@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Changed minorticks to skip computation when they are not visible [#4681](https://github.com/MakieOrg/Makie.jl/pull/4681)
 - Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
 - Fixed incomplete plot cleanup when cleanup is triggered by an event. [#4710](https://github.com/MakieOrg/Makie.jl/pull/4710)
 
