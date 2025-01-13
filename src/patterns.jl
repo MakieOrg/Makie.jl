@@ -129,14 +129,20 @@ function to_image(p::LinePattern)
     # positive distance outside, negative inside
     sdf = fill(Float32(Nx + Ny), Nx, Ny)
     for (dir, width, origin) in zip(p.dirs, p.widths, p.origins)
+        normal = normalize(Vec2f(-dir[2], dir[1]))
 
-        normal = Vec2f(-dir[2], dir[1])
-        # distance between this line and lines from neighboring tiles (in + shape)
-        shift_distances = [abs(dot(v, normal)) for v in [Vec2f(Nx, 0), Vec2f(0, Ny)]]
+        # Figure out maximum distance between periodic lines
+        max_line_dist = min(abs(normal[1] * Nx), abs(normal[2] * Ny))
+        # horizontal/vertical lines should repeat once per tile
+        max_line_dist = ifelse(max_line_dist < 1, min(Nx, Ny), max_line_dist)
+
         for y in 1:Ny, x in 1:Nx
-            dist = abs(dot(Point2f(x, y) - origin, normal))
-            dist = min(dist, abs(dist - shift_distances[1]), abs(dist - shift_distances[2]))
-            sdf[x, y] = min(sdf[x, y], dist - 0.5width)
+            # center on pixel with -0.5
+            dist = dot(Point2f(x, y) - origin .- 0.5, normal)
+            # shift distance by multiple of max_line_dist so that it is always
+            # between -0.5max_line_dist and 0.5max_line_dist
+            dist -= max_line_dist * div(dist + sign(dist) * 0.5max_line_dist, max_line_dist)
+            sdf[x, y] = min(sdf[x, y], abs(dist) - 0.5width)
         end
     end
 
