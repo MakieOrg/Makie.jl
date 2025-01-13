@@ -392,7 +392,7 @@ end
     rs = 8
     rs_inner = sqrt.(vs_inner ./ vs) * rs
 
-    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, backgroundcolor=:transparent)
     # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
@@ -1867,7 +1867,7 @@ end
 end
 
 @reference_test "Color patterns in recipes" begin
-    pattern = Makie.Pattern('x', linecolor = :black, backgroundcolor = RGBf(0.7, 0.8, 0.5))
+    pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
 
     f = Figure(size = (500, 400))
     a = Axis(f[1, 1])

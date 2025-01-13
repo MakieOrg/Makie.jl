@@ -499,7 +499,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 if haskey(gl_attributes, :color)
                     if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
                         pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
-                        gl_attributes[:image] = Texture(pattern_img, x_repeat=:repeat)
+                        gl_attributes[:image] = Texture(screen.glscreen, pattern_img, x_repeat=:repeat)
                         gl_attributes[:color_map] = nothing
                         gl_attributes[:color] = nothing
                         gl_attributes[:color_norm] = nothing

@@ -63,7 +63,7 @@ Creates a `LinePattern` for the given keyword arguments:
 compatible with the direction.
 - `shift`: Sets the starting point for the line.
 - `linecolor`: The color with which the line is replaced.
-- `background_color`:: The background color.
+- `backgroundcolor`: The background color.
 
 Multiple `direction`s, `width`s and `shift`s can also be given to create more
 complex patterns, e.g. a cross-hatching pattern.
@@ -71,8 +71,14 @@ complex patterns, e.g. a cross-hatching pattern.
 function LinePattern(;
         direction = Vec2f(1), width = 2f0, tilesize = (10,10),
         shift = map(w -> Vec2f(0.5 - 0.5(w%2)), width),
-        linecolor = RGBAf(0,0,0,1), backgroundcolor = RGBAf(1,1,1,0)
+        linecolor = RGBAf(0,0,0,1), backgroundcolor = RGBAf(1,1,1,0),
+        background_color = nothing
     )
+    if !isnothing(background_color)
+        @warn "LinePattern(background_color = ...) has been deprecated in favor of LinePattern(backgroundcolor = ...)"
+        backgroundcolor = background_color
+    end
+
     N = 1
     direction isa Vector{<:Vec2} && (N = length(direction))
     width isa Vector && (length(width) > N) && (N = length(width))
@@ -146,7 +152,7 @@ end
 
 # Consider applying model[] here too, so that patterns move with translate too
 function pattern_offset(projectionview::Mat4, resolution::Vec2)
-    clip = projectionview[] * Point4f(0,0,0,1)
+    clip = projectionview * Point4f(0,0,0,1)
     return (-0.5f0, 0.5f0) .* resolution .* clip[Vec(1,2)] / clip[4]
     return Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
 end
