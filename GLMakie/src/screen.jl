@@ -450,6 +450,20 @@ function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
     GLFW.set_visibility!(nw, visible)
 end
 
+function set_title!(screen::Screen, title::String)
+    if !screen.owns_glscreen
+        error(unimplemented_error)
+    end
+
+    set_title!(screen.glscreen, title)
+    screen.config.title = title
+end
+
+function set_title!(nw::GLFW.Window, title::String)
+    @assert nw.handle !== C_NULL
+    GLFW.SetWindowTitle(nw, title)
+end
+
 function display_scene!(screen::Screen, scene::Scene)
     @debug("display scene on screen")
     resize!(screen, size(scene)...)
