@@ -167,15 +167,20 @@ function pattern_offset(projectionview::Mat4, resolution::Vec2)
     return Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
 end
 
-function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern)
+function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern, use_mat3 = false)
     origin = pattern_offset(projectionview, resolution)
     px_to_uv = Makie.uv_transform(-origin, Vec2f(1.0 ./ size(pattern)))
 
     if uv_transform === Makie.automatic
-        return convert_attribute(px_to_uv, Makie.key"uv_transform"())
+        uvt = convert_attribute(px_to_uv, Makie.key"uv_transform"())
     elseif uv_transform isa Vector
-        return map(T  -> T * pv_to_uv, convert_attribute(uv_transform, Makie.key"uv_transform"()))
+        uvt = map(T -> T * pv_to_uv, convert_attribute(uv_transform, Makie.key"uv_transform"()))
     else # Mat{2,3,Float32}
-        return convert_attribute(uv_transform, Makie.key"uv_transform"()) * px_to_uv
+        uvt = convert_attribute(uv_transform, Makie.key"uv_transform"()) * px_to_uv
+    end
+    if use_mat3
+        return Mat3f(uvt[1], uvt[2], 0, uvt[3], uvt[4], 0, uvt[5], uvt[6], 1)
+    else
+        return uvt
     end
 end

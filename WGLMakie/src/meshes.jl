@@ -38,11 +38,12 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         # also includes px to uv coordinate transform so we can use linear
         # interpolation (no jitter) and related pattern to (0,0,0) in world space
         scene = Makie.parent_scene(plot)
-        uniforms[:uv_transform] = map(
-            Makie.pattern_uv_transform, plot,
-            plot.attributes[:uv_transform], scene.camera.projectionview,
-            scene.camera.resolution, color
-        )
+        uniforms[:uv_transform] = map(plot,
+                plot.attributes[:uv_transform], scene.camera.projectionview,
+                scene.camera.resolution, color
+            ) do uvt, pv, res, pattern
+            return Makie.pattern_uv_transform(uvt, pv, res, pattern, true)
+        end
     elseif color[] isa AbstractMatrix
         uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMapping
