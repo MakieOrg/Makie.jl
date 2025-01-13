@@ -4,6 +4,7 @@
 
 - Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
 - Fixed incomplete plot cleanup when cleanup is triggered by an event. [#4710](https://github.com/MakieOrg/Makie.jl/pull/4710)
+- Automatically plot Enums as categorical [#4717](https://github.com/MakieOrg/Makie.jl/pull/4717).
 
 ## [0.22.0] - 2024-12-12
 
