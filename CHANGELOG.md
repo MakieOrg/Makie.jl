@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- fix `px_per_unit != 1` not getting fit to the interactive window size in GLMakie [#4687](https://github.com/MakieOrg/Makie.jl/pull/4687)
 - Changed minorticks to skip computation when they are not visible [#4681](https://github.com/MakieOrg/Makie.jl/pull/4681)
 - Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
 - Fixed incomplete plot cleanup when cleanup is triggered by an event. [#4710](https://github.com/MakieOrg/Makie.jl/pull/4710)
