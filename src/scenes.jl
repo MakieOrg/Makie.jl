@@ -436,6 +436,8 @@ function delete_scene!(scene::Scene)
 end
 
 function free(scene::Scene)
+    # Errors should be handled at a lower level because otherwise
+    # some of the cleanup will be incomplete.
     empty!(scene; free=true)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
@@ -448,6 +450,7 @@ function free(scene::Scene)
     return
 end
 
+# Note: called from scene finalizer if free = true
 function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
@@ -493,15 +496,18 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     end
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
@@ -513,6 +519,7 @@ function free(plot::AbstractPlot)
     return
 end
 
+# Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
     # TODO, if we want to delete a subplot of a plot,

@@ -1513,6 +1513,134 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :backgroundcolor => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    ax1 = Axis(f[1, 1])
+                    ax2 = Axis(f[1, 2], backgroundcolor = :gray80)
+
+                    f
+                """
+            )
+        ],
+        :xautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), title = "xautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[2, 1], xautolimitmargin = (0.05, 0.05), title = "xautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[3, 1], xautolimitmargin = (0, 0.2), title = "xautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :yautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], yautolimitmargin = (0, 0), title = "yautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[1, 2], yautolimitmargin = (0.05, 0.05), title = "yautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[1, 3], yautolimitmargin = (0, 0.2), title = "yautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :xticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xticklabelpad = 0, title = "xticklabelpad = 0")
+                    Axis(f[1, 2], xticklabelpad = 5, title = "xticklabelpad = 5")
+                    Axis(f[1, 3], xticklabelpad = 15, title = "xticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], yticklabelpad = 0, title = "yticklabelpad = 0")
+                    Axis(f[2, 1], yticklabelpad = 5, title = "yticklabelpad = 5")
+                    Axis(f[3, 1], yticklabelpad = 15, title = "yticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :xticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xticklabelspace = 0.0, title = "xticklabelspace = 0.0")
+                    Axis(f[1, 2], xlabel = "X Label", xticklabelspace = 30.0, title = "xticklabelspace = 30.0")
+                    Axis(f[1, 3], xlabel = "X Label", xticklabelspace = Makie.automatic, title = "xticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", yticklabelspace = 0.0, title = "yticklabelspace = 0.0")
+                    Axis(f[2, 1], ylabel = "Y Label", yticklabelspace = 30.0, title = "yticklabelspace = 30.0")
+                    Axis(f[3, 1], ylabel = "Y Label", yticklabelspace = Makie.automatic, title = "yticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :xlabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xlabelpadding = 0, title = "xlabelpadding = 0")
+                    Axis(f[1, 2], xlabel = "X Label", xlabelpadding = 5, title = "xlabelpadding = 5")
+                    Axis(f[1, 3], xlabel = "X Label", xlabelpadding = 10, title = "xlabelpadding = 10")
+
+                    f
+                """
+            )
+        ],
+        :ylabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", ylabelpadding = 0, title = "ylabelpadding = 0")
+                    Axis(f[2, 1], ylabel = "Y Label", ylabelpadding = 5, title = "ylabelpadding = 5")
+                    Axis(f[3, 1], ylabel = "Y Label", ylabelpadding = 10, title = "ylabelpadding = 10")
+
+                    f
+                """
+            )
+        ],
         :title => [
             Example(
                 code = """
