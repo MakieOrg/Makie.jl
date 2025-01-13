@@ -452,6 +452,20 @@ function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
     GLFW.set_visibility!(nw, visible)
 end
 
+function set_title!(screen::Screen, title::String)
+    if !screen.owns_glscreen
+        error(unimplemented_error)
+    end
+
+    set_title!(screen.glscreen, title)
+    screen.config.title = title
+end
+
+function set_title!(nw::GLFW.Window, title::String)
+    @assert nw.handle !== C_NULL
+    GLFW.SetWindowTitle(nw, title)
+end
+
 function display_scene!(screen::Screen, scene::Scene)
     @debug("display scene on screen")
     resize!(screen, size(scene)...)
@@ -742,6 +756,11 @@ function closeall(; empty_shader=true)
 
     if !isempty(atlas_texture_cache)
         @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
+        # Manual cleanup - font render callbacks are not yet cleaned up, delete
+        # them here. Contexts should all be dead so there is no point in free(tex)
+        for ((atlas, ctx), (tex, func)) in atlas_texture_cache
+            Makie.remove_font_render_callback!(atlas, func)
+        end
         empty!(atlas_texture_cache)
     end
 
