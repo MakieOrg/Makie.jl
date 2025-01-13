@@ -44,7 +44,7 @@ to_image(p::ImagePattern) = p.img
 struct LinePattern <: AbstractPattern{RGBAf}
     dirs::Vector{Vec2f}
     widths::Vector{Float32}
-    shifts::Vector{Vec2f}
+    origins::Vector{Vec2f}
 
     tilesize::NTuple{2, Int}
     colors::NTuple{2, RGBAf}
@@ -57,39 +57,43 @@ Base.size(pattern::LinePattern) = pattern.tilesize
     LinePattern([; kwargs...])
 
 Creates a `LinePattern` for the given keyword arguments:
-- `direction`: The direction of the line.
-- `width`: The width of the line
-- `tilesize`: The size of the image on which the line is drawn. This should be
-compatible with the direction.
-- `shift`: Sets the starting point for the line.
+- `direction = Vec2f(1)`: One or multiple `::VecTypes{2}` setting the direction of one or multiple lines.
+- `width = 2f0`: The width of the line(s).
+- `tilesize = (10, 10)`: The size of the image on which the line is drawn. This should be
+compatible with the direction, i.e. the line pattern should be continuous when placing
+tiles next to each other. This effectively controls the gap between lines.
+- `origin = Vec2f(0)`: Sets the starting point for the line.
 - `linecolor`: The color with which the line is replaced.
 - `backgroundcolor`: The background color.
-
-Multiple `direction`s, `width`s and `shift`s can also be given to create more
-complex patterns, e.g. a cross-hatching pattern.
 """
 function LinePattern(;
-        direction = Vec2f(1), width = 2f0, tilesize = (10,10),
-        shift = map(w -> Vec2f(0.5 - 0.5(w%2)), width),
+        direction = Vec2f(1), width = 2f0, tilesize = (10,10), origin = Vec2f(0),
         linecolor = RGBAf(0,0,0,1), backgroundcolor = RGBAf(1,1,1,0),
-        background_color = nothing
+        background_color = nothing, shift = nothing
     )
     if !isnothing(background_color)
         @warn "LinePattern(background_color = ...) has been deprecated in favor of LinePattern(backgroundcolor = ...)"
         backgroundcolor = background_color
     end
+    if !isnothing(shift)
+        @warn "LinePattern(shift = ...) has been deprecated in favor of LinePattern(origin = ...)"
+        origin = shift
+    end
 
-    N = 1
-    direction isa Vector{<:Vec2} && (N = length(direction))
-    width isa Vector && (length(width) > N) && (N = length(width))
-    shift isa Vector{<:Vec2} && (length(shift) > N) && (N = length(shift))
+    N1 = ifelse(direction isa Vector, length(direction), 1)
+    N2 = ifelse(width isa Vector, length(width), 1)
+    N3 = ifelse(origin isa Vector, length(origin), 1)
+    N = max(N1, N2, N3)
+    if !((N == N1 || N1 == 1) && (N == N2 || N2 == 1) && (N == N3 || N3 == 1))
+        error("If direction, origin and/or width is given as a Vector it must match the length of other Vectors.")
+    end
 
-    dirs = direction isa Vector{<:Vec2} ? direction : Vec2f[direction for _ in 1:N]
+    dirs = direction isa Vector ? direction : Vec2f[direction for _ in 1:N]
     widths = width isa Vector ? width : Float32[width for _ in 1:N]
-    shifts = shift isa Vector{<:Vec2} ? shift : Vec2f[shift for _ in 1:N]
+    origins = origin isa Vector ? origin : Vec2f[origin for _ in 1:N]
     colors = (to_color(linecolor), to_color(backgroundcolor))
 
-    return LinePattern(dirs, widths, shifts, tilesize, colors)
+    return LinePattern(dirs, widths, origins, tilesize, colors)
 end
 
 """
@@ -124,14 +128,14 @@ function to_image(p::LinePattern)
 
     # positive distance outside, negative inside
     sdf = fill(Float32(Nx + Ny), Nx, Ny)
-    for (dir, width, shift) in zip(p.dirs, p.widths, p.shifts)
+    for (dir, width, origin) in zip(p.dirs, p.widths, p.origins)
 
-        origin = shift
         normal = Vec2f(-dir[2], dir[1])
+        # distance between this line and lines from neighboring tiles (in + shape)
         shift_distances = [abs(dot(v, normal)) for v in [Vec2f(Nx, 0), Vec2f(0, Ny)]]
         for y in 1:Ny, x in 1:Nx
-            dist = dot(Point2f(x, y) - origin, normal)
-            dist = min(abs(dist), abs(abs(dist) - shift_distances[1]), abs(abs(dist) - shift_distances[2]))
+            dist = abs(dot(Point2f(x, y) - origin, normal))
+            dist = min(dist, abs(dist - shift_distances[1]), abs(dist - shift_distances[2]))
             sdf[x, y] = min(sdf[x, y], dist - 0.5width)
         end
     end
