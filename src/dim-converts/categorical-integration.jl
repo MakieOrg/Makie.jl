@@ -1,7 +1,7 @@
 """
     CategoricalConversion(; sortby=identity)
 
-Categorical conversion. Gets chosen automatically only for `Categorical(array_of_objects)` right now.
+Categorical conversion. Gets chosen automatically only for `Categorical(array_of_objects)` and `Enums` right now.
 The categories work with any sortable value though, so one can always do `Axis(fig; dim1_conversion=CategoricalConversion())`,
 to use it for other categories.
 One can use `CategoricalConversion(sortby=func)`, to change the sorting, or make unsortable objects sortable.
@@ -46,6 +46,11 @@ expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
 needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
 MakieCore.should_dim_convert(::Type{Categorical}) = true
 create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
+
+# Support enums as categorical per default
+expand_dimensions(::PointBased, y::AbstractVector{<:Enum}) = (keys(y), y)
+MakieCore.should_dim_convert(::Type{<:Enum}) = true
+create_dim_conversion(::Type{<:Enum}) = CategoricalConversion(; sortby=identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)
     all_categories = []
