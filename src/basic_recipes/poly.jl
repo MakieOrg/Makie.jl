@@ -91,7 +91,9 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     outer = coordinates(polygon.exterior)
     # TODO consider applying f32 convert here too. We would need to identify this though...
     PT = float_type(outer)
-    points = Vector{PT}[apply_transform(transform_func, outer)]
+    # Note that this should not be coerced to be a `Vector{PT}`,
+    # since `apply_transform` can change points from e.g 2D to 3D.
+    points = [apply_transform(transform_func, outer)]
     points_flat = PT[outer;]
     for inner in polygon.interiors
         inner_points = coordinates(inner)
