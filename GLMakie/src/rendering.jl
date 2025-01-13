@@ -29,6 +29,7 @@ Renders a single frame of a `window`
 function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
+    GLAbstraction.require_context(nw)
 
     function sortby(x)
         robj = x[3]
@@ -100,6 +101,8 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
+
+    GLAbstraction.require_context(nw)
 
     return
 end

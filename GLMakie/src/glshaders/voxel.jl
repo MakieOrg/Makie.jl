@@ -1,7 +1,7 @@
 @nospecialize
 function draw_voxels(screen, main::VolumeTypes, data::Dict)
     geom = Rect2f(Point2f(0), Vec2f(1.0))
-    to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
+    to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
     shading = pop!(data, :shading, FastShading)
     @gen_defaults! data begin
         voxel_id = main => Texture

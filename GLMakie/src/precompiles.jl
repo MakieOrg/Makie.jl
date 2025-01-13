@@ -49,7 +49,6 @@ let
             screen = Screen(Scene(), config; visible=false, start_renderloop=false)
             close(screen)
 
-            empty!(atlas_texture_cache)
             closeall(; empty_shader=false)
             @assert isempty(SCREEN_REUSE_POOL)
             @assert isempty(ALL_SCREENS)
