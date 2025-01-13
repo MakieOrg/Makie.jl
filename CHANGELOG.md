@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
+- Fixed incomplete plot cleanup when cleanup is triggered by an event. [#4710](https://github.com/MakieOrg/Makie.jl/pull/4710)
+
 ## [0.22.0] - 2024-12-12
 
 - Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)
@@ -27,6 +30,7 @@
 - Fixed an issue where `reinterpret`ed arrays of line points were not handled correctly in CairoMakie [#4668](https://github.com/MakieOrg/Makie.jl/pull/4668).
 - Fixed various issues with `markerspace = :data`, `transform_marker = true` and `rotation` for scatter in CairoMakie (incorrect marker transformations, ignored transformations, Cairo state corruption) [#4663](https://github.com/MakieOrg/Makie.jl/pull/4663)
 - Changed deprecation warnings for Vector and Range inputs in `image`, `volume`, `voxels` and `spy` into **errors** [#4685](https://github.com/MakieOrg/Makie.jl/pull/4685)
+- Refactored OpenGL cleanup to run immediately rather than on GC [#4699](https://github.com/MakieOrg/Makie.jl/pull/4699)
 
 ## [0.21.18] - 2024-12-12
 
