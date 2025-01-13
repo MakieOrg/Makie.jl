@@ -212,3 +212,5 @@ border_points = [
 ]
 lines!(ax_main, border_points, color=:black, linewidth=1)
 ```
+
+Another approach to marking the selected region is to use the [zoom_lines](https://juliaaplavin.github.io/MakieExtraDocs.jl/notebooks/examples.html#3526c688-aea9-411b-a837-dc02ff81a7ee) function from the [MakieExtra.jl](https://juliapackages.com/p/makieextra) package. This function not only marks the region but also connects it to the inset axis with guiding lines, enhancing the visual connection between the main plot and the inset plot.
