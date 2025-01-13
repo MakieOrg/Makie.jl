@@ -469,11 +469,7 @@ function run_step(screen, ::Nothing, step::BlitToScreen)
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.screen_framebuffer_id)
 
     src_w, src_h = framebuffer_size(screen)
-    if isnothing(screen.scene)
-        trg_w, trg_h = src_w, src_h
-    else
-        trg_w, trg_h = widths(screen.scene.viewport[])
-    end
+    trg_w, trg_h = screen.size
 
     glBlitFramebuffer(
         0, 0, src_w, src_h,

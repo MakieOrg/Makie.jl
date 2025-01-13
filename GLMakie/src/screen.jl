@@ -152,7 +152,9 @@ $(Base.doc(MakieScreen))
 """
 mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
+    size::Tuple{Int, Int}
     owns_glscreen::Bool
+
     shader_cache::GLAbstraction.ShaderCache
     framebuffer_factory::FramebufferFactory
     config::Union{Nothing, ScreenConfig}
@@ -197,7 +199,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
         s = size(framebuffer_factory)
         screen = new{GLWindow}(
-            glscreen, owns_glscreen, shader_cache, framebuffer_factory,
+            glscreen, (10,10), owns_glscreen, shader_cache, framebuffer_factory,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0f0), screen2scene,
             screens, renderlist, GLRenderPipeline(), cache, cache2plot,
@@ -424,6 +426,20 @@ end
 function set_screen_visibility!(nw::GLFW.Window, visible::Bool)
     @assert nw.handle !== C_NULL
     GLFW.set_visibility!(nw, visible)
+end
+
+function set_title!(screen::Screen, title::String)
+    if !screen.owns_glscreen
+        error(unimplemented_error)
+    end
+
+    set_title!(screen.glscreen, title)
+    screen.config.title = title
+end
+
+function set_title!(nw::GLFW.Window, title::String)
+    @assert nw.handle !== C_NULL
+    GLFW.SetWindowTitle(nw, title)
 end
 
 function display_scene!(screen::Screen, scene::Scene)
@@ -732,6 +748,11 @@ function closeall(; empty_shader=true)
 
     if !isempty(atlas_texture_cache)
         @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
+        # Manual cleanup - font render callbacks are not yet cleaned up, delete
+        # them here. Contexts should all be dead so there is no point in free(tex)
+        for ((atlas, ctx), (tex, func)) in atlas_texture_cache
+            Makie.remove_font_render_callback!(atlas, func)
+        end
         empty!(atlas_texture_cache)
     end
 
@@ -743,6 +764,12 @@ end
 function Base.resize!(screen::Screen, w::Int, h::Int)
     window = to_native(screen)
     (w > 0 && h > 0 && isopen(window)) || return nothing
+
+    # Then resize the underlying rendering framebuffers as well, which can be scaled
+    # independently of the window scale factor.
+    fbscale = screen.px_per_unit[]
+    fbw, fbh = round.(Int, fbscale .* (w, h))
+    resize!(screen.framebuffer_factory, fbw, fbh)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
@@ -761,13 +788,13 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
         end
+        screen.size = (winw, winh)
+    else
+        # TODO: This should be the size of the target framebuffer... But what is
+        #       that?
+        screen.size = (fbw, fbh)
     end
 
-    # Then resize the underlying rendering framebuffers as well, which can be scaled
-    # independently of the window scale factor.
-    fbscale = screen.px_per_unit[]
-    fbw, fbh = round.(Int, fbscale .* (w, h))
-    resize!(screen.framebuffer_factory, fbw, fbh)
     return nothing
 end
 

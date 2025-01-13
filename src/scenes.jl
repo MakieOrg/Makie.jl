@@ -436,27 +436,17 @@ function delete_scene!(scene::Scene)
 end
 
 function free(scene::Scene)
-    try
-        empty!(scene; free=true)
-        for field in [:backgroundcolor, :viewport, :visible]
-            Observables.clear(getfield(scene, field))
-        end
-        for screen in copy(scene.current_screens)
-            delete!(screen, scene)
-        end
-        empty!(scene.current_screens)
-        scene.parent = nothing
-    catch e
-        # Since this is called from a finalizer task switches are not allowed.
-        # This means no errors, no @error, no printing except to Core.stdout,
-        # which is different from stdout.
-        # Note that any error here means that scene cleanup is incomplete.
-        # Therefore there should be not errors thrown in this call stack.
-        println(Core.stdout, "Failed to finalize Scene:")
-        Base.showerror(Core.stdout, e)
-        println(Core.stdout)
-        Base.show_backtrace(Core.stdout, Base.backtrace())
+    # Errors should be handled at a lower level because otherwise
+    # some of the cleanup will be incomplete.
+    empty!(scene; free=true)
+    for field in [:backgroundcolor, :viewport, :visible]
+        Observables.clear(getfield(scene, field))
     end
+    for screen in copy(scene.current_screens)
+        delete!(screen, scene)
+    end
+    empty!(scene.current_screens)
+    scene.parent = nothing
     return
 end
 
