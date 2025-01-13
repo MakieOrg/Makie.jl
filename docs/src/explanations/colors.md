@@ -20,6 +20,23 @@ You can use `alpha` keyword in most Makie Plots.
 
 Alternatively, one can make partially transparent colors or colormaps by passing a tuple `(color, alpha)` to the color/colormap attribute.
 
+## Textures, Patterns and MatCaps
+
+Some plot types (e.g. mesh, surface, ...) allow you to sample colors from an image.
+The sampling can happen based on texture coordinates (uv coordinates), pixel coordinates or normals.
+
+The first case is used when an image `Matrix` is passed directly as the `color` attribute.
+Note that texture coordinates need to be available to get a well defined result.
+
+The second case is used when a `Makie.AbstractPattern` is passed as the `color`.
+This is typically used for hatching.
+For example a hatching pattern with diagonal lines can be set with `color = Pattern('/')`.
+More generally, you can define a line pattern with `Makie.LinePattern()` or use an image as a pattern with `Pattern(image)`.
+
+The last case is used when an image is passed with the `matcap` attribute.
+The image is then interpreted as going from (-1, 1) to (1, 1) so that normals can be mapped to it.
+The (0,0,1) direction of the normal is facing the camera/viewer.
+
 ## Cheat Sheet
 
 Here's a little cheat sheet showing common color specifications:
@@ -47,7 +64,7 @@ with_theme(theme) do
 
     scatter!(ax, 3, 1, color = RGBf(0.5, 0.2, 0.8))
     text!(ax, 3, 1, text = "RGBf(0.5, 0.2, 0.8)")
-    
+
     scatter!(ax, 4, 1, color = RGBAf(0.5, 0.2, 0.8, 0.5))
     text!(ax, 4, 1, text = "RGBAf(0.5, 0.2, 0.8, 0.5)")
 
@@ -71,7 +88,7 @@ with_theme(theme) do
 
     text!(ax, 2.5, -3, text = "color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10]\ncolormap = :viridis\ncolorrange = (2, 9)\nnan_color = :red, highclip = :magenta, lowclip = :cyan")
     scatter!(ax, range(1, 4, length = 10), fill(-3, 10), color = [1, 2, 3, 4, NaN, 6, 7, 8, 9, 10], colormap = :viridis, colorrange = (2, 9), nan_color = :red, highclip = :magenta, lowclip = :cyan)
-    
+
     text!(ax, 2.5, -4, text = "color = HSV.(range(0, 360, 10), 50, 50)")
     scatter!(ax, range(1, 4, length = 10), fill(-4, 10), color = HSV.(range(0, 360, 10), 50, 50))
 
@@ -80,7 +97,7 @@ with_theme(theme) do
 
     text!(ax, 2.5, -6, text = "color = 1:10\ncolormap = [:red, :orange, :brown]\ncolorrange = automatic")
     scatter!(ax, range(1, 4, length = 10), fill(-6, 10), color = 1:10, colormap = [:red, :orange, :brown])
-    
+
     text!(ax, 2.5, -7, text = "color = 1:10\ncolormap = Reverse(:viridis)\ncolorrange = automatic")
     scatter!(ax, range(1, 4, length = 10), fill(-7, 10), color = 1:10, colormap = Reverse(:viridis))
 
