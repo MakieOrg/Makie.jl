@@ -37,6 +37,28 @@ The last case is used when an image is passed with the `matcap` attribute.
 The image is then interpreted as going from (-1, 1) to (1, 1) so that normals can be mapped to it.
 The (0,0,1) direction of the normal is facing the camera/viewer.
 
+```@figure backend=GLMakie
+using GLMakie, FileIO
+
+f = Figure()
+
+mesh(f[1, 1], Rect2f(0,0,1,1), color = load(Makie.assetpath("cow.png")), shading = NoShading, axis=(title ="texture",))
+mesh(f[2, 1], Rect2f(0,0,1,1), color = Pattern('/'), shading = NoShading, axis=(title ="Pattern",))
+
+hidedecorations!.(f.content)
+
+catmesh = FileIO.load(assetpath("cat.obj"))
+texture = FileIO.load(assetpath("diffusemap.png"))
+matcap = FileIO.load(Base.download("https://raw.githubusercontent.com/nidorx/matcaps/master/1024/E6BF3C_5A4719_977726_FCFC82.png"))
+
+Label(f[1, 2][1, 1], "texture 3D", tellwidth = false)
+a, p = mesh(f[1, 2][2, 1], catmesh, color = texture, axis = (show_axis = false, ))
+Label(f[2, 2][1, 1], "matcap", tellwidth = false)
+mesh(f[2, 2][2, 1], catmesh, matcap = matcap, shading = NoShading, axis = (show_axis = false, ))
+
+f
+```
+
 ## Cheat Sheet
 
 Here's a little cheat sheet showing common color specifications:
