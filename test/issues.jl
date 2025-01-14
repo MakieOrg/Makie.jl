@@ -33,7 +33,7 @@
 
     @testset "#4722 Transformation passthrough" begin
         scene = Scene(camera = campixel!)
-        text!(scene, L"\frac{1}{2}")
+        p = text!(scene, L"\frac{1}{2}")
         translate!(scene, 0, 0, 10)
         @test isassigned(p.transformation.parent)
         @test isassigned(p.plots[1].transformation.parent)
