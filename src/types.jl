@@ -4,6 +4,7 @@ abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
+get_space(::EmptyCamera) = :clip
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0
