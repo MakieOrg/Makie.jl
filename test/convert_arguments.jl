@@ -68,7 +68,7 @@ end
     @test_throws ArgumentError heatmap(1im)
 end
 
-# custom vector type to ensure that the conversion can be overriden for vectors
+# custom vector type to ensure that the conversion can be overridden for vectors
 struct MyConvVector <: AbstractVector{Float64} end
 Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
@@ -121,7 +121,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 nan = vcat(xs[1:4], NaN, zs[6:end])
                 r = T_in(1):T_in(1):T_in(10)
                 i = T_in(1)..T_in(10)
+                t = (T_in(1), T_out(10))
                 ov = Makie.OffsetVector(ys, -5:4)
+                rv = collect(r) # regular vector
 
                 ps2 = Point2.(xs, ys)
                 ps3 = Point3.(xs, ys, zs)
@@ -132,6 +134,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 geom = Sphere(Point3{T_in}(0), T_in(1))
                 _mesh = GeometryBasics.mesh(rect3; pointtype=Point3{T_in}, facetype=GLTriangleFace)
                 polygon = Polygon(Point2.(xs, ys))
+                polygon3d = Polygon(Point3.(xs, ys, zs))
                 line = LineString(Point3.(xs, ys, zs))
                 bp = BezierPath([
                     MoveTo(T_in(0), T_in(0)),
@@ -228,6 +231,9 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, polygon)    isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, [polygon, polygon]) isa Tuple{Vector{Point2{T_out}}}
                         @test apply_conversion(CT, MultiPolygon([polygon, polygon])) isa Tuple{Vector{Point2{T_out}}}
+                        @test apply_conversion(CT, polygon3d)    isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, [polygon3d, polygon3d]) isa Tuple{Vector{Point3{T_out}}}
+                        @test apply_conversion(CT, MultiPolygon([polygon3d, polygon3d])) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, line)       isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, [line, line]) isa Tuple{Vector{Point3{T_out}}}
                         @test apply_conversion(CT, MultiLineString([line, line])) isa Tuple{Vector{Point3{T_out}}}
@@ -298,18 +304,24 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 for CT in (ImageLike(), Image)
                     @testset "$CT" begin
-                        @test apply_conversion(CT, img)        isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{RGBf}}
-                        @test apply_conversion(CT, m)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, i, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, img) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{RGBf}}
+                        @test apply_conversion(CT, m)   isa Tuple{EndPoints{Float32}, EndPoints{Float32}, Matrix{Float32}}
 
                         # deprecated
-                        Logging.disable_logging(Logging.Warn) # skip warnings
-                        @test apply_conversion(CT, xs, ys, m)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, xs, r, m)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, ys, +)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        Logging.disable_logging(Logging.Debug)
+                        @test_throws ErrorException apply_conversion(CT, xs, ys, m)
+                        @test_throws ErrorException apply_conversion(CT, xs, r, m)
+                        @test_throws ErrorException apply_conversion(CT, i, r, m)
+                        @test_throws ErrorException apply_conversion(CT, r, i, m)
+                        @test_throws ErrorException apply_conversion(CT, r, ys, +)
+
+                        @test apply_conversion(CT, t, t, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, t, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, t, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+
+                        # TODO: Should these exist?
+                        # @test apply_conversion(CT, i, i, +) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
+                        # @test apply_conversion(CT, i, t, +) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
                     end
                 end
 
@@ -320,18 +332,16 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         # TODO: Should these be normalized more?
                         @test apply_conversion(CT, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{Float32,3}}
                         @test apply_conversion(CT, i, i, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, t, t, t, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, t, i, t, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
 
-                        Logging.disable_logging(Logging.Warn) # skip warnings
-                        @test apply_conversion(CT, xs, ys, zs, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                        @test apply_conversion(CT, xs, ys, zs, +)   isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                        if T_in == Float32
-                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                        else
-                            @test apply_conversion(CT, r, r, r, vol)  isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                            @test apply_conversion(CT, xs, r, i, vol) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
-                        end
-                        Logging.disable_logging(Logging.Debug)
+                        @test_throws ErrorException apply_conversion(CT, xs, ys, zs, vol)
+                        @test_throws ErrorException apply_conversion(CT, xs, ys, zs, +)
+                        @test_throws ErrorException apply_conversion(CT, r, r, r, vol)
+                        @test_throws ErrorException apply_conversion(CT, xs, r, i, vol)
+
+                        @test apply_conversion(CT, r, r, r, +)    isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
+                        @test apply_conversion(CT, rv, rv, rv, +) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, EndPoints{T_out}, Array{Float32,3}}
                     end
                 end
 
@@ -467,9 +477,11 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
                 # pure 3D plots don't implement Float64 -> Float32 rescaling yet
                 @testset "Voxels" begin
-                    @test apply_conversion(Voxels, vol)                isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, xs, ys, zs, vol)    isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, i, i, vol)       isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test_throws ErrorException apply_conversion(Voxels, xs, ys, zs, vol)
+                    @test apply_conversion(Voxels, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, i, i, i, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, t, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, i, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
                 end
 
                 @testset "Wireframe" begin
@@ -485,5 +497,27 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
             @test apply_conversion(Makie.Text, strings) isa Tuple{Vector{String}}
             # TODO glyphcollection
         end
+    end
+end
+
+@testset "Explicit convert_arguments" begin
+    function nan_equal(a::Vector, b::Vector)
+        length(a) == length(b) || return false
+        for (x, y) in zip(a, b)
+            (isnan(x) && isnan(y)) || (x == y) || return false
+        end
+        return true
+    end
+
+    @testset "PointBased" begin
+        ps = Point2f.([1, 2], [1, 2])
+        ls1 = [LineString(ps) for _ in 1:2]
+        ls2 = MultiLineString(ls1)
+        ls3 = [ls2, ls2]
+        ps12 = [ps; [Point2f(NaN)]; ps]
+        ps3 = [ps12; [Point2f(NaN)]; ps12]
+        @test nan_equal(convert_arguments(PointBased(), ls1)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls2)[1], ps12)
+        @test nan_equal(convert_arguments(PointBased(), ls3)[1], ps3)
     end
 end

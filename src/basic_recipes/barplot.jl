@@ -21,7 +21,7 @@ function bar_default_fillto(tf, ys, offset, in_y_direction)
     return ys, offset
 end
 
-# `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
+# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
     _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
     if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
@@ -184,7 +184,7 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     function flip(k)
         if flip_labels_at isa Number
             return k > flip_labels_at || k < 0
-        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+        elseif flip_labels_at isa Tuple{Number, Number}
             return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
         else
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
@@ -331,7 +331,7 @@ function Makie.plot!(p::BarPlot)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency,
+        inspectable = p.inspectable, transparency = p.transparency, space = p.space,
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
     )
 

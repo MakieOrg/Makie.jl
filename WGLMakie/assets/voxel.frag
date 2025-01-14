@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER 2 // (0, 1, 2) - dimensions
 
@@ -100,12 +103,17 @@ bool is_clipped()
 }
 
 flat in uint frag_instance_id;
+
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
@@ -144,7 +152,7 @@ void main()
 
     if (picking) {
         uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
-        uvec3 idx = uvec3(o_uvw * vec3(size));
+        uvec3 idx = clamp(uvec3(o_uvw * vec3(size)), uvec3(0), size - uvec3(1));
         uint lin = idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);
         return;

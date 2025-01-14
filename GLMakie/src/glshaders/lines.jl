@@ -1,5 +1,5 @@
 function sumlengths(points, resolution)
-    # normalize w component if availabke
+    # normalize w component if available
     f(p::VecTypes{4}) = p[Vec(1, 2)] / p[4]
     f(p::VecTypes) = p[Vec(1, 2)]
 
@@ -45,10 +45,10 @@ function generate_indices(positions)
         # if A != F (no loop):   0 A B C D E F 0
         # where 0 is NaN
         # It marks vertices as invalid (0) if they are NaN, valid (1) if they
-        # are part of a continous line section, or as ghost edges (2) used to
+        # are part of a continuous line section, or as ghost edges (2) used to
         # cleanly close a loop. The shader detects successive vertices with
         # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
-        # 0-E-A-B and F-B from E-F-B-0 which would dublicate E-F and A-B)
+        # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
 
         last_start_pos = eltype(ps)(NaN)
         last_start_idx = -1
@@ -60,7 +60,7 @@ function generate_indices(positions)
             if not_nan
                 if last_start_idx == -1
                     # place nan before section of line vertices
-                    # (or dublicate ps[1])
+                    # (or duplicate ps[1])
                     push!(indices, i-1)
                     last_start_idx = length(indices) + 1
                     last_start_pos = p
@@ -129,7 +129,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm          = nothing
         thickness           = 2f0 => GLBuffer
         pattern             = nothing
-        pattern_sections    = pattern => Texture
         fxaa                = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
@@ -158,7 +157,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             if !isa(to_value(pattern), Vector)
                 error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
             end
-            tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
+            tex = GLAbstraction.Texture(screen.glscreen, lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
             data[:pattern] = tex
         end
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
@@ -201,7 +200,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         if !isa(to_value(pattern), Vector)
             error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
         end
-        tex = GLAbstraction.Texture(lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
+        tex = GLAbstraction.Texture(screen.glscreen, lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
         data[:pattern] = tex
         data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end

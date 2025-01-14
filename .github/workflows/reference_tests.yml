@@ -25,7 +25,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -60,7 +60,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -74,7 +74,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -112,7 +112,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -124,7 +124,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -156,11 +156,16 @@ jobs:
         with:
           name: ReferenceImages_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/reference_images/
+      - name: Upload test Electron logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Electron_Logs_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -198,9 +203,10 @@ jobs:
 
           # Loop through the directories and concatenate the files, and copy recorded folders
           for dir in WGLMakie CairoMakie GLMakie; do
-              # Concatenate scores.tsv and new_files.txt
+              # Concatenate scores.tsv, new_files.txt and missing_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
 
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"

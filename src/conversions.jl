@@ -36,7 +36,7 @@ end
 # if no specific conversion is defined, we don't convert
 convert_single_argument(@nospecialize(x)) = x
 
-# replace missings with NaNs
+# replace `missing`s with `NaN`s
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
     return float_convert(a)
 end
@@ -169,32 +169,31 @@ Takes an input `Rect` `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::PointBased, x::Rect2{T}) where T
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2{float_type(T)}, x)[[1, 2, 4, 3]])
+    return convert_arguments(P, decompose(Point2{float_type(T)}, x))
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
     return convert_arguments(P, coordinates(mesh))
 end
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
-end
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:Point}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
 
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
 end
 
 function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where {T}
-    f = decompose(LineFace{Int}, rect)
+    f = GeometryBasics.remove_duplicates(decompose(LineFace{Int}, rect))
     p = connect(decompose(Point3{float_type(T)}, rect), f)
     return convert_arguments(P, p)
 end
 
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
-    points = unique(decompose(PT, rect))
+    points = decompose(PT, rect)
     push!(points, PT(NaN)) # use to seperate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
@@ -213,7 +212,7 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{<:AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}}) where {N, T}
+function convert_arguments(PB::PointBased, linestring::Union{AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}, AbstractVector{<:MultiLineString{N,T}}}) where {N, T}
     T_out = float_type(T)
     arr = Point{N, T_out}[]; n = length(linestring)
     for idx in 1:n
@@ -261,7 +260,7 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, Mul
         converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
         append!(arr, converted)
         if idx != n # don't add NaN at the end
-            push!(arr, Point2(NaN))
+            push!(arr, Point{N, float_type(T)}(NaN))
         end
     end
     return (arr,)
@@ -372,10 +371,17 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
 end
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
-to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
-function to_endpoints(x, dim)
-    x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
-    return to_endpoints(x)
+
+to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
+to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+function throw_range_error(value::T, side, trait) where {T}
+    error(
+        "Encountered `$T` with value $value on side $side in `convert_arguments` for the `$trait`
+        conversion. Using `$T` to specify one dimension of `$trait` is deprecated because `$trait`
+        sides always need exactly two values, start and stop. Use interval notation `start .. stop`,
+        a two-element tuple `(start, stop)` or `Makie.EndPoints(start, stop)` instead."
+    )
 end
 
 function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
@@ -406,23 +412,16 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     Ty = typeof(ye[1])
     # heatmaps are centered on the edges, so we need to adjust the range
     # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
-    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), whcih only substracts the step
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), which only subtracts the step
     # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
     # If we return a different type with no conversion overload, it stops that recursion
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
-function print_range_warning(side::String, value)
-    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
-        Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
-        Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
-end
-
-
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    x = to_endpoints(xs, "x")
-    y = to_endpoints(ys, "y")
+    x = to_endpoints(xs, "x", ImageLike)
+    y = to_endpoints(ys, "y", ImageLike)
     return (x, y, el32convert(data))
 end
 
@@ -471,7 +470,8 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(data))
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
 
 """
@@ -482,7 +482,8 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
-    (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(i))
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(i))
 end
 
 ################################################################################
@@ -490,9 +491,8 @@ end
 ################################################################################
 
 function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 4, 3, 1]],)
+    return (points[[1, 2, 3, 4, 1]],)
 end
 
 ################################################################################
@@ -508,9 +508,8 @@ function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
-    # TODO fix the order of decompose
     points = decompose(Point2{float_type(T)}, x)
-    return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
+    return (points[[1, 2, 2, 3, 3, 4, 4, 1]],)
 end
 
 ################################################################################
@@ -545,28 +544,22 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
-    T_out = float_type(T)
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(metafree(decompose(Point, mesh)), faces(mesh))
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if !isnothing(n)
-            mesh = GeometryBasics.pointmeta(mesh; normals=decompose(Vec3f, n))
-        end
+    n = nothing
+    if !hasproperty(mesh, :normal)
+        n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
-    # If already correct eltypes for GL, we can pass the mesh through as is
-    if eltype(metafree(coordinates(mesh))) == Point{N, T_out} && eltype(faces(mesh)) == GLTriangleFace
-        return (mesh,)
-    else
-        # Else, we need to convert it!
-        return (GeometryBasics.mesh(mesh, pointtype=Point{N, T_out}, facetype=GLTriangleFace),)
-    end
+
+    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
+
+    return (mesh,)
 end
 
 function convert_arguments(
         ::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
+    # TODO: clear faceviews
     return (meshes,)
 end
 
@@ -578,7 +571,7 @@ end
 # TODO GeometryBasics can't deal with this directly for Integer Points?
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector{<: AbstractPoint{2}}
+        xyz::AbstractVector{<: Point{2}}
     )
     ps = float_convert(xyz)
     m = GeometryBasics.mesh(ps; pointtype=eltype(ps), facetype=GLTriangleFace)
@@ -588,7 +581,10 @@ end
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    m = GeometryBasics.mesh(geom; pointtype=Point{N,float_type(T)}, uv=Vec2f, normaltype=Vec3f, facetype=GLTriangleFace)
+    m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
+        geom; pointtype = Point{N, float_type(T)},
+        uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
+    ))
     return (m,)
 end
 
@@ -622,10 +618,10 @@ function convert_arguments(
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
         ns = Vec3f.(normals(vs, fs))
-        m = GeometryBasics.Mesh(meta(vs; normals=ns), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = ns)
     else
         # TODO, we don't need to add normals here, but maybe nice for type stability?
-        m = GeometryBasics.Mesh(meta(vs; normals=fill(Vec3f(0, 0, 1), length(vs))), fs)
+        m = GeometryBasics.Mesh(vs, fs; normal = fill(Vec3f(0, 0, 1), length(vs)))
     end
     return (m,)
 end
@@ -652,6 +648,13 @@ function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::Re
     return (vec(points), vec(f_out))
 end
 
+# Note: AbstractRange must be linear
+is_regularly_spaced(x::AbstractRange) = true
+function is_regularly_spaced(x::AbstractVector)
+    delta = x[2] - x[1]
+    return all(i -> x[i] - x[i-1] ≈ delta, 3:length(x))
+end
+
 """
     convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
 
@@ -660,16 +663,21 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
+    # Verify grid regularity
+    is_regularly_spaced(x) || throw_range_error(x, "x", VolumeLike)
+    is_regularly_spaced(y) || throw_range_error(y, "y", VolumeLike)
+    is_regularly_spaced(z) || throw_range_error(z, "z", VolumeLike)
+
     _x, _y, _z = ntuple(Val(3)) do i
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
-    return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -920,6 +928,8 @@ end
 to_color(c::Nothing) = c # for when color is not used
 to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::VecTypes{3}) = RGBAf(c[1], c[2], c[3], 1)
+to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
@@ -946,6 +956,11 @@ to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
 to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
+
+convert_attribute(o, ::key"marker_offset", ::key"scatter") = to_3d_offset(o)
+# Is it reasonable to go from offset -> (offset, 0, 0)?
+to_3d_offset(x::VecTypes) = to_ndim(Vec3f, x, 0)
+to_3d_offset(x::AbstractVector) = to_3d_offset.(x)
 
 
 ## UV Transforms
@@ -1136,7 +1151,7 @@ function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     else
         error(
             """
-            Unkown line style: $ls. Available linestyles are:
+            Unknown line style: $ls. Available linestyles are:
             :solid, :dash, :dot, :dashdot, :dashdotdot
             or a sequence of numbers enumerating the next transparent/opaque region.
             This sequence of numbers must be cumulative; 1 unit corresponds to 1 line width.
@@ -1463,7 +1478,7 @@ function available_gradients()
 end
 
 
-to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
     categorical_colors(colormaplike, categories::Integer)
@@ -1921,7 +1936,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(default_marker_map(), marker)
         return to_spritemarker(default_marker_map()[marker])
     else
-        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with available_marker_symbols()")
+        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with `available_marker_symbols()`")
         return '●'
     end
 end
@@ -1943,7 +1958,7 @@ function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return normal_mesh(value)
+    return GeometryBasics.expand_faceviews(normal_mesh(value))
 end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
@@ -1980,3 +1995,8 @@ assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32conv
 # BUFFER OVERLOAD
 
 GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
+
+# Used in Label, maybe useful elsewhere?
+to_lrbt_padding(x::Real) = Vec4f(x)
+to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
+to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)

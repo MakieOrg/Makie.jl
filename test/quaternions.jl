@@ -15,21 +15,21 @@ Base.cos(θ::Degree) = cos(θ.θ * π/180)
     c = cos(theta); s = sin(theta)
     Rx = [1 0 0; 0 c -s; 0 s c]
 
-    @test Mat3f(qx) ≈ Rx
+    @test Mat3f(qx) ≈ Mat3f(Rx)
     theta = pi / 6
     qy = qrotation(Vec(0.0, 1.0, 0.0), theta)
     c = cos(theta); s = sin(theta)
     Ry = [c 0 s; 0 1 0; -s 0 c]
-    @test Mat3f(qy) ≈ Ry
+    @test Mat3f(qy) ≈ Mat3f(Ry)
     theta = 4pi / 3
     qz = qrotation(Vec(0.0, 0.0, 1.0), theta)
     c = cos(theta); s = sin(theta)
     Rz = [c -s 0; s c 0; 0 0 1]
-    @test Mat3f(qz) ≈ Rz
+    @test Mat3f(qz) ≈ Mat3f(Rz)
 
-    @test Mat3f(qx * qy * qz) ≈ Rx * Ry * Rz
-    @test Mat3f(qy * qx * qz) ≈ Ry * Rx * Rz
-    @test Mat3f(qz * qx * qy) ≈ Rz * Rx * Ry
+    @test Mat3f(qx * qy * qz) ≈ Mat3f(Rx * Ry * Rz)
+    @test Mat3f(qy * qx * qz) ≈ Mat3f(Ry * Rx * Rz)
+    @test Mat3f(qz * qx * qy) ≈ Mat3f(Rz * Rx * Ry)
 
     a, b = qrotation(Vec(0.0, 0.0, 1.0), deg2rad(0)), qrotation(Vec(0.0, 0.0, 1.0), deg2rad(180))
     # @test slerp(a, b, 0.0) ≈ a
@@ -56,4 +56,13 @@ Base.cos(θ::Degree) = cos(θ.θ * π/180)
     @test to_rotation((v, π)) == to_rotation((v, 1.0π))
     @test to_rotation(Degree(90)) == to_rotation(π/2)
     @test to_rotation((v, Degree(90))) == to_rotation((v, π/2))
+
+    for _ in 1:10
+        v = 2 .* rand(Vec3f) .+ 1
+        while norm(v) < 0.1
+            v = 2 .* rand(Vec3f) .+ 1
+        end
+        q = qrotation(normalize(v), 2pi * rand())
+        @test q * inv(q) ≈ Quaternion{Float64}(0,0,0,1) atol = 1e-15
+    end
 end

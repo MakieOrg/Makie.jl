@@ -184,23 +184,20 @@ mutable struct DataInspector
     root::Scene
     attributes::Attributes
 
-    temp_plots::Vector{AbstractPlot}
+    temp_plots::Vector{Plot}
     plot::Tooltip
-    selection::AbstractPlot
+    selection::Plot
 
     obsfuncs::Vector{Any}
-    lock::Threads.ReentrantLock
 end
 
 
 function DataInspector(scene::Scene, plot::AbstractPlot, attributes)
-    x = DataInspector(scene, attributes, AbstractPlot[], plot, plot, Any[], Threads.ReentrantLock())
-    # finalizer(cleanup, x) # doesn't get triggered when this is dereferenced
-    x
+    return DataInspector(scene, attributes, Plot[], plot, plot, Any[])
 end
 
 function cleanup(inspector::DataInspector)
-    off.(inspector.obsfuncs)
+    foreach(off, inspector.obsfuncs)
     empty!(inspector.obsfuncs)
     delete!(inspector.root, inspector.plot)
     clear_temporary_plots!(inspector, inspector.selection)
@@ -281,16 +278,24 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     # We delegate the hover processing to another channel,
     # So that we can skip queued up updates with empty_channel!
     # And also not slow down the processing of e.mouseposition/e.scroll
+    was_open = false
     channel = Channel{Nothing}(Inf) do ch
         for _ in ch
-            on_hover(inspector)
+            if isopen(scene)
+                was_open = true
+                on_hover(inspector)
+            end
+            if !isopen(scene) && was_open
+                close(ch)
+                break
+            end
         end
     end
-    listners = onany(e.mouseposition, e.scroll) do _, _
+    listeners = onany(e.mouseposition, e.scroll) do _, _
         empty_channel!(channel) # remove queued up hover requests
         put!(channel, nothing)
     end
-    append!(inspector.obsfuncs, listners)
+    append!(inspector.obsfuncs, listeners)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()
@@ -306,33 +311,31 @@ DataInspector(; kwargs...) = DataInspector(current_figure(); kwargs...)
 
 function on_hover(inspector)
     parent = inspector.root
-    lock(inspector.lock) do
-        (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
+    (inspector.attributes.enabled[] && is_mouseinside(parent)) || return Consume(false)
 
-        mp = mouseposition_px(parent)
-        should_clear = true
-        for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
-            if to_value(get(plt.attributes, :inspectable, true))
-                # show_data should return true if it created a tooltip
-                if show_data_recursion(inspector, plt, idx)
-                    should_clear = false
-                    break
-                end
+    mp = mouseposition_px(parent)
+    should_clear = true
+    for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
+        if to_value(get(plt.attributes, :inspectable, true))
+            # show_data should return true if it created a tooltip
+            if show_data_recursion(inspector, plt, idx)
+                should_clear = false
+                break
             end
         end
-
-        if should_clear
-            plot = inspector.selection
-            if to_value(get(plot, :inspector_clear, automatic)) !== automatic
-                plot[:inspector_clear][](inspector, plot)
-            end
-            inspector.plot.visible[] = false
-            inspector.attributes.indicator_visible[] = false
-            inspector.plot.offset.val = inspector.attributes.offset[]
-        end
-
-        return Consume(false)
     end
+
+    if should_clear
+        plot = inspector.selection
+        if to_value(get(plot, :inspector_clear, automatic)) !== automatic
+            plot[:inspector_clear][](inspector, plot)
+        end
+        inspector.plot.visible[] = false
+        inspector.attributes.indicator_visible[] = false
+        inspector.plot.offset.val = inspector.attributes.offset[]
+    end
+
+    return Consume(false)
 end
 
 
@@ -628,18 +631,18 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    show_imagelike(inspector, plot, "H", true)
+    show_imagelike(inspector, plot, "H", idx, true)
 end
 
 function show_data(inspector::DataInspector, plot::Image, idx)
-    show_imagelike(inspector, plot, "img", false)
+    show_imagelike(inspector, plot, "img", idx, false)
 end
 
 _to_array(x::AbstractArray) = x
 _to_array(x::Resampler) = x.data
 
 
-function show_imagelike(inspector, plot, name, edge_based)
+function show_imagelike(inspector, plot, name, idx, edge_based)
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
@@ -655,12 +658,13 @@ function show_imagelike(inspector, plot, name, edge_based)
         return true
     end
 
-    if plot.interpolate[]
+    if plot.interpolate[] || isnothing(idx)
         i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
-        i, j, z = _pixelated_getindex(xrange, yrange, zrange, pos, edge_based)
-        x = i; y = j
+        Nx = size(zrange, 1)
+        y, x = j, i = fldmod1(idx, Nx)
+        z = zrange[i, j]
     end
 
     # in case we hover over NaN values
@@ -711,7 +715,7 @@ function show_imagelike(inspector, plot, name, edge_based)
                 notify(p[1])
             end
         else
-            bbox = _pixelated_image_bbox(xrange, yrange, zrange, i, j, edge_based)
+            bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Wireframe)
                 clear_temporary_plots!(inspector, plot)
@@ -971,7 +975,10 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
         return true
     end
 
-    i, j, val = _pixelated_getindex(child[1][], child[2][], child[3][], pos, true)
+    zrange = child[3][]
+    Nx = size(zrange, 1)
+    j, i = fldmod1(idx, Nx)
+    val = zrange[i, j]
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -1069,14 +1076,16 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     end
     a = inspector.attributes
     tt = inspector.plot
-    pos = position_on_plot(scatter, idx; apply_transform=false)
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
-
+    idx2d = spy._index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(pos)
+        z = spy.z[][idx2d...]
+        tt.text[] = @sprintf(
+            "x: %0.6f\ny: %0.6f\nz: %0.6f",
+            idx2d..., z
+        )
     else
-        idx2d = spy._index_map[][idx]
         tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
     end
     tt.offset[] = ifelse(a.apply_tooltip_offset[],

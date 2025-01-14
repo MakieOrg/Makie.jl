@@ -15,10 +15,10 @@ abstract type AggOp end
 using Makie
 canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
 aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
-aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identiy)
-# Recipes are defined for canvas as well and incorperate the `get_aggregation`, but `aggregate!` must be called manually.
-image!(canvas; operation=equalize_histogram, local_operation=identiy, colormap=:viridis, colorrange=(0, 20))
-surface!(canvas; operation=equalize_histogram, local_operation=identiy)
+aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
+# Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
+image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
+surface!(canvas; operation=equalize_histogram, local_operation=identity)
 ```
 """
 mutable struct Canvas
@@ -94,10 +94,11 @@ function Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCoun
     xsize, ysize = resolution
     n_elements = xsize * ysize
     o0 = null(op)
+    v0 = value(op, o0)
     aggbuffer = fill(o0, n_elements)
-    pixelbuffer = fill(o0, n_elements)
+    pixelbuffer = fill(v0, n_elements)
     # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (o0, o0))
+    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
 end
 
 n_threads(::AggSerial) = 1
@@ -116,9 +117,10 @@ end
 function change_op!(canvas::Canvas, op::AggOp)
     op == canvas.op && return false
     o0 = null(op)
+    v0 = value(op, o0)
     if eltype(canvas.aggbuffer) != typeof(o0)
         canvas.aggbuffer = fill(o0, size(c.aggbuffer))
-        canvas.pixelbuffer = fill(o0, size(c.pixelbuffer))
+        canvas.pixelbuffer = fill(v0, size(c.pixelbuffer))
     end
     return true
 end
@@ -289,7 +291,7 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
 @recipe DataShader (points,) begin
     """
     Can be `AggCount()`, `AggAny()` or `AggMean()`.
-    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accomodate the output of `local_operation`.
+    Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accommodate the output of `local_operation`.
     User-extensible by overloading:
     ```julia
     struct MyAgg{T} <: Makie.AggOp end
@@ -334,8 +336,11 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     show_timings = false
     """
     If the resulting image should be displayed interpolated.
+    Note that interpolation can make NaN-adjacent bins also NaN in some backends, for example
+    due to interpolation schemes used in GPU hardware. This can make it look
+    like there are more NaN bins than there actually are.
     """
-    interpolate = true
+    interpolate = false
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
@@ -344,13 +349,14 @@ function fast_bb(points, f)
     N = length(points)
     NT = Threads.nthreads()
     slices = ceil(Int, N / NT)
-    results = fill(Point2f(0), NT, 2)
+    results = fill(Point2d(0), NT, 2)
+    R = eltype(points) isa Point2 ? Rect2d : Rect3d
     Threads.@threads for i in 1:NT
         start = ((i - 1) * slices + 1)
         stop = min(length(points), i * slices)
-        pmin, pmax = extrema(Rect2f(view(points, start:stop)))
-        results[i, 1] = f(pmin)
-        results[i, 2] = f(pmax)
+        pmin, pmax = extrema(R(view(points, start:stop)))
+        results[i, 1] = f(Point2d(Point3d(pmin)))
+        results[i, 2] = f(Point2d(Point3d(pmax)))
     end
     return Rect3f(Rect2f(vec(results)))
 end
@@ -494,7 +500,7 @@ function legendelements(plot::FakePlot, legend)
     return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
 end
 
-# Sadly we must define the colorbar here and cant use the default fallback,
+# Sadly we must define the colorbar here and can't use the default fallback,
 # Since the Image plot will only see the scaled data, and since its hard to make Colorbar support the equalize_histogram
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?

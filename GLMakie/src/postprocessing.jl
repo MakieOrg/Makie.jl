@@ -57,7 +57,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
             # opaque.a   = 0 * src.a   + 1 * opaque.a
             glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
         end,
-        nothing
+        nothing, shader_cache.context
     )
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
@@ -79,11 +79,14 @@ end
 
 
 function ssao_postprocessor(framebuffer, shader_cache)
+    ShaderAbstractions.switch_context!(shader_cache.context)
+    require_context(shader_cache.context) # for framebuffer, uniform textures
+
     # Add missing buffers
     if !haskey(framebuffer, :position)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
         position_buffer = Texture(
-            Vec3f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+            shader_cache.context, Vec3f, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
         pos_id = attach_colorbuffer!(framebuffer, :position, position_buffer)
         push!(framebuffer.render_buffer_ids, pos_id)
@@ -92,7 +95,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             normal_occlusion_buffer = Texture(
-                Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+                shader_cache.context, Vec4{Float16}, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
             )
             normal_occ_id = attach_colorbuffer!(framebuffer, :normal_occlusion, normal_occlusion_buffer)
         else
@@ -125,7 +128,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :normal_occlusion_buffer => getfallback(framebuffer, :normal_occlusion, :HDR_color)[2],
         :kernel => kernel,
         :noise => Texture(
-            [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
+            shader_cache.context, [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
             minfilter = :nearest, x_repeat = :repeat
         ),
         :noise_scale => map(s -> Vec2f(s ./ 4.0), framebuffer.resolution),
@@ -133,7 +136,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :bias => 0.025f0,
         :radius => 0.5f0
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
+    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
 
 
@@ -150,7 +153,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
         :blur_range => Int32(2)
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
+    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
     color_id = framebuffer[:color][1]
 
@@ -174,7 +177,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
             a = viewport(scene)[]
             glScissor(ppu(minimum(a))..., ppu(widths(a))...)
             # update uniforms
-            data1[:projection] = scene.camera.projection[]
+            data1[:projection] = Mat4f(scene.camera.projection[])
             data1[:bias] = scene.ssao.bias[]
             data1[:radius] = scene.ssao.radius[]
             GLAbstraction.render(pass1)
@@ -194,6 +197,8 @@ function ssao_postprocessor(framebuffer, shader_cache)
         glDisable(GL_SCISSOR_TEST)
     end
 
+    require_context(shader_cache.context)
+
     PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
 end
 
@@ -203,12 +208,15 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
+    ShaderAbstractions.switch_context!(shader_cache.context)
+    require_context(shader_cache.context) # for framebuffer, uniform textures
+
     # Add missing buffers
     if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             color_luma_buffer = Texture(
-                RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
+                shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
             )
             luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
         else
@@ -226,7 +234,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         :color_texture => framebuffer[:color][2],
         :object_ids => framebuffer[:objectid][2]
     )
-    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
+    pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing, shader_cache.context)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
 
     # perform FXAA
@@ -239,7 +247,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         :color_texture => getfallback(framebuffer, :color_luma, :HDR_color)[2],
         :RCPFrame => lift(rcpframe, framebuffer.resolution),
     )
-    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
+    pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing, shader_cache.context)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)
 
     color_id = framebuffer[:color][1]
@@ -259,6 +267,8 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         glDrawBuffer(color_id)  # color buffer
         GLAbstraction.render(pass2)
     end
+
+    require_context(shader_cache.context)
 
     PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
 end
@@ -282,15 +292,15 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     data = Dict{Symbol, Any}(
         :color_texture => framebuffer[:color][2]
     )
-    pass = RenderObject(data, shader, PostprocessPrerender(), nothing)
+    pass = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    full_render = screen -> begin
+    full_render = (screen) -> begin
         # transfer everything to the screen
         default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
         glBindFramebuffer(GL_FRAMEBUFFER, default_id)
-        glViewport(0, 0, framebuffer_size(screen.glscreen)...)
+        glViewport(0, 0, makie_window_size(screen)...)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
     end
@@ -299,8 +309,6 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
 end
 
 function destroy!(pp::PostProcessor)
-    while !isempty(pp.robjs)
-        destroy!(pop!(pp.robjs))
-    end
+    foreach(destroy!, pp.robjs)
     return
 end

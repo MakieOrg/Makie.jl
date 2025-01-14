@@ -22,7 +22,7 @@ end
 """
     push_screen!(scene::Scene, screen::MakieScreen)
 
-Adds a screen to the scene and registeres a clean up event when screen closes.
+Adds a screen to the scene and registered a clean up event when screen closes.
 Also, makes sure that always just one screen is active for on scene.
 """
 function push_screen!(scene::Scene, screen::T) where {T<:MakieScreen}
@@ -140,7 +140,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
         """)
     end
 
-    # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    # We show inline if explicitly requested or if automatic and we can actually show something inline!
     scene = get_scene(figlike)
     if (inline === true || inline === automatic) && can_show_inline(backend)
         # We can't forward the screenconfig to show, but show uses the current screen if there is any
@@ -187,7 +187,7 @@ end
 # Since VSCode doesn't call any display/show method for Figurelike if we return
 # `showable(mime, fig) == false`, we need to return `showable(mime, figlike) == true`
 # For some vscode displayable mime, even for `Makie.inline!(false)` when we want to display in our own window.
-# Only diagnostic can be used for this, since other mimes expect something to be shown afterall and
+# Only diagnostic can be used for this, since other mimes expect something to be shown after all and
 # therefore will look broken in the plotpane if we dont print anything to the IO.
 # I tried `throw(MethodError(...))` as well, but with plotpane enabled + showable == true,
 # VScode doesn't catch that method error.
@@ -244,7 +244,7 @@ function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
     throw(MethodError(show, io, m, fig))
 end
 
-function Base.show(io::IO, m::MIME, figlike::FigureLike)
+function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backend(), update=true)
     if ALWAYS_INLINE_PLOTS[] == false && m isa MIME_TO_TRICK_VSCODE
         # We use this mime to display the figure in a window here.
         # See declaration of MIME_TO_TRICK_VSCODE for more info
@@ -252,9 +252,8 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
         return () # this is a diagnostic vscode mime, so we can just return nothing
     end
     scene = get_scene(figlike)
-    backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
-    update_state_before_display!(figlike)
+    update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
     backend_show(screen, io, m, scene)
     return screen
