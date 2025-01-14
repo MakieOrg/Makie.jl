@@ -48,7 +48,7 @@ vec3 apply_uv_transform(mat3x2 transform, vec3 uv){
     return uv;
 }
 vec3 apply_uv_transform(mat3x2 transform, vec2 uv) {
-    return vec3(transform * vec3(uv, 0.0), 0.0);
+    return vec3(transform * vec3(uv, 1.0), 0.0);
 }
 
 vec4 to_color(vec3 c, Nothing color_map, Nothing color_norm){

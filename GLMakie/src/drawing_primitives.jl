@@ -740,7 +740,6 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -765,7 +764,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa AbstractArray{<: Number}
+    elseif to_value(color) isa Union{AbstractMatrix{<: Number}, AbstractArray{<: Number, 3}}
         gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color), minfilter = interp)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
@@ -778,9 +777,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
 
     if haskey(gl_attributes, :intensity)
         intensity = pop!(gl_attributes, :intensity)
-        if intensity[] isa AbstractArray
-            gl_attributes[:image] = Texture(intensity, minfilter = interp)
-        if intensity[] isa AbstractArray
+        if intensity[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
             gl_attributes[:image] = Texture(screen.glscreen, intensity, minfilter = interp)
         else
             gl_attributes[:vertex_color] = intensity

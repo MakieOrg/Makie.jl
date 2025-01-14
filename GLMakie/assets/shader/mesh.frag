@@ -63,6 +63,7 @@ vec4 get_color(Nothing color, vec3 uv, vec2 color_norm, sampler1D color_map, Not
         return o_color;
     }
 }
+
 vec4 get_color(sampler2D intensity, vec3 uv, vec2 color_norm, sampler1D color_map, Nothing matcap){
     float i = texture(intensity, uv.xy).x;
     return get_color_from_cmap(i, color_map, color_norm);
@@ -139,7 +140,7 @@ void main(){
 
 #ifdef PICKING_INDEX_FROM_UV
     ivec2 size = textureSize(image, 0);
-    ivec2 jl_idx = clamp(ivec2(o_uv * size), ivec2(0), size-1);
+    ivec2 jl_idx = clamp(ivec2(vec2(o_uv) * size), ivec2(0), size-1);
     uint idx = uint(jl_idx.x + jl_idx.y * size.x);
     write2framebuffer(color, uvec2(o_id.x, uint(1) + idx));
 #else
