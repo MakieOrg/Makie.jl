@@ -369,6 +369,17 @@ function Transformation(parent::Transformable;
     return trans
 end
 
+function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
+    println(io, "Transformation()")
+    println(io, "          parent = ", isassigned(t.parent) ? "Transformation(…)" : "#undef")
+    println(io, "     translation = ", t.translation[])
+    println(io, "           scale = ", t.scale[])
+    println(io, "        rotation = ", t.rotation[])
+    println(io, "          origin = ", t.origin[])
+    println(io, "           model = ", t.model[])
+    println(io, "  transform_func = ", t.transform_func[])
+end
+
 struct ScalarOrVector{T}
     sv::Union{T, Vector{T}}
 end
