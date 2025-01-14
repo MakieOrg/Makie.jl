@@ -160,7 +160,7 @@ $(Base.doc(MakieScreen))
 """
 mutable struct Screen{GLWindow} <: MakieScreen
     glscreen::GLWindow
-    size::Tuple{Int, Int}
+    size::Tuple{Int,Int}
     owns_glscreen::Bool
 
     shader_cache::GLAbstraction.ShaderCache
@@ -169,8 +169,9 @@ mutable struct Screen{GLWindow} <: MakieScreen
     stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
     timer::BudgetedTimer
-    px_per_unit::Observable{Float32}
 
+
+    px_per_unit::Observable{Float32}
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
@@ -220,9 +221,32 @@ mutable struct Screen{GLWindow} <: MakieScreen
     end
 end
 
+# The exact size in pixel of the render targert (the actual matrix of pixels)
 framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
 
+# The size of the window in Makie's own units
+makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
+
+# The size of the window in Makie, device indepentent units
+scene_size(screen::Screen) = size(screen.scene)
+
 Makie.isvisible(screen::Screen) = screen.config.visible
+
+# The GLFW/OS window size in in an OS specific scaled unit
+window_size(screen::Screen) = window_size(screen, scene_size(screen.scene)...)
+function window_size(screen::Screen, w, h)
+    window = screen.glscreen
+    winscale = screen.scalefactor[]
+    # On some platforms(OSX and Wayland), the window size is given in logical dimensions and
+    # is automatically scaled by the OS. To support arbitrary scale factors, we must account
+    # for the native scale factor when calculating the effective scaling to apply.
+    # On others (Windows and X11), scale from the logical size to the pixel size.
+    if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+        winscale /= scale_factor(window)
+    end
+    return round.(Int, winscale .* (w, h))
+end
+
 
 # for e.g. closeall, track all created screens
 # gets removed in destroy!(screen)
@@ -775,24 +799,15 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
 
     # Then resize the underlying rendering framebuffers as well, which can be scaled
     # independently of the window scale factor.
-    fbscale = screen.px_per_unit[]
-    fbw, fbh = round.(Int, fbscale .* (w, h))
+    # w/h are in device independent Makie units (scene size)
+    ppu = screen.px_per_unit[]
+    fbw, fbh = round.(Int, ppu .* (w, h))
     resize!(screen.framebuffer, fbw, fbh)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
-        #
-        # On some platforms(OSX and Wayland), the window size is given in logical dimensions and
-        # is automatically scaled by the OS. To support arbitrary scale factors, we must account
-        # for the native scale factor when calculating the effective scaling to apply.
-        #
-        # On others (Windows and X11), scale from the logical size to the pixel size.
         ShaderAbstractions.switch_context!(window)
-        winscale = screen.scalefactor[]
-        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
-            winscale /= scale_factor(window)
-        end
-        winw, winh = round.(Int, winscale .* (w, h))
+        winw, winh = window_size(screen, w, h)
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
         end
