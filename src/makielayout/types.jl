@@ -1470,6 +1470,8 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+        "The default alpha for legend elements"
+        alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
