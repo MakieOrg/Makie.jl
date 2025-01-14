@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add a global Axis/Axis3D registry for default interactions [#4531](https://github.com/MakieOrg/Makie.jl/pull/4531).
+
 ## [0.22.0] - 2024-12-12
 
 - Updated to GeometryBasics 0.5: [GeometryBasics#173](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/173), [GeometryBasics#219](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/219) [#4319](https://github.com/MakieOrg/Makie.jl/pull/4319)

@@ -149,10 +149,22 @@ mutable struct LineAxis
     minortickvalues::Observable{Vector{Float32}}
 end
 
-struct LimitReset end
+
+struct LimitReset
+    mouseevent::MouseEventTypes.MouseEventType # e.g. MouseEventTypes.leftclick, or some other mouse event to start limit reset.
+    modifier1::Optional{Keyboard.Button} # e.g. Keyboard.left_control, or some other keyboard button to reset limits.
+    modifier2::Optional{Keyboard.Button} # e.g. Keyboard.left_shift, or some other keyboard button to auto limits.
+
+    function LimitReset(
+        mouseevent = MouseEventTypes.leftclick,
+        modifier1 = Keyboard.left_control,
+        modifier2 = Keyboard.left_shift,
+    )
+        new(mouseevent, modifier1, modifier2)
+    end
+end
 
 mutable struct RectangleZoom
-    callback::Function
     active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
@@ -162,8 +174,8 @@ mutable struct RectangleZoom
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x=false, restrict_y=false, modifier=true)
-    return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
+function RectangleZoom(restrict_x=false, restrict_y=false, modifier=true)
+    return RectangleZoom(Observable(false), restrict_x, restrict_y,
                          nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
 
@@ -190,16 +202,21 @@ function DragPan(reset_delay)
     return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
+struct DragRotate end
 
-struct DragRotate
-end
 
 mutable struct FocusOnCursor
     last_time::Float64
     timeout::Float64
     skip::Int64
 end
-FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+FocusOnCursor(skip = 0, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+
+function registration_setup!(ax::AbstractAxis, focus::FocusOnCursor)
+    focus.skip = length(ax.scene.plots)
+    return ax
+end
+
 
 struct ScrollEvent
     x::Float32
@@ -696,8 +713,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     end
 end
 
-function RectangleZoom(f::Function, ax::Axis; kw...)
-    r = RectangleZoom(f; kw...)
+
+function registration_setup!(ax::Axis, r::RectangleZoom)
     rect_scene = Scene(ax.scene)
     selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
                               r.rectnode)
@@ -711,17 +728,15 @@ function RectangleZoom(f::Function, ax::Axis; kw...)
         inspectable = false, transparency=true, overdraw=true, visible=r.active)
     # translate forward so selection mesh and frame are never behind data
     translate!(mesh, 0, 0, 1000)
-    return r
+
+    return ax
 end
 
-function RectangleZoom(ax::Axis; kw...)
-    return RectangleZoom(ax; kw...) do newlims
-        if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
-        end
-        return
-    end
+function deregistration_cleanup!(ax::Axis, r::RectangleZoom)
+    # TODO: Remove mesh?
+    return ax
 end
+
 
 """
 Create a colorbar that shows a continuous or categorical colormap with ticks
