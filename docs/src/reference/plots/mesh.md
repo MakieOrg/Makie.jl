@@ -42,7 +42,7 @@ mesh(
 ```@figure backend=GLMakie
 using GeometryBasics
 
-# Reduce quality of sphere 
+# Reduce quality of sphere
 s = Tessellation(Sphere(Point3f(0), 1f0), 12)
 ps = coordinates(s)
 fs = faces(s)
@@ -154,7 +154,7 @@ positions = Observable([Point3f(0.5, 0, 0), Point3f(0.5, 1, 0), Point3f(0.5, 1, 
 triangles = GLTriangleFace[(1, 2, 3), (3, 4, 1)]
 
 # We will stay in the unit cube, so the uv coordinates are just the positions.
-uv_mesh = map((p) -> GeometryBasics.Mesh(meta(p; uv=Vec3f.(p)), triangles), positions)
+uv_mesh = map((p) -> GeometryBasics.Mesh(p, triangles; uv=Vec3f.(p)), positions)
 # Pass the volume plot to the color
 f, ax, pl = mesh(uv_mesh, color=brain, shading=NoShading, axis=(; show_axis=false))
 # Visualize the unit cube in which the volume lives
