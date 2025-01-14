@@ -166,6 +166,25 @@ end
     f
 end
 
+@reference_test "Legend with scalar colors and alpha" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3, alpha = 0.5)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15, alpha = 0.5)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i", alpha = 0.5)
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i", alpha = 0.5)
+    end
+    Legend(f[1, 2], ax)
+    f
+end
+
 @reference_test "Legend overrides" begin
     f = Figure()
     ax = Axis(f[1, 1])
@@ -189,8 +208,8 @@ end
     Legend(
         f[1, 3],
         [
-            sc => (; markersize = 30),
-            [li => (; color = :red), sc => (; color = :cyan)],
+            sc => (; markersize = 30, alpha = 0.3),
+            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
             [li, sc] => Dict(:color => :cyan),
         ],
         ["Scatter", "Line and Scatter", "Another"],
