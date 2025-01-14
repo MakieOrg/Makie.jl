@@ -524,7 +524,7 @@ function to_cairo_color(color::Makie.AbstractPattern, plot_object)
 end
 
 function to_cairo_color(color, plot_object)
-    return to_color(color)
+    return to_color((color, to_value(plot_object.alpha)))
 end
 
 function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
