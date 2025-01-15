@@ -284,9 +284,9 @@ vec4 isosurface(vec3 front, vec3 dir)
 
 vec4 mip(vec3 front, vec3 dir)
 {
-    vec3 pos = front;
-    int i = 0;
-    float maximum = 0.0;
+    vec3 pos = front + dir;
+    int i = 1;
+    float maximum = texture(volumedata, front).x;
     for (i; i < num_samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
@@ -315,7 +315,7 @@ bool process_clip_planes(inout vec3 p1, inout vec3 p2)
             p2 = p1;
             return true;
         }
-        
+
         // one outside - shorten segment
         else if (d1 < 0.0)
             // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)

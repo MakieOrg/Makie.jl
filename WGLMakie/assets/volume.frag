@@ -184,9 +184,9 @@ vec4 isosurface(vec3 front, vec3 dir)
 
 vec4 mip(vec3 front, vec3 dir)
 {
-    vec3 pos = front;
-    int i = 0;
-    float maximum = 0.0;
+    vec3 pos = front + dir;
+    int i = 1;
+    float maximum = texture(volumedata, front).x;
     for (i; i < num_samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
