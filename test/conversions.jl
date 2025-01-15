@@ -351,16 +351,24 @@ end
 
     o3 = Float32.(m3)
 
+    t1 = (1, 10)
+    t2 = (1, 6)
+
     xx = convert_arguments(Image, m3)
     xx == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
     @testset "ImageLike conversion" begin
         @test convert_arguments(Image, m3) == ((0.0f0, 10.0f0), (0.0f0, 6.0f0), o3)
-        @test convert_arguments(Image, v1, r2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
-        @test convert_arguments(Image, i1, v2, m3) == ((1.0f0, 10.0f0), (1.0f0, 6.0f0), o3)
-        @test convert_arguments(Image, v3, i1, m3) == ((10, 1), (1, 10), o3)
-        @test convert_arguments(Image, v1, i3, m3) == ((1, 10), (10, 1), o3)
+        @test convert_arguments(Image, i1, i2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
+        @test convert_arguments(Image, i1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
+        @test convert_arguments(Image, t1, t2, m3) == ((1.0, 10.0), (1.0, 6.0), o3)
+
+        @test_throws ErrorException convert_arguments(Image, v1, r2, m3)
+        @test_throws ErrorException convert_arguments(Image, i1, v2, m3)
+        @test_throws ErrorException convert_arguments(Image, v3, i1, m3)
+        @test_throws ErrorException convert_arguments(Image, v1, i3, m3)
+
+        # TODO: Should probably fail because it's not accepted by backends?
         @test convert_arguments(Image, m1, m2, m3) === (m1, m2, m3)
-        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
     end
 
     @testset "VertexGrid conversion" begin
@@ -376,6 +384,7 @@ end
     end
 
     @testset "CellGrid conversion" begin
+        @test convert_arguments(Heatmap, m1, m2) === (m1, m2)
         o1 = (0.5, 10.5)
         o2 = (0.5, 6.5)
         or1 = (0.5:1:10.5)

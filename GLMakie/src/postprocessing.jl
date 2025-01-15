@@ -295,12 +295,12 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
     pass = RenderObject(data, shader, PostprocessPrerender(), nothing, shader_cache.context)
     pass.postrenderfunction = () -> draw_fullscreen(pass.vertexarray.id)
 
-    full_render = screen -> begin
+    full_render = (screen) -> begin
         # transfer everything to the screen
         default_id = isnothing(screen_fb_id) ? 0 : screen_fb_id[]
         # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
         glBindFramebuffer(GL_FRAMEBUFFER, default_id)
-        glViewport(0, 0, framebuffer_size(screen)...)
+        glViewport(0, 0, makie_window_size(screen)...)
         glClear(GL_COLOR_BUFFER_BIT)
         GLAbstraction.render(pass) # copy postprocess
     end

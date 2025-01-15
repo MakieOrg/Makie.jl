@@ -525,7 +525,7 @@ end
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector,Number}, plot_object)
     cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
     return to_color(to_value(cmap))
 end
@@ -538,7 +538,7 @@ function to_cairo_color(color::Makie.AbstractPattern, plot)
 end
 
 function to_cairo_color(color, plot_object)
-    return to_color(color)
+    return to_color((color, to_value(plot_object.alpha)))
 end
 
 function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
