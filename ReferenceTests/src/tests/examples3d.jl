@@ -661,11 +661,15 @@ end
 end
 
 @reference_test "Clip planes - volume" begin
-    f = Figure(size = (600, 400))
+    f = Figure(size = (600, 400), backgroundcolor = :black)
     r = -10:10
     data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
-    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
+    index_data = round.(Int, 10 .* abs.(data))
+    N = maximum(index_data)
+    density_data = 0.005 .* abs.(data)
+    rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
+    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
     attr = (clip_planes = clip_planes, axis = (show_axis = false,))
 
     volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
@@ -675,13 +679,14 @@ end
 
     volume(f[1, 2], -10..10, -10..10, -10..10, data; attr...,
         algorithm = :mip)
-    volume(f[2, 2], -10..10, -10..10, -10..10, data; attr...,
+    volume(f[2, 2], -10..10, -10..10, -10..10, rgba_data; attr...,
         algorithm = :absorptionrgba)
 
-    volume(f[1, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :additive)
-    volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :indexedabsorption)
+    # TODO: doesn't work as intended anymore?
+    volume(f[1, 3], -10..10, -10..10, -10..10, rgba_data; attr...,
+        algorithm = :additive, alpha = 0.01)
+    volume(f[2, 3], -10..10, -10..10, -10..10, index_data; attr...,
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N))
 
     f
 end
