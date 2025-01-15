@@ -627,7 +627,10 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         # TODO This is wrong and doesn't actually interpolate
         # Inside the triangle sampling the color image
         return FaceIterator(cvec, faces)
+    elseif color isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
     end
+
     error("Unsupported Color type: $(typeof(color))")
 end
 
