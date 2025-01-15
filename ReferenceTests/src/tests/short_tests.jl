@@ -328,7 +328,7 @@ end
 
 
 @reference_test "Scene (insertion) order and clearing" begin
-    scene = Scene(backgroundcolor = :darkblue, clear = true)
+    scene = Scene(size = (600, 450), backgroundcolor = :darkblue, clear = true)
     colorbuffer(scene) # trigger screen setup
 
     # TODO: plots trigger scene insertion, potentially causing order differences
