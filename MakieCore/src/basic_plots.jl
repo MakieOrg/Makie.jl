@@ -288,7 +288,8 @@ Available algorithms are:
         x::EndPoints,
         y::EndPoints,
         z::EndPoints,
-        volume::AbstractArray{Float32,3}
+        # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
+        volume::AbstractArray{<: Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3}
     ) begin
     "Sets the volume algorithm that is used."
     algorithm = :mip

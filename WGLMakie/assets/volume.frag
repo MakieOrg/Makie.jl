@@ -13,19 +13,26 @@ const float step_size = max_distance / float(num_samples);
 
 uniform vec4 clip_planes[8];
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
-}
+float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
-vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm)
-{
+vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
     return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
 }
+vec4 color_lookup(vec4 color, bool color_ramp, bool norm) {
+    return color; // stub method
+}
+vec4 color_lookup(float intensity, bool color_ramp, bool norm) {
+    return vec4(0); // stub method
+}
 
-vec4 color_lookup(sampler2D colormap, int index)
-{
+vec4 color_lookup(sampler2D colormap, int index) {
     return texelFetch(colormap, ivec2(index, 0), 0);
+}
+vec4 color_lookup(bool colormap, vec4 color) {
+    return color; // stub method
+}
+vec4 color_lookup(bool colormap, int index) {
+    return vec4(0); // stub method
 }
 
 vec3 gennormal(vec3 uvw, float d)

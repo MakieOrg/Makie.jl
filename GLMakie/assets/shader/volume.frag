@@ -35,45 +35,30 @@ const float max_distance = 1.3;
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
-}
+float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
 
-vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color)
-{
+vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color) {
     return color;
 }
-
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color)
-{
+vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color) {
     return texelFetch(color_ramp, int(_normalize(intensity, norm.x, norm.y)*textureSize(color_ramp)));
 }
-
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color)
-{
+vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color) {
+    return vec4(0);  // stub method
+}
+vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color) {
+    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
+}
+vec4 color_lookup(vec4 data_color, Nothing color_ramp, Nothing norm, Nothing color) {
+    return data_color;  // stub method
+}
+vec4 color_lookup(float intensity, Nothing color_ramp, Nothing norm, Nothing color) {
     return vec4(0);  // stub method
 }
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color)
-{
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
-
-vec4 color_lookup(samplerBuffer colormap, int index)
-{
-    return texelFetch(colormap, index);
-}
-
-vec4 color_lookup(sampler1D colormap, int index)
-{
-    return texelFetch(colormap, index, 0);
-}
-
-vec4 color_lookup(Nothing colormap, int index)
-{
-    return vec4(0);
-}
+vec4 color_lookup(samplerBuffer colormap, int index) { return texelFetch(colormap, index); }
+vec4 color_lookup(sampler1D colormap, int index) { return texelFetch(colormap, index, 0); }
+vec4 color_lookup(Nothing colormap, int index) { return vec4(0); }
 
 vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
