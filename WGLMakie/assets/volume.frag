@@ -23,6 +23,11 @@ vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm)
     return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
 }
 
+vec4 color_lookup(sampler2D colormap, int index)
+{
+    return texelFetch(colormap, ivec2(index, 0), 0);
+}
+
 vec3 gennormal(vec3 uvw, float d)
 {
     vec3 a, b;
@@ -190,6 +195,38 @@ vec4 mip(vec3 front, vec3 dir)
     return color_lookup(maximum, colormap, colorrange);
 }
 
+vec4 additivergba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 integrated_color = vec4(0., 0., 0., 0.);
+    int i = 0;
+    for (i; i < num_samples ; ++i) {
+        vec4 density = texture(volumedata, pos);
+        integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
+        pos += dir;
+    }
+    return integrated_color;
+}
+
+vec4 volumeindexedrgba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    float T = 1.0;
+    vec3 Lo = vec3(0.0);
+    int i = 0;
+    for (i; i < num_samples; ++i) {
+        int index = int(texture(volumedata, pos).x) - 1;
+        vec4 density = color_lookup(colormap, index);
+        float opacity = step_size*density.a;
+        Lo += (T*opacity)*density.rgb;
+        T *= 1.0 - opacity;
+        if (T <= 0.01)
+            break;
+        pos += dir;
+    }
+    return vec4(Lo, 1.0 - T);
+}
+
 uniform uint objectid;
 
 const float typemax = 100000000000000000000000000000000000000.0;
@@ -292,8 +329,9 @@ void main()
     else if(algorithm == uint(3))
         color = volumergba(start, step_in_dir);
     else if(algorithm == uint(4))
-        color = vec4(0.0);
-        // color = volumeindexedrgba(start, step_in_dir);
+        color = additivergba(start, step_in_dir);
+    else if(algorithm == uint(5))
+        color = volumeindexedrgba(start, step_in_dir);
     else
         color = contours(start, step_in_dir);
 
