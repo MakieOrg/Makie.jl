@@ -122,7 +122,7 @@ vec4 volume(vec3 front, vec3 dir)
 }
 
 
-vec4 volumergba(vec3 front, vec3 dir)
+vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
     float T = 1.0;
@@ -130,7 +130,7 @@ vec4 volumergba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples ; ++i) {
         vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a;
+        float opacity = step_size * density.a * absorption;
         T *= 1.0 - opacity;
         if (T <= 0.01)
             break;
@@ -224,7 +224,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
         vec4 density = color_lookup(colormap, index);
-        float opacity = step_size*density.a;
+        float opacity = step_size * density.a * absorption;
         Lo += (T*opacity)*density.rgb;
         T *= 1.0 - opacity;
         if (T <= 0.01)
@@ -334,7 +334,7 @@ void main()
     else if(algorithm == uint(2))
         color = mip(start, step_in_dir);
     else if(algorithm == uint(3))
-        color = volumergba(start, step_in_dir);
+        color = absorptionrgba(start, step_in_dir);
     else if(algorithm == uint(4))
         color = additivergba(start, step_in_dir);
     else if(algorithm == uint(5))

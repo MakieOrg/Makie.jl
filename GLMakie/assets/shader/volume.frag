@@ -169,7 +169,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples ; ++i) {
         vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a;
+        float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
         if (T <= 0.01)
             break;
@@ -189,7 +189,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
         vec4 density = color_lookup(color_map, index);
-        float opacity = step_size*density.a;
+        float opacity = step_size*density.a * absorption;
         Lo += (T*opacity)*density.rgb;
         T *= 1.0 - opacity;
         if (T <= 0.01)
