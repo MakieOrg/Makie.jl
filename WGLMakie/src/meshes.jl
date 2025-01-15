@@ -39,9 +39,6 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         if color[].color_scaled[] isa AbstractVector
             buffers[:color] = Buffer(color[].color_scaled)
         else
-            if color[].color_scaled[] isa AbstractArray{<: Any, 3}
-                error("Volume texture only supported in GLMakie right now")
-            end
             color_scaled = convert_texture(color[].color_scaled)
             uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
         end
@@ -50,8 +47,6 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         uniforms[:highclip] = Makie.highclip(color[])
         uniforms[:lowclip] = Makie.lowclip(color[])
         uniforms[:nan_color] = color[].nan_color
-    elseif color[] isa AbstractArray{<: Number, 3}
-        error("Volume texture only supported in GLMakie right now")
     else
         error("Color type not supported: $(typeof(color[]))")
     end
@@ -112,7 +107,9 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     mesh_signal = plot[1]
     get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
     data = GeometryBasics.vertex_attributes(mesh_signal[])
-
+    if plot.color[] isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
+    end
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
 
