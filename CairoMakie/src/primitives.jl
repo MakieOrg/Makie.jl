@@ -948,7 +948,7 @@ function draw_mesh3D(
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
     _meshuvs = texturecoordinates(mesh)
-    if !(_meshuvs isa AbstractVector{<:Vec2f})
+    if (_meshuvs isa AbstractVector{<:Vec3})
         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
     end
     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
