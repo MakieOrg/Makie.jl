@@ -36,7 +36,7 @@ uniform int len;
 flat out uvec2 o_id;
 flat out int o_InstanceID;
 out vec4 o_color;
-out vec2 o_uv;
+out vec3 o_uv;
 
 {{position_type}} position;
 
@@ -108,10 +108,14 @@ vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
     return transform * vec3(uv, 1);
 }
 
-vec2 get_uv(int index, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(int index, vec2 uv){
-    return apply_uv_transform(uv_transform, index, uv);
+vec3 get_uv(int index, Nothing uv){ return vec3(0.0); }
+vec3 get_uv(int index, vec2 uv){
+    return vec3(apply_uv_transform(uv_transform, index, uv), 0.0);
 }
+vec3 get_uv(int index, vec3 uv) {
+    return uv;
+}
+
 
 void main(){
     int index = gl_InstanceID;
