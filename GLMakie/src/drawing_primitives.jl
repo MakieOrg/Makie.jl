@@ -199,7 +199,7 @@ function handle_intensities!(screen, attributes, plot)
         end
         attributes[:intensity] = color[].color_scaled
         interp = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
-        attributes[:color_map] = Texture(color[].colormap; minfilter=interp)
+        attributes[:color_map] = Texture(screen.glscreen, color[].colormap; minfilter=interp)
         attributes[:color_norm] = color[].colorrange_scaled
         attributes[:nan_color] = color[].nan_color
         attributes[:highclip] = Makie.highclip(color[])
@@ -230,7 +230,6 @@ const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO
 
 function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen, Makie.BackendTick)
     robj = get!(screen.cache, objectid(plot)) do
 
         filtered = filter(plot.attributes) do (k, v)
@@ -344,16 +343,17 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
 end
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
+    # Note: Calling pollevents() here will allow `on(events(scene)...)` to take
+    #       action while a plot is getting created. If the plot is deleted at
+    #       that point the robj will get orphaned.
     ShaderAbstractions.switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    pollevents(screen, Makie.BackendTick)
     if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
-            pollevents(screen, Makie.BackendTick)
             insert!(screen, scene, x)
         end
     end
@@ -586,7 +586,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:quad_offset] = quad_offset
         gl_attributes[:marker_offset] = char_offset
         gl_attributes[:uv_offset_width] = uv_offset_width
-        gl_attributes[:distancefield] = get_texture!(atlas)
+        gl_attributes[:distancefield] = get_texture!(screen.glscreen, atlas)
         gl_attributes[:visible] = plot.visible
         gl_attributes[:fxaa] = get(plot, :fxaa, Observable(false))
         gl_attributes[:depthsorting] = get(plot, :depthsorting, false)
@@ -629,8 +629,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         end
         xpos = lift(first, plot, xypos)
         ypos = lift(last, plot, xypos)
-        gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
-        gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
+        gl_attributes[:position_x] = Texture(screen.glscreen, xpos, minfilter = :nearest)
+        gl_attributes[:position_y] = Texture(screen.glscreen, ypos, minfilter = :nearest)
         # number of planes used to render the heatmap
         gl_attributes[:instances] = lift(plot, xpos, ypos) do x, y
             (length(x)-1) * (length(y)-1)
@@ -641,7 +641,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         if intensity isa ShaderAbstractions.Sampler
             gl_attributes[:intensity] = to_value(intensity)
         else
-            gl_attributes[:intensity] = Texture(el32convert(intensity); minfilter=interp)
+            gl_attributes[:intensity] = Texture(screen.glscreen, el32convert(intensity); minfilter=interp)
         end
 
         return draw_heatmap(screen, gl_attributes)
@@ -664,9 +664,9 @@ function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
         _interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = _interp ? :linear : :nearest
         if haskey(gl_attributes, :intensity)
-            gl_attributes[:image] = Texture(pop!(gl_attributes, :intensity); minfilter=interp)
+            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :intensity); minfilter=interp)
         else
-            gl_attributes[:image] = Texture(pop!(gl_attributes, :color); minfilter=interp)
+            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :color); minfilter=interp)
         end
         gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
         return draw_mesh(screen, gl_attributes)
@@ -684,7 +684,6 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     color = pop!(gl_attributes, :color)
     interp = to_value(pop!(gl_attributes, :interpolate, true))
     interp = interp ? :linear : :nearest
-
     if to_value(color) isa Colorant
         gl_attributes[:vertex_color] = color
         delete!(gl_attributes, :color_map)
@@ -702,26 +701,28 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
             end
         end
     elseif to_value(color) isa ShaderAbstractions.Sampler
-        gl_attributes[:image] = Texture(lift(el32convert, plot, color))
+        gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa AbstractMatrix{<:Colorant}
-        gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
+        gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color), minfilter = interp)
         delete!(gl_attributes, :color_map)
         delete!(gl_attributes, :color_norm)
-    elseif to_value(color) isa AbstractMatrix{<: Number}
-        gl_attributes[:image] = Texture(lift(el32convert, plot, color), minfilter = interp)
+    elseif to_value(color) isa Union{AbstractMatrix{<: Number}, AbstractArray{<: Number, 3}}
+        gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color), minfilter = interp)
         gl_attributes[:color] = nothing
     elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
         gl_attributes[:vertex_color] = lift(el32convert, plot, color)
+    elseif to_value(color) isa Nothing
+        # this is ok, since e.g. colormapped colors will go into `intensity`
     else
-        # error("Unsupported color type: $(typeof(to_value(color)))")
+        error("Unsupported color type: $(typeof(to_value(color)))")
     end
 
     if haskey(gl_attributes, :intensity)
         intensity = pop!(gl_attributes, :intensity)
-        if intensity[] isa Matrix
-            gl_attributes[:image] = Texture(intensity, minfilter = interp)
+        if intensity[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
+            gl_attributes[:image] = Texture(screen.glscreen, intensity, minfilter = interp)
         else
             gl_attributes[:vertex_color] = intensity
         end
@@ -734,7 +735,11 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), positions)
     gl_attributes[:faces] = lift(x-> decompose(GLTriangleFace, x), mesh)
     if hasproperty(to_value(mesh), :uv)
-        gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
+        if eltype(to_value(mesh).uv) <: Vec2
+            gl_attributes[:texturecoordinates] = lift(decompose_uv, mesh)
+        elseif eltype(to_value(mesh).uv) <: Vec3
+            gl_attributes[:texturecoordinates] = lift(GeometryBasics.decompose_uvw, mesh)
+        end
     end
     if hasproperty(to_value(mesh), :normal) && (shading !== NoShading || matcap_active)
         gl_attributes[:normals] = lift(decompose_normals, mesh)
@@ -777,7 +782,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         space = plot.space
         interp = to_value(pop!(gl_attributes, :interpolate, true))
         interp = interp ? :linear : :nearest
-        gl_attributes[:image] = Texture(img; minfilter=interp)
+        gl_attributes[:image] = Texture(screen.glscreen, img; minfilter=interp)
 
         @assert to_value(plot[3]) isa AbstractMatrix
         gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
@@ -813,7 +818,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
             xpos = lift(first, plot, xypos)
             ypos = lift(last, plot, xypos)
             args = map((xpos, ypos, mat)) do arg
-                Texture(lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
+                Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
             end
             if isnothing(img)
                 gl_attributes[:image] = args[3]
@@ -821,7 +826,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
             return draw_surface(screen, args, gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(plot[1:2]))
-            z_data = Texture(lift(el32convert, plot, plot[3]); minfilter=:linear)
+            z_data = Texture(screen.glscreen, lift(el32convert, plot, plot[3]); minfilter=:linear)
             if isnothing(img)
                 gl_attributes[:image] = z_data
             end
@@ -878,7 +883,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
 
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        Tex(x) = Texture(x; minfilter=interp)
+        Tex(x) = Texture(screen.glscreen, x; minfilter=interp)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
@@ -893,7 +898,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
 
         # voxel ids
-        tex = Texture(plot.converted[end], minfilter = :nearest)
+        tex = Texture(screen.glscreen, plot.converted[end], minfilter = :nearest)
 
         # local update
         buffer = Vector{UInt8}(undef, 1)
@@ -969,14 +974,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # process texture mapping
         uv_map = pop!(gl_attributes, :uvmap)
         if !isnothing(to_value(uv_map))
-            gl_attributes[:uv_map] = Texture(uv_map, minfilter = :nearest)
+            gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
 
             interp = to_value(pop!(gl_attributes, :interpolate))
             interp = interp ? :linear : :nearest
             color = gl_attributes[:color]
-            gl_attributes[:color] = Texture(color, minfilter = interp)
+            gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
         elseif !isnothing(to_value(gl_attributes[:color]))
-            gl_attributes[:color] = Texture(gl_attributes[:color], minfilter = :nearest)
+            gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
         end
 
         # for depthsorting

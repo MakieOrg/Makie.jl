@@ -310,9 +310,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xlabelvisible::Bool = true
         "Controls if the ylabel is visible."
         ylabelvisible::Bool = true
-        "The padding between the xlabel and the ticks or axis."
+        "The additional padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
-        "The padding between the ylabel and the ticks or axis."
+        "The additional padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The xlabel rotation in radians."
         xlabelrotation = Makie.automatic
@@ -578,6 +578,16 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
         is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
+
+        !!! warning
+            `autolimitaspect` can introduce cyclical updates which result in stack overflow errors.
+            This happens when the expanded limits have different ticks than the unexpanded ones.
+            The difference in size causes a relayout which might again result in different autolimits
+            to match the new aspect ratio, new ticks and again a relayout.
+
+            You can hide the ticklabels or fix `xticklabelspace` and `yticklabelspace` to avoid the relayouts.
+            You can choose the amount of space manually or pick the current automatic one with `tight_ticklabel_spacing!`.
+
         """
         autolimitaspect = nothing
         """
@@ -1460,6 +1470,8 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+        "The default alpha for legend elements"
+        alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."

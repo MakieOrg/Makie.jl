@@ -190,7 +190,7 @@ end
 
     empty!(ax)
 
-    tex_atlas = GLMakie.get_texture!(GLMakie.gl_texture_atlas())
+    tex_atlas = GLMakie.get_texture!(screen.glscreen, GLMakie.gl_texture_atlas())
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)

@@ -42,7 +42,7 @@ mesh(
 ```@figure backend=GLMakie
 using GeometryBasics
 
-# Reduce quality of sphere 
+# Reduce quality of sphere
 s = Tessellation(Sphere(Point3f(0), 1f0), 12)
 ps = coordinates(s)
 fs = faces(s)
@@ -140,6 +140,84 @@ nothing # hide
 <video autoplay loop muted playsinline controls src="./uv_mesh_mirror.mp4" />
 ```
 
+## Volume Texture
+
+One can pass a 3d array to `mesh(args...; color=volume), and index the volume via uvw coordinates.
+Here is an example of an interactive volume slice viewer:
+
+```@example volume_mesh
+
+using GLMakie, GeometryBasics, NIfTI
+brain = Float32.(niread(Makie.assetpath("brain.nii.gz")).raw)
+# Define the positions
+positions = Observable([Point3f(0.5, 0, 0), Point3f(0.5, 1, 0), Point3f(0.5, 1, 1), Point3f(0.5, 0, 1)])
+triangles = GLTriangleFace[(1, 2, 3), (3, 4, 1)]
+
+# We will stay in the unit cube, so the uv coordinates are just the positions.
+uv_mesh = map((p) -> GeometryBasics.Mesh(p, triangles; uv=Vec3f.(p)), positions)
+# Pass the volume plot to the color
+f, ax, pl = mesh(uv_mesh, color=brain, shading=NoShading, axis=(; show_axis=false))
+# Visualize the unit cube in which the volume lives
+wireframe!(ax, Rect3f(Vec3f(0), Vec3f(1)), transparency=true, color=(:gray, 0.5))
+cam = cameracontrols(ax.scene)
+# Only rotate when left + alt buttons are pressed, so we can better interact with the slice
+cam.controls.rotation_button = Mouse.left & Keyboard.left_alt
+# Have colors for each point, so we can highlight it on hover
+colors = Observable(fill(:black, 4))
+ms = meshscatter!(ax, positions, markersize=0.05, color=colors)
+# Also plot the volume next to it with a maximum intensity projection.
+Makie.volume(f[1, 2], brain)
+
+# Use mouseevents for drag events etc.
+m_events = addmouseevents!(ax.scene)
+point_idx = Ref(0)
+point_start = Ref(Point3f(0))
+clear_color() = if any(x -> x == :red, colors[])
+    colors[] .= :black
+    notify(colors)
+end
+# Define the handler for handling drag events to move the slice and
+# highlight hovered points.
+onany(ax.scene.events.mouseposition, m_events.obs) do mp, event
+    if event.type == Makie.MouseEventTypes.leftdragstart
+        p, idx = Makie.pick(ax.scene)
+        if p == ms
+            point_idx[] = idx
+            colors[][idx] = :red
+            point_start[] = positions[][idx]
+            notify(colors)
+        else
+            point_idx[] = 0
+        end
+    elseif event.type == Makie.MouseEventTypes.leftdrag
+        if point_idx[] != 0
+            ray = Makie.ray_at_cursor(ax.scene)
+            p = point_start[]
+            line_start = Point3f(0, p[2], p[3])
+            line_end = Point3f(1, p[2], p[3])
+            new_point = Makie.closest_point_on_line(line_start, line_end, ray)
+            positions[][point_idx[]] = new_point
+            notify(positions)
+        end
+    elseif event.type == Makie.MouseEventTypes.leftdragstop
+        point_idx[] = 0
+        clear_color()
+    elseif event.type == Makie.MouseEventTypes.over
+        p, idx = Makie.pick(ax.scene)
+        if p == ms
+            if colors[][idx] != :red
+                colors[][idx] = :red
+                notify(colors)
+            end
+        else
+            clear_color()
+            point_idx[] = 0
+        end
+    end
+end
+f
+```
+
 ## Complex Meshes (Experimental)
 
 ```@figure backend=GLMakie
@@ -161,7 +239,6 @@ f, a, p = mesh(sponza)
 update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
 cameracontrols(a).settings.center[] = false # don't recenter on display
 cameracontrols(a).settings.fixed_axis[] = false # rotate freely
-
 f
 ```
 

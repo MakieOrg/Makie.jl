@@ -439,8 +439,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
-    onany(parent, tickvalues, minorticks) do tickvalues, minorticks
-        minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+    onany(parent, tickvalues, minorticks, minorticksvisible) do tickvalues, minorticks, visible
+        if visible
+            minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+        end
         return
     end
 

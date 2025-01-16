@@ -33,7 +33,7 @@ A matrix of Intensities will result in a contourf kind of plot
 """
 function draw_heatmap(screen, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
-    to_opengl_mesh!(data, primitive)
+    to_opengl_mesh!(screen.glscreen, data, primitive)
     pop!(data, :shading, FastShading)
     @gen_defaults! data begin
         intensity = nothing => Texture
@@ -55,7 +55,7 @@ end
 
 function draw_volume(screen, main::VolumeTypes, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
-    to_opengl_mesh!(data, const_lift(GeometryBasics.triangle_mesh, geom))
+    to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
     shading = pop!(data, :shading, FastShading)
     pop!(data, :backlight, 0f0) # We overwrite this
     @gen_defaults! data begin

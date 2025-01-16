@@ -1,13 +1,13 @@
 using Makie: RectanglePacker
 
-function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
-    TextureBuffer(color)
+function to_meshcolor(context, color::TOrSignal{Vector{T}}) where T <: Colorant
+    TextureBuffer(context, color)
 end
 
-function to_meshcolor(color::TOrSignal{Matrix{T}}) where T <: Colorant
-    Texture(color)
+function to_meshcolor(context, color::TOrSignal{Matrix{T}}) where T <: Colorant
+    Texture(context, color)
 end
-function to_meshcolor(color)
+function to_meshcolor(context, color)
     color
 end
 
@@ -25,6 +25,7 @@ vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotat
 vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
+GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion) = Vec4f(rotation.data)
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 struct PointSizeRender
@@ -35,19 +36,19 @@ end
 
 
 
-intensity_convert(intensity, verts) = intensity
-function intensity_convert(intensity::VecOrSignal{T}, verts) where T
+intensity_convert(cotnext, intensity, verts) = intensity
+function intensity_convert(context, intensity::VecOrSignal{T}, verts) where T
     if length(to_value(intensity)) == length(to_value(verts))
-        GLBuffer(intensity)
+        GLBuffer(context, intensity)
     else
-        Texture(intensity)
+        Texture(context, intensity)
     end
 end
-function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
+function intensity_convert_tex(context, intensity::VecOrSignal{T}, verts) where T
     if length(to_value(intensity)) == length(to_value(verts))
-        TextureBuffer(intensity)
+        TextureBuffer(context, intensity)
     else
-        Texture(intensity)
+        Texture(context, intensity)
     end
 end
 
@@ -61,7 +62,7 @@ function draw_mesh_particle(screen, p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-    to_opengl_mesh!(data, p[1])
+    to_opengl_mesh!(screen.glscreen, data, p[1])
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
@@ -90,12 +91,12 @@ function draw_mesh_particle(screen, p, data)
     end
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
+    data[:color] = to_meshcolor(screen.glscreen, get!(data, :color, nothing))
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
         intensity = nothing
         image = nothing => Texture
-        color = nothing => to_meshcolor
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
@@ -120,7 +121,7 @@ function draw_mesh_particle(screen, p, data)
         )
     end
     if !isnothing(Makie.to_value(intensity))
-        data[:intensity] = intensity_convert_tex(intensity, position)
+        data[:intensity] = intensity_convert_tex(screen.glscreen, intensity, position)
         data[:len] = const_lift(length, position)
     end
     return assemble_shader(data)
@@ -179,7 +180,7 @@ function draw_scatter(
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
         max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
+        texture_atlas = Texture(screen.glscreen, eltype(images[1]), (max_xy...,))
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
         end
@@ -207,6 +208,20 @@ function draw_scatter(screen, (marker, position), data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
+
+    if to_value(pop!(data, :depthsorting, false))
+        data[:indices] = map(
+            data[:projectionview], data[:preprojection], data[:model],
+            position
+        ) do pv, pp, m, pos
+            T = pv * pp * m
+            depth_vals = map(pos) do p
+                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
+                p4d[3] / p4d[4]
+            end
+            UInt32.(sortperm(depth_vals, rev = true) .- 1)
+        end
+    end
 
     @gen_defaults! data begin
         shape       = Cint(0)
@@ -252,7 +267,7 @@ function draw_scatter(screen, (marker, position), data)
 
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
-    data[:intensity] = intensity_convert(intensity, position)
+    data[:intensity] = intensity_convert(screen.glscreen, intensity, position)
     data[:len] = const_lift(length, position)
 
     return assemble_shader(data)

@@ -284,6 +284,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
         strokecolor = attrs.markerstrokecolor, inspectable = false,
         colormap = attrs.markercolormap,
         colorrange = attrs.markercolorrange,
+        alpha = attrs.alpha,
     )
 
     return [scat]
@@ -297,7 +298,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
-        linestyle = attrs.linestyle, inspectable = false)
+        linestyle = attrs.linestyle, inspectable = false, alpha = attrs.alpha)
 
     return [lin]
 end
@@ -310,7 +311,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.polycolor,
         strokecolor = attrs.polystrokecolor, inspectable = false,
         colormap = attrs.polycolormap, colorrange = attrs.polycolorrange,
-        linestyle = attrs.linestyle)
+        linestyle = attrs.linestyle, alpha = attrs.alpha)
 
     return [pol]
 end
@@ -350,7 +351,7 @@ end
 
 function apply_legend_override!(le::MarkerElement, override::LegendOverride)
     renamed_attrs = _rename_attributes!(MarkerElement, copy(override.overrides))
-    for sym in (:markerpoints, :markersize, :markercolor, :markerstrokewidth, :markerstrokecolor, :markercolormap, :markercolorrange)
+    for sym in (:markerpoints, :markersize, :markercolor, :markerstrokewidth, :markerstrokecolor, :markercolormap, :markercolorrange, :alpha)
         if haskey(renamed_attrs, sym)
             le.attributes[sym] = renamed_attrs[sym]
         end
@@ -359,7 +360,7 @@ end
 
 function apply_legend_override!(le::LineElement, override::LegendOverride)
     renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
-    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle)
+    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :alpha)
         if haskey(renamed_attrs, sym)
             le.attributes[sym] = renamed_attrs[sym]
         end
@@ -368,7 +369,7 @@ end
 
 function apply_legend_override!(le::PolyElement, override::LegendOverride)
     renamed_attrs = _rename_attributes!(PolyElement, copy(override.overrides))
-    for sym in (:polypoints, :polycolor, :polystrokewidth, :polystrokecolor, :polycolormap, :polycolorrange, :polystrokestyle)
+    for sym in (:polypoints, :polycolor, :polystrokewidth, :polystrokecolor, :polycolormap, :polycolorrange, :polystrokestyle, :alpha)
         if haskey(renamed_attrs, sym)
             le.attributes[sym] = renamed_attrs[sym]
         end
@@ -479,6 +480,7 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
         linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        alpha = plot.alpha,
     )]
 end
 
@@ -491,6 +493,7 @@ function legendelements(plot::Scatter, legend)
         strokecolor = choose_scalar(plot.strokecolor, legend[:markerstrokecolor]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        alpha = plot.alpha,
     )]
 end
 
@@ -502,6 +505,7 @@ function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
         strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        alpha = plot.alpha,
     )]
 end
 
@@ -516,6 +520,7 @@ function legendelements(plot::Band, legend)
         polystrokewidth = 0,
         polycolormap = plot.colormap,
         polycolorrange = plot.colorrange,
+        alpha = plot.alpha,
     )]
 end
 
@@ -528,6 +533,7 @@ function legendelements(plot::Union{Poly, Density}, legend)
         colormap = plot.colormap,
         colorrange = plot.colorrange,
         linestyle = plot.linestyle,
+        alpha = plot.alpha,
     )]
 end
 
