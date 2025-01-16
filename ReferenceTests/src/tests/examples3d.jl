@@ -77,6 +77,17 @@ end
     f
 end
 
+@testset "Volume absorption" begin
+    f = Figure(size = (600, 300))
+    r = range(-5, 5, length=31)
+    data = [cos(x*x + y*y + z*z)^2 for x in r, y in r, z in r]
+    absorption = 5.0
+    volume(f[1, 1], data, algorithm = :absorption; absorption)
+    volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
+    volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
+    f
+end
+
 @reference_test "Textured meshscatter" begin
     catmesh = loadasset("cat.obj")
     img = loadasset("diffusemap.png")

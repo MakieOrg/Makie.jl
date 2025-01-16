@@ -1950,6 +1950,7 @@ end
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
+convert_attribute(value, ::key"absorption", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"gap", ::key"voxels") = ifelse(value <= 0.01, 0f0, Float32(value))
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
