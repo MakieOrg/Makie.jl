@@ -168,6 +168,7 @@ function create_lines_robj(islines, args, changed, last)
         :_highclip => :highclip,
         :_lowclip => :lowclip,
         :data_limit_points_transformed => :position,
+        :model_f32c => :model,
     )
     if islines
         push!(inputs, :joinstyle, :gl_miter_limit)

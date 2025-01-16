@@ -22448,6 +22448,11 @@ class Plot {
         const { attributes , interleaved_attributes  } = geometry;
         const { uniforms  } = mesh.material;
         data.forEach(([key, value])=>{
+            if (key === "color" && (this.type === "lines" || this.type === "linesegments")) {
+                this.update_uniform(key + "_start", value);
+                this.update_uniform(key + "_end", value);
+                return;
+            }
             if (key in uniforms) {
                 this.update_uniform(key, value);
             } else if (key in attributes || interleaved_attributes && key in interleaved_attributes) {

@@ -112,7 +112,13 @@ const SCATTER_INPUTS = [
 
 function create_robj(args, changed, last)
     inputs = SCATTER_INPUTS
-    r = Dict(:quad_scale => :markersize, :positions_transformed_f32c => :pos)
+    r = Dict(
+        :quad_scale => :markersize,
+        :positions_transformed_f32c => :pos,
+        :sdf_uv => :uv_offset_width,
+        :sdf_marker_shape => :shape_type,
+        :model_f32c => :model,
+    )
     if isnothing(last)
         program = assemble_scatter_robj((; zip(inputs, args)...))
         return (program, Observable([]))
@@ -242,20 +248,20 @@ function create_shader(scene::Scene, plot::Image)
         )
         if isnothing(last)
             program = create_image_mesh((; zip(inputs, args)...))
-            return (program, Observable([]))
+            return (program, Observable{Any}([]))
         else
             updater = last[2][]
             new_values = map((1:length(inputs))[changed]) do i
                 name = get(r, inputs[i], inputs[i])
                 data = serialize_three(args[i][])
-                if name == :uniform_color
+                if name == :uniform_color || name == :colormap
                     s = Int32[size(args[i][])...]
                     data = [s, data]
                 end
                 return [name, data]
             end
             if !isempty(new_values)
-                updater[] = new_values
+                updater[] = Bonito.LargeUpdate(new_values)
             end
             return nothing
         end
