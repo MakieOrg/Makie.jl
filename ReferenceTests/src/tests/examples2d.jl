@@ -1863,7 +1863,11 @@ end
     meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
         color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
 
-    f
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
 end
 
 @reference_test "Color patterns in recipes" begin
@@ -1882,5 +1886,9 @@ end
     pie!(a, 4, 1, vs, radius = 0.5, color = pattern) # TODO: per element
     hspan!(a, 4, 4.5, color = pattern)
 
-    f
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
 end

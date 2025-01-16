@@ -514,8 +514,8 @@ function Cairo.CairoPattern(color::Makie.AbstractPattern)
     return cairopattern
 end
 
-function align_pattern(pattern::Cairo.CairoPattern, scene, plot)
-    o = Makie.pattern_offset(scene.camera.projectionview[], scene.camera.resolution[])
+function align_pattern(pattern::Cairo.CairoPattern, scene, model)
+    o = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
     T = Mat{2, 3, Float32}(1,0, 0,1, -o[1], -o[2])
     pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
     return

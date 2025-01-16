@@ -40,9 +40,9 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         scene = Makie.parent_scene(plot)
         uniforms[:uv_transform] = map(plot,
                 plot.attributes[:uv_transform], scene.camera.projectionview,
-                scene.camera.resolution, color
-            ) do uvt, pv, res, pattern
-            return Makie.pattern_uv_transform(uvt, pv, res, pattern, true)
+                scene.camera.resolution, plot.model, color # TODO float32convert
+            ) do uvt, pv, res, model, pattern
+            return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
         end
     elseif color[] isa AbstractMatrix
         uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)

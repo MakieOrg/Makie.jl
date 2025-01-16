@@ -302,11 +302,13 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             # different default with Patterns (no swapping and flipping of axes)
             # also includes px to uv coordinate transform so we can use linear
             # interpolation (no jitter) and related pattern to (0,0,0) in world space
-            gl_attributes[:uv_transform] = map(
-                Makie.pattern_uv_transform, plot,
-                plot.attributes[:uv_transform], scene.camera.projectionview,
-                scene.camera.resolution, gl_attributes[:color]
-            )
+            gl_attributes[:uv_transform] = map(plot,
+                    plot.attributes[:uv_transform], scene.camera.projectionview,
+                    scene.camera.resolution, gl_attributes[:model], gl_attributes[:color];
+                    priority = -1
+                ) do uvt, pv, res, model, pattern
+                Makie.pattern_uv_transform(uvt, pv * model, res, pattern)
+            end
         end
 
         # TODO: remove depwarn & conversion after some time

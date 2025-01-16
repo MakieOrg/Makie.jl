@@ -883,7 +883,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, plot)
+        align_pattern(cols, scene, model)
     end
     return draw_mesh2D(screen, cols, vs, fs)
 end
@@ -991,6 +991,10 @@ function draw_mesh3D(
 
     model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
+
+    if per_face_col isa Cairo.CairoPattern
+        align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
+    end
 
     if haskey(attributes, :transform_marker)
         # meshscatter/voxels route:
@@ -1100,7 +1104,6 @@ function draw_mesh3D(
     # as a color. In this case we don't do shading and fall back to mesh2D
     # rendering
     if per_face_col isa Cairo.CairoPattern
-        align_pattern(per_face_col, scene, plot)
         return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
     end
 
