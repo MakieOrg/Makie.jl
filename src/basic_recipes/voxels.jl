@@ -4,9 +4,9 @@ function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
 end
 
 function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
-    xi = Float32.(to_endpoints(xs))
-    yi = Float32.(to_endpoints(ys))
-    zi = Float32.(to_endpoints(zs))
+    xi = Float32.(to_endpoints(xs, "x", Voxels))
+    yi = Float32.(to_endpoints(ys, "y", Voxels))
+    zi = Float32.(to_endpoints(zs, "z", Voxels))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
 

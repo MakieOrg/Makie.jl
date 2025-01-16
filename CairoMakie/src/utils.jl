@@ -519,7 +519,7 @@ end
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector,Number}, plot_object)
     cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
     return to_color(to_value(cmap))
 end
@@ -531,7 +531,7 @@ function to_cairo_color(color::Makie.AbstractPattern, plot_object)
 end
 
 function to_cairo_color(color, plot_object)
-    return to_color(color)
+    return to_color((color, to_value(plot_object.alpha)))
 end
 
 function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
@@ -634,7 +634,10 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         # TODO This is wrong and doesn't actually interpolate
         # Inside the triangle sampling the color image
         return FaceIterator(cvec, faces)
+    elseif color isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
     end
+
     error("Unsupported Color type: $(typeof(color))")
 end
 

@@ -166,7 +166,7 @@ function assemble_scatter_robj(
     camera = scene[].camera
     fast_pixel = marker isa FastPixel
     pspace = fast_pixel ? space : markerspace
-    distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(atlas) : nothing
+    distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(screen[].glscreen, atlas) : nothing
     data = Dict(
         :vertex => positions[],
         :indices => length(positions[]),
@@ -379,7 +379,6 @@ function assemble_lines_robj(
     add_camera_attributes!(data, screen[], camera, space[])
     add_color_attributes_lines!(data, color[], colormap[], colornorm[])
     add_uniforms!(data)
-
     return draw_lines(screen[], positions[], data)
 end
 
@@ -620,6 +619,7 @@ function assemble_linesegments_robj(
         data[:pattern] = nothing
     end
 
+
     return draw_linesegments(screen[], positions[], data) # TODO: extract positions
 end
 
@@ -652,7 +652,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         end
 
         if isnothing(cached)
-            tex = Texture(sdf, x_repeat = :repeat)
+            tex = Texture(screen.glscreen, sdf, x_repeat = :repeat)
         else
             tex = cached[1][]
             GLAbstraction.update!(tex, sdf)

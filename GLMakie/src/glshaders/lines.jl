@@ -62,9 +62,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = Float32[] => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
         debug               = false
-        num_clip_planes     = Int32(0)
     end
-
     return assemble_shader(data)
 end
 
@@ -96,6 +94,14 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         gl_primitive        = GL_LINES
         pattern_length      = 1f0
         debug               = false
+    end
+    if !isa(pattern, Texture) && to_value(pattern) !== nothing
+        if !isa(to_value(pattern), Vector)
+            error("Pattern needs to be a Vector of floats. Found: $(typeof(pattern))")
+        end
+        tex = GLAbstraction.Texture(screen.glscreen, lift(Makie.linestyle_to_sdf, pattern); x_repeat=:repeat)
+        data[:pattern] = tex
+        data[:pattern_length] = lift(pt -> Float32(last(pt) - first(pt)), pattern)
     end
     robj = assemble_shader(data)
     return robj

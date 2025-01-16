@@ -18,6 +18,33 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
 import Base: merge, resize!, similar, length, getindex, setindex!
 
+# Debug tools
+const GLMAKIE_DEBUG = Ref(false)
+
+# implemented in GLMakie/glwindow.jl
+function require_context_no_error(args...) end
+
+function require_context(ctx, current = ShaderAbstractions.current_context())
+    msg = require_context_no_error(ctx, current)
+    isnothing(msg) && return nothing
+    error(msg)
+end
+function with_context(f, context)
+    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+    old_ctx = isassigned(CTX) ? CTX[] : nothing
+    GLAbstraction.switch_context!(context)
+    try
+        f()
+    finally
+        if isnothing(old_ctx)
+            GLAbstraction.switch_context!()
+        else
+            GLAbstraction.switch_context!(old_ctx)
+        end
+    end
+end
+export require_context, with_context
+
 include("AbstractGPUArray.jl")
 
 #Methods which get overloaded by GLExtendedFunctions.jl:
@@ -41,9 +68,9 @@ import ModernGL.glGetShaderiv
 import ModernGL.glViewport
 import ModernGL.glScissor
 
+include("shaderabstraction.jl")
 include("GLUtils.jl")
 
-include("shaderabstraction.jl")
 include("GLTypes.jl")
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
