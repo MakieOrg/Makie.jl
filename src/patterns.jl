@@ -161,14 +161,15 @@ end
 
 
 # Consider applying model[] here too, so that patterns move with translate too
-function pattern_offset(projectionview::Mat4, resolution::Vec2)
+function pattern_offset(projectionview::Mat4, resolution::Vec2, yflip = false)
     clip = projectionview * Point4f(0,0,0,1)
-    return (-0.5f0, 0.5f0) .* resolution .* clip[Vec(1,2)] / clip[4]
-    return Mat{2, 3, Float32}(1,0, 0,1, o[1], o[2])
+    # clip space is -1..1, screen space 0..w so we need 0.5 prefactor
+    maybe_flip = (1f0, ifelse(yflip, -1f0, 1f0))
+    return 0.5f0 .* maybe_flip .* resolution .* clip[Vec(1,2)] / clip[4]
 end
 
 function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern, use_mat3 = false)
-    origin = pattern_offset(projectionview, resolution)
+    origin = pattern_offset(projectionview, resolution ./ size(pattern))
     px_to_uv = Makie.uv_transform(-origin, Vec2f(1.0 ./ size(pattern)))
 
     if uv_transform === Makie.automatic
