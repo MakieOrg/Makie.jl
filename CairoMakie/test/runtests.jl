@@ -193,6 +193,7 @@ excludes = Set([
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
     "picking", # Not implemented
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
+    "Mesh with 3d volume texture", # Not implemented yet
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
