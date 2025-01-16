@@ -282,22 +282,12 @@ intersect with the volume data to derive some color, usually based on the given
 colormap. How exactly the color is derived depends on the algorithm used.
 
 Available algorithms are:
-* `:iso`: Shows an isovalue surface within the given float data. For this only samples within
-`isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
-* `:absorption`: Accumulates color based on the float values sampled from volume data. At each
-ray step (starting from the front) a value is sampled from the volume data and then used to
-sample the colormap. The resulting color is weighted by the ray step size and blended the
-previously accumulated color. The weight of each step can be adjusted with the multiplicative
-`absorption` attribute.
-* `:mip`: Shows the maximum intensity projection of the given float data. This derives the
-color of a pixel from the largest value sampled from the respective ray.
-* `:absorptionrgba`: This algorithm matches :absorption, but samples colors directly from RGBA volume data.
-For each ray step a color is sampled from the data, weighted by the ray step size and blended
-with the previously accumulated color. Also considers `absorption`.
-* `:additive`: Accumulates colors using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)`
-where `sampled_color` is a sample of volume data at the current ray step.
-* `:indexedabsorption`: This algorithm acts the same as :absorption, but interprets the volume
-data as indices. They are used as direct indices to the colormap. Also considers `absorption`.
+* `:iso`: Shows an isovalue surface within the given float data. For this only samples within `isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
+* `:absorption`: Accumulates color based on the float values sampled from volume data. At each ray step (starting from the front) a value is sampled from the volume data and then used to sample the colormap. The resulting color is weighted by the ray step size and blended the previously accumulated color. The weight of each step can be adjusted with the multiplicative `absorption` attribute.
+* `:mip`: Shows the maximum intensity projection of the given float data. This derives the color of a pixel from the largest value sampled from the respective ray.
+* `:absorptionrgba`: This algorithm matches :absorption, but samples colors directly from RGBA volume data. For each ray step a color is sampled from the data, weighted by the ray step size and blended with the previously accumulated color. Also considers `absorption`.
+* `:additive`: Accumulates colors using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)` where `sampled_color` is a sample of volume data at the current ray step.
+* `:indexedabsorption`: This algorithm acts the same as :absorption, but interprets the volume data as indices. They are used as direct indices to the colormap. Also considers `absorption`.
 """
 @recipe Volume (
         x::EndPoints,
