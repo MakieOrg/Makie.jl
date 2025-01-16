@@ -62,12 +62,12 @@ function data_limits(plot::Surface)
     return Rect3d(mini, maxi .- mini)
 end
 
-# function data_limits(plot::Union{Heatmap, Image})
-#     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-#     mini = Vec3d(first.(mini_maxi)..., 0)
-#     maxi = Vec3d(last.(mini_maxi)..., 0)
-#     return Rect3d(mini, maxi .- mini)
-# end
+function data_limits(plot::Heatmap)
+    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
+    mini = Vec3d(first.(mini_maxi)..., 0)
+    maxi = Vec3d(last.(mini_maxi)..., 0)
+    return Rect3d(mini, maxi .- mini)
+end
 
 function data_limits(x::Volume)
     axes = (x[1][], x[2][], x[3][])

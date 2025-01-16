@@ -28,7 +28,12 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
+function calculated_attributes!(::Type{<:Heatmap}, plot)
+    return color_and_colormap!(plot, plot[3])
+end
+
+
+function calculated_attributes!(::Type{<:Image}, plot)
     return
 end
 
@@ -259,7 +264,11 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         merge!(user_attributes, attr)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
+
     P = Plot{Func}
+    if (P <: ComputePlots) && !(!isempty(user_args) && to_value(user_args[1]) isa Resampler)
+        return compute_plot(P, user_args, user_attributes)
+    end
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
     # don't use convert(Observable{Any}, x) here,
@@ -277,7 +286,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     foreach(x -> delete!(user_attributes, x), attr)
     return Plot{FinalPlotFunc,ArgTyp}(
         user_attributes, kw_obs, Any[args_obs...],
-        Observable[converted_obs...], deregister)
+        Observable[converted_obs...], deregister
+    )
 end
 
 """

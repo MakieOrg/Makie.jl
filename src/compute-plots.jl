@@ -7,14 +7,42 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
 
+Base.getindex(plot::ComputePlots, key::Symbol) = getproperty(plot, key)
+Base.setindex!(plot::ComputePlots, val, key::Symbol) = setproperty!(plot, key, val)
+
 Base.getindex(plot::ComputePlots, idx::Integer) = plot.args[1][Symbol(:arg, idx)]
 function Base.getindex(plot::ComputePlots, idx::UnitRange{<:Integer})
     return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
+end
+plot!(parent::SceneLike, plot::ComputePlots) = computed_plot!(parent, plot)
+data_limits(plot::ComputePlots) = plot[:data_limits][]
+
+function Base.getproperty(plot::ComputePlots, key::Symbol)
+    if key in fieldnames(typeof(plot))
+        return getfield(plot, key)
+    end
+    return plot.args[1][key]
+end
+
+function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
+    if key in fieldnames(typeof(plot))
+        return Base.setfield!(plot, key, val)
+    end
+    attr = plot.args[1]
+    if haskey(attr.inputs, key)
+        setproperty!(attr, key, val)
+    else
+        add_input!(attr, key, val)
+        # maybe best to not make assumptions about user attributes?
+        # CairoMakie rasterize needs this (or be treated with more care)
+        attr[key].value = RefValue{Any}(nothing)
+    end
+    return plot
 end
 
 # temp fix axis selection
@@ -319,8 +347,6 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-plot!(parent::SceneLike, plot::ComputePlots) = computed_plot!(parent, plot)
-
 function computed_plot!(parent, plot::T) where {T}
     scene = parent_scene(parent)
     add_theme!(plot, scene)
@@ -376,42 +402,10 @@ function computed_plot!(parent, plot::T) where {T}
     return
 end
 
-function data_limits(plot::ComputePlots)
-    return plot.args[1][:data_limits][]
-end
-
-function Base.getproperty(plot::ComputePlots, key::Symbol)
-    if key in fieldnames(typeof(plot))
-        return getfield(plot, key)
-    end
-    return plot.args[1][key]
-end
-
-function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
-    if key in fieldnames(typeof(plot))
-        return Base.setfield!(plot, key, val)
-    end
-    attr = plot.args[1]
-    if haskey(attr.inputs, key)
-        setproperty!(attr, key, val)
-    else
-        add_input!(attr, key, val)
-        # maybe best to not make assumptions about user attributes?
-        # CairoMakie rasterize needs this (or be treated with more care)
-        attr[key].value = RefValue{Any}(nothing)
-    end
-    return plot
-end
-
-Base.getindex(plot::ComputePlots, key::Symbol) = getproperty(plot, key)
-Base.setindex!(plot::ComputePlots, val, key::Symbol) = setproperty!(plot, key, val)
-
-
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 
-Makie.data_limits(x::Union{Image, Heatmap}) = x[:data_limits][]
 
-function Image(args::Tuple, user_kw::Dict{Symbol,Any})
+function compute_plot(::Type{Image}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Image, attr, user_kw)
     register_arguments!(Image, attr, user_kw, args...)
@@ -432,7 +426,7 @@ function Image(args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
-function Heatmap(args::Tuple, user_kw::Dict{Symbol,Any})
+function compute_plot(::Type{Heatmap}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Heatmap, attr, user_kw)
     register_arguments!(Heatmap, attr, user_kw, args...)
@@ -449,7 +443,7 @@ function Heatmap(args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
-function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
+function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Scatter, attr, user_kw)
     register_arguments!(Scatter, attr, user_kw, args...)
@@ -465,12 +459,7 @@ function Scatter(args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
-function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
-    if !isempty(args) && first(args) isa Attributes
-        attr = attributes(first(args))
-        merge!(user_kw, attr)
-        return Lines(Base.tail(args), user_kw)
-    end
+function compute_plot(::Type{Lines}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Lines, attr, user_kw)
     register_arguments!(Lines, attr, user_kw, args...)
@@ -484,12 +473,7 @@ function Lines(args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
-function LineSegments(args::Tuple, user_kw::Dict{Symbol,Any})
-    if !isempty(args) && first(args) isa Attributes
-        attr = attributes(first(args))
-        merge!(user_kw, attr)
-        return LineSegments(Base.tail(args), user_kw)
-    end
+function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(LineSegments, attr, user_kw)
     register_arguments!(LineSegments, attr, user_kw, args...)
@@ -561,25 +545,25 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
 end
 
 
-function apply_transform_and_model(plot::Heatmap, data, output_type=Point3d)
-    return apply_transform_and_model(
-        to_value(plot.model[]), plot.transform_func[], data, to_value(get(plot, :space, :data)), output_type
-    )
-end
+# function apply_transform_and_model(plot::Heatmap, data, output_type=Point3d)
+#     return apply_transform_and_model(
+#         to_value(plot.model[]), plot.transform_func[], data, to_value(get(plot, :space, :data)), output_type
+#     )
+# end
 
 
-function boundingbox(plot::Heatmap, space::Symbol=:data)
-    # Assume primitive plot
-    if isempty(plot.plots)
-        raw_bb = apply_transform_and_model(plot, data_limits(plot))
-        return raw_bb
-    end
+# function boundingbox(plot::Heatmap, space::Symbol=:data)
+#     # Assume primitive plot
+#     if isempty(plot.plots)
+#         raw_bb = apply_transform_and_model(plot, data_limits(plot))
+#         return raw_bb
+#     end
 
-    # Assume combined plot
-    bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
-    for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
-    end
+#     # Assume combined plot
+#     bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
+#     for i in 2:length(plot.plots)
+#         update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
+#     end
 
-    return bb_ref[]
-end
+#     return bb_ref[]
+# end

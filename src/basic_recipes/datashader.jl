@@ -645,7 +645,6 @@ function empty_channel!(channel::Channel)
 end
 
 function Makie.plot!(p::HeatmapShader)
-    println("henlooo?!?")
     limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
     limits_slow = Observable(limits[])
@@ -654,7 +653,7 @@ function Makie.plot!(p::HeatmapShader)
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        update_while_pressed = p.values[].update_while_button_pressed
+        update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
         if update_while_pressed || (no_mbutton && no_kbutton)
@@ -668,12 +667,12 @@ function Makie.plot!(p::HeatmapShader)
     end
 
     x, y = p.x, p.y
-    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, p.image, scene.viewport) do resampler, viewport
         res = resampler.max_resolution isa Automatic ? widths(viewport) :
               ntuple(x -> resampler.max_resolution, 2)
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
-    image = lift(x-> x.data, p, p.values)
+    image = lift(x-> x.data, p, p.image)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
     x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
     overview_image = lift(last, x_y_overview_image)
@@ -753,11 +752,7 @@ function Makie.plot!(p::HeatmapShader)
         # So we can skip this update
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
-            visible[] = false
-            imgp[1] = x
-            imgp[2] = y
-            imgp[3] = image
-            visible[] = true
+            update!(imgp, arg1=x, arg2=y, arg3=image)
         end
     end
     bind(image_to_obs, task)

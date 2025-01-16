@@ -226,7 +226,7 @@ const IMAGE_INPUTS = [
     :visible,
 ]
 
-function create_shader(scene::Scene, plot::Union{Heatmap,Image})
+function create_shader(scene::Scene, plot::Image)
     attr = plot.args[1]
     add_uv_mesh!(attr)
     register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
@@ -255,7 +255,7 @@ function create_shader(scene::Scene, plot::Union{Heatmap,Image})
 end
 
 
-function serialize_three(scene::Scene, plot::Union{Heatmap,Image})
+function serialize_three(scene::Scene, plot::Image)
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
