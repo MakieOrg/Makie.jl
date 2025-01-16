@@ -692,8 +692,8 @@ function Makie.plot!(p::HeatmapShader)
     cpa = MakieCore.colormap_attributes(p)
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
-    translate!(lp, 0, 0, -1)
+    # lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
+    # translate!(lp, 0, 0, -1)
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
@@ -752,11 +752,18 @@ function Makie.plot!(p::HeatmapShader)
         # So we can skip this update
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
-            visible[] = false
-            imgp[1] = x
-            imgp[2] = y
+            # visible[] = false
+            if !visible[]
+                visible[] = true
+            end
+            if imgp[1][] != x
+                imgp[1] = x
+            end
+            if imgp[2][] != y
+                imgp[2] = y
+            end
             imgp[3] = image
-            visible[] = true
+            # visible[] = true
         end
     end
     bind(image_to_obs, task)
