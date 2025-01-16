@@ -161,7 +161,14 @@ const LINE_INPUTS = [
 
 function create_lines_robj(islines, args, changed, last)
     inputs = copy(LINE_INPUTS)
-    r = Dict{Symbol, Symbol}()
+    r = Dict(
+        :image => :uniform_color,
+        :scaled_colorrange => :colorrange,
+        :scaled_color => :color,
+        :_highclip => :highclip,
+        :_lowclip => :lowclip,
+        :data_limit_points_transformed => :position,
+    )
     if islines
         push!(inputs, :joinstyle, :gl_miter_limit)
     end

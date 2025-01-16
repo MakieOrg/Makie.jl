@@ -22393,7 +22393,6 @@ class Plot {
             this.mesh = create_instanced_mesh(scene, this.plot_data);
         } else {
             this.mesh = create_mesh(scene, this.plot_data);
-            console.log(this.mesh);
         }
         this.name = data.name;
         this.uuid = data.uuid;
@@ -22457,6 +22456,8 @@ class Plot {
                 this.update_faces(value);
             } else if (key === "visible") {
                 this.mesh.visible = value;
+            } else {
+                console.warn(`Unknown key ${key} in Plot: ${this.name}`);
             }
         });
         this.apply_updates();

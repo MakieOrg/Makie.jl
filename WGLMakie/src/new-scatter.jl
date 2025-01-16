@@ -174,6 +174,8 @@ end
 
 function create_image_mesh(attr)
     i = Vec(1, 2, 3)
+    M = convert_attribute(:rotl90, Makie.Key{:uv_transform}(), Makie.Key{:image}())
+    uv_transform = Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
     uniforms = Dict(
         :color => false,
         :uniform_color => Sampler(attr.image[]),
@@ -192,7 +194,7 @@ function create_image_mesh(attr)
         :backlight => 0.0f0,
         :model => Mat4f(attr.model[]),
         :PICKING_INDEX_FROM_UV => true,
-        :uv_transform => Mat3f(0, 1, 0, -1, 0, 0, 1, 0, 1),
+        :uv_transform => uv_transform,
         :depth_shift => attr.depth_shift[],
         :normalmatrix => Mat3f(transpose(inv(attr.model[][i, i]))),
         :shading => false,
@@ -231,16 +233,27 @@ function create_shader(scene::Scene, plot::Image)
     add_uv_mesh!(attr)
     register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         inputs = IMAGE_INPUTS
-        r = Dict()
+        r = Dict(
+            :image => :uniform_color,
+            :scaled_colorrange => :colorrange,
+            :_highclip => :highclip,
+            :_lowclip => :lowclip,
+            :data_limit_points_transformed => :position,
+        )
         if isnothing(last)
             program = create_image_mesh((; zip(inputs, args)...))
             return (program, Observable([]))
         else
             updater = last[2][]
-            new_values = [
-                [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for
-                i in 1:length(inputs) if changed[i]
-            ]
+            new_values = map((1:length(inputs))[changed]) do i
+                name = get(r, inputs[i], inputs[i])
+                data = serialize_three(args[i][])
+                if name == :uniform_color
+                    s = Int32[size(args[i][])...]
+                    data = [s, data]
+                end
+                return [name, data]
+            end
             if !isempty(new_values)
                 updater[] = new_values
             end

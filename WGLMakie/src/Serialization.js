@@ -29,6 +29,7 @@ function update_uniform(uniform, new_value) {
         }
     }
 }
+
 function re_create_buffer(buffer, is_segments) {
     // interleaved buffer attribute is special, since we
     // Manually re-create the (shared) InterleavedBuffer before calling re_create_buffer
@@ -188,7 +189,6 @@ class Plot {
             this.mesh = create_instanced_mesh(scene, this.plot_data);
         } else {
             this.mesh = create_mesh(scene, this.plot_data);
-            console.log(this.mesh)
         }
 
         this.name = data.name;
@@ -261,6 +261,8 @@ class Plot {
                 this.update_faces(value);
             } else if (key === "visible") {
                 this.mesh.visible = value;
+            } else {
+                console.warn(`Unknown key ${key} in Plot: ${this.name}`);
             }
         });
         // For e.g. when we need to re-create the geometry
