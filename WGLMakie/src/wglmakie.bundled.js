@@ -9753,7 +9753,7 @@ function __(s1, e, t, n) {
 var Td = new St, wd = new As, Ad = new qr, Rd = new Ki, gh = [], _h = [], xh = new Float32Array(16), vh = new Float32Array(9), yh = new Float32Array(4);
 function as(s1, e, t) {
     let n = s1[0];
-    if (n <= 0 || n > 0) return s1;
+    if (n <= 0 || n > 0 || isNaN(n)) return s1;
     let i = e * t, r = gh[i];
     if (r === void 0 && (r = new Float32Array(i), gh[i] = r), e !== 0) {
         n.toArray(r, 0);
