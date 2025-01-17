@@ -24,7 +24,6 @@ function get_frames(video::AbstractString)
 end
 
 function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{<:Union{RGB,RGBA}})
-
     a = rgbf_convert(a)
     b = rgbf_convert(b)
 
@@ -99,7 +98,7 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
             println(file, path)
         end
     end
-    
+
     open(joinpath(base_folder, "missing_files.txt"), "w") do file
         backend_ref_dir = joinpath(reference_folder, backend)
         recorded_paths = mapreduce(vcat, walkdir(backend_ref_dir)) do (root, dirs, files)
@@ -134,8 +133,8 @@ function test_comparison(scores; threshold)
 end
 
 function compare(
-        relative_test_paths::Vector{String}, reference_dir::String, record_dir; 
-        o_refdir = reference_dir, missing_refimages = String[], 
+        relative_test_paths::Vector{String}, reference_dir::String, record_dir;
+        o_refdir = reference_dir, missing_refimages = String[],
         scores = Dict{String,Float64}()
     )
 
