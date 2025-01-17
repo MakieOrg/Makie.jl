@@ -729,3 +729,17 @@ end
     update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
     f
 end
+
+@reference_test "Mesh with 3d volume texture" begin
+    triangles = GLTriangleFace[(1, 2, 3), (3, 4, 1)]
+    uv3_mesh(p) = GeometryBasics.Mesh(p, triangles; uv=Vec3f.(p))
+    r = -5:0.1:5
+    data = [1 - (1 + cos(x) + cos(y^2) + cos(z)) for x in r, y in r, z in r]
+    # Define the positions
+    positions = [Point3f(0.5, 0, 0), Point3f(0.5, 1, 0), Point3f(0.5, 1, 1), Point3f(0.5, 0, 1)]
+    # Pass the volume plot to the color
+    f, ax, pl = mesh(uv3_mesh(positions), color=data, shading=NoShading, axis=(; show_axis=false))
+    positions = [Point3f(0.0, 0.5, 0), Point3f(1.0, 0.5, 0), Point3f(1, 0.5, 1), Point3f(0.0, 0.5, 1)]
+    mesh!(ax, uv3_mesh(positions); color=data, shading=NoShading)
+    f
+end

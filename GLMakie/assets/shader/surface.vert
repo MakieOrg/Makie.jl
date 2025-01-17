@@ -41,9 +41,18 @@ vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
 
 {{uv_transform_type}} uv_transform;
-vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
-vec2 apply_uv_transform(mat3x2 transform, vec2 uv){ return transform * vec3(uv, 1); }
-
+vec3 apply_uv_transform(Nothing t1, vec2 uv){
+    return vec3(uv, 0.0);
+}
+vec3 apply_uv_transform(Nothing t1, vec3 uv) {
+    return uv;
+}
+vec3 apply_uv_transform(mat3x2 transform, vec3 uv){
+    return uv;
+}
+vec3 apply_uv_transform(mat3x2 transform, vec2 uv) {
+    return vec3(transform * vec3(uv, 1.0), 0.0);
+}
 // Normal generation
 
 vec3 getnormal_fast(sampler2D zvalues, ivec2 uv)
@@ -152,7 +161,7 @@ uniform uint objectid;
 flat out uvec2 o_id;
 flat out int o_InstanceID; // dummy for compat with meshscatter in mesh.frag
 out vec4 o_color;
-out vec2 o_uv;
+out vec3 o_uv;
 
 void main()
 {
