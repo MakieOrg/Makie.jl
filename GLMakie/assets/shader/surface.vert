@@ -91,10 +91,10 @@ vec3 normal_from_points(
     // isnan checks should avoid darkening around NaN positions but may not
     // work with all systems
     if (!isnan(s0.z)) {
-        bool check1 = isinbounds(off1, size) && !isnan(s1.z);
-        bool check2 = isinbounds(off2, size) && !isnan(s2.z);
-        bool check3 = isinbounds(off3, size) && !isnan(s3.z);
-        bool check4 = isinbounds(off4, size) && !isnan(s4.z);
+        bool check1 = isinbounds(off1, size) && !isnan(s1.x) && !isnan(s1.y) && !isnan(s1.z);
+        bool check2 = isinbounds(off2, size) && !isnan(s2.x) && !isnan(s2.y) && !isnan(s2.z);
+        bool check3 = isinbounds(off3, size) && !isnan(s3.x) && !isnan(s3.y) && !isnan(s3.z);
+        bool check4 = isinbounds(off4, size) && !isnan(s4.x) && !isnan(s4.y) && !isnan(s4.z);
         if (check1 && check2) result += cross(s2-s0, s1-s0);
         if (check2 && check3) result += cross(s3-s0, s2-s0);
         if (check3 && check4) result += cross(s4-s0, s3-s0);
