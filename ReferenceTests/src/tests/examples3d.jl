@@ -77,7 +77,7 @@ end
     f
 end
 
-@testset "Volume absorption" begin
+@reference_test "Volume absorption" begin
     f = Figure(size = (600, 300))
     r = range(-5, 5, length=31)
     data = [cos(x*x + y*y + z*z)^2 for x in r, y in r, z in r]
