@@ -32,6 +32,12 @@ vec4 color_lookup(float intensity, sampler1D color, vec2 norm);
 uniform vec3 scale;
 uniform mat4 view, model, projection;
 
+uniform uint objectid;
+flat out uvec2 o_id;
+flat out int o_InstanceID; // dummy for compat with meshscatter in mesh.frag
+out vec4 o_color;
+out vec3 o_uv;
+
 // See util.vert for implementations
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 ivec2 ind2sub(ivec2 dim, int linearindex);
@@ -95,7 +101,7 @@ vec3 normal_from_points(
         if (check4 && check1) result += cross(s1-s0, s4-s0);
     }
     // normal should be zero, but needs to be here, because the dead-code
-    // elimanation of GLSL is overly enthusiastic
+    // elimination of GLSL is overly enthusiastic
     return normalize(result);
 }
 
@@ -157,31 +163,78 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, ivec2 uv){
     return normal_from_points(s0, s1, s2, s3, s4, off1, off2, off3, off4, textureSize(zs, 0));
 }
 
-uniform uint objectid;
-flat out uvec2 o_id;
-flat out int o_InstanceID; // dummy for compat with meshscatter in mesh.frag
-out vec4 o_color;
-out vec3 o_uv;
+// See main() for more information
+vec3 getposition(Nothing grid, sampler2D x, sampler2D y, sampler2D z, ivec2 idx, vec2 uv) {
+    vec3 center = vec3(texture(x, uv).x, texture(y, uv).x, texture(z, uv).x);
+    if (isnan(center.x) || isnan(center.y) || isnan(center.z)) {
+        return vec3(0);
+    } else {
+        return vec3(texelFetch(x, idx, 0).x, texelFetch(y, idx, 0).x, texelFetch(z, idx, 0).x);
+    }
+}
+vec3 getposition(Nothing grid, sampler1D x, sampler1D y, sampler2D z, ivec2 idx, vec2 uv) {
+    vec3 center = vec3(texture(x, uv.x).x, texture(y, uv.y).x, texture(z, uv).x);
+    if (isnan(center.x) || isnan(center.y) || isnan(center.z)) {
+        return vec3(0);
+    } else {
+        return vec3(texelFetch(x, idx.x, 0).x, texelFetch(y, idx.y, 0).x, texelFetch(z, idx, 0).x);
+    }
+}
+vec3 getposition(Grid2D grid, Nothing x, Nothing y, sampler2D z, ivec2 idx, vec2 uv) {
+    float center = texture(z, uv).x;
+    if (isnan(center)) {
+        return vec3(0);
+    } else {
+        ivec2 size = textureSize(z, 0);
+        return vec3(grid_pos(grid, idx, size), texelFetch(z, idx, 0).x);
+    }
+}
+
+
 
 void main()
 {
+    // We have (N, M) = dims positions with (N-1, M-1) rects between them. Each
+    // instance refers to one rect. Each rect has vertices (0..1, 0..1) so we
+    // can do `base_idx + vertex` to index positions if base_idx refers to a
+    // (N-1, M-1) matrix.
     int index = gl_InstanceID;
-    vec2 offset = vertices;
-    ivec2 offseti = ivec2(offset);
     ivec2 dims = textureSize(position_z, 0);
-    vec3 pos;
-    {{position_calc}}
+    ivec2 base_idx = ind2sub(dims - 1, index);
+    ivec2 vertex_index = base_idx + ivec2(vertices);
 
-    o_id = uvec2(objectid, 0); // calculated from uv in mesh.frag
-    o_InstanceID = 0;
-    // match up with mesh
-    o_uv = apply_uv_transform(uv_transform, vec2(index01.x, 1 - index01.y));
+    /*
+    When using uv coordinates to access textures here, we need to be careful with
+    how we calculate the uvs. 0, 1 refer to the far edges of the texture:
+
+    0    1/N   2/N   3/N  ... N/N
+    |_____|_____|_____|_      _|
+    |     |     |     |        |
+    |_____|_____|_____|_      _|
+    |     |     |     |        |
+
+    Our textures contain one pixel per vertex though, so that the pixel centers
+    correspond to vertices. I.e. we want to access (0.5/N, 0.5/M) for the first
+    vertex, corresponding to index (0, 0).
+    */
+
+    // Discard rects containing a nan value by making their size zero. For this
+    // we get the value at the center of the rect, which mixes all 4 vertex
+    // values via texture interpolation. (If nan is part of the interpolation
+    // the result will also be nan.)
+    vec2 center_uv = (base_idx + vec2(1)) / dims;
+    vec3 pos = getposition(position, position_x, position_y, position_z, vertex_index, center_uv);
+
     vec3 normalvec = {{normal_calc}};
 
+    // Colors should correspond to vertices, so they need the 0.5 shift discussed
+    // above
+    vec2 vertex_uv = vec2(vertex_index + 0.5) / vec2(dims);
+    o_uv = apply_uv_transform(uv_transform, vec2(vertex_uv.x, 1 - vertex_uv.y));
+
     o_color = vec4(0.0);
-    // we still want to render NaN values... TODO: make value customizable?
-    if (isnan(pos.z)) {
-        pos.z = 0.0;
-    }
+    o_id = uvec2(objectid, 0); // calculated from uv in mesh.frag
+    o_InstanceID = 0; // for meshscatter uv_transforms, irrelevant here
+
     render(model * vec4(pos, 1), normalvec, view, projection);
 }
