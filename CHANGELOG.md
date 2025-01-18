@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
-- Fix `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
+- Fixed `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
+- Cleaned up surface handling in GLMakie: Surface cells are now discarded when there is a nan in x, y or z. Fixed incorrect normal if x or y is nan [#4735](https://github.com/MakieOrg/Makie.jl/pull/4735)
 
 ## [0.22.0] - 2024-12-12
 
