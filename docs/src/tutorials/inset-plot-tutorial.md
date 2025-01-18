@@ -64,7 +64,7 @@ We need to define the data for the inset. For instance, select the data between 
 
 ```@figure inset
 xlims!(ax_inset, 50, 70)
-min_price, max_price = minimum(stock_price[50:70]), maximum(stock_price[50:70])
+min_price, max_price = extrema(stock_price[50:70])
 ylims!(ax_inset, min_price, max_price)
 line_inset = lines!(ax_inset, time, stock_price, color=:red)
 fig
@@ -93,14 +93,8 @@ This adds a legend to the right of the figure, associating the blue line with th
 Indicate the zoomed section of the main plot by drawing a border around the selected region.
 
 ```@figure inset
-border_points = [
-    Point(50, min_price),
-    Point(70, min_price),
-    Point(70, max_price),
-    Point(50, max_price),
-    Point(50, min_price)
-]
-lines!(ax_main, border_points, color=:black, linewidth=1)
+border_rect = Rect2(50, min_price, 20, max_price - min_price)
+lines!(ax_main, border_rect, color=:black, linewidth=1)
 save("output.png", fig) # hide
 fig
 ```
@@ -142,7 +136,7 @@ ax_inset = Axis(fig[1, 1],
 xlims!(ax_inset, 50, 70)
 
 # Calculate and set ylims dynamically for the selected time data range
-min_price, max_price = minimum(stock_price[50:70]), maximum(stock_price[50:70])
+min_price, max_price = extrema(stock_price[50:70])
 ylims!(ax_inset, min_price, max_price)
 
 # Plot the data in the inset axis
@@ -154,15 +148,10 @@ translate!(ax_inset.blockscene, 0, 0, 150)
 # Legend
 Legend(fig[1, 2], [line_main, line_inset], ["Stock Price", "Zoomed Region"])
 
-# Mark the zoomed section
-border_points = [
-    Point(50, min_price),  # Bottom left
-    Point(70, min_price),  # Bottom right
-    Point(70, max_price),  # Top right
-    Point(50, max_price),  # Top left
-    Point(50, min_price)   # Close the rectangle
-]
-lines!(ax_main, border_points, color=:black, linewidth=1)
+# Mark the zoomed section (x, y, width, height)
+border_rect = Rect2(50, min_price, 20, max_price - min_price)
+lines!(ax_main, border_rect, color=:black, linewidth=1)
+
 fig
 ```
 
@@ -194,23 +183,17 @@ translate!(obj, 0, 0, some_positive_z_value)
 
 ### 3. Marking the Section that the Inset Axis Shows
 
-It is often helpful to visually indicate which part of the main plot corresponds to the inset axis. To achieve this we could draw a border around the selected region. We create a list of points (`border_points`) that outline the rectangle to mark the region of interest.
-These points are calculated using:
+It is often helpful to visually indicate which part of the main plot corresponds to the inset axis. To achieve this we could draw a border around the selected region. We create a rectangle to mark the region of interest.
+Its limits are calculated using:
 
 * The x-axis range (e.g., 50 to 70) to mark the time period.
 * The y-axis range (`min_price` and `max_price`) dynamically calculated from the data within this time range.
 
-The border points are connected sequentially, and the final point closes the rectangle by connecting back to the first point. Parameters like color and linewidth can be adjusted for visibility and style.
+`lines!()` will take care of drawing the outline of the rectangle. Parameters like color and linewidth can be adjusted for visibility and style.
 
 ```
-border_points = [
-    Point(50, min_price),  # Bottom left
-    Point(70, min_price),  # Bottom right
-    Point(70, max_price),  # Top right
-    Point(50, max_price),  # Top left
-    Point(50, min_price)   # Close the rectangle
-]
-lines!(ax_main, border_points, color=:black, linewidth=1)
+border_rect = Rect2(50, min_price, 20, max_price - min_price)
+lines!(ax_main, border_rect, color=:black, linewidth=1)
 ```
 
 Another approach to marking the selected region is to use the [zoom_lines](https://juliaaplavin.github.io/MakieExtraDocs.jl/notebooks/examples.html#3526c688-aea9-411b-a837-dc02ff81a7ee) function from the [MakieExtra.jl](https://juliapackages.com/p/makieextra) package. This function not only marks the region but also connects it to the inset axis with guiding lines, enhancing the visual connection between the main plot and the inset plot.
