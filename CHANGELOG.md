@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.1] - 2025-01-17
+
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
 - Fixed `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
 - Cleaned up `volume` plots: Added `:indexedabsorption` and `:additive` to WGLMakie, generalized `:mip` to include negative values, fixed missing conversions for rgba algorithms (`:additive`, `:absorptionrgba`), fixed missing conversion for `absorption` attribute & extended it to `:indexedabsorption` and `absorptionrgba`, added tests and improved docs. [#4726](https://github.com/MakieOrg/Makie.jl/pull/4726)
@@ -724,7 +726,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
 [0.21.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...v0.21.17
