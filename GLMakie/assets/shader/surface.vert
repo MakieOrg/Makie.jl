@@ -31,6 +31,7 @@ vec4 color_lookup(float intensity, sampler1D color, vec2 norm);
 
 uniform vec3 scale;
 uniform mat4 view, model, projection;
+uniform bool invert_normals;
 
 uniform uint objectid;
 flat out uvec2 o_id;
@@ -102,7 +103,7 @@ vec3 normal_from_points(
     }
     // normal should be zero, but needs to be here, because the dead-code
     // elimination of GLSL is overly enthusiastic
-    return normalize(result);
+    return (invert_normals ? -1.0 : 1.0) * normalize(result);
 }
 
 // Overload for surface(Matrix, Matrix, Matrix)
@@ -224,8 +225,7 @@ void main()
     // the result will also be nan.)
     vec2 center_uv = (base_idx + vec2(1)) / dims;
     vec3 pos = getposition(position, position_x, position_y, position_z, vertex_index, center_uv);
-
-    vec3 normalvec = {{normal_calc}};
+    vec3 normalvec = getnormal(position, position_x, position_y, position_z, vertex_index);
 
     // Colors should correspond to vertices, so they need the 0.5 shift discussed
     // above
