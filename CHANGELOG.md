@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Fix issue with `voronoiplot` for Voronoi tessellations with empty polygons
+- Fix issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
 
 ## [0.22.1] - 2025-01-17
 
