@@ -99,6 +99,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
     for i in DelTri.each_generator(vorn)
+        !DelTri.has_polygon(vorn, i) && continue 
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
             return Point2f(DelTri.getxy(coords))
