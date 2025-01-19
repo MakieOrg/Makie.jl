@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Moved Axis3 clip planes slightly outside to avoid clipping with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
+
 ## [0.22.1] - 2025-01-17
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
