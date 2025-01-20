@@ -160,7 +160,7 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
-function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
+function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
     xs, ys, zs = c[1:3]
 
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
