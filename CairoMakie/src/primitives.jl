@@ -1068,18 +1068,9 @@ function draw_mesh3D(
         valid = Bool[]
     end
 
-
     # Camera to screen space
-    ts = map(vs) do v
-        clip = projectionview * v
-        @inbounds begin
-            p = (clip ./ clip[4])[Vec(1, 2)]
-            p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-        end
-        p = p_0_to_1 .* scene.camera.resolution[]
-        return Vec3f(p[1], p[2], clip[3])
-    end
+    transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
+    ts = project_position(Point3f, transform, vs, eachindex(vs))
 
     # Approximate zorder
     average_zs = map(f -> average_z(ts, f), meshfaces)

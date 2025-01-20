@@ -12,58 +12,66 @@ function project_position(scene::Scene, transform_func::T, space::Symbol, point,
     _project_position(scene, space, point, model, yflip)
 end
 
-# much faster than dot-ing `project_position` because it skips all the repeated mat * mat
-function project_position(
-        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}},
-        indices::Vector{<:Integer}, model::Mat4, yflip::Bool = true
-    ) where {N, T1}
-
-    transform = let
-        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
-        res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
-        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
-        M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
-    end
-
-    output = Vector{Point2f}(undef, length(indices))
-
-    @inbounds for (i_out, i_in) in enumerate(indices)
-        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
-        px_pos = transform * p4d
-        output[i_out] = px_pos[Vec(1, 2)] / px_pos[3]
-    end
-
-    return output
-end
 
 function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     return project_position(scene, space, ps, eachindex(ps), model, yflip)
 end
 
-function project_position(
-        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}},
-        indices::Base.OneTo, model::Mat4, yflip::Bool = true
-    ) where {N, T1}
+function cairo_viewport_matrix(res::VecTypes{2}, yflip = true)
+    px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+    px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+    return Makie.transformationmatrix(px_offset, px_scale)
+end
 
-    transform = let
-        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
-        res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
-        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
-        M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+function build_combined_transformation_matrix(
+        scene::Scene, space::Symbol, model::Mat4, yflip = true
+    )
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+end
+
+function project_position(
+        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes},
+        indices::Union{Vector{<:Integer}, Base.OneTo}, model::Mat4,
+        yflip::Bool = true
+    )
+    # much faster to calculate the combined projection-transformation matrix
+    # once than dot-ing `project_position` because it skips all the repeated mat * mat
+    transform = build_combined_transformation_matrix(scene, space, model, yflip)
+    # skip z with Vec(1,2,4), i.e. calculate only (x, y, w)
+    return project_position(Point2f, transform[Vec(1,2,4), Vec(1,2,3,4)], ps, indices)
+end
+
+# Assumes (transform * ps[i])[end] to be w component, always
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractVector{<: VecTypes},
+        indices::Vector{<:Integer}
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = Vector{PT}(undef, length(indices))
+    dims = Vec(ntuple(identity, N))
+
+    @inbounds for (i_out, i_in) in enumerate(indices)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
+        px_pos = transform * p4d
+        output[i_out] = px_pos[dims] / px_pos[end]
     end
 
-    output = similar(ps, Point2f)
+    return output
+end
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractArray{<: VecTypes},
+        indices::Base.OneTo
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = similar(ps, PT)
+    dims = Vec(ntuple(identity, N))
 
     @inbounds for i in indices
         p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
         px_pos = transform * p4d
-        output[i] = px_pos[Vec(1, 2)] / px_pos[3]
+        output[i] = px_pos[dims] / px_pos[end]
     end
 
     return output
