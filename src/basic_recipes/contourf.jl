@@ -106,6 +106,59 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
+# The x-vector/y-vector version is above.  Now for the x-matrix/y-matrix version.
+# Here, we simply use a linear interpolation to transform the points before storing them.
+
+function calculate_contourf_polys!(
+        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector, 
+        xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix, 
+        lows::AbstractVector, highs::AbstractVector
+    )
+    empty!(polys)
+    empty!(colors)
+
+    # A brief note on terminology:
+    # - **rectilinear** space: the space of the z matrix, or the space of cartesian indices.
+    #   This is usually `(1:n, 1:m)` for a `n x m` matrix.
+    # - **curvilinear** space: the space defined by the `xs` and `ys` matrices.  This is the
+    #   space of the points `(xs[i, j], ys[i, j])` for `i in 1:n` and `j in 1:m`.
+
+    # We compute the isobands in rectilinear space first, and then transform
+    # the polygons to curvilinear space.  This is a lossless procedure because
+    # the algorithm is based on the isobands of the z matrix, which is defined in
+    # rectilinear space.
+
+    # zs needs to be transposed to match rest of makie
+    # This is computing the isobands in rectilinear space.
+    isos = Isoband.isobands(axes(zs, 1), axes(zs, 2), zs', lows, highs)
+    # Now, we construct a 2-D linear interpolation from the rectilinear grid space
+    # to the curvilinear grid space.
+    point_interp = Makie.Interpolations.linear_interpolation(axes(zs), Point2f.(xs, ys))
+
+    levelcenters = (highs .+ lows) ./ 2
+
+    for (i, (center, group)) in enumerate(zip(levelcenters, isos))
+        points = Point2f.(group.x, group.y)
+        polygroups = _group_polys(points, group.id)
+        for rectilinear_polygroup in polygroups
+            # NOTE: This is the only major change between the two versions 
+            # of the function `calculate_contourf_polys!`.
+            # we reproject the lines to curvilinear space
+            polygroup = map(rectilinear_polygroup) do ring
+                map(ring) do point
+                    point_interp(point[1], point[2])
+                end
+            end
+            outline = polygroup[1]
+            holes = polygroup[2:end]
+            push!(polys, GeometryBasics.Polygon(outline, holes))
+            # use contour level center value as color
+            push!(colors, center)
+        end
+    end
+
+    return (polys, colors)
+end
 
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
