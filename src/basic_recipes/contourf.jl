@@ -67,6 +67,46 @@ function _get_isoband_levels(::Val{:relative}, levels::AbstractVector, values)
     return Float32.(levels .* (ma - mi) .+ mi)
 end
 
+"""
+    calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
+
+Calculate the polygons and colors for a contourf plot, and store them in `polys` and `colors`.
+This mutates the `polys` and `colors` vectors to contain the new data.
+
+The mutating nature of the function enables efficient re-use of previously allocated memory!
+
+This is an internal function, not public API and should not be treated as such.  Note that it currently
+uses Isoband.jl internally.
+"""
+function calculate_contourf_polys!(
+        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector, 
+        xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix, 
+        lows::AbstractVector, highs::AbstractVector
+    )
+    empty!(polys)
+    empty!(colors)
+
+    # zs needs to be transposed to match rest of makie
+    isos = Isoband.isobands(xs, ys, zs', lows, highs)
+
+    levelcenters = (highs .+ lows) ./ 2
+
+    for (i, (center, group)) in enumerate(zip(levelcenters, isos))
+        points = Point2f.(group.x, group.y)
+        polygroups = _group_polys(points, group.id)
+        for polygroup in polygroups
+            outline = polygroup[1]
+            holes = polygroup[2:end]
+            push!(polys, GeometryBasics.Polygon(outline, holes))
+            # use contour level center value as color
+            push!(colors, center)
+        end
+    end
+
+    return (polys, colors)
+end
+
+
 function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
@@ -95,10 +135,7 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
     polys = Observable(PolyType[])
     colors = Observable(Float64[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
-        empty!(polys[])
-        empty!(colors[])
-
+    function calculate_polys(xs, ys, zs, levels, is_extended_low, is_extended_high)
         levels = copy(levels)
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
@@ -106,24 +143,9 @@ function Makie.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVec
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        # zs needs to be transposed to match rest of makie
-        isos = Isoband.isobands(xs, ys, zs', lows, highs)
+        calculate_contourf_polys!(polys[], colors[], xs, ys, zs, lows, highs)
 
-        levelcenters = (highs .+ lows) ./ 2
-
-        for (i, (center, group)) in enumerate(zip(levelcenters, isos))
-            points = Point2f.(group.x, group.y)
-            polygroups = _group_polys(points, group.id)
-            for polygroup in polygroups
-                outline = polygroup[1]
-                holes = polygroup[2:end]
-                push!(polys[], GeometryBasics.Polygon(outline, holes))
-                # use contour level center value as color
-                push!(colors[], center)
-            end
-        end
-        polys[] = polys[]
-        return
+        notify(polys)
     end
 
     onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
