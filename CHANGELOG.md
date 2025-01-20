@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- `contourf` (contour filled) now supports _curvilinear_ grids, where `x` and `y` are matrices (`contour` lines were added in v.0.22.0) [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
+
 ## [0.22.1] - 2025-01-17
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).

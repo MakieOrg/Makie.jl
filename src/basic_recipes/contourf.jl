@@ -3,6 +3,10 @@
 
 Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
 and vertical grid positions `ys`.
+
+`xs` and `ys` can be vectors for rectilinear grids
+or matrices for curvilinear grids,
+similar to how [`surface`](@ref) works.
 """
 @recipe Contourf begin
     """
@@ -20,7 +24,7 @@ and vertical grid positions `ys`.
     Determines how the `levels` attribute is interpreted, either `:normal` or `:relative`.
     In `:normal` mode, the levels correspond directly to the z values.
     In `:relative` mode, you specify edges by the fraction between minimum and maximum value of `zs`.
-    This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.    
+    This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
     """
     mode = :normal
     colormap = @inherit colormap
@@ -79,8 +83,8 @@ This is an internal function, not public API and should not be treated as such. 
 uses Isoband.jl internally.
 """
 function calculate_contourf_polys!(
-        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector, 
-        xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix, 
+        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector,
+        xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
     empty!(polys)
@@ -110,8 +114,8 @@ end
 # Here, we simply use a linear interpolation to transform the points before storing them.
 
 function calculate_contourf_polys!(
-        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector, 
-        xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix, 
+        polys::AbstractVector{<:GeometryBasics.Polygon}, colors::AbstractVector,
+        xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
     empty!(polys)
@@ -141,7 +145,7 @@ function calculate_contourf_polys!(
         points = Point2f.(group.x, group.y)
         polygroups = _group_polys(points, group.id)
         for rectilinear_polygroup in polygroups
-            # NOTE: This is the only major change between the two versions 
+            # NOTE: This is the only major change between the two versions
             # of the function `calculate_contourf_polys!`.
             # we reproject the lines to curvilinear space
             polygroup = map(rectilinear_polygroup) do ring
