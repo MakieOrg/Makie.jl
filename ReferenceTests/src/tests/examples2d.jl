@@ -1467,6 +1467,18 @@ end
     fig
 end
 
+@reference_test "Voronoiplot with empty polygons and automatic color generation" begin
+    points = [0.153071 0.210363 0.447987 0.765468 -0.681145 1.88393 -1.05474 -0.52126 1.102 0.675978 1.75767 1.19744;
+        -0.16884 -0.492721 -1.30937 0.573229 -2.39049 -0.249817 -1.15057 -0.480175 0.226354 1.18442 1.66382 -1.23949];
+    tri = triangulate(points)
+    xmin, xmax, ymin, ymax = -1 / 2, 1 / 2, -1.0, 1.0
+    clip_points = ((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax))
+    clip_vertices = (1, 2, 3, 4, 1)
+    clip_polygon = (clip_points, clip_vertices)
+    clipped_vorn = voronoi(tri, clip=true, clip_polygon=clip_polygon)
+    voronoiplot(clipped_vorn)
+end
+
 function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
