@@ -10,6 +10,7 @@ App() do
     imgs = scores_imgs[:, 2]
     lookup = Dict(imgs .=> scores)
 
+    # TODO: don't filter out videos
     imgs_with_score = filter(x -> endswith(x, ".png"), unique(map(imgs) do img
         replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
     end))
@@ -33,20 +34,46 @@ App() do
     selected_folder = ["recorded", "reference"]
     selection_string = ["Showing new recorded", "Showing old reference"]
 
+    # TODO: font size doesn't do anything below some threshold?
+    # TODO: match up text & button styles
     button_style = Styles(
-        CSS("font-size" => "8", "font-weight" => "100"),
+        CSS("font-size" => "8", "font-weight" => "normal"),
         CSS("width" => "fit-content")
     )
 
-    images = map(imgs_with_score) do img_name
-        cards = map(backends) do backend
-            # [] $path
-            # [Showing Reference/Recorded]  ---  Score: $score
-            # image
+    # TODO: fit checkbox size to text
+    checkbox_style = Styles()
 
-            if haskey(lookup, backend * "/" * img_name)
+    marked = Set{String}()
+
+    images = map(imgs_with_score) do img_name
+
+        # [] $path
+        # [Showing Reference/Recorded]  ---  Score: $score # TODO:
+        # image
+        cards = map(backends) do backend
+            current_file = backend * "/" * img_name
+            if haskey(lookup, current_file)
+
+                local_marked = Observable(false)
+                on(local_marked) do is_marked
+                    if is_marked
+                        push!(marked, current_file)
+                    else
+                        delete!(marked, current_file)
+                    end
+                    @info marked
+                end
+                cb = DOM.div(
+                    Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
+                    " $current_file"
+                )
+
+                score = round(lookup[current_file]; digits=4)
+                score_text = DOM.div("Score: $score")
 
                 path_button = Bonito.Button("recorded", style = button_style)
+
                 selection = 1 # Recorded (new), Reference (old)
 
                 image_element = map(path_button.value) do click
@@ -58,18 +85,16 @@ App() do
                     return DOM.img(src=Bonito.BinaryAsset(bin, "image/png"))
                 end
 
-                # # score = round(lookup[name]; digits=4)
-                # # b = Bonito.Button("$backend: $score")
-
-                Card(Col(path_button, image_element))
+                # TODO: background
+                return Card(Col(cb, score_text, path_button, image_element))
             else
-                Card(DOM.h1("N/A"))
+                return Card(DOM.h1("N/A"))
             end
         end
 
-        Grid(cards, columns = "1fr 1fr 1fr")
+        return Grid(cards, columns = "1fr 1fr 1fr")
     end
 
-    DOM.div(images...)
+    return DOM.div(images...)
 
 end
