@@ -1,10 +1,10 @@
 using Bonito, FileIO, DelimitedFiles
 
-folder = joinpath(pwd(), "ReferenceImages")
+root_path = joinpath(pwd(), "ReferenceImages")
 
 App() do
 
-    scores_imgs = readdlm(joinpath(folder, "scores.tsv"), '\t')
+    scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
 
     scores = scores_imgs[:, 1]
     imgs = scores_imgs[:, 2]
@@ -30,37 +30,44 @@ App() do
     sort!(imgs_with_score; by=get_score, rev=true)
 
     backends = ["CairoMakie", "GLMakie", "WGLMakie"]
-    images = map(imgs_with_score) do img_name
-        image_path = Observable{Any}(DOM.div())
-        path = Observable("recorded")
-        path_button = Bonito.Button("recorded")
-        on(path_button.value) do click
-            if path[] == "recorded"
-                path[] = "reference"
-                path_button.content[] = "reference"
-            else
-                path[] = "recorded"
-                path_button.content[] = "recorded"
-            end
-            return
-        end
-        buttons = map(backends) do backend
-            name = backend * "/" * img_name
-            if haskey(lookup, name)
-                score = round(lookup[name]; digits=4)
-                b = Bonito.Button("$backend: $score")
-                onany(b.value, path; update=true) do click, rec_ref
-                    bin = read(normpath(joinpath(folder, rec_ref, backend, img_name)))
-                    image_path[] = DOM.img(src=Bonito.BinaryAsset(bin, "image/png"))
-                end
-                return b
-            else
-                return DOM.div("$backend: X")
-            end
-        end
-        buttons = Row(path_button, buttons...; width="100%")
+    selected_folder = ["recorded", "reference"]
+    selection_string = ["Showing new recorded", "Showing old reference"]
 
-        Card(Col(buttons, image_path); width="fit-content")
+    button_style = Styles(
+        CSS("font-size" => "8", "font-weight" => "100"),
+        CSS("width" => "fit-content")
+    )
+
+    images = map(imgs_with_score) do img_name
+        cards = map(backends) do backend
+            # [] $path
+            # [Showing Reference/Recorded]  ---  Score: $score
+            # image
+
+            if haskey(lookup, backend * "/" * img_name)
+
+                path_button = Bonito.Button("recorded", style = button_style)
+                selection = 1 # Recorded (new), Reference (old)
+
+                image_element = map(path_button.value) do click
+                    selection = mod1(selection + 1, 2)
+                    path_button.content[] = selection_string[selection]
+                    folder = selected_folder[selection]
+
+                    bin = read(normpath(joinpath(root_path, folder, backend, img_name)))
+                    return DOM.img(src=Bonito.BinaryAsset(bin, "image/png"))
+                end
+
+                # # score = round(lookup[name]; digits=4)
+                # # b = Bonito.Button("$backend: $score")
+
+                Card(Col(path_button, image_element))
+            else
+                Card(DOM.h1("N/A"))
+            end
+        end
+
+        Grid(cards, columns = "1fr 1fr 1fr")
     end
 
     DOM.div(images...)
