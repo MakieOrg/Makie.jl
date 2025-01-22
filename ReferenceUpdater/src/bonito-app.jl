@@ -34,11 +34,24 @@ function create_app()
     selected_folder = ["recorded", "reference"]
     selection_string = ["Showing new recorded", "Showing old reference"]
 
-    # TODO: font size doesn't do anything below some threshold?
-    # TODO: match up text & button styles
+    # TODO: font size ignored?
     button_style = Styles(
-        CSS("font-size" => "8", "font-weight" => "normal"),
-        CSS("width" => "fit-content")
+        CSS("font-size" => "12", "font-weight" => "normal"),
+        CSS("width" => "fit-content",
+            "padding-right" => "6px", "padding-left" => "6px",
+            "padding-bottom" => "2px", "padding-top" => "2px",
+        ),
+        CSS("display" => "inline-block", "float" => "left")
+    )
+
+    score_style = Styles(
+        CSS("font-size" => "10", "font-weight" => "normal"),
+        CSS("width" => "fit-content",
+            "padding-right" => "6px", "padding-left" => "6px",
+            "padding-bottom" => "2px", "padding-top" => "2px",
+            "margin" => "0.25em"
+        ),
+        CSS("display" => "inline-block", "float" => "right")
     )
 
     # TODO: fit checkbox size to text
@@ -48,8 +61,8 @@ function create_app()
 
     # TODO: Is there a better way to handle default with overwrites?
     card_css = CSS(
-        "margin" => "0.25em",
-        "padding" => "0.5em",
+        "margin" => "0.1em", # outside
+        "padding" => "0.5em", # inside
         "border" => "2px solid lightblue",
         # "background-color" => "#eee",
         "border-radius" => "1em",
@@ -120,7 +133,17 @@ function create_app()
                     )
                 end
 
-                card = Card(Col(cb, score_text, path_button, media), style = card_style)
+                card = Card(
+                    DOM.div(
+                        cb,
+                        DOM.div(
+                            path_button,
+                            DOM.div("Score: $score", style = score_style)
+                        ),
+                        media
+                    ),
+                    style = card_style
+                )
                 push!(cards, card)
             else
                 push!(cards, DOM.div())
