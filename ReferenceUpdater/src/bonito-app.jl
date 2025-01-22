@@ -219,12 +219,12 @@ function create_app()
 
     update_section = DOM.div(
         DOM.h2("Images to update"),
-        Bonito.Button("Update reference images with selection"),
         DOM.div("After pressing the button you will be asked which version to upload the reference images listed below to. After that the reference images on github will be replaced with an updated set if you have the rights to do so."),
+        Bonito.Button("Update reference images with selection"),
         DOM.h3(map(set -> "$(length(set)) images selected for updating:", marked_for_upload)),
-        DOM.div("TODO: image grid"),
+        map(set -> DOM.ul([DOM.li(name) for name in set]), marked_for_upload),
         DOM.h3(map(set -> "$(length(set)) images selected for removal:", marked_for_deletion)),
-        DOM.div("TODO: image grid")
+        map(set -> DOM.ul([DOM.li(name) for name in set]), marked_for_deletion),
     )
 
     new_image_section = DOM.div(
