@@ -115,7 +115,7 @@ function create_app()
                     map(local_path) do local_path
                         bin = read(local_path)
                         DOM.img(
-                            src = Bonito.BinaryAsset(bin, mimes[filetype]),
+                            src = Bonito.BinaryAsset(bin, "image/png"),
                             style = max_width
                         )
                     end
@@ -144,7 +144,44 @@ function create_app()
         return Grid(cards, columns = "1fr 1fr 1fr")
     end
 
-    return DOM.div(images...)
+    update_section = DOM.div(
+        DOM.h2("Images to update"),
+        Bonito.Button("Update reference images with selection"),
+        DOM.div("After pressing the button you will be asked which version to upload the reference images listed below to. After that the reference images on github will be replaced with an updated set if you have the rights to do so."),
+        DOM.h3("[TODO] images selected for updating:"),
+        DOM.div("TODO: image grid"),
+        DOM.h3("[TODO] images selected for removal:"),
+        DOM.div("TODO: image grid")
+    )
+
+    new_image_section = DOM.div(
+        DOM.h2("New images without references"),
+        DOM.div("The selected CI run produced an image for which no reference image exists. Selected images will be added as new reference images."),
+        DOM.div("TODO: toggle all"),
+        DOM.div("TODO: image grid")
+    )
+
+    missing_recordings_section = DOM.div(
+        DOM.h2("Old reference images without recordings"),
+        DOM.div("The selected CI run did not produce an image, but a reference image exists. This implies that a reference test was deleted or renamed. Selected images will be deleted from the reference images."),
+        DOM.div("TODO: toggle all"),
+        DOM.div("TODO: image grid")
+    )
+
+    main_section = DOM.div(
+        DOM.h2("Images with references"),
+        DOM.div("This is the normal case where the selected CI run produced an image and the reference image exists. Each row shows one image per backend from the same reference image test, which can be compared with its reference image. Rows are sorted based on the maximum row score (bigger = more different). Red cells fail CI (assuming the thresholds are up to date), yellow cells may but likely don't have significant visual difference and gray cells are visually equivalent."),
+        images...
+    )
+
+    return DOM.div(
+        update_section,
+        new_image_section,
+        missing_recordings_section,
+        main_section
+    )
+end
+
 
 
 if @isdefined server
