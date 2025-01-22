@@ -2,8 +2,8 @@ using Bonito, FileIO, DelimitedFiles
 
 root_path = joinpath(pwd(), "ReferenceImages")
 
-App() do
 
+function create_app()
     scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
 
     scores = scores_imgs[:, 1]
@@ -97,4 +97,10 @@ App() do
 
     return DOM.div(images...)
 
+
+if @isdefined server
+    close(server)
 end
+server = Bonito.Server("0.0.0.0", 8080)
+display(server)
+route!(server, "/" => App(create_app))
