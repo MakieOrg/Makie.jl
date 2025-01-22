@@ -5,6 +5,8 @@ root_path = joinpath(pwd(), "ReferenceImages")
 
 function create_app()
 
+    # Styles
+
     # TODO: font size ignored?
     button_style = Styles(
         CSS("font-size" => "12", "font-weight" => "normal"),
@@ -41,30 +43,13 @@ function create_app()
 
     max_width = Styles(CSS("max-width" => "100%"))
 
+    # Constants
 
-
-    scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
-
-    scores = scores_imgs[:, 1]
-    imgs = scores_imgs[:, 2]
-    lookup = Dict(imgs .=> scores)
-
-    imgs_with_score = unique(map(imgs) do img
-        replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-    end)
-
-    function get_score(img_name)
-        backends = ["CairoMakie", "GLMakie", "WGLMakie"]
-        scores = map(backends) do backend
-            name = backend * "/" * img_name
-            if haskey(lookup, name)
-                return lookup[name]
-            else
-                return -Inf
-            end
-        end
-        return maximum(scores)
-    end
+    backends = ["GLMakie", "CairoMakie", "WGLMakie"]
+    # for updated images:
+    selected_folder = ["recorded", "reference"]
+    selection_string = ["Showing new recorded", "Showing old reference"]
+    score_thresholds = [0.05, 0.03, 0.01]
 
     function refimage_selection_checkbox(marked_set, current_file)
         local_marked = Observable(false)
@@ -94,14 +79,71 @@ function create_app()
         end
     end
 
+    function create_simple_grid_content(filename, image_folder)
+        files = readlines(joinpath(root_path, filename))
+        refimages = unique(map(files) do img
+            replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+        end)
+
+        marked = Set{String}()
+
+        cards = Any[]
+        for img_name in refimages
+            for backend in backends
+
+                current_file = backend * "/" * img_name
+                if current_file in files
+                    cb = refimage_selection_checkbox(marked, current_file)
+                    local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
+                    media = media_element(img_name, local_path)
+                    card = Card(DOM.div(cb, media), style = Styles(card_css))
+                    push!(cards, card)
+                else
+                    push!(cards, DOM.div())
+                end
+            end
+
+        end
+
+        return cards, marked
+    end
+
+
+    # Newly added Images
+
+    new_cards, marked_for_upload = create_simple_grid_content("new_files.txt", "recorded")
+
+    # Deleted/Missing Images
+
+    missing_cards, marked_for_deletion = create_simple_grid_content("missing_files.txt", "reference")
+
+
+    # Updates images
+
+    scores_imgs = readdlm(joinpath(root_path, "scores.tsv"), '\t')
+
+    scores = scores_imgs[:, 1]
+    imgs = scores_imgs[:, 2]
+    lookup = Dict(imgs .=> scores)
+
+    imgs_with_score = unique(map(imgs) do img
+        replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+    end)
+
+    function get_score(img_name)
+        backends = ["CairoMakie", "GLMakie", "WGLMakie"]
+        scores = map(backends) do backend
+            name = backend * "/" * img_name
+            if haskey(lookup, name)
+                return lookup[name]
+            else
+                return -Inf
+            end
+        end
+        return maximum(scores)
+    end
+
     sort!(imgs_with_score; by=get_score, rev=true)
-
-    backends = ["GLMakie", "CairoMakie", "WGLMakie"]
-    selected_folder = ["recorded", "reference"]
-    selection_string = ["Showing new recorded", "Showing old reference"]
-    score_thresholds = [0.05, 0.03, 0.01]
-
-    marked_for_update = Set{String}()
 
     updated_cards = Any[]
     for img_name in imgs_with_score
@@ -110,7 +152,7 @@ function create_app()
             current_file = backend * "/" * img_name
             if haskey(lookup, current_file)
 
-                cb = refimage_selection_checkbox(marked_for_update, current_file)
+                cb = refimage_selection_checkbox(marked_for_upload, current_file)
 
                 score = round(lookup[current_file]; digits=4)
                 card_style = Styles(card_css, CSS(
@@ -156,37 +198,7 @@ function create_app()
 
     end
 
-    missing_files = readlines(joinpath(root_path, "missing_files.txt"))
-    missing_refimages = unique(map(missing_files) do img
-        replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-    end)
-
-    marked_for_deletion = Set{String}()
-
-    missing_cards = Any[]
-    for img_name in missing_refimages
-        for backend in backends
-
-            current_file = backend * "/" * img_name
-            if current_file in missing_files
-
-                cb = refimage_selection_checkbox(marked_for_deletion, current_file)
-
-                local_path = map(path_button.value) do click
-                    local_path = normpath(joinpath(root_path, "reference", backend, img_name))
-                    return Bonito.Asset(local_path)
-                end
-
-                media = media_element(img_name, local_path)
-
-                card = Card(DOM.div(cb, media), style = card_style)
-                push!(missing_cards, card)
-            else
-                push!(missing_cards, DOM.div())
-            end
-        end
-
-    end
+    # Create page
 
     update_section = DOM.div(
         DOM.h2("Images to update"),
@@ -202,7 +214,7 @@ function create_app()
         DOM.h2("New images without references"),
         DOM.div("The selected CI run produced an image for which no reference image exists. Selected images will be added as new reference images."),
         DOM.div("TODO: toggle all"),
-        DOM.div("TODO: image grid")
+        Grid(new_cards, columns = "1fr 1fr 1fr")
     )
 
     missing_recordings_section = DOM.div(
