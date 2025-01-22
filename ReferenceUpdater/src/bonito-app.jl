@@ -30,7 +30,7 @@ function create_app()
 
     sort!(imgs_with_score; by=get_score, rev=true)
 
-    backends = ["CairoMakie", "GLMakie", "WGLMakie"]
+    backends = ["GLMakie", "CairoMakie", "WGLMakie"]
     selected_folder = ["recorded", "reference"]
     selection_string = ["Showing new recorded", "Showing old reference"]
 
