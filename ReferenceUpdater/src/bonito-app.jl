@@ -51,15 +51,16 @@ function create_app()
     selection_string = ["Showing new recorded", "Showing old reference"]
     score_thresholds = [0.05, 0.03, 0.01]
 
-    function refimage_selection_checkbox(marked_set, current_file)
+    function refimage_selection_checkbox(marked, current_file)
         local_marked = Observable(false)
         on(local_marked) do is_marked
             if is_marked
-                push!(marked_set, current_file)
+                push!(marked[], current_file)
             else
-                delete!(marked_set, current_file)
+                delete!(marked[], current_file)
             end
-            @info marked_set
+            notify(marked)
+            @info marked[]
         end
         return DOM.div(
             Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
@@ -85,7 +86,7 @@ function create_app()
             replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
         end)
 
-        marked = Set{String}()
+        marked = Observable(Set{String}())
 
         cards = Any[]
         for img_name in refimages
@@ -204,9 +205,9 @@ function create_app()
         DOM.h2("Images to update"),
         Bonito.Button("Update reference images with selection"),
         DOM.div("After pressing the button you will be asked which version to upload the reference images listed below to. After that the reference images on github will be replaced with an updated set if you have the rights to do so."),
-        DOM.h3("[TODO:] images selected for updating:"),
+        DOM.h3(map(set -> "$(length(set)) images selected for updating:", marked_for_upload)),
         DOM.div("TODO: image grid"),
-        DOM.h3("[TODO:] images selected for removal:"),
+        DOM.h3(map(set -> "$(length(set)) images selected for removal:", marked_for_deletion)),
         DOM.div("TODO: image grid")
     )
 
