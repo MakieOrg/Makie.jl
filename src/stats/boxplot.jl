@@ -13,62 +13,58 @@ The boxplot has 3 components:
     median
 - an `errorbar` whose whiskers span `range * iqr`
 - points marking outliers, that is, data outside the whiskers
-# Arguments
+## Arguments
 - `x`: positions of the categories
 - `y`: variables within the boxes
-# Keywords
-- `weights`: vector of statistical weights (length of data). By default, each observation has weight `1`.
-- `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=1`: width of the box before shrinking
-- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_notch=false`: draw the notch
-- `notchwidth=0.5`: multiplier of `width` for narrowest width of notch
-- `show_median=true`: show median as midline
-- `range`: multiple of IQR controlling whisker length
-- `whiskerwidth`: multiplier of `width` for width of T's on whiskers, or
-    `:match` to match `width`
-- `show_outliers`: show outliers as points
-- `dodge`: vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position
-- `dodge_gap = 0.03`: spacing between dodged boxes
 """
-@recipe(BoxPlot, x, y) do scene
-    Theme(
-        weights = automatic,
-        color = theme(scene, :patchcolor),
-        colormap = theme(scene, :colormap),
-        colorscale=identity,
-        colorrange = automatic,
-        orientation = :vertical,
-        # box and dodging
-        width = automatic,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        strokecolor = theme(scene, :patchstrokecolor),
-        strokewidth = theme(scene, :patchstrokewidth),
-        # notch
-        show_notch = false,
-        notchwidth = 0.5,
-        # median line
-        show_median = true,
-        mediancolor = theme(scene, :linecolor),
-        medianlinewidth = theme(scene, :linewidth),
-        # whiskers
-        range = 1.5,
-        whiskerwidth = 0.0,
-        whiskercolor = theme(scene, :linecolor),
-        whiskerlinewidth = theme(scene, :linewidth),
-        # outliers points
-        show_outliers = true,
-        marker = theme(scene, :marker),
-        markersize = theme(scene, :markersize),
-        outliercolor = automatic,
-        outlierstrokecolor = theme(scene, :markerstrokecolor),
-        outlierstrokewidth = theme(scene, :markerstrokewidth),
-        cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable)
-    )
+@recipe BoxPlot (x, y) begin
+    "Vector of statistical weights (length of data). By default, each observation has weight `1`."
+    weights = automatic
+    color = @inherit patchcolor
+    colormap = @inherit colormap
+    colorscale=identity
+    colorrange = automatic
+    "Orientation of box (`:vertical` or `:horizontal`)."
+    orientation = :vertical
+    # box and dodging
+    "Width of the box before shrinking."
+    width = automatic
+    "Vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position."
+    dodge = automatic
+    n_dodge = automatic
+    "Shrinking factor, `width -> width * (1 - gap)`."
+    gap = 0.2
+    "Spacing between dodged boxes."
+    dodge_gap = 0.03
+    strokecolor = @inherit patchstrokecolor
+    strokewidth = @inherit patchstrokewidth
+    # notch
+    "Draw the notch."
+    show_notch = false
+    "Multiplier of `width` for narrowest width of notch."
+    notchwidth = 0.5
+    # median line
+    "Show median as midline."
+    show_median = true
+    mediancolor = @inherit linecolor
+    medianlinewidth = @inherit linewidth
+    # whiskers
+    "Multiple of IQR controlling whisker length."
+    range = 1.5
+    "Multiplier of `width` for width of T's on whiskers, or `:match` to match `width`."
+    whiskerwidth = 0.0
+    whiskercolor = @inherit linecolor
+    whiskerlinewidth = @inherit linewidth
+    # outliers points
+    "Show outliers as points."
+    show_outliers = true
+    marker = @inherit marker
+    markersize = @inherit markersize
+    outliercolor = automatic
+    outlierstrokecolor = @inherit markerstrokecolor
+    outlierstrokewidth = @inherit markerstrokewidth
+    cycle = [:color => :patchcolor]
+    inspectable = @inherit inspectable
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
@@ -89,11 +85,10 @@ function Makie.plot!(plot::BoxPlot)
         plot[:color],
         args...,
     ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
-        x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+        x̂, widths = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth === :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f[]
         centers = Float32[]
         medians = Float32[]
@@ -103,8 +98,10 @@ function Makie.plot!(plot::BoxPlot)
         notchmax = Float32[]
         t_segments = Point2f[]
         outlier_indices = Int[]
-        T = color isa AbstractVector ? eltype(color) : typeof(color)
-        boxcolor = T[]
+        CT = color isa AbstractVector ? eltype(color) : typeof(color)
+        boxcolor = CT[]
+        WT = widths isa AbstractVector ? eltype(widths) : typeof(widths)
+        boxwidth = WT[]
         for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
@@ -121,7 +118,7 @@ function Makie.plot!(plot::BoxPlot)
             end
 
             # outliers
-            if Float64(range) != 0.0  # if the range is 0.0, the whiskers will extend to the data
+            if !iszero(range)  # if the range is 0, the whiskers will extend to the data
                 limit = range * (q4 - q2)
                 inside = Float64[]
                 for (value, idx) in zip(values,idxs)
@@ -138,18 +135,19 @@ function Makie.plot!(plot::BoxPlot)
                 # change q1 and q5 to show outliers
                 # using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
-                # register boxcolor
-                push!(boxcolor, getuniquevalue(color, idxs))
             end
 
             # whiskers
-            HW = 0.5 * _cycle(ww, i) # Whisker width
-            lw, rw = center - HW, center + HW
+            bw = getuniquevalue(widths, idxs) # Box width
+            ww = whiskerwidth === :match ? bw : whiskerwidth * bw # Whisker width
+            lw, rw = center - ww/2, center + ww/2
             push!(t_segments, (center, q2), (center, q1), (lw, q1), (rw, q1)) # lower T
             push!(t_segments, (center, q4), (center, q5), (rw, q5), (lw, q5)) # upper T
 
             # box
+            push!(boxcolor, getuniquevalue(color, idxs))
             push!(centers, center)
+            push!(boxwidth, bw)
             push!(boxmin, q2)
             push!(medians, q3)
             push!(boxmax, q4)

@@ -22,7 +22,7 @@ end
 """
     push_screen!(scene::Scene, screen::MakieScreen)
 
-Adds a screen to the scene and registeres a clean up event when screen closes.
+Adds a screen to the scene and registered a clean up event when screen closes.
 Also, makes sure that always just one screen is active for on scene.
 """
 function push_screen!(scene::Scene, screen::T) where {T<:MakieScreen}
@@ -122,7 +122,7 @@ end
 
 Displays the figurelike in a window or the browser, depending on the backend.
 
-The parameters for `screen_config` are backend dependend,
+The parameters for `screen_config` are backend dependent,
 see `?Backend.Screen` or `Base.doc(Backend.Screen)` for applicable options.
 
 `backend` accepts Makie backend modules, e.g.: `backend = GLMakie`, `backend = CairoMakie`, etc.
@@ -140,7 +140,7 @@ function Base.display(figlike::FigureLike; backend=current_backend(),
         """)
     end
 
-    # We show inline if explicitely requested or if automatic and we can actually show something inline!
+    # We show inline if explicitly requested or if automatic and we can actually show something inline!
     scene = get_scene(figlike)
     if (inline === true || inline === automatic) && can_show_inline(backend)
         # We can't forward the screenconfig to show, but show uses the current screen if there is any
@@ -187,7 +187,7 @@ end
 # Since VSCode doesn't call any display/show method for Figurelike if we return
 # `showable(mime, fig) == false`, we need to return `showable(mime, figlike) == true`
 # For some vscode displayable mime, even for `Makie.inline!(false)` when we want to display in our own window.
-# Only diagnostic can be used for this, since other mimes expect something to be shown afterall and
+# Only diagnostic can be used for this, since other mimes expect something to be shown after all and
 # therefore will look broken in the plotpane if we dont print anything to the IO.
 # I tried `throw(MethodError(...))` as well, but with plotpane enabled + showable == true,
 # VScode doesn't catch that method error.
@@ -244,7 +244,7 @@ function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
     throw(MethodError(show, io, m, fig))
 end
 
-function Base.show(io::IO, m::MIME, figlike::FigureLike)
+function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backend(), update=true)
     if ALWAYS_INLINE_PLOTS[] == false && m isa MIME_TO_TRICK_VSCODE
         # We use this mime to display the figure in a window here.
         # See declaration of MIME_TO_TRICK_VSCODE for more info
@@ -252,9 +252,8 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
         return () # this is a diagnostic vscode mime, so we can just return nothing
     end
     scene = get_scene(figlike)
-    backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
-    update_state_before_display!(figlike)
+    update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
     backend_show(screen, io, m, scene)
     return screen
@@ -291,13 +290,13 @@ Save a `Scene` with the specified filename and format.
 - `size`: `(width::Int, height::Int)` of the scene in dimensionless units.
 - `update`: Whether the figure should be updated before saving. This resets the limits of all Axes in the figure. Defaults to `true`.
 - `backend`: Specify the `Makie` backend that should be used for saving. Defaults to the current backend.
+- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 - Further keywords will be forwarded to the screen.
 
 
 ## CairoMakie
 
 - `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
-- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
         filename::String, fig::FigureLike; args...
@@ -313,6 +312,15 @@ function FileIO.save(
         update = true,
         screen_config...
     )
+    if ismissing(backend)
+        error("""
+        No backend available!
+        Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
+
+        If you imported GLMakie, it may have not built correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
+        """)
+    end
     scene = get_scene(fig)
     if resolution !== nothing
         @warn "The keyword argument `resolution` for `save()` has been deprecated. Use `size` instead, which better reflects that this is a unitless size and not a pixel resolution."
@@ -341,6 +349,7 @@ function FileIO.save(
             config = Dict{Symbol, Any}(screen_config)
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
+            events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
             backend_show(screen, io, mime, scene)
         end
     catch e
@@ -451,7 +460,7 @@ or RGBA.
 - `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
 - `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
                         used in FFMPEG without conversion
-- `screen_config`: Backend dependend, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
+- `screen_config`: Backend dependent, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)

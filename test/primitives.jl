@@ -3,11 +3,10 @@
     f, ax, pl = ablines(fill(0), fill(1))
     reset_limits!(ax)
     points = pl.plots[1][1]
-    @test points[] == [Point2f(0), Point2f(10)]
+    @test Point2f.(points[]) == [Point2f(0), Point2f(10)]
     limits!(ax, 5, 15, 6, 17)
-    @test points[] == [Point2f(5), Point2f(15)]
+    @test Point2f.(points[]) == [Point2f(5), Point2f(15)]
 end
-
 
 @testset "arrows" begin
     # Test for:
@@ -22,6 +21,42 @@ end
     @test cbar.limits[] ≈ Vec2f(0.5, 0.6)
 end
 
+@testset "voxels" begin
+    data = reshape(collect(range(0.3, 1.8, length=6*5*4)), 6, 5, 4)
+    f, a, p = voxels(
+        data,
+        lowclip = RGBf(1, 0, 1), highclip = RGBf(0, 1, 0),
+        colormap = [RGBf(0, 0, 0), RGBf(1, 1, 1)], gap = 0.1
+    )
+
+    # data conversion pipeline
+    @test p.args[1][] === data
+    @test p.converted[1][] == (-3.0, 3.0)
+    @test p.converted[2][] == (-2.5, 2.5)
+    @test p.converted[3][] == (-2.0, 2.0)
+
+    @test p.colorrange[] == Makie.automatic # otherwise no auto _limits
+    @test all(p._limits[] .≈ (0.3, 1.8)) # controls conversion to voxel ids
+    ids = map(data) do val
+        trunc(UInt8, clamp(2 + 253 * (val - 0.3) / (1.8 - 0.3), 2, 254))
+    end
+    @test p.converted[4][] == ids
+
+    # colormap
+    cc = p.calculated_colors[]
+    @test length(cc.colormap[]) == 255
+    @test cc.colormap[][1] == RGBAf(1,0,1,1)
+    @test cc.colormap[][2] == RGBAf(0,0,0,1)
+    @test cc.colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
+    @test cc.colormap[][end-1] == RGBAf(1,1,1,1)
+    @test cc.colormap[][end] == RGBAf(0,1,0,1)
+
+    # voxels-as-meshscatter helpers
+    @test Makie.voxel_size(p) ≈ Vec3f(0.9)
+    ps = [Point3f(x - 2.5, y - 2.0, z - 1.5) for z in 0:3 for y in 0:4 for x in 0:5]
+    @test Makie.voxel_positions(p) ≈ ps
+    @test Makie.voxel_colors(p) == cc.colormap[][p.converted[end][][:]]
+end
 
 # TODO, test all primitives and argument conversions
 

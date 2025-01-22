@@ -2,6 +2,157 @@ import * as THREE from "./THREE.js";
 import * as Camera from "./Camera.js";
 import { create_line, create_linesegments } from "./Lines.js";
 
+
+/**
+ * Updates the value of a given uniform with a new value.
+ *
+ * @param {THREE.Uniform} uniform - The uniform to update.
+ * @param {Object|Array} new_value - The new value to set for the uniform. If the uniform is a texture, this should be an array containing the size and texture data.
+ */
+function update_uniform(uniform, new_value) {
+    if (uniform.value.isTexture) {
+        const im_data = uniform.value.image;
+        const [size, tex_data] = new_value;
+        if (tex_data.length == im_data.data.length) {
+            im_data.data.set(tex_data);
+        } else {
+            const old_texture = uniform.value;
+            uniform.value = re_create_texture(old_texture, tex_data, size);
+            old_texture.dispose();
+        }
+        uniform.value.needsUpdate = true;
+    } else {
+        if (is_three_fixed_array(uniform.value)) {
+            uniform.value.fromArray(new_value);
+        } else {
+            uniform.value = new_value;
+        }
+    }
+}
+
+
+class Plot {
+    mesh = undefined;
+    parent = undefined;
+    uuid = "";
+    name = "";
+    is_instanced = false;
+    geometry_needs_recreation = false;
+    plot_data = {};
+
+    constructor(scene, data) {
+        this.plot_data = data;
+
+        connect_plot(scene, this);
+
+        if (data.plot_type === "lines") {
+            this.mesh = create_line(scene, this.plot_data);
+        } else if (data.plot_type === "linesegments") {
+            this.mesh = create_linesegments(scene, this.plot_data);
+        } else if ("instance_attributes" in data) {
+            this.is_instanced = true;
+            this.mesh = create_instanced_mesh(scene, this.plot_data);
+        } else {
+            this.mesh = create_mesh(scene, this.plot_data);
+        }
+
+        this.name = data.name;
+        this.uuid = data.uuid;
+        this.mesh.plot_uuid = data.uuid;
+
+        this.mesh.frustumCulled = false;
+        this.mesh.matrixAutoUpdate = false;
+        this.mesh.renderOrder = data.zvalue;
+
+        data.uniform_updater.on(([name, data]) => {
+            this.update_uniform(name, data);
+        });
+
+        if (
+            !(data.plot_type === "lines" || data.plot_type === "linesegments")
+        ) {
+            connect_attributes(this.mesh, data.attribute_updater);
+        }
+        this.parent = scene;
+        // Give mesh a reference to the plot object.
+        this.mesh.plot_object = this;
+        this.mesh.visible = data.visible.value;
+        data.visible.on((v) => {
+            this.mesh.visible = v;
+        });
+    }
+    dispose() {
+        delete plot_cache[this.uuid];
+        this.parent.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.mesh = undefined;
+        this.parent = undefined;
+        this.uuid = "";
+        this.name = "";
+        this.is_instanced = false;
+        this.geometry_needs_recreation = false;
+        this.plot_data = {};
+    }
+    move_to(scene) {
+        if (scene === this.parent) {
+            return;
+        }
+        this.parent.remove(this.mesh);
+        connect_plot(scene, this);
+        scene.add(this.mesh);
+        this.parent = scene;
+        return;
+    }
+
+    update(attributes) {
+        attributes.keys().forEach((key) => {
+            const value = attributes[key];
+            if (value.type == "uniform") {
+                this.update_uniform(key, value.data);
+            } else if (value.type === "geometry") {
+                this.update_geometries(value.data);
+            } else if (value.type === "faces") {
+                this.update_faces(value.data);
+            }
+        });
+        // For e.g. when we need to re-create the geometry
+        this.apply_updates();
+    }
+
+    update_uniform(name, new_data) {
+        const uniform = this.mesh.material.uniforms[name];
+        if (!uniform) {
+            throw new Error(
+                `Uniform ${name} doesn't exist in Plot: ${this.name}`
+            );
+        }
+        update_uniform(uniform, new_data);
+    }
+
+    update_geometry(name, new_data) {
+        buffer = this.mesh.geometry.attributes[name];
+        if (!buffer) {
+            throw new Error(
+                `Buffer ${name} doesn't exist in Plot: ${this.name}`
+            );
+        }
+        const old_length = buffer.count;
+        if (new_data.length <= old_length) {
+            buffer.set(new_data.data);
+            buffer.needsUpdate = true;
+        } else {
+            // if we have a larger size we need resizing + recreation of the buffer geometry
+            buffer.to_update = new_data.data;
+            this.geometry_needs_recreation = true;
+        }
+    }
+
+    update_faces(face_data) {
+        this.mesh.geometry.setIndex(new THREE.BufferAttribute(face_data, 1));
+    }
+}
+
 // global scene cache to look them up for dynamic operations in Makie
 // e.g. insert!(scene, plot) / delete!(scene, plot)
 const scene_cache = {};
@@ -63,9 +214,10 @@ export function delete_plots(plot_uuids) {
     plots.forEach(delete_plot);
 }
 
-function convert_texture(data) {
-    const tex = create_texture(data);
+function convert_texture(scene, data) {
+    const tex = create_texture(scene, data);
     tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
     tex.minFilter = THREE[data.minFilter];
     tex.magFilter = THREE[data.magFilter];
     tex.anisotropy = data.anisotropy;
@@ -88,10 +240,10 @@ function is_three_fixed_array(value) {
     );
 }
 
-function to_uniform(data) {
+function to_uniform(scene, data) {
     if (data.type !== undefined) {
         if (data.type == "Sampler") {
-            return convert_texture(data);
+            return convert_texture(scene, data);
         }
         throw new Error(`Type ${data.type} not known`);
     }
@@ -120,7 +272,7 @@ function to_uniform(data) {
     return data;
 }
 
-export function deserialize_uniforms(data) {
+export function deserialize_uniforms(scene, data) {
     const result = {};
     // Deno may change constructor names..so...
 
@@ -132,40 +284,11 @@ export function deserialize_uniforms(data) {
             // nothing needs to be converted
             result[name] = value;
         } else {
-            const ser = to_uniform(value);
+            const ser = to_uniform(scene, value);
             result[name] = new THREE.Uniform(ser);
         }
     }
     return result;
-}
-
-export function deserialize_plot(data) {
-    let mesh;
-    const update_visible = (v) => {
-        mesh.visible = v;
-        // don't return anything, since that will disable on_update callback
-        return;
-    };
-    if (data.plot_type === "lines") {
-        mesh = create_line(data);
-    } else if (data.plot_type === "linesegments") {
-        mesh = create_linesegments(data);
-    } else if ("instance_attributes" in data) {
-        mesh = create_instanced_mesh(data);
-    } else {
-        mesh = create_mesh(data);
-    }
-    mesh.name = data.name;
-    mesh.frustumCulled = false;
-    mesh.matrixAutoUpdate = false;
-    mesh.plot_uuid = data.uuid;
-    update_visible(data.visible.value);
-    data.visible.on(update_visible);
-    connect_uniforms(mesh, data.uniform_updater);
-    if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
-        connect_attributes(mesh, data.attribute_updater);
-    }
-    return mesh;
 }
 
 const ON_NEXT_INSERT = new Set();
@@ -174,110 +297,82 @@ export function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
 
-export function add_plot(scene, plot_data) {
+/**
+ * Connects a plot to a scene by setting up the necessary camera uniforms.
+ *
+ * @param {THREE.Scene} scene - The scene object containing the camera and screen information.
+ * @param {Plot} plot - The plot object to be connected to the scene.
+ */
+function connect_plot(scene, plot) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-    if (plot_data.cam_space == "data") {
-        plot_data.uniforms.view = cam.view;
-        plot_data.uniforms.projection = cam.projection;
-        plot_data.uniforms.projectionview = cam.projectionview;
-        plot_data.uniforms.eyeposition = cam.eyeposition;
-    } else if (plot_data.cam_space == "pixel") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.pixel_space;
-        plot_data.uniforms.projectionview = cam.pixel_space;
-    } else if (plot_data.cam_space == "relative") {
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = cam.relative_space;
-        plot_data.uniforms.projectionview = cam.relative_space;
-    } else {
+    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+    const space = plot.plot_data.cam_space;
+    if (space == "data") {
+        uniforms.view = cam.view;
+        uniforms.projection = cam.projection;
+        uniforms.projectionview = cam.projectionview;
+        uniforms.eyeposition = cam.eyeposition;
+    } else if (space == "pixel") {
+        uniforms.view = identity;
+        uniforms.projection = cam.pixel_space;
+        uniforms.projectionview = cam.pixel_space;
+    } else if (space == "relative") {
+        uniforms.view = identity;
+        uniforms.projection = cam.relative_space;
+        uniforms.projectionview = cam.relative_space;
+    } else if (space == "clip") {
         // clip space
-        plot_data.uniforms.view = identity;
-        plot_data.uniforms.projection = identity;
-        plot_data.uniforms.projectionview = identity;
+        uniforms.view = identity;
+        uniforms.projection = identity;
+        uniforms.projectionview = identity;
+    } else {
+        throw new Error(`Space ${space} not supported!`)
     }
     const { px_per_unit } = scene.screen;
-    plot_data.uniforms.resolution = cam.resolution;
-    plot_data.uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
+    uniforms.resolution = cam.resolution;
+    uniforms.px_per_unit = new THREE.Uniform(px_per_unit);
 
-    if (plot_data.uniforms.preprojection) {
-        const { space, markerspace } = plot_data;
-        plot_data.uniforms.preprojection = cam.preprojection_matrix(
+    if (plot.plot_data.uniforms.preprojection) {
+        const { space, markerspace } = plot.plot_data;
+        uniforms.preprojection = cam.preprojection_matrix(
             space.value,
             markerspace.value
         );
     }
 
-    if (scene.camera_relative_light) {
-        plot_data.uniforms.light_direction = cam.light_direction;
-        scene.light_direction.on((value) => {
-            cam.update_light_dir(value);
-        });
-    } else {
-        // TODO how update?
-        const light_dir = new THREE.Vector3().fromArray(
-            scene.light_direction.value
-        );
-        plot_data.uniforms.light_direction = new THREE.Uniform(light_dir);
-        scene.light_direction.on((value) => {
-            plot_data.uniforms.light_direction.value.fromArray(value);
-        });
-    }
+    uniforms.light_direction = scene.light_direction;
+}
 
-    const p = deserialize_plot(plot_data);
-    plot_cache[p.plot_uuid] = p;
-    scene.add(p);
+
+export function add_plot(scene, plot_data) {
+    // fill in the camera uniforms, that we don't sent in serialization per plot
+    const p = new Plot(scene, plot_data);
+    plot_cache[p.uuid] = p.mesh;
+    scene.add(p.mesh);
     // execute all next insert callbacks
     const next_insert = new Set(ON_NEXT_INSERT); // copy
     next_insert.forEach((f) => f());
 }
 
-function connect_uniforms(mesh, updater) {
-    updater.on(([name, data]) => {
-        // this is the initial value, which shouldn't end up getting updated -
-        // TODO, figure out why this gets pushed!!
-        if (name === "none") {
-            return;
-        }
-        const uniform = mesh.material.uniforms[name];
-        if (uniform.value.isTexture) {
-            const im_data = uniform.value.image;
-            const [size, tex_data] = data;
-            if (tex_data.length == im_data.data.length) {
-                im_data.data.set(tex_data);
-            } else {
-                const old_texture = uniform.value;
-                uniform.value = re_create_texture(old_texture, tex_data, size);
-                old_texture.dispose();
-            }
-            uniform.value.needsUpdate = true;
-        } else {
-            if (is_three_fixed_array(uniform.value)) {
-                uniform.value.fromArray(data);
-            } else {
-                uniform.value = data;
-            }
-        }
-    });
-}
-
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
-    const rgbaArray = new Float32Array((length / 3) * 4);
+    const rgbaArray = new rgbArray.constructor((length / 3) * 4);
+    const a = (rgbArray instanceof Uint8Array) ? 255 : 1.0;
 
     for (let i = 0, j = 0; i < length; i += 3, j += 4) {
         rgbaArray[j] = rgbArray[i]; // R
         rgbaArray[j + 1] = rgbArray[i + 1]; // G
         rgbaArray[j + 2] = rgbArray[i + 2]; // B
-        rgbaArray[j + 3] = 1.0; // A
+        rgbaArray[j + 3] = a; // A
     }
 
     return rgbaArray;
 }
 
-function create_texture(data) {
-    const buffer = data.data;
+function create_texture_from_data(data) {
+    let buffer = data.data;
     if (data.size.length == 3) {
         const tex = new THREE.Data3DTexture(
             buffer,
@@ -289,25 +384,51 @@ function create_texture(data) {
         tex.type = THREE[data.three_type];
         return tex;
     } else {
-        // a little optimization to not send the texture atlas over & over again
-        let tex_data;
-        if (buffer == "texture_atlas") {
-            tex_data = TEXTURE_ATLAS[0].value;
-        } else {
-            tex_data = buffer;
-        }
         let format = THREE[data.three_format];
         if (data.three_format == "RGBFormat") {
-            tex_data = convert_RGB_to_RGBA(tex_data);
+            buffer = convert_RGB_to_RGBA(buffer);
             format = THREE.RGBAFormat;
         }
         return new THREE.DataTexture(
-            tex_data,
+            buffer,
             data.size[0],
             data.size[1],
             format,
             THREE[data.three_type]
         );
+    }
+}
+
+function create_texture(scene, data) {
+    const buffer = data.data;
+    // we allow to have a global texture atlas which gets only uploaded once to the browser
+    // it's not the nicest way, but by setting buffer to "texture_atlas" on the julia side
+    // instead of actual data, we just get the texture atlas from the global.
+    // Special care has to be taken to deregister the callback when the context gets destroyed
+    // Since TEXTURE_ATLAS uses "Bonito.Retain" and will live for the whole browser session.
+    if (buffer == "texture_atlas") {
+        const {texture_atlas} = scene.screen
+        if (texture_atlas) {
+            return texture_atlas;
+        } else {
+            data.data = TEXTURE_ATLAS[0].value
+            const texture = create_texture_from_data(data);
+            scene.screen.texture_atlas = texture;
+            TEXTURE_ATLAS[0].on((new_data) => {
+                if (new_data === texture) {
+                    // if the data is our texture, it means the WGL context got destroyed and we want to deregister
+                    // TODO, better Observables.js API for this
+                    return false; // deregisters the callback
+                } else {
+                    texture.image.data.set(new_data);
+                    texture.needsUpdate = true;
+                    return
+                }
+            });
+            return texture;
+        }
+    } else {
+        return create_texture_from_data(data);
     }
 }
 
@@ -338,6 +459,8 @@ function re_create_texture(old_texture, buffer, size) {
     }
     return tex;
 }
+
+
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
     jsbuff.setUsage(THREE.DynamicDrawUsage);
@@ -417,10 +540,10 @@ function recreate_instanced_geometry(mesh) {
     mesh.needsUpdate = true;
 }
 
-function create_material(program) {
+function create_material(scene, program) {
     const is_volume = "volumedata" in program.uniforms;
     return new THREE.RawShaderMaterial({
-        uniforms: deserialize_uniforms(program.uniforms),
+        uniforms: deserialize_uniforms(scene, program.uniforms),
         vertexShader: program.vertex_source,
         fragmentShader: program.fragment_source,
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
@@ -431,11 +554,11 @@ function create_material(program) {
     });
 }
 
-function create_mesh(program) {
+function create_mesh(scene, program) {
     const buffer_geometry = new THREE.BufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new THREE.Mesh(buffer_geometry, material);
     program.faces.on((x) => {
         mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
@@ -443,12 +566,12 @@ function create_mesh(program) {
     return mesh;
 }
 
-function create_instanced_mesh(program) {
+function create_instanced_mesh(scene, program) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
     attach_geometry(buffer_geometry, program.vertexarrays, faces);
     attach_instanced_geometry(buffer_geometry, program.instance_attributes);
-    const material = create_material(program);
+    const material = create_material(scene, program);
     const mesh = new THREE.Mesh(buffer_geometry, material);
     program.faces.on((x) => {
         mesh.geometry.setIndex(new THREE.BufferAttribute(x, 1));
@@ -550,8 +673,6 @@ export function deserialize_scene(data, screen) {
     scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
     scene.clearscene = data.clearscene;
     scene.visible = data.visible;
-    scene.camera_relative_light = data.camera_relative_light;
-    scene.light_direction = data.light_direction;
 
     const camera = new Camera.MakieCamera();
 
@@ -580,8 +701,22 @@ export function deserialize_scene(data, screen) {
     }
 
     update_cam(data.camera.value, true); // force update on first call
+
     camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
+
+    if (data.camera_relative_light) {
+        scene.light_direction = camera.light_direction;
+    } else {
+        const light_dir = new THREE.Vector3().fromArray(
+            data.light_direction.value
+        );
+        scene.light_direction = new THREE.Uniform(light_dir);
+        data.light_direction.on((value) => {
+            plot_data.uniforms.light_direction.value.fromArray(value);
+        });
+    }
+
 
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
@@ -594,13 +729,7 @@ export function deserialize_scene(data, screen) {
 }
 
 export function delete_plot(plot) {
-    delete plot_cache[plot.plot_uuid];
-    const { parent } = plot;
-    if (parent) {
-        parent.remove(plot);
-    }
-    plot.geometry.dispose();
-    plot.material.dispose();
+    plot.plot_object.dispose()
 }
 
 export function delete_three_scene(scene) {

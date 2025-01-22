@@ -1,22 +1,3 @@
-function block_docs(::Type{Colorbar})
-    """
-    Create a colorbar that shows a continuous or categorical colormap with ticks
-    chosen according to the colorrange.
-
-    You can set colorrange and colormap manually, or pass a plot object as the second argument
-    to copy its respective attributes.
-
-    ## Constructors
-
-    ```julia
-    Colorbar(fig_or_scene; kwargs...)
-    Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
-    Colorbar(fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
-    Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
-    ```
-    """
-end
-
 function colorbar_check(keys, kwargs_keys)
     for key in keys
         if key in kwargs_keys
@@ -75,6 +56,17 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
                     elow, ehigh, plot.nan_color)
 end
 
+function extract_colormap(plot::Voxels)
+    limits = plot._limits
+    # TODO: does this need padding for lowclip and highclip?
+    discretized_values = map(lims -> range(lims[1], lims[2], length = 253), plot, limits)
+
+    return ColorMapping(
+        discretized_values[], discretized_values, plot.colormap, limits, plot.colorscale,
+        plot.alpha, plot.lowclip, plot.highclip, Observable(:transparent)
+    )
+end
+
 
 function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: AbstractPlot}
     cmap = extract_colormap(plot)
@@ -90,7 +82,7 @@ function extract_colormap_recursive(@nospecialize(plot::T)) where {T <: Abstract
             # Prefer ColorMapping if in doubt!
             cmaps = filter(x-> x isa ColorMapping, colormaps)
             length(cmaps) == 1 && return cmaps[1]
-            error("Multiple colormaps found for plot $(plot), please specify which one to use manually. Please overload `Makie.extract_colormap(::$(T))` to allow for the automatical creation of a Colorbar.")
+            error("Multiple colormaps found for plot $(plot), please specify which one to use manually. Please overload `Makie.extract_colormap(::$(T))` to allow for the automatic creation of a Colorbar.")
         end
     end
 end
@@ -101,7 +93,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
     func = plotfunc(plot)
     if isnothing(cmap)
         error("Neither $(func) nor any of its children use a colormap. Cannot create a Colorbar from this plot, please create it manually.
-        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatical creation of a Colorbar.")
+        If this is a recipe, one needs to overload `Makie.extract_colormap(::$(Plot{func}))` to allow for the automatic creation of a Colorbar.")
     end
     if !(cmap isa ColorMapping)
         error("extract_colormap(::$(Plot{func})) returned an invalid value: $cmap. Needs to return either a `Makie.ColorMapping`.")
@@ -167,7 +159,7 @@ function initialize_block!(cb::Colorbar)
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
-                return convert(Vector{Float64},1:length(unique(values)))
+                return convert(Vector{Float64}, sort!(unique(values)))
             else
                 return convert(Vector{Float64}, LinRange(limits..., n))
             end
@@ -212,7 +204,7 @@ function initialize_block!(cb::Colorbar)
         xmin, ymin = minimum(bb)
         xmax, ymax = maximum(bb)
         if mapping_type == Makie.categorical
-            colors = edges(colors)
+            colors = edges(1:length(colors))
         end
         s_scaled = scale.(colors)
         mini, maxi = extrema(s_scaled)
@@ -230,9 +222,9 @@ function initialize_block!(cb::Colorbar)
     update_xyrange(barbox[], cb.vertical[], colors[], cmap.scale[], cmap.color_mapping_type[])
     onany(update_xyrange, blockscene, barbox, cb.vertical, colors, cmap.scale, cmap.color_mapping_type)
 
-    # for continous colormaps we sample a 1d image
+    # for continuous colormaps we sample a 1d image
     # to avoid white lines when rendering vector graphics
-    continous_pixels = lift(blockscene, cb.vertical, colors,
+    continuous_pixels = lift(blockscene, cb.vertical, colors,
                             cmap.color_mapping_type) do v, colors, mapping_type
         if mapping_type !== Makie.categorical
             colors = (colors[1:end-1] .+ colors[2:end]) ./2
@@ -243,26 +235,28 @@ function initialize_block!(cb::Colorbar)
     # TODO, implement interpolate = true for irregular grics in CairoMakie
     # Then, we can just use heatmap! and don't need the image plot!
     show_cats = Observable(false; ignore_equal_values=true)
-    show_continous = Observable(false; ignore_equal_values=true)
+    show_continuous = Observable(false; ignore_equal_values=true)
     on(blockscene, cmap.color_mapping_type; update=true) do type
         if type === continuous
-            show_continous[] = true
+            show_continuous[] = true
             show_cats[] = false
         else
-            show_continous[] = false
+            show_continuous[] = false
             show_cats[] = true
         end
     end
     heatmap!(blockscene,
-        xrange, yrange, continous_pixels;
-        colormap=colormap,
-        visible=show_cats,
-        inspectable=false
+        xrange, yrange, continuous_pixels;
+        colormap = colormap,
+        colorrange = limits,
+        visible = show_cats,
+        inspectable = false
     )
     image!(blockscene,
-        lift(extrema, xrange), lift(extrema, yrange), continous_pixels;
+        lift(extrema, xrange), lift(extrema, yrange), continuous_pixels;
         colormap = colormap,
-        visible = show_continous,
+        colorrange = limits,
+        visible = show_continuous,
         inspectable = false
     )
 
@@ -371,8 +365,9 @@ function initialize_block!(cb::Colorbar)
                     limits=lims, ticklabelalign=cb.ticklabelalign, label=cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
-                    labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont, ticks=ticks,
-                    tickformat=cb.tickformat,
+        labelfont=cb.labelfont, ticklabelfont=cb.ticklabelfont,
+        dim_convert=nothing, # TODO, we should also have a dim convert for Colorbar
+        ticks=ticks, tickformat=cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
         ticklabelrotation = cb.ticklabelrotation,

@@ -164,9 +164,9 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < scaled_cmin
+        elseif lowclip !== automatic && scaled_number < scaled_cmin
             return lowclip
-        elseif !isnothing(highclip) && scaled_number > scaled_cmax
+        elseif highclip !== automatic && scaled_number > scaled_cmax
             return highclip
         end
         return interpolated_getindex(
@@ -181,7 +181,7 @@ end
 
 * categorical: there are n categories, and n colors are assigned to each category
 * banded: there are ranges edge_start..edge_end, inside which values are mapped to one color
-* continous: colors are mapped continuously to values
+* continuous: colors are mapped continuously to values
 """
 @enum ColorMappingType categorical banded continuous
 
@@ -225,17 +225,18 @@ fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized
 """
-struct Categorical{T} <: AbstractVector{RGBAf}
-    values::Vector{T}
+struct Categorical
+    values::Any
 end
-Categorical(values) = Categorical(to_colormap(values))
 Base.getindex(c::Categorical, i) = c.values[i]
 Base.size(c::Categorical) = size(c.values)
 
-_array_value_type(::Categorical{T}) where T = Vector{T}
+_array_value_type(::Categorical) = Vector{eltype(values)}
 _array_value_type(A::AbstractArray{<:Number}) = typeof(A)
 _array_value_type(r::AbstractRange) = Vector{eltype(r)} # use vector instead, to have a few less types to worry about
 
+to_colormap(x::Categorical) = to_colormap(x.values)
+_to_colormap(x::Categorical) = to_colormap(x.values)
 _to_colormap(x::PlotUtils.ColorGradient) = to_colormap(x.colors)
 _to_colormap(x) = to_colormap(x)
 
@@ -256,11 +257,11 @@ function _colormapping(
         @nospecialize(highclip),
         @nospecialize(nan_color),
         color_mapping_type) where {V <: AbstractArray{T, N}} where {N, T}
-
     map_colors = Observable(RGBAf[]; ignore_equal_values=true)
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
     colorscale = convert(Observable{Function}, colorscale)
+    colorscale.ignore_equal_values = true
 
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
@@ -299,8 +300,15 @@ function _colormapping(
         return Vec2f(apply_scale(scale, range))
     end
 
-    color_scaled = lift(color_tight, colorscale) do color, scale
-        return el32convert(apply_scale(scale, color))
+    color_scaled = Observable(el32convert(apply_scale(colorscale[], color_tight[])))
+    onany(color_tight, colorscale) do color, scale
+        scaled = el32convert(apply_scale(scale, color))
+        # If they're exactly the same we assume the user called notify
+        # So we trigger an update...
+        # If they're `== && !==`, we assume it's staying the same
+        if color_scaled[] === scaled || color_scaled[] != scaled
+            color_scaled[] = scaled
+        end
     end
     CT = ColorMapping{N,V,typeof(color_scaled[])}
 
@@ -331,7 +339,15 @@ function ColorMapping(
         color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
 
     T = _array_value_type(color)
-    color_tight = convert(Observable{T}, colors_obs)::Observable{T}
+    color_tight = Observable{T}(color)
+    # We need to copy, to check for changes
+    # Since users may re-use the array when pushing updates
+    on(colors_obs) do new_colors
+        if color_tight[] === new_colors || color_tight[] != new_colors
+            color_tight[] = new_colors
+        end
+    end
+     # color_tight.ignore_equal_values = true
     _colormapping(color_tight, colors_obs, colormap, colorrange,
                          colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end
@@ -362,7 +378,6 @@ end
 
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
-
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
                       cm.nan_color)

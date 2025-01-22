@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -7,6 +10,8 @@ const float max_distance = 1.3;
 
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
+
+uniform vec4 clip_planes[8];
 
 float _normalize(float val, float from, float to)
 {
@@ -189,6 +194,33 @@ uniform uint objectid;
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
+uniform int num_clip_planes;
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
+
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
 }
@@ -216,12 +248,16 @@ float min_bigger_0(vec3 v1, vec3 v2){
     return min(x, min(y, z));
 }
 
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
@@ -239,6 +275,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / float(num_samples);
 
     float steps = 0.1;

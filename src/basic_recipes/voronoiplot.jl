@@ -8,45 +8,35 @@
 Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
-
-## Attributes
-
-- `show_generators = true` determines whether to plot the individual generators.
-
-- `markersize = 12` sets the size of the points.
-- `marker = :circle` sets the shape of the points.
-- `markercolor = :black` sets the color of the points.
-
-- `strokecolor = :black` sets the strokecolor of the polygons.
-- `strokewidth = 1` sets the width of the polygon stroke.
-- `color = automatic` sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap.
-- `unbounded_edge_extension_factor = 0.1` sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
-- `clip::Union{Automatic, Rect2, Circle, Tuple} = automatic` sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`.
-
-$(Base.Docs.doc(MakieCore.colormap_attributes!))
 """
-@recipe(Voronoiplot, vorn) do scene
-    th = default_theme(scene, Mesh)
-    sc = default_theme(scene, Scatter)
-    attr = Attributes(;
-                      # Toggles
-                      show_generators=true,
-                      smooth=false,
+@recipe Voronoiplot (vorn,) begin
+    "Determines whether to plot the individual generators."
+    show_generators=true
+    smooth=false
 
-                      # Point settings
-                      markersize=sc.markersize,
-                      marker=sc.marker,
-                      markercolor=sc.color,
+    # Point settings
+    "Sets the size of the points."
+    markersize= @inherit markersize
+    "Sets the shape of the points."
+    marker= @inherit marker
+    "Sets the color of the points."
+    markercolor= @inherit markercolor
 
-                      # Polygon settings
-                      strokecolor=theme(scene, :patchstrokecolor),
-                      strokewidth=1.0,
-                      color=automatic,
-                      unbounded_edge_extension_factor=0.1,
-                      clip=automatic)
-    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
-    return attr
+    # Polygon settings
+    "Sets the strokecolor of the polygons."
+    strokecolor= @inherit patchstrokecolor
+    "Sets the width of the polygon stroke."
+    strokewidth=1.0
+    "Sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap."
+    color=automatic
+    "Sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`."
+    unbounded_edge_extension_factor=0.1
+    "Sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`."
+    clip=automatic
+    MakieCore.mixin_colormap_attributes()...
 end
+
+preferred_axis_type(::Voronoiplot) = Axis
 
 function _clip_polygon(poly::Polygon, circle::Circle)
     # Sutherland-Hodgman adjusted
@@ -62,7 +52,7 @@ function _clip_polygon(poly::Polygon, circle::Circle)
         return A + AB * t
     end
 
-    input = Point2f.(first.(poly.exterior))
+    input = Point2f.(poly.exterior)
     output = sizehint!(Point2f[], length(input))
 
     for i in eachindex(input)
@@ -109,6 +99,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
     for i in DelTri.each_generator(vorn)
+        !DelTri.has_polygon(vorn, i) && continue 
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
             return Point2f(DelTri.getxy(coords))
@@ -145,11 +136,8 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     # Handle transform_func early so tessellation is in cartesian space.
     vorn = map(p, p.transformation.transform_func, ps, smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
-        tri = DelTri.triangulate(transformed)
-        vorn = DelTri.voronoi(tri)
-        if smooth
-            vorn = DelTri.centroidal_smooth(vorn)
-        end
+        tri = DelTri.triangulate(transformed, randomise = false)
+        vorn = DelTri.voronoi(tri, clip = smooth, smooth = smooth, randomise = false)
         return vorn
     end
 
@@ -167,18 +155,18 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     return voronoiplot!(p, attr, vorn)
 end
 
-function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
-        iter = (to_ndim(Point3f, p, 0f0) for p in p.converted[1][])
-        limits_from_transformed_points(iter)
+        return Rect3d(p.converted[1][])
     else
         # First component is either another Voronoiplot or a poly plot. Both
         # cases span the full limits of the plot
-        data_limits(p.plots[1])
+        return data_limits(p.plots[1])
     end
 end
+boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     generators_2f = Observable(Point2f[])
@@ -188,7 +176,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
-            cs = [i for i in DelTri.each_generator(vorn)]
+            cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
             return cs
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),

@@ -6,49 +6,45 @@ The StatMakie.jl package is licensed under the MIT "Expat" License:
     crossbar(x, y, ymin, ymax; kwargs...)
 Draw a crossbar. A crossbar represents a range with a (potentially notched) box.
 It is most commonly used as part of the `boxplot`.
-# Arguments
+## Arguments
 - `x`: position of the box
 - `y`: position of the midline within the box
 - `ymin`: lower limit of the box
 - `ymax`: upper limit of the box
-# Keywords
-- `orientation=:vertical`: orientation of box (`:vertical` or `:horizontal`)
-- `width=1`: width of the box before shrinking
-- `gap=0.2`: shrinking factor, `width -> width * (1 - gap)`
-- `show_notch=false`: draw the notch
-- `notchmin=automatic`: lower limit of the notch
-- `notchmax=automatic`: upper limit of the notch
-- `notchwidth=0.5`: multiplier of `width` for narrowest width of notch
-- `show_midline=true`: show midline
 """
-@recipe(CrossBar, x, y, ymin, ymax) do scene
-    t = Theme(
-    color=theme(scene, :patchcolor),
-    colormap=theme(scene, :colormap),
-    colorscale=identity,
-    colorrange=automatic,
-    orientation=:vertical,
+@recipe CrossBar (x, y, ymin, ymax) begin
+    color= @inherit patchcolor
+    colormap= @inherit colormap
+    colorscale=identity
+    colorrange=automatic
+    "Orientation of box (`:vertical` or `:horizontal`)."
+    orientation=:vertical
     # box and dodging
-    width = automatic,
-    dodge = automatic,
-    n_dodge = automatic,
-    gap = 0.2,
-    dodge_gap = 0.03,
-    strokecolor = theme(scene, :patchstrokecolor),
-    strokewidth = theme(scene, :patchstrokewidth),
+    "Width of the box before shrinking."
+    width = automatic
+    dodge = automatic
+    n_dodge = automatic
+    "Shrinking factor, `width -> width * (1 - gap)`."
+    gap = 0.2
+    dodge_gap = 0.03
+    strokecolor =  @inherit patchstrokecolor
+    strokewidth =  @inherit patchstrokewidth
     # notch
-    show_notch=false,
-    notchmin=automatic,
-    notchmax=automatic,
-    notchwidth=0.5,
+    "Whether to draw the notch."
+    show_notch=false
+    "Lower limit of the notch."
+    notchmin=automatic
+    "Upper limit of the notch."
+    notchmax=automatic
+    "Multiplier of `width` for narrowest width of notch."
+    notchwidth=0.5
     # median line
-    show_midline=true,
-    midlinecolor=automatic,
-    midlinewidth=theme(scene, :linewidth),
-    inspectable = theme(scene, :inspectable),
-    cycle = [:color => :patchcolor],
-)
-    t
+    "Show midline."
+    show_midline=true
+    midlinecolor=automatic
+    midlinewidth= @inherit linewidth
+    inspectable =  @inherit inspectable
+    cycle = [:color => :patchcolor]
 end
 
 function Makie.plot!(plot::CrossBar)
@@ -81,7 +77,7 @@ function Makie.plot!(plot::CrossBar)
             end
             # when notchmin = ymin || notchmax == ymax, fill disappears from
             # half the box. first ∘ StatsBase.rle removes adjacent duplicates.
-            points = first.(StatsBase.rle.(Base.vect.(fpoint.(l, ymin),
+            boxes = first.(StatsBase.rle.(Base.vect.(fpoint.(l, ymin),
                 fpoint.(r, ymin),
                 fpoint.(r, nmin),
                 fpoint.(m .+ nw .* hw, y), # notch right
@@ -93,11 +89,6 @@ function Makie.plot!(plot::CrossBar)
                 fpoint.(l, nmin),
                 fpoint.(l, ymin)
                )))
-            boxes = if points isa AbstractVector{<: Point} # poly
-                [GeometryBasics.triangle_mesh(points)]
-            else # multiple polys (Vector{Vector{<:Point}})
-                GeometryBasics.triangle_mesh.(points)
-            end
             midlines = Pair.(fpoint.(m .- nw .* hw, y), fpoint.(m .+ nw .* hw, y))
         else
             boxes = frect.(l, ymin, boxwidth, ymax .- ymin)

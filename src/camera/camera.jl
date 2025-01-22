@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(9) do i
+    Camera(ntuple(10) do i
         getfield(x, i)
     end...)
 end
@@ -18,8 +18,8 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projection: ", camera.projection[])
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
-    println(io, "  lookat: ", camera.lookat[])
     println(io, "  eyeposition: ", camera.eyeposition[])
+    println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
@@ -70,13 +70,13 @@ end
 
 function Camera(viewport)
     pixel_space = lift(viewport) do window_size
-        nearclip = -10_000f0
-        farclip = 10_000f0
-        w, h = Float32.(widths(window_size))
-        return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+        nearclip = -10_000.0
+        farclip = 10_000.0
+        w, h = Float64.(widths(window_size))
+        return orthographicprojection(0.0, w, 0.0, h, nearclip, farclip)
     end
-    view = Observable(Mat4f(I))
-    proj = Observable(Mat4f(I))
+    view = Observable(Mat4d(I))
+    proj = Observable(Mat4d(I))
     proj_view = map(*, proj, view)
     return Camera(
         pixel_space,
@@ -84,8 +84,9 @@ function Camera(viewport)
         proj,
         proj_view,
         lift(a-> Vec2f(widths(a)), viewport),
-        Observable(Vec3f(0)),
+        Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
+        Observable(Vec3f(0, 1, 0)),
         ObserverFunction[],
         Dict{Symbol, Observable}()
     )

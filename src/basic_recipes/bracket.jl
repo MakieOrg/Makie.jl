@@ -7,40 +7,49 @@
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text label at the midpoint.
 
 By default each label is rotated parallel to the line between the bracket points.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Bracket) do scene
-    Theme(
-        offset = 0,
-        width = 15,
-        text = "",
-        font = theme(scene, :font),
-        orientation = :up,
-        align = (:center, :center),
-        textoffset = automatic,
-        fontsize = theme(scene, :fontsize),
-        rotation = automatic,
-        color = theme(scene, :linecolor),
-        textcolor = theme(scene, :textcolor),
-        linewidth = theme(scene, :linewidth),
-        linestyle = :solid,
-        justification = automatic,
-        style = :curly,
-    )
+@recipe Bracket begin
+    "The offset of the bracket perpendicular to the line from start to end point in screen units.
+    The direction depends on the `orientation` attribute."
+    offset = 0
+    """
+    The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
+    """
+    width = 15
+    text = ""
+    font = @inherit font
+    "Which way the bracket extends relative to the line from start to end point. Can be `:up` or `:down`."
+    orientation = :up
+    align = (:center, :center)
+    textoffset = automatic
+    fontsize = @inherit fontsize
+    rotation = automatic
+    color = @inherit linecolor
+    textcolor = @inherit textcolor
+    linewidth = @inherit linewidth
+    linestyle = :solid
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
+    justification = automatic
+    style = :curly
 end
 
-Makie.convert_arguments(::Type{<:Bracket}, point1::VecTypes, point2::VecTypes) = ([(Point2f(point1), Point2f(point2))],)
-Makie.convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real) = ([(Point2f(x1, y1), Point2f(x2, y2))],)
-function Makie.convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+    return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
+    return ([(Point2{float_type(x1, y1)}(x1, y1), Point2{float_type(x2, y2)}(x2, y2))],)
+end
+function convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
+    T1 = float_type(x1, y1); T2 = float_type(x2, y2)
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
-        (Point2f(x1, y1), Point2f(x2, y2))
+        (Point2{T1}(x1, y1), Point2{T2}(x2, y2))
     end
     return (points,)
 end
 
-function Makie.plot!(pl::Bracket)
+function plot!(pl::Bracket)
 
     points = pl[1]
 
@@ -68,7 +77,7 @@ function Makie.plot!(pl::Bracket)
 
             v = p2 - p1
             d1 = normalize(v)
-            d2 = [0 -1; 1 0] * d1
+            d2 = Point2(-d1[2], d1[1])
             orientation in (:up, :down) || error("Orientation must be :up or :down but is $(repr(orientation)).")
             if (orientation == :up) != (d2[2] >= 0)
                 d2 = -d2
@@ -104,14 +113,16 @@ function Makie.plot!(pl::Bracket)
 
     # Avoid scale!() / translate!() / rotate!() to affect these
     series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
-        linestyle = pl.linestyle, transformation = Transformation())
+        linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
+        miter_limit = pl.miter_limit, transformation = Transformation())
     text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
         justification = pl.justification, model = Mat4f(I))
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(ps -> Rect3f([ps...]), union, pl[1][])
+data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])
+boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 

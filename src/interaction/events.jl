@@ -10,6 +10,7 @@ unicode_input(scene, native_window) = not_implemented_for(native_window)
 dropped_files(scene, native_window) = not_implemented_for(native_window)
 hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
+frame_tick(scene, native_window) = not_implemented_for(native_window)
 
 function connect_screen(scene::Scene, screen)
 
@@ -27,6 +28,7 @@ function connect_screen(scene::Scene, screen)
     dropped_files(scene, screen)
     hasfocus(scene, screen)
     entered_window(scene, screen)
+    frame_tick(scene, screen)
 
     return
 end
@@ -49,12 +51,13 @@ function disconnect_screen(scene::Scene, screen)
         disconnect!(screen, dropped_files)
         disconnect!(screen, hasfocus)
         disconnect!(screen, entered_window)
+        disconnect!(screen, frame_tick)
     end
     return
 end
 
 """
-Picks a mouse position.  Implemented by the backend.
+Picks a mouse position. Implemented by the backend.
 """
 function pick end
 
@@ -65,9 +68,33 @@ end
 
 """
     onpick(func, plot)
-Calls `func` if one clicks on `plot`.  Implemented by the backend.
+Calls `func` if one clicks on `plot`. Implemented by the backend.
 """
 function onpick end
+
+
+mutable struct TickCallback
+    event::Observable{Makie.Tick}
+    start_time::UInt64
+    last_time::UInt64
+    TickCallback(tick::Observable{Makie.Tick}) = new(tick, time_ns(), time_ns())
+end
+TickCallback(scene::SceneLike) = TickCallback(events(scene).tick)
+
+function (cb::TickCallback)(x::Makie.TickState)
+    if x > Makie.UnknownTickState # not backend or Unknown
+        cb.last_time = Makie.next_tick!(cb.event, x, cb.start_time, cb.last_time)
+    end
+    return nothing
+end
+
+function next_tick!(tick::Observable{Tick}, state::TickState, start_time::UInt64, last_time::UInt64)
+    t = time_ns()
+    since_start = 1e-9 * (t - start_time)
+    delta_time = 1e-9 * (t - last_time)
+    tick[] = Tick(state, tick[].count + 1, since_start, delta_time)
+    return t
+end
 
 
 ################################################################################
@@ -81,7 +108,7 @@ function onpick end
 Creates an `And` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `And` structs is created.
 
-See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`&`](@ref)
+See also: [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref), `&`
 """
 struct And{L, R} <: BooleanOperator
     left::L
@@ -96,7 +123,7 @@ And(left, right::Bool) = right ? left : false
 Creates an `Or` struct with the left and right argument for later evaluation.
 If more than two arguments are given a tree of `Or` structs is created.
 
-See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), [`|`](@ref)
+See also: [`And`](@ref), [`Not`](@ref), [`ispressed`](@ref), `|`
 """
 struct Or{L, R} <: BooleanOperator
     left::L
@@ -110,7 +137,7 @@ Or(left, right::Bool) = right ? true : left
 
 Creates a `Not` struct with the given argument for later evaluation.
 
-See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`ispressed`](@ref), `!`
 """
 struct Not{T} <: BooleanOperator
     x::T
@@ -132,7 +159,7 @@ button under a `Not` must not be pressed and that this follows automatically
 from the subset of buttons that must be pressed.
 
 See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`ispressed`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+`&`, `|`, `!`
 """
 struct Exclusively <: BooleanOperator
     x::Set{Union{Keyboard.Button, Mouse.Button}}
@@ -255,8 +282,8 @@ of it's current state. For example, when reacting to a mousebutton event, you ca
 pass `event.button` so that a key combination including that button still evaluates
 as true.
 
-See also: [`waspressed`](@ref) [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
-[`&`](@ref), [`|`](@ref), [`!`](@ref)
+See also: [`And`](@ref), [`Or`](@ref), [`Not`](@ref), [`Exclusively`](@ref),
+`&`, `|`, `!`
 """
 ispressed(events::Events, mb::Mouse.Button, waspressed = nothing) = mb in events.mousebuttonstate || mb == waspressed
 ispressed(events::Events, key::Keyboard.Button, waspressed = nothing) = key in events.keyboardstate || key == waspressed

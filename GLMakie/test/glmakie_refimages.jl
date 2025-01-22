@@ -6,34 +6,11 @@ using GLMakie.ShaderAbstractions: Sampler
 using GLMakie.GeometryBasics
 using ReferenceTests.RNG
 
-# A test case for wide lines and mitering at joints
-@reference_test "Miter Joints for line rendering" begin
-    scene = Scene()
-    cam2d!(scene)
-    r = 4
-    sep = 4*r
-    scatter!(scene, (sep+2*r)*[-1,-1,1,1], (sep+2*r)*[-1,1,-1,1])
-
-    for i=-1:1
-        for j=-1:1
-            angle = pi/2 + pi/4*i
-            x = r*[-cos(angle/2),0,-cos(angle/2)]
-            y = r*[-sin(angle/2),0,sin(angle/2)]
-
-            linewidth = 40 * 2.0^j
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=RGBAf(0,0,0,0.5), linewidth=linewidth)
-            lines!(scene, x .+ sep*i, y .+ sep*j, color=:red)
-        end
-    end
-    center!(scene)
-    scene
-end
-
 @reference_test "Sampler type" begin
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
     scene = image(x)
-    # indexing will go straight to the GPU, while only transfering the changes
+    # indexing will go straight to the GPU, while only transferring the changes
     st = Stepper(scene)
     x[1:10, 1:50] .= to_color(:red)
     Makie.step!(st)
@@ -60,7 +37,7 @@ end
     end
 
     fig, ax, p = meshscatter(pos,
-        rotations=rot,
+        rotation=rot,
         color=color,
         markersize=size,
         axis = (; scenekw = (;limits=Rect3f(Point3(0), Point3(1))))
@@ -82,7 +59,7 @@ end
         end
     end
     fig, ax, meshplot = meshscatter(RNG.rand(Point3f, 10^4) .* 20f0; color=:black)
-    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false), fig.scene)
+    screen = display(GLMakie.Screen(;renderloop=(screen) -> nothing, start_renderloop=false, visible=false), fig.scene)
     buff = RNG.rand(Point3f, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     @test isnothing(screen.rendertask)

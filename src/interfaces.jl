@@ -23,8 +23,7 @@ function calculated_attributes!(::Type{<: AbstractPlot}, plot)
 end
 
 function calculated_attributes!(::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
+    color = hasproperty(plot.mesh[], :color) ? lift(x -> x.color, plot, plot.mesh) : plot.color
     color_and_colormap!(plot, color)
     return
 end
@@ -63,13 +62,6 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
 
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        return lift(plot, plot[:markersize]) do msize
-            return to_2d_scale(map(x -> x .* -0.5f0, msize))
-        end
-    end
-
     replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms
             if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
@@ -101,59 +93,191 @@ end
 
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
-    lines, surface, volume, heatmap, image
+    lines, surface, volume, heatmap, image, voxels
 )
 const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
 
-function convert_arguments!(plot::Plot{F}) where {F}
-    P = Plot{F,Any}
-    function on_update(kw, args...)
-        nt = convert_arguments(P, args...; kw...)
-        pnew, converted = apply_convert!(P, plot.attributes, nt)
-        @assert plotfunc(pnew) === F "Changed the plot type in convert_arguments. This isn't allowed!"
-        for (obs, new_val) in zip(plot.converted, converted)
-            obs[] = new_val
-        end
-    end
-    used_attrs = used_attributes(P, to_value.(plot.args)...)
-    convert_keys = intersect(used_attrs, keys(plot.attributes))
-    kw_signal = if isempty(convert_keys)
-        # lift(f) isn't supported so we need to catch the empty case
-        Observable(())
-    else
-        # Remove used attributes from `attributes` and collect them in a `Tuple` to pass them more easily
-        lift((args...) -> Pair.(convert_keys, args), plot, pop!.(plot.attributes, convert_keys)...)
-    end
-    onany(on_update, plot, kw_signal, plot.args...)
-    return
+function get_kw_values(func, names, kw)
+    return [Pair{Symbol,Any}(k, func(kw[k]))
+            for k in names if haskey(kw, k)]
 end
 
-function Plot{Func}(args::Tuple, plot_attributes::Dict) where {Func}
-    if !isempty(args) && first(args) isa Attributes
-        merge!(plot_attributes, attributes(first(args)))
-        return Plot{Func}(Base.tail(args), plot_attributes)
+function get_kw_obs(names, kw)
+    isempty(names) && return Observable(Pair{Symbol, Any}[])
+    kw_copy = copy(kw)
+    init = get_kw_values(to_value, names, kw_copy)
+    obs = Observable(init; ignore_equal_values=true)
+    in_obs = [kw_copy[k] for k in names if haskey(kw_copy, k)]
+    onany(in_obs...) do args...
+        obs[] = get_kw_values(to_value, names, kw_copy)
+        return
+    end
+    return obs
+end
+
+
+"""
+    expand_dimensions(plottrait, plotargs...)
+
+Expands the dims for e.g. `scatter(1:4)` becoming `scatter(1:4, 1:4)` for 2D plots.
+We're separating this state from convert_arguments, to better apply `dim_converts` before convert_arguments.
+"""
+expand_dimensions(trait, args...) = nothing
+
+expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
+expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
+expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
+    (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))
+
+function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    # Float32, because all ploteable sizes should fit into float32
+    x, y = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, data)
+end
+
+function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
+    x, y = map(x-> (1f0, Float32(x)), size(data))
+    return (x, y, data)
+end
+
+function expand_dimensions(::VolumeLike, data::RealArray{3})
+    x, y, z = map(x-> (0f0, Float32(x)), size(data))
+    return (x, y, z, data)
+end
+
+function apply_expand_dimensions(trait, args, args_obs, deregister)
+    expanded = expand_dimensions(trait, args...)
+    if isnothing(expanded)
+        return args_obs
+    else
+        new_obs = map(Observable{Any}, expanded)
+        fs = onany(args_obs...) do args...
+            expanded = expand_dimensions(trait, args...)
+            for (obs, arg) in zip(new_obs, expanded)
+                obs.val = arg
+            end
+            # It should be enough to trigger the first observable since 
+            # this will go into `map(convert_arguments, new_obs...)` 
+            # Without this, we'll get 3 updates for `notify(data)` in `heatmap(data)`
+            notify(new_obs[1])
+            return
+        end
+        append!(deregister, fs)
+        return new_obs
+    end
+end
+
+
+# Internal function to apply convert_arguments to observable arguments
+function convert_observable_args(P, args_obs, kw_obs, converted, deregister)
+    # Fully converted arguments to target type for Plot
+    new_args_obs = map(Observable, converted)
+    fs = onany(kw_obs, args_obs...) do kw, args...
+        conv = convert_arguments(P, args...; kw...)
+        if conv isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+            conv = (conv,) # for PlotSpec
+        elseif !(conv isa Tuple)
+            error("Returned type of convert_arguments needs to be a PlotSpec or Tuple, got: $(typeof(conv))")
+        end
+        for (obs, arg) in zip(new_args_obs, conv)
+            obs.val = arg
+        end
+        foreach(notify, new_args_obs)
+        return
+    end
+    append!(deregister, fs)
+    return new_args_obs
+end
+
+function got_converted(P::Type, PTrait::ConversionTrait, result)
+    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+        return SpecApi
+    end
+    types = MakieCore.types_for_plot_arguments(P, PTrait)
+    if !isnothing(types)
+        return result isa types
+    end
+    return nothing
+end
+
+"""
+    conversion_pipeline(P::Type{<:Plot}, used_attrs::Tuple, args::Tuple,
+        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
+
+The main conversion pipeline for converting arguments for a plot type.
+Applies dim_converts, expand_dimensions (in `try_dim_convert`), convert_arguments and checks if the conversion was successful.
+"""
+function conversion_pipeline(
+        P::Type{<:Plot}, used_attrs::Tuple, args::Tuple, kw_obs,
+        args_obs::Tuple, user_attributes::Dict{Symbol, Any}, deregister, recursion=1)
+    if recursion === 3
+        error("Recursion limit reached. This should not happen, please open an issue with Makie.jl and provide a minimal working example.")
+        return P, args_obs
+    end
+
+    kw = to_value(kw_obs)
+    PTrait = conversion_trait(P, args...)
+    dim_converted = try_dim_convert(P, PTrait, user_attributes, args_obs, deregister)
+    args = map(to_value, dim_converted)
+    converted = convert_arguments(P, args...; kw...)
+    status = got_converted(P, PTrait, converted)
+    if status === true
+        # We're done converting!
+        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+    elseif status === SpecApi
+        return convert_observable_args(P, dim_converted, kw_obs, (converted,), deregister)
+    elseif status === false && recursion === 1
+        # We haven't reached a target type, so we try to apply convert arguments again and try_dim_convert
+        # This is the case for e.g. convert_arguments returning types that need dim_convert
+        new_args_obs = convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+        return conversion_pipeline(P, used_attrs, map(to_value, new_args_obs), kw_obs, new_args_obs,
+                                   user_attributes, deregister,
+                                   recursion + 1)
+    elseif status === false && recursion === 2
+        kw_str = isempty(kw) ?  "" : " and kw: $(typeof(kw))"
+        kw_convert = isempty(kw) ? "" : "; kw..."
+        conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
+        types = MakieCore.types_for_plot_arguments(P, PTrait)
+        throw(ArgumentError("""
+            Conversion failed for $(P)$(conv_trait) with args: $(typeof(args)) $(kw_str).
+            $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
+            To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+        """))
+    elseif isnothing(status)
+        # No types_for_plot_arguments defined, so we don't know what we need to convert to.
+        # This is for backwards compatibility for recipes that don't define argument types
+        return convert_observable_args(P, dim_converted, kw_obs, converted, deregister)
+    else
+        error("Unknown status: $(status)")
+    end
+end
+
+function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+    # Handle plot!(plot, attributes::Attributes, args...) here
+    if !isempty(user_args) && first(user_args) isa Attributes
+        attr = attributes(first(user_args))
+        merge!(user_attributes, attr)
+        return Plot{Func}(Base.tail(user_args), user_attributes)
     end
     P = Plot{Func}
-    used_attrs = used_attributes(P, to_value.(args)...)
-    if used_attrs === ()
-        args_converted = convert_arguments(P, map(to_value, args)...)
-    else
-        kw = [Pair(k, to_value(v)) for (k, v) in plot_attributes if k in used_attrs]
-        args_converted = convert_arguments(P, map(to_value, args)...; kw...)
-    end
-    preconvert_attr = Attributes()
-    PNew, converted = apply_convert!(P, preconvert_attr, args_converted)
-
-    obs_args = Any[convert(Observable, x) for x in args]
-
-    ArgTyp = MakieCore.argtypes(converted)
-    converted_obs = map(Observable, converted)
-    FinalPlotFunc = plotfunc(plottype(PNew, converted...))
-    plot = Plot{FinalPlotFunc,ArgTyp}(plot_attributes, obs_args, converted_obs)
-    for (k, v) in preconvert_attr
-        attributes(plot.attributes)[k] = v
-    end
-    return plot
+    args = map(to_value, user_args)
+    attr = used_attributes(P, args...)
+    # don't use convert(Observable{Any}, x) here,
+    # We assume if a user passes the observable, they type it correctly
+    # And if they pass a value, they may want to change the type, so we need Observable{Any}
+    args_obs = map(x -> x isa Observable ? x : Observable{Any}(x), user_args)
+    deregister = Observables.ObserverFunction[]
+    PTrait = conversion_trait(P, args...)
+    expanded_args_obs = apply_expand_dimensions(PTrait, args, args_obs, deregister)
+    kw_obs = get_kw_obs(attr, user_attributes)
+    converted_obs = conversion_pipeline(P, attr, args, kw_obs, expanded_args_obs, user_attributes, deregister)
+    args2 = map(to_value, converted_obs)
+    ArgTyp = MakieCore.argtypes(args2)
+    FinalPlotFunc = plotfunc(plottype(P, args2...))
+    foreach(x -> delete!(user_attributes, x), attr)
+    return Plot{FinalPlotFunc,ArgTyp}(
+        user_attributes, kw_obs, Any[args_obs...],
+        Observable[converted_obs...], deregister)
 end
 
 """
@@ -181,7 +305,6 @@ Usage:
 used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)
 used_attributes(args...) = ()
 
-
 ## generic definitions
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
@@ -190,6 +313,7 @@ plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argva
 plottype(P::Type{<:Plot{T}}) where {T} = P
 plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
+
 """
     plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
 
@@ -223,25 +347,27 @@ plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 
+clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
+clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 
 # all the plotting functions that get a plot type
-const PlotFunc = Union{Type{Any},Type{<:AbstractPlot}}
+const PlotFunc = Type{<:AbstractPlot}
 
-function plot!(::Plot{F}) where {F}
+function plot!(::Plot{F, Args}) where {F, Args}
     if !(F in atomic_functions)
-        error("No recipe for $(F)")
+        error("No recipe for $(F) with args: $(Args)")
     end
 end
 
 function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
-
-    apply_theme!(parent_scene(parent), plot)
+    scene = parent_scene(parent)
+    apply_theme!(scene, plot)
     t_user = to_value(get(attributes(plot), :transformation, automatic))
     if t_user isa Transformation
         plot.transformation = t_user
     else
-        if t_user isa Automatic
+        if t_user isa Union{Nothing, Automatic}
             plot.transformation = Transformation()
         else
             t = Transformation()
@@ -254,10 +380,26 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
         end
     end
     plot.model = transformationmatrix(plot)
-    convert_arguments!(plot)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
+
+    if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
+        attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))
+    end
+
     plot!(plot)
+
+    conversions = get_conversions(plot)
+    if !isnothing(conversions)
+        connect_conversions!(scene.conversions, conversions)
+    end
+    attr = used_attributes(plot)
+    used_attr_obs = map(k -> get!(plot.attributes, k, Observable{Any}(nothing)), attr)
+    onany(plot, used_attr_obs...) do args...
+        zipped = filter(((k, v),) -> !isnothing(v), collect(zip(attr, args)))
+        plot.kw_obs[] = map(x -> x[1] => x[2], zipped)
+        return
+    end
     return plot
 end
 

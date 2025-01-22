@@ -27,6 +27,7 @@ include("blocks/slider.jl")
 include("blocks/slidergrid.jl")
 include("blocks/intervalslider.jl")
 include("blocks/button.jl")
+include("blocks/checkbox.jl")
 include("blocks/box.jl")
 include("blocks/toggle.jl")
 include("blocks/legend.jl")
@@ -41,6 +42,7 @@ export Slider
 export SliderGrid
 export IntervalSlider
 export Button
+export Checkbox
 export Colorbar
 export Label
 export Box
@@ -55,6 +57,7 @@ export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
+export hiderdecorations!, hidethetadecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export set_close_to!
 export labelslider!, labelslidergrid!

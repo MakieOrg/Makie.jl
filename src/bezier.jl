@@ -1,19 +1,35 @@
-using StableHashTraits
+"""
+    MoveTo(p::VecTypes)
+    MoveTo(x::Real, y::Real)
 
-const Point2d = Point2{Float64}
-
+A path command for use within a `BezierPath` which starts a new subpath at the given point.
+"""
 struct MoveTo
     p::Point2d
 end
 
 MoveTo(x, y) = MoveTo(Point2d(x, y))
 
+"""
+    LineTo(p::VecTypes)
+    LineTo(x::Real, y::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a line
+to the given point.
+"""
 struct LineTo
     p::Point2d
 end
 
 LineTo(x, y) = LineTo(Point2d(x, y))
 
+"""
+    CurveTo(c1::VecTypes, c2::VecTypes, p::VecTypes)
+    CurveTo(cx1::Real, cy1::Real, cx2::Real, cy2::Real, px::Real, py::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a cubic
+bezier curve to point `p`, with the first control point `c1` and the second control point `c2`.
+"""
 struct CurveTo
     c1::Point2d
     c2::Point2d
@@ -24,6 +40,37 @@ CurveTo(cx1, cy1, cx2, cy2, p1, p2) = CurveTo(
     Point2d(cx1, cy1), Point2d(cx2, cy2), Point2d(p1, p2)
 )
 
+"""
+    quadratic_curve_to(x0::Real, y0::Real, cx1::Real, cy1::Real, p1::Real, p2::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with a quadratic
+bezier curve to point `p`, with the control point `c`. The curve is converted into a cubic bezier
+curve internally.
+"""
+quadratic_curve_to(x0, y0, cx1, cy1, p1, p2) = CurveTo(
+    x0 + 2/3 * (cx1 - x0), y0 + 2/3 * (cy1 - y0),
+    p1 + 2/3 * (cx1 - p1), p2 + 2/3 * (cy1 - p2),
+    p1, p2
+)
+
+"""
+    EllipticalArc(c::VecTypes, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
+    EllipticalArc(cx::Real, cy::Real, r1::Real, r2::Real, angle::Real, a1::Real, a2::Real)
+
+A path command for use within a `BezierPath` which continues the current subpath with an
+elliptical arc. The ellipse is centered at `c` and has two radii, `r1` and `r2`, the orientation
+of which depends on `angle`.
+
+If `angle == 0`, `r1` goes in x direction and `r2` in y direction.
+A positive `angle` in radians rotates the ellipse counterclockwise, and a negative `angle` clockwise.
+
+The angles `a1` and `a2` are the start and stop positions of the arc on the ellipse. A value of
+`0` is where the radius `r1` points to, `pi/2` is where the radius `r2` points to, and so on.
+If `a2 > a1`, the arc turns counterclockwise. If `a1 > a2`, it turns clockwise.
+
+If the last position of the subpath does not equal the start of the arc,
+the resulting path will have an implicit line segment between the two.
+"""
 struct EllipticalArc
     c::Point2d
     r1::Float64
@@ -36,8 +83,20 @@ end
 EllipticalArc(cx, cy, r1, r2, angle, a1, a2) = EllipticalArc(Point2d(cx, cy),
     r1, r2, angle, a1, a2)
 
+"""
+    ClosePath()
+
+A path command for use within a `BezierPath` which closes the current subpath. The resulting
+path will have an implicit line segment between the last point and the first point if they
+do not match.
+"""
 struct ClosePath end
 const PathCommand = Union{MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath}
+
+# For hashing with crc32c
+function Base.write(io::IO, command::PathCommand)
+    write(io, Ref(command))
+end
 
 function bbox(commands::Vector{PathCommand})
     prev = commands[1]
@@ -60,18 +119,18 @@ function elliptical_arc_to_beziers(arc::EllipticalArc)
     n_beziers = ceil(Int, delta_a / 0.5pi)
     angles = range(arc.a1, arc.a2; length=n_beziers + 1)
 
-    startpoint = Point2f(cos(arc.a1), sin(arc.a1))
+    startpoint = Point2d(cos(arc.a1), sin(arc.a1))
     curves = map(angles[1:(end - 1)], angles[2:end]) do start, stop
         theta = stop - start
         kappa = 4 / 3 * tan(theta / 4)
-        c1 = Point2f(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
-        c2 = Point2f(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
-        b = Point2f(cos(stop), sin(stop))
+        c1 = Point2d(cos(start) - kappa * sin(start), sin(start) + kappa * cos(start))
+        c2 = Point2d(cos(stop) + kappa * sin(stop), sin(stop) - kappa * cos(stop))
+        b = Point2d(cos(stop), sin(stop))
         return CurveTo(c1, c2, b)
     end
 
     path = BezierPath([LineTo(startpoint), curves...])
-    path = scale(path, Vec2{Float64}(arc.r1, arc.r2))
+    path = scale(path, Vec2d(arc.r1, arc.r2))
     path = rotate(path, arc.angle)
     return translate(path, arc.c)
 end
@@ -91,25 +150,45 @@ end
 function point_at_angle(e::EllipticalArc, theta)
     M = abs(e.r1) * cos(theta)
     N = abs(e.r2) * sin(theta)
-    return Point2f(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
+    return Point2d(e.c[1] + cos(e.angle) * M - sin(e.angle) * N,
                    e.c[2] + sin(e.angle) * M + cos(e.angle) * N)
 end
 
-function cleanup_bbox(bb::Rect2f)
+function cleanup_bbox(bb::Rect2)
     if any(x -> x < 0, bb.widths)
         p = bb.origin .+ (bb.widths .< 0) .* bb.widths
-        return Rect2f(p, abs.(bb.widths))
+        return Rect2d(p, abs.(bb.widths))
     end
     return bb
 end
 
+"""
+    BezierPath(commands::Vector)
+
+Construct a `BezierPath` with a vector of path commands.
+The available path commands are
+- `MoveTo`
+- `LineTo`
+- `CurveTo`
+- `EllipticalArc`
+- `ClosePath`
+
+A `BezierPath` can be used in certain places in Makie as an alternative
+to a polygon or a collection of lines, for example as an input to `poly` or `lines`,
+or as a `marker` for `scatter`.
+
+The benefit of using a `BezierPath` is that curves do not need to be converted into
+a vector of vertices by the user. CairoMakie can use the path commands directly when
+it writes vector graphics which is more efficient and uses less space than approximating
+them visually using line segments.
+"""
 struct BezierPath
     commands::Vector{PathCommand}
-    boundingbox::Rect2f
+    boundingbox::Rect2d
     hash::UInt32
     function BezierPath(commands::Vector)
         c = convert(Vector{PathCommand}, commands)
-        return new(c, bbox(c), StableHashTraits.stable_hash(c; alg=crc32c, version=2))
+        return new(c, bbox(c), hash_crc32(c))
     end
 end
 bbox(x::BezierPath) = x.boundingbox
@@ -126,7 +205,7 @@ function Base.:+(pc::P, p::Point2) where P <: PathCommand
     return P(map(f -> getfield(pc, f) + p, fnames)...)
 end
 
-scale(bp::BezierPath, s::Real) = BezierPath([scale(x, Vec2{Float64}(s, s)) for x in bp.commands])
+scale(bp::BezierPath, s::Real) = BezierPath([scale(x, Vec2d(s, s)) for x in bp.commands])
 scale(bp::BezierPath, v::VecTypes{2}) = BezierPath([scale(x, v) for x in bp.commands])
 translate(bp::BezierPath, v::VecTypes{2}) = BezierPath([translate(x, v) for x in bp.commands])
 
@@ -203,7 +282,7 @@ Base.:+(bp::BezierPath, p::Point2) = BezierPath(bp.commands .+ Ref(p))
 
 
 function bezier_ngon(n, radius, angle)
-    points = [radius * Point2f(cos(a + angle), sin(a + angle))
+    points = [radius * Point2d(cos(a + angle), sin(a + angle))
         for a in range(0, 2pi, length = n+1)[1:end-1]]
     BezierPath([
         MoveTo(points[1]);
@@ -215,7 +294,7 @@ end
 function bezier_star(n, inner_radius, outer_radius, angle)
     points = [
         (isodd(i) ? outer_radius : inner_radius) *
-            Point2f(cos(a + angle), sin(a + angle))
+            Point2d(cos(a + angle), sin(a + angle))
         for (i, a) in enumerate(range(0, 2pi, length = 2n+1)[1:end-1])]
     BezierPath([
         MoveTo(points[1]);
@@ -224,9 +303,9 @@ function bezier_star(n, inner_radius, outer_radius, angle)
     ])
 end
 
-function BezierPath(poly::Polygon)
+function BezierPath(poly::Polygon{N, T}) where {N, T}
     commands = Makie.PathCommand[]
-    points = reinterpret(Point2f, poly.exterior)
+    points = reinterpret(Point{N, T}, poly.exterior)
     ext_direction = sign(area(points)) #signed area gives us clockwise / anti-clockwise
     push!(commands, MoveTo(points[1]))
     for i in 2:length(points)
@@ -234,7 +313,7 @@ function BezierPath(poly::Polygon)
     end
 
     for inter in poly.interiors
-        points = reinterpret(Point2f, inter)
+        points = reinterpret(Point{N, T}, inter)
         # holes, in bezierpath, always need to have the opposite winding order
         if sign(area(points)) == ext_direction
             points = reverse(points)
@@ -248,7 +327,41 @@ function BezierPath(poly::Polygon)
     return BezierPath(commands)
 end
 
-function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+"""
+    BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+
+Construct a `BezierPath` using a string of [SVG path commands](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/d#path_commands).
+The commands will be parsed first into `MoveTo`, `LineTo`, `CurveTo`, `EllipticalArc` and `ClosePath` objects
+which are then passed to the `BezierPath` constructor.
+
+If `fit === true`, the path will be scaled to fit into a square of width 1 centered on the origin.
+If, additionally, `bbox` is set to some `Rect`, the path will be fit into this rectangle instead.
+If you want to use a path as a scatter marker, it is usually good to fit it so that it's centered
+and of a comparable size relative to other scatter markers.
+
+If `flipy === true` or `flipx === true`, the respective dimensions of the path will be flipped.
+Makie uses a coordinate system where y=0 is at the bottom and y increases upwards while in SVG, y=0 is at the
+top and y increases downwards, so for most SVG paths `flipy = true` will be needed.
+
+If `keep_aspect === true`, the path will be fit into the bounding box such that its longer dimension fits and
+the other one is scaled to retain the original aspect ratio. If you set `keep_aspect = false`, the new
+boundingbox of the path will be the one it is fit to, but note that this can result in a squished appearance.
+
+## Example
+
+Construct a triangular `BezierPath` out of a path command string and use it as a scatter marker:
+
+```julia
+str = "M 0,0 L 10,0 L 5,10 z"
+bp = BezierPath(str, fit = true)
+scatter(1:10, marker = bp, markersize = 20)
+```
+"""
+@noconstprop function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+    BezierPath(svg, fit, bbox, flipy, flipx, keep_aspect)
+end
+
+@noconstprop function BezierPath(svg::AbstractString, fit::Bool, bbox, flipy::Bool, flipx::Bool, keep_aspect::Bool)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
     if flipy
@@ -259,7 +372,7 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
     end
     if fit
         if bbox === nothing
-            p = fit_to_bbox(p, Rect2f((-0.5, -0.5), (1.0, 1.0)), keep_aspect = keep_aspect)
+            p = fit_to_bbox(p, Rect2d((-0.5, -0.5), (1.0, 1.0)), keep_aspect = keep_aspect)
         else
             p = fit_to_bbox(p, bbox, keep_aspect = keep_aspect)
         end
@@ -268,7 +381,6 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
 end
 
 function parse_bezier_commands(svg)
-
     # args = [e.match for e in eachmatch(r"([a-zA-Z])|(\-?\d*\.?\d+)", svg)]
     args = [e.match for e in eachmatch(r"(?:0(?=\d))|(?:[a-zA-Z])|(?:\-?\d*\.?\d+)", svg)]
 
@@ -396,6 +508,16 @@ function parse_bezier_commands(svg)
             l = lastp()
             push!(commands, LineTo(Point2d(l[1], y)))
             i += 2
+        elseif comm == "Q"
+            x0, y0 = lastp()
+            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            push!(commands, quadratic_curve_to(x0, y0, x1, y1, x2, y2))
+            i += 5
+        elseif comm == "q"
+            x0, y0 = lastp()
+            x1, y1, x2, y2 = parse.(Float64, args[i+1:i+4])
+            push!(commands, quadratic_curve_to(x0, y0, x1 + x0, y1 + y0, x2 + x0, y2 + y0))
+            i += 5
         else
             for c in commands
                 println(c)
@@ -410,6 +532,20 @@ function parse_bezier_commands(svg)
     commands
 end
 
+"""
+    EllipticalArc(x1::Real, y1::Real, x2::Real, y2::Real, rx::Real, ry::Real, ϕ::Real, largearc::Bool, sweepflag::Bool)
+
+Construct an `EllipticalArc` using the endpoint parameterization.
+
+`x1, y1` is the starting point and `x2, y2` the end point, `rx` and `ry` are the two
+ellipse radii. `ϕ` is the angle of `rx` vs the x axis.
+
+Usually, four arcs can be constructed between two points given these ellipse parameters.
+One of them is chosen using two boolean flags:
+
+If `largearc === true`, the arc will be longer than 180 degrees.
+If `sweepflag === true`, the arc will sweep through increasing angles.
+"""
 function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bool)
     # https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
 
@@ -509,15 +645,15 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for
+    # Minimal size that becomes integer when multiplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))
     w = ceil(Int, 64 * path_size[1])
     h = ceil(Int, 64 * path_size[2])
-    path_size = Vec2f(w, h) / 64f0
+    path_size = Vec2d(w, h) / 64.0
 
-    path_unit_rect = fit_to_bbox(path_replaced, Rect2f(Point2f(0), path_size))
+    path_unit_rect = fit_to_bbox(path_replaced, Rect2d(Point2d(0), path_size))
 
     path_transformed = Makie.scale(path_unit_rect, scale_factor)
 
@@ -582,20 +718,20 @@ Makie.convert_attribute(b::BezierPath, ::key"marker", ::key"scatter") = b
 Makie.convert_attribute(ab::AbstractVector{<:BezierPath}, ::key"marker", ::key"scatter") = ab
 
 struct BezierSegment
-    from::Point2f
-    c1::Point2f
-    c2::Point2f
-    to::Point2f
+    from::Point2d
+    c1::Point2d
+    c2::Point2d
+    to::Point2d
 end
 
 struct LineSegment
-    from::Point2f
-    to::Point2f
+    from::Point2d
+    to::Point2d
 end
 
 
 function bbox(ls::LineSegment)
-    return Rect2f(ls.from, ls.to - ls.from)
+    return Rect2d(ls.from, ls.to - ls.from)
 end
 
 function bbox(b::BezierSegment)
@@ -649,7 +785,7 @@ function bbox(b::BezierSegment)
         end
     end
 
-    return Rect2f(Point(mi...), Point(ma...) - Point(mi...))
+    return Rect2d(Point(mi...), Point(ma...) - Point(mi...))
 end
 
 segment(p, l::LineTo) = LineSegment(p, l.p)
@@ -698,7 +834,7 @@ const BezierCross = let
 
     first_three = Point2d[(r, ri), (ri, ri), (ri, r)]
     all = (x -> reduce(vcat, x))(map(0:(pi / 2):(3pi / 2)) do a
-                                   m = Mat2f(sin(a), cos(a), cos(a), -sin(a))
+                                   m = Mat2d(sin(a), cos(a), cos(a), -sin(a))
                                    return Ref(m) .* first_three
                                end)
 

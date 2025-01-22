@@ -16,7 +16,6 @@ using Base64
 # When loading Electron for WGLMakie, which depends on FilePaths
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
-#
 import FilePaths
 using LaTeXStrings
 using MathTeXEngine
@@ -45,7 +44,9 @@ using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
+using Dates
 
+import Unitful
 import UnicodeFun
 import RelocatableFolders
 import StatsBase
@@ -62,7 +63,7 @@ import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
 
-using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints
+using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
 
 using GeometryBasics: width, widths, height, positive_widths, VecTypes, AbstractPolygon, value, StaticVector
@@ -78,6 +79,8 @@ using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
 
+import InverseFunctions
+
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
 using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
@@ -88,16 +91,16 @@ using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!
+import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
+import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-
+import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
 
-const RealVector{T} = AbstractVector{T} where T <: Number
+
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
@@ -105,10 +108,25 @@ const NativeFont = FreeTypeAbstraction.FTFont
 const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
 assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
+
+# 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
+# We use this mainly in GLMakie to avoid a few bigger OpenGL based functions to get constant propagation
+# (e.g. GLFrameBuffer((width, height)), which should not profit from any constant propagation)
+macro noconstprop(expr)
+    if isdefined(Base, Symbol("@constprop"))
+        return esc(:(Base.@constprop :none @noinline $(expr)))
+    else
+        return esc(:(@noinline $(expr)))
+    end
+end
+
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
+include("utilities/stable-hashing.jl")
 include("bezier.jl")
 include("types.jl")
+include("utilities/Plane.jl")
+include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/observables.jl")
 include("interaction/liftmacro.jl")
@@ -117,10 +135,16 @@ include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
+
+include("dim-converts/dim-converts.jl")
+include("dim-converts/unitful-integration.jl")
+include("dim-converts/categorical-integration.jl")
+include("dim-converts/dates-integration.jl")
+
 include("scenes.jl")
+include("float32-scaling.jl")
 
 include("interfaces.jl")
-include("conversions.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -155,6 +179,7 @@ include("basic_recipes/datashader.jl")
 include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/hvlines.jl")
 include("basic_recipes/hvspan.jl")
+include("basic_recipes/mesh.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
@@ -167,17 +192,25 @@ include("basic_recipes/tricontourf.jl")
 include("basic_recipes/triplot.jl")
 include("basic_recipes/volumeslices.jl")
 include("basic_recipes/voronoiplot.jl")
+include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/tooltip.jl")
 
+include("basic_recipes/makiecore_examples/scatter.jl")
+include("basic_recipes/makiecore_examples/lines.jl")
+
+# conversions: need to be after plot recipes
+include("conversions.jl")
+
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/layouting.jl")
+include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
+include("layouting/text_boundingbox.jl")
 
-# Declaritive SpecApi
+# Declarative SpecApi
 include("specapi.jl")
 
 # more default recipes
@@ -233,6 +266,7 @@ export xtickrange, ytickrange, ztickrange
 export xticks!, yticks!, zticks!
 export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
+export Categorical
 
 # Observable/Signal related
 export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
@@ -246,7 +280,7 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categ
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, scale!, rotate!, Accum, Absolute
+export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
 
 # Spaces for widths and markers
@@ -285,6 +319,7 @@ export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..)
 export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
+export Plane3f # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes
@@ -308,16 +343,23 @@ export Pattern
 export ReversibleScale
 
 export assetpath
+
+using PNGFiles
+
 # default icon for Makie
+function load_icon(name::String)::Matrix{NTuple{4,UInt8}}
+    img = PNGFiles.load(name)::Matrix{RGBA{Colors.N0f8}}
+    return reinterpret(NTuple{4,UInt8}, img)
+end
+
 function icon()
     path = assetpath("icons")
-    imgs = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = map(img-> RGBA{Colors.N0f8}.(img), imgs)
-    return reinterpret.(NTuple{4,UInt8}, icons)
+    icons = readdir(path; join=true)
+    return map(load_icon, icons)
 end
 
 function logo()
-    FileIO.load(assetpath("logo.png"))
+    return PNGFiles.load(assetpath("logo.png"))
 end
 
 # populated by __init__()
@@ -355,11 +397,12 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
+export FastPixel
 
 include("precompiles.jl")
 

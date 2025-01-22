@@ -1,5 +1,5 @@
 ################################################################################
-### Main Block Intialization
+### Main Block Initialization
 ################################################################################
 
 function initialize_block!(po::PolarAxis; palette=nothing)
@@ -60,11 +60,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
         for gc in thetaticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
         for gc in rticklabelplot.plots[1].plots[1][1][]
-            bbox = boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+            bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
             max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
         end
 
@@ -167,7 +167,7 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
     rmin, rmax = max.(0.0, rlims .- r0)
 
     if abs(thetamax - thetamin) > 3pi/2
-        return Rect2f(-rmax, -rmax, 2rmax, 2rmax)
+        return Rect2d(-rmax, -rmax, 2rmax, 2rmax)
     end
 
     @assert thetamin < thetamax # otherwise shift by 2pi I guess
@@ -185,23 +185,23 @@ function polaraxis_bbox(rlims, thetalims, r0, dir, theta_0)
 
     # Initial bbox from corners
     p = polar2cartesian(rmin, thetamin)
-    bb = Rect2f(p, Vec2f(0))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamin))
-    bb = _update_rect(bb, polar2cartesian(rmin, thetamax))
-    bb = _update_rect(bb, polar2cartesian(rmax, thetamax))
+    bb = Rect2d(p, Vec2d(0))
+    bb = update_boundingbox(bb, polar2cartesian(rmax, thetamin))
+    bb = update_boundingbox(bb, polar2cartesian(rmin, thetamax))
+    bb = update_boundingbox(bb, polar2cartesian(rmax, thetamax))
 
     # only outer circle can update bb
     if thetamin < -3pi/2 < thetamax || thetamin < pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi/2))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, pi/2))
     end
     if thetamin < -pi < thetamax || thetamin < pi < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, pi))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, pi))
     end
     if thetamin < -pi/2 < thetamax || thetamin < 3pi/2 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 3pi/2))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, 3pi/2))
     end
     if thetamin < 0 < thetamax
-        bb = _update_rect(bb, polar2cartesian(rmax, 0))
+        bb = update_boundingbox(bb, polar2cartesian(rmax, 0))
     end
 
     return bb
@@ -209,7 +209,7 @@ end
 
 function setup_camera_matrices!(po::PolarAxis)
     # Initialization
-    usable_fraction = Observable(Vec2f(1.0, 1.0))
+    usable_fraction = Observable(Vec2d(1.0, 1.0))
     setfield!(po, :target_rlims, Observable{Tuple{Float64, Float64}}((0.0, 10.0)))
     setfield!(po, :target_thetalims, Observable{Tuple{Float64, Float64}}((0.0, 2pi)))
     setfield!(po, :target_theta_0, map(identity, po.theta_0))
@@ -553,13 +553,15 @@ function _polar_clip_polygon(
     return [Polygon(exterior, [interior])]
 end
 
+
 function draw_axis!(po::PolarAxis)
     rtick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     rtick_align = Observable{Point2f}()
     rtick_offset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
-    rgridpoints = Observable{Vector{GeometryBasics.LineString}}()
-    rminorgridpoints = Observable{Vector{GeometryBasics.LineString}}()
+    LSType = typeof(GeometryBasics.LineString(Point2f[]))
+    rgridpoints = Observable{Vector{LSType}}()
+    rminorgridpoints = Observable{Vector{LSType}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic
@@ -712,57 +714,11 @@ function draw_axis!(po::PolarAxis)
         visible = po.thetaminorgridvisible,
     )
 
-    # tick labels
+    # Clipping
 
     clipcolor = map(po.blockscene, po.clipcolor, po.backgroundcolor) do cc, bgc
         return cc === automatic ? RGBf(to_color(bgc)) : RGBf(to_color(cc))
     end
-
-    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    rticklabelplot = text!(
-        po.overlay, rtick_pos_lbl;
-        fontsize = po.rticklabelsize,
-        font = po.rticklabelfont,
-        color = po.rticklabelcolor,
-        strokewidth = po.rticklabelstrokewidth,
-        strokecolor = rstrokecolor,
-        align = rtick_align,
-        rotation = rtick_rotation,
-        visible = po.rticklabelsvisible
-    )
-    # OPT: skip glyphcollection update on offset changes
-    rticklabelplot.plots[1].plots[1].offset = rtick_offset
-
-
-    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    thetaticklabelplot = text!(
-        po.overlay, thetatick_pos_lbl;
-        fontsize = po.thetaticklabelsize,
-        font = po.thetaticklabelfont,
-        color = po.thetaticklabelcolor,
-        strokewidth = po.thetaticklabelstrokewidth,
-        strokecolor = thetastrokecolor,
-        align = thetatick_align[],
-        visible = po.thetaticklabelsvisible
-    )
-    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
-
-    # Hack to deal with synchronous update problems
-    on(po.blockscene, thetatick_align) do align
-        thetaticklabelplot.align.val = align
-        if length(align) == length(thetatick_pos_lbl[])
-            notify(thetaticklabelplot.align)
-        end
-        return
-    end
-
-    # Clipping
 
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
@@ -852,11 +808,58 @@ function draw_axis!(po::PolarAxis)
         visible = po.spinevisible
     )
 
+    # tick labels
+
+    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : to_color(sc)
+    end
+
+    rticklabelplot = text!(
+        po.overlay, rtick_pos_lbl;
+        fontsize = po.rticklabelsize,
+        font = po.rticklabelfont,
+        color = po.rticklabelcolor,
+        strokewidth = po.rticklabelstrokewidth,
+        strokecolor = rstrokecolor,
+        align = rtick_align,
+        rotation = rtick_rotation,
+        visible = po.rticklabelsvisible
+    )
+    # OPT: skip glyphcollection update on offset changes
+    rticklabelplot.plots[1].plots[1].offset = rtick_offset
+
+
+    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : to_color(sc)
+    end
+
+    thetaticklabelplot = text!(
+        po.overlay, thetatick_pos_lbl;
+        fontsize = po.thetaticklabelsize,
+        font = po.thetaticklabelfont,
+        color = po.thetaticklabelcolor,
+        strokewidth = po.thetaticklabelstrokewidth,
+        strokecolor = thetastrokecolor,
+        align = thetatick_align[],
+        visible = po.thetaticklabelsvisible
+    )
+    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
+
+    # Hack to deal with synchronous update problems
+    on(po.blockscene, thetatick_align) do align
+        thetaticklabelplot.align.val = align
+        if length(align) == length(thetatick_pos_lbl[])
+            notify(thetaticklabelplot.align)
+        end
+        return
+    end
+
+    # updates and z order
     notify(po.target_thetalims)
 
-    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
-    translate!(spineplot, 0, 0, 9001)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
+    translate!(spineplot, 0, 0, 9001)
+    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
     on(po.blockscene, po.gridz) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
@@ -935,4 +938,57 @@ Sets the angular limits of a given `PolarAxis`.
 function thetalims!(po::PolarAxis, thetamin::Union{Nothing, Real}, thetamax::Union{Nothing, Real})
     po.thetalimits[] = (thetamin, thetamax)
     return
+end
+
+"""
+    hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of the r-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
+"""
+function hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    if ticklabels
+        ax.rticklabelsvisible = false
+    end
+    if grid
+        ax.rgridvisible = false
+    end
+    if minorgrid
+        ax.rminorgridvisible = false
+    end
+end
+
+"""
+    hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of the theta-axis: label, ticklabels, ticks and grid. Keyword
+arguments can be used to disable hiding of certain types of decorations.
+"""
+function hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    if ticklabels
+        ax.thetaticklabelsvisible = false
+    end
+    if grid
+        ax.thetagridvisible = false
+    end
+    if minorgrid
+        ax.thetaminorgridvisible = false
+    end
+end
+
+"""
+    hidedecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+
+Hide decorations of both r and theta-axis: label, ticklabels, ticks and grid.
+Keyword arguments can be used to disable hiding of certain types of decorations.
+
+See also [`hiderdecorations!`], [`hidethetadecorations!`], [`hidezdecorations!`]
+"""
+function hidedecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = true)
+    hiderdecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid,)
+    hidethetadecorations!(ax; ticklabels = ticklabels, grid = grid, minorgrid = minorgrid)
+end
+
+function hidespines!(ax::PolarAxis)
+    ax.spinevisible = false
 end

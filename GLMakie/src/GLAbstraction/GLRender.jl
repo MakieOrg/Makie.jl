@@ -4,6 +4,18 @@ function render(list::Tuple)
     end
     return
 end
+
+function setup_clip_planes(N::Integer)
+    for i in 0:min(7, N-1)
+        glEnable(GL_CLIP_DISTANCE0 + UInt32(i))
+    end
+    for i in max(0, N):7
+        glDisable(GL_CLIP_DISTANCE0 + UInt32(i))
+    end
+end
+
+# Note: context required in renderloop, not per renderobject here
+
 """
 When rendering a specialised list of Renderables, we can do some optimizations
 """
@@ -16,6 +28,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
     bind(vertexarray)
     for renderobject in list
         renderobject.visible || continue # skip invisible
+        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         # make sure we only bind new programs and vertexarray when it is actually
         # different from the previous one
         if renderobject.vertexarray != vertexarray
@@ -57,6 +70,7 @@ a lot of objects.
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if renderobject.visible
         renderobject.prerenderfunction()
+        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
         program = vertexarray.program
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
@@ -96,8 +110,9 @@ end
 
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
     r = to_value(vao.indices)
-    offset = first(r) - 1 # 1 based -> 0 based
     ndraw = length(r)
+    ndraw == 0 && return nothing
+    offset = first(r) - 1 # 1 based -> 0 based
     nverts = length(vao)
     if (offset < 0 || offset + ndraw > nverts)
         error("Bounds error for drawrange. Offset $(offset) and length $(ndraw) aren't a valid range for vertexarray with length $(nverts)")
@@ -108,6 +123,7 @@ end
 
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{Int}
     r = to_value(vao.indices)
+    r == 0 && return nothing
     glDrawArrays(mode, 0, r)
     return nothing
 end
@@ -116,20 +132,19 @@ end
 Renders a vertex array which supplies an indexbuffer
 """
 function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
-    glDrawElements(
-        mode,
-        length(vao.indices) * cardinality(vao.indices),
-        julia2glenum(T), C_NULL
-    )
-    return
+    N = length(vao.indices) * cardinality(vao.indices)
+    N == 0 && return nothing
+    glDrawElements(mode, N, julia2glenum(T), C_NULL)
+    return nothing
 end
 
 """
 Renders a normal vertex array only containing the usual buffers buffers.
 """
 function render(vao::GLVertexArray, mode::GLenum=GL_TRIANGLES)
+    length(vao) == 0 && return nothing
     glDrawArrays(mode, 0, length(vao))
-    return
+    return nothing
 end
 
 """
@@ -141,16 +156,19 @@ renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced
 Renders `amount` instances of an indexed geometry
 """
 function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
-    glDrawElementsInstanced(primitive, length(vao.indices) * cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
-    return
+    N = length(vao.indices) * cardinality(vao.indices)
+    N * amount == 0 && return nothing
+    glDrawElementsInstanced(primitive, N, julia2glenum(T), C_NULL, amount)
+    return nothing
 end
 
 """
-Renders `amount` instances of an not indexed geoemtry geometry
+Renders `amount` instances of an not indexed geometry geometry
 """
 function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
+    length(vao) * amount == 0 && return nothing
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)
-    return
+    return nothing
 end
 # handle all uniform objects
 

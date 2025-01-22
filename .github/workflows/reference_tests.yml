@@ -25,7 +25,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -33,16 +33,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -58,7 +60,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -72,7 +74,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -80,17 +82,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
@@ -108,7 +112,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -120,7 +124,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1'
         os:
           - ubuntu-20.04
         arch:
@@ -128,17 +132,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
           pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
@@ -150,11 +156,16 @@ jobs:
         with:
           name: ReferenceImages_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/reference_images/
+      - name: Upload test Electron logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Electron_Logs_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -179,28 +190,29 @@ jobs:
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
-          
+
           # Create new top-level directory for combined files
           mkdir -p "./ReferenceImagesCombined"
-          
+
           # Copy the reference folder from GLMakie, it's the same for all backends
           cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
-          
+
           # Initialize empty files for concatenation
           > "./ReferenceImagesCombined/scores.tsv"
           > "./ReferenceImagesCombined/new_files.txt"
-          
+
           # Loop through the directories and concatenate the files, and copy recorded folders
           for dir in WGLMakie CairoMakie GLMakie; do
-              # Concatenate scores.tsv and new_files.txt
+              # Concatenate scores.tsv, new_files.txt and missing_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
-          
+              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
+
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
               cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
           done
-          
+
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
       - uses: actions/upload-artifact@v4
         with:

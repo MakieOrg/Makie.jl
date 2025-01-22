@@ -1,38 +1,3 @@
-"""
-    arrows(points, directions; kwargs...)
-    arrows(x, y, u, v)
-    arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    arrows(x, y, z, u, v, w)
-    arrows(x, y, [z], f::Function)
-
-Plots arrows at the specified points with the specified components.
-`u` and `v` are interpreted as vector components (`u` being the x
-and `v` being the y), and the vectors are plotted with the tails at
-`x`, `y`.
-
-If `x, y, u, v` are `<: AbstractVector`, then each 'row' is plotted
-as a single vector.
-
-If `u, v` are `<: AbstractMatrix`, then `x` and `y` are interpreted as
-specifications for a grid, and `u, v` are plotted as arrows along the
-grid.
-
-`arrows` can also work in three dimensions.
-
-If a `Function` is provided in place of `u, v, [w]`, then it must accept
-a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
-or other array-like output.
-
-## Attributes
-$(ATTRIBUTES)
-"""
-arrows
-
-"""
-See [`arrows`](@ref).
-"""
-arrows!
-
 # For the matlab/matplotlib users
 const quiver = arrows
 const quiver! = arrows!
@@ -86,7 +51,7 @@ function _mantle(origin, extremity, r1, r2, N)
         faces[2i] = GLTriangleFace(mod1(2i+1, 2N), mod1(2i+2, 2N), 2i)
     end
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
 # GeometryBasics.Circle doesn't work with Point3f...
@@ -103,14 +68,18 @@ function _circle(origin, r, normal, N)
     end
     coords[N+1] = origin
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
-convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f.(x, y), Vec2f.(u, v))
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    (vec(Point2f.(x, y')), vec(Vec2f.(u, v)))
+function convert_arguments(::Type{<: Arrows}, x, y, u, v)
+    return (Point2{float_type(x, y)}.(x, y), Vec2{float_type(u, v)}.(u, v))
 end
-convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f.(x, y, z), Vec3f.(u, v, w))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    return (vec(Point2{float_type(x, y)}.(x, y')), vec(Vec2{float_type(u, v)}.(u, v)))
+end
+function convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w)
+    return (Point3{float_type(x, y, z)}.(x, y, z), Vec3{float_type(u, v, w)}.(u, v, w))
+end
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
     @extract arrowplot (
@@ -122,8 +91,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         fxaa, ssao, transparency, visible, inspectable
     )
 
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
-    line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    line_c = lift((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    arrow_c = lift((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
     fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
@@ -176,7 +145,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             lift(x-> last.(x), arrowplot, headstart),
             marker=marker_head,
             markersize = lift(as-> as === automatic ? theme(scene, :markersize)[] : as, arrowplot, arrowsize),
-            color = arrow_c, rotations = rotations, strokewidth = 0.0,
+            color = arrow_c, rotation = rotations, strokewidth = 0.0,
                  colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
@@ -184,7 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
     else
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
         markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+        lift!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
             ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth
@@ -210,7 +179,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         marker_tail = lift((at, q) -> arrow_tail(3, at, q), arrowplot, arrowtail, quality)
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = msize,
+            start, rotation = directions, markersize = msize,
             marker = marker_tail,
             color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
@@ -219,7 +188,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         )
         meshscatter!(
             arrowplot,
-            start, rotations = directions, markersize = markersize,
+            start, rotation = directions, markersize = markersize,
             marker = marker_head,
             color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,

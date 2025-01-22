@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  glmakie:
-    name: GLMakie relocatability
+  makie-relocatability:
+    name: Relocatability ${{ matrix.backend }}
     env:
       MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
     runs-on: ${{ matrix.os }}
@@ -26,20 +26,30 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
         os:
           - ubuntu-20.04
         arch:
           - x64
+        backend:
+          - GLMakie
+          - WGLMakie
+          - CairoMakie
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      - uses: julia-actions/cache@v2
+      - name: Install dependencies for GPU backends
+        if: matrix.backend != 'CairoMakie'
+        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Relocatability test
-        run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia ./relocatability.jl
+        run: |
+          if [ "${{ matrix.backend }}" != "CairoMakie" ]; then
+            DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes ./relocatability.jl ${{ matrix.backend }}
+          else
+            julia --color=yes ./relocatability.jl ${{ matrix.backend }}
+          fi

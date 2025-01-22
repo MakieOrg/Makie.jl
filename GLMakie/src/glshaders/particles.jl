@@ -1,13 +1,13 @@
 using Makie: RectanglePacker
 
-function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
-    TextureBuffer(color)
+function to_meshcolor(context, color::TOrSignal{Vector{T}}) where T <: Colorant
+    TextureBuffer(context, color)
 end
 
-function to_meshcolor(color::TOrSignal{Matrix{T}}) where T <: Colorant
-    Texture(color)
+function to_meshcolor(context, color::TOrSignal{Matrix{T}}) where T <: Colorant
+    Texture(context, color)
 end
-function to_meshcolor(color)
+function to_meshcolor(context, color)
     color
 end
 
@@ -25,7 +25,7 @@ vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotat
 vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
-GLAbstraction.gl_convert(rotation::Makie.Quaternion)= Vec4f(rotation.data)
+GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion)= Vec4f(rotation.data)
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 struct PointSizeRender
@@ -41,6 +41,22 @@ is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 
+intensity_convert(cotnext, intensity, verts) = intensity
+function intensity_convert(context, intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        GLBuffer(context, intensity)
+    else
+        Texture(context, intensity)
+    end
+end
+function intensity_convert_tex(context, intensity::VecOrSignal{T}, verts) where T
+    if length(to_value(intensity)) == length(to_value(verts))
+        TextureBuffer(context, intensity)
+    else
+        Texture(context, intensity)
+    end
+end
+
 
 
 @nospecialize
@@ -51,26 +67,46 @@ function draw_mesh_particle(screen, p, data)
     rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
     rot = vec2quaternion(rot)
     delete!(data, :rotation)
-    to_opengl_mesh!(data, p[1])
+    to_opengl_mesh!(screen.glscreen, data, p[1])
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = rot => TextureBuffer
+        f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
 
+    # TODO: use instance attributes
+    if to_value(data[:uv_transform]) isa Vector
+        transforms = pop!(data, :uv_transform)
+        @gen_defaults! data begin
+            uv_transform = map(transforms) do transforms
+                # 3x Vec2 should match the element order of glsl mat3x2
+                output = Vector{Vec2f}(undef, 3 * length(transforms))
+                for i in eachindex(transforms)
+                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
+                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
+                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
+                end
+                return output
+            end => TextureBuffer
+        end
+    else
+        # handled automatically
+    end
+
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
+    data[:color] = to_meshcolor(screen.glscreen, get!(data, :color, nothing))
     @gen_defaults! data begin
         color_map = nothing => Texture
         color_norm = nothing
         intensity = nothing
         image = nothing => Texture
-        color = nothing => to_meshcolor
         vertex_color = Vec4f(1)
         matcap = nothing => Texture
         fetch_pixel = false
+        scale_primitive = false
         interpolate_in_fragment_shader = false
-        uv_scale = Vec2f(1)
         backlight = 0f0
 
         instances = const_lift(length, position)
@@ -90,7 +126,7 @@ function draw_mesh_particle(screen, p, data)
         )
     end
     if !isnothing(Makie.to_value(intensity))
-        data[:intensity] = intensity_convert_tex(intensity, position)
+        data[:intensity] = intensity_convert_tex(screen.glscreen, intensity, position)
         data[:len] = const_lift(length, position)
     end
     return assemble_shader(data)
@@ -104,8 +140,9 @@ This is supposed to be the fastest way of displaying particles!
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
         vertex       = position => GLBuffer
-        color_map    = nothing  => Texture
+        color_map    = nothing => Texture
         color        = nothing => GLBuffer
+        marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
         transparency = false
@@ -119,7 +156,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = PointSizeRender(data[:scale])
+    data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     return assemble_shader(data)
 end
 
@@ -147,7 +184,7 @@ function draw_scatter(
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
         max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
+        texture_atlas = Texture(screen.glscreen, eltype(images[1]), (max_xy...,))
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
         end
@@ -187,13 +224,13 @@ function draw_scatter(screen, (marker, position), data)
                 p4d[3] / p4d[4]
             end
             UInt32.(sortperm(depth_vals, rev = true) .- 1)
-        end |> indexbuffer
+        end
     end
 
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
-        marker_offset = Vec3f(0) => GLBuffer;
+        marker_offset = Vec3f(0) => GLBuffer
         scale       = Vec2f(0) => GLBuffer
         rotation    = rot => GLBuffer
         image       = nothing => Texture
@@ -244,7 +281,7 @@ function draw_scatter(screen, (marker, position), data)
 
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
-    data[:intensity] = intensity_convert(intensity, position)
+    data[:intensity] = intensity_convert(screen.glscreen, intensity, position)
     data[:len] = const_lift(length, position)
 
     return assemble_shader(data)

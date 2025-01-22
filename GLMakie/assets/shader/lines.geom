@@ -9,764 +9,216 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{define_fast_path}}
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 11) out;
+layout(triangle_strip, max_vertices = 4) out;
 
-in vec4 g_color[];
+in {{stripped_color_type}} g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
 in int g_valid_vertex[];
 in float g_thickness[];
 
-out vec4 f_color;
-out vec2 f_uv;
-out float f_thickness;
+out highp vec3 f_quad_sdf;
+out vec2 f_truncation;
+out float f_linestart;
+out float f_linelength;
+
+flat out vec2 f_extrusion;
+flat out float f_linewidth;
+flat out vec4 f_pattern_overwrite;
+flat out vec2 f_discard_limit;
 flat out uvec2 f_id;
-flat out vec2 f_uv_minmax;
+flat out {{stripped_color_type}} f_color1;
+flat out {{stripped_color_type}} f_color2;
+flat out float f_alpha_weight;
+flat out float f_cumulative_length;
+flat out ivec2 f_capmode;
+flat out vec4 f_linepoints;
+flat out vec4 f_miter_vecs;
+out float gl_ClipDistance[8];
 
 out vec3 o_view_pos;
 out vec3 o_view_normal;
 
-uniform vec2 resolution;
+{{pattern_type}} pattern;
 uniform float pattern_length;
-uniform sampler1D pattern_sections;
+uniform vec2 resolution;
+uniform vec2 scene_origin;
 
-float px2uv = 0.5 / pattern_length;
+uniform int linecap;
+uniform int joinstyle;
+uniform float miter_limit;
+
+uniform mat4 view, projection, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 // Constants
-#define MITER_LIMIT -0.4
-#define AA_THICKNESS 4
+const float AA_RADIUS = 0.8;
+const float AA_THICKNESS = 4.0 * AA_RADIUS;
+// NOTE: if MITER_LIMIT becomes a variable AA_THICKNESS needs to scale with the joint extrusion
+const int BUTT   = 0;
+const int SQUARE = 1;
+const int ROUND  = 2;
+const int MITER  = 0;
+const int BEVEL  = 3;
 
-vec3 screen_space(vec4 vertex)
-{
-    return vec3(vertex.xy * resolution, vertex.z) / vertex.w;
+vec3 screen_space(vec4 vertex) {
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Emit Vertex Methods
-////////////////////////////////////////////////////////////////////////////////
+struct LineVertex {
+    vec3 position;
+    int index;
 
+    vec3 quad_sdf;
+    vec2 truncation;
 
-// Manual uv calculation
-// - position in screen space (double resolution as generally used)
-// - uv with uv.u normalized (0..1), uv.v unnormalized (0..pattern_length)
-void emit_vertex(vec3 position, vec2 uv, int index, float thickness)
-{
-    f_uv        = uv;
-    f_color     = g_color[index];
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    f_id        = g_id[index];
-    // linewidth scaling may shrink the effective linewidth
-    f_thickness = thickness;
-    EmitVertex();
-}
-// default for miter joins
-void emit_vertex(vec3 position, vec2 uv, int index)
-{
-    emit_vertex(position, uv, index, g_thickness[index]);
-}
+    float linestart;
+    float linelength;
+};
 
-// For center point
-void emit_vertex(vec3 position, vec2 uv)
-{
-    f_uv        = uv;
-    f_color     = 0.5 * (g_color[1] + g_color[2]);
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    f_id        = g_id[1];
-    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
+void emit_vertex(LineVertex vertex) {
+    gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
+    f_quad_sdf    = vertex.quad_sdf;
+    f_truncation   = vertex.truncation;
+    f_linestart    = vertex.linestart;
+    f_linelength   = vertex.linelength;
+    f_id           = g_id[vertex.index];
     EmitVertex();
 }
 
-// Debug
-void emit_vertex(vec3 position, vec2 uv, int index, vec4 color, float thickness)
+vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
+vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
+float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
+
+bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
 {
-    f_uv        = uv;
-    f_color     = color;
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    f_id        = g_id[index];
-    f_thickness = thickness;
-    EmitVertex();
-}
-// default for miter joins
-void emit_vertex(vec3 position, vec2 uv , int index, vec4 color)
-{
-    emit_vertex(position, uv , index, color, g_thickness[index]);
-}
-void emit_vertex(vec3 position, vec2 uv, vec4 color)
-{
-    f_uv        = uv;
-    f_color     = color;
-    gl_Position = vec4((position.xy / resolution), position.z, 1.0);
-    f_id        = g_id[1];
-    f_thickness = 0.5 * (g_thickness[1] + g_thickness[2]);
-    EmitVertex();
-}
-
-
-// With offset calculations for core line segment
-void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv, int index)
-{
-    emit_vertex(
-        position + vec3(offset, 0),
-        vec2(uv.x + px2uv * dot(line_dir, offset), uv.y),
-        index,
-        abs(uv.y) - AA_THICKNESS
-    );
-    // `abs(uv.y) - AA_THICKNESS` corrects for enlarged AA padding between
-    // segments of different linewidth, see #2953
-}
-
-void emit_vertex(vec3 position, vec2 offset, vec2 line_dir, vec2 uv)
-{
-    emit_vertex(
-        position + vec3(offset, 0),
-        vec2(uv.x + px2uv * dot(line_dir, offset), uv.y)
-    );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// Draw full line segment
-////////////////////////////////////////////////////////////////////////////////
-
-
-// Generate line segment with 3 triangles
-// - p1, p2 are the line start and end points in pixel space
-// - miter_a and miter_b are the offsets from p1 and p2 respectively that
-//   generate the line segment quad. This should include thickness and AA
-// - u1, u2 are the u values at p1 and p2. These should be in uv scale (px2uv applied)
-// - thickness_aa1, thickness_aa2 are linewidth at p1 and p2 with AA added. They
-//   double as uv.y values, which are in pixel space
-// - v1 is the line direction of this segment (xy component)
-void generate_line_segment(
-        vec3 p1, vec2 miter_a, float u1, float thickness_aa1,
-        vec3 p2, vec2 miter_b, float u2, float thickness_aa2,
-        vec2 v1, float segment_length
-    )
-{
-    float line_offset_a = dot(miter_a, v1);
-    float line_offset_b = dot(miter_b, v1);
-
-    if (abs(line_offset_a) + abs(line_offset_b) < segment_length+1){
-        //  _________
-        //  \       /
-        //   \_____/
-        //    <--->
-        // Line segment is extensive (minimum width positive)
-
-        emit_vertex(p1, +miter_a, v1, vec2(u1, -thickness_aa1), 1);
-        emit_vertex(p1, -miter_a, v1, vec2(u1,  thickness_aa1), 1);
-        emit_vertex(p2, +miter_b, v1, vec2(u2, -thickness_aa2), 2);
-        emit_vertex(p2, -miter_b, v1, vec2(u2,  thickness_aa2), 2);
-    } else {
-        //  ____
-        //  \  /
-        //   \/
-        //   /\
-        //  >--<
-        // Line segment has zero or negative width on short side
-
-        // Pulled apart, we draw these two triangles (vertical lines added)
-        // ___      ___
-        // \  |    |  /
-        //  X |    | X
-        //   \|    |/
-        //
-        // where X is u1/p1 (left) and u2/p2 (right) respectively. To avoid
-        // drawing outside the line segment due to AA padding, we cut off the
-        // left triangle on the right side at u2 via f_uv_minmax.y, and
-        // analogously the right triangle at u1 via f_uv_minmax.x.
-        // These triangles will still draw over each other like this.
-
-        // incoming side
-        float old = f_uv_minmax.y;
-        f_uv_minmax.y = u2;
-
-        emit_vertex(p1, -miter_a, v1, vec2(u1, -thickness_aa1), 1);
-        emit_vertex(p1, +miter_a, v1, vec2(u1, +thickness_aa1), 1);
-        if (line_offset_a > 0){ // finish triangle on -miter_a side
-            emit_vertex(p1, 2 * line_offset_a * v1 - miter_a, v1, vec2(u1, -thickness_aa1));
-        } else {
-            emit_vertex(p1, -2 * line_offset_a * v1 + miter_a, v1, vec2(u1, +thickness_aa1));
-        }
-
-        EndPrimitive();
-
-        // outgoing side
-        f_uv_minmax.x = u1;
-        f_uv_minmax.y = old;
-
-        emit_vertex(p2, -miter_b, v1, vec2(u2, -thickness_aa2), 2);
-        emit_vertex(p2, +miter_b, v1, vec2(u2, +thickness_aa2), 2);
-        if (line_offset_b < 0){ // finish triangle on -miter_b side
-            emit_vertex(p2, 2 * line_offset_b * v1 - miter_b, v1, vec2(u2, -thickness_aa2));
-        } else {
-            emit_vertex(p2, -2 * line_offset_b * v1 + miter_b, v1, vec2(u2, +thickness_aa2));
-        }
-    }
-}
-
-// Debug Version
-// Generates more triangles and colors them individually so they can be differentiated
-void generate_line_segment_debug(
-        vec3 p1, vec2 miter_a, float u1, float thickness_aa1,
-        vec3 p2, vec2 miter_b, float u2, float thickness_aa2,
-        vec2 v1, float segment_length
-    )
-{
-    float line_offset_a = dot(miter_a, v1);
-    float line_offset_b = dot(miter_b, v1);
-
-    if (abs(line_offset_a) + abs(line_offset_b) < segment_length + 1 ){
-        emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(1, 0, 0, 0.5));
-
-        EndPrimitive();
-
-        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(0, 0, 1, 0.5));
-        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-        emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-
-        // Mid point version
-        /*
-        vec3 pc = 0.5 * (p1 + p2);
-        vec2 miter_c = 0.5 * (miter_a + miter_b);
-        float uc = 0.5 * (u1 + u2);
-        float thickness_aac = 0.5 * (thickness_aa1 + thickness_aa2);
-
-        if (dot(miter_a, v1) < dot(miter_b, v1)){
-            emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-            emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-            emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
-
-            EndPrimitive();
-
-            emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
-            emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
-            emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
-
-            EndPrimitive();
-
-            emit_vertex(pc + vec3(miter_c, 0), vec2(uc + px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
-            emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-            emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-
-        } else {
-            // subtractive side has more space
-            emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-            emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-            emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(1, 0, 0, 0.5));
-
-            EndPrimitive();
-
-            emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(0, 1, 0, 0.5));
-            emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 1, 0, 0.5));
-            emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 1, 0, 0.5));
-
-            EndPrimitive();
-
-            emit_vertex(pc - vec3(miter_c, 0), vec2(uc - px2uv * dot(v1, miter_c), -thickness_aac), vec4(0, 0, 1, 0.5));
-            emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-            emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-        }
-        */
-    } else {
-        // incoming side
-        float old = f_uv_minmax.y;
-        f_uv_minmax.y = u2;
-
-        emit_vertex(p1 - vec3(miter_a, 0), vec2(u1 - px2uv * dot(v1, miter_a), -thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-        emit_vertex(p1 + vec3(miter_a, 0), vec2(u1 + px2uv * dot(v1, miter_a),  thickness_aa1), 1, vec4(1, 0, 0, 0.5));
-        if (line_offset_a > 0){ // finish triangle on -miter_a side
-            emit_vertex(
-                p1 + vec3(2 * line_offset_a * v1 - miter_a, 0),
-                vec2(u1 + px2uv * (2 * line_offset_a - dot(v1, miter_a)), -thickness_aa1),
-                1, vec4(1, 0, 0, 0.5)
-            );
-        } else {
-            emit_vertex(
-                p1 + vec3(-2 * line_offset_a * v1 + miter_a, 0),
-                vec2(u1 + px2uv * (-2 * line_offset_a + dot(v1, miter_a)), thickness_aa1),
-                1, vec4(1, 0, 0, 0.5)
-            );
-        }
-
-        EndPrimitive();
-        f_uv_minmax.x = u1;
-        f_uv_minmax.y = old;
-
-        // outgoing side
-        emit_vertex(p2 - vec3(miter_b, 0), vec2(u2 - px2uv * dot(v1, miter_b), -thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-        emit_vertex(p2 + vec3(miter_b, 0), vec2(u2 + px2uv * dot(v1, miter_b),  thickness_aa2), 2, vec4(0, 0, 1, 0.5));
-        if (line_offset_b < 0){ // finish triangle on -miter_b side
-            emit_vertex(
-                p2 + vec3(2 * line_offset_b * v1 - miter_b, 0),
-                vec2(u2 + px2uv * (2 * line_offset_b - dot(v1, miter_b)), -thickness_aa2),
-                2, vec4(0, 0, 1, 0.5)
-            );
-        } else {
-            emit_vertex(
-                p2 + vec3(-2 * line_offset_b * v1 + miter_b, 0),
-                vec2(u2 + px2uv * (-2 * line_offset_b + dot(v1, miter_b)), thickness_aa2),
-                2, vec4(0, 0, 1, 0.5)
-            );
-        }
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// Patterned line
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-void draw_patterned_line(bool isvalid[4])
-{
-    // This sets a min and max value foir uv.u at which anti-aliasing is forced.
-    // With this setting it's never triggered.
-    f_uv_minmax = vec2(-1.0e12, 1.0e12);
-
-    // get the four vertices passed to the shader
-    // without FAST_PATH the conversions happen on the CPU
-    vec3 p0 = gl_in[0].gl_Position.xyz; // start of previous segment
-    vec3 p1 = gl_in[1].gl_Position.xyz; // end of previous segment, start of current segment
-    vec3 p2 = gl_in[2].gl_Position.xyz; // end of current segment, start of next segment
-    vec3 p3 = gl_in[3].gl_Position.xyz; // end of next segment
-
-    // linewidth with padding for anti aliasing
-    float thickness_aa1 = g_thickness[1] + AA_THICKNESS;
-    float thickness_aa2 = g_thickness[2] + AA_THICKNESS;
-
-    // determine the direction of each of the 3 segments (previous, current, next)
-    vec3 v1 = p2 - p1;
-    float segment_length = length(v1.xy);
-    v1 /= segment_length;
-    vec3 v0 = v1;
-    vec3 v2 = v1;
-
-    if (p1 != p0 && isvalid[0]) {
-        v0 = (p1 - p0) / length((p1 - p0).xy);
-    }
-    if (p3 != p2 && isvalid[3]) {
-        v2 = (p3 - p2) / length((p3 - p2).xy);
-    }
-
-    // determine the normal of each of the 3 segments (previous, current, next)
-    vec2 n0 = vec2(-v0.y, v0.x);
-    vec2 n1 = vec2(-v1.y, v1.x);
-    vec2 n2 = vec2(-v2.y, v2.x);
-
-    // The pattern may look like this:
-    //
-    //      pattern_sections index
-    //     0        1        2    3
-    //     |########|        |####|    |(repeat)
-    //   left     right    left right
-    //        variable in loop
-    //
-    // We first figure out the extended size of this line segment, starting
-    // from the left end of the first relevant pattern section and ending at the
-    // right end of the last relevant pattern section. E.g.:
-    //
-    //           g_lastlen[1]                  g_lastlen[2]       (2x pixel coords)
-    //             edge1                         edge2            (1x pixel coords)
-    //               |                             |
-    //  |####|    |########|        |####|    |########|        |####|    |########|
-    //            | first  |                  | last   |
-    //            | pattern|                  | pattern|
-    //            | section|                  | section|
-    //          start                                 stop        (pattern coords (normalized))
-    //
-    // start_width and stop_width are the widths of the start and stop sections.
-    float start, stop, start_width, stop_width, temp;
-    float left, right, edge1, edge2, inv_pl, left_offset, right_offset;
-
-    // normalized single pixel scale
-    start = g_lastlen[2] * px2uv;
-    stop  = g_lastlen[1] * px2uv;
-    start_width = 0.0;
-    stop_width  = 0.0;
-
-    inv_pl = 1.0 / pattern_length;
-    edge1 = 0.5 * g_lastlen[1];
-    edge2 = 0.5 * g_lastlen[2];
-
-    int pattern_texsize = textureSize(pattern_sections, 0);
-
-    for (int i = 0; i < pattern_texsize - 1; i = i + 2)
+    float d1, d2;
+    for(int i = 0; i < _num_clip_planes; i++)
     {
-        left  = texelFetch(pattern_sections, i,   0).x;
-        right = texelFetch(pattern_sections, i+1, 0).x;
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
 
-        // update left side
-        temp = ceil((edge1 - right) * inv_pl) + left * inv_pl;
-        if (temp < start)
-            start_width = right - left;
-        start = min(start, temp);
-
-        // update right side
-        temp = floor((edge2 - left) * inv_pl) + right * inv_pl;
-        if (temp > stop)
-            stop_width = right - left;
-        stop = max(stop, temp);
-    }
-    // Technically start and stop should be offset by another
-    // 1 / (2 * textureSize(pattern)) so the line segment is normalized to
-    // pattern texel centers rather than the left edge, but we have enough
-    // AA_THICKNESS for it to be irrelevant.
-
-    // if there is something to draw...
-    if (stop > start){
-
-        // setup for sharp corners
-        //               miter_a / miter_b
-        //           ___         ↑      ___
-        //            |         .|.      |
-        // length_a  _|_      .' | '.   _|_  length_b
-        //                  .'   |   '.
-        //                .'     |     '.
-        //              .'     .' '.     '.
-        //                   .'     '.
-        //
-        vec2 miter_a = normalize(n0 + n1);
-        vec2 miter_b = normalize(n1 + n2);
-        float length_a = 1.0 / dot(miter_a, n1);
-        float length_b = 1.0 / dot(miter_b, n1);
-
-        // if we have a sharp corner:
-        //   max(g_thickness[1], proj(length_a * miter_a, v1)) without AA padding
-        // otherwise just g_thickness[1]
-        left_offset  = g_thickness[1] * max(1.0, float(dot(v0.xy, v1.xy) >= MITER_LIMIT) * abs(dot(miter_a, v1.xy)) * length_a);
-        right_offset = g_thickness[2] * max(1.0, float(dot(v1.xy, v2.xy) >= MITER_LIMIT) * abs(dot(miter_b, v1.xy)) * length_b);
-
-        // Finish length_a/b
-        length_a *= thickness_aa1;
-        length_b *= thickness_aa2;
-
-        // if the "on" section of the pattern at start extends over the whole
-        // potential corner we draw the corner. If not we extend the line.
-        //
-        //               g_lastlen[1]
-        //               . - |---.----------
-        //               :   |   :
-        //               :   |   :
-        //               :   |   :
-        //               : - '---:----------
-        //             start     :
-        //               start + start_width
-        //
-        // Equivalent to
-        // (start * pattern_length                   < g_lastlen[1] - left_offset) &&
-        // (start * pattern_length + 2 * start_width > g_lastlen[1] + left_offset)
-        if (
-            isvalid[0] &&
-            abs(2 * start * pattern_length - g_lastlen[1] + start_width) < (start_width - left_offset)
-            )
-        {
-            // if the corner is too sharp, we do a truncated miter join
-            //        ----------c.
-            //        ----------a.'.
-            //                  | '.'.
-            //                  x_ '.'.
-            //        ------.     '--b d
-            //             /        / /
-            //            /        / /
-            //
-            // x is the point the two line segments meet (here p1)
-            // a, b are the outer corners of the line segments
-            // a, b, x define the triangle we need to fill to make the line continuous
-            // c, d are a, b with padding for AA included
-            // Note that the padding generated by c, d is reduced on the triangle
-            // so we need to add another rectangle there to ensure enough padding
-            if( dot( v0.xy, v1.xy ) < MITER_LIMIT ){
-
-                bool gap = dot( v0.xy, n1 ) > 0;
-
-                // Another view of a truncated join (with lines joining like a V).
-                //
-                //         uv.y = 0 in line segment
-                //          /
-                //         .  -- uv.x = u0 in truncated join
-                //       .' '.     uv.y = thickness in line segment
-                //     .'     '.  /   uv.y = thickness + AA_THICKNESS in line segment
-                //   .'_________'.   /_ uv.x = start in truncated join (constraint for AA)
-                // .'_____________'.  _ uv.x = -proj_AA in truncated join (derived from line segment + constraint)
-                // |               |
-                // |_______________|  _ uv.x = -proj_AA - AA_THICKNESS in truncated join
-                //
-                // Here the / annotations come from the connecting line segment and are to
-                // be viewed on the diagonal. The -- and _ annotations are relevant to the
-                // truncated join and viewed vertically.
-                // Note that `start` marks off-to-on edge in the pattern. So values
-                // greater than `start` will be drawn and smaller will be discarded.
-                // With how we pick start and get in this branch u0 will always be
-                // in a solidly drawn region of the pattern.
-                float u0      = start + thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
-                float proj_AA = start - AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
-
-                // to save some space
-                vec2 off0   = thickness_aa1 * n0;
-                vec2 off1   = thickness_aa1 * n1;
-                vec2 off_AA = AA_THICKNESS * miter_a;
-                float u_AA  = AA_THICKNESS * px2uv;
-
-                if(gap){
-                    emit_vertex(p1,                          vec2(u0,                          0), 1);
-                    emit_vertex(p1 + vec3(off0, 0),          vec2(proj_AA,        +thickness_aa1), 1);
-                    emit_vertex(p1 + vec3(off1, 0),          vec2(proj_AA,        -thickness_aa1), 1);
-                    emit_vertex(p1 + vec3(off0 + off_AA, 0), vec2(proj_AA - u_AA, +thickness_aa1), 1);
-                    emit_vertex(p1 + vec3(off1 + off_AA, 0), vec2(proj_AA - u_AA, -thickness_aa1), 1);
-                    EndPrimitive();
-                }else{
-                    emit_vertex(p1,                          vec2(u0,                          0), 1);
-                    emit_vertex(p1 - vec3(off1, 0),          vec2(proj_AA,        +thickness_aa1), 1);
-                    emit_vertex(p1 - vec3(off0, 0),          vec2(proj_AA,        -thickness_aa1), 1);
-                    emit_vertex(p1 - vec3(off1 + off_AA, 0), vec2(proj_AA - u_AA, +thickness_aa1), 1);
-                    emit_vertex(p1 - vec3(off0 + off_AA, 0), vec2(proj_AA - u_AA, -thickness_aa1), 1);
-                    EndPrimitive();
-                }
-
-                miter_a = n1;
-                length_a = thickness_aa1;
-                start = g_lastlen[1] * px2uv;
-
-            } else { // otherwise we do a sharp join
-                start = g_lastlen[1] * px2uv;
-            }
-        } else {
-            // We don't need to treat the join, so resize the line segment to
-            // the drawn region. (This may extend the line too)
-            miter_a = n1;
-            length_a = thickness_aa1;
-            // If the line starts with this segment or the center of the "on"
-            // section of the pattern is in this segment, we draw it, else
-            // we skip past the first "on" section.
-            if (!isvalid[0] || (start > (g_lastlen[1] - start_width) * px2uv))
-                start = start - AA_THICKNESS * px2uv;
-            else
-                start = start + (start_width + 0.5 * AA_THICKNESS) * inv_pl;
-            p1 += (2 * start * pattern_length - g_lastlen[1]) * v1;
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            isvalid[1] = false;
+            isvalid[2] = false;
+            return true;
+        // one outside - shorten segment
+        } else if (d1 < 0.0) {
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+            f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+            isvalid[0] = false;
+        } else if (d2 < 0.0) {
+            p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+            f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+            isvalid[3] = false;
         }
-
-
-        // The other end of the line is analogous
-        // (stop * pattern_length - 2 * stop_width < g_lastlen[2] - right_offset) &&
-        // (stop * pattern_length                  > g_lastlen[2] + right_offset)
-        // (stop * pattern_length - stop_width - g_lastlen[2] <  (stop_width - right_offset)) &&
-        // (stop * pattern_length - stop_width - g_lastlen[2] > -(stop_width - right_offset))
-        if (
-            isvalid[3] &&
-            abs(2*stop * pattern_length - g_lastlen[2] - stop_width) < (stop_width - right_offset)
-            )
-        {
-            if( dot( v1.xy, v2.xy ) < MITER_LIMIT ){
-                // setup for truncated join (flat line end)
-                miter_b = n1;
-                length_b = thickness_aa2;
-                stop = g_lastlen[2] * px2uv;
-            } else {
-                // setup for sharp join
-                stop = g_lastlen[2] * px2uv;
-            }
-        } else {
-            miter_b = n1;
-            length_b = thickness_aa2;
-            if (isvalid[3] && (stop > (g_lastlen[2] + stop_width) * px2uv))
-                stop = stop - (stop_width + 0.5 * AA_THICKNESS) * inv_pl;
-            else
-                stop = stop + AA_THICKNESS * px2uv;
-            p2 += (2 * stop * pattern_length - g_lastlen[2]) * v1;
-        }
-
-        // to save some space
-        miter_a *= length_a;
-        miter_b *= length_b;
-
-        // If this segment starts or ends a line we force anti-aliasing to
-        // happen at the respective edge.
-        if (!isvalid[0])
-            f_uv_minmax.x = g_lastlen[1] * px2uv;
-        if (!isvalid[3])
-            f_uv_minmax.y = g_lastlen[2] * px2uv;
-
-        // generate rectangle for this segment
-
-        // Normal Version
-        generate_line_segment(
-            p1, miter_a, start, thickness_aa1,
-            p2, miter_b, stop, thickness_aa2,
-            v1.xy, segment_length
-        );
-
-        // Debug - show each triangle
-        // generate_line_segment_debug(
-        //     p1, miter_a, start, thickness_aa1,
-        //     p2, miter_b, stop, thickness_aa2,
-        //     v1.xy, segment_length
-        // );
-
     }
 
-    return;
+    return false;
+} 
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                              Linestyle Support                             //
+////////////////////////////////////////////////////////////////////////////////
+
+
+vec2 process_pattern(Nothing pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
+    // do not adjust stuff
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
+    return vec2(0);
+}
+vec2 process_pattern(sampler2D pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
+    // TODO
+    // This is not a case that's used at all yet. Maybe consider it in the future...
+    f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
+    return vec2(0);
+}
+
+vec2 process_pattern(sampler1D pattern, bool[4] isvalid, mat2 extrusion, float segment_length, float halfwidth) {
+    // samples:
+    //   -ext1  p1 ext1    -ext2 p2 ext2
+    //      1   2   3        4   5   6
+    // prev | joint |  this  | joint | next
+
+    // default to no overwrite
+    f_pattern_overwrite.x = -1e12;
+    f_pattern_overwrite.z = +1e12;
+    vec2 adjust = vec2(0);
+    float width = 2.0 * halfwidth;
+    float uv_scale = 1.0 / (width * pattern_length);
+    float left, center, right;
+
+    if (isvalid[0]) {
+        // using this would allow dots to never bend across a joint but currently
+        // results in artifacts in dense patterned lines (e.g. bracket tests)
+        // float offset = max(abs(extrusion[0][0]), halfwidth);
+        float offset = abs(extrusion[0][0]);
+        left   = width * texture(pattern, uv_scale * (g_lastlen[1] - offset)).x;
+        center = width * texture(pattern, uv_scale * (g_lastlen[1]         )).x;
+        right  = width * texture(pattern, uv_scale * (g_lastlen[1] + offset)).x;
+
+        // cases:
+        // ++-, +--, +-+ => elongate backwards
+        // -++, --+      => shrink forward
+        // +++, ---, -+- => freeze around joint
+
+        if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
+            // default/freeze
+            // overwrite until one AA gap past the corner/joint
+            f_pattern_overwrite.x = uv_scale * (g_lastlen[1] + abs(extrusion[0][0]) + AA_RADIUS);
+            // using the sign of the center to decide between drawing or not drawing
+            f_pattern_overwrite.y = sign(center);
+        } else if (left > 0) {
+            // elongate backwards
+            adjust.x = -1.0;
+        } else if (right > 0) {
+            // shorten forward
+            adjust.x = 1.0;
+        } else {
+            // default - see above
+            f_pattern_overwrite.x = uv_scale * (g_lastlen[1] + abs(extrusion[0][0]) + AA_RADIUS);
+            f_pattern_overwrite.y = sign(center);
+        }
+
+    } // else there is no left segment, no left join, so no overwrite
+
+    if (isvalid[3]) {
+        // float offset = max(abs(extrusion[1][0]), halfwidth + AA_RADIUS);
+        float offset = abs(extrusion[1][0]);
+        left   = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length - offset)).x;
+        center = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length         )).x;
+        right  = width * texture(pattern, uv_scale * (g_lastlen[1] + segment_length + offset)).x;
+
+        if ((left > 0 && center > 0 && right > 0) || (left < 0 && right < 0)) {
+            // default/freeze
+            f_pattern_overwrite.z = uv_scale * (g_lastlen[1] + segment_length - abs(extrusion[1][0]) - AA_RADIUS);
+            f_pattern_overwrite.w = sign(center);
+        } else if (left > 0) {
+            // shrink backwards
+            adjust.y = -1.0;
+        } else if (right > 0) {
+            // elongate forward
+            adjust.y = 1.0;
+        } else {
+            // default - see above
+            f_pattern_overwrite.z = uv_scale * (g_lastlen[1] + segment_length - abs(extrusion[1][0]) - AA_RADIUS);
+            f_pattern_overwrite.w = sign(center);
+        }
+    }
+
+    return adjust;
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// Solid lines
+//                                    Main                                    //
 ////////////////////////////////////////////////////////////////////////////////
-
-
-
-void draw_solid_line(bool isvalid[4])
-{
-    // This sets a min and max value foir uv.u at which anti-aliasing is forced.
-    // With this setting it's never triggered.
-    f_uv_minmax = vec2(-1.0e12, 1.0e12);
-
-    // get the four vertices passed to the shader
-    // without FAST_PATH the conversions happen on the CPU
-    vec3 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
-    vec3 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
-    vec3 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
-    vec3 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
-
-    // determine the direction of each of the 3 segments (previous, current, next)
-    vec3 v1 = p2 - p1;
-    float segment_length = length(v1.xy);
-    v1 /= segment_length;
-    vec3 v0 = v1;
-    vec3 v2 = v1;
-
-    if (p1 != p0 && isvalid[0]) {
-        v0 = (p1 - p0) / length((p1 - p0).xy);
-    }
-    if (p3 != p2 && isvalid[3]) {
-        v2 = (p3 - p2) / length((p3 - p2).xy);
-    }
-
-    // determine the normal of each of the 3 segments (previous, current, next)
-    vec2 n0 = vec2(-v0.y, v0.x);
-    vec2 n1 = vec2(-v1.y, v1.x);
-    vec2 n2 = vec2(-v2.y, v2.x);
-
-    // determine stretching of AA border due to linewidth change
-    float temp = (g_thickness[2] - g_thickness[1]) / segment_length;
-    float edge_scale = sqrt(1 + temp * temp);
-
-    // linewidth with padding for anti aliasing (used for geometry)
-    float thickness_aa1 = g_thickness[1] + edge_scale * AA_THICKNESS;
-    float thickness_aa2 = g_thickness[2] + edge_scale * AA_THICKNESS;
-
-    // Setup for sharp corners (see above)
-    vec2 miter_a = normalize(n0 + n1);
-    vec2 miter_b = normalize(n1 + n2);
-    float length_a = thickness_aa1 / dot(miter_a, n1);
-    float length_b = thickness_aa2 / dot(miter_b, n1);
-
-    // truncated miter join (see above)
-    if( dot( v0.xy, v1.xy ) < MITER_LIMIT ){
-        bool gap = dot( v0.xy, n1 ) > 0;
-        // In this case uv's are used as signed distance field values, so we
-        // want 0 where we had start before.
-        float u0      = thickness_aa1 * abs(dot(miter_a, n1)) * px2uv;
-        float proj_AA = AA_THICKNESS  * abs(dot(miter_a, n1)) * px2uv;
-
-        // to save some space
-        vec2 off0   = thickness_aa1 * n0;
-        vec2 off1   = thickness_aa1 * n1;
-        vec2 off_AA = AA_THICKNESS * miter_a;
-        float u_AA  = AA_THICKNESS * px2uv;
-
-        if(gap){
-            emit_vertex(p1,                          vec2(+ u0,                          0), 1);
-            emit_vertex(p1 + vec3(off0, 0),          vec2(- proj_AA,        +thickness_aa1), 1);
-            emit_vertex(p1 + vec3(off1, 0),          vec2(- proj_AA,        -thickness_aa1), 1);
-            emit_vertex(p1 + vec3(off0 + off_AA, 0), vec2(- proj_AA - u_AA, +thickness_aa1), 1);
-            emit_vertex(p1 + vec3(off1 + off_AA, 0), vec2(- proj_AA - u_AA, -thickness_aa1), 1);
-            EndPrimitive();
-        }else{
-            emit_vertex(p1,                          vec2(+ u0,                          0), 1);
-            emit_vertex(p1 - vec3(off1, 0),          vec2(- proj_AA,        +thickness_aa1), 1);
-            emit_vertex(p1 - vec3(off0, 0),          vec2(- proj_AA,        -thickness_aa1), 1);
-            emit_vertex(p1 - vec3(off1 + off_AA, 0), vec2(- proj_AA - u_AA, +thickness_aa1), 1);
-            emit_vertex(p1 - vec3(off0 + off_AA, 0), vec2(- proj_AA - u_AA, -thickness_aa1), 1);
-            EndPrimitive();
-        }
-
-        miter_a = n1;
-        length_a = thickness_aa1;
-    }
-
-    // we have miter join on next segment, do normal line cut off
-    if( dot( v1.xy, v2.xy ) <= MITER_LIMIT ){
-        miter_b = n1;
-        length_b = thickness_aa2;
-    }
-
-    // Without a pattern (linestyle) we use uv.u directly as a signed distance
-    // field. We only care about u1 - u0 being the correct distance and
-    // u0 > AA_THICHKNESS at all times.
-    float u1 = 10000.0;
-    float u2 = u1 + segment_length;
-
-    miter_a *= length_a;
-    miter_b *= length_b;
-
-    // To treat line starts and ends we elongate the line in the respective
-    // direction and enforce an AA border at the original start/end position
-    // with f_uv_minmax.
-    if (!isvalid[0])
-    {
-        float corner_offset = max(0, abs(dot(miter_b, v1.xy)) - segment_length);
-        f_uv_minmax.x = px2uv * (u1 - corner_offset);
-        p1 -= (corner_offset + AA_THICKNESS) * v1;
-        u1 -= (corner_offset + AA_THICKNESS);
-        segment_length += corner_offset;
-    }
-
-    if (!isvalid[3])
-    {
-        float corner_offset = max(0, abs(dot(miter_a, v1.xy)) - segment_length);
-        f_uv_minmax.y = px2uv * (u2 + corner_offset);
-        p2 += (corner_offset + AA_THICKNESS) * v1;
-        u2 += (corner_offset + AA_THICKNESS);
-        segment_length += corner_offset;
-    }
-
-    // scaling of uv.y due to different linewidths
-    // the padding for AA_THICKNESS should always have AA_THICKNESS width in uv
-    thickness_aa1 = g_thickness[1] / edge_scale + AA_THICKNESS;
-    thickness_aa2 = g_thickness[2] / edge_scale + AA_THICKNESS;
-
-    // Generate line segment
-    u1 *= px2uv;
-    u2 *= px2uv;
-
-    // Normal Version
-    generate_line_segment(
-        p1, miter_a, u1, thickness_aa1,
-        p2, miter_b, u2, thickness_aa2,
-        v1.xy, segment_length
-    );
-
-    // Debug - show each triangle
-    // generate_line_segment_debug(
-    //     p1, miter_a, u1, thickness_aa1,
-    //     p2, miter_b, u2, thickness_aa2,
-    //     v1.xy, segment_length
-    // );
-
-    return;
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// Main
-////////////////////////////////////////////////////////////////////////////////
-
 
 
 void main(void)
@@ -775,38 +227,333 @@ void main(void)
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
 
-    // we generate very thin lines for linewidth 0, so we manually skip them:
+    // Shouldn't be necessary anymore but it may still be worth skipping work
     if (g_thickness[1] == 0.0 && g_thickness[2] == 0.0) {
         return;
     }
 
-
-    // We mark each of the four vertices as valid or not. Vertices can be
-    // marked invalid on input (eg, if they contain NaN). We also mark them
-    // invalid if they repeat in the index buffer. This allows us to render to
-    // the very ends of a polyline without clumsy buffering the position data on the
-    // CPU side by repeating the first and last points via the index buffer. It
-    // just requires a little care further down to avoid degenerate normals.
+    // We mark vertices based on their role in a line segment:
+    //  0: the vertex is skipped/invalid (i.e. NaN)
+    //  1: the vertex is valid (part of a plain line segment)
+    //  2: the vertex is either ..
+    //       a loop target if the previous or next vertex is marked 0
+    //       or a normal valid vertex otherwise
+    // isvalid[0] and [3] are used to discern whether a line segment is part
+    // of a continuing line (valid) or a line start/end (invalid). A line only
+    // ends if the previous / next vertex is invalid
+    // isvalid[1] and [2] are used to discern whether a line segment should be
+    // discarded. This should happen if either vertex is invalid or if one of
+    // the vertices is a loop target.
+    // A loop target is an extra vertex placed before/after the shared vertex to
+    // guide joint generation. Consider for example a closed triangle A B C A.
+    // To cleanly close the loop both A's need to create a joint as if we had
+    // c A B C A b, but without drawing the c-A and A-b segments. c and b would
+    // be loop targets, matching C and B in position, but only being valid in
+    // isvalid[0] and [3], not as a drawn segment in isvalid[1] and [2].
     bool isvalid[4] = bool[](
-        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
-        g_valid_vertex[1] == 1,
-        g_valid_vertex[2] == 1,
-        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+        (g_valid_vertex[0] > 0) && g_id[0].y != g_id[1].y,
+        (g_valid_vertex[1] > 0) && !((g_valid_vertex[0] == 0) && (g_valid_vertex[1] == 2)),
+        (g_valid_vertex[2] > 0) && !((g_valid_vertex[2] == 2) && (g_valid_vertex[3] == 0)),
+        (g_valid_vertex[3] > 0) && g_id[2].y != g_id[3].y
     );
 
     if(!isvalid[1] || !isvalid[2]){
-        // If one of the central vertices is invalid or there is a break in the
-        // line, we don't emit anything.
         return;
     }
 
-    // get the four vertices passed to the shader
-    // without FAST_PATH the conversions happen on the CPU
-#ifdef FAST_PATH
-    draw_solid_line(isvalid);
-#else
-    draw_patterned_line(isvalid);
-#endif
+    // line start/end colors for color sampling
+    f_color1 = g_color[1];
+    f_color2 = g_color[2];
+
+    // Time to generate our quad. For this we need to find out how far a join
+    // extends the line. First let's get some vectors we need.
+
+    // Get the four vertices passed to the shader in pixel space.
+
+    // To apply pixel space linewidths we transform line vertices to pixel space
+    // here. This is dangerous with perspective projection as p.xyz / p.w sends
+    // points from behind the camera to beyond far (clip z > 1), causing lines
+    // to invert. To avoid this we translate points along the line direction,
+    // moving them to the edge of the visible area.
+    vec3 p0, p1, p2, p3;
+    {
+        // Not in clip
+        vec4 clip_p0 = gl_in[0].gl_Position; // start of previous segment
+        vec4 clip_p1 = gl_in[1].gl_Position; // end of previous segment, start of current segment
+        vec4 clip_p2 = gl_in[2].gl_Position; // end of current segment, start of next segment
+        vec4 clip_p3 = gl_in[3].gl_Position; // end of next segment
+
+        vec4 v1 = clip_p2 - clip_p1;
+
+        // With our perspective projection matrix clip.w = -view.z with
+        // clip.w < 0.0 being behind the camera.
+        // Note that if the signs in the projectionmatrix change, this may become wrong.
+        if (clip_p1.w < 0.0) {
+            // the line connects outside the visible area so we may consider it disconnected
+            isvalid[0] = false;
+            // A clip position is visible if -w <= z <= w. To move the line along
+            // the line direction v to the start of the visible area, we solve:
+            //   p.z + t * v.z = +-(p.w + t * v.w)
+            // where (-) gives us the result for the near clipping plane as p.z
+            // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
+            clip_p1  = clip_p1  + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+            f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+        }
+        if (clip_p2.w < 0.0) {
+            isvalid[3] = false;
+            clip_p2  = clip_p2  + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+            f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+        }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(clip_p1, clip_p2, isvalid))
+            return;
+
+        // transform clip -> screen space, applying xyz / w normalization (which
+        // is now save as all vertices are in front of the camera)
+        p0 = screen_space(clip_p0); // start of previous segment
+        p1 = screen_space(clip_p1); // end of previous segment, start of current segment
+        p2 = screen_space(clip_p2); // end of current segment, start of next segment
+        p3 = screen_space(clip_p3); // end of next segment
+    }
+
+    // Since we are measuring from the center of the line we will need half
+    // the thickness/linewidth for most things.
+    // Note that if a line becomes very thin the alpha value generated by the
+    // signed distance field (SDF) will be location dependent, causing the line
+    // to flicker if it moves. It also becomes darker than it should be due to
+    // the AA smoothstep becoming unbalanced (< AA_RADIUS inside, full AA_RADIUS
+    // outside). To avoid these issues we reduce alpha directly rather than
+    // shrinking the linewidth further at some point.
+    float halfwidth = 0.5 * max(AA_RADIUS, g_thickness[1]);
+
+    // determine the direction of each of the 3 segments (previous, current, next)
+    vec3 v1 = (p2 - p1);
+    float segment_length = length(v1.xy);
+    v1 /= segment_length;
+
+    // depth is irrelevant for these
+    vec2 v0 = v1.xy;
+    vec2 v2 = v1.xy;
+    if (p1 != p0 && isvalid[0])
+        v0 = normalize(p1.xy - p0.xy);
+    if (p3 != p2 && isvalid[3])
+        v2 = normalize(p3.xy - p2.xy);
+
+    // determine the normal of each of the 3 segments (previous, current, next)
+    vec2 n0 = normal_vector(v0);
+    vec2 n1 = normal_vector(v1);
+    vec2 n2 = normal_vector(v2);
+
+    // Miter normals (normal of truncated edge / vector to sharp corner)
+    // Note: n0 + n1 = vec(0) for a 180° change in direction. +-(v0 - v1) is the
+    //       same direction, but becomes vec(0) at 0°, so we can use it instead
+    vec2 miter = vec2(dot(v0, v1.xy), dot(v1.xy, v2));
+    vec2 miter_n1 = miter.x < 0.0 ?
+        sign_no_zero(dot(v0.xy, n1)) * normalize(v0.xy - v1.xy) : normalize(n0 + n1);
+    vec2 miter_n2 = miter.y < 0.0 ?
+        sign_no_zero(dot(v1.xy, n2)) * normalize(v1.xy - v2.xy) : normalize(n1 + n2);
+
+    // Are we truncating the joint based on miter limit or joinstyle?
+    // bevel / always truncate doesn't work with v1 == v2 (v0) so we use allow
+    // miter joints a when v1 ≈ v2 (v0)
+    bvec2 is_truncated = bvec2(
+        (joinstyle == BEVEL) ? miter.x < 0.99 : miter.x < miter_limit,
+        (joinstyle == BEVEL) ? miter.y < 0.99 : miter.y < miter_limit
+    );
+
+    // miter vectors (line vector matching miter normal)
+    vec2 miter_v1 = -normal_vector(miter_n1);
+    vec2 miter_v2 = -normal_vector(miter_n2);
+
+    // distance between p1/2 and respective sharp corner
+    float miter_offset1 = dot(miter_n1, n1); // = dot(miter_v1, v1)
+    float miter_offset2 = dot(miter_n2, n1); // = dot(miter_v2, v1)
+
+    // How far the line needs to extend in v1 directionto accomodate the joint.
+    // The line quad (w/o width) is given by:
+    //          p1 + w * extrusion[0][1] * v1  -----  p2 + w * extrusion[1][1] * v1
+    //                    |                                     |
+    //          p1 + w * extrusion[0][0] * v1  -----  p2 + w * extrusion[1][0] * v1
+    // where w = halfwidth for drawn corners and w = halfwidth + AA_THICKNESS
+    // for the corners of quad.
+    mat2 extrusion;
+
+    if (is_truncated[0]) {
+        // need to extend segment to include previous segments corners for truncated join
+        extrusion[0][1] = -abs(miter_offset1 / dot(miter_v1, n1));
+        extrusion[0][0] = extrusion[0][1];
+    } else {
+        // shallow/spike join needs to include point where miter normal meets outer line edge
+        extrusion[0][1] = dot(miter_n1, v1.xy) / miter_offset1;
+        extrusion[0][0] = -extrusion[0][1];
+    }
+
+    if (is_truncated[1]) {
+        // extrusion[1] = halfwidth * miter_offset2 / dot(miter_v2, n1);
+        extrusion[1][1] = abs(miter_offset2 / dot(miter_n2, v1.xy));
+        extrusion[1][0] = extrusion[1][1];
+    } else {
+        extrusion[1][1] = dot(miter_n2, v1.xy) / miter_offset2;
+        extrusion[1][0] = -extrusion[1][1];
+    }
+
+
+    // Miter joints can cause vertices to move past each other, e.g.
+    //  _______
+    //  '.   .'
+    //     x
+    //   '---'
+    // To avoid drawing the "inverted" section we move the relevant
+    // vertices to the crossing point (x) using this scaling factor.
+    // TODO: skipping this for linestart/end avoid round and square being cut off
+    //       but causes overlap...
+    vec2 shape_factor = (isvalid[0] && isvalid[3]) || (linecap == BUTT) ? vec2(
+        max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][0] - extrusion[1][0]))), // -n
+        max(0.0, segment_length / max(segment_length, (halfwidth + AA_THICKNESS) * (extrusion[0][1] - extrusion[1][1])))  // +n
+    ) : vec2(1.0);
+
+    // Generate static/flat outputs
+
+    // If a pattern starts or stops drawing in a joint it will get
+    // fractured across the joint. To avoid this we either:
+    // - adjust the involved line segments so that the patterns ends
+    //   on straight line quad (adjustment becomes +1.0 or -1.0)
+    // - or adjust the pattern to start/stop outside of the joint
+    //   (f_pattern_overwrite is set, adjustment is 0.0)
+    vec2 adjustment = process_pattern(pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth);
+
+    // If adjustment != 0.0 we replace a joint by an extruded line, so we no longer
+    // need to shrink the line for the joint to fit.
+    if (adjustment[0] != 0.0 || adjustment[1] != 0.0)
+        shape_factor = vec2(1.0);
+
+    // For truncated miter joints we discard overlapping sections of the two
+    // involved line segments. To identify which sections overlap we calculate
+    // the signed distance in +- miter vector direction from the shared line
+    // point in fragment shader. We pass the necessary data here. If we do not
+    // have a truncated joint we adjust the data here to never discard.
+    // Why not calculate the sdf here?
+    // If we calculate the sdf here and pass it as an interpolated vertex output
+    // the values we get between the two line segments will differ since the
+    // the vertices each segment interpolates from differ. This causes the
+    // discard check to rarely be true or false for both segments, resulting in
+    // duplicated or missing pixel/fragment draw.
+    // Passing the line point and miter vector instead should fix this issue,
+    // because both of these values come from the same calculation between the
+    // two segments. I.e. (previous segment).p2 == (next segment).p1 and
+    // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
+    if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
+        f_linepoints.xy = p1.xy + scene_origin; // FragCoords are relative to the window
+        f_miter_vecs.xy = -miter_v1.xy;         // but p1/p2 is relative to the scene origin
+    } else {
+        f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
+        f_miter_vecs.xy = normalize(vec2(-1));
+    }
+    if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
+        f_linepoints.zw = p2.xy + scene_origin;
+        f_miter_vecs.zw = miter_v2.xy;
+    } else {
+        f_linepoints.zw = vec2(-1e12);
+        f_miter_vecs.zw = normalize(vec2(-1));
+    }
+
+    // used to elongate sdf to include joints
+    // if start/end       elongate slightly so that there is no AA gap in loops
+    // if joint skipped   elongate to new length
+    // if normal joint    elongate a lot to let discard/truncation handle joint
+    f_extrusion = vec2(
+        !isvalid[0] ? 0.0 : (adjustment[0] == 0.0 ? 1e12 : halfwidth * abs(extrusion[0][0])),
+        !isvalid[3] ? 0.0 : (adjustment[1] == 0.0 ? 1e12 : halfwidth * abs(extrusion[1][0]))
+    );
+
+    // used to compute width sdf
+    f_linewidth = halfwidth;
+
+    // handle very thin lines by adjusting alpha rather than linewidth/sdfs
+    f_alpha_weight = min(1.0, g_thickness[1] / AA_RADIUS);
+
+    // for uv's
+    f_cumulative_length = g_lastlen[1];
+
+    // 0 :butt/normal cap or joint | 1 :square cap | 2 rounded cap/joint
+    f_capmode = ivec2(
+        isvalid[0] ? joinstyle : linecap,
+        isvalid[3] ? joinstyle : linecap
+    );
+
+    // Generate interpolated/varying outputs:
+
+    LineVertex vertex;
+
+    for (int x = 0; x < 2; x++) {
+        vertex.index = x+1;
+
+        for (int y = 0; y < 2; y++) {
+            // Calculate offset from p1/p2
+            vec3 offset;
+            if (adjustment[x] == 0.0) {
+                if (is_truncated[x] || !isvalid[3*x]) {
+                    // handle overlap in fragment shader via SDF comparison
+                    offset = shape_factor[y] * (
+                        (halfwidth * max(1.0, abs(extrusion[x][y])) + AA_THICKNESS) * (2 * x - 1) * v1 +
+                        vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0)
+                    );
+                } else {
+                    // handle overlap by adjusting geometry
+                    // TODO: should this include z in miter_n?
+                    offset = (2 * y - 1) * shape_factor[y] *
+                        (halfwidth + AA_THICKNESS) /
+                        float[2](miter_offset1, miter_offset2)[x] *
+                        vec3(vec2[2](miter_n1, miter_n2)[x], 0);
+                }
+            } else {
+                // discard joint for cleaner pattern handling
+                offset =
+                    adjustment[x] * (halfwidth * abs(extrusion[x][1]) + AA_THICKNESS) * v1 +
+                    vec3((2 * y - 1) * (halfwidth + AA_THICKNESS) * n1, 0);
+            }
+
+            vertex.position = vec3[2](p1, p2)[x] + offset;
+
+            // Generate SDF's
+
+            // distance from quad vertex to line control points
+            vec2 VP1 = vertex.position.xy - p1.xy;
+            vec2 VP2 = vertex.position.xy - p2.xy;
+
+            // sdf of this segment
+            vertex.quad_sdf.x = dot(VP1, -v1.xy);
+            vertex.quad_sdf.y = dot(VP2,  v1.xy);
+            vertex.quad_sdf.z = dot(VP1,  n1);
+
+            // sdf for creating a flat cap on truncated joints
+            // (sign(dot(...)) detects if line bends left or right)
+            // left/right adjustments disable
+            vertex.truncation.x = !is_truncated[0] ? -1.0 :
+                dot(VP1, sign(dot(miter_n1, -v1.xy)) * miter_n1) - halfwidth * abs(miter_offset1)
+                - abs(adjustment[0]) * 1e12;
+            vertex.truncation.y = !is_truncated[1] ? -1.0 :
+                dot(VP2, sign(dot(miter_n2, +v1.xy)) * miter_n2) - halfwidth * abs(miter_offset2)
+                - abs(adjustment[1]) * 1e12;
+
+            // colors should be sampled based on the normalized distance from the
+            // extruded edge (varies with offset in n direction)
+            // - correcting for this with per-vertex colors results visible face border
+            // - calculating normalized distance here will cause div 0/negative
+            //   issues as (linelength +- (extrusion[0] + extrusion[1])) <= 0 is possible
+            // So defer color interpolation to fragment shader
+            vertex.linestart = shape_factor[y] * halfwidth * extrusion[0][y];
+            vertex.linelength = max(1, segment_length - shape_factor[y] * halfwidth * (extrusion[0][y] - extrusion[1][y]));
+
+            // finalize vertex
+            emit_vertex(vertex);
+        }
+    }
+
+    // finalize primitive
+    EndPrimitive();
 
     return;
 }

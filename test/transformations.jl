@@ -3,8 +3,8 @@ using LinearAlgebra
 
 function xyz_boundingbox(trans, points)
     bb_ref = Base.RefValue(Rect3f())
-    Makie.foreach_transformed(points, Mat4f(I), trans) do point
-        Makie.update_boundingbox!(bb_ref, point)
+    foreach(points) do point
+        Makie.update_boundingbox!(bb_ref, Makie.apply_transform(trans, point))
     end
     return bb_ref[]
 end
@@ -52,10 +52,10 @@ end
     @test apply_transform(t1, p2) == Point(sqrt(2.0), sqrt(5.0))
     @test apply_transform(t1, p3) == Point(sqrt(2.0), sqrt(5.0), sqrt(4.0))
 
-    @test apply_transform(t2, p2) == Point2f(sqrt(2.0), log(5.0))
-    @test apply_transform(t2, p3) == Point3f(sqrt(2.0), log(5.0), 4.0)
+    @test apply_transform(t2, p2) == Point2(sqrt(2.0), log(5.0))
+    @test apply_transform(t2, p3) == Point3(sqrt(2.0), log(5.0), 4.0)
 
-    @test apply_transform(t3, p3) == Point3f(sqrt(2.0), log(5.0), log10(4.0))
+    @test apply_transform(t3, p3) == Point3(sqrt(2.0), log(5.0), log10(4.0))
 
     i2 = (identity, identity)
     i3 = (identity, identity, identity)
@@ -88,6 +88,11 @@ end
 end
 
 @testset "Polar Transform" begin
+    function periodic_approx(a::VecTypes{2}, b::VecTypes{2})
+        return all(((a .≈ b) .| (abs.(a .- b) .≈ 2.0 * pi)))
+    end
+    periodic_approx(as, bs) = all(periodic_approx.(as, bs))
+
     tf = Makie.Polar()
     @test tf.theta_as_x == true
     @test tf.clip_r == true
@@ -95,42 +100,154 @@ end
     @test tf.direction == 1
     @test tf.r0 == 0.0
 
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
-    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    input = Point2.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, 1, 0, false)
-    input = Point2f.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
-    output = [r * Point2f(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
-    inv = Point2f.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)))
+    input = Point2.(1:6, [0, pi/3, pi/2, pi, 2pi, 3pi])
+    output = [r * Point2(cos(phi+pi/2), sin(phi+pi/2)) for (r, phi) in input]
+    inv = Point2.(1:6, mod.([0, pi/3, pi/2, pi, 2pi, 3pi], Ref(0..2pi)))
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, -1, 0, false)
-    output = [r * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    output = [r * Point2(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(pi/2, -1, 0.5, false)
-    output = [(r - 0.5) * Point2f(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
+    output = [(r - 0.5) * Point2(cos(-phi-pi/2), sin(-phi-pi/2)) for (r, phi) in input]
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(0, 1, 0, true)
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
-    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
+    input = Point2.([0, pi/3, pi/2, pi, 2pi, 3pi], 1:6)
+    output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi], (0..2pi,)), 1:6)
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
 
     tf = Makie.Polar(0, 1, 0, true, false)
-    input = Point2f.([0, pi/3, pi/2, pi, 2pi, 3pi], -6:-1)
-    output = [r * Point2f(cos(phi), sin(phi)) for (phi, r) in input]
-    inv = Point2f.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi] .+ pi, (0..2pi,)), 6:-1:1)
+    input = Point2.([0, pi/3, pi/2, pi, 2pi, 3pi], -6:-1)
+    output = [r * Point2(cos(phi), sin(phi)) for (phi, r) in input]
+    inv = Point2.(mod.([0, pi/3, pi/2, pi, 2pi, 3pi] .+ pi, (0..2pi,)), 6:-1:1)
     @test apply_transform(tf, input) ≈ output
-    @test apply_transform(Makie.inverse_transform(tf), output) ≈ inv
+    @test periodic_approx(apply_transform(Makie.inverse_transform(tf), output), inv)
+end
+
+@testset "Model Transforms" begin
+    t1 = Transformation()
+    
+    @testset "defaults" begin
+        @test !isassigned(t1.parent)
+        @test t1.translation[] == Vec3d(0)
+        @test t1.scale[] == Vec3d(1)
+        @test t1.rotation[] == Quaternionf(0,0,0,1)
+        @test t1.origin[] == Vec3d(0)
+        @test t1.transform_func[] == identity
+        @test t1.parent_model[] == Mat4d(I)
+        @test t1.model[] == Mat4d(I)
+    end
+
+    @testset "getters" begin
+        @test translation(t1) == t1.translation
+        @test Makie.scale(t1) == t1.scale
+        @test Makie.rotation(t1) == t1.rotation
+        @test Makie.origin(t1) == t1.origin
+    end
+
+    function model_from_parts(t)
+        Makie.translationmatrix(t.translation[] + t.origin[]) *
+        Makie.scalematrix(t.scale[]) *
+        Makie.rotationmatrix4(t.rotation[]) *
+        Makie.translationmatrix(-t.origin[])
+    end
+
+    @testset "Mutation/Transformation functions + model Matrix" begin
+        # translate!
+        translate!(t1, 1,2,3)
+        @test t1.translation[] ≈ Vec3d(1,2,3)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(t1, 1)
+        @test t1.translation[] ≈ Vec3d(1,0,0)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(t1, Vec3f(0.5, 1.2, 0.9))
+        @test t1.translation[] ≈ Vec3f(0.5, 1.2, 0.9)
+        @test t1.model[] ≈ model_from_parts(t1)
+        translate!(Accum, t1, Vec3f(1))
+        @test t1.translation[] ≈ Vec3f(0.5, 1.2, 0.9) + Vec3f(1)
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # rotate!
+        q = Quaternionf(0.4, 0.3, 0.5, 0.6)
+        Makie.rotate!(t1, q)
+        @test t1.rotation[] ≈ q
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(t1, pi/2)
+        @test t1.rotation[] ≈ Quaternionf(0, 0, sqrt(0.5), sqrt(0.5))
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(t1, Vec3f(1,1,0), pi/3)
+        @test t1.rotation[] ≈ Quaternionf(sqrt(0.125), sqrt(0.125), 0, sqrt(0.75))
+        @test t1.model[] ≈ model_from_parts(t1)
+        Makie.rotate!(Accum, t1, pi/2)
+        combined = Quaternionf(sqrt(0.125), sqrt(0.125), 0, sqrt(0.75)) * Quaternionf(0, 0, sqrt(0.5), sqrt(0.5))
+        @test t1.rotation[] ≈ combined atol = 1e-5
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # scale!
+        scale!(t1, 0.5, 2, 3)
+        @test t1.scale[] ≈ Vec3d(0.5, 2, 3)
+        @test t1.model[] ≈ model_from_parts(t1)
+        scale!(t1, 2)
+        @test t1.scale[] ≈ Vec3d(2, 1, 1)
+        @test t1.model[] ≈ model_from_parts(t1)
+
+        # origin!
+        origin!(t1, 1, 0, 1)
+        @test t1.origin[] ≈ Vec3d(1,0,1)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(t1, 0.5)
+        @test t1.origin[] ≈ Vec3d(0.5, 0, 0)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(t1, Vec3(0.5))
+        @test t1.origin[] ≈ Vec3d(0.5)
+        @test t1.model[] ≈ model_from_parts(t1)
+        origin!(Accum, t1, 1, 1)
+        @test t1.origin[] ≈ Vec3d(1.5, 1.5, 0.5)
+        @test t1.model[] ≈ model_from_parts(t1)
+    end
+
+    @testset "Child transform" begin
+        t2 = Transformation(t1)
+
+        @test isassigned(t2.parent) && (t2.parent[] == t1)
+        @test t2.translation[] == Vec3d(0)
+        @test t2.scale[] == Vec3d(1)
+        @test t2.rotation[] == Quaternionf(0,0,0,1)
+        @test t2.origin[] == Vec3d(0)
+        @test t2.transform_func[] == identity
+        @test t2.parent_model !== t1.model # not the same object
+        @test t2.parent_model[] == t1.model[] # but same value
+        @test t2.model[] == t1.model[]
+
+        # transform child
+        translate!(t2, 1,2,3)
+        scale!(t2, 2)
+        Makie.rotate!(t2, pi)
+        origin!(t2, -1,0,1)
+        @test t2.model[] ≈ t1.model[] * model_from_parts(t2)
+
+        # transform parent
+        translate!(t1, 0)
+        scale!(t1, 1)
+        Makie.rotate!(t1, 0)
+        origin!(t1, 0)
+        @test t2.model[] ≈ model_from_parts(t2)
+    end
+
 end
 
 @testset "Coordinate Systems" begin
@@ -147,19 +264,6 @@ end
     for space in vcat(spaces...)
         @test Makie.clip_to_space(scene.camera, space) * Makie.space_to_clip(scene.camera, space) ≈ Mat4f(I)
     end
-end
-
-@testset "Bounding box utilities" begin
-
-    box = Rect2f(0,0,1,1)
-
-    @test Makie.rotatedrect(box, π) == Rect2f(-1, -1, 1, 1)
-
-    @test Makie.rotatedrect(box, π/2) == Rect2f(0, -1, 1, 1)
-
-    @test all(Makie.rotatedrect(box, π/4).origin .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).origin)
-    @test all(Makie.rotatedrect(box, π/4).widths .≈ Rect2f(0, -1/(√2f0), √2f0, √2f0).widths)
-
 end
 
 @testset "Space dependent transforms" begin
@@ -183,9 +287,9 @@ end
         @test apply_transform(t1, p2, space) == desired_transform(p2, Point(sqrt(2.0), sqrt(5.0)))
         @test apply_transform(t1, p3, space) == desired_transform(p3, Point(sqrt(2.0), sqrt(5.0), sqrt(4.0)))
 
-        @test apply_transform(t2, p2, space) == desired_transform(p2, Point2f(sqrt(2.0), log(5.0)))
-        @test apply_transform(t2, p3, space) == desired_transform(p3, Point3f(sqrt(2.0), log(5.0), 4.0))
+        @test apply_transform(t2, p2, space) == desired_transform(p2, Point2(sqrt(2.0), log(5.0)))
+        @test apply_transform(t2, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), 4.0))
 
-        @test apply_transform(t3, p3, space) == desired_transform(p3, Point3f(sqrt(2.0), log(5.0), log10(4.0)))
+        @test apply_transform(t3, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), log10(4.0)))
     end
 end

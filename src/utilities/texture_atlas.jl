@@ -1,4 +1,4 @@
-const SERIALIZATION_FORMAT_VERSION = "v6"
+const SERIALIZATION_FORMAT_VERSION = "v7"
 
 struct TextureAtlas
     rectangle_packer::RectanglePacker{Int32}
@@ -157,7 +157,7 @@ function get_texture_atlas(resolution::Int = 2048, pix_per_glyph::Int = 64)
     end
 end
 
-const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.20.0/"
+const CACHE_DOWNLOAD_URL = "https://github.com/MakieOrg/Makie.jl/releases/download/v0.21.0/"
 
 function cached_load(resolution::Int, pix_per_glyph::Int)
     path = get_cache_path(resolution, pix_per_glyph)
@@ -288,16 +288,6 @@ function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
     return atlas.uv_rectangles[glyph_index!(atlas, b)]
 end
 
-
-# Seems like StableHashTraits is so slow, that it's worthwhile to memoize the hashes
-const MEMOIZED_HASHES = Dict{Any, UInt32}()
-
-function fast_stable_hash(x)
-    return get!(MEMOIZED_HASHES, x) do
-        return StableHashTraits.stable_hash(x; alg=crc32c, version=2)
-    end
-end
-
 function insert_glyph!(atlas::TextureAtlas, glyph, font::NativeFont)
     glyphindex = FreeTypeAbstraction.glyph_index(font, glyph)
     hash = fast_stable_hash((glyphindex, FreeTypeAbstraction.fontname(font)))
@@ -307,6 +297,7 @@ end
 function insert_glyph!(atlas::TextureAtlas, path::BezierPath)
     return insert_glyph!(atlas, fast_stable_hash(path), path)
 end
+
 
 function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{BezierPath, Tuple{UInt64, NativeFont}})
     return get!(atlas.mapping, hash) do
@@ -467,13 +458,13 @@ function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
-_bcast(x::Vec) = (x,)
+_bcast(x::Vec) = Ref(x)
 _bcast(x) = x
 
 # Calculates the scaling factor from unpadded size -> padded size
 # Here we assume the glyph to be representative of pix_per_glyph
 # regardless of its true size.
-function marker_scale_factor(atlas::TextureAtlas, char::Char, font)
+function marker_scale_factor(atlas::TextureAtlas, char::Char, font)::Vec2f
     lbrt = glyph_uv_width!(atlas, char, font)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width .* Vec2f(size(atlas))
@@ -493,7 +484,7 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     return full_pixel_size_in_atlas ./ maximum(unpadded_pixel_size)
 end
 
-function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)
+function marker_scale_factor(atlas::TextureAtlas, path::BezierPath)::Vec2f
     # See offset_bezierpath
     return bezierpath_pad_scale_factor(atlas, path) * maximum(widths(bbox(path)))
 end
@@ -518,7 +509,7 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     return markersize .* factor
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)
+function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2)::Vec2f
     # - wh = widths(bbox(bp)) is the untouched size of the given bezierpath
     # - full_pixel_size_in_atlas is the size of the signed distance field in the
     #   texture atlas. This includes glyph padding
@@ -540,27 +531,27 @@ function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2
     bb = bbox(bp)
     scaled_size = bezierpath_pad_scale_factor(atlas, bp) * maximum(widths(bb))
     return markersize * (origin(bb) .+ 0.5f0 * widths(bb) .- 0.5f0 .* scaled_size)
-
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
-    return offset_bezierpath.(Ref(atlas), bp, _bcast(scale), _bcast(offset))
+function offset_bezierpath(atlas::TextureAtlas, bp, scale)
+    return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)))
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
-    return offset_bezierpath(atlas, marker, markersize, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: BezierPath
+    return offset_bezierpath(atlas, marker, markersize)
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: Char
-    return rescale_marker(atlas, marker, font, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: Char
+    return rescale_marker(atlas, marker, font, offset_marker(markersize))
 end
 
-offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
+offset_marker(atlas, marker, font, markersize) = offset_marker(markersize)
+offset_marker(markersize) = Vec2f.(_bcast(-0.5 .* markersize))
 
-function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset, plot_object)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, plot_object)
     atlas_obs = Observable(atlas) # for map to work
     scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize, marker_offset;
+    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize;
                       ignore_equal_values=true)
 
     return scale, quad_offset

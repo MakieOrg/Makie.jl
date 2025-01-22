@@ -37,7 +37,7 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0f0
     else
-        boundingbox(labeltext).widths[horizontal[] ? 2 : 1]
+        boundingbox(labeltext, :data).widths[horizontal[] ? 2 : 1]
     end
 
     labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
@@ -134,6 +134,9 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     end
 end
 
+max_auto_ticklabel_spacing!(ax) = nothing
+
+
 function update_ticklabel_node(
         closure_args,
         ticklabel_annotation_obs::Observable,
@@ -188,13 +191,13 @@ function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observ
 end
 
 # if labels are given manually, it's possible that some of them are outside the displayed limits
-# we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
-is_within_limits(tv, limits) = (limits[1] ≤ tv || limits[1] ≈ tv) && (tv ≤ limits[2] || tv ≈ limits[2])
+# we only check approximately because we want to keep ticks on the frame
+is_within_limits(tv, limits) = (limits[1] - 100eps(limits[1]) < tv) && (tv < limits[2] + 100eps(limits[2]))
 
 function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
 
     tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
-    limits = limits_obs[]::NTuple{2, Float32}
+    limits = limits_obs[]::NTuple{2, Float64}
 
     tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
 
@@ -230,7 +233,7 @@ function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, rever
     return
 end
 
-function update_minor_ticks(minortickpositions, limits::NTuple{2, Float32}, pos_extents_horizontal, minortickvalues_unfiltered, scale, reversed::Bool)
+function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_extents_horizontal, minortickvalues_unfiltered, scale, reversed::Bool)
     position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
 
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
@@ -259,7 +262,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (endpoints, ticksize, tickwidth,
-        tickcolor, tickalign, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
+        tickcolor, tickalign, dim_convert, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
@@ -269,7 +272,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values=true)
     horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
     # Tuple constructor converts more than `convert(NTuple{2, Float32}, x)` but we still need the conversion to Float32 tuple:
-    limits = lift(x -> convert(NTuple{2,Float32}, Tuple(x)), parent, attrs.limits; ignore_equal_values=true)
+    limits = lift(x -> convert(NTuple{2, Float64}, Tuple(x)), parent, attrs.limits; ignore_equal_values=true)
     flipped = lift(x -> convert(Bool, x), parent, attrs.flipped; ignore_equal_values=true)
 
     ticksnode = Observable(Point2f[]; ignore_equal_values=true)
@@ -300,10 +303,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     map!(parent, ticklabel_ideal_space, ticklabel_annotation_obs, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(boundingbox(ticklabels)))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : height(Rect2f(boundingbox(ticklabels, :data)))) : 0f0
             else
                 # width
-                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(Rect2f(boundingbox(ticklabels)))) : 0f0
+                ticklabelsvisible[] ? (ticklabels === nothing ? 0f0 : width(Rect2f(boundingbox(ticklabels, :data)))) : 0f0
         end
         # in case there is no string in the annotations and the boundingbox comes back all NaN
         if !isfinite(maxwidth)
@@ -318,6 +321,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end
@@ -401,7 +407,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0f0, 0f0
         else
-            wx, wy = widths(boundingbox(labeltext))
+            wx, wy = widths(boundingbox(labeltext, :data))
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0f0, Float32(sign * 0.5f0 * wy)
@@ -414,13 +420,13 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Observable(Float32[]; ignore_equal_values=true)
+    tickvalues = Observable(Float64[]; ignore_equal_values=true)
 
-    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float32},Vector{Any}}}()
-    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, limits, ticks, tickformat,
-         attrs.scale) do (position, extents, horizontal),
-            limits, ticks, tickformat, scale
-        get_ticks(ticks, scale, tickformat, limits...)
+    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64},Vector{Any}}}()
+    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    map!(parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
+         attrs.scale) do (position, extents, horizontal), _, limits, ticks, tickformat, scale
+        return get_ticks(dim_convert[], ticks, scale, tickformat, limits...)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values=true)
@@ -430,11 +436,13 @@ function LineAxis(parent::Scene, attrs::Attributes)
         Observable((tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits)),
         tickvalues_labels_unfiltered, reversed, attrs.scale)
 
-    minortickvalues = Observable(Float32[]; ignore_equal_values=true)
+    minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
-    onany(parent, tickvalues, minorticks) do tickvalues, minorticks
-        minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+    onany(parent, tickvalues, minorticks, minorticksvisible) do tickvalues, minorticks, visible
+        if visible
+            minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+        end
         return
     end
 
@@ -519,10 +527,10 @@ function tight_ticklabel_spacing!(la::LineAxis)
     tls = la.elements[:ticklabels]
     maxwidth = if horizontal
             # height
-            tls.visible[] ? height(Rect2f(boundingbox(tls))) : 0f0
+            tls.visible[] ? height(Rect2f(boundingbox(tls, :data))) : 0f0
         else
             # width
-            tls.visible[] ? width(Rect2f(boundingbox(tls))) : 0f0
+            tls.visible[] ? width(Rect2f(boundingbox(tls, :data))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
     return Float64(maxwidth)
@@ -611,10 +619,6 @@ function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks, labels
 end
 
-# function get_ticks(::Automatic, scale::typeof(Makie.logit), any_formatter, vmin, vmax)
-#     get_ticks(LogitTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
-# end
-
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)
 
@@ -671,7 +675,13 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmax = vmax / m.multiple
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
-    multiples .* m.multiple, showoff_minus(multiples) .* m.suffix
+    locs = multiples .* m.multiple
+    labs = showoff_minus(multiples) .* m.suffix
+    if m.strip_zero
+        labs = map( ((x, lab),) -> x != 0 ? lab : "0", zip(multiples, labs))
+    end
+
+    return locs, labs
 end
 
 function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)

@@ -8,8 +8,8 @@ end
 
 @testset "shader cache" begin
     GLMakie.closeall()
-    screen = display(Figure())
-    cache = screen.shader_cache
+    screen = display(GLMakie.Screen(visible = false), Figure())
+    cache = screen.shader_cache;
     # Postprocessing shaders
     @test length(cache.shader_cache) == 5
     @test length(cache.template_cache) == 5
@@ -17,33 +17,33 @@ end
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
-
-    # Lines hasn't been compiled so one new program should be added
-    display(screen, lines(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
     @test length(cache.program_cache) == 11
+
+    # heatmap hasn't been compiled so one new program should be added
+    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    @test length(cache.shader_cache) == 20
+    @test length(cache.template_cache) == 20
+    @test length(cache.program_cache) == 12
 
     # For second time no new shaders should be added
-    display(screen, lines(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    @test length(cache.shader_cache) == 20
+    @test length(cache.template_cache) == 20
+    @test length(cache.program_cache) == 12
 end
 
 @testset "unit tests" begin
@@ -89,6 +89,9 @@ end
         # assure we correctly close screen and remove it from plot
         @test getscreen(ax.scene) === nothing
         @test !events(ax.scene).window_open[]
+        # Because of on(scene.events.window_open) in scene, we need to free all scenes first
+        # to have 0 listeners
+        empty!(fig)
         @test isempty(events(ax.scene).window_open.listeners)
 
         # Test singleton screen replacement
@@ -133,14 +136,14 @@ end
     end
 end
 
-@testset "emtpy!(fig)" begin
+@testset "empty!(fig)" begin
     GLMakie.closeall()
     fig = Figure()
     ax = Axis(fig[1,1])
     heatmap!(ax, rand(4, 4))
     lines!(ax, 1:5, rand(5); linewidth=3)
     text!(ax, [Point2f(2)], text=["hi"])
-    screen = display(fig)
+    screen = display(GLMakie.Screen(visible = false), fig)
     empty!(fig)
     @test screen in fig.scene.current_screens
     @test length(fig.scene.current_screens) == 1
@@ -179,7 +182,7 @@ end
     hmp = heatmap!(ax, rand(4, 4))
     lp = lines!(ax, 1:5, rand(5); linewidth=3)
     tp = text!(ax, [Point2f(2)], text=["hi"])
-    screen = display(fig)
+    screen = display(GLMakie.Screen(visible = false), fig)
 
     @test ax.scene.plots == [hmp, lp, tp]
 
@@ -187,7 +190,7 @@ end
 
     empty!(ax)
 
-    tex_atlas = GLMakie.get_texture!(GLMakie.gl_texture_atlas())
+    tex_atlas = GLMakie.get_texture!(screen.glscreen, GLMakie.gl_texture_atlas())
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
@@ -222,9 +225,9 @@ end
         fig = Figure()
         ax = Axis(fig[1,1]) # only happens with axis
         # lines!(ax, 1:5, rand(5); linewidth=5) # but doesn't need a plot
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         GLMakie.closeall()
-        display(fig)
+        display(GLMakie.Screen(visible = false), fig)
         @test true # test for no errors for now
     end
 
@@ -232,9 +235,9 @@ end
         GLMakie.closeall()
         fig = Figure()
         ax = Axis(fig[1,1]) # only happens with axis
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         close(screen)
-        screen = display(fig)
+        screen = display(GLMakie.Screen(visible = false), fig)
         resize!(fig, 800,601)
         @test true # test for no errors for now
         # GLMakie.destroy!(screen)
@@ -242,9 +245,9 @@ end
 end
 
 @testset "destroying singleton screen" begin
-    screen = display(scatter(1:4))
+    screen = display(GLMakie.Screen(visible = false), scatter(1:4))
     GLMakie.destroy!(screen)
-    screen = display(scatter(1:4))
+    screen = display(GLMakie.Screen(visible = false), scatter(1:4))
     @test isopen(screen) # shouldn't run into double closing a destroyed window
     GLMakie.destroy!(screen)
 end
@@ -288,7 +291,7 @@ end
         @test isempty(screen.px_per_unit.listeners)
         @test isempty(screen.scalefactor.listeners)
 
-        @test screen.root_scene === nothing
+        @test screen.scene === nothing
         @test screen.rendertask === nothing
         @test (Base.summarysize(screen) / 10^6) < 1.4
     end
@@ -323,7 +326,6 @@ end
     screen = display(GLMakie.Screen(visible = true, scalefactor = 2), fig)
     @test screen.scalefactor[] === 2f0
     @test screen.px_per_unit[] === 2f0  # inherited from scale factor
-    winscale = screen.scalefactor[] / (@static Sys.isapple() ? GLMakie.scale_factor(screen.glscreen) : 1)
     @test size(screen.framebuffer) == (2W, 2H)
     @test GLMakie.window_size(screen.glscreen) == scaled(screen, (W, H))
 
@@ -341,6 +343,11 @@ end
     picks = pick(ax.scene, quadrant)
     points = Set(Int(p[2]) for p in picks if p[1] isa Scatter)
     @test points == Set(((N+1)÷2):N)
+    # - pick sorted
+    xy_px = project_sp(ax.scene, Point2f(x[1], y[1]))
+    picks = GLMakie.Makie.pick_sorted(ax.scene, screen, xy_px, 50)
+    points = [i for (p, i) in picks if p == pl]
+    @test points == [1, 2, 3]
 
     # render at lower resolution
     screen = display(GLMakie.Screen(visible = false, scalefactor = 2, px_per_unit = 1), fig)
@@ -434,10 +441,26 @@ end
     GLMakie.closeall()
 end
 
+@testset "html video size annotation" begin
+    width = 600
+    height = 800
+    f = Figure(; size = (width, height))
+
+    vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=GLMakie)
+
+    @test size(vio.screen) == size(f.scene) .* 2
+
+    Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
+end
+
 @testset "image size changes" begin
     s = Scene()
     im = image!(s, 0..10, 0..10, zeros(RGBf, 10, 20))
-    display(s)
+    display(GLMakie.Screen(visible = false), s)
     im[3][] = zeros(RGBf, 20, 10) # same length, different size
     im[3][] = zeros(RGBf, 15, 5) # smaller size
     im[3][] = zeros(RGBf, 25, 15) # larger size

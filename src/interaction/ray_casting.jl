@@ -2,10 +2,20 @@
 ### Ray Generation
 ################################################################################
 
-struct Ray
-    origin::Point3f
-    direction::Vec3f
+struct Ray{T}
+    origin::Point3{T}
+    direction::Vec3{T}
+
+    function Ray(pos::VecTypes{3, T1}, dir::VecTypes{3, T2}) where {T1, T2}
+        T = promote_type(Float32, T1, T2)
+        return new{T}(to_ndim(Point3{T}, pos, 0), to_ndim(Vec3{T}, dir, 0))
+    end
 end
+
+function Base.convert(::Type{Ray{Float32}}, ray::Ray)
+    return Ray(Point3f(ray.origin), Vec3f(ray.direction))
+end
+
 
 """
     ray_at_cursor(fig/ax/scene)
@@ -96,10 +106,22 @@ function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
 end
 
 
-function transform(M::Mat4f, ray::Ray)
-    p4d = M * to_ndim(Point4f, ray.origin, 1f0)
+function transform(M::Mat4{T}, ray::Ray) where {T}
+    p4d = M * to_ndim(Point4{T}, ray.origin, 1f0)
     dir = normalize(M[Vec(1,2,3), Vec(1,2,3)] * ray.direction)
     return Ray(p4d[Vec(1,2,3)] / p4d[4], dir)
+end
+
+f32_convert(::Nothing, ray::Ray) = ray
+function f32_convert(ls::LinearScaling, ray::Ray)
+    return Ray(f32_convert(ls, ray.origin), normalize(ls.scale .* ray.direction))
+end
+
+inv_f32_convert(::Nothing, ray::Ray) = ray
+inv_f32_convert(c::Float32Convert, ray::Ray) = inv_f32_convert(c.scaling[], ray)
+function inv_f32_convert(ls::LinearScaling, ray::Ray)
+    ils = inv(ls)
+    return Ray(ils(ray.origin), normalize(ils.scale .* ray.direction))
 end
 
 
@@ -110,9 +132,9 @@ end
 
 # These work in 2D and 3D
 function closest_point_on_line(A::VecTypes, B::VecTypes, ray::Ray)
-    return closest_point_on_line(to_ndim(Point3f, A, 0), to_ndim(Point3f, B, 0), ray)
+    return closest_point_on_line(to_ndim(Point3d, A, 0), to_ndim(Point3d, B, 0), ray)
 end
-function closest_point_on_line(A::Point3f, B::Point3f, ray::Ray)
+function closest_point_on_line(A::Point3, B::Point3, ray::Ray)
     # See:
     # https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
     AB_norm = norm(B .- A)
@@ -126,12 +148,15 @@ end
 
 function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1e-6)
     return ray_triangle_intersection(
-        to_ndim(Point3f, A, 0f0), to_ndim(Point3f, B, 0f0), to_ndim(Point3f, C, 0f0),
+        to_ndim(Point3d, A, 0), to_ndim(Point3d, B, 0), to_ndim(Point3d, C, 0),
         ray, ϵ
     )
 end
 
-function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3}, ray::Ray, ϵ = 1e-6)
+function ray_triangle_intersection(
+        A::VecTypes{3, T1}, B::VecTypes{3, T2}, C::VecTypes{3, T3}, ray::Ray{T4}, ϵ = 1e-6
+    ) where {T1, T2, T3, T4}
+    T = promote_type(T1, T2, T3, T4, Float32)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
     # Alternative: https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     AO = A .- ray.origin
@@ -143,13 +168,13 @@ function ray_triangle_intersection(A::VecTypes{3}, B::VecTypes{3}, C::VecTypes{3
 
     # all positive or all negative
     if (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
-        return Point3f((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
+        return Point3{T}((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
     else
-        return Point3f(NaN)
+        return Point3{T}(NaN)
     end
 end
 
-function ray_rect_intersection(rect::Rect2f, ray::Ray)
+function ray_rect_intersection(rect::Rect2, ray::Ray)
     possible_hit = ray.origin - ray.origin[3] / ray.direction[3] * ray.direction
     min = minimum(rect); max = maximum(rect)
     if all(min <= possible_hit[Vec(1,2)] <= max)
@@ -159,7 +184,7 @@ function ray_rect_intersection(rect::Rect2f, ray::Ray)
 end
 
 
-function ray_rect_intersection(rect::Rect3f, ray::Ray)
+function ray_rect_intersection(rect::Rect3, ray::Ray)
     mins = (minimum(rect) - ray.origin) ./ ray.direction
     maxs = (maximum(rect) - ray.origin) ./ ray.direction
     x, y, z = min.(mins, maxs)
@@ -170,11 +195,34 @@ function ray_rect_intersection(rect::Rect3f, ray::Ray)
     return Point3f(NaN)
 end
 
-function is_point_on_ray(p::Point3f, ray::Ray)
+function is_point_on_ray(p::Point3{T1}, ray::Ray{T2}) where {T1 <: Real, T2 <: Real}
     diff = ray.origin - p
-    return abs(dot(diff, ray.direction)) ≈ abs(norm(diff))
+    return isapprox(
+        abs(dot(diff, ray.direction)),
+        abs(norm(diff)),
+        # use lower eps of the input types so we don't have to bother converting
+        # Float64 Rays to Float32
+        rtol = sqrt(max(eps(T1), eps(T2)))
+    )
 end
 
+
+function ray_plane_intersection(plane::Plane3{T1}, ray::Ray{T2}, epsilon = 1e-6) where {T1 <: Real, T2 <: Real}
+    # --- p ---   plane with normal (assumed normalized)
+    #     ↓
+    #     :  distance d along plane normal direction
+    #   ↖ :
+    #     r       ray with direction (assumed normalized)
+
+    d = distance(plane, ray.origin) # signed distance
+    cos_angle = dot(-plane.normal, ray.direction)
+
+    if abs(cos_angle) > epsilon
+        return ray.origin + d / cos_angle * ray.direction
+    else
+        return Point3f(NaN)
+    end
+end
 
 ################################################################################
 ### Ray casting (positions from ray-plot intersections)
@@ -241,13 +289,12 @@ end
 
 function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
     point = plot[1][][idx]
-    point3f = to_ndim(Point3f, point, 0.0f0)
-    point_t = if apply_transform && !isnan(point3f)
-        apply_transform_and_model(plot, point3f)
+    point3 = to_ndim(Point3d, point, 0)
+    if apply_transform && !isnan(point3)
+        return apply_transform_and_model(plot, point3)
     else
-        point3f
+        return point3
     end
-    return to_ndim(typeof(point), point_t, 0.0f0)
 end
 
 function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply_transform = true)
@@ -256,15 +303,16 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     end
     p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
 
-    pos = closest_point_on_line(p0, p1, ray)
+    pos = closest_point_on_line(f32_convert(plot, p0), f32_convert(plot, p1), ray)
 
     if apply_transform
-        return pos
+        return inv_f32_convert(plot, Point3d(pos))
     else
-        p4d = inv(plot.model[]) * to_ndim(Point4f, pos, 1f0)
+        p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, Point3d(pos)), 1)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
-        return Makie.apply_transform(itf, p3d, get(plot, :space, :data))
+        out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
+        return out
     end
 end
 
@@ -274,24 +322,24 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     # model matrix may add a z component to the Rect2f, which we can't represent.
     # So we instead inverse-transform the ray
     space = to_value(get(plot, :space, :data))
-    p0, p1 = map(Point2f.(extrema(plot.x[]), extrema(plot.y[]))) do p
+    p0, p1 = map(Point2d.(extrema(plot.x[]), extrema(plot.y[]))) do p
         return Makie.apply_transform(transform_func(plot), p, space)
     end
-    ray = transform(inv(plot.model[]), ray)
-    pos = ray_rect_intersection(Rect2f(p0, p1 - p0), ray)
+    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
+    pos = ray_rect_intersection(Rect2(p0, p1 - p0), ray)
 
     if apply_transform
-        p4d = plot.model[] * to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
+        p4d = plot.model[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
         pos = Makie.apply_transform(inverse_transform(transform_func(plot)), pos, space)
-        return to_ndim(Point3f, pos, 0)
+        return to_ndim(Point3d, pos, 0)
     end
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
-    positions = coordinates(plot.mesh[])
-    ray = transform(inv(plot.model[]), ray)
+    positions = decompose(Point3d, plot.mesh[])
+    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
 
@@ -300,10 +348,10 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
             p1, p2, p3 = positions[f]
             p1, p2, p3 = Makie.apply_transform.(tf, (p1, p2, p3), space)
             pos = ray_triangle_intersection(p1, p2, p3, ray)
-            if pos !== Point3f(NaN)
+            if !isnan(pos)
                 if apply_transform
-                    p4d = plot.model[] * to_ndim(Point4f, pos, 1)
-                    return Point3f(p4d) / p4d[4]
+                    p4d = plot.model[] * to_ndim(Point4d, pos, 1)
+                    return Point3d(p4d) / p4d[4]
                 else
                     return Makie.apply_transform(inverse_transform(tf), pos, space)
                 end
@@ -313,7 +361,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
 
     @debug "Did not find intersection for index = $idx when casting a ray on mesh."
 
-    return Point3f(NaN)
+    return Point3d(NaN)
 end
 
 # Handling indexing into different surface input types
@@ -327,7 +375,7 @@ surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
 
 function surface_pos(xs, ys, zs, i, j)
     N, M = size(zs)
-    return Point3f(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
+    return Point3d(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
 end
 
 function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
@@ -337,7 +385,7 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     w, h = size(zs)
     _i = mod1(idx, w); _j = div(idx-1, w)
 
-    ray = transform(inv(plot.model[]), ray)
+    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
     space = to_value(get(plot, :space, :data))
 
@@ -352,8 +400,8 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
             B = surface_pos(xs, ys, zs, i-1, j)
             C = surface_pos(xs, ys, zs, i, j+1)
             A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2f(p), space)
-                Point3f(xy[1], xy[2], p[3])
+                xy = Makie.apply_transform(tf, Point2d(p), space)
+                Point3d(xy[1], xy[2], p[3])
             end
             pos = ray_triangle_intersection(A, B, C, ray)
         end
@@ -363,8 +411,8 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
             B = surface_pos(xs, ys, zs, i,   j+1)
             C = surface_pos(xs, ys, zs, i+1, j+1)
             A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2f(p), space)
-                Point3f(xy[1], xy[2], p[3])
+                xy = Makie.apply_transform(tf, Point2d(p), space)
+                Point3d(xy[1], xy[2], p[3])
             end
             pos = ray_triangle_intersection(A, B, C, ray)
         end
@@ -373,29 +421,64 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     end
 
     if apply_transform
-        p4d = plot.model[] * to_ndim(Point4f, pos, 1)
+        p4d = plot.model[] * to_ndim(Point4d, pos, 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
-        xy = Makie.apply_transform(inverse_transform(tf), Point2f(pos), space)
-        return Point3f(xy[1], xy[2], pos[3])
+        xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos), space)
+        return Point3d(xy[1], xy[2], pos[3])
     end
 end
 
 function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
-    min, max = Point3f.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
+    min, max = Point3d.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
+    space = to_value(get(plot, :space, :data))
+    tf = transform_func(plot)
 
-    if apply_transform
-        min = apply_transform_and_model(plot, min)
-        max = apply_transform_and_model(plot, max)
-        return ray_rect_intersection(Rect3f(min, max .- min), ray)
-    else
-        min = Makie.apply_transform(transform_func(plot), min, get(plot, :space, :data))
-        max = Makie.apply_transform(transform_func(plot), max, get(plot, :space, :data))
+    if tf === nothing
+
         ray = transform(inv(plot.model[]), ray)
-        pos = ray_rect_intersection(Rect3f(min, max .- min), ray)
-        return Makie.apply_transform(inverse_transform(plot), pos, get(plot, :space, :data))
+        pos = ray_rect_intersection(Rect3(min, max .- min), ray)
+        if apply_transform
+            return to_ndim(Point3d, apply_model(transformationmatrix(plot), pos), NaN)
+        else
+            return pos
+        end
+
+    else # Note: volume doesn't actually support transform_func but this should work anyway
+
+        # TODO: After GeometryBasics refactor this can just use triangle_mesh(Rect3d(min, max - min))
+        w = max - min
+        ps = Point3d[min + (x, y, z) .* w for x in (0, 1) for y in (0, 1) for z in (0, 1)]
+        fs = decompose(GLTriangleFace, QuadFace{Int}[
+            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1),
+            (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2)
+        ])
+
+        if apply_transform
+            ps = apply_transform_and_model(plot, ps)
+        else
+            ps = Makie.apply_transform(tf, ps, space)
+            ray = transform(inv(plot.model[]), ray)
+        end
+
+        for f in fs
+            p1, p2, p3 = ps[f]
+            pos = ray_triangle_intersection(p1, p2, p3, ray)
+            if !isnan(pos) # hit
+                n = GeometryBasics.orthogonal_vector(p1, p2, p3)
+                if dot(n, ray.direction) < 0.0 # front facing
+                    if apply_transform # already did
+                        return pos
+                    else # undo transform_func
+                        return Makie.apply_transform(inverse_transform(tf), pos, space)
+                    end
+                end
+            end
+        end
+
+        return Point3d(NaN)
     end
 end
 
-position_on_plot(plot::Text, args...; kwargs...) = Point3f(NaN)
-position_on_plot(plot::Nothing, args...; kwargs...) = Point3f(NaN)
+position_on_plot(plot::Text, args...; kwargs...) = Point3d(NaN)
+position_on_plot(plot::Nothing, args...; kwargs...) = Point3d(NaN)

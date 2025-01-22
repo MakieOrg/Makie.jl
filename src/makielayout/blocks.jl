@@ -6,6 +6,9 @@ function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
 
+symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
+symbol_to_block(::Val) = nothing
+
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
@@ -54,22 +57,42 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     push!(fields_vector, constructor)
 
+    docs_placeholder = gensym()
+
     q = quote
+        # This part is as far as I know the only way to modify the docstring on top of the
+        # recipe, so that we can offer the convenience of automatic augmented docstrings
+        # but combine them with the simplicity of using a normal docstring.
+        # The trick is to mark some variable (in this case a gensymmed placeholder) with the
+        # Core.@__doc__ macro, which causes this variable to get assigned the docstring on top
+        # of the @recipe invocation. From there, it can then be retrieved, modified, and later
+        # attached to plotting function by using @doc again. We also delete the binding to the
+        # temporary variable so no unnecessary docstrings stay in place.
+        Core.@__doc__ $(docs_placeholder) = nothing
+        binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
+        user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
+            _docstring = @doc($docs_placeholder)
+            delete!(Docs.meta(@__MODULE__), binding)
+            _docstring
+        else
+            "No docstring defined.\n"
+        end
+
         $structdef
 
         export $name
-
-        function Makie.is_attribute(::Type{$(name)}, sym::Symbol)
+        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
+        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
             sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
         end
 
-        function Makie.default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
+        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = Makie.fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
+            curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
         end
 
-        function Makie.attribute_default_expressions(::Type{$name})
+        function $(Makie).attribute_default_expressions(::Type{$name})
             $(
                 if attrs === nothing
                     Dict{Symbol, String}()
@@ -79,7 +102,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        function Makie._attribute_docs(::Type{$(name)})
+        function $(Makie)._attribute_docs(::Type{$(name)})
             Dict(
                 $(
                     (attrs !== nothing ?
@@ -89,7 +112,10 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
             )
         end
 
-        Makie.has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+
+        docstring_modified = make_block_docstring($name, user_docstring)
+        @doc docstring_modified $name
     end
 
     esc(q)
@@ -102,32 +128,18 @@ function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
     :(Dict())
 end
 
-block_docs(x) = ""
+function make_block_docstring(T::Type{<:Block}, docstring)
+    """
+    **`$T <: Block`**
 
-function Docs.getdoc(@nospecialize T::Type{<:Block})
-    if T === Block
-        Markdown.parse("""
-            abstract type Block
+    $docstring
 
-        `Block` is an abstract type that groups objects which can be placed in a `Figure`
-        and positioned in its `GridLayout` as rectangular objects.
+    **Attributes**
 
-        Concrete `Block` types should only be defined via the `@Block` macro.
-        """)
-    else
-        s = """
-        **`$T <: Block`**
+    (type `?$T.x` in the REPL for more information about attribute `x`)
 
-        $(block_docs(T))
-
-        **Attributes**
-
-        (type `?$T.x` in the REPL for more information about attribute `x`)
-
-        $(_attribute_list(T))
-        """
-        Markdown.parse(s)
-    end
+    $(_attribute_list(T))
+    """
 end
 
 function _attribute_list(T)
@@ -137,7 +149,7 @@ end
 
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
-    pairs = map(attrs) do a
+    exprs = map(attrs) do a
 
         d = a.default
         if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
@@ -162,10 +174,14 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             end
         end
 
-        Expr(:call, :(=>), QuoteNode(a.symbol), d)
+        :(d[$(QuoteNode(a.symbol))] = $d)
     end
 
-    :(Dict($(pairs...)))
+    quote
+        d = Dict{Symbol,Any}()
+        $(exprs...)
+        d
+    end
 end
 
 
@@ -205,44 +221,14 @@ function extract_attributes!(body)
 
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
-    function extract_attr(arg)
-        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
+    attrs::Vector{Any} = map(MakieCore.extract_attribute_metadata, args)
 
-        if has_docs
-            docs = arg.args[3]
-            attr = arg.args[4]
-        else
-            docs = nothing
-            attr = arg
-        end
-
-        if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
-            error("$attr is not a valid attribute line like :x[::Type] = default_value")
-        end
-        left = attr.args[1]
-        default = attr.args[2]
-        if left isa Symbol
-            attr_symbol = left
-            type = Any
-        else
-            if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
-                error("$left is not a Symbol or an expression such as x::Type")
-            end
-            attr_symbol = left.args[1]::Symbol
-            type = left.args[2]
-        end
-
-        (docs = docs, symbol = attr_symbol, type = type, default = default)
-    end
-
-    attrs = map(extract_attr, args)
-
-    lras = map(extract_attr, layout_related_attributes)
+    lras = map(MakieCore.extract_attribute_metadata, layout_related_attributes)
 
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)
         if i === nothing
-            push!(attrs, extract_attr(lra))
+            push!(attrs, lra)
         end
     end
 
@@ -305,6 +291,29 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
+function MakieCore.InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
+    return MakieCore.InvalidAttributeError(BT, "block", attributes)
+end
+
+function MakieCore.attribute_names(::Type{T}) where {T <: Block}
+    attrs = _attribute_docs(T)
+    # Some blocks have keyword arguments that are not attributes.
+    # TODO: Refactor intiailize_block! to just not use kwargs?
+    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
+    T <: Legend && (attrs[:entrygroups] = "")
+    T <: Menu && (attrs[:default] = "")
+    T <: LScene && (attrs[:scenekw] = "")
+    return keys(attrs)
+end
+
+function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
+    badnames = setdiff(keys(kwdict), MakieCore.attribute_names(T))
+    if !isempty(badnames)
+        throw(MakieCore.InvalidAttributeError(T, badnames))
+    end
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdict::Dict, bbox; kwdict_complete=false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -318,6 +327,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure,Scene}, args, kwdic
     end
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
+    _check_remaining_kwargs(T, non_attribute_kwargs)
 
     topscene = get_topscene(fig_or_scene)
     # retrieve the default attributes for this block given the scene theme
@@ -483,17 +493,42 @@ function Base.delete!(block::Block)
     # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
 
+    disconnect!(block)
+    block.parent = nothing
+    return
+end
+
+function unhide!(block::Block)
+    if !block.blockscene.visible[]
+        block.blockscene.visible[] = true
+    end
+    if hasproperty(block, :scene) && !block.scene.visible[]
+        block.scene.visible[] = true
+    end
+end
+
+function hide!(block::Block)
+    if block.blockscene.visible[]
+        block.blockscene.visible[] = false
+    end
+    if hasproperty(block, :scene) && block.scene.visible[]
+        block.scene.visible[] = false
+    end
+end
+
+function disconnect!(block::Block)
+    hide!(block)
     gc = GridLayoutBase.gridcontent(block)
     if gc !== nothing
         GridLayoutBase.remove_from_gridlayout!(gc)
     end
 
     if block.parent !== nothing
-        delete_from_parent!(block.parent, block)
-        block.parent = nothing
+        Makie.delete_from_parent!(block.parent, block)
     end
     return
 end
+
 
 # do nothing for scene and nothing
 function delete_from_parent!(parent, block::Block)
@@ -550,11 +585,11 @@ convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 Base.@kwdef struct Example
-    name::String
     backend::Symbol = :CairoMakie # the backend that is used for rendering
     backend_using::Symbol = backend # the backend that is shown for `using` (for CairoMakie-rendered plots of interactive stuff that should show `using GLMakie`)
     svg::Bool = true # only for CairoMakie
     code::String
+    caption::Union{Nothing,String} = nothing
 end
 
 function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String}, examples::Vector{Example}, default_str)
@@ -571,7 +606,7 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing,String},
     println(io)
 
     for (i, example) in enumerate(examples)
-        println(io, "**Example $i**: $(example.name)")
+        println(io, "**Example $i**")
         println(io, "```julia")
         # println(io)
         # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
@@ -593,7 +628,7 @@ end
 #     return
 # end
 
-function attribute_examples(b::Type{<:Block})
+function attribute_examples(b::Union{Type{<:Block},Type{<:Plot}})
     Dict{Symbol,Vector{Example}}()
 end
 

@@ -86,7 +86,10 @@ function check_framebuffer()
     return enum_to_error(status)
 end
 
-function GLFramebuffer(fb_size::NTuple{2, Int})
+Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
+    ShaderAbstractions.switch_context!(context)
+    require_context(context)
+
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
@@ -94,25 +97,25 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # Buffers we always need
     # Holds the image that eventually gets displayed
     color_buffer = Texture(
-        RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # Holds a (plot id, element id) for point picking
     objectid_buffer = Texture(
-        Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # holds depth and stencil values
     depth_buffer = Texture(
-        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
+        context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
         minfilter = :nearest, x_repeat = :clamp_to_edge,
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
     # Order Independent Transparency
     HDR_color_buffer = Texture(
-        RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
+        context, RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
     )
     OIT_weight_buffer = Texture(
-        N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
@@ -153,8 +156,28 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )::GLFramebuffer
 end
 
+function destroy!(fb::GLFramebuffer)
+    fb.id == 0 && return
+    @assert !isempty(fb.buffers) "GLFramebuffer was cleared incorrectly (i.e. not by destroy!())"
+    ctx = first(values(fb.buffers)).context
+    with_context(ctx) do
+        for buff in values(fb.buffers)
+            GLAbstraction.free(buff)
+        end
+        # Only print error if the context is not alive/active
+        id = fb.id
+        fb.id = 0
+        if GLAbstraction.context_alive(ctx) && id > 0
+            glDeleteFramebuffers(1, Ref(id))
+        end
+    end
+    return
+end
+
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    isempty(fb.buffers) && return # or error?
+    ShaderAbstractions.switch_context!(first(values(fb.buffers)).context)
     for (name, buffer) in fb.buffers
         resize_nocopy!(buffer, (w, h))
     end
@@ -202,6 +225,19 @@ end
 
 function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
+end
+
+function check_context(ctx)
+    !GLFW.is_initialized() && return "GLFW is not initialized, and therefore $ctx is invalid."
+    was_destroyed(ctx) && return "Context $ctx has been destroyed."
+    return nothing
+end
+
+function GLAbstraction.require_context_no_error(ctx, current = ShaderAbstractions.current_context())
+    msg = check_context(ctx)
+    msg !== nothing && return msg
+    ctx !== current && return "Context $ctx must be current, but $current is."
+    return nothing
 end
 
 function destroy!(nw::GLFW.Window)

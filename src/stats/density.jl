@@ -1,4 +1,4 @@
-function convert_arguments(P::PlotFunc, d::KernelDensity.UnivariateKDE)
+function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.UnivariateKDE)
     ptype = plottype(P, Lines) # choose the more concrete one
     to_plotspec(ptype, convert_arguments(ptype, d.x, d.density))
 end
@@ -11,47 +11,44 @@ function convert_arguments(::Type{<:Poly}, d::KernelDensity.UnivariateKDE)
     (points,)
 end
 
-function convert_arguments(P::PlotFunc, d::KernelDensity.BivariateKDE)
+function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.BivariateKDE)
     ptype = plottype(P, Heatmap)
     to_plotspec(ptype, convert_arguments(ptype, d.x, d.y, d.density))
 end
 
 """
-    density(values; npoints = 200, offset = 0.0, direction = :x)
+    density(values)
 
 Plot a kernel density estimate of `values`.
-`npoints` controls the resolution of the estimate, the baseline can be
-shifted with `offset` and the `direction` set to `:x` or `:y`.
-`bandwidth` and `boundary` are determined automatically by default.
-
-Statistical weights can be provided via the `weights` keyword argument.
-
-`color` is usually set to a single color, but can also be set to `:x` or
-`:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
-note that only 2-element colormaps can work correctly.
-
-## Attributes
-$(ATTRIBUTES)
 """
-@recipe(Density) do scene
-    Theme(
-        color = theme(scene, :patchcolor),
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = Makie.automatic,
-        strokecolor = theme(scene, :patchstrokecolor),
-        strokewidth = theme(scene, :patchstrokewidth),
-        linestyle = nothing,
-        strokearound = false,
-        npoints = 200,
-        offset = 0.0,
-        direction = :x,
-        boundary = automatic,
-        bandwidth = automatic,
-        weights = automatic,
-        cycle = [:color => :patchcolor],
-        inspectable = theme(scene, :inspectable)
-    )
+@recipe Density begin
+    """
+    Usually set to a single color, but can also be set to `:x` or
+    `:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
+    note that only 2-element colormaps can work correctly.
+    """
+    color = @inherit patchcolor
+    colormap = @inherit colormap
+    colorscale = identity
+    colorrange = Makie.automatic
+    strokecolor = @inherit patchstrokecolor
+    strokewidth = @inherit patchstrokewidth
+    linestyle = nothing
+    strokearound = false
+    "The resolution of the estimated curve along the dimension set in `direction`."
+    npoints = 200
+    "Shift the density baseline, for layering multiple densities on top of each other."
+    offset = 0.0
+    "The dimension along which the `values` are distributed. Can be `:x` or `:y`."
+    direction = :x
+    "Boundary of the density estimation, determined automatically if `automatic`."
+    boundary = automatic
+    "Kernel density bandwidth, determined automatically if `automatic`."
+    bandwidth = automatic
+    "Assign a vector of statistical weights to `values`."
+    weights = automatic
+    cycle = [:color => :patchcolor]
+    inspectable = @inherit inspectable
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
@@ -100,7 +97,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
     notify(lowerupper)
 
-    colorobs = Observable{RGBColors}()
+    colorobs = Observable{Any}()
     map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
         if (dir === :x && c === :x) || (dir === :y && c === :y)
             dim = dir === :x ? 1 : 2
@@ -110,7 +107,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
             dim = dir === :x ? 2 : 1
             return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
         else
-            return to_color(c)
+            return c
         end
     end
 

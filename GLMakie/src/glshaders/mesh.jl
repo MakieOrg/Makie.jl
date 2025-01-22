@@ -1,38 +1,37 @@
-function to_opengl_mesh!(result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
-    m_attr = map(convert(Observable, mesh_obs)) do m
-        return (m, GeometryBasics.attributes(m))
-    end
+function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.Mesh})
+    m = convert(Observable, mesh_obs)
 
-    result[:faces] = indexbuffer(map(((m,_),)-> faces(m), m_attr))
-    result[:vertices] = GLBuffer(map(((m, _),) -> metafree(coordinates(m)), m_attr))
-
-    attribs = m_attr[][2]
+    result[:faces]    = indexbuffer(context, map(faces, m))
+    result[:vertices] = GLBuffer(context, map(coordinates, m))
 
     function to_buffer(name, target)
-        if haskey(attribs, name)
-            val = attribs[name]
+        if hasproperty(m[], name)
+            val = getproperty(m[], name)
             if mesh_obs isa Observable
-                val = map(((m, a),)-> a[name], m_attr)
+                val = map(m -> getproperty(m, name), m)
             end
             if val[] isa AbstractVector
-                result[target] = GLBuffer(map(metafree, val))
+                result[target] = GLBuffer(context, val)
             elseif val[] isa AbstractMatrix
-                result[target] = Texture(val)
+                result[target] = Texture(context, val)
             else
                 error("unsupported attribute: $(name)")
             end
         end
     end
+
     to_buffer(:color, :vertex_color)
     to_buffer(:uv, :texturecoordinates)
     to_buffer(:uvw, :texturecoordinates)
+
     # Only emit normals, when we shadin'
     shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
-        to_buffer(:normals, :normals)
+        to_buffer(:normal, :normals)
     end
     to_buffer(:attribute_id, :attribute_id)
+
     return result
 end
 
@@ -50,7 +49,7 @@ function draw_mesh(screen, data::Dict)
         color_norm = nothing
         fetch_pixel = false
         texturecoordinates = Vec2f(0) => GLBuffer
-        uv_scale = Vec2f(1)
+        uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
@@ -60,6 +59,7 @@ function draw_mesh(screen, data::Dict)
             "lighting.frag",
             view = Dict(
                 "shading" => light_calc(shading),
+                "picking_mode" => to_value(get(data, :picking_mode, "")),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),

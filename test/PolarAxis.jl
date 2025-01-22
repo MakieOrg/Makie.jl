@@ -11,10 +11,10 @@
             f[1, 1], thetalimits = (0, pi/4), rticklabelrotation = Makie.automatic,
             rticklabelpad = 10f0
         )
-        rticklabelplot = po.overlay.plots[5].plots[1]
+        rticklabelplot = po.overlay.plots[8].plots[1]
 
-        # Mostly for verfication that we got the right plot
-        @test po.overlay.plots[5][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
+        # Mostly for verification that we got the right plot
+        @test po.overlay.plots[8][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
 
         # automatic
         for i in 1:4
@@ -148,5 +148,29 @@
         fig = Figure()
         ax = PolarAxis(fig[1, 1], radius_at_origin = -1.0, rlimits = (0, 10))
         @test ax.scene.transformation.transform_func[].r0 == -1.0
+    end
+
+    @testset "PolarAxis fontsize from Figure()" begin
+        fig = Figure(fontsize = 50)
+        ax = PolarAxis(fig[1, 1])
+        @test ax.rticklabelsize[] == 50
+        @test ax.thetaticklabelsize[] == 50
+    end
+
+    @testset "PolarAxis fontsize from :Axis" begin
+        fig = Figure(; Axis = (; xticklabelsize = 35, yticklabelsize = 65))
+        ax = PolarAxis(fig[1, 1])
+        @test ax.thetaticklabelsize[] == 35
+        @test ax.rticklabelsize[] == 65
+    end
+
+    @testset "PolarAxis fontsize from Theme()" begin
+        fontsize_theme = Theme(fontsize = 10)
+        with_theme(fontsize_theme) do
+            fig = Figure()
+            ax = PolarAxis(fig[1, 1])
+            @test ax.rticklabelsize[] == 10
+            @test ax.thetaticklabelsize[] == 10
+        end
     end
 end

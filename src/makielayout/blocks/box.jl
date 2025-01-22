@@ -48,7 +48,6 @@ function attribute_examples(::Type{Box})
     Dict(
         :color => [
             Example(
-                name = "Colors",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], color = :red)
@@ -61,7 +60,6 @@ function attribute_examples(::Type{Box})
         ],
         :strokecolor => [
             Example(
-                name = "Stroke colors",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], strokecolor = :red)
@@ -74,7 +72,6 @@ function attribute_examples(::Type{Box})
         ],
         :strokewidth => [
             Example(
-                name = "Stroke widths",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], strokewidth = 1)
@@ -86,7 +83,6 @@ function attribute_examples(::Type{Box})
         ],
         :linestyle => [
             Example(
-                name = "Stroke style",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], linestyle = :solid)
@@ -98,7 +94,6 @@ function attribute_examples(::Type{Box})
         ],
         :cornerradius => [
             Example(
-                name = "Corner radius",
                 code = """
                     fig = Figure()
                     Box(fig[1, 1], cornerradius = 0)

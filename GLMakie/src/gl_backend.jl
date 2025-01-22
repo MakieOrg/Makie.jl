@@ -16,35 +16,45 @@ using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
-function get_texture!(atlas::Makie.TextureAtlas)
-    current_ctx = GLAbstraction.current_context()
-    if !GLAbstraction.context_alive(current_ctx)
-        return nothing
+function cleanup_texture_atlas!(context)
+    to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
+    for (atlas, ctx) in to_delete
+        tex, func = pop!(atlas_texture_cache, (atlas, ctx))
+        Makie.remove_font_render_callback!(atlas, func)
+        GLAbstraction.free(tex)
     end
+    GLAbstraction.require_context_no_error(context) # avoid try .. catch at call site
+    return
+end
 
+function get_texture!(context, atlas::Makie.TextureAtlas)
     # clean up dead context!
     filter!(atlas_texture_cache) do ((ptr, ctx), tex_func)
         if GLAbstraction.context_alive(ctx)
             return true
         else
+            tex_func[1].id = 0 # Should get cleaned up when OpenGL context gets destroyed
             Makie.remove_font_render_callback!(atlas, tex_func[2])
             return false
         end
     end
 
-    tex, func = get!(atlas_texture_cache, (pointer(atlas.data), current_ctx)) do
+    if haskey(atlas_texture_cache, (atlas, context))
+        return atlas_texture_cache[(atlas, context)][1]
+    else
+        require_context(context)
         tex = Texture(
-                atlas.data,
-                minfilter = :linear,
-                magfilter = :linear,
-                # TODO: Consider alternatives to using the builtin anisotropic
-                # samplers for signed distance fields; the anisotropic
-                # filtering should happen *after* the SDF thresholding, but
-                # with the builtin sampler it happens before.
-                anisotropic = 16f0,
-                mipmap = true
+            context, atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            # TODO: Consider alternatives to using the builtin anisotropic
+            # samplers for signed distance fields; the anisotropic
+            # filtering should happen *after* the SDF thresholding, but
+            # with the builtin sampler it happens before.
+            anisotropic = 16f0,
+            mipmap = true
         )
-        # update the texture, whenever a new font is added to the atlas
+
         function callback(distance_field, rectangle)
             ctx = tex.context
             if GLAbstraction.context_alive(ctx)
@@ -55,9 +65,9 @@ function get_texture!(atlas::Makie.TextureAtlas)
             end
         end
         Makie.font_render_callback!(callback, atlas)
-        return (tex, callback)
+        atlas_texture_cache[(atlas, context)] = (tex, callback)
+        return tex
     end
-    return tex
 end
 
 include("glwindow.jl")
@@ -69,6 +79,7 @@ include("glshaders/image_like.jl")
 include("glshaders/mesh.jl")
 include("glshaders/particles.jl")
 include("glshaders/surface.jl")
+include("glshaders/voxel.jl")
 
 include("picking.jl")
 include("rendering.jl")

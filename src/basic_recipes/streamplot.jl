@@ -11,34 +11,32 @@ v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
 streamplot(v, -2..2, -2..2)
 ```
 
-One can choose the color of the lines by passing a function `color_func(dx::Point)` to the `color` attribute.
-By default this is set to `norm`, but can be set to any function or composition of functions.
-The `dx` which is passed to `color_func` is the output of `f` at the point being colored.
-
-## Attributes
-$(ATTRIBUTES)
-
 ## Implementation
 See the function `Makie.streamplot_impl` for implementation details.
 """
-@recipe(StreamPlot, f, limits) do scene
-    attr = Attributes(
-        stepsize = 0.01,
-        gridsize = (32, 32, 32),
-        maxsteps = 500,
-        color = norm,
+@recipe StreamPlot (f, limits) begin
+    stepsize = 0.01
+    gridsize = (32, 32, 32)
+    maxsteps = 500
+    """
+    One can choose the color of the lines by passing a function `color_func(dx::Point)` to the `color` attribute.
+    This can be set to any function or composition of functions.
+    The `dx` which is passed to `color_func` is the output of `f` at the point being colored.
+    """
+    color = norm
 
-        arrow_size = automatic,
-        arrow_head = automatic,
-        density = 1.0,
-        quality = 16,
+    arrow_size = automatic
+    arrow_head = automatic
+    density = 1.0
+    quality = 16
 
-        linewidth = theme(scene, :linewidth),
-        linestyle = nothing,
-    )
-    MakieCore.colormap_attributes!(attr, theme(scene, :colormap))
-    MakieCore.generic_plot_attributes!(attr)
-    return attr
+    linewidth = @inherit linewidth
+    linecap = @inherit linecap
+    joinstyle = @inherit joinstyle
+    miter_limit = @inherit miter_limit
+    linestyle = nothing
+    MakieCore.mixin_colormap_attributes()...
+    MakieCore.mixin_generic_plot_attributes()...
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
@@ -51,8 +49,8 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, z
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     zmin, zmax = extrema(zrange)
-    mini = Vec3f(xmin, ymin, zmin)
-    maxi = Vec3f(xmax, ymax, zmax)
+    mini = Vec3(xmin, ymin, zmin)
+    maxi = Vec3(xmax, ymax, zmax)
     return (f, Rect(mini, maxi .- mini))
 end
 
@@ -183,6 +181,9 @@ function plot!(p::StreamPlot)
         lift(x->x[3], p, data),
         color = lift(last, p, data),
         linestyle = p.linestyle,
+        linecap = p.linecap,
+        joinstyle = p.joinstyle,
+        miter_limit = p.miter_limit,
         linewidth = p.linewidth;
         colormap_args...,
         generic_plot_attributes...
@@ -228,7 +229,7 @@ function plot!(p::StreamPlot)
     scatterfun(N)(
         p,
         lift(first, p, data);
-        markersize=arrow_size, rotations=rotations,
+        markersize=arrow_size, rotation=rotations,
         color=lift(x -> x[4], p, data),
         marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
         colormap_args...,

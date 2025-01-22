@@ -1,5 +1,4 @@
 
-function convert_arguments end
 
 """
     convert_attribute(value, attribute::Key[, plottype::Key])
@@ -31,8 +30,6 @@ struct NoConversion <: ConversionTrait end
 conversion_trait(::Type) = NoConversion()
 conversion_trait(T::Type, args...) = conversion_trait(T)
 
-convert_arguments(::NoConversion, args...) = args
-
 """
     PointBased() <: ConversionTrait
 
@@ -41,7 +38,6 @@ Plots with the `PointBased` trait convert their input data to a
 """
 struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<: XYBased}) = PointBased()
-conversion_trait(::Type{<: Text}) = PointBased()
 
 """
     GridBased <: ConversionTrait
@@ -100,3 +96,57 @@ conversion_trait(::Type{<: Image}) = ImageLike()
 
 struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
+
+function convert_arguments end
+
+convert_arguments(::NoConversion, args...; kw...) = args
+
+get_element_type(::T) where {T} = T
+function get_element_type(arr::AbstractArray{T}) where {T}
+    if T == Any
+        return mapreduce(typeof, promote_type, arr)
+    else
+        return T
+    end
+end
+
+types_for_plot_arguments(trait) = nothing
+function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
+    p = types_for_plot_arguments(P)
+    isnothing(p) || return p
+    return types_for_plot_arguments(Trait)
+end
+
+function types_for_plot_arguments(::PointBased)
+    return Tuple{AbstractVector{<:Union{Point2, Point3}}}
+end
+
+should_dim_convert(::Type) = false
+
+"""
+    MakieCore.should_dim_convert(::Type{<: Plot}, args)::Bool
+    MakieCore.should_dim_convert(eltype::DataType)::Bool
+
+Returns `true` if the plot type should convert its arguments via DimConversions.
+Needs to be overloaded for recipes that want to use DimConversions. Also needs
+to be overloaded for DimConversions, e.g. for CategoricalConversion:
+
+```julia
+    MakieCore.should_dim_convert(::Type{Categorical}) = true
+```
+
+`should_dim_convert(::Type{<: Plot}, args)` falls back on checking if
+`has_typed_convert(plot_or_trait)` and `should_dim_convert(get_element_type(args))`
+ are true. The former is defined as true by `@convert_target`, i.e. when
+`convert_arguments_typed` is defined for the given plot type or conversion trait.
+The latter marks specific types as convertible.
+
+If a recipe wants to use dim conversions, it should overload this function:
+```julia
+    MakieCore.should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
+``
+"""
+function should_dim_convert(P, arg)
+    isnothing(types_for_plot_arguments(P)) && return false
+    return should_dim_convert(get_element_type(arg))
+end

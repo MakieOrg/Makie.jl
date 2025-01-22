@@ -118,7 +118,7 @@ end
 
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
-    to_opengl_mesh!(data, primitive)
+    to_opengl_mesh!(screen.glscreen, data, primitive)
     shading = pop!(data, :shading, FastShading)::Makie.MakieCore.ShadingAlgorithm
     @gen_defaults! data begin
         scale = nothing
@@ -142,7 +142,7 @@ function draw_surface(screen, main, data::Dict)
         highclip = RGBAf(0, 0, 0, 0)
         lowclip = RGBAf(0, 0, 0, 0)
 
-        uv_scale = Vec2f(1)
+        uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         transparency = false
         shader = GLVisualizeShader(
@@ -153,6 +153,7 @@ function draw_surface(screen, main, data::Dict)
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
                 "shading" => light_calc(shading),
+                "picking_mode" => "#define PICKING_INDEX_FROM_UV",
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),

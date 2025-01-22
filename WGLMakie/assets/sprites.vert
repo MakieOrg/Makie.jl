@@ -1,5 +1,10 @@
+precision highp float;
+precision highp int;
+
 uniform mat4 projection;
 uniform mat4 view;
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 uniform float atlas_tex_dim;
 
@@ -8,8 +13,10 @@ out vec2 frag_uv;
 out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
+out float o_clip_distance[8];
 
 flat out uint frag_instance_id;
+flat out vec2 f_sprite_scale;
 
 #define ANTIALIAS_RADIUS 0.8
 
@@ -58,25 +65,33 @@ float _determinant(mat2 m) {
   return m[0][0] * m[1][1] - m[0][1] * m[1][0];
 }
 
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
+
 void main(){
     // get_pos() returns the position of the scatter marker
     // get_position() returns the (relative) position of the current quad vertex
 
     vec2 bbox_radius = 0.5 * get_markersize();
     vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
-
+    f_sprite_scale = get_markersize();
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
 
+    vec4 position_world = model * vec4(tovec3(get_pos()), 1);
+    process_clip_planes(position_world.xyz);
+
     // Compute centre of billboard in clipping coordinates
     // Always transform text/scatter position argument
-    vec4 data_point = get_preprojection() * model * vec4(tovec3(get_pos()), 1);
+    vec4 data_point = get_preprojection() * position_world;
     // maybe transform marker_offset + glyph offsets
     data_point = vec4(data_point.xyz / data_point.w + mat3(trans) * tovec3(get_marker_offset()), 1);
     data_point = pview * data_point;
 
     // Compute transform for the offset vectors from the central point
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotations()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_rotation()) * trans;
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
 
     vec4 vclip = data_point + sprite_center;

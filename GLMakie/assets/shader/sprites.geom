@@ -39,13 +39,17 @@ uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
 uniform float depth_shift;
+uniform mat4 preprojection, projection, view, model;
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 in int g_primitive_index[];
 in vec4 g_uv_texture_bbox[];
 in vec4 g_color[];
 in vec4 g_stroke_color[];
 in vec4 g_glow_color[];
-in vec3 g_position[];
+in vec3 g_world_position[];
+in vec3 g_marker_offset[];
 in vec4 g_rotation[];
 in vec4 g_offset_width[];
 in uvec2 g_id[];
@@ -62,7 +66,25 @@ out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 flat out vec2 f_sprite_scale;
 
-uniform mat4 projection, view, model;
+
+bool is_clipped(vec3 world_pos)
+{
+    // We clip scatter points based on the user position rather than the 
+    // sprite vertex positions.
+    // distance = dot(world_pos - plane.point, plane.normal)
+    // precalculated: dot(plane.point, plane.normal) -> plane.w
+    for (int i = 0; i < num_clip_planes; i++) {
+        // WSL segfaults with geometry shaders that use gl_ClipDistance so we
+        // instead just check if we should clip here and emit no primitive if
+        // that's the case.
+        float dist = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+        if (dist < 0.0) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 float get_distancefield_scale(sampler2D distancefield){
     // Glyph distance field units are in pixels; convert to dimensionless
@@ -92,7 +114,6 @@ void emit_vertex(vec4 vertex, vec2 uv)
     EmitVertex();
 }
 
-
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
@@ -104,6 +125,13 @@ void main(void)
 {
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
+
+    // Position of sprite center in marker space + clipping
+    if (is_clipped(g_world_position[0]))
+        return;
+    
+    vec4 p = preprojection * vec4(g_world_position[0], 1);
+    vec3 position = p.xyz / p.w + g_marker_offset[0];
 
     // emit quad as triangle strip
     // v3. ____ . v4
@@ -123,7 +151,7 @@ void main(void)
     trans = (billboard ? projection : pview) * qmat(g_rotation[0]) * trans;
 
     // Compute centre of billboard in clipping coordinates
-    vec4 vclip = pview*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
+    vec4 vclip = pview*vec4(position, 1) + trans*vec4(sprite_bbox_centre,0,0);
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to

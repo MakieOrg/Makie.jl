@@ -1,6 +1,6 @@
-function bar_label_formatter(value::Number)
-    return string(round(value; digits=3))
-end
+bar_label_formatter(value::Number) = string(round(value; digits=3))
+bar_label_formatter(label::String) = label
+bar_label_formatter(label::LaTeXString) = label
 
 """
     bar_default_fillto(tf, ys, offset)::(ys, offset)
@@ -21,7 +21,7 @@ function bar_default_fillto(tf, ys, offset, in_y_direction)
     return ys, offset
 end
 
-# `fillto` is related to `y-axis` transofrmation only, thus we expect `tf::Tuple`
+# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
 function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
     _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
     if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
@@ -35,54 +35,55 @@ function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
 end
 
 """
-    barplot(x, y; kwargs...)
+    barplot(positions, heights; kwargs...)
 
-Plots a barplot; `y` defines the height. `x` and `y` should be 1 dimensional.
-Bar width is determined by the attribute `width`, shrunk by `gap` in the following way:
-`width -> width * (1 - gap)`.
-
-## Attributes
-$(ATTRIBUTES)
+Plots a barplot.
 """
-@recipe(BarPlot, x, y) do scene
-    Attributes(;
-        fillto = automatic,
-        offset = 0.0,
-        color = theme(scene, :patchcolor),
-        alpha = 1.0,
-        colormap = theme(scene, :colormap),
-        colorscale = identity,
-        colorrange = automatic,
-        lowclip = automatic,
-        highclip = automatic,
-        nan_color = :transparent,
-        dodge = automatic,
-        n_dodge = automatic,
-        gap = 0.2,
-        dodge_gap = 0.03,
-        marker = Rect,
-        stack = automatic,
-        strokewidth = theme(scene, :patchstrokewidth),
-        strokecolor = theme(scene, :patchstrokecolor),
-        width = automatic,
-        direction = :y,
-        visible = theme(scene, :visible),
-        inspectable = theme(scene, :inspectable),
-        cycle = [:color => :patchcolor],
-
-        bar_labels = nothing,
-        flip_labels_at = Inf,
-        label_rotation = 0π,
-        label_color = theme(scene, :textcolor),
-        color_over_background = automatic,
-        color_over_bar = automatic,
-        label_offset = 5,
-        label_font = theme(scene, :font),
-        label_size = theme(scene, :fontsize),
-        label_formatter = bar_label_formatter,
-        label_align = automatic,
-        transparency = false
-    )
+@recipe BarPlot (x, y) begin
+    """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
+    With a log scale, the automatic default is half the minimum value because zero is an invalid value for a log scale.
+    """
+    fillto = automatic
+    offset = 0.0
+    color = @inherit patchcolor
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
+    dodge = automatic
+    n_dodge = automatic
+    """
+    The final width of the bars is calculated as `w * (1 - gap)` where `w` is the width of each bar
+    as determined with the `width` attribute.
+    """
+    gap = 0.2
+    dodge_gap = 0.03
+    stack = automatic
+    strokewidth = @inherit patchstrokewidth
+    strokecolor = @inherit patchstrokecolor
+    """
+    The gapless width of the bars. If `automatic`, the width `w` is calculated as `minimum(diff(sort(unique(positions)))`.
+    The actual width of the bars is calculated as `w * (1 - gap)`.
+    """
+    width = automatic
+    "Controls the direction of the bars, can be `:y` (vertical) or `:x` (horizontal)."
+    direction = :y
+    cycle = [:color => :patchcolor]
+    "Labels added at the end of each bar."
+    bar_labels = nothing
+    flip_labels_at = Inf
+    label_rotation = 0π
+    label_color = @inherit textcolor
+    color_over_background = automatic
+    color_over_bar = automatic
+    "The distance of the labels from the bar ends in screen units. Does not apply when `label_position = :center`."
+    label_offset = 5
+    "The font of the bar labels."
+    label_font = @inherit font
+    "The font size of the bar labels."
+    label_size = @inherit fontsize
+    label_formatter = bar_label_formatter
+    label_align = automatic
+    "The position of each bar's label relative to the bar. Possible values are `:end` or `:center`."
+    label_position = :end
 end
 
 conversion_trait(::Type{<: BarPlot}) = PointBased()
@@ -92,7 +93,7 @@ function bar_rectangle(x, y, width, fillto, in_y_direction)
     ymin = min(fillto, y)
     ymax = max(fillto, y)
     w = abs(width)
-    rect = Rectf(x - (w / 2f0), ymin, w, ymax - ymin)
+    rect = Rectd(x - (w / 2f0), ymin, w, ymax - ymin)
     return in_y_direction ? rect : flip(rect)
 end
 
@@ -173,9 +174,9 @@ function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direc
 end
 
 function text_attributes(values, in_y_direction, flip_labels_at, color_over_background, color_over_bar,
-                         label_offset, label_rotation, label_align)
-    aligns = Vec2f[]
-    offsets = Vec2f[]
+                         label_offset, label_rotation, label_align, label_position)
+    aligns = Vec2d[]
+    offsets = Vec2d[]
     text_colors = RGBAf[]
     swap(x, y) = in_y_direction ? (x, y) : (y, x)
     geti(x::AbstractArray, i) = x[i]
@@ -183,7 +184,7 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     function flip(k)
         if flip_labels_at isa Number
             return k > flip_labels_at || k < 0
-        elseif flip_labels_at isa Tuple{<:Number, <: Number}
+        elseif flip_labels_at isa Tuple{Number, Number}
             return (k > flip_labels_at[2] || k < 0) && k > flip_labels_at[1]
         else
             error("flip_labels_at needs to be a tuple of two numbers (low, high), or a single number (high)")
@@ -191,42 +192,61 @@ function text_attributes(values, in_y_direction, flip_labels_at, color_over_back
     end
 
     for (i, k) in enumerate(values)
-
-        isflipped = flip(k)
-
-        push!(aligns, calculate_bar_label_align(label_align, label_rotation, in_y_direction, isflipped))
-
-        if isflipped
-            # plot text inside bar
-            push!(offsets, swap(0, -label_offset))
+        if label_position == :center
+            push!(aligns, label_align === automatic ? Vec2d(0.5, 0.5) : to_align(label_align))
+            push!(offsets, Vec2d(0, 0))
             push!(text_colors, geti(color_over_bar, i))
         else
-            # plot text next to bar
-            push!(offsets, swap(0, label_offset))
-            push!(text_colors, geti(color_over_background, i))
+            isflipped = flip(k)
+
+            push!(aligns, calculate_bar_label_align(label_align, label_rotation, in_y_direction, isflipped))
+
+            if isflipped
+                # plot text inside bar
+                push!(offsets, swap(0, -sv_getindex(label_offset, i)))
+                push!(text_colors, geti(color_over_bar, i))
+            else
+                # plot text next to bar
+                push!(offsets, swap(0, sv_getindex(label_offset, i)))
+                push!(text_colors, geti(color_over_background, i))
+            end
         end
     end
     return aligns, offsets, text_colors
 end
 
-function barplot_labels(xpositions, ypositions, bar_labels, in_y_direction, flip_labels_at,
+function barplot_labels(xpositions, ypositions, offset, bar_labels, in_y_direction, flip_labels_at,
                         color_over_background, color_over_bar, label_formatter, label_offset, label_rotation,
-                        label_align)
+                        label_align, label_position, fillto)
     if bar_labels isa Symbol && bar_labels in (:x, :y)
         bar_labels = map(xpositions, ypositions) do x, y
             if bar_labels === :x
-                label_formatter.(x)
+                x
             else
-                label_formatter.(y)
+                y
             end
         end
     end
     if bar_labels isa AbstractVector
         if length(bar_labels) == length(xpositions)
             attributes = text_attributes(ypositions, in_y_direction, flip_labels_at, color_over_background,
-                                         color_over_bar, label_offset, label_rotation, label_align)
-            label_pos = map(xpositions, ypositions, bar_labels) do x, y, l
-                return (string(l), in_y_direction ? Point2f(x, y) : Point2f(y, x))
+                                         color_over_bar, label_offset, label_rotation, label_align, label_position)
+            label_pos = broadcast(xpositions, ypositions, offset, bar_labels, label_position, fillto) do x, y, off, l, lpos, fto
+                str = string(label_formatter(l))
+                p = if in_y_direction
+                    if lpos == :end
+                        Point2d(x, y+off)
+                    else
+                        Point2d(x, 0.5 * (y + fto) + off)
+                    end
+                else
+                    if lpos == :end
+                        Point2d(y, x+off)
+                    else
+                        Point2d(0.5 * (y + fto), x+off)
+                    end
+                end
+                return (str, p)
             end
             return (label_pos, attributes...)
         else
@@ -240,15 +260,15 @@ end
 function Makie.plot!(p::BarPlot)
     bar_points = p[1]
     if !(eltype(bar_points[]) <: Point2)
-        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`.")
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(bar_points[])")
     end
-    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2f}[])
-    label_aligns = Observable(Vec2f[])
-    label_offsets = Observable(Vec2f[])
+    labels = Observable(Tuple{Union{String,LaTeXStrings.LaTeXString}, Point2d}[])
+    label_aligns = Observable(Vec2d[])
+    label_offsets = Observable(Vec2d[])
     label_colors = Observable(RGBAf[])
     function calculate_bars(xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
                             dir, bar_labels, flip_labels_at, label_color, color_over_background,
-                            color_over_bar, label_formatter, label_offset, label_rotation, label_align)
+                            color_over_bar, label_formatter, label_offset, label_rotation, label_align, label_position)
 
         in_y_direction = get((y=true, x=false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
@@ -296,9 +316,9 @@ function Makie.plot!(p::BarPlot)
         if !isnothing(bar_labels)
             oback = color_over_background === automatic ? label_color : color_over_background
             obar = color_over_bar === automatic ? label_color : color_over_bar
-            label_args = barplot_labels(x̂, y, bar_labels, in_y_direction,
+            label_args = barplot_labels(x̂, y, offset, bar_labels, in_y_direction,
                                         flip_labels_at, to_color(oback), to_color(obar),
-                                        label_formatter, label_offset, label_rotation, label_align)
+                                        label_formatter, label_offset, label_rotation, label_align, label_position, fillto)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
 
@@ -307,11 +327,11 @@ function Makie.plot!(p::BarPlot)
 
     bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
                 p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align; priority = 1)
+                p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align, p.label_position; priority = 1)
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency,
+        inspectable = p.inspectable, transparency = p.transparency, space = p.space,
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
     )
 
