@@ -51,8 +51,12 @@ function create_app()
     selection_string = ["Showing new recorded", "Showing old reference"]
     score_thresholds = [0.05, 0.03, 0.01]
 
-    function refimage_selection_checkbox(marked, current_file)
-        local_marked = Observable(false)
+    function refimage_selection_checkbox(marked, current_file, mark_all = nothing)
+        if mark_all === nothing
+            local_marked = Observable(false)
+        else
+            local_marked = map(identity, mark_all)
+        end
         on(local_marked) do is_marked
             if is_marked
                 push!(marked[], current_file)
@@ -66,6 +70,14 @@ function create_app()
             Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
             " $current_file"
         )
+    end
+
+    function check_all_checkbox()
+        checked = Observable(false) # maps to individual checkboxes which update marked
+        return DOM.div(
+            Checkbox(checked, Dict{Symbol, Any}(:style => checkbox_style)),
+            " Toggle All"
+        ), checked
     end
 
     function media_element(img_name, local_path)
@@ -88,13 +100,15 @@ function create_app()
 
         marked = Observable(Set{String}())
 
+        toggle_all_cb, mark_all = check_all_checkbox()
+
         cards = Any[]
         for img_name in refimages
             for backend in backends
 
                 current_file = backend * "/" * img_name
                 if current_file in files
-                    cb = refimage_selection_checkbox(marked, current_file)
+                    cb = refimage_selection_checkbox(marked, current_file, mark_all)
                     local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
                     media = media_element(img_name, local_path)
                     card = Card(DOM.div(cb, media), style = Styles(card_css))
@@ -106,17 +120,19 @@ function create_app()
 
         end
 
-        return cards, marked
+        return toggle_all_cb, cards, marked
     end
 
 
     # Newly added Images
 
-    new_cards, marked_for_upload = create_simple_grid_content("new_files.txt", "recorded")
+    new_checkbox, new_cards, marked_for_upload =
+        create_simple_grid_content("new_files.txt", "recorded")
 
     # Deleted/Missing Images
 
-    missing_cards, marked_for_deletion = create_simple_grid_content("missing_files.txt", "reference")
+    missing_checkbox, missing_cards, marked_for_deletion =
+        create_simple_grid_content("missing_files.txt", "reference")
 
 
     # Updates images
@@ -214,14 +230,14 @@ function create_app()
     new_image_section = DOM.div(
         DOM.h2("New images without references"),
         DOM.div("The selected CI run produced an image for which no reference image exists. Selected images will be added as new reference images."),
-        DOM.div("TODO: toggle all"),
+        new_checkbox,
         Grid(new_cards, columns = "1fr 1fr 1fr")
     )
 
     missing_recordings_section = DOM.div(
         DOM.h2("Old reference images without recordings"),
         DOM.div("The selected CI run did not produce an image, but a reference image exists. This implies that a reference test was deleted or renamed. Selected images will be deleted from the reference images."),
-        DOM.div("TODO: toggle all"),
+        missing_checkbox,
         Grid(missing_cards, columns = "1fr 1fr 1fr")
     )
 
