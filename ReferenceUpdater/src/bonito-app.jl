@@ -42,7 +42,9 @@ function create_app()
     )
 
     # TODO: fit checkbox size to text
-    checkbox_style = Styles()
+    checkbox_style = Styles(
+        CSS("transform" => "scale(1)")
+    )
 
     # TODO: Is there a better way to handle default with overwrites?
     card_css = CSS(
@@ -57,13 +59,13 @@ function create_app()
 
     marked = Set{String}()
 
-    # TODO: one grid is probably better than a million single row grids...
-    images = map(imgs_with_score) do img_name
+    cards = Any[]
+    for img_name in imgs_with_score
 
         # [] $path
         # [Showing Reference/Recorded]  ---  Score: $score # TODO:
         # image
-        cards = map(backends) do backend
+        for backend in backends
 
             current_file = backend * "/" * img_name
             if haskey(lookup, current_file)
@@ -82,9 +84,9 @@ function create_app()
                     " $current_file"
                 )
 
+
                 score = round(lookup[current_file]; digits=4)
                 score_text = DOM.div("Score: $score")
-
                 card_style = Styles(card_css, CSS(
                     "background-color" => if score > 0.05
                         "#ffbbbb"
@@ -98,7 +100,7 @@ function create_app()
                 ))
 
                 path_button = Bonito.Button("recorded", style = button_style)
-                selection = 1 # Recorded (new), Reference (old)
+                selection = 2 # Recorded (new), Reference (old)
                 local_path = map(path_button.value) do click
                     selection = mod1(selection + 1, 2)
                     path_button.content[] = selection_string[selection]
@@ -135,13 +137,13 @@ function create_app()
                 end
 
                 # TODO: background
-                return Card(Col(cb, score_text, path_button, media), style = card_style)
+                card = Card(Col(cb, score_text, path_button, media), style = card_style)
+                push!(cards, card)
             else
-                return Card(DOM.h1("N/A"))
+                push!(cards, Card(DOM.h1("N/A")))
             end
         end
 
-        return Grid(cards, columns = "1fr 1fr 1fr")
     end
 
     update_section = DOM.div(
@@ -171,14 +173,15 @@ function create_app()
     main_section = DOM.div(
         DOM.h2("Images with references"),
         DOM.div("This is the normal case where the selected CI run produced an image and the reference image exists. Each row shows one image per backend from the same reference image test, which can be compared with its reference image. Rows are sorted based on the maximum row score (bigger = more different). Red cells fail CI (assuming the thresholds are up to date), yellow cells may but likely don't have significant visual difference and gray cells are visually equivalent."),
-        images...
+        Grid(cards, columns = "1fr 1fr 1fr")
     )
 
     return DOM.div(
         update_section,
         new_image_section,
         missing_recordings_section,
-        main_section
+        main_section,
+        style = Styles(CSS("font-family" => "sans-serif"))
     )
 end
 
