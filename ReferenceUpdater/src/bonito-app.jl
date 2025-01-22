@@ -11,9 +11,9 @@ function create_app()
     lookup = Dict(imgs .=> scores)
 
     # TODO: don't filter out videos
-    imgs_with_score = filter(x -> endswith(x, ".png"), unique(map(imgs) do img
+    imgs_with_score = unique(map(imgs) do img
         replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-    end))
+    end)
 
     function get_score(img_name)
         backends = ["CairoMakie", "GLMakie", "WGLMakie"]
@@ -44,14 +44,27 @@ function create_app()
     # TODO: fit checkbox size to text
     checkbox_style = Styles()
 
+    # TODO: Is there a better way to handle default with overwrites?
+    card_css = CSS(
+        "margin" => "0.25em",
+        "padding" => "0.5em",
+        "border" => "2px solid lightblue",
+        # "background-color" => "#eee",
+        "border-radius" => "1em",
+    )
+
+    max_width = Styles(CSS("max-width" => "100%"))
+
     marked = Set{String}()
 
+    # TODO: one grid is probably better than a million single row grids...
     images = map(imgs_with_score) do img_name
 
         # [] $path
         # [Showing Reference/Recorded]  ---  Score: $score # TODO:
         # image
         cards = map(backends) do backend
+
             current_file = backend * "/" * img_name
             if haskey(lookup, current_file)
 
@@ -72,21 +85,57 @@ function create_app()
                 score = round(lookup[current_file]; digits=4)
                 score_text = DOM.div("Score: $score")
 
+                card_style = Styles(card_css, CSS(
+                    "background-color" => if score > 0.05
+                        "#ffbbbb"
+                    elseif score > 0.03
+                        "#ffddbb"
+                    elseif score > 0.001
+                        "#ffffdd"
+                    else
+                        "#eeeeee"
+                    end
+                ))
+
                 path_button = Bonito.Button("recorded", style = button_style)
-
                 selection = 1 # Recorded (new), Reference (old)
-
-                image_element = map(path_button.value) do click
+                local_path = map(path_button.value) do click
                     selection = mod1(selection + 1, 2)
                     path_button.content[] = selection_string[selection]
                     folder = selected_folder[selection]
+                    return normpath(joinpath(root_path, folder, backend, img_name))
+                    # local_path = normpath(joinpath(root_path, folder, backend, img_name))
+                    # return Bonito.Asset(local_path)
+                end
 
-                    bin = read(normpath(joinpath(root_path, folder, backend, img_name)))
-                    return DOM.img(src=Bonito.BinaryAsset(bin, "image/png"))
+
+                filetype = split(img_name, ".")[end]
+                media = if filetype == "png"
+                    # DOM.img(src = local_path)
+                    map(local_path) do local_path
+                        bin = read(local_path)
+                        DOM.img(
+                            src = Bonito.BinaryAsset(bin, mimes[filetype]),
+                            style = max_width
+                        )
+                    end
+                else # TODO: broken
+                    # DOM.video(
+                    #     DOM.source(; src = local_path, type="video/mp4"),
+                    #     autoplay = true, controls = true
+                    # )
+                    asset = map(local_path) do p
+                        # Bonito.Asset(replace(p, ' ' => "\\ "))
+                        Bonito.Asset("\"$p\"")
+                    end
+                    DOM.video(
+                        DOM.source(; src = asset, type="video/mp4"),
+                        autoplay = true, controls = true
+                    )
                 end
 
                 # TODO: background
-                return Card(Col(cb, score_text, path_button, image_element))
+                return Card(Col(cb, score_text, path_button, media), style = card_style)
             else
                 return Card(DOM.h1("N/A"))
             end
