@@ -105,42 +105,25 @@ function create_app()
                     selection = mod1(selection + 1, 2)
                     path_button.content[] = selection_string[selection]
                     folder = selected_folder[selection]
-                    return normpath(joinpath(root_path, folder, backend, img_name))
-                    # local_path = normpath(joinpath(root_path, folder, backend, img_name))
-                    # return Bonito.Asset(local_path)
+                    local_path = normpath(joinpath(root_path, folder, backend, img_name))
+                    return Bonito.Asset(local_path)
                 end
 
 
                 filetype = split(img_name, ".")[end]
                 media = if filetype == "png"
-                    # DOM.img(src = local_path)
-                    map(local_path) do local_path
-                        bin = read(local_path)
-                        DOM.img(
-                            src = Bonito.BinaryAsset(bin, "image/png"),
-                            style = max_width
-                        )
-                    end
-                else # TODO: broken
-                    # DOM.video(
-                    #     DOM.source(; src = local_path, type="video/mp4"),
-                    #     autoplay = true, controls = true
-                    # )
-                    asset = map(local_path) do p
-                        # Bonito.Asset(replace(p, ' ' => "\\ "))
-                        Bonito.Asset("\"$p\"")
-                    end
+                    DOM.img(src = local_path, style = max_width)
+                else
                     DOM.video(
-                        DOM.source(; src = asset, type="video/mp4"),
-                        autoplay = true, controls = true
+                        DOM.source(; src = local_path, type="video/mp4"),
+                        autoplay = false, controls = true, style = max_width
                     )
                 end
 
-                # TODO: background
                 card = Card(Col(cb, score_text, path_button, media), style = card_style)
                 push!(cards, card)
             else
-                push!(cards, Card(DOM.h1("N/A")))
+                push!(cards, DOM.div())
             end
         end
 
