@@ -530,11 +530,13 @@ If the array doesn't support this, it will be converted to an interpolation obje
 * `resolution` can be set to `automatic` to use the full resolution of the screen, or a tuple of the desired resolution.
 * `method` is the interpolation method used, defaulting to `Interpolations.Linear()`.
 * `update_while_button_pressed` will update the heatmap while a mouse button is pressed, useful for zooming/panning. Set it to false for e.g. WGLMakie to avoid updating while dragging.
+* `lowres_background` will always show a low resolution background while the high resolution image is being calculated.
 """
 struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     data::T
     max_resolution::Union{Automatic, Bool}
     update_while_button_pressed::Bool
+    lowres_background::Bool
 end
 
 using Interpolations: Interpolations
@@ -690,10 +692,13 @@ function Makie.plot!(p::HeatmapShader)
     end
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
-    # Create an overview image that gets shown behind, so we always see the "big picture"
-    # In case updating the detailed view takes longer
-    # lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
-    # translate!(lp, 0, 0, -1)
+
+    if p.values[].lowres_background
+        # Create an overview image that gets shown behind, so we always see the "big picture"
+        # In case updating the detailed view takes longer
+        lp = image!(p, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
+        translate!(lp, 0, 0, -1)
+    end
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
