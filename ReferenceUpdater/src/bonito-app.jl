@@ -20,7 +20,7 @@ function create_app_content(root_path::String)
     )
 
     score_style = Styles(
-        CSS("font-size" => "10", "font-weight" => "normal"),
+        CSS("font-size" => "12", "font-weight" => "normal"),
         CSS("width" => "fit-content",
             "padding-right" => "6px", "padding-left" => "6px",
             "padding-bottom" => "2px", "padding-top" => "2px",
@@ -30,6 +30,8 @@ function create_app_content(root_path::String)
     )
 
     checkbox_style = Styles(CSS("transform" => "scale(1)"))
+
+    textfield_style = Styles(CSS("width" => "4rem", "font-size" => "12", "font-weight" => "normal"))
 
     card_css = CSS(
         "margin" => "0.1em", # outside
@@ -162,6 +164,14 @@ function create_app_content(root_path::String)
 
     sort!(imgs_with_score; by=get_score, rev=true)
 
+    update_multi_check = Observable(false)
+    update_multi_textinput = Bonito.TextField("0.05", style = textfield_style)
+    update_multi_checkbox  = DOM.div(
+        Checkbox(update_multi_check, Dict{Symbol, Any}(:style => checkbox_style)),
+        " Toggle All with Score ≥",
+        update_multi_textinput
+    )
+
     updated_cards = Any[]
     for img_name in imgs_with_score
         for backend in backends
@@ -169,9 +179,29 @@ function create_app_content(root_path::String)
             current_file = backend * "/" * img_name
             if haskey(lookup, current_file)
 
-                cb = refimage_selection_checkbox(marked_for_upload, current_file)
-
                 score = round(lookup[current_file]; digits=3)
+
+                local_marked = map(update_multi_check) do active
+                    try
+                        threshold = parse(Float64, update_multi_textinput.value[])
+                        return active && (score >= threshold)
+                    catch e
+                        return false
+                    end
+                end
+                on(local_marked) do is_marked
+                    if is_marked
+                        push!(marked_for_upload[], current_file)
+                    else
+                        delete!(marked_for_upload[], current_file)
+                    end
+                    notify(marked_for_upload)
+                end
+                cb = DOM.div(
+                    Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
+                    " $current_file"
+                )
+
                 # TODO: Is there a better way to handle default with overwrites?
                 card_style = Styles(card_css, CSS(
                     "background-color" => if score > score_thresholds[1]
@@ -262,14 +292,14 @@ function create_app_content(root_path::String)
         end
 
         try
-            @info "TODO: Uploading..."
-            # upload_reference_images(tmpdir, tag)
+            @info "Uploading..."
+            upload_reference_images(tmpdir, tag)
             @info "Upload successful."
         catch e
             @error "Upload failed: " exception = (e, catch_backtrace())
         finally
-            @info "TODO: Deleting temp directory..."
-            # rm(tmpdir)
+            @info "Deleting temp directory..."
+            rm(tmpdir)
             @info "Done. You can ctrl+c out now."
         end
         return
@@ -388,6 +418,7 @@ function create_app_content(root_path::String)
     main_section = DOM.div(
         DOM.h2("Images with references"),
         DOM.div("This is the normal case where the selected CI run produced an image and the reference image exists. Each row shows one image per backend from the same reference image test, which can be compared with its reference image. Rows are sorted based on the maximum row score (bigger = more different). Background colors are based on this score, with red > $(score_thresholds[1]), orange > $(score_thresholds[2]), yellow > $(score_thresholds[3]) and the rest being light gray."),
+        update_multi_checkbox,
         DOM.br(),
         Grid(updated_cards, columns = "1fr 1fr 1fr")
     )
