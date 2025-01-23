@@ -4,7 +4,9 @@ authors = ["Julius Krumbiegel <julius.krumbiegel@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
@@ -15,4 +17,6 @@ ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 ghr_jll = "07c12ed4-43bc-5495-8a2a-d5838ef8d533"
 
 [compat]
+Bonito = "3, 4"
+DelimitedFiles = "1.9.1"
 HTTP = "1"

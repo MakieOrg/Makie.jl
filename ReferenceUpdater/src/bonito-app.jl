@@ -1,9 +1,10 @@
-using Bonito, FileIO, DelimitedFiles
-
-root_path = joinpath(pwd(), "ReferenceImages")
+using Bonito, DelimitedFiles
 
 
-function create_app()
+"""
+    create_app(path_to_reference_images_folder)
+"""
+function create_app_content(root_path::String)
 
     # Styles
 
@@ -27,18 +28,15 @@ function create_app()
         CSS("display" => "inline-block", "float" => "right")
     )
 
-    # TODO: fit checkbox size to text
-    checkbox_style = Styles(
-        CSS("transform" => "scale(1)")
-    )
+    checkbox_style = Styles(CSS("transform" => "scale(1)"))
 
-    # TODO: Is there a better way to handle default with overwrites?
     card_css = CSS(
         "margin" => "0.1em", # outside
         "padding" => "0.5em", # inside
         "border" => "2px solid lightblue",
-        # "background-color" => "#eee",
         "border-radius" => "1em",
+        "color" => "black",
+        "min-width" => "16rem" # effectively controls size of the whole layout
     )
 
     max_width = Styles(CSS("max-width" => "100%"))
@@ -111,7 +109,7 @@ function create_app()
                     cb = refimage_selection_checkbox(marked, current_file, mark_all)
                     local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
                     media = media_element(img_name, local_path)
-                    card = Card(DOM.div(cb, media), style = Styles(card_css))
+                    card = Card(DOM.div(cb, media), style = Styles(card_css, CSS("background-color" => "#eeeeee")))
                     push!(cards, card)
                 else
                     push!(cards, DOM.div())
@@ -171,7 +169,8 @@ function create_app()
 
                 cb = refimage_selection_checkbox(marked_for_upload, current_file)
 
-                score = round(lookup[current_file]; digits=4)
+                score = round(lookup[current_file]; digits=3)
+                # TODO: Is there a better way to handle default with overwrites?
                 card_style = Styles(card_css, CSS(
                     "background-color" => if score > score_thresholds[1]
                         "#ffbbbb"
@@ -215,12 +214,65 @@ function create_app()
 
     end
 
+    # upload
+
+    function upload_selection(tag)
+        reference_path = joinpath(root_path, "reference")
+
+        @info "Downloading latest reference image folder for $tag"
+        tmpdir = try
+            download_refimages(tag)
+        catch e
+            @error "Failed to download refimg folder. Is the tag $tag correct?" exception = (e, catch_backtrace())
+            return
+        end
+
+        @info "Updating files in $tmpdir"
+
+        for image in marked_for_upload
+            @info "Overwriting or adding $image"
+            target = joinpath(tmpdir, image)
+            # make sure the path exists
+            mkpath(splitdir(target)[1])
+
+            source = joinpath(reference_path, image)
+            cp(source, target, force = true)
+        end
+
+        for image in marked_for_deletion
+            @info "Deleting $image"
+            target = joinpath(tmpdir, image)
+            if isfile(target)
+                rm(target)
+            else
+                @warn "Cannot delete $image - does not exist."
+            end
+        end
+
+        try
+            upload_reference_images(tmpdir, tag)
+            @info "Upload successful."
+        catch e
+            @error "Upload failed: " exception = (e, catch_backtrace())
+        finally
+            @info "Deleting temp directory"
+            rm(tmpdir)
+            @info "You can ctrl+c out now."
+        end
+        return
+    end
+
+    # TODO: no less than 8rem width?
+    tag_textfield = Bonito.TextField("$(last_major_version())", style = Styles("width" => "8rem"))
+    upload_button = Bonito.Button("Update reference images with selection")
+    on(_ -> upload_selection(tag_textfield.value[]), upload_button.value)
+
     # Create page
 
     update_section = DOM.div(
         DOM.h2("Images to update"),
-        DOM.div("After pressing the button you will be asked which version to upload the reference images listed below to. After that the reference images on github will be replaced with an updated set if you have the rights to do so."),
-        Bonito.Button("Update reference images with selection"),
+        DOM.div("Pressing the button below will download the latest reference images for the selected version; add, update and/or remove the selected images listed below and then upload the changed reference image folder. See Julia terminal for progress updates."),
+        DOM.div(tag_textfield, upload_button),
         DOM.h3(map(set -> "$(length(set)) images selected for updating:", marked_for_upload)),
         map(set -> DOM.ul([DOM.li(name) for name in set]), marked_for_upload),
         DOM.h3(map(set -> "$(length(set)) images selected for removal:", marked_for_deletion)),
@@ -230,14 +282,14 @@ function create_app()
     new_image_section = DOM.div(
         DOM.h2("New images without references"),
         DOM.div("The selected CI run produced an image for which no reference image exists. Selected images will be added as new reference images."),
-        new_checkbox,
+        new_checkbox, DOM.br(),
         Grid(new_cards, columns = "1fr 1fr 1fr")
     )
 
     missing_recordings_section = DOM.div(
         DOM.h2("Old reference images without recordings"),
         DOM.div("The selected CI run did not produce an image, but a reference image exists. This implies that a reference test was deleted or renamed. Selected images will be deleted from the reference images."),
-        missing_checkbox,
+        missing_checkbox, DOM.br(),
         Grid(missing_cards, columns = "1fr 1fr 1fr")
     )
 
@@ -253,15 +305,16 @@ function create_app()
         new_image_section,
         missing_recordings_section,
         main_section,
-        style = Styles(CSS("font-family" => "sans-serif"))
+        style = Styles(CSS("font-family" => "sans-serif", "min-width" => "4rem"))
     )
 end
 
-
-
-if @isdefined server
-    close(server)
+function create_app(root_path)
+    return App(() -> create_app_content(root_path))
 end
-server = Bonito.Server("0.0.0.0", 8080)
-display(server)
-route!(server, "/" => App(create_app))
+
+function create_browser_display(root_path, ip = "0.0.0.0", port = 8080)
+    server = Bonito.Server(ip, port)
+    route!(server, "/" => create_app(root_path))
+    return server
+end
