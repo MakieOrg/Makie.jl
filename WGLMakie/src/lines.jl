@@ -90,14 +90,14 @@ function create_lines_data(islines, attr)
         uniforms[:highclip] = attr._highclip[]
         uniforms[:lowclip] = attr._lowclip[]
         uniforms[:nan_color] = attr.nan_color[]
-        color = attr.scaled_color[]
+        color = attr.synched_color[]
     else
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)
         end
         uniforms[:colormap] = false
         uniforms[:colorrange] = false
-        color = attr.scaled_color[]
+        color = attr.synched_color[]
     end
 
     to_buff_obs(x) = Observable(serialize_buffer_attribute(x))
@@ -108,7 +108,7 @@ function create_lines_data(islines, attr)
         :lastlen => to_buff_obs(zeros(Float32, length(attr.linepoint[]))),
     )
 
-    for (name, vals) in [:color => color, :linewidth => attr.linewidth[]]
+    for (name, vals) in [:color => color, :linewidth => attr.synched_linewidth[]]
         if Makie.is_scalar_attribute(to_value(vals))
             uniforms[Symbol("$(name)_start")] = vals
             uniforms[Symbol("$(name)_end")] = vals
@@ -138,7 +138,7 @@ end
 const LINE_INPUTS = [
     # relevant to compile time decisions
     :space,
-    :scaled_color,
+    :synched_color,
     :alpha_colormap,
     :scaled_colorrange,
     # Auto
@@ -148,7 +148,7 @@ const LINE_INPUTS = [
     :linestyle,
     :gl_pattern,
     :gl_pattern_length,
-    :linewidth,
+    :synched_linewidth,
     :scene_origin,
     :transparency,
     :visible,
@@ -164,7 +164,7 @@ function create_lines_robj(islines, args, changed, last)
     r = Dict(
         :image => :uniform_color,
         :scaled_colorrange => :colorrange,
-        :scaled_color => :color,
+        :synched_color => :color,
         :_highclip => :highclip,
         :_lowclip => :lowclip,
         :data_limit_points_transformed => :position,
