@@ -522,7 +522,7 @@ function xy_to_rect(x, y)
 end
 
 """
-    Resampler(matrix; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
+    Resampler(matrix; max_resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
 
 Creates a resampling type which can be used with `heatmap`, to display large images/heatmaps.
 Passed can be any array that supports `array(linrange, linrange)`, as the interpolation interface from Interpolations.jl.
@@ -547,13 +547,26 @@ _to_resolution(x::Tuple{Int, Int}) = x
 _to_resolution(x::Int) = (x, x)
 _to_resolution(x) = error("Resolution must be automatic, a tuple or integer, got $x")
 
+function Resampler(resampler::Resampler, new_data)
+    return Resampler(
+        new_data, resampler.max_resolution,
+        resampler.update_while_button_pressed,
+        resampler.lowres_background
+    )
+end
+
 function Resampler(
     data;
     max_resolution=automatic,
     method=Interpolations.Linear(),
     update_while_button_pressed=false,
     lowres_background=true,
+    resolution=nothing
 )
+    if resolution !== nothing
+        @warn "Resampler(data; resolution=...) got renamed to max_resolution, please update your code"
+        max_resolution = resolution
+    end
     # Our interpolation interface is to do matrix(linrange, linrange)
     # There doesn't seem to be an official trait for this,
     # so we fall back to just check if this method applies:
@@ -641,13 +654,13 @@ end
 
 
 function convert_arguments(::Type{Heatmap}, image::Resampler)
-    x, y, img = convert_arguments(Heatmap, image.data)
-    return (x, y, Resampler(img))
+    x, y, _ = convert_arguments(Heatmap, image.data)
+    return (x, y, image)
 end
 
 function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
-    x, y, img = convert_arguments(Heatmap, x, y, image.data)
-    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), Resampler(img))
+    x, y, _ = convert_arguments(Heatmap, x, y, image.data)
+    return (EndPoints{Float32}(x...), EndPoints{Float32}(y...), image)
 end
 
 function empty_channel!(channel::Channel)
@@ -680,7 +693,7 @@ function Makie.plot!(p::HeatmapShader)
         return
     end
 
-    x, y = p.x, p.y
+    x, y = map(identity, p, p.x; ignore_equal_values=true), map(identity, p, p.y; ignore_equal_values=true)
     max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
         res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
@@ -703,14 +716,20 @@ function Makie.plot!(p::HeatmapShader)
     end
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
-    @show p.values[].lowres_background
-    if p.values[].lowres_background
-        println("adding low-res background")
-        # Create an overview image that gets shown behind, so we always see the "big picture"
-        # In case updating the detailed view takes longer
-        lp = image!(p, x, y, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
-        translate!(lp, 0, 0, -1)
+    overview = overview_image
+    if !p.values[].lowres_background
+        # If we don't use the lowres background,
+        # We still display a background image, but with only the average of the image
+        # Leading to a background that blends relatively well with the high res image
+        overview = map(p, colorrange) do cr
+            Float32[mean(cr) for _ in 1:1, _ in 1:1]
+        end
     end
+
+    # Create an overview image that gets shown behind, so we always see the "big picture"
+    # In case updating the detailed view takes longer
+    lp = image!(p, x, y, overview; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
+    translate!(lp, 0, 0, -1)
 
     first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
     # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
@@ -769,7 +788,14 @@ function Makie.plot!(p::HeatmapShader)
         # So we can skip this update
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
-            visible[] = false
+            if !p.values[].lowres_background
+                # hiding without a background looks really bad
+                if !visible[]
+                    visible[] = true
+                end
+            else
+                visible[] = false
+            end
             if imgp[1][] != x
                 imgp[1] = x
             end
@@ -777,7 +803,9 @@ function Makie.plot!(p::HeatmapShader)
                 imgp[2] = y
             end
             imgp[3] = image
-            visible[] = true
+            if !visible[]
+                visible[] = true
+            end
         end
     end
     bind(image_to_obs, task)
