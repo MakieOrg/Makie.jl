@@ -62,7 +62,6 @@ function create_app_content(root_path::String)
                 delete!(marked[], current_file)
             end
             notify(marked)
-            @info marked[]
         end
         return DOM.div(
             Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
@@ -217,47 +216,58 @@ function create_app_content(root_path::String)
     # upload
 
     function upload_selection(tag)
-        reference_path = joinpath(root_path, "reference")
+        recorded_path = joinpath(root_path, "recorded")
 
         @info "Downloading latest reference image folder for $tag"
         tmpdir = try
             download_refimages(tag)
         catch e
-            @error "Failed to download refimg folder. Is the tag $tag correct?" exception = (e, catch_backtrace())
+            @error "Failed to download refimg folder. Is the tag $tag correct? Exiting without upload." exception = (e, catch_backtrace())
             return
         end
 
         @info "Updating files in $tmpdir"
 
-        for image in marked_for_upload
-            @info "Overwriting or adding $image"
-            target = joinpath(tmpdir, image)
-            # make sure the path exists
-            mkpath(splitdir(target)[1])
+        try
+            for image in marked_for_upload[]
+                @info "Overwriting or adding $image"
+                target = joinpath(tmpdir, normpath(image))
+                # make sure the path exists
+                mkpath(splitdir(target)[1])
 
-            source = joinpath(reference_path, image)
-            cp(source, target, force = true)
-        end
-
-        for image in marked_for_deletion
-            @info "Deleting $image"
-            target = joinpath(tmpdir, image)
-            if isfile(target)
-                rm(target)
-            else
-                @warn "Cannot delete $image - does not exist."
+                source = joinpath(recorded_path, normpath(image))
+                cp(source, target, force = true)
             end
+        catch e
+            @error "Failed to overwrite/add images. Exiting without upload." exception = (e, catch_backtrace())
+            return
         end
 
         try
+            for image in marked_for_deletion[]
+                @info "Deleting $image"
+                target = joinpath(tmpdir, normpath(image))
+                if isfile(target)
+                    rm(target)
+                else
+                    @warn "Cannot delete $image - does not exist."
+                end
+            end
+        catch e
+            @error "Failed to remove images. Exiting without upload." exception = (e, catch_backtrace())
+            return
+        end
+
+        try
+            @info "Uploading..."
             upload_reference_images(tmpdir, tag)
             @info "Upload successful."
         catch e
             @error "Upload failed: " exception = (e, catch_backtrace())
         finally
-            @info "Deleting temp directory"
+            @info "Deleting temp directory..."
             rm(tmpdir)
-            @info "You can ctrl+c out now."
+            @info "Done. You can ctrl+c out now."
         end
         return
     end
@@ -309,14 +319,26 @@ function create_app_content(root_path::String)
     )
 end
 
-function create_app(root_path)
+function create_app_from_dir(root_path)
     return App(() -> create_app_content(root_path))
 end
 
 const server = Ref{Any}()
-function create_browser_display(root_path)
+function create_browser_display_from_dir(root_path)
     isassigned(server) && close(server)
     server[] = Bonito.Server("0.0.0.0", 8080)
     route!(server[], "/" => create_app(root_path))
     return server[]
+end
+
+function create_app(; commit = nothing, pr = nothing)
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+    @info "Creating Bonito app from folder $tmpdir."
+    return create_app_from_dir(tmpdir)
+end
+
+function create_browser_display(; commit = nothing, pr = nothing)
+    tmpdir = download_artifacts(commit = commit, pr = pr)
+    @info "Creating Bonito app from folder $tmpdir."
+    return create_browser_display_from_dir(tmpdir)
 end
