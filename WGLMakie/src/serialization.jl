@@ -56,10 +56,6 @@ function serialize_three(array::AbstractArray{T}) where {T<:Union{N0f8,UInt8,Int
     vec(convert(Array, array))
 end
 
-function serialize_three(p::Makie.AbstractPattern)
-    return serialize_three(Makie.to_image(p))
-end
-
 three_format(::Type{<:Integer}) = "RedIntegerFormat"
 three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"

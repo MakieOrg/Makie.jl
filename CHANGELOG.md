@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
+- Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
+- Fixed issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
+
 ## [0.22.1] - 2025-01-17
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
