@@ -610,7 +610,7 @@ function draw_marker_test!(scene, marker, center; markersize=300)
     scene
 end
 
-@reference_test "marke glyph alignment" begin
+@reference_test "marker glyph alignment" begin
     scene = Scene(size=(1200, 1200))
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
