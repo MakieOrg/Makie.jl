@@ -313,8 +313,10 @@ function create_app(root_path)
     return App(() -> create_app_content(root_path))
 end
 
-function create_browser_display(root_path, ip = "0.0.0.0", port = 8080)
-    server = Bonito.Server(ip, port)
-    route!(server, "/" => create_app(root_path))
-    return server
+const server = Ref{Any}()
+function create_browser_display(root_path)
+    isassigned(server) && close(server)
+    server[] = Bonito.Server("0.0.0.0", 8080)
+    route!(server[], "/" => create_app(root_path))
+    return server[]
 end
