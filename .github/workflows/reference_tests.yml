@@ -187,6 +187,26 @@ jobs:
         with:
           name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+          arch: x64
+          os: 'ubuntu-20.04'
+      - uses: julia-actions/cache@v2
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev . ./ReferenceTests"
+      - name: Generate GLMakie diff scores
+        continue-on-error: true
+        run: >
+          julia --color=yes --project=monorepo -e 'using ReferenceTests; ReferenceTests.generate_backend_comparison_scores("./ReferenceImages/")'
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
@@ -207,6 +227,7 @@ jobs:
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
               cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
+              cat "${baseDir}/${dir}/cross_backend_scores.txt" >> "./ReferenceImagesCombined/cross_backend_scores.txt"
 
               # Copy recorded folder
               mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"

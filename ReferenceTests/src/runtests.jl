@@ -42,6 +42,7 @@ function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{
 
     _norm(rgb1::RGBf, rgb2::RGBf) = sqrt(sum(((rgb1.r - rgb2.r)^2, (rgb1.g - rgb2.g)^2, (rgb1.b - rgb2.b)^2)))
     _norm(rgba1::RGBAf, rgba2::RGBAf) = sqrt(sum(((rgba1.r - rgba2.r)^2, (rgba1.g - rgba2.g)^2, (rgba1.b - rgba2.b)^2, (rgba1.alpha - rgba2.alpha)^2)))
+    _norm(c1::Colorant, c2::Colorant) = _norm(RGBAf(c1), RGBAf(c2))
 
     # compute the difference score as the maximum of the mean squared differences over the color
     # values of tiles over the image. using tiles is a simple way to increase the local sensitivity
@@ -99,7 +100,7 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
             println(file, path)
         end
     end
-    
+
     open(joinpath(base_folder, "missing_files.txt"), "w") do file
         backend_ref_dir = joinpath(reference_folder, backend)
         recorded_paths = mapreduce(vcat, walkdir(backend_ref_dir)) do (root, dirs, files)
@@ -134,8 +135,8 @@ function test_comparison(scores; threshold)
 end
 
 function compare(
-        relative_test_paths::Vector{String}, reference_dir::String, record_dir; 
-        o_refdir = reference_dir, missing_refimages = String[], 
+        relative_test_paths::Vector{String}, reference_dir::String, record_dir;
+        o_refdir = reference_dir, missing_refimages = String[],
         scores = Dict{String,Float64}()
     )
 

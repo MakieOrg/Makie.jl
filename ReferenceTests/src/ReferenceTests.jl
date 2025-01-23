@@ -40,6 +40,7 @@ include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
+include("cross_backend_scores.jl")
 
 export @include_reference_tests
 
