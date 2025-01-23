@@ -61,7 +61,10 @@ function initialize_block!(sl::Slider)
 
     onany(topscene, selected_index, dragging) do i, dragging
         new_val = get(sliderrange[], i, nothing)
-        if !isnothing(new_val) && !dragging[] && sl.value[] != new_val
+        has_value = !isnothing(new_val)
+        has_changed = sl.value[] != new_val
+        drag_updates = sl.update_while_dragging[] || !dragging[]
+        if has_value && has_changed && drag_updates
             sl.value[] = new_val
         end
     end
