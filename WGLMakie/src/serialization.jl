@@ -320,8 +320,9 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = Observable(plot.visible[])
+    mesh[:visible] = plot.visible isa Observable ? plot.visible : Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)
+    mesh[:plot_type] = string(plotkey(plot))
     get!(mesh, :transparency, plot.transparency[])
     get!(mesh, :overdraw, plot.overdraw[])
     get!(() -> Makie.zvalue2d(plot), mesh, :zvalue)
@@ -346,13 +347,13 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
             return
         end
     end
-
-    if plot isa Scatter || haskey(plot, :markerspace)
+    scatterlike = plot isa Scatter || haskey(plot, :markerspace)
+    if scatterlike
         mesh[:markerspace] = Observable(plot.markerspace[])
     end
     mesh[:space] = Observable(plot.space[])
 
-    key = plot isa Scatter ? (:markerspace) : (:space)
+    key = scatterlike ? (:markerspace) : (:space)
     mesh[:cam_space] = to_value(get(plot, key, :data))
 
     # Handle clip planes

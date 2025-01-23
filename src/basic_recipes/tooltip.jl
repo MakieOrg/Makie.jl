@@ -59,7 +59,7 @@ function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real)
 end
 
 function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
-    plot.attributes[:text]  = plot[2]
+    plot.attributes[:text] = plot[2]
     tooltip!(plot, plot[1]; plot.attributes...)
     plot
 end

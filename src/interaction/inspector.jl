@@ -711,7 +711,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
                 push!(inspector.temp_plots, p)
             else
                 p = inspector.temp_plots[1]
-                p[1].val[1] = pos
+                p[1][][1] = pos
                 notify(p[1])
             end
         else
