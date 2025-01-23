@@ -5,10 +5,14 @@ end
 rgbf_convert(x::AbstractMatrix{<:RGB}) = convert(Matrix{RGBf}, x)
 rgbf_convert(x::AbstractMatrix{<:RGBA}) = convert(Matrix{RGBAf}, x)
 
-# pulled from Makie so we don't need to include it
-function extract_frames(video, frame_folder; loglevel="quiet")
-    path = joinpath(frame_folder, "frame%04d.png")
-    run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
+if @isdefined Makie
+    using Makie: extract_frames
+else
+    # pulled from Makie so we don't need to include it
+    function extract_frames(video, frame_folder; loglevel="quiet")
+        path = joinpath(frame_folder, "frame%04d.png")
+        run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
+    end
 end
 
 function get_frames(video::AbstractString)
