@@ -38,6 +38,7 @@ using Images, FixedPointNumbers, Colors, ColorTypes
 
 include("database.jl")
 include("stable_rng.jl")
+include("compare_media.jl")
 include("runtests.jl")
 include("image_download.jl")
 include("cross_backend_scores.jl")

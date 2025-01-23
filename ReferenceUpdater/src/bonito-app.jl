@@ -1,5 +1,6 @@
 using Bonito, DelimitedFiles
 
+include("cross_backend_score.jl")
 
 """
     create_app(path_to_reference_images_folder)
@@ -52,6 +53,8 @@ function create_app_content(root_path::String)
     function refimage_selection_checkbox(marked, current_file, mark_all = nothing)
         if mark_all === nothing
             local_marked = Observable(false)
+        elseif mark_all isa Bool
+            local_marked = Observable(mark_all)
         else
             local_marked = map(identity, mark_all)
         end
@@ -259,14 +262,14 @@ function create_app_content(root_path::String)
         end
 
         try
-            @info "Uploading..."
-            upload_reference_images(tmpdir, tag)
+            @info "TODO: Uploading..."
+            # upload_reference_images(tmpdir, tag)
             @info "Upload successful."
         catch e
             @error "Upload failed: " exception = (e, catch_backtrace())
         finally
-            @info "Deleting temp directory..."
-            rm(tmpdir)
+            @info "TODO: Deleting temp directory..."
+            # rm(tmpdir)
             @info "Done. You can ctrl+c out now."
         end
         return
@@ -276,6 +279,78 @@ function create_app_content(root_path::String)
     tag_textfield = Bonito.TextField("$(last_major_version())", style = Styles("width" => "8rem"))
     upload_button = Bonito.Button("Update reference images with selection")
     on(_ -> upload_selection(tag_textfield.value[]), upload_button.value)
+
+    # compare to GLMakie
+
+    compare_button = Bonito.Button("Compare current selection")
+    glmakie_compare_grid = Observable{Any}(DOM.div())
+    on(compare_button.value) do _
+
+        without_backend = unique(map(collect(marked_for_upload[])) do img
+            replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+        end)
+        sort!(without_backend; by=get_score, rev=true)
+
+        file2score = compare_selection(root_path, marked_for_upload[])
+
+        updated_cards = Any[]
+        for img_name in without_backend
+            for backend in backends
+                backend == "GLMakie" && continue
+
+                current_file = backend * "/" * img_name
+                if haskey(file2score, current_file)
+                    cb = refimage_selection_checkbox(marked_for_upload, current_file, true)
+
+                    score = round(get(file2score, current_file, -1.0); digits=3)
+                    # TODO: Is there a better way to handle default with overwrites?
+                    card_style = Styles(card_css, CSS(
+                        "background-color" => if score > score_thresholds[1]
+                            "#ffbbbb"
+                        elseif score > score_thresholds[2]
+                            "#ffddbb"
+                        elseif score > score_thresholds[3]
+                            "#ffffdd"
+                        elseif score < -0.1
+                            "#bbbbff"
+                        else
+                            "#eeeeee"
+                        end
+                    ))
+
+                    path_button = Bonito.Button("", style = button_style)
+                    selection = 2 # Recorded (new), Reference (old)
+                    ref_name = "GLMakie/$img_name"
+                    local_path = map(path_button.value) do click
+                        selection = mod1(selection + 1, 2)
+                        path_button.content[] = [backend, "GLMakie"][selection]
+                        file = [current_file, ref_name][selection]
+                        local_path = normpath(joinpath(root_path, "recorded", file))
+                        return Bonito.Asset(local_path)
+                    end
+
+                    media = media_element(img_name, local_path)
+
+                    card = Card(
+                        DOM.div(
+                            cb,
+                            DOM.div(
+                                path_button,
+                                DOM.div("Score: $score", style = score_style)
+                            ),
+                            media
+                        ),
+                        style = card_style
+                    )
+                    push!(updated_cards, card)
+                else
+                    push!(updated_cards, DOM.div())
+                end
+            end
+        end
+
+        glmakie_compare_grid[] = Grid(updated_cards, columns = "33% 33%")
+    end
 
     # Create page
 
@@ -287,6 +362,13 @@ function create_app_content(root_path::String)
         map(set -> DOM.ul([DOM.li(name) for name in set]), marked_for_upload),
         DOM.h3(map(set -> "$(length(set)) images selected for removal:", marked_for_deletion)),
         map(set -> DOM.ul([DOM.li(name) for name in set]), marked_for_deletion),
+    )
+
+    glmakie_compare_section = DOM.div(
+        DOM.h2("Compare Selection to GLMakie"),
+        DOM.div("Compares every selected refimg with it's corresponding GLMakie refimg. If there is none the score will be -1.0."),
+        compare_button,
+        glmakie_compare_grid
     )
 
     new_image_section = DOM.div(
@@ -312,6 +394,7 @@ function create_app_content(root_path::String)
 
     return DOM.div(
         update_section,
+        glmakie_compare_section,
         new_image_section,
         missing_recordings_section,
         main_section,
