@@ -461,11 +461,32 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
+function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
+    register_computation!(
+        attr,
+        [attribute, :positions],
+        [output_name],
+    ) do (vec, positions), changed, last
+        vec[] isa AbstractVector || return (vec[],)
+        NP = length(positions[])
+        NC = length(vec[])
+        NP == NC && return (vec[],)
+        if NP ÷ 2 == NC
+            output = [vec[][div(i + 1, 2)] for i in 1:NP]
+            return (output,)
+        end
+        error("Color vector length $(NC) does not match position length $(NP)")
+        return (vec[],)
+    end
+end
+
 function compute_plot(::Type{Lines}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Lines, attr, user_kw)
     register_arguments!(Lines, attr, user_kw, args...)
     register_colormapping!(attr)
+    attribute_per_pos!(attr, :scaled_color, :synched_color)
+    attribute_per_pos!(attr, :linewidth, :synched_linewidth)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions[]),)
     end
@@ -480,23 +501,10 @@ function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,An
     add_attributes!(LineSegments, attr, user_kw)
     register_arguments!(LineSegments, attr, user_kw, args...)
     register_colormapping!(attr)
+    attribute_per_pos!(attr, :scaled_color, :synched_color)
+    attribute_per_pos!(attr, :linewidth, :synched_linewidth)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions[]),)
-    end
-
-    # allow color/linewidth per segment (like calculated_attributes! did)
-    for (in, out) in zip([:scaled_color, :linewidth], [:synched_color, :synched_linewidth])
-        register_computation!(attr, [:positions, in], [out]) do (positions, input), changed, last
-            N = length(positions[])
-            output = isnothing(last) ? copy(input[]) : last[1][]
-            if changed[2] && (output isa AbstractVector) && (div(N, 2) == length(input[]))
-                resize!(output, N)
-                for i in eachindex(output) # TODO: @inbounds
-                    output[i] = input[][div(i+1, 2)]
-                end
-            end
-            return (output,)
-        end
     end
 
     T = typeof(attr[:positions][])

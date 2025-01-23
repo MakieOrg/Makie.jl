@@ -534,7 +534,7 @@ If the array doesn't support this, it will be converted to an interpolation obje
 """
 struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     data::T
-    max_resolution::Union{Automatic, Bool}
+    max_resolution::Union{Automatic, Int}
     update_while_button_pressed::Bool
     lowres_background::Bool
 end
@@ -542,21 +542,27 @@ end
 using Interpolations: Interpolations
 using ImageBase: ImageBase
 
-function Resampler(data; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
+function Resampler(
+    data;
+    method=Interpolations.Linear(),
+    max_resolution=automatic,
+    update_while_button_pressed=false,
+    lowres_background=true,
+)
     # Our interpolation interface is to do matrix(linrange, linrange)
     # There doesn't seem to be an official trait for this,
     # so we fall back to just check if this method applies:
     # The type of LinRange has changed since Julia 1.6, so we need to construct it and use that
     lr = LinRange(0, 1, 10)
     if applicable(data, lr, lr)
-        return Resampler(data, resolution, update_while_button_pressed)
+        return Resampler(data, max_resolution, update_while_button_pressed, lowres_background)
     else
         dataf32 = el32convert(data)
         ET = eltype(dataf32)
         # Interpolations happily converts to Float64 here, but that's not desirable for e.g. RGB{N0f8}, or Float32 data
         # Since we expect these arrays to be huge, this is no laughing matter ;)
         interp = Interpolations.interpolate(eltype(ET), ET, data, Interpolations.BSpline(method))
-        return Resampler(interp, resolution, update_while_button_pressed)
+        return Resampler(interp, max_resolution, update_while_button_pressed, lowres_background)
     end
 end
 
@@ -693,7 +699,7 @@ function Makie.plot!(p::HeatmapShader)
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
 
-    if p.values[].lowres_background
+    if p.image[].lowres_background
         # Create an overview image that gets shown behind, so we always see the "big picture"
         # In case updating the detailed view takes longer
         lp = image!(p, overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
@@ -755,6 +761,10 @@ function Makie.plot!(p::HeatmapShader)
         # if do_resample/ch is not empty, we already know that
         # there is a newer image queued to be updated
         # So we can skip this update
+
+        if !visible[]
+            visible[] = true
+        end
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
             update!(imgp, arg1=x, arg2=y, arg3=image)
