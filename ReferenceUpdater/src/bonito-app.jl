@@ -317,9 +317,20 @@ function create_app_content(root_path::String)
         without_backend = unique(map(collect(marked_for_upload[])) do img
             replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
         end)
-        sort!(without_backend; by=get_score, rev=true)
-
         file2score = compare_selection(root_path, marked_for_upload[])
+
+        function get_score(img_name)
+            scores = map(backends) do backend
+                name = backend * "/" * img_name
+                if haskey(file2score, name)
+                    return file2score[name]
+                else
+                    return -Inf
+                end
+            end
+            return maximum(scores)
+        end
+        sort!(without_backend; by=get_score, rev=true)
 
         updated_cards = Any[]
         for img_name in without_backend
@@ -395,7 +406,7 @@ function create_app_content(root_path::String)
 
     glmakie_compare_section = DOM.div(
         DOM.h2("Compare Selection to GLMakie"),
-        DOM.div("Compares every selected refimg with it's corresponding GLMakie refimg. If there is none the score will be -1.0."),
+        DOM.div("Compares every selected refimg with it's corresponding GLMakie refimg. If there is none the score will be -1.0. (This may take a minute if all images are selected.)"),
         compare_button,
         glmakie_compare_grid
     )
