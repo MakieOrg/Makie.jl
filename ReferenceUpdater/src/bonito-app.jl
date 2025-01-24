@@ -52,14 +52,11 @@ function create_app_content(root_path::String)
     selection_string = ["Showing new recorded", "Showing old reference"]
     score_thresholds = [0.05, 0.03, 0.01]
 
-    function refimage_selection_checkbox(marked, current_file, mark_all = nothing)
-        if mark_all === nothing
-            local_marked = Observable(false)
-        elseif mark_all isa Bool
-            local_marked = Observable(mark_all)
-        else
-            local_marked = map(identity, mark_all)
-        end
+    # "globals"
+    checkbox_obs = Dict{String, Observable{Bool}}()
+
+    function refimage_selection_checkbox(marked, current_file, obs = Observable(false))
+        local_marked = convert(Observable{Bool}, obs)
         on(local_marked) do is_marked
             if is_marked
                 push!(marked[], current_file)
@@ -110,7 +107,8 @@ function create_app_content(root_path::String)
 
                 current_file = backend * "/" * img_name
                 if current_file in files
-                    cb = refimage_selection_checkbox(marked, current_file, mark_all)
+                    checkbox_obs[current_file] = obs = map(identity, mark_all)
+                    cb = refimage_selection_checkbox(marked, current_file, obs)
                     local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
                     media = media_element(img_name, local_path)
                     card = Card(DOM.div(cb, media), style = Styles(card_css, CSS("background-color" => "#eeeeee")))
@@ -150,7 +148,6 @@ function create_app_content(root_path::String)
     end)
 
     function get_score(img_name)
-        backends = ["CairoMakie", "GLMakie", "WGLMakie"]
         scores = map(backends) do backend
             name = backend * "/" * img_name
             if haskey(lookup, name)
@@ -201,6 +198,7 @@ function create_app_content(root_path::String)
                     Checkbox(local_marked, Dict{Symbol, Any}(:style => checkbox_style)),
                     " $current_file"
                 )
+                checkbox_obs[current_file] = local_marked
 
                 # TODO: Is there a better way to handle default with overwrites?
                 card_style = Styles(card_css, CSS(
@@ -330,7 +328,8 @@ function create_app_content(root_path::String)
 
                 current_file = backend * "/" * img_name
                 if haskey(file2score, current_file)
-                    cb = refimage_selection_checkbox(marked_for_upload, current_file, true)
+                    obs = checkbox_obs[current_file]
+                    cb = refimage_selection_checkbox(marked_for_upload, current_file, obs)
 
                     score = round(get(file2score, current_file, -1.0); digits=3)
                     # TODO: Is there a better way to handle default with overwrites?

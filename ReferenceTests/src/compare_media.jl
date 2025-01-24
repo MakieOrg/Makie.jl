@@ -1,3 +1,5 @@
+# NOTE: This file is reused by ReferenceUpdater
+
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
