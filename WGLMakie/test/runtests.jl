@@ -30,6 +30,7 @@ excludes = Set([
     "fast pixel marker",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
+    "Mesh with 3d volume texture", # Not implemented yet
 ])
 
 Makie.inline!(Makie.automatic)
