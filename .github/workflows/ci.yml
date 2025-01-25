@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - ff/safe-context
   push:
     tags:
       - '*'

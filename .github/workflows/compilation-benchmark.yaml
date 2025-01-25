@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - ff/safe-context
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
