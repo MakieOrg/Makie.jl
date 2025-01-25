@@ -150,39 +150,20 @@ to_index_buffer(ctx, x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function output_buffers(screen::Screen, transparency = false)
-    pipeline = screen.config.render_pipeline
-    if transparency && any(stage -> stage.name == :OIT, pipeline.stages)
-        """
-        layout(location=2) out float coverage;
-        """
-    elseif any(stage -> stage.name == :SSAO1, pipeline.stages)
-        """
-        layout(location=2) out vec3 fragment_position;
-        layout(location=3) out vec3 fragment_normal;
-        """
-    else
-        ""
-    end
-end
+function target_stage(screen, data)
+    idx = findfirst(step -> renders_in_stage(data, step), screen.render_pipeline.steps)
+    @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
 
-function output_buffer_writes(screen::Screen, transparency = false)
-    pipeline = screen.config.render_pipeline
-    if transparency && any(stage -> stage.name == :OIT, pipeline.stages)
-        scale = screen.config.transparency_weight_scale
-        """
-        float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
-        coverage = 1.0 - clamp(color.a, 0.0, 1.0);
-        fragment_color.rgb = weight * color.rgb;
-        fragment_color.a = weight;
-        """
-    elseif any(stage -> stage.name == :SSAO1, pipeline.stages)
-        """
-        fragment_color = color;
-        fragment_position.xyz = o_view_pos;
-        fragment_normal.xyz = o_view_normal;
-        """
+    # Keep it simple for now
+    fb = screen.render_pipeline.steps[idx].framebuffer
+    if fb.counter == 2
+        return "#define DEFAULT_TARGET"
+    elseif fb.counter == 3
+        data[:oit_scale] = screen.config.transparency_weight_scale
+        return "#define OIT_TARGET"
+    elseif fb.counter == 4
+        return "#define SSAO_TARGET"
     else
-        "fragment_color = color;"
+        error("Number of colorbuffers in render framebuffer does not match any known configurations ($(fb.counter))")
     end
 end

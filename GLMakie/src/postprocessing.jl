@@ -141,9 +141,9 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function should_render(robj::RenderObject, step::RenderPlots)
-    return robj.visible &&
-        compare(robj[:ssao][], step.ssao) &&
+renders_in_stage(robj, ::AbstractRenderStep) = false
+function renders_in_stage(robj, step::RenderPlots)
+    return compare(robj[:ssao][], step.ssao) &&
         compare(robj[:transparency][], step.transparency) &&
         compare(robj[:fxaa][], step.fxaa)
 end
@@ -164,7 +164,7 @@ function run_step(screen, glscene, step::RenderPlots)
         set_draw_buffers(step.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
-            should_render(elem, step) || continue
+            elem.visible && renders_in_stage(elem, step) || continue
 
             found, scene = id2scene(screen, screenid)
             (found && scene.visible[]) || continue
