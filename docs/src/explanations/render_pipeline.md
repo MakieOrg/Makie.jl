@@ -133,6 +133,8 @@ As an example we will create a stage that applies a Sepia effect to our figure.
 Lets begin by setting up a pipeline that includes the stage.
 
 ```@example RenderPipeline
+using Makie
+
 # Create an empty Pipeline
 pipeline = Makie.RenderPipeline()
 
@@ -239,7 +241,7 @@ end
 With that done we can now use our new pipeline for rendering:
 
 ```@figure RenderPipeline backend=GLMakie
-using FileIO
+using FileIO, GLMakie
 
 GLMakie.activate!(render_pipeline = pipeline)
 cow = load(Makie.assetpath("cow.png"))
