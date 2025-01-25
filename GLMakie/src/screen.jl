@@ -218,7 +218,7 @@ framebuffer_size(screen::Screen) = size(screen.framebuffer_factory)
 # The size of the window in Makie's own units
 makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
 
-# The size of the window in Makie, device indepentent units
+# The size of the window in Makie, device independent units
 scene_size(screen::Screen) = size(screen.scene)
 
 Makie.isvisible(screen::Screen) = screen.config.visible
@@ -794,7 +794,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     # w/h are in device independent Makie units (scene size)
     ppu = screen.px_per_unit[]
     fbw, fbh = round.(Int, ppu .* (w, h))
-    resize!(screen.framebuffer, fbw, fbh)
+    resize!(screen.framebuffer_factory, fbw, fbh)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
