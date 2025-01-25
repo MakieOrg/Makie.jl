@@ -21,6 +21,7 @@ void main()
     // TODO set these in volume.frag
     o_view_pos = vec3(0);
     o_view_normal = vec3(0);
+
     o_world_pos = vec3(0);
     o_camdir = vec3(0);
 
