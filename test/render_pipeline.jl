@@ -11,14 +11,18 @@ using Makie: generate_buffers, default_pipeline
             f = BufferFormat()
             @test f.dims == 4
             @test f.type == BFT.float8
-            @test isempty(f.extras)
+            @test f.minfilter == :any
+            @test f.magfilter == :any
+            @test f.repeat == (:clamp_to_edge, :clamp_to_edge)
+            @test f.mipmap == false
 
-            f = BufferFormat(1, Float16, a = 1, b = 2)
+            f = BufferFormat(1, Float16, minfilter = :linear, magfilter = :nearest, mipmap = true, repeat = :repeat)
             @test f.dims == 1
             @test f.type == BFT.float16
-            @test haskey(f.extras, :a) && (f.extras[:a] == 1)
-            @test haskey(f.extras, :b) && (f.extras[:b] == 2)
-            @test length(keys(f.extras)) == 2
+            @test f.minfilter == :linear
+            @test f.magfilter == :nearest
+            @test f.repeat == (:repeat, :repeat)
+            @test f.mipmap == true
         end
 
         types = [(N0f8, Float16, Float32), (Int8, Int16, Int32), (UInt8, UInt16, UInt32)]
@@ -34,12 +38,22 @@ using Makie: generate_buffers, default_pipeline
             end
 
             # extras
-            @test is_compatible(BufferFormat(a = 1), BufferFormat())
-            @test is_compatible(BufferFormat(a = 1), BufferFormat(a = 1))
-            @test !is_compatible(BufferFormat(a = 1), BufferFormat(a = 2))
-            @test is_compatible(BufferFormat(a = 1), BufferFormat(b = 2))
-            @test !is_compatible(BufferFormat(2, Int8, a = 1), BufferFormat(b = 2))
-            @test is_compatible(BufferFormat(2, Int8, a = 1), BufferFormat(1, Int32, b = 2, c = 3))
+            @test  is_compatible(BufferFormat(mipmap = true), BufferFormat(mipmap = false))
+
+            @test  is_compatible(BufferFormat(repeat = :repeat), BufferFormat(repeat = :repeat))
+            @test !is_compatible(BufferFormat(repeat = :repeat), BufferFormat(repeat = :clamp_to_egde))
+
+            @test  is_compatible(BufferFormat(minfilter = :any), BufferFormat(minfilter = :any))
+            @test  is_compatible(BufferFormat(minfilter = :any), BufferFormat(minfilter = :linear))
+            @test  is_compatible(BufferFormat(minfilter = :linear), BufferFormat(minfilter = :linear))
+            @test !is_compatible(BufferFormat(minfilter = :nearest), BufferFormat(minfilter = :linear))
+
+            @test  is_compatible(BufferFormat(magfilter = :any), BufferFormat(magfilter = :any))
+            @test  is_compatible(BufferFormat(magfilter = :any), BufferFormat(magfilter = :linear))
+            @test  is_compatible(BufferFormat(magfilter = :linear), BufferFormat(magfilter = :linear))
+            @test !is_compatible(BufferFormat(magfilter = :nearest), BufferFormat(magfilter = :linear))
+
+            @test  is_compatible(BufferFormat(2, Int8, minfilter = :any, magfilter = :linear), BufferFormat(1, Int32, minfilter = :nearest))
         end
 
         @testset "BufferFormat merging" begin
@@ -57,16 +71,29 @@ using Makie: generate_buffers, default_pipeline
                 end
             end
 
-            @test begin
-                B = BufferFormat(BufferFormat(a = :a), BufferFormat())
-                haskey(B.extras, :a) && (B.extras[:a] == :a)
-            end
-            @test begin
-                B = BufferFormat(BufferFormat(2, N0f8, a = "s"), BufferFormat(3, Float16, a = "s"))
-                haskey(B.extras, :a) && (B.extras[:a] == "s")
-            end
-            @test_throws ErrorException BufferFormat(BufferFormat(a = :a), BufferFormat(a = :b))
-            @test_throws ErrorException BufferFormat(BufferFormat(a = :a), BufferFormat(a = 1))
+            a = BufferFormat(minfilter = :any, magfilter = :any, mipmap = false)
+            b = BufferFormat(minfilter = :linear, magfilter = :nearest, mipmap = true)
+            B = BufferFormat(a, b)
+            @test B.minfilter == :linear
+            @test B.magfilter == :nearest
+            @test B.mipmap
+
+            B = BufferFormat(b, a)
+            @test B.minfilter == :linear
+            @test B.magfilter == :nearest
+            @test B.mipmap
+
+            a = BufferFormat(minfilter = :nearest, magfilter = :linear, mipmap = true, repeat = :repeat)
+            b = BufferFormat(minfilter = :nearest, magfilter = :linear, mipmap = true, repeat = :repeat)
+            B = BufferFormat(a, b)
+            @test B.minfilter == :nearest
+            @test B.magfilter == :linear
+            @test B.mipmap
+            @test B.repeat == (:repeat, :repeat)
+
+            @test_throws ErrorException BufferFormat(BufferFormat(repeat = :a), BufferFormat(repeat = :b))
+            @test_throws ErrorException BufferFormat(BufferFormat(minfilter = :a), BufferFormat(minfilter = :b))
+            @test_throws ErrorException BufferFormat(BufferFormat(magfilter = :a), BufferFormat(magfilter = :b))
         end
     end
 
