@@ -245,7 +245,7 @@ using FileIO, GLMakie
 
 GLMakie.activate!(render_pipeline = pipeline)
 cow = load(Makie.assetpath("cow.png"))
-f,a,p = image(rotr90(cow))
+image(rotr90(cow))
 ```
 
 ## WGLMakie
