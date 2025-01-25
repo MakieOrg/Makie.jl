@@ -25,35 +25,51 @@ module BFT
 end
 
 
-# TODO: try `BufferFormat{T} ... type::Type{T}` for better performance?
-# TODO: consider adding a "immediately reusable" flag here or to Stage so that
-#       Stage can communicate that it allows output = input
 struct BufferFormat
     dims::Int
     type::BFT.BufferFormatType
-    extras::Dict{Symbol, Any}
+
+    minfilter::Symbol
+    magfilter::Symbol
+    repeat::NTuple{2, Symbol}
+    mipmap::Bool
+    # anisotropy::Float32 # useless for this context?
+    # local_read::Bool # flag so stage can mark that it only reads the pixel it will write to, i.e. allows using input as output
+    # multisample # for MSAA
 end
 
 """
-    BufferFormat([dims = 4, type = N0f8]; extras...)
+    BufferFormat([dims = 4, type = N0f8]; [texture_parameters...])
 
 Creates a `BufferFormat` which encodes requirements for an input or output of a
 `Stage`. For example, a color output may require 3 (RGB) N0f8's (8 bit "float"
 normalized to a 0..1 range).
 
-The `BufferFormat` may also include extra requirements such as
-`x_minfilter = :nearest` or `mipmap = true`.
+The `BufferFormat` may also specify texture parameters for the buffer:
+- `minfilter = :any`: How are pixels combined (:linear, :nearest, :nearest_mipmap_nearest, :linear_mipmap_nearest, :nearest_mipmap_linear, :linear_mipmap_linear)
+- `magfilter = :any`: How are pixels interpolated (:linear, :nearest)
+- `repeat = :clamp_to_edge`: How are pixels sampled beyond the boundary? (:clamp_to_edge, :mirrored_repeat, :repeat)
+- `mipmap = false`: Should mipmaps be used?
 """
-function BufferFormat(dims::Integer = 4, type::DataType = N0f8; extras...)
-    return BufferFormat(dims, type, Dict{Symbol, Any}(extras))
+function BufferFormat(
+        dims::Integer, type::BFT.BufferFormatType;
+        minfilter = :any, magfilter = :any,
+        repeat = (:clamp_to_edge, :clamp_to_edge),
+        mipmap = false
+    )
+    _repeat = ifelse(repeat isa Symbol, (repeat, repeat), repeat)
+    return BufferFormat(dims, type, minfilter, magfilter, _repeat, mipmap)
 end
-@generated function BufferFormat(dims::Integer, ::Type{T}, extras::Dict{Symbol, Any}) where {T}
+BufferFormat(dims = 4, type = N0f8; kwargs...) = BufferFormat(dims, type; kwargs...)
+@generated function BufferFormat(dims::Integer, ::Type{T}; kwargs...) where {T}
     type = BFT.BufferFormatType(UInt8(findfirst(x -> x === T, BFT.type_lookup)) - 0x01)
-    return :(BufferFormat(dims, $type, extras))
+    return :(BufferFormat(dims, $type; kwargs...))
 end
 
 function Base.:(==)(f1::BufferFormat, f2::BufferFormat)
-    return (f1.dims == f2.dims) && (f1.type == f2.type) && (f1.extras == f2.extras)
+    return (f1.dims == f2.dims) && (f1.type == f2.type) &&
+        (f1.minfilter == f2.minfilter) && (f1.magfilter == f2.magfilter) &&
+        (f1.repeat == f2.repeat) && (f1.mipmap == f2.mipmap)
 end
 
 """
@@ -66,30 +82,30 @@ Rules:
 - The output size is `dims = max(f1.dims, f2.dims)`
 - Types must come from the same base type (AbstractFloat, Signed, Unsigned) where N0f8 counts as a float.
 - The output type is the larger one of the two
-- Extra requirements must match if both formats have them.
-- If only one format contains a specific extra requirement it is accepted and copied to the output.
+- minfilter and magfilter must match (if one is :any, the other is used)
+- repeat must match
+- mipmap = true takes precedence
 """
 function BufferFormat(f1::BufferFormat, f2::BufferFormat)
-    if BFT.is_compatible(f1.type, f2.type)
+    if is_compatible(f1, f2)
         dims = max(f1.dims, f2.dims)
         type = BFT._promote(f1.type, f2.type)
-        extras = deepcopy(f1.extras)
-        for (k, v) in f2.extras
-            get!(extras, k, v) == v || error("Failed to merge BufferFormat: Extra requirement $(extras[k]) != $v.")
-        end
-        return BufferFormat(dims, type, extras)
+        # currently don't allow different min/magfilters
+        minfilter = ifelse(f1.minfilter == :any, f2.minfilter, f1.minfilter)
+        magfilter = ifelse(f1.magfilter == :any, f2.magfilter, f1.magfilter)
+        repeat = f1.repeat
+        mipmap = f1.mipmap || f2.mipmap
+        return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap)
     else
         error("Failed to merge BufferFormat: $f1 and $f2 are not compatible.")
     end
 end
 
 function is_compatible(f1::BufferFormat, f2::BufferFormat)
-    BFT.is_compatible(f1.type, f2.type) || return false
-    extras_compat = true
-    for (k, v) in f1.extras
-        extras_compat = extras_compat && (get(f2.extras, k, v) == v)
-    end
-    return extras_compat
+    return BFT.is_compatible(f1.type, f2.type) &&
+        (f1.minfilter == :any || f2.minfilter == :any || f1.minfilter == f2.minfilter) &&
+        (f1.magfilter == :any || f2.magfilter == :any || f1.magfilter == f2.magfilter) &&
+        (f1.repeat == f2.repeat)
 end
 
 function format_to_type(format::BufferFormat)

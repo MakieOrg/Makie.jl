@@ -4,6 +4,7 @@ struct TextureParameters{NDim}
     repeat   ::NTuple{NDim, Symbol}
     anisotropic::Float32
     swizzle_mask::Vector{GLenum}
+    mipmap::Bool
 end
 
 abstract type OpenglTexture{T, NDIM} <: GPUArray{T, NDIM} end
@@ -92,7 +93,7 @@ Makie.@noconstprop function Texture(
         mipmap = false,
         parameters... # rest should be texture parameters
     ) where {T, NDim}
-    texparams = TextureParameters(T, NDim; parameters...)
+    texparams = TextureParameters(T, NDim; mipmap, parameters...)
     id = glGenTextures()
     glBindTexture(texturetype, id)
     set_packing_alignment(data)
@@ -523,7 +524,8 @@ function TextureParameters(T, NDim;
         x_repeat  = :clamp_to_edge, #wrap_s
         y_repeat  = x_repeat, #wrap_t
         z_repeat  = x_repeat, #wrap_r
-        anisotropic = 1f0
+        anisotropic = 1f0,
+        mipmap = false
     )
     T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
@@ -536,7 +538,7 @@ function TextureParameters(T, NDim;
     end
     TextureParameters(
         minfilter, magfilter, ntuple(i->repeat[i], NDim),
-        anisotropic, swizzle_mask
+        anisotropic, swizzle_mask, mipmap
     )
 end
 function TextureParameters(t::Texture{T, NDim}; kw_args...) where {T, NDim}

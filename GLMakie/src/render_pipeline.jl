@@ -4,22 +4,36 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     empty!(factory.children)
 
     # function barrier for types?
-    function get_buffer!(context, buffers, T, extras)
+    function get_buffer!(context, buffers, T, format)
         # reuse
         internalformat = GLAbstraction.default_internalcolorformat(T)
+        is_float_format = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
+        default_filter = ifelse(is_float_format, :linear, :nearest)
+        minfilter = ifelse(format.minfilter === :any, ifelse(format.mipmap, :linear_mipmap_linear, default_filter), format.minfilter)
+        magfilter = ifelse(format.magfilter === :any, default_filter, format.magfilter)
+
         for (i, buffer) in enumerate(buffers)
             if (buffer.id != 0) && (internalformat == buffer.internalformat) &&
-                (get(extras, :minfilter, :nearest) == buffer.parameters.minfilter)
+                (minfilter == buffer.parameters.minfilter) &&
+                (magfilter == buffer.parameters.magfilter) &&
+                (format.repeat == buffer.parameters.repeat) &&
+                (format.mipmap == buffer.parameters.mipmap)
+
                 return popat!(buffers, i)
             end
         end
 
         # create new
-        interp = get(extras, :minfilter, :nearest)
-        if !(eltype(T) == N0f8 || eltype(T) <: AbstractFloat) && (interp == :linear)
-            error("Cannot use :linear interpolation with non float types.")
+        if !is_float_format && (format.mipmap || minfilter != :nearest || magfilter != :nearest)
+            error("Cannot use :linear interpolation or mipmaps with non float buffers.")
         end
-        return Texture(context, T, size(factory), minfilter = interp, x_repeat = :clamp_to_edge)
+        format.mipmap && error("Mipmaps not yet implemented for Pipeline buffers")
+        # TODO: Figure out what we need to do for mipmaps. Do we need to call
+        #       glGenerateMipmap before every stage using the buffer? Should
+        #       Stages do that? Do we need anything extra for setup?
+        return Texture(context, T, size(factory),
+            minfilter = minfilter, magfilter = magfilter,
+            x_repeat = format.repeat[1], y_repeat = format.repeat[2])
     end
 
     # reuse buffers that match formats (and make sure that factory.buffers
@@ -28,7 +42,7 @@ function Makie.reset!(factory::FramebufferFactory, formats::Vector{Makie.BufferF
     empty!(factory.buffers)
     for format in formats
         T = Makie.format_to_type(format)
-        tex = get_buffer!(factory.fb.context, buffers, T, format.extras)
+        tex = get_buffer!(factory.fb.context, buffers, T, format)
         push!(factory.buffers, tex)
     end
 
