@@ -142,10 +142,11 @@ function id2scene(screen, id1)
 end
 
 renders_in_stage(robj, ::AbstractRenderStep) = false
+renders_in_stage(robj::RenderObject, step::RenderPlots) = renders_in_stage(robj.uniforms, step)
 function renders_in_stage(robj, step::RenderPlots)
-    return compare(robj[:ssao][], step.ssao) &&
-        compare(robj[:transparency][], step.transparency) &&
-        compare(robj[:fxaa][], step.fxaa)
+    return compare(to_value(get(robj, :ssao, false)), step.ssao) &&
+           compare(to_value(get(robj, :transparency, false)), step.transparency) &&
+           compare(to_value(get(robj, :fxaa, false)), step.fxaa)
 end
 
 function run_step(screen, glscene, step::RenderPlots)

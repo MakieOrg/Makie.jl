@@ -24,8 +24,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
                 "shading" => light_calc(shading),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "TARGET_STAGE" => target_stage(screen, data)
             )
         )
     end
