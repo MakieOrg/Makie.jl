@@ -55,32 +55,26 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     end
 
     maybe_color_mapping = plot.calculated_colors[]
-    uv_map = plot.uvmap
+    # uv_map = plot.uvmap # TODO: soft deprecate
+    uv_transform = plot.uv_transform
     if maybe_color_mapping isa Makie.ColorMapping
         uniform_dict[:color_map] = Sampler(maybe_color_mapping.colormap, minfilter = :nearest)
-        uniform_dict[:uv_map] = false
+        uniform_dict[:uv_transform] = false
         uniform_dict[:color] = false
-    elseif !isnothing(to_value(uv_map))
+    elseif !isnothing(to_value(uv_transform))
         uniform_dict[:color_map] = false
         # WebGL doesn't have sampler1D so we need to pad id -> uv mappings to
         # (id, side) -> uv mappings
-        wgl_uv_map = map(plot, uv_map) do uv_map
-            if uv_map isa Vector
-                new_map = Matrix{Vec4f}(undef, length(uv_map), 6)
-                for col in 1:6
-                    new_map[:, col] .= uv_map
-                end
-                return new_map
-            else
-                return uv_map
-            end
+        wgl_uv_transform = map(plot, uv_transform) do uvt
+            x = Makie.convert_attribute(uvt, Makie.key"uv_transform"())
+            return Makie.pack_voxel_uv_transform(x)
         end
-        uniform_dict[:uv_map] = Sampler(wgl_uv_map, minfilter = :nearest)
+        uniform_dict[:uv_transform] = Sampler(wgl_uv_transform, minfilter = :nearest)
         interp = to_value(plot.interpolate) ? :linear : :nearest
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = interp)
     else
         uniform_dict[:color_map] = false
-        uniform_dict[:uv_map] = false
+        uniform_dict[:uv_transform] = false
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = :nearest)
     end
 
