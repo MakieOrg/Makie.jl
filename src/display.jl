@@ -233,10 +233,6 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
-    show(io, scene)
-end
-
 # VSCode per default displays an object as markdown as well.
 # Which, without throwing a method error, would show a plot 2 times from within the display system.
 # This can lead to hangs e.g. for WGLMakie, where there is only one plotpane/browser, which then one waits on

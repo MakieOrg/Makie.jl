@@ -6,7 +6,6 @@ import {
 } from "./Shaders.js";
 
 import { deserialize_uniforms } from "./Serialization.js";
-import { IntType } from "./THREE.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -1009,6 +1008,74 @@ function lines_fragment_shader(uniforms, attributes) {
     `;
 }
 
+function get_last_len(points, point_ndim, pvm, res, is_lines) {
+    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+    if (points.length === 0) return new Float32Array(0);
+
+    const num_points = points.length / point_ndim;
+    const output = new Float32Array(num_points);
+    const scale = new THREE.Vector2(0.5 * res.x, 0.5 * res.y);
+
+    // Initial clip and prev calculation (scene offset skipped)
+    let clip = new THREE.Vector4(
+        points[point_ndim],
+        points[point_ndim + 1],
+        point_ndim === 3 ? points[point_ndim + 2] : 0,
+        1
+    ).applyMatrix4(pvm);
+    let prev = new THREE.Vector2(clip.x, clip.y)
+        .multiply(scale)
+        .divideScalar(clip.w);
+
+    // Initialize cumulative pixel scale length
+    output[0] = 0.0; // duplicated point
+    output[1] = 0.0; // start of first line segment
+    output[output.length - 1] = 0.0; // duplicated end point
+
+    let i = 2 * point_ndim; // start of first line segment
+    while (i < points.length) {
+        const x = points[i];
+        const y = points[i + 1];
+        const z = point_ndim === 3 ? points[i + 2] : 0;
+
+        if (
+            Number.isFinite(x) &&
+            Number.isFinite(y) &&
+            (point_ndim === 2 || Number.isFinite(z))
+        ) {
+            clip = new THREE.Vector4(x, y, z, 1).applyMatrix4(pvm);
+            const current = new THREE.Vector2(clip.x, clip.y)
+                .multiply(scale)
+                .divideScalar(clip.w);
+            const length = current.distanceTo(prev);
+            const point_index = i / point_ndim;
+            output[point_index] = output[point_index - 1] + length;
+            prev = current;
+            i += point_ndim;
+        } else {
+            // Handle NaN vertex section (NaN, A, B, C) does not contribute to line length
+            const point_index = i / point_ndim;
+            output[point_index] = 0.0;
+            output[point_index + 1] = 0.0;
+            if (i + 2 * point_ndim < points.length) {
+                output[Math.min(output.length - 1, point_index + 2)] = 0.0;
+                clip = new THREE.Vector4(
+                    points[i + 2 * point_ndim],
+                    points[i + 2 * point_ndim + 1],
+                    point_ndim === 3 ? points[i + 2 * point_ndim + 2] : 0,
+                    1
+                ).applyMatrix4(pvm);
+                prev = new THREE.Vector2(clip.x, clip.y)
+                    .multiply(scale)
+                    .divideScalar(clip.w);
+            }
+            i += 3 * point_ndim;
+        }
+    }
+
+    return output;
+}
+
 function create_line_material(scene, uniforms, attributes, is_linesegments) {
     const uniforms_des = deserialize_uniforms(scene, uniforms);
     const mat = new THREE.RawShaderMaterial({
@@ -1048,6 +1115,7 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
         attr_name + "_start",
         new THREE.InterleavedBufferAttribute(buffer, ndim, ndim)
     ); // xyz1
+
     geometry.setAttribute(
         attr_name + "_end",
         new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim)
@@ -1063,11 +1131,15 @@ function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segm
             new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim)
         ); // xyz3
     }
+    // make sure the interleaved buffer is accessible from the geometry for updating!
+    geometry.interleaved_attributes[attr_name] = buffer;
     return buffer;
 }
 
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
+    // track our interleaved buffers for updates!
+    geometry.interleaved_attributes = {};
     // (-1, -1) to (+1, +1) quad
     const instance_positions = [-1,-1, 1,-1, 1,1,   -1,-1, 1,1, -1,1];
     geometry.setAttribute(
@@ -1147,7 +1219,6 @@ export function _create_line(scene, line_data, is_segments) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
 
-    attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
 

@@ -62,7 +62,7 @@ function data_limits(plot::Surface)
     return Rect3d(mini, maxi .- mini)
 end
 
-function data_limits(plot::Union{Heatmap, Image})
+function data_limits(plot::Heatmap)
     mini_maxi = extrema_nan.((plot.x[], plot.y[]))
     mini = Vec3d(first.(mini_maxi)..., 0)
     maxi = Vec3d(last.(mini_maxi)..., 0)
@@ -78,40 +78,6 @@ end
 function data_limits(plot::Text)
     if plot.space[] == plot.markerspace[]
         return string_boundingbox(plot)
-    else
-        return Rect3d(point_iterator(plot))
-    end
-end
-
-function data_limits(plot::Scatter)
-    if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot
-        )
-        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
-        marker_offsets = convert_attribute(plot.marker_offset[], key"marker_offset"(), key"scatter"())
-
-        bb = Rect3d()
-        for (i, p) in enumerate(point_iterator(plot))
-            marker_pos = to_ndim(Point3d, p, 0) + sv_getindex(marker_offsets, i)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
-            quad_rotation = sv_getindex(rotations, i)
-
-            quad_origin = quad_rotation * quad_origin
-            quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
-            quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
-
-            bb = update_boundingbox(bb, marker_pos + quad_origin)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
-        end
-        return bb
     else
         return Rect3d(point_iterator(plot))
     end

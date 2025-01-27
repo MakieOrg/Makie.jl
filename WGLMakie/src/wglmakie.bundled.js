@@ -21242,6 +21242,93 @@ function filter_by_key(dict, keys, default_value = false) {
     });
     return result;
 }
+function re_create_buffer(buffer, is_segments) {
+    if (buffer instanceof mod.InterleavedBufferAttribute) {
+        return new mod.InterleavedBufferAttribute(buffer.data, buffer.itemSize, buffer.offset);
+    }
+    let { new_data  } = buffer;
+    if (!new_data) {
+        new_data = buffer.array;
+    }
+    let new_buffer;
+    if (buffer instanceof mod.InstancedInterleavedBuffer) {
+        new_buffer = new mod.InstancedInterleavedBuffer(new_data, buffer.stride, buffer.meshPerAttribute);
+        new_buffer.count = Math.max(0, is_segments ? Math.floor(new_buffer.count - 1) : new_buffer.count - 3);
+    } else if (buffer instanceof mod.InstancedBufferAttribute) {
+        new_buffer = new mod.InstancedBufferAttribute(new_data, buffer.itemSize, buffer.normalized, buffer.meshPerAttribute);
+    } else if (buffer instanceof mod.BufferAttribute) {
+        new_buffer = new mod.BufferAttribute(new_data, buffer.itemSize, buffer.normalized);
+    } else {
+        throw new Error("Unsupported buffer type. Must be THREE.BufferAttribute, THREE.InstancedBufferAttribute, or THREE.InstancedInterleavedBuffer.");
+    }
+    if (buffer.usage) {
+        new_buffer.usage = buffer.usage;
+    }
+    if (buffer.updateRange) {
+        new_buffer.updateRange = {
+            offset: buffer.updateRange.offset,
+            count: buffer.updateRange.count
+        };
+    }
+    return new_buffer;
+}
+function re_create_geometry(geometry, is_segments) {
+    let new_geometry;
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        new_geometry = new mod.InstancedBufferGeometry();
+    } else {
+        new_geometry = new mod.BufferGeometry();
+    }
+    new_geometry.boundingSphere = new mod.Sphere();
+    new_geometry.boundingSphere.radius = 10000000000000;
+    new_geometry.frustumCulled = false;
+    const interleaved_attributes = new Map();
+    let instance_count = geometry.instanceCount;
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        let new_attribute;
+        if (attribute.isInterleavedBufferAttribute) {
+            const old_buffer = attribute.data;
+            let new_buffer;
+            if (!interleaved_attributes.has(old_buffer)) {
+                new_buffer = re_create_buffer(old_buffer, is_segments);
+                interleaved_attributes.set(old_buffer, new_buffer);
+            } else {
+                new_buffer = interleaved_attributes.get(old_buffer);
+            }
+            attribute.data = new_buffer;
+            new_attribute = re_create_buffer(attribute, is_segments);
+            instance_count = new_attribute.count;
+        } else {
+            new_attribute = re_create_buffer(attribute, is_segments);
+        }
+        new_geometry.setAttribute(name, new_attribute);
+        if (new_attribute instanceof mod.InstancedBufferAttribute) {
+            instance_count = new_attribute.count;
+        }
+    }
+    if (geometry.interleaved_attributes) {
+        new_geometry.interleaved_attributes = {};
+        Object.keys(geometry.interleaved_attributes).forEach((name)=>{
+            const old = geometry.interleaved_attributes[name];
+            new_geometry.interleaved_attributes[name] = interleaved_attributes.get(old);
+        });
+    }
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        geometry.instanceCount = instance_count;
+    }
+    if (geometry.index) {
+        new_geometry.index = re_create_buffer(geometry.index, is_segments);
+    }
+    return new_geometry;
+}
+function find_interleaved_attribute(geometry, buffer) {
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        if (attribute.data === buffer) {
+            return attribute;
+        }
+    }
+    return null;
+}
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
@@ -22218,18 +22305,20 @@ function create_line(scene, line_data) {
 }
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
-    const buffer1 = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
-    buffer1.count = Math.max(0, is_segments ? Math.floor(buffer1.count - 1) : buffer1.count - 3);
-    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer1, ndim, ndim));
-    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer1, ndim, 2 * ndim));
+    const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
+    buffer.count = Math.max(0, is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3);
+    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
+    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim));
     if (is_position) {
-        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer1, ndim, 0));
-        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer1, ndim, 3 * ndim));
+        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
+        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim));
     }
-    return buffer1;
+    geometry.interleaved_attributes[attr_name] = buffer;
+    return buffer;
 }
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
+    geometry.interleaved_attributes = {};
     const instance_positions = [
         -1,
         -1,
@@ -22263,26 +22352,6 @@ function create_line_buffers(geometry, buffers, attributes, is_segments) {
         create_line_buffer(geometry, buffers, name, attr, is_segments, name == "linepoint");
     }
 }
-function attach_updates(mesh, buffers, attributes, is_segments) {
-    for(let name in attributes){
-        const attr = attributes[name];
-        attr.on((new_vertex_data)=>{
-            let buff = buffers[name];
-            const new_flat_data = new_vertex_data.flat;
-            const old_length = buff.array.length;
-            if (old_length != new_flat_data.length) {
-                mesh.geometry.dispose();
-                mesh.geometry = create_line_instance_geometry();
-                create_line_buffers(mesh.geometry, buffers, attributes, is_segments);
-                mesh.geometry.instanceCount = mesh.geometry.attributes.linepoint_start.count;
-            } else {
-                buff.set(new_flat_data);
-            }
-            buff.needsUpdate = true;
-            mesh.needsUpdate = true;
-        });
-    }
-}
 function _create_line(scene, line_data, is_segments) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
@@ -22295,7 +22364,6 @@ function _create_line(scene, line_data, is_segments) {
     };
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
-    attach_updates(mesh, buffers, line_data.attributes, is_segments);
     return mesh;
 }
 function create_linesegments(scene, line_data) {
@@ -22309,12 +22377,16 @@ class Plot {
     is_instanced = false;
     geometry_needs_recreation = false;
     plot_data = {};
+    type = "";
     constructor(scene, data){
         this.plot_data = data;
         connect_plot(scene, this);
+        this.type = data.plot_type;
         if (data.plot_type === "lines") {
+            this.is_instanced = true;
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
+            this.is_instanced = true;
             this.mesh = create_linesegments(scene, this.plot_data);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
@@ -22328,9 +22400,15 @@ class Plot {
         this.mesh.frustumCulled = false;
         this.mesh.matrixAutoUpdate = false;
         this.mesh.renderOrder = data.zvalue;
-        data.uniform_updater.on(([name, data])=>{
-            this.update_uniform(name, data);
-        });
+        if (data.uniform_updater) {
+            data.uniform_updater.on(([name, data])=>{
+                this.update_uniform(name, data);
+            });
+        } else if (data.updater) {
+            data.updater.on((data)=>{
+                this.update(data);
+            });
+        }
         if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
             connect_attributes(this.mesh, data.attribute_updater);
         }
@@ -22364,15 +22442,29 @@ class Plot {
         this.parent = scene;
         return;
     }
-    update(attributes) {
-        attributes.keys().forEach((key)=>{
-            const value = attributes[key];
-            if (value.type == "uniform") {
-                this.update_uniform(key, value.data);
-            } else if (value.type === "geometry") {
-                this.update_geometries(value.data);
-            } else if (value.type === "faces") {
-                this.update_faces(value.data);
+    update(data) {
+        const { mesh  } = this;
+        const { geometry  } = mesh;
+        const { attributes , interleaved_attributes  } = geometry;
+        const { uniforms  } = mesh.material;
+        data.forEach(([key, value])=>{
+            if (uniforms.color_start && key === "color" && (this.type === "lines" || this.type === "linesegments")) {
+                if (uniforms.color_start) {
+                    this.update_uniform(key + "_start", value);
+                    this.update_uniform(key + "_end", value);
+                }
+                return;
+            }
+            if (key in uniforms) {
+                this.update_uniform(key, value);
+            } else if (key in attributes || interleaved_attributes && key in interleaved_attributes) {
+                this.update_buffer(key, value);
+            } else if (key === "faces") {
+                this.update_faces(value);
+            } else if (key === "visible") {
+                this.mesh.visible = value;
+            } else {
+                console.warn(`Unknown key ${key} in Plot: ${this.name}`);
             }
         });
         this.apply_updates();
@@ -22384,23 +22476,88 @@ class Plot {
         }
         update_uniform(uniform, new_data);
     }
-    update_geometry(name, new_data) {
-        buffer = this.mesh.geometry.attributes[name];
+    update_buffer(name, new_data) {
+        const { geometry  } = this.mesh;
+        let buffer = geometry.attributes[name];
         if (!buffer) {
-            throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
+            buffer = geometry.interleaved_attributes[name];
+            if (!buffer) {
+                throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
+            }
         }
-        const old_length = buffer.count;
+        const old_length = buffer.array.length;
+        const is_interleaved = buffer instanceof mod.InstancedInterleavedBuffer;
+        const attribute = is_interleaved ? find_interleaved_attribute(geometry, buffer) : buffer;
+        if (attribute == null) {
+            console.log(name);
+            console.log(geometry.interleaved_attributes);
+            console.log(geometry.attributes);
+        }
+        const new_count = new_data.length / attribute.itemSize;
         if (new_data.length <= old_length) {
-            buffer.set(new_data.data);
+            buffer.set(new_data);
+            buffer.count = new_count;
+            const is_segments = this.type == "linesegments";
+            if (this.type == "lines" || is_segments) {
+                const skipped = new_count / (buffer.stride / attribute.itemSize);
+                buffer.count = Math.max(0, is_segments ? Math.floor(skipped - 1) : skipped - 3);
+            }
             buffer.needsUpdate = true;
         } else {
-            buffer.to_update = new_data.data;
+            buffer.new_data = new_data;
             this.geometry_needs_recreation = true;
         }
+        if (this.is_instanced) {
+            this.mesh.geometry.instanceCount = attribute.count;
+        }
+    }
+    apply_updates() {
+        if (this.geometry_needs_recreation) {
+            const { geometry  } = this.mesh;
+            const new_geometry = re_create_geometry(geometry, this.type == "linesegments");
+            geometry.dispose();
+            this.mesh.geometry = new_geometry;
+            this.mesh.needsUpdate = true;
+        }
+        this.geometry_needs_recreation = false;
     }
     update_faces(face_data) {
         this.mesh.geometry.setIndex(new mod.BufferAttribute(face_data, 1));
     }
+}
+function recreate_instanced_geometry(mesh) {
+    const { geometry  } = mesh;
+    const buffer_geometry = new mod.InstancedBufferGeometry();
+    if (geometry.interleaved_attributes) {
+        geometry.interleaved_attributes = {};
+    }
+    const vertexarrays = {};
+    const instance_attributes = {};
+    const n_instances = geometry.instanceCount;
+    const faces = [
+        ...geometry.index.array
+    ];
+    Object.keys(geometry.attributes).forEach((name)=>{
+        const buffer = geometry.attributes[name];
+        const copy = buffer.to_update ? buffer.to_update : buffer.array.map((x1)=>x1);
+        if (buffer.isInstancedBufferAttribute) {
+            instance_attributes[name] = {
+                flat: copy,
+                type_length: buffer.itemSize
+            };
+        } else {
+            vertexarrays[name] = {
+                flat: copy,
+                type_length: buffer.itemSize
+            };
+        }
+    });
+    attach_geometry(buffer_geometry, vertexarrays, faces);
+    attach_instanced_geometry(buffer_geometry, instance_attributes);
+    mesh.geometry.dispose();
+    mesh.geometry = buffer_geometry;
+    mesh.geometry.instanceCount = n_instances;
+    mesh.needsUpdate = true;
 }
 const scene_cache = {};
 const plot_cache = {};
@@ -22593,24 +22750,24 @@ function convert_RGB_to_RGBA(rgbArray) {
     return rgbaArray;
 }
 function create_texture_from_data(data) {
-    let buffer1 = data.data;
+    let buffer = data.data;
     if (data.size.length == 3) {
-        const tex = new mod.Data3DTexture(buffer1, data.size[0], data.size[1], data.size[2]);
+        const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
         tex.format = mod[data.three_format];
         tex.type = mod[data.three_type];
         return tex;
     } else {
         let format = mod[data.three_format];
         if (data.three_format == "RGBFormat") {
-            buffer1 = convert_RGB_to_RGBA(buffer1);
+            buffer = convert_RGB_to_RGBA(buffer);
             format = mod.RGBAFormat;
         }
-        return new mod.DataTexture(buffer1, data.size[0], data.size[1], format, mod[data.three_type]);
+        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
     }
 }
 function create_texture(scene, data) {
-    const buffer1 = data.data;
-    if (buffer1 == "texture_atlas") {
+    const buffer = data.data;
+    if (buffer == "texture_atlas") {
         const { texture_atlas  } = scene.screen;
         if (texture_atlas) {
             return texture_atlas;
@@ -22633,14 +22790,14 @@ function create_texture(scene, data) {
         return create_texture_from_data(data);
     }
 }
-function re_create_texture(old_texture, buffer1, size) {
+function re_create_texture(old_texture, buffer, size) {
     let tex;
     if (size.length == 3) {
-        tex = new mod.Data3DTexture(buffer1, size[0], size[1], size[2]);
+        tex = new mod.Data3DTexture(buffer, size[0], size[1], size[2]);
         tex.format = old_texture.format;
         tex.type = old_texture.type;
     } else {
-        tex = new mod.DataTexture(buffer1, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
     }
     tex.minFilter = old_texture.minFilter;
     tex.magFilter = old_texture.magFilter;
@@ -22654,26 +22811,26 @@ function re_create_texture(old_texture, buffer1, size) {
     }
     return tex;
 }
-function BufferAttribute(buffer1) {
-    const jsbuff = new mod.BufferAttribute(buffer1.flat, buffer1.type_length);
+function BufferAttribute(buffer) {
+    const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
     jsbuff.setUsage(mod.DynamicDrawUsage);
     return jsbuff;
 }
-function InstanceBufferAttribute(buffer1) {
-    const jsbuff = new mod.InstancedBufferAttribute(buffer1.flat, buffer1.type_length);
+function InstanceBufferAttribute(buffer) {
+    const jsbuff = new mod.InstancedBufferAttribute(buffer.flat, buffer.type_length);
     jsbuff.setUsage(mod.DynamicDrawUsage);
     return jsbuff;
 }
 function attach_geometry(buffer_geometry, vertexarrays, faces) {
     for(const name in vertexarrays){
         const buff = vertexarrays[name];
-        let buffer1;
+        let buffer;
         if (buff.to_update) {
-            buffer1 = new mod.BufferAttribute(buff.to_update, buff.itemSize);
+            buffer = new mod.BufferAttribute(buff.to_update, buff.itemSize);
         } else {
-            buffer1 = BufferAttribute(buff);
+            buffer = BufferAttribute(buff);
         }
-        buffer_geometry.setAttribute(name, buffer1);
+        buffer_geometry.setAttribute(name, buffer);
     }
     buffer_geometry.setIndex(faces);
     buffer_geometry.boundingSphere = new mod.Sphere();
@@ -22683,41 +22840,13 @@ function attach_geometry(buffer_geometry, vertexarrays, faces) {
 }
 function attach_instanced_geometry(buffer_geometry, instance_attributes) {
     for(const name in instance_attributes){
-        const buffer1 = InstanceBufferAttribute(instance_attributes[name]);
-        buffer_geometry.setAttribute(name, buffer1);
+        const buffer = InstanceBufferAttribute(instance_attributes[name]);
+        buffer_geometry.setAttribute(name, buffer);
     }
 }
 function recreate_geometry(mesh, vertexarrays, faces) {
     const buffer_geometry = new mod.BufferGeometry();
     attach_geometry(buffer_geometry, vertexarrays, faces);
-    mesh.geometry.dispose();
-    mesh.geometry = buffer_geometry;
-    mesh.needsUpdate = true;
-}
-function recreate_instanced_geometry(mesh) {
-    const buffer_geometry = new mod.InstancedBufferGeometry();
-    const vertexarrays = {};
-    const instance_attributes = {};
-    const faces = [
-        ...mesh.geometry.index.array
-    ];
-    Object.keys(mesh.geometry.attributes).forEach((name)=>{
-        const buffer1 = mesh.geometry.attributes[name];
-        const copy = buffer1.to_update ? buffer1.to_update : buffer1.array.map((x1)=>x1);
-        if (buffer1.isInstancedBufferAttribute) {
-            instance_attributes[name] = {
-                flat: copy,
-                type_length: buffer1.itemSize
-            };
-        } else {
-            vertexarrays[name] = {
-                flat: copy,
-                type_length: buffer1.itemSize
-            };
-        }
-    });
-    attach_geometry(buffer_geometry, vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, instance_attributes);
     mesh.geometry.dispose();
     mesh.geometry = buffer_geometry;
     mesh.needsUpdate = true;
@@ -22775,11 +22904,11 @@ function connect_attributes(mesh, updater) {
     function re_assign_buffers() {
         const attributes = mesh.geometry.attributes;
         Object.keys(attributes).forEach((name)=>{
-            const buffer1 = attributes[name];
-            if (buffer1.isInstancedBufferAttribute) {
-                instance_buffers[name] = buffer1;
+            const buffer = attributes[name];
+            if (buffer.isInstancedBufferAttribute) {
+                instance_buffers[name] = buffer;
             } else {
-                geometry_buffers[name] = buffer1;
+                geometry_buffers[name] = buffer;
             }
         });
         first_instance_buffer = first(instance_buffers);
@@ -22791,7 +22920,7 @@ function connect_attributes(mesh, updater) {
     }
     re_assign_buffers();
     updater.on(([name, new_values, length])=>{
-        const buffer1 = mesh.geometry.attributes[name];
+        const buffer = mesh.geometry.attributes[name];
         let buffers;
         let real_length;
         let is_instance = false;
@@ -22806,19 +22935,19 @@ function connect_attributes(mesh, updater) {
             real_length = real_geometry_length;
         }
         if (length <= real_length[0]) {
-            buffer1.set(new_values);
-            buffer1.needsUpdate = true;
+            buffer.set(new_values);
+            buffer.needsUpdate = true;
             if (is_instance) {
                 mesh.geometry.instanceCount = length;
             }
         } else {
-            buffer1.to_update = new_values;
+            buffer.to_update = new_values;
             const all_have_same_length = Object.values(buffers).every((x1)=>x1.to_update && x1.to_update.length / x1.itemSize == length);
             if (all_have_same_length) {
                 if (is_instance) {
                     recreate_instanced_geometry(mesh);
                     re_assign_buffers();
-                    mesh.geometry.instanceCount = new_values.length / buffer1.itemSize;
+                    mesh.geometry.instanceCount = new_values.length / buffer.itemSize;
                 } else {
                     recreate_geometry(mesh, buffers, mesh.geometry.index);
                     re_assign_buffers();

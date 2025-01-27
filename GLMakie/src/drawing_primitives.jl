@@ -420,192 +420,125 @@ end
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Scatter, MeshScatter}))
+function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
     return cached_robj!(screen, scene, plot) do gl_attributes
+
         # signals not supported for shading yet
         marker = pop!(gl_attributes, :marker)
 
-        space = plot.space
         positions = handle_view(plot[1], gl_attributes)
         f32c = pop!(gl_attributes, :f32c)
         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
-        cam = scene.camera
 
-        if plot isa Scatter
-            mspace = plot.markerspace
-            gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
-                                                 cam.resolution) do space, mspace, _, _
-                return Mat4f(Makie.clip_to_space(cam, mspace) * Makie.space_to_clip(cam, space))
-            end
-            # fast pixel does its own setup
-            if !(marker[] isa FastPixel)
-                gl_attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-                atlas = gl_texture_atlas()
-                isnothing(gl_attributes[:distancefield][]) && delete!(gl_attributes, :distancefield)
-                shape = lift(m -> Cint(Makie.marker_to_sdf_shape(m)), plot, marker)
-                gl_attributes[:shape] = shape
-                get!(gl_attributes, :distancefield) do
-                    if shape[] === Cint(DISTANCEFIELD)
-                        return get_texture!(screen.glscreen, atlas)
-                    else
-                        return nothing
-                    end
-                end
-                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
-                gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
-                get!(gl_attributes, :uv_offset_width) do
-                    return Makie.primitive_uv_offset_width(atlas, marker, font)
-                end
-                scale, quad_offset = Makie.marker_attributes(atlas, marker, gl_attributes[:scale], font, plot)
-                gl_attributes[:scale] = scale
-                gl_attributes[:quad_offset] = quad_offset
+        # If the vertices of the scattered mesh, markersize and (if it applies) model
+        # are float32 safe we should be able to just correct for any scaling from
+        # float32convert in the shader, after those conversions.
+        # We should also be fine as long as rotation = identity (also in model).
+        # If neither is the case we would have to combine vertices with positions and
+        # transform them to world space (post float32convert) on the CPU. We then can't
+        # do instancing anymore, so meshscatter becomes pointless.
+        if !isnothing(scene.float32convert)
+            gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+                # we must use new_f32c with transform_marker = true,
+                # because model might be merged into f32c (robj.model = I)
+                # with transform_marker = false we must use the old f32c
+                # as we don't want model to apply
+                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
             end
         end
 
-        if marker[] isa FastPixel
-            if haskey(gl_attributes, :intensity)
-                gl_attributes[:color] = pop!(gl_attributes, :intensity)
-            end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
-                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
-            filter!(gl_attributes) do (k, v,)
-                return (k in to_keep)
-            end
-            gl_attributes[:markerspace] = lift(plot.markerspace) do space
-                space == :pixel && return Int32(0)
-                space == :data && return Int32(1)
-                return error("Unsupported markerspace for FastPixel marker: $space")
-            end
-            gl_attributes[:marker_shape] = lift(x -> x.marker_type, plot.marker)
-            gl_attributes[:upvector] = lift(x-> Vec3f(normalize(x)), cam.upvector)
-            return draw_pixel_scatter(screen, positions, gl_attributes)
-        else
-            if plot isa MeshScatter
-                # If the vertices of the scattered mesh, markersize and (if it applies) model
-                # are float32 safe we should be able to just correct for any scaling from
-                # float32convert in the shader, after those conversions.
-                # We should also be fine as long as rotation = identity (also in model).
-                # If neither is the case we would have to combine vertices with positions and
-                # transform them to world space (post float32convert) on the CPU. We then can't
-                # do instancing anymore, so meshscatter becomes pointless.
-                if !isnothing(scene.float32convert)
-                    gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-                        # we must use new_f32c with transform_marker = true,
-                        # because model might be merged into f32c (robj.model = I)
-                        # with transform_marker = false we must use the old f32c
-                        # as we don't want model to apply
-                        return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-                    end
-                end
-
-                if haskey(gl_attributes, :color)
-                    if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
-                        pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
-                        gl_attributes[:image] = Texture(screen.glscreen, pattern_img, x_repeat=:repeat)
-                        gl_attributes[:color_map] = nothing
-                        gl_attributes[:color] = nothing
-                        gl_attributes[:color_norm] = nothing
-                    elseif to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-                        gl_attributes[:image] = gl_attributes[:color]
-                        gl_attributes[:color_map] = nothing
-                        gl_attributes[:color] = nothing
-                        gl_attributes[:color_norm] = nothing
-                    end
-                end
-                return draw_mesh_particle(screen, (marker, positions), gl_attributes)
-            else
-                return draw_scatter(screen, (marker, positions), gl_attributes)
-            end
+        if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+            gl_attributes[:image] = gl_attributes[:color]
         end
+        return draw_mesh_particle(screen, (marker, positions), gl_attributes)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        linestyle = pop!(gl_attributes, :linestyle)
-        miter_limit = pop!(gl_attributes, :miter_limit)
-        data = Dict{Symbol, Any}(gl_attributes)
-        data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
-        positions = handle_view(plot[1], data)
-        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-            Vec2f(ppu * origin(viewport))
-        end
-        space = plot.space
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         linestyle = pop!(gl_attributes, :linestyle)
+#         miter_limit = pop!(gl_attributes, :miter_limit)
+#         data = Dict{Symbol, Any}(gl_attributes)
+#         data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
+#         positions = handle_view(plot[1], data)
+#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+#             Vec2f(ppu * origin(viewport))
+#         end
+#         space = plot.space
 
-        # Handled manually without using OpenGL clipping
-        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-        data[:num_clip_planes] = Observable(0)
-        pop!(data, :clip_planes)
-        data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+#         # Handled manually without using OpenGL clipping
+#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+#         data[:num_clip_planes] = Observable(0)
+#         pop!(data, :clip_planes)
+#         data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
+#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            clip_planes = Makie.to_clip_space(pv, planes)
+#             clip_planes = Makie.to_clip_space(pv, planes)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                output[i] = Makie.gl_plane_format(clip_planes[i])
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
-            return output
-        end
+#             output = Vector{Vec4f}(undef, 8)
+#             for i in 1:min(length(planes), 8)
+#                 output[i] = Makie.gl_plane_format(clip_planes[i])
+#             end
+#             for i in min(length(planes), 8)+1:8
+#                 output[i] = Vec4f(0, 0, 0, -1e9)
+#             end
+#             return output
+#         end
 
-        if isnothing(to_value(linestyle))
-            data[:pattern] = nothing
-            data[:fast] = true
+#         if isnothing(to_value(linestyle))
+#             data[:pattern] = nothing
+#             data[:fast] = true
 
-            positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-        else
-            data[:pattern] = linestyle
-            data[:fast] = false
+#             positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
+#         else
+#             data[:pattern] = linestyle
+#             data[:fast] = false
 
-            # TODO: Skip patch_model() when this branch is used
-            pop!(data, :f32c)
-            pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
-                Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
-            end
-            transform_func = transform_func_obs(plot)
-            positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-                transformed = apply_transform(f, ps, space)
-                output = Vector{Point4f}(undef, length(transformed))
-                for i in eachindex(transformed)
-                    output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
-                end
-                output
-            end
-        end
+#             # TODO: Skip patch_model() when this branch is used
+#             pop!(data, :f32c)
+#             pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
+#                 Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
+#             end
+#             transform_func = transform_func_obs(plot)
+#             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
+#                 transformed = apply_transform(f, ps, space)
+#                 output = Vector{Point4f}(undef, length(transformed))
+#                 for i in eachindex(transformed)
+#                     output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
+#                 end
+#                 output
+#             end
+#         end
 
-        if haskey(data, :intensity)
-            data[:color] = pop!(data, :intensity)
-        end
+#         if haskey(data, :intensity)
+#             data[:color] = pop!(data, :intensity)
+#         end
 
-        return draw_lines(screen, positions, data)
-    end
-end
+#         return draw_lines(screen, positions, data)
+#     end
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = pop!(data, :linestyle)
-        data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-            Vec2f(ppu * origin(viewport))
-        end
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         data = Dict{Symbol, Any}(gl_attributes)
+#         data[:pattern] = pop!(data, :linestyle)
+#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
+#             Vec2f(ppu * origin(viewport))
+#         end
 
-        # Handled manually without using OpenGL clipping
-        data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-        data[:num_clip_planes] = Observable(0)
+#         # Handled manually without using OpenGL clipping
+#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
+#         data[:num_clip_planes] = Observable(0)
 
+#         positions = handle_view(plot[1], data)
+#         positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
+#         if haskey(data, :intensity)
+#             data[:color] = pop!(data, :intensity)
+#         end
 
-        positions = handle_view(plot[1], data)
-        positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-        if haskey(data, :intensity)
-            data[:color] = pop!(data, :intensity)
-        end
-
-        return draw_linesegments(screen, positions, data)
-    end
-end
+#         return draw_linesegments(screen, positions, data)
+#     end
+# end
 
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})

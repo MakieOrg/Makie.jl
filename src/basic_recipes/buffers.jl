@@ -17,9 +17,9 @@ end
 function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
-    append!(lsb[1][], positions)
-    append!(lsb[:color][], colorv)
-    append!(lsb[:linewidth][], thickv)
+    append!(lsb.args[1].inputs[:arg1].value, positions)
+    append!(lsb.args[1].inputs[:color].value, colorv)
+    append!(lsb.args[1].inputs[:linewidth].value, thickv)
     return
 end
 
@@ -28,17 +28,17 @@ function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where
 end
 
 function start!(lsb::LineSegments)
-    resize!(lsb[1][], 0)
-    resize!(lsb[:color][], 0)
-    resize!(lsb[:linewidth][], 0)
+    resize!(lsb.args[1].inputs[:arg1].value, 0)
+    resize!(lsb.args[1].inputs[:color].value, 0)
+    resize!(lsb.args[1].inputs[:linewidth].value, 0)
     return
 end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    ComputePipeline.mark_dirty!(lsb.args[1].inputs[:arg1])
+    ComputePipeline.mark_dirty!(lsb.args[1].inputs[:color])
+    ComputePipeline.mark_dirty!(lsb.args[1].inputs[:linewidth])
     return
 end
 

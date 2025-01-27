@@ -533,28 +533,34 @@ If the array doesn't support this, it will be converted to an interpolation obje
 """
 struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     data::T
-    max_resolution::Union{Automatic, Bool}
+    max_resolution::Union{Automatic, Int}
     update_while_button_pressed::Bool
 end
 
 using Interpolations: Interpolations
 using ImageBase: ImageBase
 
-function Resampler(data; resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
+function Resampler(
+    data;
+    method=Interpolations.Linear(),
+    max_resolution=automatic,
+    update_while_button_pressed=false,
+    lowres_background=true,
+)
     # Our interpolation interface is to do matrix(linrange, linrange)
     # There doesn't seem to be an official trait for this,
     # so we fall back to just check if this method applies:
     # The type of LinRange has changed since Julia 1.6, so we need to construct it and use that
     lr = LinRange(0, 1, 10)
     if applicable(data, lr, lr)
-        return Resampler(data, resolution, update_while_button_pressed)
+        return Resampler(data, max_resolution, update_while_button_pressed, lowres_background)
     else
         dataf32 = el32convert(data)
         ET = eltype(dataf32)
         # Interpolations happily converts to Float64 here, but that's not desirable for e.g. RGB{N0f8}, or Float32 data
         # Since we expect these arrays to be huge, this is no laughing matter ;)
         interp = Interpolations.interpolate(eltype(ET), ET, data, Interpolations.BSpline(method))
-        return Resampler(interp, resolution, update_while_button_pressed)
+        return Resampler(interp, max_resolution, update_while_button_pressed, lowres_background)
     end
 end
 
@@ -653,7 +659,7 @@ function Makie.plot!(p::HeatmapShader)
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        update_while_pressed = p.values[].update_while_button_pressed
+        update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
         if update_while_pressed || (no_mbutton && no_kbutton)
@@ -667,12 +673,12 @@ function Makie.plot!(p::HeatmapShader)
     end
 
     x, y = p.x, p.y
-    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, p.image, scene.viewport) do resampler, viewport
         res = resampler.max_resolution isa Automatic ? widths(viewport) :
               ntuple(x -> resampler.max_resolution, 2)
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
-    image = lift(x-> x.data, p, p.values)
+    image = lift(x-> x.data, p, p.image)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
     x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
     overview_image = lift(last, x_y_overview_image)
@@ -750,13 +756,13 @@ function Makie.plot!(p::HeatmapShader)
         # if do_resample/ch is not empty, we already know that
         # there is a newer image queued to be updated
         # So we can skip this update
+
+        if !visible[]
+            visible[] = true
+        end
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
-            visible[] = false
-            imgp[1] = x
-            imgp[2] = y
-            imgp[3] = image
-            visible[] = true
+            update!(imgp, arg1=x, arg2=y, arg3=image)
         end
     end
     bind(image_to_obs, task)
