@@ -180,5 +180,14 @@ void main() {
 
     // map plane_vertex (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * plane_vertex);
+    o_tex_uv = vec2(0);
+    if (dim == 1) {
+        o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, 1.0, 1.0) * plane_vertex);
+    } else if (dim == 2) {
+        // y-mirrored:
+        // o_tex_uv = transpose(orientations[dim]) * (vec3(1.0, normal_dir, 1.0) * plane_vertex);
+        o_tex_uv = transpose(orientations[dim]) * plane_vertex;
+    } else {
+        o_tex_uv = transpose(orientations[dim]) * (vec3(1.0, normal_dir, 1.0) * plane_vertex);
+    }
 }
