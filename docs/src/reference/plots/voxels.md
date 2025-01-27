@@ -82,7 +82,7 @@ The input uv coordinates are normalized to a 0..1 range for each voxel and orien
 For the top and bottom sides of a voxel u and v align with +x and +y.
 
 ```@figure backend=GLMakie
-using FileIO
+using FileIO, LinearAlgebra
 texture = rotr90(FileIO.load(Makie.assetpath("debug_texture.png")))
 voxels(ones(UInt8, 1,1,1), uv_transform = [I], color = texture)
 ```
