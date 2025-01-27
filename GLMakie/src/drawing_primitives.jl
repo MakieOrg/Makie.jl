@@ -1043,10 +1043,25 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         get!(gl_attributes, :color, nothing)
         get!(gl_attributes, :color_map, nothing)
 
+        # TODO: soft deprecate
         # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap)
-        if !isnothing(to_value(uv_map))
-            gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
+        # uv_map = pop!(gl_attributes, :uvmap)
+        # if !isnothing(to_value(uv_map))
+        #     gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
+
+        #     interp = to_value(pop!(gl_attributes, :interpolate))
+        #     interp = interp ? :linear : :nearest
+        #     color = gl_attributes[:color]
+        #     gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
+        # elseif !isnothing(to_value(gl_attributes[:color]))
+        #     gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
+        # end
+
+        # process texture mapping
+        uv_transform = pop!(gl_attributes, :uv_transform)
+        if !isnothing(to_value(uv_transform))
+            packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
             interp = to_value(pop!(gl_attributes, :interpolate))
             interp = interp ? :linear : :nearest

@@ -617,6 +617,13 @@ representation and may behave a bit differently than usual.
     are then used to sample a 2D texture passed through `color` for texture mapping.
     """
     uvmap = nothing
+    """
+    TODO:
+    Defines a mapping from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
+    are then used to sample a 2D texture passed through `color` for texture mapping.
+    """
+    uv_transform = nothing
+
     "Controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated)."
     interpolate = false
     """
