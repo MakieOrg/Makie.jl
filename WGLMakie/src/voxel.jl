@@ -55,21 +55,31 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     end
 
     maybe_color_mapping = plot.calculated_colors[]
-    # uv_map = plot.uvmap # TODO: soft deprecate
+    uv_map = get(plot.attributes, :uvmap, nothing)
     uv_transform = plot.uv_transform
     if maybe_color_mapping isa Makie.ColorMapping
         uniform_dict[:color_map] = Sampler(maybe_color_mapping.colormap, minfilter = :nearest)
         uniform_dict[:uv_transform] = false
         uniform_dict[:color] = false
-    elseif !isnothing(to_value(uv_transform))
+    elseif !isnothing(to_value(uv_transform)) || !isnothing(to_value(uv_map))
         uniform_dict[:color_map] = false
-        # WebGL doesn't have sampler1D so we need to pad id -> uv mappings to
-        # (id, side) -> uv mappings
-        wgl_uv_transform = map(plot, uv_transform) do uvt
-            x = Makie.convert_attribute(uvt, Makie.key"uv_transform"())
-            return Makie.pack_voxel_uv_transform(x)
+
+        if !isnothing(to_value(uv_transform))
+            # new
+            packed = map(plot, uv_transform) do uvt
+                x = Makie.convert_attribute(uvt, Makie.key"uv_transform"())
+                return Makie.pack_voxel_uv_transform(x)
+            end
+        else
+            # old, deprecated
+            @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+            packed = map(uv_map) do uvmap
+                raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+                converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+                return Makie.pack_voxel_uv_transform(converted_uvt)
+            end
         end
-        uniform_dict[:uv_transform] = Sampler(wgl_uv_transform, minfilter = :nearest)
+        uniform_dict[:uv_transform] = Sampler(packed, minfilter = :nearest)
         interp = to_value(plot.interpolate) ? :linear : :nearest
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = interp)
     else

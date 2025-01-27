@@ -233,6 +233,14 @@ function pack_voxel_uv_transform(uv_transform::Matrix{Mat{2,3,Float32,6}})
     return output
 end
 
+function uvmap_to_uv_transform(uvmap::Array)
+    return map(uvmap) do (l, r, b, t)
+        return (Point2f(l, b), Vec2f(r-l, t-b))
+    end
+end
+
+
+
 function voxel_size(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))
     maxi = maximum.(to_value.(p.converted[1:3]))

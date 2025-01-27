@@ -44,16 +44,16 @@ vec4 debug_color(uint id) {
 vec4 debug_color(int id) { return debug_color(uint(id)); }
 
 // unused but compilation requires it
-mat3x2 get_lrbt(Nothing uv_transform, int id, int side) {
+mat3x2 get_uv_transform_mat(Nothing uv_transform, int id, int side) {
     return mat3x2(1,0,0,1,0,0);
 }
-mat3x2 get_lrbt(sampler2D uv_transform, int id, int side) {
+mat3x2 get_uv_transform_mat(sampler2D uv_transform, int id, int side) {
     vec2 part1 = texelFetch(uv_transform, ivec2(0, id-1), 0).xy;
     vec2 part2 = texelFetch(uv_transform, ivec2(1, id-1), 0).xy;
     vec2 part3 = texelFetch(uv_transform, ivec2(2, id-1), 0).xy;
     return mat3x2(part1, part2, part3);
 }
-mat3x2 get_lrbt(sampler3D uv_transform, int id, int side) {
+mat3x2 get_uv_transform_mat(sampler3D uv_transform, int id, int side) {
     vec2 part1 = texelFetch(uv_transform, ivec3(0, id-1, side), 0).xy;
     vec2 part2 = texelFetch(uv_transform, ivec3(1, id-1, side), 0).xy;
     vec2 part3 = texelFetch(uv_transform, ivec3(2, id-1, side), 0).xy;
@@ -61,7 +61,7 @@ mat3x2 get_lrbt(sampler3D uv_transform, int id, int side) {
 }
 
 vec4 get_color_from_texture(sampler2D color, int id) {
-    mat3x2 uvt = get_lrbt(uv_transform, id, o_side);
+    mat3x2 uvt = get_uv_transform_mat(uv_transform, id, o_side);
     // compute uv normalized to voxel
     // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
