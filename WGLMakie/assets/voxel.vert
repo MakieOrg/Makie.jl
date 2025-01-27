@@ -27,7 +27,9 @@ const mat2x3 orientations[3] = mat2x3[](
 );
 
 void main() {
-    get_dummy(); // otherwise this doesn't render :)
+    // Without fetching the instanced data the shader wont render. On some
+    // systems (linux + firefox for example) this even needs to be used.
+    float zero = get_dummy();
 
     /* How this works:
     To simplify lets consider a 2d grid of pixel where the voxel surface would
@@ -66,7 +68,7 @@ void main() {
     // Map instance id to dimension and index along dimension (0..N+1 or 0..2N)
     ivec3 size = textureSize(voxel_id, 0);
     int dim, id = gl_InstanceID, front = 1;
-    float gap = get_gap();
+    float gap = get_gap() + zero;
     if (gap > 0.01) {
         front = 1 - 2 * int(gl_InstanceID & 1);
         if (id < 2 * size.z) {
