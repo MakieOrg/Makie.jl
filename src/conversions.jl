@@ -1053,9 +1053,9 @@ Creates a 3x3 uv transformation matrix from a given named action. They assume
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
     if action == :rotr90
-        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
-    elseif action == :rotl90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action == :rotl90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
     elseif action == :rot180
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
