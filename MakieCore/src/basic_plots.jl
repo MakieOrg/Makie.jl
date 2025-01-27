@@ -613,17 +613,19 @@ representation and may behave a bit differently than usual.
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
     is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     """
-    Defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
-    are then used to sample a 2D texture passed through `color` for texture mapping.
+    Deprecated - use uv_transform
     """
     uvmap = nothing
     """
-    TODO:
-    Defines a mapping from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
-    are then used to sample a 2D texture passed through `color` for texture mapping.
+    To use texture mapping `uv_transform` needs to be defined and `color` needs to be an image.
+    The `uv_transform` can be given as a `Vector` where each index maps to a `UInt8` voxel id (skipping 0),
+    or as a `Matrix` where the second index maps to a side following the order `(-x, -y, -z, +x, +y, +z)`.
+    Each element acts as a `Mat{2, 3, Float32}` which is applied to `Vec3f(uv, 1)`, where uv's are generated to run from 0..1 for each voxel.
+    The result is then used to sample the texture.
+    UV transforms have a bunch of shorthands you can use, for example `(Point2f(x, y), Vec2f(xscale, yscale))`.
+    They are listed in `?Makie.uv_transform`.
     """
     uv_transform = nothing
-
     "Controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated)."
     interpolate = false
     """
