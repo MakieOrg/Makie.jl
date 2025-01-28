@@ -73,22 +73,28 @@ This means id 1 maps to lowclip, 2..254 to colors of the colormap and 255 to hig
 
 #### Texture maps
 
-You can also map a texture to voxels based on their id (and optionally the direction the face is facing).
-For this `plot.color` needs to be an image (matrix of colors) and `plot.uv_transform` needs to be defined.
-The `uv_transform` can either be defined as a Vector per voxel or as a Matrix per voxel and side.
-Each element acts as a 2x3 transformation matrix, applied to `Vec3f(uv, 1)`.
-That way it can apply scaling, rotation, mirroring, translation etc.
-The input uv coordinates are normalized to a 0..1 range for each voxel and oriented such that the v direction matches +z and u extends to the right.
-For the top and bottom sides of a voxel u and v align with +x and +y.
+For texture mapping we need an image containing multiple textures which are to be mapped to voxels.
+As an example, we will use [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
+
+```@figure backend=GLMakie
+using FileIO
+texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
+image(0..1, 0..1, texture, axis=(xlabel = "u", ylabel="v"))
+```
+
+Voxels render with texture mapping when `color` is an image and `uv_transform` is defined.
+In this case uv (texture) coordinates are generated, transformed by `uv_transform` and then used to sample the image.
+Each voxel starts with a 0..1 uv range, which can be shown by using Makie's "debug_texture" with an identity transform.
+Here magenta corresponds to (0, 0), blue to (1, 0), red to (0, 1) and green to (1, 1).
 
 ```@figure backend=GLMakie
 using FileIO, LinearAlgebra
-texture = rotr90(FileIO.load(Makie.assetpath("debug_texture.png")))
-voxels(ones(UInt8, 1,1,1), uv_transform = [I], color = texture)
+texture = FileIO.load(Makie.assetpath("debug_texture.png"))
+voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
 ```
 
-Here is an example of per-voxel texture mapping.
-The texture includes 10 sprites along x direction and 9 along y direction, each with the same square size.
+To do texture mapping we want to transform the 0..1 uv range to a smaller range corresponding to textures in the image.
+We can do that by defining a `uv_transform` per voxel id that includes a translation and scaling.
 
 ```@figure backend=GLMakie
 using FileIO
@@ -97,7 +103,6 @@ using FileIO
 texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
 
 # create a mapping of voxel id -> (translation, scale)
-# This is equivalent to using `Makie.Mat{2, 3, Float32}(1/10, 0, 0, 1/9, x, y)`
 uvt = [(Point2f(x, y), Vec2f(1/10, 1/9))
     for x in range(0.0, 1.0, length = 11)[1:end-1]
     for y in range(0.0, 1.0, length = 10)[1:end-1]
@@ -114,8 +119,8 @@ chunk = UInt8[
 voxels(chunk, uv_transform = uvt, color = texture)
 ```
 
-To define texture per side we use a `Matrix` instead, where the first index is the voxel id and the second the side.
-The order of sides is: -x, -y, -z, +x, +y, +z.
+Texture mapping can also be done per voxel side by passing a `Matrix` of uv transforms.
+Here the first index correspond to the voxel id and the second to a side following the order: -x, -y, -z, +x, +y, +z.
 
 ```@figure backend=GLMakie
 using FileIO
@@ -145,8 +150,10 @@ chunk = UInt8[
 voxels(chunk, uv_transform = uvt, color = texture)
 ```
 
-The textures used in these examples are from [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
-
+Note that `uv_transform` allows various input types.
+You can find more information on them with `?Makie.uv_transform`.
+In the most general case a uv transform is a `Makie.Mat{2, 3, Float32}` which is multiplied to `Vec3f(uv..., 1)`.
+The `(translation, scale)` syntax we used above can be written as `Makie.Mat{2, 3, Float32}(1/10, 0, 0, 1/9, x, y)`.
 
 
 #### Updating Voxels
