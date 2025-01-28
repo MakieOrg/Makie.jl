@@ -7,6 +7,7 @@
 - Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
 - Fixed issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
 - Fixed issue with `WGLMakie.voxels` not rendering on linux with firefox [#4756](https://github.com/MakieOrg/Makie.jl/pull/4756)
+- Updated `voxels` to use `uv_transform` interface instead of `uvmap` to give more control over texture mapping (i.e. to allow rotations) [#4758](https://github.com/MakieOrg/Makie.jl/pull/4758)
 
 ## [0.22.1] - 2025-01-17
 
