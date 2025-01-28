@@ -62,6 +62,10 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         uniform_dict[:uv_transform] = false
         uniform_dict[:color] = false
     elseif !isnothing(to_value(uv_transform)) || !isnothing(to_value(uv_map))
+        if !(to_value(maybe_color_mapping) isa Matrix{<: Colorant})
+            error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+        end
+
         uniform_dict[:color_map] = false
 
         if !isnothing(to_value(uv_transform))
@@ -82,6 +86,8 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
         uniform_dict[:uv_transform] = Sampler(packed, minfilter = :nearest)
         interp = to_value(plot.interpolate) ? :linear : :nearest
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = interp)
+    elseif to_value(maybe_color_mapping) isa Matrix{<: Colorant}
+        error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
     else
         uniform_dict[:color_map] = false
         uniform_dict[:uv_transform] = false

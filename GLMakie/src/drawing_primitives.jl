@@ -1048,6 +1048,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         uv_transform = pop!(gl_attributes, :uv_transform)
 
         if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+            end
+
             if !isnothing(to_value(uv_transform))
                 # new
                 packed = map(Makie.pack_voxel_uv_transform, uv_transform)
@@ -1067,6 +1071,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             color = gl_attributes[:color]
             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
         elseif !isnothing(to_value(gl_attributes[:color]))
+            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+            end
             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
         end
 
