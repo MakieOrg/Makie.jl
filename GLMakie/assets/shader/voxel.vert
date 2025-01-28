@@ -4,6 +4,7 @@
 
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER
+{{DEBUG_FLAG_DEFINE}}
 
 in vec2 vertices;
 

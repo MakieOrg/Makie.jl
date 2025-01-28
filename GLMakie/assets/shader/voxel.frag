@@ -4,6 +4,8 @@
 
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER 0 // (0, 1, 2) - dimensions
+// #define DEBUG_UV
+{{DEBUG_FLAG_DEFINE}}
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -116,6 +118,7 @@ void main()
     if (is_clipped())
         discard;
 
+    // TODO: Should uv's be scaled with gap > 0 so voxels still span a 0..1 uv space?
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
     if (voxel_uv.x < 0.5 * gap || voxel_uv.x > 1.0 - 0.5 * gap ||
         voxel_uv.y < 0.5 * gap || voxel_uv.y > 1.0 - 0.5 * gap)
@@ -131,6 +134,10 @@ void main()
 
     // otherwise we draw. For now just some color...
     vec4 voxel_color = get_color(color, color_map, id);
+
+#ifdef DEBUG_UV
+    voxel_color = vec4(voxel_uv, 0, 1);
+#endif
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)
