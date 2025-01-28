@@ -189,7 +189,8 @@ excludes = Set([
     "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
     "heatmaps & surface", # different nan_colors in surface
     "Textured meshscatter", # not yet implemented
-    "Voxel - texture mapping", # not yet implemented
+    "Voxel - texture mapping", # textures not implemented
+    "Voxel uvs", # textures not implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
     "picking", # Not implemented
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
