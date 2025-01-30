@@ -694,7 +694,7 @@ function Makie.plot!(p::HeatmapShader)
     end
 
     x, y = map(identity, p, p.x; ignore_equal_values=true), map(identity, p, p.y; ignore_equal_values=true)
-    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, p.image, scene.viewport) do resampler, viewport
         res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
@@ -717,7 +717,7 @@ function Makie.plot!(p::HeatmapShader)
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
     overview = overview_image
-    if !p.values[].lowres_background
+    if !p.image[].lowres_background
         # If we don't use the lowres background,
         # We still display a background image, but with only the average of the image
         # Leading to a background that blends relatively well with the high res image
