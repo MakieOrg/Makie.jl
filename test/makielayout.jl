@@ -212,6 +212,23 @@ end
     end
 end
 
+@testset "Minor tick skip" begin
+    # Verify that minor ticks aren't calculated if they are not needed
+    f,a,_ = scatter(1:10, axis = (xticksmirrored = true,));
+    a.xminortickcolor[] = :red
+    Makie.update_state_before_display!(f)
+    plots = filter(p -> p.color[] == :red, a.blockscene.plots)
+    for p in plots
+        @test isempty(p.args[1][])
+        @test !p.visible[]
+    end
+    a.xminorticksvisible[] = true
+    for p in plots
+        @test !isempty(p.args[1][])
+        @test p.visible[]
+    end
+end
+
 @testset "MultiplesTicks strip_zero" begin
     default = MultiplesTicks(5, pi, "π")
     strip = MultiplesTicks(5, pi, "π"; strip_zero=true)
