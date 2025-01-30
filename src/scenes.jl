@@ -651,6 +651,7 @@ end
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
+parent_scene(::Nothing) = nothing
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
