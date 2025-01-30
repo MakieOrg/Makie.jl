@@ -9,8 +9,14 @@ add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr
 function add_computation!(attr, scene, ::Val{:scene_origin})
     add_input!(attr, :viewport, scene.viewport[])
     on(viewport -> Makie.update!(attr; viewport=viewport), scene.viewport) # TODO: This doesn't update immediately?
-    register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, output
-        return (Vec2f(origin(viewport[])),)
+    register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
+        !changed[1] && return nothing
+        new_val = Vec2f(origin(viewport[]))
+        if !isnothing(last) && last[1][] == new_val
+            return nothing
+        else
+            return (new_val,)
+        end
     end
 end
 

@@ -150,6 +150,7 @@ function serialize_three(scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:plot_type] = "Mesh"
     mesh[:visible] = Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)
     mesh[:updater] = plot.args[1][:wgl_update_obs][]
@@ -234,7 +235,7 @@ const IMAGE_INPUTS = [
     :visible,
 ]
 
-function create_shader(scene::Scene, plot::Image)
+function create_shader(::Scene, plot::Image)
     attr = plot.args[1]
     add_uv_mesh!(attr)
     register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
@@ -277,6 +278,7 @@ end
 function serialize_three(scene::Scene, plot::Image)
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+    mesh[:plot_type] = "Mesh"
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)

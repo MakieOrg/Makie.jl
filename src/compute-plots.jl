@@ -111,6 +111,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         attr, [colorname, :colorrange], [:_colorrange]
     ) do (color, colorrange), changed, last
         (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
+        all(changed) || return nothing
         if colorrange[] === automatic
             (Vec2d(distinct_extrema_nan(color[])),)
         else
@@ -128,13 +129,22 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         attr,
         [colorname, :colorscale, :alpha],
                           [:scaled_color]) do (color, colorscale, alpha), changed, last
+        all(changed) || return nothing
 
-        if color[] isa Union{AbstractArray{<: Real}, Real}
-            return (el32convert(apply_scale(colorscale[], color[])),)
+        val = if color[] isa Union{AbstractArray{<: Real}, Real}
+            el32convert(apply_scale(colorscale[], color[]))
         elseif color[] isa AbstractArray
-            return (add_alpha.(color[], alpha[]),)
+            add_alpha.(color[], alpha[])
         else
-            return (add_alpha(color[], alpha[]),)
+            add_alpha(color[], alpha[])
+        end
+        if !isnothing(last) && last[1][] == val
+            return nothing
+        else
+            if !isnothing(last)
+                @show val last[1][]
+            end
+            return (val,)
         end
     end
 end
@@ -467,7 +477,11 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
         [attribute, :positions],
         [output_name],
     ) do (vec, positions), changed, last
-        vec[] isa AbstractVector || return (vec[],)
+        all(changed) || return nothing
+        if !(vec[] isa AbstractVector)
+            !isnothing(last) && vec[] == last[1][] && return nothing
+            return (vec[],)
+        end
         NP = length(positions[])
         NC = length(vec[])
         NP == NC && return (vec[],)

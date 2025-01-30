@@ -3,9 +3,7 @@ import {
     uniforms_to_type_declaration,
     uniform_type,
     attribute_type,
-} from "./Shaders.js";
-
-import { deserialize_uniforms } from "./Serialization.js";
+} from "./ThreeHelper.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -1076,8 +1074,7 @@ function get_last_len(points, point_ndim, pvm, res, is_lines) {
     return output;
 }
 
-function create_line_material(scene, uniforms, attributes, is_linesegments) {
-    const uniforms_des = deserialize_uniforms(scene, uniforms);
+function create_line_material(uniforms_des, attributes, is_linesegments) {
     const mat = new THREE.RawShaderMaterial({
         uniforms: uniforms_des,
         glslVersion: THREE.GLSL3,
@@ -1154,8 +1151,8 @@ function create_line_instance_geometry() {
 }
 
 function create_line_buffer(geometry, buffers, name, attr, is_segments, is_position) {
-    const flat_buffer = attr.value.flat;
-    const ndims = attr.value.type_length;
+    const flat_buffer = attr.flat;
+    const ndims = attr.type_length;
     const linebuffer = attach_interleaved_line_buffer(
         name,
         geometry,
@@ -1175,57 +1172,130 @@ function create_line_buffers(geometry, buffers, attributes, is_segments) {
     }
 }
 
-function attach_updates(mesh, buffers, attributes, is_segments) {
-    for (let name in attributes) {
-        const attr = attributes[name];
-        attr.on((new_vertex_data) => {
-            let buff = buffers[name];
-            const new_flat_data = new_vertex_data.flat;
-            const old_length = buff.array.length;
-            if (old_length != new_flat_data.length) {
-                mesh.geometry.dispose();
-                mesh.geometry = create_line_instance_geometry();
-                create_line_buffers(mesh.geometry, buffers, attributes, is_segments);
-                mesh.geometry.instanceCount = mesh.geometry.attributes.linepoint_start.count;
-            } else {
-                buff.set(new_flat_data);
-            }
-            buff.needsUpdate = true;
-            mesh.needsUpdate = true;
-        });
+function get_points_view(points, indices) {
+    let view = new Float32Array(indices.length * 2); // Each point consists of two values (x and y)
+
+    for (let i = 0; i < indices.length; i++) {
+        let index = indices[i];
+        view[i * 2] = points[index * 2]; // x-coordinate
+        view[i * 2 + 1] = points[index * 2 + 1]; // y-coordinate
     }
+    return view;
 }
 
-export function _create_line(scene, line_data, is_segments) {
+export function add_line_attributes(attributes) {
+    const new_data = {};
+    for (const [key, value] of Object.entries(attributes)) {
+        if (
+            (key === "color" || key === "linewidth") && !(value.flat) // .flat if buffer!
+        ) {
+            new_data[key + "_start"] = value;
+            new_data[key + "_end"] = value;
+        } else if (key === "linepoint") {
+            const val = value.flat ? value.flat : value;
+            const indices = nan_free_points_indices(val);
+            const points = get_points_view(val, indices);
+            new_data[key] = value.flat
+                ? { flat: points, type_length: value.type_length }
+                : points;
+            new_data["lineindex"] = value.flat ? {flat: indices, type_length: 1} : indices;
+            new_data["lastlen"] = value.flat ? {flat: new Float32Array(points.length / 2).fill(0), type_length: 1} : new Float32Array(points.length / 2).fill(0);
+        } else {
+            new_data[key] = value;
+        }
+    }
+    return new_data;
+}
+
+
+export function create_line(plot_object) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
+    const {plot_data} = plot_object;
     create_line_buffers(
         geometry,
         buffers,
-        line_data.attributes,
-        is_segments
+        add_line_attributes(plot_data.attributes),
+        plot_data.is_segments
     );
     const material = create_line_material(
-        scene,
-        line_data.uniforms,
+        add_line_attributes(plot_object.deserialized_uniforms),
         geometry.attributes,
-        is_segments
+        plot_data.is_segments
     );
 
-    material.depthTest = !line_data.overdraw.value;
-    material.depthWrite = !line_data.transparency.value;
+    material.depthTest = !plot_data.overdraw.value;
+    material.depthWrite = !plot_data.transparency.value;
 
-    material.uniforms.is_linesegments = {value: is_segments};
+    material.uniforms.is_linesegments = { value: plot_data.is_segments };
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
-
     return mesh;
 }
 
-export function create_line(scene, line_data) {
-    return _create_line(scene, line_data, false)
+
+function get_point(points, index) {
+    return [points[index * 2], points[index * 2 + 1]];
 }
 
-export function create_linesegments(scene, line_data) {
-    return _create_line(scene, line_data, true)
+function approximately_equal(x1, y1, x2, y2, epsilon = 1e-6) {
+    return Math.abs(x1 - x2) < epsilon && Math.abs(y1 - y2) < epsilon;
+}
+
+function nan_free_points_indices(points) {
+    const indices = [];
+    if (points.length === 0) return new Uint32Array(indices);
+
+    let was_nan = true;
+    let loop_start = -1;
+
+    for (let i = 0; i < points.length; i += 2) {
+        const index = i / 2;
+        const [x, y] = get_point(points, index);
+
+        if (isNaN(x) || isNaN(y)) {
+            if (!was_nan) {
+                if (
+                    loop_start !== -1 &&
+                    loop_start + 2 < indices.length &&
+                    approximately_equal(
+                        ...get_point(points, indices[loop_start]),
+                        ...get_point(points, indices[index - 1])
+                    )
+                ) {
+                    indices.push(indices[loop_start + 1]);
+                    indices[loop_start - 1] = index - 2;
+                } else {
+                    indices.push(index - 1);
+                }
+            }
+            loop_start = -1;
+            was_nan = true;
+        } else {
+            if (was_nan) {
+                indices.push(index);
+                loop_start = indices.length + 1;
+            }
+            was_nan = false;
+        }
+        indices.push(index);
+    }
+
+    if (!was_nan) {
+        if (
+            loop_start !== -1 &&
+            loop_start + 2 < indices.length &&
+            approximately_equal(
+                ...get_point(points, indices[loop_start]),
+                ...get_point(points, indices[indices.length - 2])
+            )
+        ) {
+            indices.push(indices[loop_start + 1]);
+            indices[loop_start - 1] = (points.length / 2) - 1;
+        } else {
+            indices.push(indices[indices.length - 1]);
+        }
+    }
+
+    return new Uint32Array(indices);
 }

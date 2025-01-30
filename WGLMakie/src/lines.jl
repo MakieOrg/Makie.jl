@@ -100,23 +100,18 @@ function create_lines_data(islines, attr)
         color = attr.synched_color[]
     end
 
-    to_buff_obs(x) = Observable(serialize_buffer_attribute(x))
-
     attributes = Dict{Symbol,Any}(
-        :linepoint => to_buff_obs(attr.linepoint[]),
-        :lineindex => to_buff_obs(attr.lineindex[]),
-        :lastlen => to_buff_obs(zeros(Float32, length(attr.linepoint[]))),
+        :linepoint => serialize_buffer_attribute(attr.positions_transformed_f32c[]),
     )
 
     for (name, vals) in [:color => color, :linewidth => attr.synched_linewidth[]]
         if Makie.is_scalar_attribute(to_value(vals))
-            uniforms[Symbol("$(name)_start")] = vals
-            uniforms[Symbol("$(name)_end")] = vals
+            uniforms[name] = vals
         else
             # TODO: to js?
             # duplicates per vertex attributes to match positional duplication
             # min(idxs, end) avoids update order issues here
-            attributes[name] = Observable(serialize_buffer_attribute(vals))
+            attributes[name] = serialize_buffer_attribute(vals)
         end
     end
 
@@ -125,7 +120,8 @@ function create_lines_data(islines, attr)
 
     return Dict(
         :visible => Observable(attr.visible[]),
-        :plot_type => islines ? "lines" : "linesegments",
+        :is_segments => !islines,
+        :plot_type => "Lines",
         :cam_space => attr.space[],
         :uniforms => serialize_uniforms(uniforms),
         :attributes => attributes,
@@ -142,8 +138,7 @@ const LINE_INPUTS = [
     :alpha_colormap,
     :scaled_colorrange,
     # Auto
-    :linepoint,
-    :lineindex,
+    :positions_transformed_f32c,
     :linecap,
     :linestyle,
     :gl_pattern,
@@ -159,12 +154,14 @@ const LINE_INPUTS = [
     :depth_shift,
 ]
 
-function create_lines_robj(islines, args, changed, last)
+function create_lines_robj(attr, islines, args, changed, last)
     inputs = copy(LINE_INPUTS)
     r = Dict(
         :image => :uniform_color,
         :scaled_colorrange => :colorrange,
         :synched_color => :color,
+        :synched_linewidth => :linewidth,
+        :positions_transformed_f32c => :linepoint,
         :_highclip => :highclip,
         :_lowclip => :lowclip,
         :data_limit_points_transformed => :position,
@@ -176,11 +173,18 @@ function create_lines_robj(islines, args, changed, last)
     if isnothing(last)
         return (create_lines_data(islines, (; zip(inputs, args)...)), Observable([]))
     else
-        new_values = [
-            [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for i in 1:length(inputs) if changed[i]
-        ]
-        updater = last[2][]
-        updater[] = new_values
+        new_values = []
+        for i in eachindex(inputs)
+            if changed[i]
+                value = args[i][]
+                name = get(r, inputs[i], inputs[i])
+                push!(new_values, [name, serialize_three(value)])
+            end
+        end
+        if !isempty(new_values)
+            updater = last[2][]
+            updater[] = new_values
+        end
         return nothing
     end
 end
@@ -200,11 +204,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     register_computation!(
-        nan_free_points_indices, attr, [:positions_transformed_f32c], [:linepoint, :lineindex]
-    )
-
-    register_computation!(
-        (args...) -> create_lines_robj(islines, args...), attr, inputs, [:wgl_renderobject, :wgl_update_obs]
+        (args...) -> create_lines_robj(attr, islines, args...),
+        attr,
+        inputs,
+        [:wgl_renderobject, :wgl_update_obs],
     )
 
     dict = attr[:wgl_renderobject][]
