@@ -176,7 +176,8 @@ export class Plot {
             buffer.set(new_data);
             buffer.count = new_count;
             if (this instanceof Lines) {
-                const is_segments = this.plot_data.is_segments === true;
+                const is_segments = this.is_segments === true;
+                console.log(`is segments in update: ${is_segments}`)
                 const skipped = new_count / (buffer.stride / attribute.itemSize);
                 buffer.count = Math.max(
                     0,
@@ -199,7 +200,7 @@ export class Plot {
             const { geometry } = this.mesh;
             const new_geometry = re_create_geometry(
                 geometry,
-                this.type == "linesegments"
+                this.is_segments === true
             );
             geometry.dispose();
             this.mesh.geometry = new_geometry;
@@ -223,10 +224,14 @@ export class Lines extends Plot {
                 `Lines class must be initialized with plot_type 'Lines' found ${data.plot_type}`
             );
         }
-        this.is_linesegments = data.is_segments === true;
+        this.is_segments = data.is_segments === true;
+        console.log("---------------------")
+        console.log(`data.is_segments: ${data.is_segments}`);
+        console.log(`this.is_segments: ${this.is_segments}`);
         this.is_instanced = true;
         this.mesh = create_line(this);
         this.init_mesh();
+        console.log(this)
     }
 
     update(data_key_value_array) {

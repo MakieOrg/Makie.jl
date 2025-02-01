@@ -21708,7 +21708,8 @@ class Plot {
             buffer.set(new_data);
             buffer.count = new_count;
             if (this instanceof Lines) {
-                const is_segments = this.plot_data.is_segments === true;
+                const is_segments = this.is_segments === true;
+                console.log(`is segments in update: ${is_segments}`);
                 const skipped = new_count / (buffer.stride / attribute.itemSize);
                 buffer.count = Math.max(0, is_segments ? Math.floor(skipped - 1) : skipped - 3);
             }
@@ -21724,7 +21725,7 @@ class Plot {
     apply_updates() {
         if (this.geometry_needs_recreation) {
             const { geometry  } = this.mesh;
-            const new_geometry = re_create_geometry(geometry, this.type == "linesegments");
+            const new_geometry = re_create_geometry(geometry, this.is_segments === true);
             geometry.dispose();
             this.mesh.geometry = new_geometry;
             this.mesh.needsUpdate = true;
@@ -22815,12 +22816,12 @@ function create_line(plot_object) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
     const { plot_data: plot_data1  } = plot_object;
-    create_line_buffers(geometry, buffers, add_line_attributes(plot_data1.attributes), plot_data1.is_segments);
-    const material = create_line_material(add_line_attributes(plot_object.deserialized_uniforms), geometry.attributes, plot_data1.is_segments);
+    create_line_buffers(geometry, buffers, add_line_attributes(plot_data1.attributes), plot_object.is_segments);
+    const material = create_line_material(add_line_attributes(plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
     material.depthTest = !plot_data1.overdraw.value;
     material.depthWrite = !plot_data1.transparency.value;
     material.uniforms.is_linesegments = {
-        value: plot_data1.is_segments
+        value: plot_object.is_segments
     };
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
@@ -22832,10 +22833,14 @@ class Lines extends Plot {
         if (data.plot_type !== "Lines") {
             throw new Error(`Lines class must be initialized with plot_type 'Lines' found ${data.plot_type}`);
         }
-        this.is_linesegments = data.is_segments === true;
+        this.is_segments = data.is_segments === true;
+        console.log("---------------------");
+        console.log(`data.is_segments: ${data.is_segments}`);
+        console.log(`this.is_segments: ${this.is_segments}`);
         this.is_instanced = true;
         this.mesh = create_line(this);
         this.init_mesh();
+        console.log(this);
     }
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);

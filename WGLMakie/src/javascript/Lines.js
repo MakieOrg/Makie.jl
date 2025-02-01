@@ -1183,8 +1183,28 @@ function get_points_view(points, indices) {
     return view;
 }
 
-export function add_line_attributes(attributes) {
+export function add_line_attributes(plot, attributes) {
     const new_data = {};
+    let { lineindex } = plot;
+    if (attributes.linepoint) {
+        const {linepoint} = attributes;
+        const val = linepoint.flat ? linepoint.flat : linepoint;
+        indices = nan_free_points_indices(val);
+        plot.lineindex = indices;
+        const points = get_points_view(val, indices);
+        new_data[key] = linepoint.flat
+            ? { flat: points, type_length: linepoint.type_length }
+            : points;
+        new_data["lineindex"] = linepoint.flat
+            ? { flat: indices, type_length: 1 }
+            : indices;
+        new_data["lastlen"] = linepoint.flat
+            ? {
+                  flat: new Float32Array(points.length / 2).fill(0),
+                  type_length: 1,
+              }
+            : new Float32Array(points.length / 2).fill(0);
+    }
     for (const [key, value] of Object.entries(attributes)) {
         if (
             (key === "color" || key === "linewidth") && !(value.flat) // .flat if buffer!
@@ -1215,19 +1235,19 @@ export function create_line(plot_object) {
     create_line_buffers(
         geometry,
         buffers,
-        add_line_attributes(plot_data.attributes),
-        plot_data.is_segments
+        add_line_attributes(plot_object, plot_data.attributes),
+        plot_object.is_segments
     );
     const material = create_line_material(
-        add_line_attributes(plot_object.deserialized_uniforms),
+        add_line_attributes(plot_object, plot_object.deserialized_uniforms),
         geometry.attributes,
-        plot_data.is_segments
+        plot_object.is_segments
     );
 
     material.depthTest = !plot_data.overdraw.value;
     material.depthWrite = !plot_data.transparency.value;
 
-    material.uniforms.is_linesegments = { value: plot_data.is_segments };
+    material.uniforms.is_linesegments = { value: plot_object.is_segments };
     const mesh = new THREE.Mesh(geometry, material);
     mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
     return mesh;

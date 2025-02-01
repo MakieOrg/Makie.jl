@@ -91,6 +91,7 @@ function create_lines_data(islines, attr)
         uniforms[:lowclip] = attr._lowclip[]
         uniforms[:nan_color] = attr.nan_color[]
         color = attr.synched_color[]
+        @show length(color)
     else
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)
@@ -117,7 +118,7 @@ function create_lines_data(islines, attr)
 
     uniforms[:num_clip_planes] = 0
     uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
-
+    @show islines
     return Dict(
         :visible => Observable(attr.visible[]),
         :is_segments => !islines,
@@ -155,6 +156,7 @@ const LINE_INPUTS = [
 ]
 
 function create_lines_robj(attr, islines, args, changed, last)
+    @show changed
     inputs = copy(LINE_INPUTS)
     r = Dict(
         :image => :uniform_color,
@@ -178,10 +180,12 @@ function create_lines_robj(attr, islines, args, changed, last)
             if changed[i]
                 value = args[i][]
                 name = get(r, inputs[i], inputs[i])
+                @show name
                 push!(new_values, [name, serialize_three(value)])
             end
         end
         if !isempty(new_values)
+            @show new_values
             updater = last[2][]
             updater[] = new_values
         end
@@ -196,6 +200,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
 
     islines = plot isa Lines
+    @show islines plot
     inputs = copy(LINE_INPUTS)
 
     if islines
@@ -215,6 +220,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:updater] = attr[:wgl_update_obs][]
     on(attr.onchange) do _
+        println("HEY LOL")
         attr[:wgl_renderobject][]
         return
     end
