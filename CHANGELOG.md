@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
 - Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)

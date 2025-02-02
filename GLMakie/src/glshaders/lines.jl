@@ -140,8 +140,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
             screen,
             "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
             view = Dict(
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "TARGET_STAGE" => target_stage(screen, data),
                 "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : "",
                 "stripped_color_type" => color_type
             )
@@ -187,8 +186,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
             "fragment_output.frag", "line_segment.vert", "line_segment.geom",
             "lines.frag",
             view = Dict(
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "TARGET_STAGE" => target_stage(screen, data),
                 "stripped_color_type" => color_type
             )
         )

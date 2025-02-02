@@ -108,26 +108,6 @@ function resize!(rb::RenderBuffer, newsize::AbstractArray)
     glRenderbufferStorage(GL_RENDERBUFFER, rb.format, newsize...)
 end
 
-struct FrameBuffer{T}
-    id::GLuint
-    attachments::Vector{Any}
-    context::GLContext
-    function FrameBuffer{T}(dimensions::Observable) where T
-        fb = glGenFramebuffers()
-        glBindFramebuffer(GL_FRAMEBUFFER, fb)
-        new(id, attachments, current_context())
-    end
-end
-
-function resize!(fbo::FrameBuffer, newsize::AbstractArray)
-    if length(newsize) != 2
-        error("FrameBuffer needs to be 2 dimensional. Dimension found: ", newsize)
-    end
-    for elem in fbo.attachments
-        resize!(elem)
-    end
-end
-
 ########################################################################################
 # OpenGL Arrays
 
