@@ -210,6 +210,10 @@ end
 
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
     end
+    #Check that ticks outside supplied limits are filtered out
+    ticks = [-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    limits = (0.0, 0.6)
+    @test get_ticks(ticks, identity, automatic, limits...) == ([0.0, 0.2, 0.4, 0.6], ["0.0", "0.2", "0.4", "0.6"])
 end
 
 @testset "Minor tick skip" begin

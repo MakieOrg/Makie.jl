@@ -636,8 +636,7 @@ get_tickvalues(lt::LinearTicks, vmin, vmax) = locateticks(vmin, vmax, lt.n_ideal
 
 Convert tickvalues to a float array by default.
 """
-get_tickvalues(tickvalues, vmin, vmax) = convert(Vector{Float64}, tickvalues)
-
+get_tickvalues(tickvalues, vmin, vmax) = filter!(p -> vmin ≤ p ≤ vmax, convert(Vector{Float64}, tickvalues))
 
 # function get_tickvalues(l::LogitTicks, vmin, vmax)
 #     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
@@ -719,7 +718,11 @@ end
 # Replaces hyphens in negative numbers with the unicode MINUS_SIGN
 function showoff_minus(x::AbstractVector)
     # TODO: don't use the `replace` workaround
-    replace.(Showoff.showoff(x), r"-(?=\d)" => MINUS_SIGN)
+    if !isempty(x)
+        replace.(Showoff.showoff(x), r"-(?=\d)" => MINUS_SIGN)
+    else
+        x
+    end
 end
 
 # identity or unsupported scales
