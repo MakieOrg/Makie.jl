@@ -28,7 +28,7 @@ applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
 means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
 means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
-    !!! warning
+!!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.
