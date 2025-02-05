@@ -22866,7 +22866,6 @@ class Lines extends Plot {
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
         const line_attr = Object.entries(add_line_attributes(this, dict));
-        console.log(line_attr);
         super.update(line_attr);
     }
 }

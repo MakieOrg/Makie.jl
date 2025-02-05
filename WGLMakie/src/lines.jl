@@ -181,7 +181,6 @@ function create_lines_robj(attr, islines, args, changed, last)
         end
         if !isempty(new_values)
             updater = last[2][]
-            @show new_values
             updater[] = new_values
         end
         return nothing
