@@ -99,18 +99,21 @@ function convert_texture(scene, data) {
 }
 
 
+export function is_typed_array(data) {
+    return data instanceof Float32Array || data instanceof Int32Array || data instanceof Uint32Array;
+}
+
+
+
 function to_uniform(scene, data) {
     if (data.type !== undefined) {
+
         if (data.type == "Sampler") {
             return convert_texture(scene, data);
         }
         throw new Error(`Type ${data.type} not known`);
     }
-    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
-        if (!data.every((x) => typeof x === "number")) {
-            // if not all numbers, we just leave it
-            return data;
-        }
+    if (is_typed_array(data)) {
         // else, we convert it to THREE vector/matrix types
         if (data.length == 2) {
             return new THREE.Vector2().fromArray(data);

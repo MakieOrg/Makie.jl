@@ -177,7 +177,6 @@ export class Plot {
             buffer.count = new_count;
             if (this instanceof Lines) {
                 const is_segments = this.is_segments === true;
-                console.log(`is segments in update: ${is_segments}`)
                 const skipped = new_count / (buffer.stride / attribute.itemSize);
                 buffer.count = Math.max(
                     0,
@@ -225,10 +224,9 @@ export class Lines extends Plot {
             );
         }
         this.is_segments = data.is_segments === true;
-        console.log("---------------------")
-        console.log(`data.is_segments: ${data.is_segments}`);
-        console.log(`this.is_segments: ${this.is_segments}`);
         this.is_instanced = true;
+        // this will be filled with the ndims of the arrays in create_line (more specifically add_line_attributes)
+        this.ndims = {};
         this.mesh = create_line(this);
         this.init_mesh();
         console.log(this)
@@ -236,14 +234,15 @@ export class Lines extends Plot {
 
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
-        super.update(Object.entries(add_line_attributes(dict)));
+        const line_attr = Object.entries(add_line_attributes(this, dict));
+        console.log(line_attr);
+        super.update(line_attr);
     }
 }
 
 export class Mesh extends Plot {
     constructor(scene, data) {
         super(scene, data);
-        console.log(this);
         if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(this);

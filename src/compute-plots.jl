@@ -141,9 +141,6 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         if !isnothing(last) && last[1][] == val
             return nothing
         else
-            if !isnothing(last)
-                @show val last[1][]
-            end
             return (val,)
         end
     end
@@ -168,7 +165,8 @@ function register_position_transforms!(attr)
         # is_rot_free = is_translation_scale_matrix(model)
         if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
             m = changed[2] ? Mat4f(model[]) : nothing
-            return (el32convert(positions[]), m)
+            pos = changed[1] ? el32convert(positions[]) : nothing
+            return (pos, m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
@@ -365,13 +363,15 @@ function computed_plot!(parent, plot::T) where {T}
     attr = plot.args[1]
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
         on(plot, scene.float32convert.scaling) do f32c
-            println("kilo: $(attr.f32c[])")
             attr.f32c = f32c
         end
     end
 
     # from connect_plot!()
     t_user = to_value(get(attributes(plot), :transformation, automatic))
+    if t_user isa Automatic
+        t_user = to_value(get(plot.kw, :transformation, t_user))
+    end
     if t_user isa Transformation
         plot.transformation = t_user
     else
@@ -391,14 +391,15 @@ function computed_plot!(parent, plot::T) where {T}
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
     on(model -> attr.model = model, plot, plot.transformation.model, update = true)
-    on(tf -> update!(plot.args[1], transform_func = tf), plot, plot.transformation.transform_func, update = true)
+    on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
     push!(parent, plot)
     plot!(plot)
 
-    if !isnothing(scene) && haskey(plot.args[1], :cycle)
-        add_cycle_attribute!(plot, scene, get_cycle_for_plottype(plot.args[1][:cycle][]))
+    if !isnothing(scene) && haskey(attr, :cycle)
+        add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
     end
+
 
     documented_attr = MakieCore.documented_attributes(T).d
     for (k, v) in plot.kw

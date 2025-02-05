@@ -5,6 +5,8 @@ import {
     attribute_type,
 } from "./ThreeHelper.js";
 
+import { is_typed_array } from "./Serialization.js";
+
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
     keys.forEach((key) => {
@@ -185,7 +187,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
+                f_instance_id = lineindex_start + uint(1); // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -637,7 +639,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start;
+                f_instance_id = lineindex_start + uint(1);
 
                 f_cumulative_length = lastlen_start;
 
@@ -1172,54 +1174,71 @@ function create_line_buffers(geometry, buffers, attributes, is_segments) {
     }
 }
 
-function get_points_view(points, indices) {
-    let view = new Float32Array(indices.length * 2); // Each point consists of two values (x and y)
+function get_points_view(points, indices, ndim) {
+    let view = new Float32Array(indices.length * ndim);
 
     for (let i = 0; i < indices.length; i++) {
         let index = indices[i];
-        view[i * 2] = points[index * 2]; // x-coordinate
-        view[i * 2 + 1] = points[index * 2 + 1]; // y-coordinate
+        for (let j = 0; j < ndim; j++) {
+            view[i * ndim + j] = points[index * ndim + j];
+        }
     }
     return view;
 }
+
+function pack_array(array, data, type_length = 0) {
+    if (array.flat) {
+        const tl = type_length === 0 ? array.type_length : type_length;
+        return { flat: data, type_length: tl };
+    }
+    return data;
+}
+
+function unpack_array(array) {
+    if (array.flat) {
+        return array.flat;
+    }
+    return array;
+}
+
 
 export function add_line_attributes(plot, attributes) {
     const new_data = {};
     let { lineindex } = plot;
     if (attributes.linepoint) {
         const {linepoint} = attributes;
-        const val = linepoint.flat ? linepoint.flat : linepoint;
-        indices = nan_free_points_indices(val);
-        plot.lineindex = indices;
-        const points = get_points_view(val, indices);
-        new_data[key] = linepoint.flat
-            ? { flat: points, type_length: linepoint.type_length }
-            : points;
-        new_data["lineindex"] = linepoint.flat
-            ? { flat: indices, type_length: 1 }
-            : indices;
-        new_data["lastlen"] = linepoint.flat
-            ? {
-                  flat: new Float32Array(points.length / 2).fill(0),
-                  type_length: 1,
-              }
-            : new Float32Array(points.length / 2).fill(0);
+        const val = unpack_array(linepoint);
+        if (linepoint.type_length) {
+            plot.ndims["linepoint"] = linepoint.type_length;
+        }
+        lineindex = nan_free_points_indices(val, plot.ndims["linepoint"]);
+        plot.lineindex = lineindex;
+
+        const points = get_points_view(val, lineindex, plot.ndims["linepoint"]);
+        new_data["linepoint"] = pack_array(linepoint, points);
+        new_data["lineindex"] = pack_array(linepoint, lineindex, 1);
+        new_data["lastlen"] = pack_array(linepoint, new Float32Array(points.length / 2).fill(0), 1);
     }
+
     for (const [key, value] of Object.entries(attributes)) {
+        const val = unpack_array(value);
+        if (key === "linepoint") {
+            continue;
+        }
         if (
-            (key === "color" || key === "linewidth") && !(value.flat) // .flat if buffer!
+            (key === "color" || key === "linewidth") &&
+            !is_typed_array(val) // uniforms
         ) {
             new_data[key + "_start"] = value;
             new_data[key + "_end"] = value;
-        } else if (key === "linepoint") {
-            const val = value.flat ? value.flat : value;
-            const indices = nan_free_points_indices(val);
-            const points = get_points_view(val, indices);
-            new_data[key] = value.flat
-                ? { flat: points, type_length: value.type_length }
-                : points;
-            new_data["lineindex"] = value.flat ? {flat: indices, type_length: 1} : indices;
-            new_data["lastlen"] = value.flat ? {flat: new Float32Array(points.length / 2).fill(0), type_length: 1} : new Float32Array(points.length / 2).fill(0);
+        } else if (is_typed_array(val) && (key === "color" || key === "linewidth")) {
+            if (value.type_length) {
+                plot.ndims[key] = value.type_length;
+            }
+            new_data[key] = pack_array(
+                value,
+                get_points_view(val, lineindex, plot.ndims[key])
+            );
         } else {
             new_data[key] = value;
         }
@@ -1254,68 +1273,72 @@ export function create_line(plot_object) {
 }
 
 
-function get_point(points, index) {
-    return [points[index * 2], points[index * 2 + 1]];
-}
-
-function approximately_equal(x1, y1, x2, y2, epsilon = 1e-6) {
-    return Math.abs(x1 - x2) < epsilon && Math.abs(y1 - y2) < epsilon;
-}
-
-function nan_free_points_indices(points) {
+function nan_free_points_indices(points, ndim) {
     const indices = [];
-    if (points.length === 0) return new Uint32Array(indices);
-
     let was_nan = true;
     let loop_start = -1;
-
-    for (let i = 0; i < points.length; i += 2) {
-        const index = i / 2;
-        const [x, y] = get_point(points, index);
-
-        if (isNaN(x) || isNaN(y)) {
+    const npoints = points.length / ndim;
+    for (let i = 0; i < npoints; i++) {
+        let p = get_point(points, i, ndim);
+        if (point_isnan(p)) {
+            // Check if any coordinate is NaN
             if (!was_nan) {
                 if (
-                    loop_start !== -1 &&
+                    loop_start != -1 &&
                     loop_start + 2 < indices.length &&
-                    approximately_equal(
-                        ...get_point(points, indices[loop_start]),
-                        ...get_point(points, indices[index - 1])
+                    points_approx_equal(
+                        get_point(points, indices[loop_start], ndim),
+                        get_point(points, i-1)
                     )
                 ) {
                     indices.push(indices[loop_start + 1]);
-                    indices[loop_start - 1] = index - 2;
+                    indices[loop_start - 1] = i - 2;
                 } else {
-                    indices.push(index - 1);
+                    indices.push(i - 1);
                 }
             }
             loop_start = -1;
             was_nan = true;
         } else {
             if (was_nan) {
-                indices.push(index);
-                loop_start = indices.length + 1;
+                indices.push(i);
+                loop_start = indices.length;
             }
             was_nan = false;
         }
-        indices.push(index);
+        indices.push(i);
     }
 
     if (!was_nan) {
         if (
-            loop_start !== -1 &&
-            loop_start + 2 < indices.length &&
-            approximately_equal(
-                ...get_point(points, indices[loop_start]),
-                ...get_point(points, indices[indices.length - 2])
+            loop_start != -1 &&
+            loop_start + 2 < indices.length - 1 &&
+            points_approx_equal(
+                get_point(points, indices[loop_start], ndim),
+                get_point(points, npoints - 1, ndim)
             )
         ) {
             indices.push(indices[loop_start + 1]);
-            indices[loop_start - 1] = (points.length / 2) - 1;
+            indices[loop_start - 1] = npoints - 2;
         } else {
-            indices.push(indices[indices.length - 1]);
+            indices.push(npoints - 1);
         }
     }
-
     return new Uint32Array(indices);
+}
+
+function get_point(points, index, ndim) {
+    return points.slice(index * ndim, (index + 1) * ndim);
+}
+
+function point_isnan(p) {
+    return p.some((p) => isNaN(p));
+}
+
+function points_approx_equal(p1, p2) {
+    return p1.every((p, i) => approx_equal(p, p2[i]));
+}
+
+function approx_equal(a, b) {
+    return Math.abs(a - b) < Number.EPSILON;
 }

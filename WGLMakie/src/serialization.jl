@@ -370,13 +370,33 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     return mesh
 end
 
+function flat_m4f(x::AbstractArray)
+    result = Vector{Float32}(undef, length(x))
+    copyto!(result, Mat4f(x))
+    return result
+end
+
 function serialize_camera(scene::Scene)
     cam = scene.camera
-    return lift(scene, cam.view, cam.projection, cam.resolution; ignore_equal_values=true) do view, proj, res
+    # somehow ignore_equal_values=true is not enough,
+    # so we manually check if previous values are the same
+    last_view = Base.RefValue(Mat4d(I))
+    last_proj = Base.RefValue(Mat4d(I))
+    last_res = Base.RefValue(Vec2f(0))
+    obs = Observable([Float32[], Float32[], Int32[], Float32[]])
+
+    onany(scene, cam.view, cam.projection, cam.resolution; update=true) do view, proj, res
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
-        ep = cam.eyeposition[]
-        values = [vec(collect(Mat4f(view))), vec(collect(Mat4f(proj))), Int32[res...], Float32[ep...]]
-        return values
+        if !(view ≈ last_view[] && proj ≈ last_proj[] && res ≈ last_res[])
+            ep = cam.eyeposition[]
+            obs[] = [flat_m4f(view), flat_m4f(proj), Int32[res...], Float32[ep...]]
+        end
+
+        last_view[] = view
+        last_proj[] = proj
+        last_res[] = res
+        return
     end
+    return obs
 end

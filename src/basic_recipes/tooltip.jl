@@ -121,7 +121,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         color = p.textcolor, font = p.font, fxaa = false,
         strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        overdraw = p.overdraw, depth_shift = p.depth_shift, model=Mat4f(I),
         inspectable = p.inspectable, space = :pixel, transformation = Transformation()
     )
     translate!(tp, 0, 0, 0.01) # must be larger than eps(1f4) to prevent float precision issues
@@ -188,7 +188,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         p, tri_points, [1 2 3], shading = NoShading, space = :pixel,
         color = p.backgroundcolor, fxaa = false,
         transparency = p.transparency, visible = p.visible,
-        overdraw = p.overdraw, depth_shift = p.depth_shift,
+        overdraw = p.overdraw, depth_shift = p.depth_shift, model=Mat4f(I),
         inspectable = p.inspectable, transformation = Transformation()
     )
 

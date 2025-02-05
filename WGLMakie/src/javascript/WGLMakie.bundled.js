@@ -21502,6 +21502,9 @@ function convert_texture(scene, data) {
     }
     return tex;
 }
+function is_typed_array(data) {
+    return data instanceof Float32Array || data instanceof Int32Array || data instanceof Uint32Array;
+}
 function to_uniform(scene, data) {
     if (data.type !== undefined) {
         if (data.type == "Sampler") {
@@ -21509,10 +21512,7 @@ function to_uniform(scene, data) {
         }
         throw new Error(`Type ${data.type} not known`);
     }
-    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
-        if (!data.every((x1)=>typeof x1 === "number")) {
-            return data;
-        }
+    if (is_typed_array(data)) {
         if (data.length == 2) {
             return new mod.Vector2().fromArray(data);
         }
@@ -21709,7 +21709,6 @@ class Plot {
             buffer.count = new_count;
             if (this instanceof Lines) {
                 const is_segments = this.is_segments === true;
-                console.log(`is segments in update: ${is_segments}`);
                 const skipped = new_count / (buffer.stride / attribute.itemSize);
                 buffer.count = Math.max(0, is_segments ? Math.floor(skipped - 1) : skipped - 3);
             }
@@ -21890,7 +21889,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
+                f_instance_id = lineindex_start + uint(1); // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -22337,7 +22336,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start;
+                f_instance_id = lineindex_start + uint(1);
 
                 f_cumulative_length = lastlen_start;
 
@@ -22775,37 +22774,61 @@ function create_line_buffers(geometry, buffers, attributes, is_segments) {
         create_line_buffer(geometry, buffers, name, attr, is_segments, name == "linepoint");
     }
 }
-function get_points_view(points, indices) {
-    let view = new Float32Array(indices.length * 2);
+function get_points_view(points, indices, ndim) {
+    let view = new Float32Array(indices.length * ndim);
     for(let i = 0; i < indices.length; i++){
         let index = indices[i];
-        view[i * 2] = points[index * 2];
-        view[i * 2 + 1] = points[index * 2 + 1];
+        for(let j = 0; j < ndim; j++){
+            view[i * ndim + j] = points[index * ndim + j];
+        }
     }
     return view;
 }
-function add_line_attributes(attributes) {
+function pack_array(array, data, type_length = 0) {
+    if (array.flat) {
+        const tl = type_length === 0 ? array.type_length : type_length;
+        return {
+            flat: data,
+            type_length: tl
+        };
+    }
+    return data;
+}
+function unpack_array(array) {
+    if (array.flat) {
+        return array.flat;
+    }
+    return array;
+}
+function add_line_attributes(plot, attributes) {
     const new_data = {};
+    let { lineindex  } = plot;
+    if (attributes.linepoint) {
+        const { linepoint  } = attributes;
+        const val = unpack_array(linepoint);
+        if (linepoint.type_length) {
+            plot.ndims["linepoint"] = linepoint.type_length;
+        }
+        lineindex = nan_free_points_indices(val, plot.ndims["linepoint"]);
+        plot.lineindex = lineindex;
+        const points = get_points_view(val, lineindex, plot.ndims["linepoint"]);
+        new_data["linepoint"] = pack_array(linepoint, points);
+        new_data["lineindex"] = pack_array(linepoint, lineindex, 1);
+        new_data["lastlen"] = pack_array(linepoint, new Float32Array(points.length / 2).fill(0), 1);
+    }
     for (const [key, value] of Object.entries(attributes)){
-        if ((key === "color" || key === "linewidth") && !value.flat) {
+        const val = unpack_array(value);
+        if (key === "linepoint") {
+            continue;
+        }
+        if ((key === "color" || key === "linewidth") && !is_typed_array(val)) {
             new_data[key + "_start"] = value;
             new_data[key + "_end"] = value;
-        } else if (key === "linepoint") {
-            const val = value.flat ? value.flat : value;
-            const indices = nan_free_points_indices(val);
-            const points = get_points_view(val, indices);
-            new_data[key] = value.flat ? {
-                flat: points,
-                type_length: value.type_length
-            } : points;
-            new_data["lineindex"] = value.flat ? {
-                flat: indices,
-                type_length: 1
-            } : indices;
-            new_data["lastlen"] = value.flat ? {
-                flat: new Float32Array(points.length / 2).fill(0),
-                type_length: 1
-            } : new Float32Array(points.length / 2).fill(0);
+        } else if (is_typed_array(val) && (key === "color" || key === "linewidth")) {
+            if (value.type_length) {
+                plot.ndims[key] = value.type_length;
+            }
+            new_data[key] = pack_array(value, get_points_view(val, lineindex, plot.ndims[key]));
         } else {
             new_data[key] = value;
         }
@@ -22816,8 +22839,8 @@ function create_line(plot_object) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
     const { plot_data: plot_data1  } = plot_object;
-    create_line_buffers(geometry, buffers, add_line_attributes(plot_data1.attributes), plot_object.is_segments);
-    const material = create_line_material(add_line_attributes(plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
+    create_line_buffers(geometry, buffers, add_line_attributes(plot_object, plot_data1.attributes), plot_object.is_segments);
+    const material = create_line_material(add_line_attributes(plot_object, plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
     material.depthTest = !plot_data1.overdraw.value;
     material.depthWrite = !plot_data1.transparency.value;
     material.uniforms.is_linesegments = {
@@ -22834,17 +22857,17 @@ class Lines extends Plot {
             throw new Error(`Lines class must be initialized with plot_type 'Lines' found ${data.plot_type}`);
         }
         this.is_segments = data.is_segments === true;
-        console.log("---------------------");
-        console.log(`data.is_segments: ${data.is_segments}`);
-        console.log(`this.is_segments: ${this.is_segments}`);
         this.is_instanced = true;
+        this.ndims = {};
         this.mesh = create_line(this);
         this.init_mesh();
         console.log(this);
     }
     update(data_key_value_array) {
         const dict = Object.fromEntries(data_key_value_array);
-        super.update(Object.entries(add_line_attributes(dict)));
+        const line_attr = Object.entries(add_line_attributes(this, dict));
+        console.log(line_attr);
+        super.update(line_attr);
     }
 }
 function re_create_texture(old_texture, buffer, size) {
@@ -22936,7 +22959,6 @@ function create_instanced_mesh(plot) {
 class Mesh extends Plot {
     constructor(scene, data){
         super(scene, data);
-        console.log(this);
         if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(this);
@@ -22946,52 +22968,54 @@ class Mesh extends Plot {
         this.init_mesh();
     }
 }
-function get_point(points, index) {
-    return [
-        points[index * 2],
-        points[index * 2 + 1]
-    ];
-}
-function approximately_equal(x1, y1, x2, y2, epsilon = 1e-6) {
-    return Math.abs(x1 - x2) < epsilon && Math.abs(y1 - y2) < epsilon;
-}
-function nan_free_points_indices(points) {
+function nan_free_points_indices(points, ndim) {
     const indices = [];
-    if (points.length === 0) return new Uint32Array(indices);
     let was_nan = true;
     let loop_start = -1;
-    for(let i = 0; i < points.length; i += 2){
-        const index = i / 2;
-        const [x1, y1] = get_point(points, index);
-        if (isNaN(x1) || isNaN(y1)) {
+    const npoints = points.length / ndim;
+    for(let i = 0; i < npoints; i++){
+        let p = get_point(points, i, ndim);
+        if (point_isnan(p)) {
             if (!was_nan) {
-                if (loop_start !== -1 && loop_start + 2 < indices.length && approximately_equal(...get_point(points, indices[loop_start]), ...get_point(points, indices[index - 1]))) {
+                if (loop_start != -1 && loop_start + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start], ndim), get_point(points, i - 1))) {
                     indices.push(indices[loop_start + 1]);
-                    indices[loop_start - 1] = index - 2;
+                    indices[loop_start - 1] = i - 2;
                 } else {
-                    indices.push(index - 1);
+                    indices.push(i - 1);
                 }
             }
             loop_start = -1;
             was_nan = true;
         } else {
             if (was_nan) {
-                indices.push(index);
-                loop_start = indices.length + 1;
+                indices.push(i);
+                loop_start = indices.length;
             }
             was_nan = false;
         }
-        indices.push(index);
+        indices.push(i);
     }
     if (!was_nan) {
-        if (loop_start !== -1 && loop_start + 2 < indices.length && approximately_equal(...get_point(points, indices[loop_start]), ...get_point(points, indices[indices.length - 2]))) {
+        if (loop_start != -1 && loop_start + 2 < indices.length - 1 && points_approx_equal(get_point(points, indices[loop_start], ndim), get_point(points, npoints - 1, ndim))) {
             indices.push(indices[loop_start + 1]);
-            indices[loop_start - 1] = points.length / 2 - 1;
+            indices[loop_start - 1] = npoints - 2;
         } else {
-            indices.push(indices[indices.length - 1]);
+            indices.push(npoints - 1);
         }
     }
     return new Uint32Array(indices);
+}
+function get_point(points, index, ndim) {
+    return points.slice(index * ndim, (index + 1) * ndim);
+}
+function point_isnan(p) {
+    return p.some((p)=>isNaN(p));
+}
+function points_approx_equal(p1, p2) {
+    return p1.every((p, i)=>approx_equal(p, p2[i]));
+}
+function approx_equal(a, b) {
+    return Math.abs(a - b) < Number.EPSILON;
 }
 const mod1 = {
     Plot: Plot,
