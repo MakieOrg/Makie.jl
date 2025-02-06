@@ -74,8 +74,8 @@ function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
 end
 
 function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
-    x = to_endpoints(xs, "x")
-    y = to_endpoints(ys, "y")
+    x = to_endpoints(xs, "x", "Spy")
+    y = to_endpoints(ys, "y", "Spy")
     return (x, y, convert(SparseArrays.SparseMatrixCSC, matrix))
 end
 

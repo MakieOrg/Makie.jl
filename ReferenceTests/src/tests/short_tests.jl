@@ -37,7 +37,7 @@ end
     scatter(f[1, 2], LinRange(0, 1, 10), RNG.rand(10))
     colors = Makie.resample(to_colormap(:Spectral), 20)
     scatter!(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=colors)
-    
+
     scatter(f[2, 1], -1..1, x -> x^2)
     scatter(f[2, 2], RNG.randn(10), color=:blue, glowcolor=:orange, glowwidth=10)
     f
@@ -58,7 +58,7 @@ end
     f
 end
 
-@reference_test "contour small x or y" begin 
+@reference_test "contour small x or y" begin
     f = Figure(size = (500, 300))
     contour(f[1, 1], RNG.rand(10, 50))
     contour(f[1, 2], RNG.rand(50, 10))
@@ -69,7 +69,7 @@ end
     f = Figure()
     contour(f[1, 1], RNG.randn(50, 40), levels=3)
     contour(f[1, 2], RNG.randn(50, 40), levels=[0.1, 0.5, 0.8])
-    contour(f[2, 1], RNG.randn(33, 30),  levels=[0.1, 0.5, 0.9], 
+    contour(f[2, 1], RNG.randn(33, 30),  levels=[0.1, 0.5, 0.9],
         color=[:black, :green, (:blue, 0.4)], linewidth=2)
     contour(
         f[2, 2], RNG.rand(33, 30) .* 6 .- 3, levels = [-2.5, 0.4, 0.5, 0.6, 2.5],
@@ -84,7 +84,7 @@ end
     streamplot(v, -2..2, -2..2)
 end
 
-@reference_test "meshscatter colors, Axis3" begin 
+@reference_test "meshscatter colors, Axis3" begin
     f = Figure()
     meshscatter(f[1, 1], RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(10))
     meshscatter(f[1, 2], RNG.rand(10), RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf, 10), transparency=true)
@@ -205,10 +205,6 @@ end
 
 @reference_test "fast pixel marker" begin
     scatter(RNG.rand(Point2f, 10000), marker=Makie.FastPixel())
-end
-
-@reference_test "pattern barplot" begin
-    barplot(1:5, color=Makie.LinePattern(linecolor=:red, background_color=:orange))
 end
 
 @reference_test "barplot lowclip highclip nan_color" begin

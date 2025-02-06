@@ -2,7 +2,19 @@
 
 ## [Unreleased]
 
-- Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
+- Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
+- Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
+- Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
+- Fixed issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
+- Added option `update_while_dragging=true` to Slider [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
+- Added option `lowres_background=true` to Resampler, and renamed `resolution` to `max_resolution` [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
+- Added option `throttle=0.0` to `async_latest`, to allow throttling while skipping latest updates [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
+- Fixed issue with `WGLMakie.voxels` not rendering on linux with firefox [#4756](https://github.com/MakieOrg/Makie.jl/pull/4756)
+
+## [0.22.1] - 2025-01-17
+
+- Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
+- Fix `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
 
 ## [0.22.0] - 2024-12-12
 
@@ -23,11 +35,19 @@
 - Added `transform_marker` attribute to meshscatter and changed the default behavior to not transform marker/mesh vertices [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed some issues with meshscatter not correctly transforming with transform functions and float32 rescaling [#4606](https://github.com/MakieOrg/Makie.jl/pull/4606)
 - Fixed `poly` pipeline for 3D and/or Float64 polygons that begin from an empty vector [#4615](https://github.com/MakieOrg/Makie.jl/pull/4615).
-- `empty!` GLMakie screen instead of closing, fixing issue with resetted window position [#3881](https://github.com/MakieOrg/Makie.jl/pull/3881)
+- `empty!` GLMakie screen instead of closing, fixing issue with reset window position [#3881](https://github.com/MakieOrg/Makie.jl/pull/3881)
 - Added option to display the front spines in Axis3 to close the outline box [#2349](https://github.com/MakieOrg/Makie.jl/pull/4305)
 - Fixed gaps in corners of `poly(Rect2(...))` stroke [#4664](https://github.com/MakieOrg/Makie.jl/pull/4664)
 - Fixed an issue where `reinterpret`ed arrays of line points were not handled correctly in CairoMakie [#4668](https://github.com/MakieOrg/Makie.jl/pull/4668).
 - Fixed various issues with `markerspace = :data`, `transform_marker = true` and `rotation` for scatter in CairoMakie (incorrect marker transformations, ignored transformations, Cairo state corruption) [#4663](https://github.com/MakieOrg/Makie.jl/pull/4663)
+- Changed deprecation warnings for Vector and Range inputs in `image`, `volume`, `voxels` and `spy` into **errors** [#4685](https://github.com/MakieOrg/Makie.jl/pull/4685)
+- Refactored OpenGL cleanup to run immediately rather than on GC [#4699](https://github.com/MakieOrg/Makie.jl/pull/4699)
+- It is now possible to change the title of a `GLFW.Window` with `GLMakie.set_title!(screen::Screen, title::String)` [#4677](https://github.com/MakieOrg/Makie.jl/pull/4677).
+- Fixed `px_per_unit != 1` not getting fit to the size of the interactive window in GLMakie [#4687](https://github.com/MakieOrg/Makie.jl/pull/4687)
+- Changed minorticks to skip computation when they are not visible [#4681](https://github.com/MakieOrg/Makie.jl/pull/4681)
+- Fixed indexing error edge case in violin median code [#4682](https://github.com/MakieOrg/Makie.jl/pull/4682)
+- Fixed incomplete plot cleanup when cleanup is triggered by an event. [#4710](https://github.com/MakieOrg/Makie.jl/pull/4710)
+- Automatically plot Enums as categorical [#4717](https://github.com/MakieOrg/Makie.jl/pull/4717).
 
 ## [0.21.18] - 2024-12-12
 
@@ -714,7 +734,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
 [0.21.17]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.16...v0.21.17

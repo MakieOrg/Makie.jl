@@ -882,17 +882,23 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospeciali
     end
     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
     cols = per_face_colors(color, nothing, fs, nothing, uv)
+    if cols isa Cairo.CairoPattern
+        align_pattern(cols, scene, model)
+    end
     return draw_mesh2D(screen, cols, vs, fs)
 end
 
-function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
+function draw_mesh2D(screen, color, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
+    return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
+end
 
-    ctx = screen.context
+function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace}, indices)
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    for (f, (c1, c2, c3)) in zip(fs, per_face_cols)
-        t1, t2, t3 =  vs[f] #triangle points
+    for i in indices
+        c1, c2, c3 = per_face_cols[i]
+        t1, t2, t3 =  vs[fs[i]] #triangle points
 
         # don't draw any mesh faces with NaN components.
         if isnan(t1) || isnan(t2) || isnan(t3)
@@ -917,6 +923,32 @@ function draw_mesh2D(screen, per_face_cols, vs::Vector{<: Point2}, fs::Vector{GL
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
     end
+    return nothing
+end
+
+function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::Vector, fs::Vector{GLTriangleFace}, indices)
+    # Prioritize colors of the mesh if present
+    # This is a hack, which needs cleaning up in the Mesh plot type!
+    Cairo.set_source(ctx, pattern)
+
+    for i in indices
+        t1, t2, t3 = vs[fs[i]] # triangle points
+
+        # don't draw any mesh faces with NaN components.
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        # TODO:
+        # - this may create gaps like heatmap?
+        # - for some reason this is liqhter than it should be?
+        Cairo.move_to(ctx, t1[1], t1[2])
+        Cairo.line_to(ctx, t2[1], t2[2])
+        Cairo.line_to(ctx, t3[1], t3[2])
+        Cairo.close_path(ctx)
+        Cairo.fill(ctx);
+    end
+    pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     return nothing
 end
 
@@ -947,7 +979,11 @@ function draw_mesh3D(
     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
     meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
-    meshuvs = texturecoordinates(mesh)::Union{Nothing, Vector{Vec2f}}
+    _meshuvs = texturecoordinates(mesh)
+    if (_meshuvs isa AbstractVector{<:Vec3})
+        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
+    end
+    meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
@@ -959,6 +995,10 @@ function draw_mesh3D(
 
     model = attributes.model[]::Mat4d
     space = to_value(get(attributes, :space, :data))::Symbol
+
+    if per_face_col isa Cairo.CairoPattern
+        align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
+    end
 
     if haskey(attributes, :transform_marker)
         # meshscatter/voxels route:
@@ -1032,11 +1072,36 @@ function draw_mesh3D(
         valid = Bool[]
     end
 
+    # Camera to screen space
+    transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
+    ts = project_position(Point3f, transform, vs, eachindex(vs))
+
+    # Approximate zorder
+    average_zs = map(f -> average_z(ts, f), meshfaces)
+    zorder = sortperm(average_zs)
+
     if isnothing(meshnormals)
         ns = nothing
     else
         ns = map(n -> normalize(normalmatrix * n), meshnormals)
     end
+
+    # Face culling
+    if isempty(valid) && !isnothing(ns)
+        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    elseif !isempty(valid)
+        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
+    end
+
+    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
+    # as a color. In this case we don't do shading and fall back to mesh2D
+    # rendering
+    if per_face_col isa Cairo.CairoPattern
+        return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
+    end
+
 
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
@@ -1062,33 +1127,8 @@ function draw_mesh3D(
         Vec3f(0)
     end
 
-    # Camera to screen space
-    ts = map(vs) do v
-        clip = projectionview * v
-        @inbounds begin
-            p = (clip ./ clip[4])[Vec(1, 2)]
-            p_yflip = Vec2f(p[1], -p[2])
-            p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
-        end
-        p = p_0_to_1 .* scene.camera.resolution[]
-        return Vec3f(p[1], p[2], clip[3])
-    end
-
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(v[i] - eyeposition), vs)
-
-    # Approximate zorder
-    average_zs = map(f -> average_z(ts, f), meshfaces)
-    zorder = sortperm(average_zs)
-
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
-    end
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
