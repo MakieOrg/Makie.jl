@@ -327,7 +327,6 @@ struct UpdatePixelCam
     near::Float64
     far::Float64
 end
-get_space(::UpdatePixelCam) = :pixel
 
 function (cam::UpdatePixelCam)(window_size)
     w, h = Float64.(widths(window_size))

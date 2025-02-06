@@ -323,7 +323,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 """
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
-    "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`."
+    "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
@@ -424,7 +424,12 @@ end
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 """
 @recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh,GeometryBasics.MetaMesh},) begin
-    "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
+    """
+    Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
+    A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain
+    texture coordinates. A `<: AbstractPattern` can be used to apply a repeated, pixel sampled pattern to
+    the mesh, e.g. for hatching.
+    """
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
     interpolate = true
@@ -664,7 +669,7 @@ Plots polygons, which are defined by
     Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
     A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
     Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
-    One can also use `Makie.LinePattern`, to cover the poly with a regular stroke pattern.
+    One can also use a `<: AbstractPattern`, to cover the poly with a regular pattern, e.g. for hatching.
     """
     color = @inherit patchcolor
     "Sets the color of the outline around a marker."

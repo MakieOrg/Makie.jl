@@ -32,8 +32,19 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
         uniforms[:pattern] = true
-        uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
-    elseif color[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
+        img = convert_texture(map(Makie.to_image, plot, color))
+        uniforms[uniform_color_name] = Sampler(img; x_repeat = :repeat, minfilter=minfilter)
+        # different default with Patterns (no swapping and flipping of axes)
+        # also includes px to uv coordinate transform so we can use linear
+        # interpolation (no jitter) and related pattern to (0,0,0) in world space
+        scene = Makie.parent_scene(plot)
+        uniforms[:uv_transform] = map(plot,
+                plot.attributes[:uv_transform], scene.camera.projectionview,
+                scene.camera.resolution, plot.model, color # TODO float32convert
+            ) do uvt, pv, res, model, pattern
+            return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
+        end
+    elseif color[] isa AbstractMatrix
         uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMapping
         if color[].color_scaled[] isa AbstractVector
