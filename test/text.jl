@@ -123,3 +123,11 @@ end
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
     # @test_throws err text(1, 2, text = "hi", textsize = 30)
 end
+
+@testset "align validation" begin
+    @test_throws ErrorException("Text align must be a two-element tuple, got :center") text(1, 2, align = :center)
+    @test_throws ErrorException("Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got :centr") text(1, 2, align = (1, :centr))
+    @test_throws ErrorException("Horizontal text align must be a Real or :left, :right, :center. Got :centr") text(1, 2, align = (:centr, 1))
+    @test_throws ErrorException("Text align must be a two-element tuple, got :center") text(1:2, 3:4, text = ["A", "B"], align = [:center, :center])
+    @test_throws ErrorException("Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got :centr") text(1:2, 3:4, text = ["A", "B"], align = [(:center, :centr), (:center, :center)])
+end

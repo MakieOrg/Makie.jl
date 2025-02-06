@@ -13,6 +13,24 @@ convert_arguments(::Type{<:Text}, string::AbstractString) = (string,)
 # Fallback to PointBased
 convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
 
+function validate_text_align(al)
+    if al isa Tuple{Any,Any}
+        if !(al[1] isa Real || al[1] in (:left, :right, :center))
+            error("Horizontal text align must be a Real or :left, :right, :center. Got $(repr(al[1]))")
+        end
+        if !(al[2] isa Real || al[2] in (:top, :bottom, :center, :baseline))
+            error("Vertical text align must be a Real or :top, :bottom, :center, :baseline. Got $(repr(al[2]))")
+        end
+    else
+        error("Text align must be a two-element tuple, got $(repr(al))")
+    end
+    return
+end
+
+function validate_text_align(als::AbstractVector)
+    foreach(validate_text_align, als)
+    return
+end
 
 function plot!(plot::Text)
     positions = plot[1]
@@ -47,8 +65,11 @@ function plot!(plot::Text)
         lwidths = Float32[]
         lcolors = RGBAf[]
         lindices = Int[]
-        function push_args(args...)
-            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
+
+        validate_text_align(al)
+
+        function push_args(str, id, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
+            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(str, id, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
             push!(gcs, gc)
             append!(lsegs, ls)
             append!(lwidths, lw)
