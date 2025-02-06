@@ -63,6 +63,9 @@ import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
 
+using ForwardDiff: ForwardDiff   # for reduce_overlaps.jl (FIXME: remove this dependency)
+using CoordinateTransformations: AffineMap   # for reduce_overlaps.jl (FIXME: remove this dependency)
+
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
 
@@ -134,6 +137,7 @@ include("colorsampler.jl")
 include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
+include("utilities/reduce_overlaps.jl")
 # Basic scene/plot/recipe interfaces + types
 
 include("dim-converts/dim-converts.jl")
@@ -303,6 +307,9 @@ export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px
 export disconnect!
 export DataInspector
 export Consume
+
+# reducing overlaps of text labels
+export mtext!, reduce_overlap!
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
