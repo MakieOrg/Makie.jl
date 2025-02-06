@@ -229,7 +229,6 @@ export class Lines extends Plot {
         this.ndims = {};
         this.mesh = create_line(this);
         this.init_mesh();
-        console.log(this)
     }
 
     update(data_key_value_array) {

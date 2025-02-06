@@ -269,11 +269,10 @@ function resolve!(edge::TypedEdge)
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end
-            if result == getindex.(edge.outputs)
-                foreach(x -> x.dirty = false, edge.output_nodes)
-                return
+            result_diff = map(result, edge.outputs) do r, o
+                r !== o[] && r == o[] ? nothing : r
             end
-            set_result!(edge, result)
+            set_result!(edge, result_diff)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else

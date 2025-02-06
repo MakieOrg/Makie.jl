@@ -246,7 +246,6 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     register_computation!(attr, [:dim_converted],
                           [MakieCore.argument_names(P, 10)...]) do args, changed, last
         new_args = convert_arguments(P, args[1][]...)
-        !isnothing(last) && (new_args == getindex.(last)) && return nothing
         return new_args
     end
 
