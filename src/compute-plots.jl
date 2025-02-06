@@ -36,9 +36,12 @@ function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
     end
     attr = plot.args[1]
     if haskey(attr.inputs, key)
-        setproperty!(attr, key, val)
+        if attr[key][] != val
+            setproperty!(attr, key, val)
+        end
     else
         add_input!(attr, key, val)
+
         # maybe best to not make assumptions about user attributes?
         # CairoMakie rasterize needs this (or be treated with more care)
         attr[key].value = RefValue{Any}(nothing)
@@ -111,11 +114,15 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         attr, [colorname, :colorrange], [:_colorrange]
     ) do (color, colorrange), changed, last
         (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
-        all(changed) || return nothing
-        if colorrange[] === automatic
-            (Vec2d(distinct_extrema_nan(color[])),)
+        crange = if colorrange[] === automatic
+            Vec2d(distinct_extrema_nan(color[]))
         else
-            (Vec2d(colorrange[]),)
+            Vec2d(colorrange[])
+        end
+        if !isnothing(last) && last[1][] == crange
+            return nothing
+        else
+            return (crange,)
         end
     end
 
@@ -238,8 +245,11 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 
     register_computation!(attr, [:dim_converted],
                           [MakieCore.argument_names(P, 10)...]) do args, changed, last
-        return convert_arguments(P, args[1][]...)
+        new_args = convert_arguments(P, args[1][]...)
+        !isnothing(last) && (new_args == getindex.(last)) && return nothing
+        return new_args
     end
+
 
     add_input!(attr, :transform_func, identity)
     # Hack-fix variable type
@@ -529,8 +539,16 @@ function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,An
 end
 
 function ComputePipeline.update!(plot::ComputePlots; args...)
-    return ComputePipeline.update!(plot.args[1]; args...)
+    new_values = filter(pairs(args)) do (k, v)
+        return plot[k][] != v
+    end
+    if isempty(new_values)
+        return
+    end
+    ComputePipeline.update!(plot.args[1]; new_values...)
+    return
 end
+
 
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.args[1])
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)

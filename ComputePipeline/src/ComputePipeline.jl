@@ -199,11 +199,12 @@ function update!(attr::ComputeGraph; kwargs...)
         if haskey(attr.inputs, key)
             _setproperty!(attr, key, value)
         else
-            throw(Makie.AttributeNameError(key))
+            error("Attribute $key not found in ComputeGraph")
         end
     end
     notify(attr.onchange)
     return attr
+
 end
 
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
@@ -260,18 +261,24 @@ end
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function resolve!(edge::TypedEdge)
-    result = edge.callback(edge.inputs, edge.inputs_dirty, edge.outputs)
-    if result === :deregister
-        # TODO
-    elseif result isa Tuple
-        if length(result) != length(edge.outputs)
-            error("Did not return correct length: $(result), $(edge.callback)")
+    if any(edge.inputs_dirty) # only call if inputs changed
+        result = edge.callback(edge.inputs, edge.inputs_dirty, edge.outputs)
+        if result === :deregister
+            # TODO
+        elseif result isa Tuple
+            if length(result) != length(edge.outputs)
+                error("Did not return correct length: $(result), $(edge.callback)")
+            end
+            if result == getindex.(edge.outputs)
+                foreach(x -> x.dirty = false, edge.output_nodes)
+                return
+            end
+            set_result!(edge, result)
+        elseif isnothing(result)
+            foreach(x -> x.dirty = false, edge.output_nodes)
+        else
+            error("Needs to return a Tuple with one element per output, or nothing")
         end
-        set_result!(edge, result)
-    elseif isnothing(result)
-        foreach(x -> x.dirty = false, edge.output_nodes)
-    else
-        error("Needs to return a Tuple with one element per output, or nothing")
     end
 end
 
