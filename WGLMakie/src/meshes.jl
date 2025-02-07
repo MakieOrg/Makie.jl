@@ -44,7 +44,7 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
             ) do uvt, pv, res, model, pattern
             return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
         end
-    elseif color[] isa AbstractMatrix
+    elseif color[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
         uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMapping
         if color[].color_scaled[] isa AbstractVector
