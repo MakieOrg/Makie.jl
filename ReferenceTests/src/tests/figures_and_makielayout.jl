@@ -391,6 +391,31 @@ end
     Makie.step!(st)
 end
 
+@reference_test "Axis3 clipping" begin
+    # Data from Brillouin.jl
+    basis = Vec3f[[-6.2831855, 6.2831855, 6.2831855], [6.2831855, -6.2831855, 6.2831855], [6.2831855, 6.2831855, -6.2831855]]
+    fs = [[6, 3, 4, 14, 13, 5], [15, 13, 14, 17, 18, 16], [17, 14, 4, 11], [17, 11, 12, 24, 23, 18], [3, 1, 2, 12, 11, 4], [1, 3, 6, 10], [24, 12, 2, 22], [5, 13, 15, 8], [19, 20, 7, 8, 15, 16], [16, 18, 23, 19], [10, 6, 5, 8, 7, 9], [24, 22, 21, 20, 19, 23], [1, 10, 9, 21, 22, 2], [20, 21, 9, 7]]
+    verts = Vec3i[[1, -1, -2], [2, 1, -1], [1, -2, -1], [2, -1, 1], [-2, -3, -1], [-1, -3, -2], [-3, -1, -2], [-3, -2, -1], [-2, -1, -3], [-1, -2, -3], [3, 1, 2], [3, 2, 1], [-1, -2, 1], [1, -1, 2], [-2, -1, 1], [-1, 1, 2], [2, 1, 3], [1, 2, 3], [-1, 2, 1], [-2, 1, -1], [-1, 1, -2], [1, 2, -1], [1, 3, 2], [2, 3, 1]]
+    ps = map(((a,b,c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
+    ls = Point3f[]
+    for f in fs
+        append!(ls, ps[f])
+        push!(ls, ps[f[1]], Point3f(NaN))
+    end
+    _fs = decompose(GLTriangleFace, [NgonFace(f...) for f in fs])
+    m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
+
+    # Should create closed square and hexagonal cells
+    f = Figure()
+    a = Axis3(f[1, 1], aspect = :data,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    scatter!(a, ps, markersize = 30, transparency = true)
+    f
+end
+
 @reference_test "Colorbar for recipes" begin
     fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
     Colorbar(fig[1, 2], pl; size=100)
