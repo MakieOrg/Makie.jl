@@ -33,7 +33,7 @@ function initialize_block!(ax::Axis3)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
         _planes = planes(lims)
         _planes = apply_transform.(Ref(model), _planes)
-        nudge = 1f0 + 1f-6 # clip slightly outside to avoid float precision issues with 0 margin
+        nudge = 1f0 + 1f-5 # clip slightly outside to avoid float precision issues with 0 margin
         return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
     end
 
