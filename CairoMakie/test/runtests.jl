@@ -187,7 +187,6 @@ excludes = Set([
     "fast pixel marker",
     "scatter with glow", # some are missing
     "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
-    "heatmaps & surface", # different nan_colors in surface
     "Textured meshscatter", # not yet implemented
     "Voxel - texture mapping", # not yet implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
