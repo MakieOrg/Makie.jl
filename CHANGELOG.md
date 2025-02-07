@@ -2,10 +2,12 @@
 
 ## [Unreleased]
 
+- Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
 - Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
 - Fixed issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
+- Fixed shader compilation error due to undefined unused variable in volume [#4755](https://github.com/MakieOrg/Makie.jl/pull/4755)
 - Added option `update_while_dragging=true` to Slider [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
 - Added option `lowres_background=true` to Resampler, and renamed `resolution` to `max_resolution` [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
 - Added option `throttle=0.0` to `async_latest`, to allow throttling while skipping latest updates [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).

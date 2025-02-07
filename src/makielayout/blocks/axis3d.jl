@@ -32,7 +32,9 @@ function initialize_block!(ax::Axis3)
     cameracontrols!(scene, cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
         _planes = planes(lims)
-        return apply_transform.(Ref(model), _planes)
+        _planes = apply_transform.(Ref(model), _planes)
+        nudge = 1f0 + 1f-5 # clip slightly outside to avoid float precision issues with 0 margin
+        return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
     end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
