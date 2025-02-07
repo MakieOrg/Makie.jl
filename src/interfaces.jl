@@ -140,7 +140,7 @@ function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<
     return (x, y, data)
 end
 
-function expand_dimensions(::VolumeLike, data::RealArray{3})
+function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
     x, y, z = map(x-> (0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
