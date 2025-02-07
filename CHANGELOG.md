@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
 - Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
