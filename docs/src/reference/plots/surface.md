@@ -33,22 +33,6 @@ surface(volcano,
     axis=(type=Axis3, azimuth = pi/4))
 ```
 
-### Quad Mesh surface
-
-X and Y values can also be given as a Matrix.
-In this case the surface positions follow as `Point.(X, Y, Z)` so the surface is no longer restricted to an XY grid.
-
-```@figure backend=GLMakie
-rs = 1:10
-thetas = 0:10:360
-
-xs = rs .* cosd.(thetas')
-ys = rs .* sind.(thetas')
-zs = sin.(rs) .* cosd.(thetas')
-
-surface(xs, ys, zs)
-```
-
 ```@figure backend=GLMakie
 using SparseArrays
 using LinearAlgebra
@@ -92,6 +76,22 @@ data = 0.1randn(d,d) + reshape(
 
 surface(data; shading = NoShading, colormap = :deep)
 surface(data; shading = NoShading, colormap = :deep)
+```
+
+### Quad Mesh surface
+
+X and Y values can also be given as a Matrix.
+In this case the surface positions follow as `Point.(X, Y, Z)` so the surface is no longer restricted to an XY grid.
+
+```@figure backend=GLMakie
+rs = 1:10
+thetas = 0:10:360
+
+xs = rs .* cosd.(thetas')
+ys = rs .* sind.(thetas')
+zs = sin.(rs) .* cosd.(thetas')
+
+surface(xs, ys, zs)
 ```
 
 ### NaN Handling
