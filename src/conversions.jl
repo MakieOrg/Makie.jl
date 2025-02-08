@@ -995,7 +995,11 @@ function convert_attribute(angle::Real, ::key"uv_transform")
     # rotate, translate back.
     # For patterns and in terms of what's actually happening to the uvs we
     # should not translate at all.
-    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+    error(
+        "Creating a uv_transform from a rotation angle is not implemented directly because one usually " *
+        "needs to translate as well to deal with the 0..1 value range. Use :rotr90, :rotl90, :rot180, " *
+        "Makie.uv_transform(angle) or multi-step expression (tuple) instead."
+    )
 end
 
 """
