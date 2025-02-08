@@ -1002,7 +1002,7 @@ end
     uv_transform(args::Tuple)
     uv_transform(args...)
 
-Returns a 3x3 uv transformation matrix combinign all the given arguments. This
+Returns a 3x3 uv transformation matrix combining all the given arguments. This
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
 
@@ -1011,7 +1011,15 @@ Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 """
 uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
 uv_transform(packed...) = uv_transform(packed)
+
+"""
+    uv_transform(::UniformScaling)
+    uv_transform(::typeof(identity))
+
+Returns a 3x3 identity matrix When passing `I` or `identity`.
+"""
 uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
 
 
 # prefer scale as single argument since it may be useful for patterns
@@ -1052,14 +1060,15 @@ Creates a 3x3 uv transformation matrix from a given named action. They assume
 - `:swap_xy, :transpose` which corresponds to transposing the texture
 - `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
 - `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+- `:identity` corresponding to no change/identity
 """
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
-    if action == :rotr90
+    if action === :rotr90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
-    elseif action == :rotl90
+    elseif action === :rotl90
         return Mat3f(0,-1,0, 1,0,0, 0,1,1)
-    elseif action == :rot180
+    elseif action === :rot180
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
@@ -1074,6 +1083,8 @@ function uv_transform(action::Symbol)
         return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
     # elseif action == :surface
         # return Mat3f(I)
+    elseif action === :identity
+        return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end
