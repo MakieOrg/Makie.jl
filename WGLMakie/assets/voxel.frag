@@ -54,6 +54,8 @@ vec4 get_color_from_texture(sampler2D color, int id) {
     // compute uv normalized to voxel
     // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
+        // correct for shrinking due to gap
+    voxel_uv = (voxel_uv - vec2(0.5 * gap)) / vec2(1.0 - gap);
     voxel_uv = uvt * vec3(voxel_uv, 1);
     return texture(color, voxel_uv);
 }
