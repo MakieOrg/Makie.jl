@@ -2,17 +2,24 @@
 
 ## [Unreleased]
 
+- Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
 - Enhanced Pattern support: Added general CairoMakie implementation, improved quality, added anchoring, added support in band, density, added tests & fixed various bugs and inconsistencies. [#4715](https://github.com/MakieOrg/Makie.jl/pull/4715)
 - Fixed issue with `voronoiplot` for Voronoi tessellations with empty polygons [#4740](https://github.com/MakieOrg/Makie.jl/pull/4740)
+- Fixed shader compilation error due to undefined unused variable in volume [#4755](https://github.com/MakieOrg/Makie.jl/pull/4755)
+- Added option `update_while_dragging=true` to Slider [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
+- Added option `lowres_background=true` to Resampler, and renamed `resolution` to `max_resolution` [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
+- Added option `throttle=0.0` to `async_latest`, to allow throttling while skipping latest updates [#4745](https://github.com/MakieOrg/Makie.jl/pull/4745).
 - Fixed issue with `WGLMakie.voxels` not rendering on linux with firefox [#4756](https://github.com/MakieOrg/Makie.jl/pull/4756)
 - Updated `voxels` to use `uv_transform` interface instead of `uvmap` to give more control over texture mapping (i.e. to allow rotations) [#4758](https://github.com/MakieOrg/Makie.jl/pull/4758)
+- Cleaned up surface handling in GLMakie: Surface cells are now discarded when there is a nan in x, y or z. Fixed incorrect normal if x or y is nan [#4735](https://github.com/MakieOrg/Makie.jl/pull/4735)
+- Cleaned up `volume` plots: Added `:indexedabsorption` and `:additive` to WGLMakie, generalized `:mip` to include negative values, fixed missing conversions for rgba algorithms (`:additive`, `:absorptionrgba`), fixed missing conversion for `absorption` attribute & extended it to `:indexedabsorption` and `absorptionrgba`, added tests and improved docs. [#4726](https://github.com/MakieOrg/Makie.jl/pull/4726)
 
 ## [0.22.1] - 2025-01-17
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
-- Fix `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
+- Fixed `alpha` use in legends and some CairoMakie cases [#4721](https://github.com/MakieOrg/Makie.jl/pull/4721).
 
 ## [0.22.0] - 2024-12-12
 

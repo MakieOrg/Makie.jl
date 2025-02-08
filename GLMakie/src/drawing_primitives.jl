@@ -959,6 +959,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
+        elseif haskey(gl_attributes, :color)
+            color = pop!(gl_attributes, :color)
+            return draw_volume(screen, Tex(color), gl_attributes)
         else
             return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
