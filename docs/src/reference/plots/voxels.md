@@ -135,19 +135,21 @@ uvs = [
 ]
 
 # Create uvmap with sides (-x -y -z x y z) in second dimension
-uvt = Matrix{Any}(undef, 4, 6)
+uvt = Matrix{Any}(undef, 5, 6)
 uvt[1, :] = [uvs[9],  uvs[9],  uvs[8],  uvs[9],  uvs[9],  uvs[8]]  # 1 -> birch
 uvt[2, :] = [uvs[11], uvs[11], uvs[10], uvs[11], uvs[11], uvs[10]] # 2 -> oak
 uvt[3, :] = [uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[18]] # 3 -> crafting table
 uvt[4, :] = [uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1]]  # 4 -> planks
+uvt[5, :] = [uvs[75], uvs[75], uvs[76], uvs[75], uvs[75], uvs[62]] # 5 -> dirt/grass
 
 chunk = UInt8[
-    1 0 1; 0 0 0; 1 0 1;;;
+    1 0 1; 0 0 0; 1 0 5;;;
     0 0 0; 0 0 0; 0 0 0;;;
     2 0 2; 0 0 0; 3 0 4;;;
 ]
 
-voxels(chunk, uv_transform = uvt, color = texture)
+# rotate 0..1 texture coordinates first because the texture is rotated relative to what OpenGL expects
+voxels(chunk, uv_transform = (uvt, :rotr90), color = texture)
 ```
 
 Note that `uv_transform` allows various input types.
