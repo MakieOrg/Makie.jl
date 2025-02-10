@@ -982,7 +982,7 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, 
 convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
 # Careful: Mat <: AbstractArray, which should be handled by other methods
-convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, (k,))
+convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
 convert_attribute(x::Mat{3, 3}, k::key"uv_transform") = convert_attribute(Mat3f(x), k)
 convert_attribute(x::Mat{2, 3}, k::key"uv_transform") = convert_attribute(Mat{2, 3, Float32}(x), k)
@@ -1013,7 +1013,15 @@ like matrices `(op3, op2, op1)`.
 Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 `uv_transform(translation, scale)` as a special case.
 """
-uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
+function uv_transform(packed::Tuple)
+    combine(a::Mat3f, b::Mat3f) = a * b
+    # The arrays have already been copied by uv_transform(array)
+    combine(a::Array, b::Mat3f) = a .= a .* Ref(b)
+    combine(a::Mat3f, b::Array) = b .= Ref(a) .* b
+    combine(a::Array, b::Array) = a .= a .* b
+
+    return mapfoldl(uv_transform, combine, packed)
+end
 uv_transform(packed...) = uv_transform(packed)
 
 """
@@ -1025,6 +1033,10 @@ Returns a 3x3 identity matrix When passing `I` or `identity`.
 uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
 uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
 
+# repeated for packed uv_transforms
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+uv_transform(x::Array) = uv_transform.(x)
+uv_transform(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
