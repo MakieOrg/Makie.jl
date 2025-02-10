@@ -5,7 +5,10 @@ struct Plane{N, T}
     distance::T
 
     function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
-        return new{N, T}(normalize(normal), distance)
+        n = norm(normal)
+        ϵ = 100 * max(eps.(normal)...)
+        normalized = ifelse(n > ϵ, normal / n, Vec{N, T}(0))
+        return new{N, T}(normalized, distance)
     end
 end
 
