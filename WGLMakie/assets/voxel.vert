@@ -178,6 +178,6 @@ void main() {
     } else if (dim == 1) { // y normal, xz planes
         o_tex_uv = vec2(-normal_dir, 1.0) * plane_vertex.xz;
     } else { // (dim == 2) z normal, xy planes
-        o_tex_uv = vec2(1.0, -normal_dir) * plane_vertex.yx;
+        o_tex_uv = vec2(1.0, normal_dir) * plane_vertex.xy;
     }
 }
