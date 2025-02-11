@@ -167,7 +167,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     framebuffer::GLFramebuffer
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Threads.Atomic{Bool}
-    rendertask::Union{Task, Nothing}
+    rendertask::Union{StableTasks.StableTask, Nothing}
     timer::BudgetedTimer
 
 
@@ -196,7 +196,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             framebuffer::GLFramebuffer,
             config::Union{Nothing, ScreenConfig},
             stop_renderloop::Bool,
-            rendertask::Union{Nothing, Task},
+            rendertask::Union{Nothing, StableTasks.StableTask},
 
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
@@ -913,7 +913,14 @@ function start_renderloop!(screen::Screen)
         return
     else
         screen.stop_renderloop[] = false
-        task = @async screen.config.renderloop(screen)
+        # On Mac, only the main thread can render,
+        # so we need to fix the task to be on the main thread
+        # (which is, I am assuming, threadid 1).
+        task = @static if Sys.isapple()
+            StableTasks.@spawnat 1 screen.config.renderloop(screen)
+        else
+            StableTasks.@spawn screen.config.renderloop(screen)
+        end
         yield()
         if istaskstarted(task)
             screen.rendertask = task
