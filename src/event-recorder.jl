@@ -1,6 +1,6 @@
 
 """
-record_events(f, scene::Scene, path::String)
+    record_events(f, scene::Scene, path::String)
 
 Records all window events that happen while executing function `f`
 for `scene` and serializes them to `path`.
@@ -24,8 +24,8 @@ function record_events(f, scene::Scene, path::String)
 end
 
 """
-replay_events(f, scene::Scene, path::String)
-replay_events(scene::Scene, path::String)
+    replay_events(f, scene::Scene, path::String)
+    replay_events(scene::Scene, path::String)
 
 Replays the serialized events recorded with `record_events` in `path` in `scene`.
 """
