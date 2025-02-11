@@ -5,6 +5,9 @@ struct Plane{N, T}
     distance::T
 
     function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
+        # Functions using Plane assume `normal` to be normalized. 
+        # `normalize()` turns 0 vectors into NaN vectors which we don't want, 
+        # so we explicitly handle normalization here
         n = norm(normal)
         ϵ = 100 * max(eps.(normal)...)
         normalized = ifelse(n > ϵ, normal / n, Vec{N, T}(0))
