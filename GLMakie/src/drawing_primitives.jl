@@ -293,8 +293,23 @@ function cached_robj!(robj_func, screen, scene, plot::AbstractPlot)
             return output
         end
 
-        handle_intensities!(screen, gl_attributes, plot)
         connect_camera!(plot, gl_attributes, scene.camera, get_space(plot))
+        handle_intensities!(screen, gl_attributes, plot)
+
+        if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
+            get!(gl_attributes, :fetch_pixel, true)
+
+            # different default with Patterns (no swapping and flipping of axes)
+            # also includes px to uv coordinate transform so we can use linear
+            # interpolation (no jitter) and related pattern to (0,0,0) in world space
+            gl_attributes[:uv_transform] = map(plot,
+                    plot.attributes[:uv_transform], scene.camera.projectionview,
+                    scene.camera.resolution, gl_attributes[:model], gl_attributes[:color];
+                    priority = -1
+                ) do uvt, pv, res, model, pattern
+                Makie.pattern_uv_transform(uvt, pv * model, res, pattern)
+            end
+        end
 
         # TODO: remove depwarn & conversion after some time
         if haskey(gl_attributes, :shading) && to_value(gl_attributes[:shading]) isa Bool
@@ -483,8 +498,19 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                     end
                 end
 
-                if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-                    gl_attributes[:image] = gl_attributes[:color]
+                if haskey(gl_attributes, :color)
+                    if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
+                        pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
+                        gl_attributes[:image] = Texture(screen.glscreen, pattern_img, x_repeat=:repeat)
+                        gl_attributes[:color_map] = nothing
+                        gl_attributes[:color] = nothing
+                        gl_attributes[:color_norm] = nothing
+                    elseif to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+                        gl_attributes[:image] = gl_attributes[:color]
+                        gl_attributes[:color_map] = nothing
+                        gl_attributes[:color] = nothing
+                        gl_attributes[:color_norm] = nothing
+                    end
                 end
                 return draw_mesh_particle(screen, (marker, positions), gl_attributes)
             else
@@ -746,16 +772,7 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
         delete!(gl_attributes, :color_norm)
     elseif to_value(color) isa Makie.AbstractPattern
         img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
-        get!(gl_attributes, :fetch_pixel, true)
-        # different default with Patterns (no swapping and flipping of axes)
-        gl_attributes[:uv_transform] = map(plot, plot.attributes[:uv_transform]) do uv_transform
-            if uv_transform === Makie.automatic
-                return Mat{2,3,Float32}(1,0,0,1,0,0)
-            else
-                return convert_attribute(uv_transform, key"uv_transform"())
-            end
-        end
+        gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat)
     elseif to_value(color) isa ShaderAbstractions.Sampler
         gl_attributes[:image] = Texture(screen.glscreen, lift(el32convert, plot, color))
         delete!(gl_attributes, :color_map)
@@ -823,8 +840,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
             img = pop!(gl_attributes, :intensity)
         elseif to_value(color) isa Makie.AbstractPattern
             pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
-            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
             gl_attributes[:color_map] = nothing
             gl_attributes[:color] = nothing
             gl_attributes[:color_norm] = nothing
@@ -943,6 +959,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
+        elseif haskey(gl_attributes, :color)
+            color = pop!(gl_attributes, :color)
+            return draw_volume(screen, Tex(color), gl_attributes)
         else
             return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end

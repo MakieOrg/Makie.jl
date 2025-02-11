@@ -90,6 +90,7 @@ vec4 get_color(sampler1D color, vec3 uv, vec2 color_norm, sampler1D color_map, s
 }
 
 uniform bool fetch_pixel;
+
 {{uv_transform_type}} uv_transform;
 vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
 vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
@@ -102,17 +103,9 @@ vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
     return transform * vec3(uv, 1);
 }
 
-vec4 get_pattern_color(sampler1D color) {
-    int size = textureSize(color, 0);
-    vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
-    int idx = int(mod(pos.x, size));
-    return texelFetch(color, idx, 0);
-}
-
 vec4 get_pattern_color(sampler2D color){
-    ivec2 size = textureSize(color, 0);
     vec2 pos = apply_uv_transform(uv_transform, o_InstanceID, gl_FragCoord.xy);
-    return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+    return texture(color, pos);
 }
 vec4 get_pattern_color(sampler3D color){
     return vec4(0, 0, 0, 1);

@@ -51,11 +51,14 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
     return frag_color;  // color not in uniform
 }
 
+vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     if (get_pattern()) {
-        vec2 size = vec2(textureSize(color, 0));
-        vec2 pos = gl_FragCoord.xy;
-        return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+        // TODO: per instance
+        mat3 t = get_uv_transform();
+        vec2 pos = apply_uv_transform(t, gl_FragCoord.xy);
+        // vec2 pos = vec2(gl_FragCoord.xy) / vec2(textureSize(color, 0));
+        return texture(color, pos);
     } else {
         return texture(color, uv);
     }
