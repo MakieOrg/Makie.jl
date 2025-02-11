@@ -24,7 +24,7 @@ using ShaderAbstractions
 using FreeTypeAbstraction
 using GeometryBasics: StaticVector
 using Observables
-
+using StableTasks
 using Base: RefValue
 import Base: push!, isopen, show
 using Base.Iterators: repeated, drop
