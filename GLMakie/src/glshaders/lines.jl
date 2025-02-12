@@ -61,7 +61,7 @@ function generate_indices(positions)
                 if last_start_idx == -1
                     # place nan before section of line vertices
                     # (or duplicate ps[1])
-                    push!(indices, i-1)
+                    push!(indices, max(1, i-1))
                     last_start_idx = length(indices) + 1
                     last_start_pos = p
                 end
