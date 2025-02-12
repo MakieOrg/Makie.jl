@@ -161,7 +161,8 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     end)
     el.info = "@example $blockname"
 
-    id = string(hash(el.code), base = 16)[1:7]
+    backend = get(kwargs, :backend, :CairoMakie)
+    id = string(hash(backend, hash(el.code)), base = 16)[1:7]
     el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
     Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 
