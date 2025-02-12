@@ -642,3 +642,5 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
+
+Base.propertynames(::Type{T}) where {T <: Block} = keys(_attribute_docs(T))
