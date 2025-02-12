@@ -79,6 +79,9 @@ jobs:
           - ubuntu-20.04
         arch:
           - x64
+        include:
+          - os: macos-latest
+            version: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
