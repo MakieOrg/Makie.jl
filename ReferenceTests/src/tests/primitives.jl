@@ -105,6 +105,7 @@ end
     f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!([-1.2, -1.2, 2, 2, 1, 0, -1.2], [-1.2, 2, 2, -1.2, -1.2, -1.2, -1.2], linewidth = 20, alpha = 0.5)
     f
 end
 
