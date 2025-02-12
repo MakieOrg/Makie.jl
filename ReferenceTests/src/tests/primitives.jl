@@ -32,6 +32,9 @@ end
     for (i, p) in enumerate(points)
         lines!(s, (p .+ Point2f(0, i)) .* 100, linewidth = 10)
     end
+    # These are "doesn't break" tests. They should not display anything
+    lines!(s, Point2f[])
+    lines!(s, Point2f[(100, 100)])
     s
 end
 
