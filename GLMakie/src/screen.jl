@@ -951,6 +951,7 @@ function set_framerate!(screen::Screen, fps=30)
 end
 
 function refreshwindowcb(screen, window)
+    ShaderAbstractions.switch_context!(window)
     screen.render_tick[] = Makie.BackendTick
     render_frame(screen)
     GLFW.SwapBuffers(window)
