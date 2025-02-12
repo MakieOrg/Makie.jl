@@ -107,6 +107,12 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+        if: ${{ runner.os != 'macOS' }}
+      - name: Run the tests (Mac)
+        id: referencetests
+        continue-on-error: true
+        run: DISPLAY=:0 julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)' && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
+        if: ${{ runner.os == 'macOS' }}
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v4
         with:
