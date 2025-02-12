@@ -81,6 +81,7 @@ jobs:
           - x64
         include:
           - os: macos-latest
+            arch: arm64
             version: '1'
     steps:
       - name: Checkout
