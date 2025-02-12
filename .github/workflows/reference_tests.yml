@@ -109,7 +109,7 @@ jobs:
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
         if: ${{ runner.os != 'macOS' }}
       - name: Run the tests (Mac)
-        id: referencetests
+        id: referencetests-mac
         continue-on-error: true
         run: DISPLAY=:0 julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)' && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV 
         if: ${{ runner.os == 'macOS' }}
