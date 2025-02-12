@@ -7,6 +7,10 @@ mesh
 
 ## Examples
 
+### Simple mesh plots
+
+A mesh can be constructed from a set of vertex coordinates and faces.
+
 ```@figure backend=GLMakie
 vertices = [
     0.0 0.0;
@@ -25,6 +29,29 @@ colors = [:red, :green, :blue, :orange]
 mesh(vertices, faces, color = colors, shading = NoShading)
 ```
 
+Note that the order of vertices within a face matters for normal generation in 3D and thus affects shading.
+The normals follows the right hand rule, meaning the normals will face outwards if the vertices of a face are in a counter clockwise order.
+
+```@figure backend=GLMakie
+vertices = Point3f[(0,1,0), (1,0,0), (1,1,0)]
+faces1 = [1 2 3]
+faces2 = [1 3 2]
+colors = [:red, :green, :blue]
+
+f = Figure(size = (800, 400))
+ax = LScene(f[1,1], show_axis = false)
+p = mesh!(ax, vertices, faces1, color = colors)
+arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+
+ax = LScene(f[1,2], show_axis = false)
+p = mesh!(ax, vertices, faces2, color = colors)
+arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+
+f
+```
+
+Another quick way to create a mesh plot is import a mesh using FileIO (which relies on MeshIO):
+
 ```@figure backend=GLMakie
 using FileIO
 
@@ -37,7 +64,7 @@ mesh(
 )
 ```
 
-## Face colors and normals
+### Face colors and normals
 
 ```@figure backend=GLMakie
 using GeometryBasics
@@ -62,7 +89,7 @@ m = GeometryBasics.mesh(ps, fs, normal = ns, color = cs)
 mesh(m)
 ```
 
-## Using GeometryBasics.Mesh and Buffer/Sampler type
+### Using GeometryBasics.Mesh and Buffer/Sampler type
 
 We can also create a mesh to specify normals, uv coordinates:
 
@@ -140,7 +167,7 @@ nothing # hide
 <video autoplay loop muted playsinline controls src="./uv_mesh_mirror.mp4" />
 ```
 
-## Volume Texture
+### Volume Texture
 
 One can pass a 3d array to `mesh(args...; color=volume), and index the volume via uvw coordinates.
 Here is an example of an interactive volume slice viewer:
@@ -218,7 +245,7 @@ end
 f
 ```
 
-## Complex Meshes (Experimental)
+### Complex Meshes (Experimental)
 
 ```@figure backend=GLMakie
 using FileIO
