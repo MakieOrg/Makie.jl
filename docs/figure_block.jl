@@ -122,6 +122,8 @@ module MakieDocsHelpers
     end
 end
 
+const IMAGE_COUNTER = Ref(0)
+
 function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     title = first(Iterators.filter(page.elements) do el
         el isa Markdown.Header{1}
@@ -161,8 +163,8 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     end)
     el.info = "@example $blockname"
 
-    backend = get(kwargs, :backend, :CairoMakie)
-    id = string(hash(backend, hash(el.code)), base = 16)[1:7]
+    id = string(hash(IMAGE_COUNTER[], hash(el.code)), base = 16)[1:7]
+    IMAGE_COUNTER[] += 1
     el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
     Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 
