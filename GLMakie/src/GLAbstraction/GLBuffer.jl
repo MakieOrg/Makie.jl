@@ -12,8 +12,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         id = glGenBuffers()
         glBindBuffer(buffertype, id)
         # size of 0 can segfault it seems
-        buff_length = buff_length == 0 ? 1 : buff_length
-        glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
+        glBufferData(buffertype, max(1, buff_length) * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
         obj = new(
