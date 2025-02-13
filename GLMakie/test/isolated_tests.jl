@@ -1,5 +1,5 @@
 @testset "line indices" begin
-    @testset "core" begin
+    @testset "base" begin
         idxs, valid = GLMakie.generate_indices(Point2f[])
         @test isempty(idxs)
         @test isempty(valid)
@@ -24,6 +24,10 @@
         @test idxs == Cuint[0,0,1,2, 2,3,4,4]
         # index 2 marked invalid (0), disabling lines (1-2), (2-2), (2-3)
         @test valid == Float32[1,1, 0, 1,1]
+
+        idxs, valid = GLMakie.generate_indices([Point2f(NaN) for _ in 1:4])
+        @test idxs == Cuint[]
+        @test valid == Float32[0,0,0,0]
     end
 
     @testset "line loop" begin
