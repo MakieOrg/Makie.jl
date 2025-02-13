@@ -96,9 +96,12 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
     return
 end
 
-function vao_boundscheck(target::Integer, current::Integer)
+function vao_boundscheck(target::Integer, current::Integer, vao)
     if target <= current # assuming 0-based OpenGL indices
-        error("BoundsError: OpenGL vertex index $current exceeds the number of vertices $target. ")
+        msg = IOBuffer()
+        print(msg, "BoundsError: OpenGL vertex index $current exceeds the number of vertices $target.\n Occurred with ")
+        show(msg, MIME"text/plain"(), vao)
+        error(String(take!(msg)))
     end
 end
 
@@ -113,7 +116,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: Vec
     for elem in to_value(vao.indices)
         # TODO: Should this exclude last(elem), i.e. shift a:b to (a-1):(b-1)
         #       instead of (a-1):b?
-        vao_boundscheck(N_vert, last(elem))
+        vao_boundscheck(N_vert, last(elem), vao)
         glDrawArrays(mode, max(first(elem) - 1, 0), length(elem) + 1)
     end
     return nothing
@@ -127,7 +130,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOr
     offset = first(r) - 1 # 1 based -> 0 based
     nverts = length(vao)
     offset < 0 && error("Range of vertex indices must not be < 0, but is $offset")
-    vao_boundscheck(nverts, offset + nverts)
+    vao_boundscheck(nverts, offset + nverts, vao)
     glDrawArrays(mode, offset, ndraw)
     return nothing
 end
@@ -149,7 +152,7 @@ function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) wher
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
-        vao_boundscheck(length(vao), N_addressed)
+        vao_boundscheck(length(vao), N_addressed, vao)
     end
     glDrawElements(mode, N, julia2glenum(T), C_NULL)
     return nothing
@@ -179,7 +182,7 @@ function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primi
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
-        vao_boundscheck(length(vao), N_addressed)
+        vao_boundscheck(length(vao), N_addressed, vao)
     end
     glDrawElementsInstanced(primitive, N, julia2glenum(T), C_NULL, amount)
     return nothing

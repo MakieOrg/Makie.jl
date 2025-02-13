@@ -289,14 +289,17 @@ function bind(va::GLVertexArray)
     glBindVertexArray(va.id)
 end
 
-
-function Base.show(io::IO, vao::GLVertexArray)
-    show(io, vao.program)
+Base.show(io::IO, vao::GLVertexArray) = print(io, "GLVertexArray $(vao.id)")
+function Base.show(io::IO, ::MIME"text/plain", vao::GLVertexArray)
+    # show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
-    print(io, "GLVertexArray $(vao.id) buffers: ")
-    writemime(io, MIME("text/plain"), vao.buffers)
-    println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
+    print(io, "buffers: ")
+    show(io, MIME("text/plain"), vao.buffers)
+    _print_indices(io, vao.indices)
 end
+_print_indices(io::IO, n::Integer) = print(io, "\nindices: ", Int64(n))
+_print_indices(io::IO, is::AbstractVector{<: Integer}) = print(io, "\nindices: ", Int64.(is))
+_print_indices(io::IO, fs) = print(io, "\nfaces: ", fs)
 
 ##################################################################################
 
