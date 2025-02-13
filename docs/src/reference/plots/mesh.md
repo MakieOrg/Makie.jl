@@ -33,7 +33,7 @@ Note that the order of vertices within a face matters for normal generation in 3
 The normals follows the right hand rule, meaning the normals will face outwards if the vertices of a face are in a counter clockwise order.
 
 ```@figure backend=GLMakie
-vertices = Point3f[(0,1,0), (1,0,0), (1,1,0)]
+vertices = Point3f[(1,0,0), (1,1,0), (0,1,0)]
 faces1 = [1 2 3]
 faces2 = [1 3 2]
 colors = [:red, :green, :blue]
@@ -42,10 +42,12 @@ f = Figure(size = (800, 400))
 ax = LScene(f[1,1], show_axis = false)
 p = mesh!(ax, vertices, faces1, color = colors)
 arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+text!(ax, vertices[faces1[:]], text = ["1", "2", "3"], align = (:center, :center), fontsize = 20, strokecolor = :white, strokewidth = 2, overdraw = true)
 
 ax = LScene(f[1,2], show_axis = false)
 p = mesh!(ax, vertices, faces2, color = colors)
 arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+text!(ax, vertices[faces2[:]], text = ["1", "2", "3"], align = (:center, :center), fontsize = 20, strokecolor = :white, strokewidth = 2, overdraw = true)
 
 f
 ```
