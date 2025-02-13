@@ -184,10 +184,16 @@ mutable struct GLVertexArray{T}
 end
 
 """
-returns the length of the vertex array.
-This is amount of primitives stored in the vertex array, needed for `glDrawArrays`
+    length(vao::GLVertexArray)
+
+Returns the length of the vertex array. More specifically this returns the minimum
+of the lengths of each vertex buffer, i.e. the number of addressable vertices. If
+no vertex buffers are present -1 is returned.
 """
-length(vao::GLVertexArray) = length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
+function length(vao::GLVertexArray)
+    isempty(vao.buffers) && return -1
+    return mapreduce(length, min, values(vao.buffers))
+end
 
 GLVertexArray(vao::GLVertexArray) = GLVertexArray(vao.buffers, vao.program)
 

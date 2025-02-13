@@ -96,31 +96,43 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
     return
 end
 
+function vao_boundscheck(target::Integer, current::Integer)
+    if target <= current # assuming 0-based OpenGL indices
+        error("BoundsError: OpenGL vertex index $current exceeds the number of vertices $target. ")
+    end
+end
 
+# multiple index ranges
 """
-Renders a vertexarray, which consists of the usual buffers plus a vector of
-unitranges which defines the segments of the buffers to be rendered
+    render(vao::GLVertexArray[, mode = GL_TRIANGLES])
+
+Renders a vertexarray based on its `vao.indices` type.
 """
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
+    N_vert = length(vao)
     for elem in to_value(vao.indices)
+        # TODO: Should this exclude last(elem), i.e. shift a:b to (a-1):(b-1)
+        #       instead of (a-1):b?
+        vao_boundscheck(N_vert, last(elem))
         glDrawArrays(mode, max(first(elem) - 1, 0), length(elem) + 1)
     end
     return nothing
 end
 
+# by index range to draw
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
     r = to_value(vao.indices)
     ndraw = length(r)
     ndraw == 0 && return nothing
     offset = first(r) - 1 # 1 based -> 0 based
     nverts = length(vao)
-    if (offset < 0 || offset + ndraw > nverts)
-        error("Bounds error for drawrange. Offset $(offset) and length $(ndraw) aren't a valid range for vertexarray with length $(nverts)")
-    end
+    offset < 0 && error("Range of vertex indices must not be < 0, but is $offset")
+    vao_boundscheck(nverts, offset + nverts)
     glDrawArrays(mode, offset, ndraw)
     return nothing
 end
 
+# by number of triangles
 function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{Int}
     r = to_value(vao.indices)
     r == 0 && return nothing
@@ -128,19 +140,22 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOr
     return nothing
 end
 
-"""
-Renders a vertex array which supplies an indexbuffer
-"""
+# using indexbuffer (faces)
 function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
     N = length(vao.indices) * cardinality(vao.indices)
     N == 0 && return nothing
+    if GLMAKIE_DEBUG[]
+        data = gpu_data_no_unbind(vao.indices)
+        @assert !isempty(data)
+        # raw() to get 0-based value from Faces, does nothing for Int
+        N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
+        vao_boundscheck(length(vao), N_addressed)
+    end
     glDrawElements(mode, N, julia2glenum(T), C_NULL)
     return nothing
 end
 
-"""
-Renders a normal vertex array only containing the usual buffers buffers.
-"""
+# undefined indices, default to rendering all vertices
 function render(vao::GLVertexArray, mode::GLenum=GL_TRIANGLES)
     length(vao) == 0 && return nothing
     glDrawArrays(mode, 0, length(vao))
@@ -148,23 +163,29 @@ function render(vao::GLVertexArray, mode::GLenum=GL_TRIANGLES)
 end
 
 """
-Render instanced geometry
+    renderinstanced(vao::GLVertexArray, instance_count[, primitive = GL_TRIANGLES])
+
+Render `instance_count` instances of the given vertex array based on the type of
+`vao.indices`.
 """
 renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
 
-"""
-Renders `amount` instances of an indexed geometry
-"""
+# using index buffer
 function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
     N = length(vao.indices) * cardinality(vao.indices)
     N * amount == 0 && return nothing
+    if GLMAKIE_DEBUG[]
+        data = gpu_data_no_unbind(vao.indices)
+        @assert !isempty(data)
+        # raw() to get 0-based value from Faces, does nothing for Int
+        N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
+        vao_boundscheck(length(vao), N_addressed)
+    end
     glDrawElementsInstanced(primitive, N, julia2glenum(T), C_NULL, amount)
     return nothing
 end
 
-"""
-Renders `amount` instances of an not indexed geometry geometry
-"""
+# based on number of vertices
 function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
     length(vao) * amount == 0 && return nothing
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)

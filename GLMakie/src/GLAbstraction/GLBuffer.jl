@@ -105,7 +105,15 @@ function gpu_data(b::GLBuffer{T}) where T
     bind(b)
     glGetBufferSubData(b.buffertype, 0, sizeof(data), data)
     bind(b, 0)
-    data
+    return data
+end
+
+# for render() debug checks
+function gpu_data_no_unbind(b::GLBuffer{T}) where T
+    data = Vector{T}(undef, length(b))
+    bind(b)
+    glGetBufferSubData(b.buffertype, 0, sizeof(data), data)
+    return data
 end
 
 
