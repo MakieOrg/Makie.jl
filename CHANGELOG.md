@@ -14,6 +14,7 @@
 - Fixed issue with `WGLMakie.voxels` not rendering on linux with firefox [#4756](https://github.com/MakieOrg/Makie.jl/pull/4756)
 - Cleaned up surface handling in GLMakie: Surface cells are now discarded when there is a nan in x, y or z. Fixed incorrect normal if x or y is nan [#4735](https://github.com/MakieOrg/Makie.jl/pull/4735)
 - Cleaned up `volume` plots: Added `:indexedabsorption` and `:additive` to WGLMakie, generalized `:mip` to include negative values, fixed missing conversions for rgba algorithms (`:additive`, `:absorptionrgba`), fixed missing conversion for `absorption` attribute & extended it to `:indexedabsorption` and `absorptionrgba`, added tests and improved docs. [#4726](https://github.com/MakieOrg/Makie.jl/pull/4726)
+- Added `Axis3.clip` attribute to allow turning off clipping [#4791](https://github.com/MakieOrg/Makie.jl/pull/4791)
 
 ## [0.22.1] - 2025-01-17
 
