@@ -250,6 +250,7 @@ end
 
 end
 
+# TODO: move?
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
     spaces = [:data, :pixel, :relative, :clip]
@@ -273,6 +274,32 @@ end
     inherit_model = [:inherit_model]
     inherit_func = [:inherit_transform_func, :inherit_transform_function]
     inherit_nothing = [nothing, identity, :nothing, :identity]
+
+    camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
+    camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
+    spaces = [:clip, :pixel, :relative, :data, :data, :data]
+
+    @testset "explicit value" begin
+        for cam in camfuncs
+            T = Transformation()
+            # Sanity checks
+            @test T.model[] == Makie.Mat4d(I)
+            @test T.transform_func[] == identity
+
+            scene = Scene(camera = cam)
+            p = scatter!(scene, rand(10), transformation = T)
+            @test p.transformation == T
+            @test p.transformation === T
+
+            T = Transformation((log10, log10), scale = Makie.Vec3d(2))
+            @test T.model[] == Makie.scalematrix(Makie.Vec3d(2))
+            @test T.transform_func[] == (log10, log10)
+
+            p = scatter!(scene, rand(10), transformation = T)
+            @test p.transformation == T
+            @test p.transformation === T
+        end
+    end
 
     @testset "explicit inheritance" begin
         # camera should not influence results (two with different space should be enough)
@@ -303,10 +330,6 @@ end
     end
 
     @testset "space dependent inheritance" begin
-        camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
-        camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
-        spaces = [:clip, :pixel, :relative, :data, :data, :data]
-
         for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
             scene = Scene()
             camfunc(scene)
