@@ -33,8 +33,8 @@ end
 
 function generic_plot_attributes(attr)
     return (
-        transformation = attr[:transformation],
-        model = attr[:model],
+        transformation = automatic,
+        model = automatic,
         visible = attr[:visible],
         transparency = attr[:transparency],
         overdraw = attr[:overdraw],
@@ -46,7 +46,6 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes =  attr[:clip_planes]
-
     )
 end
 
