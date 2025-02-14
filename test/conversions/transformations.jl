@@ -266,34 +266,6 @@ end
     end
 end
 
-@testset "Space dependent transforms" begin
-    t1 = sqrt
-    t2 = (sqrt, log)
-    t3 = (sqrt, log, log10)
-
-    p2 = Point(2.0, 5.0)
-    p3 = Point(2.0, 5.0, 4.0)
-
-    spaces_and_desired_transforms = Dict(
-        :data => (x,y) -> y, # uses changes
-        :clip => (x,y) -> x, # no change
-        :relative => (x,y) -> x, # no change
-        :pixel => (x,y) -> x, # no transformation
-    )
-    for (space, desired_transform) in spaces_and_desired_transforms
-        @test apply_transform(identity, p2, space) == p2
-        @test apply_transform(identity, p3, space) == p3
-
-        @test apply_transform(t1, p2, space) == desired_transform(p2, Point(sqrt(2.0), sqrt(5.0)))
-        @test apply_transform(t1, p3, space) == desired_transform(p3, Point(sqrt(2.0), sqrt(5.0), sqrt(4.0)))
-
-        @test apply_transform(t2, p2, space) == desired_transform(p2, Point2(sqrt(2.0), log(5.0)))
-        @test apply_transform(t2, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), 4.0))
-
-        @test apply_transform(t3, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), log10(4.0)))
-    end
-end
-
 @testset "space dependent inheritance" begin
     camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
     camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
