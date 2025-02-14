@@ -272,7 +272,7 @@ function apply_model(model::Mat4, transformed::Rect{N, T}) where {N, T}
         return Rect{N, T}(mini, maxi - mini)
     else
         for input in corners(transformed)
-            output = unchecked_apply_model(model, input)
+            output = apply_model(model, input)
             bb = update_boundingbox(bb, output)
         end
     end
