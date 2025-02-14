@@ -359,7 +359,7 @@ function plot!(::Plot{F, Args}) where {F, Args}
     end
 end
 
-function handle_transformations(plot, parent)
+function handle_transformation!(plot, parent)
     t_user = to_value(pop!(attributes(plot), :transformation, automatic))
 
     # Handle passing transform!() inputs through transformation
@@ -380,11 +380,12 @@ function handle_transformations(plot, parent)
         plot.transformation = Transformation()
 
         # Derive transformation based on space compatibility / use parent transform
-        if (t_user === :inherit) ||
-            (t_user in (automatic, :auto, :automatic) && is_space_compatible(plot, parent))
+        if t_user in (automatic, :auto, :automatic, :inherit)
 
-            obsfunc = connect!(transformation(parent), transformation(plot))
-            append!(plot.deregister_callbacks, obsfunc)
+            if is_space_compatible(plot, parent) || (t_user === :inherit)
+                obsfunc = connect!(transformation(parent), transformation(plot))
+                append!(plot.deregister_callbacks, obsfunc)
+            end
 
         # Connect only transform_func
         elseif t_user in (:inherit_transform_func, :inherit_transform_function)
