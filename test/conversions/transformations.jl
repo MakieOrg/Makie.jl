@@ -266,28 +266,69 @@ end
     end
 end
 
-@testset "space dependent inheritance" begin
-    camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
-    camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
-    spaces = [:clip, :pixel, :relative, :data, :data, :data]
+@testset "Transformation initialization" begin
 
-    for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
-        scene = Scene()
-        camfunc(scene)
-        @test scene.camera_controls isa CamType
-        @test Makie.get_space(scene.camera_controls) == camspace
-        translate!(scene, 0,0,1)
+    inherit_auto = [Makie.automatic, :auto, :automatic]
+    inherit_all = [:inherit]
+    inherit_model = [:inherit_model]
+    inherit_func = [:inherit_transform_func, :inherit_transform_function]
+    inherit_nothing = [nothing, identity, :nothing, :identity]
 
-        # these should only inherit if the camera results in the same space
-        for space in [:clip, :pixel, :relative]
-            p = scatter!(scene, Point2f(0), space = space)
-            @test isassigned(p.transformation.parent) == (space === camspace)
-            @test p.transformation.model[][3, 4] == ifelse(space === camspace, 1.0, 0.0)
+    @testset "explicit inheritance" begin
+        # camera should not influence results (two with different space should be enough)
+        for cam in [cam2d!, campixel!]
+            scene = Scene(camera = cam)
+            translate!(scene, Vec3f(5))
+            scene.transformation.transform_func[] = (log10, log10)
+
+            # Sanity check - otherwise inheriting and not inheriting are the same
+            @test scene.transformation.transform_func[] != identity
+            @test scene.transformation.model[] != Makie.Mat4d(I)
+
+            for (aliases, results) in [
+                    inherit_all     => (true,  true,  true),
+                    inherit_model   => (true,  false, true),
+                    inherit_func    => (true,  true,  false),
+                    inherit_nothing => (false, false, false)
+                ]
+                for transformation in aliases
+                    p = scatter!(scene, rand(10), transformation = transformation)
+                    @test results[1] == (isassigned(p.transformation.parent) && (p.transformation.parent[] == scene.transformation))
+                    @test results[2] == (p.transformation.transform_func[] == scene.transformation.transform_func[])
+                    @test results[3] == (p.transformation.model[] == scene.transformation.model[])
+                end
+            end
+
         end
+    end
 
-        # data is camera space so transformations should always inherit
-        p = scatter!(scene, Point2f(0), space = :data)
-        @test isassigned(p.transformation.parent)
-        @test p.transformation.model[][3, 4] == 1.0
+    @testset "space dependent inheritance" begin
+        camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
+        camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
+        spaces = [:clip, :pixel, :relative, :data, :data, :data]
+
+        for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
+            scene = Scene()
+            camfunc(scene)
+            @test scene.camera_controls isa CamType
+            @test Makie.get_space(scene.camera_controls) == camspace
+            translate!(scene, 0,0,1)
+
+            # these should only inherit if the camera results in the same space
+            for space in [:clip, :pixel, :relative]
+                for transformation in inherit_auto
+                    p = scatter!(scene, Point2f(0), space = space, transformation = transformation)
+                    @test isassigned(p.transformation.parent) == (space === camspace)
+                    @test p.transformation.model[][3, 4] == ifelse(space === camspace, 1.0, 0.0)
+                end
+            end
+
+            # data is camera space so transformations should always inherit
+            for transformation in inherit_auto
+                p = scatter!(scene, Point2f(0), space = :data, transformation = transformation)
+                @test isassigned(p.transformation.parent)
+                @test p.transformation.model[][3, 4] == 1.0
+            end
+        end
     end
 end
