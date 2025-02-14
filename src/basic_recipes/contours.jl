@@ -274,8 +274,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         col = texts.color[]; empty!(col)
         lbl = texts.text[]; empty!(lbl)
         for (lev, (p1, p2, p3), color) in lev_pos_col
-            px_pos1 = project(scene, apply_transform(transform_func(plot), p1, space))
-            px_pos3 = project(scene, apply_transform(transform_func(plot), p3, space))
+            px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
+            px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
             rot_from_horz::Float32 = angle(px_pos1, px_pos3)
             # transition from an angle from horizontal axis in [-π; π]
             # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
@@ -300,7 +300,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         labels || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
-            px_pos = project(scene, apply_transform(transform_func(plot), pt, space))
+            px_pos = project(scene, apply_transform(transform_func(plot), pt))
             bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
             isfinite_rect(bb) || return Rect2f()
             Rect2f(bb)
@@ -320,14 +320,14 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             if isnan(p) && n < nlab
                 bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
                 # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
-            elseif project(scene, apply_transform(transform_func(plot), p, space)) in bb
+            elseif project(scene, apply_transform(transform_func(plot), p)) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
-                        project(scene, apply_transform(transform_func(plot), segments[j], space)) in bb || break
+                        project(scene, apply_transform(transform_func(plot), segments[j])) in bb || break
                         masked[j] = nan
                     end
                 end

@@ -239,58 +239,42 @@ Applies the transform function and model matrix (i.e. transformations from
 function apply_transform_and_model(plot::AbstractPlot, data, output_type = Point3d)
     return apply_transform_and_model(
         plot.model[], transform_func(plot), data,
-        to_value(get(plot, :space, :data)),
         output_type
     )
 end
-function apply_transform_and_model(model::Mat4, f, data, space = :data, output_type = Point3d)
+function apply_transform_and_model(model::Mat4, f, data, output_type = Point3d)
     promoted = promote_geom(output_type, data)
-    transformed = apply_transform(f, promoted, space)
-    world = apply_model(model, transformed, space)
+    transformed = apply_transform(f, promoted)
+    world = apply_model(model, transformed)
     return promote_geom(output_type, world)
 end
 
-function unchecked_apply_model(model::Mat4, transformed::VecTypes{N, T}) where {N, T}
+function apply_model(model::Mat4, transformed::VecTypes{N, T}) where {N, T}
     p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
     p4d = model * p4d
     p4d = p4d ./ p4d[4]
     return to_ndim(Point{N, T}, p4d, NaN)
 end
-@inline function apply_model(model::Mat4, transformed::AbstractArray, space::Symbol)
-    if space in (:data, :transformed)
-        return unchecked_apply_model.((model,), transformed)
-    else
-        return transformed
-    end
+@inline function apply_model(model::Mat4, transformed::AbstractArray)
+    return apply_model.((model,), transformed)
 end
-function apply_model(model::Mat4, transformed::VecTypes, space::Symbol)
-    if space in (:data, :transformed)
-        return unchecked_apply_model(model, transformed)
+function apply_model(model::Mat4, transformed::Rect{N, T}) where {N, T}
+    bb = Rect{N, T}()
+    if is_translation_scale_matrix(model)
+        # With no rotation in model we can safely treat NaNs like this.
+        # (And finite values as well, of course)
+        scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
+        trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 0.0)
+        mini = scale .* minimum(transformed) .+ trans
+        maxi = scale .* maximum(transformed) .+ trans
+        return Rect{N, T}(mini, maxi - mini)
     else
-        return transformed
-    end
-end
-function apply_model(model::Mat4, transformed::Rect{N, T}, space::Symbol) where {N, T}
-    if space in (:data, :transformed)
-        bb = Rect{N, T}()
-        if is_translation_scale_matrix(model)
-            # With no rotation in model we can safely treat NaNs like this.
-            # (And finite values as well, of course)
-            scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
-            trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 0.0)
-            mini = scale .* minimum(transformed) .+ trans
-            maxi = scale .* maximum(transformed) .+ trans
-            return Rect{N, T}(mini, maxi - mini)
-        else
-            for input in corners(transformed)
-                output = unchecked_apply_model(model, input)
-                bb = update_boundingbox(bb, output)
-            end
+        for input in corners(transformed)
+            output = unchecked_apply_model(model, input)
+            bb = update_boundingbox(bb, output)
         end
-        return bb
-    else
-        return transformed
     end
+    return bb
 end
 
 promote_geom(::Type{<:VT}, x::VT) where {VT} = x
@@ -305,13 +289,12 @@ end
 
 
 """
-    apply_transform(f, data, space)
-Apply the data transform func to the data if the space matches one
-of the the transformation spaces (currently only :data is transformed)
+    apply_transform(f, data)
+
+Apply the data transform function `f` to the data.
 """
-apply_transform(f, data, space) = to_value(space) === :data ? apply_transform(f, data) : data
-function apply_transform(f::Observable, data::Observable, space::Observable)
-    return lift((f, d, s)-> apply_transform(f, d, s), f, data, space)
+function apply_transform(f::Observable, data::Observable)
+    return lift((f, d) -> apply_transform(f, d), f, data)
 end
 
 """
@@ -397,10 +380,6 @@ apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
 
 
 apply_transform(f, number::Number) = f(number)
-
-function apply_transform(f::Observable, data::Observable)
-    return lift((f, d)-> apply_transform(f, d), f, data)
-end
 
 apply_transform(f, itr::Pair) = apply_transform(f, itr[1]) => apply_transform(f, itr[2])
 function apply_transform(f, itr::ClosedInterval)

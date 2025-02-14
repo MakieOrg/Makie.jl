@@ -8,7 +8,7 @@ using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
 
 function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(transform_func, point, space)
+    point = Makie.apply_transform(transform_func, point)
     _project_position(scene, space, point, model, yflip)
 end
 
@@ -226,7 +226,7 @@ function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.V
     # Standard transform from input space to clip space
     # Note that this is type unstable, so there is a function barrier in place.
     space = (plot.space[])::Symbol
-    points = Makie.apply_transform(transform_func(plot), positions, space)
+    points = Makie.apply_transform(transform_func(plot), positions)
 
     return project_transformed_line_points(scene, plot, points, colors, linewidths)
 end

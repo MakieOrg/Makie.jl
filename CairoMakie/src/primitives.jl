@@ -338,7 +338,7 @@ function draw_atomic_scatter(
         markerspace, space, clip_planes, billboard
     )
 
-    transformed = apply_transform(transfunc, positions, space)
+    transformed = apply_transform(transfunc, positions)
     indices = unclipped_indices(to_model_space(model, clip_planes), transformed, space)
     transform = Makie.clip_to_space(scene.camera, markerspace) *
         Makie.space_to_clip(scene.camera, space) *
@@ -584,7 +584,7 @@ function draw_glyph_collection(
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
-        transformed = apply_transform(transform_func, position, space)
+        transformed = apply_transform(transform_func, position)
         p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
 
         Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
@@ -780,7 +780,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         space = to_value(get(primitive, :space, :data))
         xys = let
             ps = [Point2(x, y) for x in xs, y in ys]
-            transformed = apply_transform(transform_func(primitive), ps, space)
+            transformed = apply_transform(transform_func(primitive), ps)
             T = eltype(transformed)
 
             planes = if Makie.is_data_space(space)
@@ -1236,12 +1236,12 @@ function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
     model = plot.model[]::Mat4d
     f32_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
     tf = Makie.transform_func(plot)
-    return _transform_to_world(f32_model, tf, space, pos)
+    return _transform_to_world(f32_model, tf, pos)
 end
 
-function _transform_to_world(f32_model, tf, space, pos)
+function _transform_to_world(f32_model, tf, pos)
     return map(pos) do p
-        transformed = Makie.apply_transform(tf, p, space)
+        transformed = Makie.apply_transform(tf, p)
         p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         p4d = f32_model * p4d
         return p4d[Vec(1,2,3)] / p4d[4]
