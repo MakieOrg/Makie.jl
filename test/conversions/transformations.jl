@@ -354,4 +354,30 @@ end
             end
         end
     end
+
+    @testset "transform!() args" begin
+        scene = Scene()
+        p = scatter!(scene, rand(10), transformation = (:xy, 2))
+        @test p.transformation.model[] == Makie.translationmatrix(Vec3f(0, 0, 2))
+
+        p = scatter!(scene, rand(10), transformation = (:yz, 3))
+        @test p.transformation.model[] == Makie.Mat4d(0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 1)
+
+        p = scatter!(scene, rand(10), transformation = (:xz, 4))
+        @test p.transformation.model[] ≈ Makie.Mat4d(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 4, 0, 1) atol = 1e-6
+
+        p = scatter!(scene, rand(10), transformation = (scale = Vec3f(2, 3, 4),))
+        @test p.transformation.model[] == Makie.scalematrix(Vec3f(2, 3, 4))
+
+        t = (translation = Vec3f(1,2,3), scale = Vec3f(2, 3, 4), rotation = Quaternionf(0.5, 0.6, 0.7, 0.8))
+        p = scatter!(scene, rand(10), transformation = t)
+        T = Makie.transformationmatrix(values(t)...)
+        @test p.transformation.model[] ≈ T atol = 1e-6
+
+        scale!(scene, Vec2f(2))
+        @test p.transformation.model[] ≈ Makie.scalematrix(Vec3f(2,2,1)) * T atol = 1e-6
+
+        p = scatter!(scene, rand(10), transformation = (nothing, (translation = Vec3f(1,2,3),)))
+        @test p.transformation.model[] == Makie.translationmatrix(Vec3f(1,2,3))
+    end
 end

@@ -367,8 +367,7 @@ function handle_transformation!(plot, parent)
         transform_op = t_user
         t_user = automatic
     elseif t_user isa Tuple # Allow (t_user, transform_op)
-        transform_op = t_user[2:end]
-        t_user = t_user[1]
+        t_user, transform_op = t_user
     else
         transform_op = nothing
     end
