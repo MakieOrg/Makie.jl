@@ -1,251 +1,167 @@
-# Conversions and spaces
+# Conversion, Transformation and Projection Pipeline
 
-## Conversion Pipeline
+This section describes all the processing stages that are applied to data given to a plot on its way to being displayed.
 
-The following graphic sketches out the conversion pipeline of data given to a plot with `space = :data` for GL backends.
+## Overview
 
-```@example
-# hideall
-using GLMakie, LinearAlgebra
-GLMakie.activate!()
-Makie.inline!(true)
+The pipeline can be broadly be summarized in 3 parts each with a few steps:
 
-function myarrows!(scene, ps; kwargs...)
-    ends = map(ps) do ps
-        output = Int[]
-        for i in eachindex(ps)
-            isnan(ps[i]) && push!(output, i-1)
-        end
-        push!(output, length(ps))
-        output
-    end
+1. Conversions which mainly normalize types
+    1. `expand_dimensions()` adds defaulted/generated data (e.g. x, y in `image()`)
+    2. `dim_convert` processes special types like Units
+    3. `convert_arguments()` normalizes numeric types & data formats
+2. Transformations which transform data on a per-plot basis
+    1. `transform_func` is a function applied to data
+    2. `model` matrix applies linear transformations
+3. Projections which project data from one coordinate system to another
+    1. `view` matrix moves data from "world" space to a camera "view/eye" space
+    2. `projection` matrix moves from the camera space to "clip" space
+    3. `viewport` moves "clip" space to "pixel/screen" space
 
-    dict = Dict(kwargs)
-    endpoints = map((ps, is) -> ps[is], ps, ends)
-    dirs = map(
-      (ps, is) -> -Makie.quaternion_to_2d_angle.(Makie.to_rotation(normalize.(ps[is] .- ps[is .- 1]))),
-      ps, ends)
-    cols = map(is -> dict[:color] isa Vector ? dict[:color][is] : dict[:color], ends)
+As a **user** you have direct control over the `model` matrix (1.2) with the `scale!()`, `translate!()` and `rotate!()` functions.
+You have indirect control over projections (3) with the `space` attribute.
+It sets what coordinate system is used as the initial space and adjusts the projections as a result.
+You also have indirect control over `transform_func`, which can be set by passing a `Transformation()` directly to a plot.
+However it usually inherited and controlled by the `Axis`.
 
-    lines!(scene, ps; kwargs...)
-    scatter!(
-        scene, endpoints, marker = Makie.BezierUTriangle, color = cols,
-        rotation = dirs
-    )
-end
+As a **developer**, i.e. someone who wants to extend Makie, you can interact with most these steps.
+Most likely you will extend with `convert_arguments()` to allow special types to be plotted.
+But you can also implement more dim_converts, add methods for `expand_dimensions()`, implement more transform functions or add a camera which produces its own `view` and `projection` matrix.
+Only `model` and `viewport` handling as well as the interpretation of `space` are set.
 
-scene = Scene(size = (1220, 200))
-campixel!(scene)
-
-# init space label data
-spacing = 80
-y0 = 80
-ps = Observable(Point2f.(1:8, y0))
-# spaces = [":data", "transformed64", "world", "eye", ":clip", "screen"]
-spaces = ["plot.args", "plot.converted", "transformed64", "transformed32", "world", "eye", "clip", "screen"]
-
-# plot space labels
-p = text!(
-    scene, ps, text = spaces, align = (:left, :center),
-    fontsize = 20,
-    color = [:black, :black, :gray, :gray, :gray, :gray, :gray, :gray]
-)
-
-# update space label data & derive arrows
-centers = Observable(Point2f[])
-text_centers = Observable(Point2f[])
-map!(ps, p.plots[1][1]) do gcs
-    edge = -spacing + 10
-    xvals = Float64[]
-    xcenters = Float64[]
-
-    for gc in gcs
-        bb = Makie.string_boundingbox(gc, Quaternionf(0,0,0,1))
-        left = spacing + edge - minimum(bb)[1]
-        push!(xvals, left)
-        push!(xcenters, left + 0.5 * widths(bb)[1])
-        edge = left + widths(bb)[1]
-    end
-
-    text_centers[] = Point2f.(xcenters, y0)
-    centers[] = Point2f.(xvals[2:end] .- 0.5spacing, y0)
-
-    return Point2f.(xvals, y0)
-end
-
-arrowpos = map(centers) do centers
-    half = 0.5 * spacing - 5
-    ps = Point2f[]
-    lws = Float64[]
-    for center in centers
-        x, y = center
-        push!(ps, Point2f(x-half, y), Point2f(x+half-5, y), Point2f(NaN))
-        # push!(ps, Point2f(x-half, y), Point2f(x+half-8, y))
-        # push!(ps, Point2f(x+half-10, y), Point2f(x+half, y))
-        # push!(lws, 2, 2, 12, 0)
-    end
-    ps
-end
-
-# plot arrows
-myarrows!(
-    scene, arrowpos, linewidth = 2,
-    color = [c for c in [:red, :red, :red, :green, :green, :green, :gray] for _ in 1:3]
-)
-
-# transformation labels
-transformations = ["convert_arguments", "transform_func", "Float32Convert", "model", "view", "projection", "viewport"]
-trans_offset = 25
-text!(
-    scene, centers, text = transformations, align = (:center, :center),
-    offset = (0, trans_offset),
-    color = [:black, :orange, :black, :orange, :cyan, :cyan, :gray]
-)
-
-# Transformation
-bracket_offset = Point2f(0, trans_offset + 15)
-trans_bracket_pos = map(centers) do cs
-    [cs[2] + bracket_offset, cs[4] + bracket_offset]
-end
-text!(
-  scene, trans_bracket_pos, text = ["Transformation" for _ in 1:2],
-  color = :orange, align = (:center, :bottom))
-
-# Camera
-cam_bracket_pos = map(centers) do cs
-    (cs[5] + bracket_offset, cs[6] + bracket_offset)
-end
-bracket!(
-    scene,
-    cam_bracket_pos,
-    text = "Camera",
-    color = :cyan, textcolor = :cyan
-)
-
-# CPU
-dx = 10; dy = -20
-cpu_bracket_pos = map(text_centers) do ps
-    (ps[1] .+ (dx, dy), ps[4] .+ (-dx, dy))
-end
-bracket!(
-    scene,
-    cpu_bracket_pos,
-    text = "CPU",
-    color = :red, textcolor = :red,
-    orientation = :down
-)
-
-# GPU
-gpu_bracket_pos = map(text_centers) do ps
-    (ps[4] .+ (dx, dy), ps[7] .+ (-dx, dy))
-end
-bracket!(
-    scene,
-    gpu_bracket_pos,
-    text = "GPU",
-    color = :green, textcolor = :green,
-    orientation = :down
-)
-
-# Internal
-internal_bracket_pos = map(text_centers) do ps
-    (ps[7] .+ (dx, dy), ps[8] .+ (-dx, dy))
-end
-bracket!(
-    scene,
-    internal_bracket_pos,
-    text = "GPU Internal",
-    color = :gray, textcolor = :gray,
-    orientation = :down
-)
-
-# Float32Convert
-f32_ps = map(text_centers) do cs
-    x1, y1 = cs[2]
-    x5, y5 = cs[3]
-    x2, y2 = 0.5 * (cs[3] .+ cs[4])
-    x3, y3 = cs[6]
-    x4, y4 = 0.5 * (cs[4] .+ cs[5])
-    Point2f[
-        (x1, y1+15), (x1, y1+65), (NaN, NaN),
-        (x1+45, y1+83), (x5, y5+83), (x5, y2+25), (x5+45, y2+25), (NaN, NaN),
-        (x5-50, y2+25), (x5-10, y2+25), (NaN, NaN),
-        (x2+20, y2+40), (x2+20, y2+100), (x3, y3+100), (x3, y3+80), (NaN, NaN),
-        (x2+60, y2+25), (x4-15, y4+25)
-    ]
-end
-myarrows!(scene, f32_ps, color = :gray)
-text!(
-    scene, map(ps -> ps[2], f32_ps), text = "ax.finallimits",
-    align = (:center, :bottom), offset = Vec2f(0, 10)
-)
-
-scene
-```
-
-### Argument Conversions
+## Argument Conversions
 
 When calling a plot function, e.g. `scatter!(axis_or_scene, args...)` a new plot object is constructed.
-The plot object keeps track of the original input arguments converted to Observables in `plot.args`.
-Those input arguments are then converted via `convert_arguments` and stored in `plot.converted`.
-Generally speaking these methods either dispatch on the plot type or the result of `conversion_trait(PlotType, args...)`, i.e. `convert_arguments(type_or_trait, args...)`.
-They are expected to generalize and simplify the structure of data given to a plot while leaving the numeric type as either a Float32 or Float64 as appropriate.
+It keeps track of the original input arguments as an Observables in `plot.args`.
+Those input arguments are then converted by the conversion pipeline and stored in `plot.converted`.
+The pipeline consists of 3 steps as mentioned above:
 
-The full conversion pipeline is run in `Makie.conversion_pipeline` which also applies `dim converts` and checks if the conversion was successful.
+### Data Generation
 
-### Transformation Objects
+The first step is to generate "missing" data.
+For example, you can create an image plot with just `image(rand(10, 10))`.
+The most general form however also includes a `ClosedInterval` for the x and y dimensions, declaring the size of the image.
+This data is generated by `expand_dimensions(::Trait, args...)` where the `Trait = conversion_trait(::PlotType, args...)`.
 
-The remaining transformed versions of data are not accessible, but rather abstract representations which the data goes through.
-As such they are named based on the coordinate space they are in and grayed out.
-Note as well that these representations are only relevant to primitive plots like lines or mesh.
-Ignoring `Float32Convert` for now, the next two transformations are summarized under the `Transformation` object present in `plot.transformation` and `scene.transformation`.
+### Special Type Processing
 
-The first transformation is `transformation.transform_func`, which holds a function which is applied to a `Vector{Point{N, T}}` element by element.
-It is meant to resolve transformations that cannot be represented as a matrix operations, for example moving data into a logarithmic space or into Polar coordinates.
-They are implemented using the `apply_transform(func, data)` methods.
-Generally we also expect transform function to be (partially) invertible and their inverse to be returned by `inverse_transform(func)`.
+The second step handles special types like `Unitful` types, `Dates` types or categorical values which need to be synchronized within the scene.
+For example, if one plot uses "hours" as unit for its x values other plots need to also use time units for x.
+If the scale of the unit differs between plots, i.e. one uses hours, the other minutes, then a common unit must be found and the values need to be scaled appropriately.
+This is what **dim_converts** handles.
+You can find more documentation on them in the [TODO: dim_converts docs]
 
-The second transformation is `transformation.model`, which combines `translate!(plot, ...)`, `scale!(plot, ...)` and `rotate!(plot, ...)` into a matrix.
-The order of operations here is fixed - rotations apply first, then scaling and finally translations.
-As a matrix operation they can and are handled on the GPU.
+### Convert Arguments
 
-### Float32Convert
+The last step and main work-horse in the conversion pipeline is the `convert_arguments()` function.
+It's purpose is to convert different data types and layouts into one or a select few formats.
+For example, any data passed to `scatter()` is converted to a `Vector{Point{D, T}}` where `D = 2` or `3` and `T = Float32` or `Float64`.
+These conversions can happen based on the plot type or its conversion trait.
+For `scatter()` the conversion trait `PointBased` is used.
 
-Nested between `transform_func` and `model` is the application of `scene.float32convert`.
-Its job is to bring the transformed data into a range acceptable for `Float32`, which is used on the GPU.
+`convert_arguments()` can also accept keyword arguments sourced from plot attributes.
+For this the attribute needs to be marked with `used_attribute(::PlotType) = (names...)`.
+Any name in that list will be removed from the attributes of the final plot and be passed to `convert_arguments()` instead.
+
+If you want to plot your own custom types you may want to extend `convert_arguments()`.
+Let's say you have some custom type `MySimulation` and some function `positions(::MySimulation)` which returns positions you want to plot when calling `scatter(::MySimulation)`.
+In this case you can define
+
+```julia
+function Makie.convert_arguments(PT::PointBased, sim::MySimulation)
+    return Makie.convert_arguments(PT, positions(sim))
+end
+```
+
+to make that possible.
+You can use the plot type (i.e. `Scatter`) as the first argument as well.
+
+
+## Transformations
+
+After conversions have normalized the type and layout of plot data, transformations can now adjust it.
+They are handled by the `Transformation` object, which exists both on the plot and scene level in the `transformation` field.
+It contains a `transform_func` which is a function-like object applied to the data, and a `model` matrix which handles linear transformations of the data.
+
+The plot `Transformation` object may inherit from it's parent scene or plot if it acts in the same `space`.
+For `transform_func` this means using the same function as the parent.
+For `model` it means merging the parents `model` matrix with the local one as `plot.model = parent.model * local_model`.
+
+### Transformation Function
+
+The transformation function or `transform_func` is part of the `Transformation` object.
+It handles non-linear transformations like log transform of a logarithmic axis.
+
+Each `transform_func` implements at least
+```julia
+Makie.apply_transform(transform_func, arg::VecTypes{N, T}) where {N, T}
+```
+where the transform function can be represented by any type, not just a `Function`.
+That way it can carry auxiliary information that may be important to the transformation.
+Additionally methods with other `arg` types such as numbers of `Vector`s thereof may also be implemented to more efficiently apply the transform_func.
+
+Typically a transform_func also implements
+```julia
+Makie.inverse_transform(transform_func)
+Makie.apply_transform(transform_func, arg::Rect3)
+```
+The inverse allows transforming data back, which is used for example in Axis limits.
+If a reasonable inverse exists (even if it is incomplete or ambiguous) it should be given by `inverse_transform`.
+The other `apply_transform` method is used in `boundingbox()` and defaults to transforming the corners of the bounding box.
+It should be implemented if the default returns wrong results, e.g. with a Polar transform.
+
+### Model Transformations
+
+The model matrix takes care of linear transformations of plot data.
+This includes scaling with `scale!()`, translations with `translate!()` and rotations with `rotate!()`.
+[TODO: see section]
+
+
+## Projections
+
+Projections are matrix transformations that move data from one coordinate system or "space" to another.
+The matrices are part of the `camera(scene)` and managed either by the `cameracontrols(scene)` or by the parent `Block`.
+The plot cannot change these matrices but can control which will be used via the `space` attribute.
+
+### Camera Controller
+
+The camera controller, be that the object in the Scene or the parent Block, generates the `view` and `projection` matrices.
+These matrices are stored in `camera(scene)` which also combines them into `projectionview = projection * view`.
+The `view` matrix moves plot data from a "world" coordinate system to centered and oriented based on the viewer.
+This coordinate system is typically called camera, eye or view space.
+From there the `projection` matrix may apply perspective projection and scales data to move to "clip" space.
+This space is a normalized space where everything outside a -1 .. 1 box is clipped.
+The final projection to pixel or screen space is handled implicitly by the Graphics API or explicitly in CairoMakie based on `viewport(scene)`.
+The `camera(scene)` also holds onto a `pixel_space` matrix, which transforms pixel space to clip space, the scenes resolution as well as some auxiliary information about the cameras orientation.
+Note that the camera controller is often referred to as the "camera" because the `camera(scene)` is just inactive storage.
+
+### Space Attribute
+
+The `space` attribute controls which projection matrices the plot uses.
+The options refers to the input space, which generally transforms to clip space.
+The options include:
+- `space = :world`: Apply the cameras `view` and `projection` matrices
+- `space = :pixel`: Apply the camera `pixel_space` matrix
+- `space = :clip`: Apply an identity matrix
+- `space = :relative`: Apply a constant translation-scale matrix
+
+### Marker Space Attribute
+
+A few plots include a `markerspace` attribute.
+For these, the projections above are split into two steps, going from `space` to `markerspace` to clip space.
+The same options as above apply.
+If needed, some of these matrices may also be inverted (e.g. going from :pixel -> :world -> :clip space).
+
+
+## Float32Convert
+
+The Float32Convert is an optional step that doesn't fit as cleanly into the pipeline.
+It's job is to make sure that the data, projection matrices and model matrix are save to convert to Float32 types and thus can be passed to the graphics API without precision issues.
 
 Currently only `Axis` actually defines this transformation.
-When calling `plot!(axis, ...)` it takes a snapshot of the limits of the plot using `data_limits(plot)` and updates its internal limits.
-These are combined with other sources to generate `axis.finallimits`.
-When setting the camera matrices `axis.finallimits` gets transformed by `transform_func` and processed by `scene.float32convert` to generate a valid Float32 range for the camera.
-This processing will update the `Float32Convert` if needed.
-
-With respect to the conversion pipeline the `Float32Convert` is a linear function applied to transformed data using `f32_convert(scene, data)`.
-After the transformation, data strictly uses Float32 as a numeric type.
-
-Note that since the `Float32Convert` is based on and transforms the limits used to create the camera (matrices), it should technically act between `model` and `view`.
-In fact, this order is used for CairoMakie and some CPU projection code.
-For the GPU however, we want to avoid applying `model` on the CPU.
-To do that we calculate a new model matrix using `new_model = patch_model(scene, model)`, which acts after `Float32Convert`.
-
-### Camera
-
-Next in our conversion pipeline are the camera matrices tracked in `scene.camera`.
-Their job is to transform plot data to a normalized "clip" space.
-While not consistently followed, the `view` matrix is supposed to adjust the coordinate system to that of the viewer and the `projection` matrix is supposed to apply scaling and perspective projection if applicable.
-The viewers position and orientation is set by either the the camera controller of the scene or the parent Block.
-
-
-
-## Coordinate spaces
-
-Currently `Makie` defines 4 coordinate spaces: :data, :clip, :relative and :pixel.
-The example above shows te conversion pipeline for `space = :data`.
-
-For `space = :clip` we consider `plot.converted` to be in clip space, meaning that `transform_func`, `model`, `view` and `projection` can be skipped, and `Float32Convert` only does a cast to Float32.
-The x and y direction correspond to right and up, with z increasing towards the viewer.
-All coordinates are limited to a -1 .. 1 range.
-
-The other two spaces each include one matrix transformation to clip space.
-For `space = :relative` this simply rescales the x and y dimension to a 0 .. 1 range.
-And for `space = :pixel` the `camera.pixel_space` matrix is used to set the x and y range the size of the scene and the z range to -10_000 .. 10_000, with z facing away from the viewer.
+When calling `plot!(axis, ...)` the `data_limits()` of the plot are recorded by the Axis and combined with existing limits.
+The limits eventually trigger a camera update, where the `transform_func` gets applied.
+The result gets passed to the `Float32Convert`, which updates its linear transformation to make the transformed limits Float32-safe.
+The projection matrices are then derived from the safe limits.
+At this point the linear transformation of the Float32Convert exists just before `view`.
+If possible, it is permuted with `model` so that the model matrix can processed by the graphics API, i.e. on the GPU.
