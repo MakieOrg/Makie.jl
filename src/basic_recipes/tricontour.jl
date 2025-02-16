@@ -142,14 +142,10 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
 
-    # TODO: Decide the correct type
-    # PolyType = typeof(Polygon(Point2f[], [Point2f[]])) # original in tricontourf
-    PolyType = typeof(LineString(Point2f[]))
-
-    polys = Observable(PolyType[])
+    polys = Observable(Point2f[])
     colors = Observable(Float64[])
-
-    function calculate_polys(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+    
+    function calculate_polys(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
         empty!(polys[])
         empty!(colors[])
 
@@ -168,8 +164,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         contour_lines = line_tricontours(xs, ys, zs, trianglelist, levels)
 
         # TODO: Fix the issue with colors here
-        # Notice this is using Linestring instead of a vector of Points with NaNs
-        # Not sure what is a better approach
+        # contour_lines may contain multiple lines per level, each in a vector
+        # Convert to a flat vector of points separated by NaNs
         for (fc, lc) in zip(contour_lines, levels)
             pointvecs = map(fc.polylines) do vecs
                 map(Point2f, vecs)
@@ -178,9 +174,9 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 continue
             end
             for pointvec in pointvecs                
-                contourline = Makie.LineString(pointvec)
-                push!(polys[], contourline)
-                push!(colors[], lc)                         
+                append!(polys[], pointvec)
+                push!(polys[], Point2f(NaN32))
+                append!(colors[], (fill(lc, length(pointvec) + 1)))                     
             end            
         end
 
@@ -195,7 +191,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     calculate_polys(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
 
     # TODO: inherit other line properties. See contours.jl
-
+    
     lines!(c,
         polys,
         colormap = c._computed_colormap,
@@ -204,7 +200,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         highclip = highcolor,
         lowclip = lowcolor,
         nan_color = c.nan_color,
-        # color = colors, #FIXME: using this raises an error because it asks for more color values
+        # color = colors, #FIXME: using this is rendering an empty plot
         inspectable = c.inspectable,
         transparency = c.transparency
     )
@@ -226,9 +222,4 @@ function line_tricontours(m::TriplotBase.TriMesh, z, levels)
         push!(contours, TriplotBase.generate_unfilled_contours(m, z, level))
     end
     contours
-end
-
-function append_with_nan!(a,b)
-    append!(a,b)
-    push!(a,NaN)
 end
