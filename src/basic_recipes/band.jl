@@ -19,6 +19,16 @@ end
 convert_arguments(P::Type{<: Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
     convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
 
+convert_arguments(P::Type{<:Band},
+                  x::AbstractVector{<:Dates.TimeType},
+                  ylower::AbstractVector{<:Real},
+                  yupper::AbstractVector{<:Real}) =
+    convert_arguments(P, Dates.value.(x), ylower, yupper)
+convert_arguments(P::Type{<:Band},
+                  x::AbstractVector{<:Dates.TimeType},
+                  y::AbstractVector{<:Interval}) =
+    convert_arguments(P, Dates.value.(x), leftendpoint.(y), rightendpoint.(y))
+
 function band_connect(n)
     ns = 1:n-1
     ns2 = n+1:2n-1

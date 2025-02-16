@@ -208,6 +208,18 @@ end
     f
 end
 
+@reference_test "Band with DateTime abscissas" begin
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+
+    t = range(DateTime(2020); step=Hour(1), length=1000)
+    y = cumsum(randn(1000))
+
+    band!(t, zeros(1000), y) # <-- does not
+    f
+end
+
+
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Observable(Base.Fix2(v, 0.0))
