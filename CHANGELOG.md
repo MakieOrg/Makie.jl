@@ -1,7 +1,6 @@
 # Changelog
 
 ## [Unreleased]
-
 - Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
@@ -16,6 +15,7 @@
 - Cleaned up `volume` plots: Added `:indexedabsorption` and `:additive` to WGLMakie, generalized `:mip` to include negative values, fixed missing conversions for rgba algorithms (`:additive`, `:absorptionrgba`), fixed missing conversion for `absorption` attribute & extended it to `:indexedabsorption` and `absorptionrgba`, added tests and improved docs. [#4726](https://github.com/MakieOrg/Makie.jl/pull/4726)
 - Added `Axis3.clip` attribute to allow turning off clipping [#4791](https://github.com/MakieOrg/Makie.jl/pull/4791)
 - Fixed `Plane(Vec{N, T}(0), dist)` producing a `NaN` normal, which caused WGLMakie to break. (E.g. when rotating Axis3) [#4772](https://github.com/MakieOrg/Makie.jl/pull/4772)
+- Added `tricontour` plot, which plots contour lines, similar to `tricontourf` [#4795](https://github.com/MakieOrg/Makie.jl/pull/4795). 
 
 ## [0.22.1] - 2025-01-17
 
