@@ -215,10 +215,9 @@ end
     t = range(DateTime(2020); step=Hour(1), length=1000)
     y = cumsum(randn(1000))
 
-    band!(t, zeros(1000), y) # <-- does not
+    band!(t, zeros(1000), y)
     f
 end
-
 
 @reference_test "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
@@ -1916,3 +1915,4 @@ end
     Makie.step!(st)
     st
 end
+
