@@ -24,8 +24,8 @@ a = Axis(f[1, 1], limits = (-10, 10, -10, 10),
 
 text_kwargs = (align = (:left, :center), offset = (10, 0))
 
-scatter!(a, Point2f(4, 5), space = :world)
-text!(a, Point2f(4, 5), text = "(4, 5) in world space", space = :world; text_kwargs...)
+scatter!(a, Point2f(4, 5), space = :data)
+text!(a, Point2f(4, 5), text = "(4, 5) in world space", space = :data; text_kwargs...)
 
 scatter!(a, Point2f(50, 50), space = :pixel)
 text!(a, Point2f(50, 50), text = "(50, 50) in pixel space", space = :pixel; text_kwargs...)
@@ -72,7 +72,7 @@ text!(a, Point2f(-7, 2), text = "clip space w/ markersize = 0.2"; text_kwargs...
 scatter!(a, Point2f(-7, -2), markerspace = :relative, markersize = 0.2, marker = Circle)
 text!(a, Point2f(-7, -2), text = "relative space w/ markersize = 0.2"; text_kwargs...)
 
-scatter!(a, Point2f(-7, -7), markerspace = :world, markersize = 2, marker = Circle)
+scatter!(a, Point2f(-7, -7), markerspace = :data, markersize = 2, marker = Circle)
 text!(a, Point2f(-7, -7), text = "world space w/ markersize = 2"; text_kwargs...)
 
 f
