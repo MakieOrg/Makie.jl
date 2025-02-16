@@ -9,8 +9,35 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontour begin
-    "Can be either an `Int` which results in n contour lines with equally spaced levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive levels"
+    
+    "Can be either an `Int` which results in n contour lines with equally spaced levels,
+     or it can be an `AbstractVector{<:Real}` that lists n consecutive levels"
     levels = 10
+    "Sets the width of the line in pixel units"
+    linewidth = 1.0
+    """
+    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
+    For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
+
+    For custom patterns have a look at [`Makie.Linestyle`](@ref).
+    """
+    linestyle = nothing
+    """
+    Sets the type of line cap used. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
+    linecap = @inherit linecap
+    """
+    Controls the rendering at corners. Options are `:miter` for sharp corners,
+    `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
+    joinstyle = @inherit joinstyle
+    "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
+    miter_limit = @inherit miter_limit
+    "Enables depth write for :iso so that volume correctly occludes other objects."
+    enable_depth = true
     """
     Sets the way in which a vector of levels is interpreted,
     if it's set to `:relative`, each number is interpreted as a fraction
@@ -23,8 +50,8 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     "Color transform function"
     colorscale = identity
     """
-    This sets the color of an optional additional line from
-    `minimum(zs)` to the lowest value in `levels`.
+    This sets the color of an optional additional contour line for
+    zs = `minimum(zs)`.
     If it's `:auto`, the lower end of the colormap is picked
     and the remaining colors are shifted accordingly.
     If it's any color representation, this color is used.
@@ -32,8 +59,8 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     extendlow = nothing
     """
-    This sets the color of an optional additional line from
-    the highest value of `levels` to `maximum(zs)`.
+    This sets the color of an optional additional contour line for
+    zs = `maximum(zs)`.
     If it's `:auto`, the high end of the colormap is picked
     and the remaining colors are shifted accordingly.
     If it's any color representation, this color is used.
@@ -49,16 +76,18 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     or as a `Triangulation` from DelaunayTriangulation.jl.
     """
     triangulation = DelaunayTriangulation()
-    edges = nothing
-    # TODO: copy attributes from plot!, as in contours.jl
     MakieCore.mixin_generic_plot_attributes()...
+    
 end
 
-function Makie.used_attributes(::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
+function Makie.used_attributes(
+    ::Type{<:Tricontour}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}
+    )
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+function Makie.convert_arguments(
+    ::Type{<:Tricontour}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
     triangulation=DelaunayTriangulation())
     T = float_type(x, y, z)
     z = elconvert(T, z)
@@ -66,7 +95,8 @@ function Makie.convert_arguments(::Type{<:Tricontour}, x::AbstractVector{<:Real}
     if triangulation isa DelaunayTriangulation
         tri = DelTri.triangulate(points, randomise = false)
     elseif !(triangulation isa DelTri.Triangulation)
-        # Wrap user's provided triangulation into a Triangulation. Their triangulation must be such that DelTri.add_triangle! is defined.
+        # Wrap user's provided triangulation into a Triangulation.
+        # Their triangulation must be such that DelTri.add_triangle! is defined.
         if typeof(triangulation) <: AbstractMatrix{<:Int} && size(triangulation, 1) != 3
             triangulation = triangulation'
         end
@@ -122,7 +152,8 @@ end
 
 function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
-
+    # FIXME: This uses _get_isoband_levels, from contourf.jl. This should be moved to an utils.jl file
+    # Same issue is found in tricontour.jl
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
@@ -142,11 +173,11 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
 
-    polys = Observable(Point2f[])
+    points = Observable(Point2f[])
     colors = Observable(Float64[])
     
-    function calculate_polys(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
-        empty!(polys[])
+    function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
+        empty!(points[])
         empty!(colors[])
 
         levels = copy(levels)
@@ -174,35 +205,48 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 continue
             end
             for pointvec in pointvecs                
-                append!(polys[], pointvec)
-                push!(polys[], Point2f(NaN32))
+                append!(points[], pointvec)
+                push!(points[], Point2f(NaN32))
                 append!(colors[], (fill(lc, length(pointvec) + 1)))                     
             end            
         end
 
-        notify(polys)
+        notify(points)
         return
     end
 
-    onany(calculate_polys, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_points, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
     
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
+    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
 
-    # TODO: inherit other line properties. See contours.jl
-    
-    lines!(c,
-        polys,
+    # TODO: add labels. See contours.jl
+    # TODO: contour!() and tricontourf!() have different implemenations. Choose one to use here
+    # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
+    # FIXME: Check number of levels and actual contour lines plotted
+    # FIXME: When level is integer, check how many levels are actually plotted
+
+    lines!(
+        c,
+        points,
+        linewidth = c.linewidth,
+        linestyle = c.linestyle,
+        linecap = c.linecap,
+        joinstyle = c.joinstyle, 
+        miter_limit = c.miter_limit,
+        color = colors,
         colormap = c._computed_colormap,
         colorscale = c.colorscale,
         colorrange = colorrange,
         highclip = highcolor,
         lowclip = lowcolor,
         nan_color = c.nan_color,
-        # color = colors, #FIXME: using this is rendering an empty plot
         inspectable = c.inspectable,
-        transparency = c.transparency
+        transparency = c.transparency,
+        overdraw = c.overdraw,
+        depth_shift = c.depth_shift,
+        space = c.space
     )
 end
 
@@ -213,7 +257,7 @@ end
 # FIXME: TriplotBase.tricontour augments levels so here the implementation is repeated without that step
 function line_tricontours(x, y, z, t, levels)
     m = TriplotBase.TriMesh(x, y, t)
-    line_tricontours(m, z, levels)
+    return line_tricontours(m, z, levels)
 end
 
 function line_tricontours(m::TriplotBase.TriMesh, z, levels)
@@ -221,5 +265,5 @@ function line_tricontours(m::TriplotBase.TriMesh, z, levels)
     for level in levels
         push!(contours, TriplotBase.generate_unfilled_contours(m, z, level))
     end
-    contours
+    return contours
 end
