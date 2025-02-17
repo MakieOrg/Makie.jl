@@ -97,7 +97,10 @@ For example:
 using CairoMakie
 
 f = Figure()
-lines(f[1, 1], Rect2f(0, 0, 1, 1), transformation = (scale = Vec3f(2), translation = Vec3f(-1)))
+# transform 0..1 Rect to -1..1 Rect
+lines(f[1, 1], Rect2f(0, 0, 1, 1),
+    transformation = (scale = Vec3f(2), translation = Vec3f(-1)))
+
 a = LScene(f[1, 2])
 heatmap!(a, rand(4,4), transformation = (:xy, 0.5))
 heatmap!(a, rand(4,4), transformation = (:xz, 0.5))
