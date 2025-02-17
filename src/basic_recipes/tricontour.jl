@@ -49,6 +49,8 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     colormap = @inherit colormap
     "Color transform function"
     colorscale = identity
+    """The alpha (transparency) value of the colormap or color attribute."""
+    alpha = 1.0
     """
     This sets the color of an optional additional contour line for
     zs = `minimum(zs)`.
@@ -239,6 +241,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         colormap = c._computed_colormap,
         colorscale = c.colorscale,
         colorrange = colorrange,
+        alpha = c.alpha,
         highclip = highcolor,
         lowclip = lowcolor,
         nan_color = c.nan_color,
