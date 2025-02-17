@@ -11,6 +11,8 @@ using Makie.IntervalSets
 using GeometryBasics: Pyramid
 
 using Makie: volume
+
+include("testplot.jl")
 # COV_EXCL_STOP
 
 @testset "Unit tests" begin
