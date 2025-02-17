@@ -1311,7 +1311,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     transformed_pos = _transform_to_world(scene, primitive, pos)
 
     # Face culling
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
         valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
         transformed_pos = transformed_pos[valid]
         colors = colors[valid]

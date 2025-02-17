@@ -128,7 +128,18 @@ export px
 ########################################
 
 spaces() = (:data, :pixel, :relative, :clip)
-is_data_space(space) = space === :data
-is_pixel_space(space) = space === :pixel
-is_relative_space(space) = space === :relative
-is_clip_space(space) = space === :clip
+
+is_data_space(p::Plot) = is_data_space(get(p, :space, :data))
+is_pixel_space(p::Plot) = is_pixel_space(get(p, :space, :data))
+is_relative_space(p::Plot) = is_relative_space(get(p, :space, :data))
+is_clip_space(p::Plot) = is_clip_space(get(p, :space, :data))
+
+is_data_space(space::Observable) = is_data_space(space[])
+is_pixel_space(space::Observable) = is_pixel_space(space[])
+is_relative_space(space::Observable) = is_relative_space(space[])
+is_clip_space(space::Observable) = is_clip_space(space[])
+
+is_data_space(space::Symbol) = space === :data
+is_pixel_space(space::Symbol) = space === :pixel
+is_relative_space(space::Symbol) = space === :relative
+is_clip_space(space::Symbol) = space === :clip
