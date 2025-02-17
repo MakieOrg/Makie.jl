@@ -296,9 +296,9 @@ function on_pulse(scene, cam::Camera3D, timestep)
     )
 
     if !ispressed(scene, right_key | left_key | up_key | down_key | backward_key | forward_key |
-        tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key | 
+        tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key |
         roll_clockwise_key | zoom_out_key | zoom_in_key | increase_fov_key | decrease_fov_key)
-        
+
         return
     end
 
@@ -444,7 +444,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
                 p3d = to_ndim(Point3d, p, 0.0)
-                if !isnan(p3d) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
+                if !isnan(p3d) && Makie.is_data_space(poly.space[]) && parent_scene(plt) == scene
                     # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
                     # dragging[] = (false, false)

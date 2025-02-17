@@ -257,7 +257,7 @@ end
 
 function plot_to_screen(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
+    space = poly.space[]
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
@@ -270,7 +270,7 @@ end
 
 function plot_to_screen(plot, p::VecTypes)
     cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
+    space = poly.space[]
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
     transformed = apply_transform(transform_func(plot), p)
@@ -280,7 +280,7 @@ end
 
 function screen_to_plot(plot, points::AbstractVector)
     cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
+    space = poly.space[]
     mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
         clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     itf = inverse_transform(transform_func(plot))
@@ -294,7 +294,7 @@ end
 
 function screen_to_plot(plot, p::VecTypes)
     cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
+    space = poly.space[]
     mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
         clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)

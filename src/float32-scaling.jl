@@ -348,13 +348,12 @@ function apply_transform_and_f32_conversion(
         float32convert::Nothing,
         transform_func, model::Mat4d, data, dim::Integer, space::Symbol
     )
-    tf = space == :data ? transform_func : identity
     if dim == 1
-        return Float32[apply_transform(tf, Point2(x, 0))[1] for x in data]
+        return Float32[apply_transform(transform_func, Point2(x, 0))[1] for x in data]
     elseif dim == 2
-        return Float32[apply_transform(tf, Point2(0, x))[2] for x in data]
+        return Float32[apply_transform(transform_func, Point2(0, x))[2] for x in data]
     elseif dim == 3
-        return Float32[apply_transform(tf, Point3(0, 0, x))[3] for x in data]
+        return Float32[apply_transform(transform_func, Point3(0, 0, x))[3] for x in data]
     else
         error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
     end

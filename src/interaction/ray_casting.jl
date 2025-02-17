@@ -311,7 +311,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
         p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, Point3d(pos)), 1)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
-        out = Makie.apply_transform(itf, p3d, to_value(get(plot, :space, :data)))
+        out = Makie.apply_transform(itf, p3d, poly.space[])
         return out
     end
 end
@@ -321,7 +321,6 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     # not allowed to change this, so applying it should be fine. Applying the
     # model matrix may add a z component to the Rect2f, which we can't represent.
     # So we instead inverse-transform the ray
-    space = to_value(get(plot, :space, :data))
     p0, p1 = map(Point2d.(extrema(plot.x[]), extrema(plot.y[]))) do p
         return Makie.apply_transform(transform_func(plot), p)
     end
@@ -341,7 +340,6 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
     positions = decompose(Point3d, plot.mesh[])
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
-    space = to_value(get(plot, :space, :data))
 
     for f in faces(plot.mesh[])
         if idx in f
@@ -387,7 +385,6 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
 
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
-    space = to_value(get(plot, :space, :data))
 
     # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
@@ -431,7 +428,6 @@ end
 
 function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
     min, max = Point3d.(extrema(plot.x[]), extrema(plot.y[]), extrema(plot.z[]))
-    space = to_value(get(plot, :space, :data))
     tf = transform_func(plot)
 
     if tf === nothing

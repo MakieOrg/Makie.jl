@@ -726,7 +726,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
-    space = to_value(get(primitive, :space, :data))
+    space = poly.space[]
     xy = project_position(primitive, space, Point2(first.(imsize)), model)
     xymax = project_position(primitive, space, Point2(last.(imsize)), model)
     w, h = xymax .- xy
@@ -777,7 +777,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     else
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
-        space = to_value(get(primitive, :space, :data))
+        space = poly.space[]
         xys = let
             ps = [Point2(x, y) for x in xs, y in ys]
             transformed = apply_transform(transform_func(primitive), ps)
@@ -869,7 +869,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
-    space = to_value(get(plot, :space, :data))::Symbol
+    space = poly.space[]::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
     vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
@@ -994,7 +994,7 @@ function draw_mesh3D(
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
     model = attributes.model[]::Mat4d
-    space = to_value(get(attributes, :space, :data))::Symbol
+    space = poly.space[]::Symbol
 
     if per_face_col isa Cairo.CairoPattern
         align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)

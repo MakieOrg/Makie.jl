@@ -448,13 +448,13 @@ end
 
 function get_space(scene::Scene)
     space = get_space(cameracontrols(scene))::Symbol
-    space === :data ? (:data,) : (:data, space)
+    Makie.is_data_space(space) ? (:data,) : (:data, space)
 end
 get_space(::AbstractCamera) = :data
 function get_space(plot::Plot)
-    space = to_value(get(plot, :space, :data))::Symbol
+    space = poly.space[]::Symbol
     # :data should resolve based on the parent scene/camera
-    if (space == :data) && (parent_scene(plot) !== nothing)
+    if Makie.is_data_space(space) && (parent_scene(plot) !== nothing)
         return get_space(parent_scene(plot))
     end
     return space
