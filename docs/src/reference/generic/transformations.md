@@ -1,8 +1,8 @@
-# [Transformations](@id transformations_reference_docs)
+# Transformations
 
 Every plot and every scene contains a `Transformation` object which holds a `transform_func` and generates a `model` matrix.
 
-## Model Transformations
+## [Model Transformations](@id transformations_reference_docs)
 
 The `model` matrix is composed of a translation, scaling and rotation, with the rotation acting first and the translation acting last.
 The translation is set by `translate!()`, the scaling by `scale!()` and the rotation by `rotate!()`.
