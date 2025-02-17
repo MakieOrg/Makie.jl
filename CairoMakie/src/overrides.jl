@@ -262,7 +262,7 @@ function draw_plot(scene::Scene, screen::Screen,
         color = coloralpha(basecolor, alpha(basecolor) * band.alpha[])
 
         model = band.model[]
-        space = poly.space[]
+        space = band.space[]
 
         upperpoints = band[1][]
         lowerpoints = band[2][]
@@ -312,7 +312,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
     model = pol.model[]
-    space = poly.space[]
+    space = pol.space[]
     projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(tric.clip_planes[]), Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
