@@ -49,7 +49,7 @@ The second step handles special types like `Unitful` types, `Dates` types or cat
 For example, if one plot uses "hours" as unit for its x values other plots need to also use time units for x.
 If the scale of the unit differs between plots, i.e. one uses hours, the other minutes, then a common unit must be found and the values need to be scaled appropriately.
 This is what **dim_converts** handles.
-You can find more documentation on them in the [TODO: dim_converts docs]
+You can find more documentation on them in the [Dimension conversions](@ref) docs.
 
 ### Convert Arguments
 
@@ -77,7 +77,7 @@ to make that possible.
 You can use the plot type (i.e. `Scatter`) as the first argument as well.
 
 
-## Transformations
+## [Transformations](@id pipeline_transformations)
 
 After conversions have normalized the type and layout of plot data, transformations can now adjust it.
 They are handled by the `Transformation` object, which exists both on the plot and scene level in the `transformation` field.
@@ -114,8 +114,7 @@ It should be implemented if the default returns wrong results, e.g. with a Polar
 
 The model matrix takes care of linear transformations of plot data.
 This includes scaling with `scale!()`, translations with `translate!()` and rotations with `rotate!()`.
-[TODO: see section]
-
+See the [Transformation](@ref transformations_reference_docs) reference docs for more details.
 
 ## Projections
 
