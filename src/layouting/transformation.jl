@@ -60,6 +60,14 @@ function translated(scene::Scene; kw_args...)
      tscene
 end
 
+"""
+    transform!(transformable[; translation = Vec3d(0), scale = Vec3d(1), rotation = 0.0])
+
+Transforms a transformable (i.e. plot or scene) with the given transformations.
+
+Note that if the object was previously transformed this function will overwrite
+those transformations.
+"""
 function transform!(
         t::Transformable;
         translation = Vec3d(0),
@@ -207,7 +215,15 @@ function origin!(::Type{T}, t::Transformable, xyz::VecTypes) where T
     end
 end
 
-function transform!(t::Transformable, x::Tuple{Symbol, <: Number})
+"""
+    transform!(transformable, plane_offset::Tuple{Symbol, <: Real})
+
+This function views the transformable (plot or scene) as an xy plane and transforms
+it to the given `plane_offset = (plane, offset)`. This implies a rotation of the
+:xy plane to the given `plane` and a translation by `offset` along `plane` normal
+direction. Accepted inputs for `plane` are `:xy, :yx, :xz, :zx, :yz, :zy`.
+"""
+function transform!(t::Transformable, x::Tuple{Symbol, <: Real})
     plane, dimval = string(x[1]), Float64(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
