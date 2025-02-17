@@ -37,10 +37,10 @@ end
 
 # TODO: Should this apply in world space? Should we split world space into world64 and world32?
 @inline function f32_convert(ls::LinearScaling, data, space::Symbol)
-    return space in (:data, :transformed) ? f32_convert(ls, data) : f32_convert(nothing, data)
+    return Makie.is_data_space(space) ? f32_convert(ls, data) : f32_convert(nothing, data)
 end
 @inline function f32_convert(ls::LinearScaling, data, dim::Integer, space::Symbol)
-    return space in (:data, :transformed) ? f32_convert(ls, data, dim) : f32_convert(nothing, data, dim)
+    return Makie.is_data_space(space) ? f32_convert(ls, data, dim) : f32_convert(nothing, data, dim)
 end
 
 

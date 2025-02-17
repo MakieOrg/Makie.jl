@@ -433,7 +433,7 @@ function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
         return inv(cam.projectionview[])
     elseif space == :eye
-        return inv(cam.projectionview[])
+        return inv(cam.projection[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
         return Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
