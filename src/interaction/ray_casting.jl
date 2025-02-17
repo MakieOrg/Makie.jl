@@ -233,7 +233,7 @@ end
     ray_assisted_pick(fig/ax/scene[, xy = events(fig/ax/scene).mouseposition[], apply_transform = true])
 
 This function performs a `pick` at the given pixel position `xy` and returns the
-picked `plot`, `index` and world or input space `position::Point3f`. It is equivalent to
+picked `plot`, `index` and data or input space `position::Point3f`. It is equivalent to
 ```
 plot, idx = pick(fig/ax/scene, xy)
 ray = Ray(parent_scene(plot), xy .- minimum(viewport(parent_scene(plot))[]))
@@ -254,7 +254,7 @@ end
 """
     position_on_plot(plot, index[, ray::Ray; apply_transform = true])
 
-This function calculates the world or input space position of a ray - plot
+This function calculates the data or input space position of a ray - plot
 intersection with the result `plot, idx = pick(...)` and a ray cast from the
 picked position. If there is no intersection `Point3f(NaN)` will be returned.
 
@@ -265,7 +265,7 @@ pos_in_ax = position_on_plot(plot, idx, Ray(ax, px_pos .- minimum(viewport(ax.sc
 ```
 or more simply `plot, idx, pos_in_ax = ray_assisted_pick(ax, px_pos)`.
 
-You can switch between getting a position in world space (after applying
+You can switch between getting a position in data space (after applying
 transformations like `log`, `translate!()`, `rotate!()` and `scale!()`) and
 input space (the raw position data of the plot) by adjusting `apply_transform`.
 

@@ -6,7 +6,7 @@
 """
     boundingbox(scenelike[, exclude = plot -> false])
 
-Returns the combined world space bounding box of all plots collected under
+Returns the combined data space bounding box of all plots collected under
 `scenelike`. This include `plot.transformation`, i.e. the `transform_func` and
 the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
@@ -25,7 +25,7 @@ end
 """
     boundingbox(plot::AbstractPlot)
 
-Returns the world space bounding box of a plot. This include `plot.transformation`,
+Returns the data space bounding box of a plot. This include `plot.transformation`,
 i.e. the `transform_func` and the `model` matrix.
 
 See also: [`data_limits`](@ref)
