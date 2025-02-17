@@ -138,19 +138,21 @@ Note that the camera controller is often referred to as the "camera" because the
 ### Space Attribute
 
 The `space` attribute controls which projection matrices the plot uses.
-The options refers to the input space, which generally transforms to clip space.
+The options refer to the input space, which generally transforms to clip space.
 The options include:
-- `space = :world`: Apply the cameras `view` and `projection` matrices
-- `space = :pixel`: Apply the camera `pixel_space` matrix
-- `space = :clip`: Apply an identity matrix
-- `space = :relative`: Apply a constant translation-scale matrix
+- `space = :data`: Apply the cameras `view` and `projection` matrices. (This is usually called world space in Graphics APIs.)
+- `space = :pixel`: Apply the camera `pixel_space` matrix.
+- `space = :clip`: Apply an identity matrix.
+- `space = :relative`: Apply a constant translation-scale matrix.
+
+Note that all of these act after transformations, i.e. after the `model` matrix is applied.
 
 ### Marker Space Attribute
 
 A few plots include a `markerspace` attribute.
 For these, the projections above are split into two steps, going from `space` to `markerspace` to clip space.
 The same options as above apply.
-If needed, some of these matrices may also be inverted (e.g. going from :pixel -> :world -> :clip space).
+If needed, some of these matrices may also be inverted (e.g. going from :pixel -> :data -> :clip space).
 
 
 ## Float32Convert

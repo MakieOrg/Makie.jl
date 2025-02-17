@@ -3,8 +3,6 @@
 ### boundingbox
 ################################################################################
 
-# TODO: differentiate input space (plot.converted) and :world space (after
-# transform_func and model) more clearly.
 """
     boundingbox(scenelike[, exclude = plot -> false])
 

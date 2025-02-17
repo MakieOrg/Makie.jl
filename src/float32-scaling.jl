@@ -65,8 +65,7 @@ function f32_convert_matrix(ls::LinearScaling)
     return transformationmatrix(translation, scale)
 end
 function f32_convert_matrix(ls::LinearScaling, space::Symbol)
-    # maybe :world?
-    return space in (:data, :transformed) ? f32_convert_matrix(ls) : Mat4d(I)
+    return is_data_space(space) ? f32_convert_matrix(ls) : Mat4d(I)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 

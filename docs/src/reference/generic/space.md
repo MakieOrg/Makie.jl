@@ -8,7 +8,7 @@ You can find more information on these groups in [Conversion, Transformation and
 The `space` attribute declares which coordinate system the plot is in with respect to projections.
 It thus allows you to change which projections are applied to a plot without creating a new scene.
 Your options for this are limited to:
-- `space = :world`: The plot is in the "world" of the scene and uses the projections defined by the scenes camera.
+- `space = :data`: The plot is in the space defined by the scenes camera and uses it's view and projection matrices.
 - `space = :pixel`: The plot is in pixel units and is projected based on the scenes viewport.
 - `space = :relative`: The plot is a 0..1 normalized space.
 - `space = :clip`: The plot is in a -1..1 normalized space.
@@ -16,7 +16,6 @@ Your options for this are limited to:
 ```@figure
 using GLMakie
 
-# space = :world is the default, so this plot will be in the Axis' "world"
 f = Figure()
 a = Axis(f[1, 1], limits = (-10, 10, -10, 10),
     xminorgridvisible = true, xminorticksvisible = true, xminorticks = IntervalsBetween(5),
@@ -24,6 +23,7 @@ a = Axis(f[1, 1], limits = (-10, 10, -10, 10),
 
 text_kwargs = (align = (:left, :center), offset = (10, 0))
 
+# default
 scatter!(a, Point2f(4, 5), space = :data)
 text!(a, Point2f(4, 5), text = "(4, 5) in world space", space = :data; text_kwargs...)
 
@@ -53,7 +53,6 @@ The options here are the same as with `space`.
 ```@figure
 using GLMakie
 
-# space = :world is the default, so this plot will be in the Axis' "world"
 f = Figure()
 a = Axis(f[1, 1], limits = (-10, 10, -10, 10),
     xminorgridvisible = true, xminorticksvisible = true, xminorticks = IntervalsBetween(5),
