@@ -503,7 +503,7 @@ end
 
     real_bytesize = let GL = GLMakie.GLAbstraction.ModernGL
         GLMakie.GLAbstraction.bind(indexbuffer)
-        value = Ref{GLint}(0)
+        value = Ref{GL.GLint}(0)
         GL.glGetBufferParameteriv(indexbuffer.buffertype, GL.GL_BUFFER_SIZE, value)
         value[]
     end
