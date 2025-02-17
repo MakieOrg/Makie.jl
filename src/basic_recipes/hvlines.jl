@@ -39,7 +39,8 @@ function projview_to_2d_limits(plot::AbstractPlot)
         xmin, xmax = minmax((((-1, 1) .- pv[1, 4]) ./ pv[1, 1])...)
         ymin, ymax = minmax((((-1, 1) .- pv[2, 4]) ./ pv[2, 2])...)
         origin = Vec2d(xmin, ymin)
-        return inv_f32_convert(f32c, Rect2d(origin, Vec2d(xmax, ymax) - origin))
+        r = Rect2d(origin, Vec2d(xmax, ymax) - origin)
+        return inv_f32_convert(f32c, r)
     end
 end
 
