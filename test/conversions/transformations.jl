@@ -140,7 +140,7 @@ end
 
 @testset "Model Transforms" begin
     t1 = Transformation()
-    
+
     @testset "defaults" begin
         @test !isassigned(t1.parent)
         @test t1.translation[] == Vec3d(0)
@@ -291,5 +291,31 @@ end
         @test apply_transform(t2, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), 4.0))
 
         @test apply_transform(t3, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), log10(4.0)))
+    end
+end
+
+@testset "space dependent inheritance" begin
+    camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
+    camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
+    spaces = [:clip, :pixel, :relative, :data, :data, :data]
+
+    for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
+        scene = Scene()
+        camfunc(scene)
+        @test scene.camera_controls isa CamType
+        @test Makie.get_space(scene.camera_controls) == camspace
+        translate!(scene, 0,0,1)
+
+        # these should only inherit if the camera results in the same space
+        for space in [:clip, :pixel, :relative]
+            p = scatter!(scene, Point2f(0), space = space)
+            @test isassigned(p.transformation.parent) == (space === camspace)
+            @test p.transformation.model[][3, 4] == ifelse(space === camspace, 1.0, 0.0)
+        end
+
+        # data is camera space so transformations should always inherit
+        p = scatter!(scene, Point2f(0), space = :data)
+        @test isassigned(p.transformation.parent)
+        @test p.transformation.model[][3, 4] == 1.0
     end
 end

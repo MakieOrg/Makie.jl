@@ -13,14 +13,26 @@ const float step_size = max_distance / float(num_samples);
 
 uniform vec4 clip_planes[8];
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
+float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
+
+vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
+    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
+}
+vec4 color_lookup(vec4 color, bool color_ramp, bool norm) {
+    return color; // stub method
+}
+vec4 color_lookup(float intensity, bool color_ramp, bool norm) {
+    return vec4(0); // stub method
 }
 
-vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm)
-{
-    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
+vec4 color_lookup(sampler2D colormap, int index) {
+    return texelFetch(colormap, ivec2(index, 0), 0);
+}
+vec4 color_lookup(bool colormap, vec4 color) {
+    return color; // stub method
+}
+vec4 color_lookup(bool colormap, int index) {
+    return vec4(0); // stub method
 }
 
 vec3 gennormal(vec3 uvw, float d)
@@ -110,7 +122,7 @@ vec4 volume(vec3 front, vec3 dir)
 }
 
 
-vec4 volumergba(vec3 front, vec3 dir)
+vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
     float T = 1.0;
@@ -118,7 +130,7 @@ vec4 volumergba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples ; ++i) {
         vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a;
+        float opacity = step_size * density.a * absorption;
         T *= 1.0 - opacity;
         if (T <= 0.01)
             break;
@@ -179,15 +191,47 @@ vec4 isosurface(vec3 front, vec3 dir)
 
 vec4 mip(vec3 front, vec3 dir)
 {
-    vec3 pos = front;
-    int i = 0;
-    float maximum = 0.0;
+    vec3 pos = front + dir;
+    int i = 1;
+    float maximum = texture(volumedata, front).x;
     for (i; i < num_samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
             maximum = density;
     }
     return color_lookup(maximum, colormap, colorrange);
+}
+
+vec4 additivergba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 integrated_color = vec4(0., 0., 0., 0.);
+    int i = 0;
+    for (i; i < num_samples ; ++i) {
+        vec4 density = texture(volumedata, pos);
+        integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
+        pos += dir;
+    }
+    return integrated_color;
+}
+
+vec4 volumeindexedrgba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    float T = 1.0;
+    vec3 Lo = vec3(0.0);
+    int i = 0;
+    for (i; i < num_samples; ++i) {
+        int index = int(texture(volumedata, pos).x) - 1;
+        vec4 density = color_lookup(colormap, index);
+        float opacity = step_size * density.a * absorption;
+        Lo += (T*opacity)*density.rgb;
+        T *= 1.0 - opacity;
+        if (T <= 0.01)
+            break;
+        pos += dir;
+    }
+    return vec4(Lo, 1.0 - T);
 }
 
 uniform uint objectid;
@@ -290,10 +334,11 @@ void main()
     else if(algorithm == uint(2))
         color = mip(start, step_in_dir);
     else if(algorithm == uint(3))
-        color = volumergba(start, step_in_dir);
+        color = absorptionrgba(start, step_in_dir);
     else if(algorithm == uint(4))
-        color = vec4(0.0);
-        // color = volumeindexedrgba(start, step_in_dir);
+        color = additivergba(start, step_in_dir);
+    else if(algorithm == uint(5))
+        color = volumeindexedrgba(start, step_in_dir);
     else
         color = contours(start, step_in_dir);
 
