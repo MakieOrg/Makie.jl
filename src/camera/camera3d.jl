@@ -444,7 +444,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
                 p3d = to_ndim(Point3d, p, 0.0)
-                if !isnan(p3d) && Makie.is_data_space(poly.space[]) && parent_scene(plt) == scene
+                if !isnan(p3d) && is_data_space(to_value(get(plt, :space, :data))) && parent_scene(plt) == scene
                     # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
                     # dragging[] = (false, false)

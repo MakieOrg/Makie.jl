@@ -531,7 +531,7 @@ function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}
     if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
         xy = events(ax.scene).mouseposition[]
         plot, idx = pick(ax.scene, xy)
-        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || (plot.space[] != :data) ||
+        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || is_data_space(to_value(get(plot, :space, :data))) ||
                 (findfirst(p -> p === plot, ax.scene.plots) <= focus.skip) # is axis decoration
             return Consume(false)
         end

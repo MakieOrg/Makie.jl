@@ -251,7 +251,6 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     P = T <: Contour ? Point2f : Point3f
     scene = parent_scene(plot)
-    space = plot.space[]
 
     texts = text!(
         plot,
