@@ -11,7 +11,9 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         switch_context!(context)
         id = glGenBuffers()
         glBindBuffer(buffertype, id)
-        # size of 0 can segfault it seems
+        # size of 0 can segfault it seems, but so can a draw call to an index buffer that has garbage data.
+        # Therefore we let the buffer pull some garbage data in to have a GPU size > 0,
+        # but keep the CPU size unchanged. Draw calls are then discarded if the CPU size is 0.
         glBufferData(buffertype, max(1, buff_length) * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 

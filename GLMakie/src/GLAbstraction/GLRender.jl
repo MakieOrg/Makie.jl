@@ -145,6 +145,8 @@ end
 
 # using indexbuffer (faces)
 function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
+    # Note: not discarding draw calls with 0 indices may cause segfaults even if
+    # the draw call is later discarded based on on `mode`. See #4782
     N = length(vao.indices) * cardinality(vao.indices)
     N == 0 && return nothing
     if GLMAKIE_DEBUG[]
