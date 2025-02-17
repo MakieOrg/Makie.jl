@@ -1679,6 +1679,8 @@ end
             a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
+        "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
+        clip::Bool = true
         "The background color"
         backgroundcolor = :transparent
         "The x label"
