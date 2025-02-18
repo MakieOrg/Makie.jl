@@ -1,5 +1,20 @@
+using Dates
 
 @testset "Issues" begin
+    @testset "Issue #3932: band! supports DateTime abscissa" begin
+        dates = DateTime(2020, 1, 1):Day(1):DateTime(2020, 1, 5) |> collect
+        y_low = 1:5
+        y_high = 2:6
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        band_plot = band!(ax, dates, y_low, y_high)
+        band_plot.lowerpoints
+        @test length(band_plot.lowerpoints[]) == length(dates)
+        @test length(band_plot.upperpoints[]) == length(dates)
+        @test isapprox(first(band_plot.lowerpoints[])[1], float(Dates.value(first(dates))), atol=1e-6)
+        @test isapprox(last(band_plot.upperpoints[])[1], float(Dates.value(last(dates))), atol=1e-6)
+    end
+
     @testset "#659 Volume errors if data is not a cube" begin
         fig, ax, vplot = volume(1..8, 1..8, 1..10, rand(8, 8, 10))
         lims = Makie.data_limits(vplot)
