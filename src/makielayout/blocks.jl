@@ -643,4 +643,6 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
 
-Base.propertynames(::Type{T}) where {T <: Block} = keys(_attribute_docs(T))
+# collect() doesn't seem to be necessary but the propertynames docstring says
+# "tuple or vector" so lets not return a KeySet
+Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))

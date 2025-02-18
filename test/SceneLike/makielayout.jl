@@ -18,6 +18,13 @@
     @test true
 end
 
+@testset "Generic Block functionality" begin
+    for T in subtypes(Makie.Block)
+        T === Makie.AbstractAxis && continue
+        @test propertynames(T) isa Vector{Symbol}
+    end
+end
+
 @testset "deleting from axis" begin
     f = Figure()
     ax = Axis(f[1, 1])
