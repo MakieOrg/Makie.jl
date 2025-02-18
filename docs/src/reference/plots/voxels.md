@@ -71,12 +71,30 @@ This means id 1 maps to lowclip, 2..254 to colors of the colormap and 255 to hig
 `colorrange` and `colorscale` are ignored in this case.
 
 
-#### Texturemaps
+#### Texture maps
 
-You can also map a texture to voxels based on their id (and optionally the direction the face is facing).
-For this `plot.color` needs to be an image (matrix of colors) and `plot.uvmap` needs to be defined.
-The `uvmap` can take two forms here.
-The first is a `Vector{Vec4f}` which maps voxel ids (starting at 1) to normalized uv coordinates, formatted left-right-bottom-top.
+For texture mapping we need an image containing multiple textures which are to be mapped to voxels.
+As an example, we will use [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
+
+```@figure backend=GLMakie
+using FileIO
+texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
+image(0..1, 0..1, texture, axis=(xlabel = "u", ylabel="v"))
+```
+
+Voxels render with texture mapping when `color` is an image and `uv_transform` is defined.
+In this case uv (texture) coordinates are generated, transformed by `uv_transform` and then used to sample the image.
+Each voxel starts with a 0..1 uv range, which can be shown by using Makie's "debug_texture" with an identity transform.
+Here magenta corresponds to (0, 0), blue to (1, 0), red to (0, 1) and green to (1, 1).
+
+```@figure backend=GLMakie
+using FileIO, LinearAlgebra
+texture = FileIO.load(Makie.assetpath("debug_texture.png"))
+voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
+```
+
+To do texture mapping we want to transform the 0..1 uv range to a smaller range corresponding to textures in the image.
+We can do that by defining a `uv_transform` per voxel id that includes a translation and scaling.
 
 ```@figure backend=GLMakie
 using FileIO
@@ -84,9 +102,8 @@ using FileIO
 # load a sprite sheet with 10 x 9 textures
 texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
 
-# create a map idx -> LRBT coordinate of the textures, normalized to a 0..1 range
-uv_map = [
-    Vec4f(x, x+1/10, y, y+1/9)
+# create a mapping of voxel id -> (translation, scale)
+uvt = [(Point2f(x, y), Vec2f(1/10, 1/9))
     for x in range(0.0, 1.0, length = 11)[1:end-1]
     for y in range(0.0, 1.0, length = 10)[1:end-1]
 ]
@@ -99,11 +116,11 @@ chunk = UInt8[
 ]
 
 # draw
-f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
+voxels(chunk, uv_transform = uvt, color = texture)
 ```
 
-The second format allows you define sides in the second dimension of the uvmap.
-The order of sides is: -x, -y, -z, +x, +y, +z.
+Texture mapping can also be done per voxel side by passing a `Matrix` of uv transforms.
+Here the first index correspond to the voxel id and the second to a side following the order: -x, -y, -z, +x, +y, +z.
 
 ```@figure backend=GLMakie
 using FileIO
@@ -112,29 +129,33 @@ texture = FileIO.load(Makie.assetpath("voxel_spritesheet.png"))
 
 # idx -> uv LRBT map for convenience. Note the change in order loop order
 uvs = [
-    Vec4f(x, x+1/10, y, y+1/9)
+    (Point2f(x, y), Vec2f(1/10, 1/9))
     for y in range(0.0, 1.0, length = 10)[1:end-1]
     for x in range(0.0, 1.0, length = 11)[1:end-1]
 ]
 
 # Create uvmap with sides (-x -y -z x y z) in second dimension
-uv_map = Matrix{Vec4f}(undef, 4, 6)
-uv_map[1, :] = [uvs[9],  uvs[9],  uvs[8],  uvs[9],  uvs[9],  uvs[8]]  # 1 -> birch
-uv_map[2, :] = [uvs[11], uvs[11], uvs[10], uvs[11], uvs[11], uvs[10]] # 2 -> oak
-uv_map[3, :] = [uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[18]] # 3 -> crafting table
-uv_map[4, :] = [uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1]]  # 4 -> planks
+uvt = Matrix{Any}(undef, 5, 6)
+uvt[1, :] = [uvs[9],  uvs[9],  uvs[8],  uvs[9],  uvs[9],  uvs[8]]  # 1 -> birch
+uvt[2, :] = [uvs[11], uvs[11], uvs[10], uvs[11], uvs[11], uvs[10]] # 2 -> oak
+uvt[3, :] = [uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[2],  uvs[18]] # 3 -> crafting table
+uvt[4, :] = [uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1],  uvs[1]]  # 4 -> planks
+uvt[5, :] = [uvs[75], uvs[75], uvs[76], uvs[75], uvs[75], uvs[62]] # 5 -> dirt/grass
 
 chunk = UInt8[
-    1 0 1; 0 0 0; 1 0 1;;;
+    1 0 1; 0 0 0; 1 0 5;;;
     0 0 0; 0 0 0; 0 0 0;;;
     2 0 2; 0 0 0; 3 0 4;;;
 ]
 
-f, a, p = voxels(chunk, uvmap = uv_map, color = texture)
+# rotate 0..1 texture coordinates first because the texture is rotated relative to what OpenGL expects
+voxels(chunk, uv_transform = (uvt, :rotr90), color = texture)
 ```
 
-The textures used in these examples are from [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
-
+Note that `uv_transform` allows various input types.
+You can find more information on them with `?Makie.uv_transform`.
+In the most general case a uv transform is a `Makie.Mat{2, 3, Float32}` which is multiplied to `Vec3f(uv..., 1)`.
+The `(translation, scale)` syntax we used above can be written as `Makie.Mat{2, 3, Float32}(1/10, 0, 0, 1/9, x, y)`.
 
 
 #### Updating Voxels

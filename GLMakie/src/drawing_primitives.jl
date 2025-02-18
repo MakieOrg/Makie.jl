@@ -1047,15 +1047,36 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         get!(gl_attributes, :color_map, nothing)
 
         # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap)
-        if !isnothing(to_value(uv_map))
-            gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
+        uv_map = pop!(gl_attributes, :uvmap, nothing)
+        uv_transform = pop!(gl_attributes, :uv_transform)
+
+        if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+            end
+
+            if !isnothing(to_value(uv_transform))
+                # new
+                packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+            else
+                # old, deprecated
+                @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+                packed = map(uv_map) do uvmap
+                    raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+                    converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+                    return Makie.pack_voxel_uv_transform(converted_uvt)
+                end
+            end
+            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
             interp = to_value(pop!(gl_attributes, :interpolate))
             interp = interp ? :linear : :nearest
             color = gl_attributes[:color]
             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
         elseif !isnothing(to_value(gl_attributes[:color]))
+            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+            end
             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
         end
 

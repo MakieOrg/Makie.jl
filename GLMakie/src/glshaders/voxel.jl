@@ -15,7 +15,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
         backlight = 0f0
         color = nothing => Texture
         color_map = nothing => Texture
-        uv_map = nothing => Texture
+        uv_transform = nothing => Texture
         shader = GLVisualizeShader(
             screen,
             "voxel.vert",
@@ -25,7 +25,8 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "DEBUG_FLAG_DEFINE" => to_value(get(data, :debug, ""))
             )
         )
     end
