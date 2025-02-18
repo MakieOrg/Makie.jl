@@ -128,7 +128,7 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     end).text[]
 
     if title isa Markdown.Link
-        title = title.title
+        title = title.text[]
     end
 
     el = node.element
