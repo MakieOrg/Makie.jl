@@ -614,6 +614,9 @@ Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
 being an invisible "air" voxel. Passing a chunk with matching type will directly
 set those values. Note that color handling is specialized for the internal
 representation and may behave a bit differently than usual.
+
+Note that `voxels` is currently considered experimental and may still see breaking
+changes in patch releases.
 """
 @recipe Voxels begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
