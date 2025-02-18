@@ -771,6 +771,16 @@ end
     fig
 end
 
+@testset "Voxel uvs" begin
+    texture = FileIO.load(Makie.assetpath("debug_texture.png"))
+    f,a,p = voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
+    st = Stepper(f)
+    Makie.step!(st)
+    update_cam!(a.scene, 5pi/4, -pi/4)
+    Makie.step!(st)
+    st
+end
+
 @reference_test "Voxel - colors and colormap" begin
     # test direct mapping of ids to colors & upsampling of vector colormap
     fig = Figure(size = (800, 400))

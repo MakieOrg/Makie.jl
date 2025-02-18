@@ -31,33 +31,58 @@ vec4 debug_color(uint id) {
 }
 vec4 debug_color(int id) { return debug_color(uint(id)); }
 
-vec4 get_color(bool color, bool color_map, bool uv_map, int id) {
+// unused but compilation requires it
+mat3x2 get_uv_transform_mat(bool uv_transform, int id, int side) {
+    return mat3x2(1,0,0,1,0,0);
+}
+mat3x2 get_uv_transform_mat(sampler2D uv_transform, int id, int side) {
+    vec2 part1 = texelFetch(uv_transform, ivec2(0, id-1), 0).xy;
+    vec2 part2 = texelFetch(uv_transform, ivec2(1, id-1), 0).xy;
+    vec2 part3 = texelFetch(uv_transform, ivec2(2, id-1), 0).xy;
+    return mat3x2(part1, part2, part3);
+}
+mat3x2 get_uv_transform_mat(sampler3D uv_transform, int id, int side) {
+    vec2 part1 = texelFetch(uv_transform, ivec3(0, id-1, side), 0).xy;
+    vec2 part2 = texelFetch(uv_transform, ivec3(1, id-1, side), 0).xy;
+    vec2 part3 = texelFetch(uv_transform, ivec3(2, id-1, side), 0).xy;
+    return mat3x2(part1, part2, part3);
+}
+
+
+vec4 get_color_from_texture(sampler2D color, int id) {
+    mat3x2 uvt = get_uv_transform_mat(uv_transform, id, o_side);
+    // compute uv normalized to voxel
+    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
+    vec2 voxel_uv = mod(o_tex_uv, 1.0);
+    // correct for shrinking due to gap
+    voxel_uv = (voxel_uv - vec2(0.5 * gap)) / vec2(1.0 - gap);
+    voxel_uv = uvt * vec3(voxel_uv, 1);
+    return texture(color, voxel_uv);
+}
+
+vec4 get_color(bool color, bool color_map, bool uv_transform, int id) {
     return debug_color(id);
 }
-vec4 get_color(bool color, sampler2D color_map, bool uv_map, int id) {
+vec4 get_color(bool color, sampler2D color_map, bool uv_transform, int id) {
     return texelFetch(color_map, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, sampler2D color_map, bool uv_map, int id) {
+vec4 get_color(sampler2D color, sampler2D color_map, bool uv_transform, int id) {
     return texelFetch(color, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, bool color_map, bool uv_map, int id) {
+vec4 get_color(sampler2D color, bool color_map, bool uv_transform, int id) {
     return texelFetch(color, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, sampler2D color_map, sampler2D uv_map, int id) {
-    vec4 lrbt = texelFetch(uv_map, ivec2(id-1, o_side), 0);
-    // compute uv normalized to voxel
-    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
-    vec2 voxel_uv = mod(o_tex_uv, 1.0);
-    voxel_uv = mix(lrbt.xz, lrbt.yw, voxel_uv);
-    return texture(color, voxel_uv);
+vec4 get_color(sampler2D color, sampler2D color_map, sampler2D uv_transform, int id) {
+    return get_color_from_texture(color, id);
 }
-vec4 get_color(sampler2D color, bool color_map, sampler2D uv_map, int id) {
-    vec4 lrbt = texelFetch(uv_map, ivec2(id-1, o_side), 0);
-    // compute uv normalized to voxel
-    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
-    vec2 voxel_uv = mod(o_tex_uv, 1.0);
-    voxel_uv = mix(lrbt.xz, lrbt.yw, voxel_uv);
-    return texture(color, voxel_uv);
+vec4 get_color(sampler2D color, bool color_map, sampler2D uv_transform, int id) {
+    return get_color_from_texture(color, id);
+}
+vec4 get_color(sampler2D color, sampler2D color_map, sampler3D uv_transform, int id) {
+    return get_color_from_texture(color, id);
+}
+vec4 get_color(sampler2D color, bool color_map, sampler3D uv_transform, int id) {
+    return get_color_from_texture(color, id);
 }
 
 // Smoothes out edge around 0 light intensity, see GLMakie
@@ -136,7 +161,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(color, color_map, uv_map, id);
+    vec4 voxel_color = get_color(color, color_map, uv_transform, id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)

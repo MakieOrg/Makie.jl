@@ -981,8 +981,11 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Flo
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
-convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat{3, 3}, k::key"uv_transform") = convert_attribute(Mat3f(x), k)
+convert_attribute(x::Mat{2, 3}, k::key"uv_transform") = convert_attribute(Mat{2, 3, Float32}(x), k)
 convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
@@ -992,24 +995,48 @@ function convert_attribute(angle::Real, ::key"uv_transform")
     # rotate, translate back.
     # For patterns and in terms of what's actually happening to the uvs we
     # should not translate at all.
-    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+    error(
+        "Creating a uv_transform from a rotation angle is not implemented directly because one usually " *
+        "needs to translate as well to deal with the 0..1 value range. Use :rotr90, :rotl90, :rot180, " *
+        "Makie.uv_transform(angle) or multi-step expression (tuple) instead."
+    )
 end
 
 """
     uv_transform(args::Tuple)
     uv_transform(args...)
 
-Returns a 3x3 uv transformation matrix combinign all the given arguments. This
+Returns a 3x3 uv transformation matrix combining all the given arguments. This
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
 
 Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 `uv_transform(translation, scale)` as a special case.
 """
-uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
-uv_transform(packed...) = uv_transform(packed)
-uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+function uv_transform(packed::Tuple)
+    combine(a::Mat3f, b::Mat3f) = a * b
+    # The arrays have already been copied by uv_transform(array)
+    combine(a::Array, b::Mat3f) = a .= a .* Ref(b)
+    combine(a::Mat3f, b::Array) = b .= Ref(a) .* b
+    combine(a::Array, b::Array) = a .= a .* b
 
+    return mapfoldl(uv_transform, combine, packed)
+end
+uv_transform(packed...) = uv_transform(packed)
+
+"""
+    uv_transform(::UniformScaling)
+    uv_transform(::typeof(identity))
+
+Returns a 3x3 identity matrix When passing `I` or `identity`.
+"""
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
+
+# repeated for packed uv_transforms
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+uv_transform(x::Array) = uv_transform.(x)
+uv_transform(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
@@ -1049,14 +1076,15 @@ Creates a 3x3 uv transformation matrix from a given named action. They assume
 - `:swap_xy, :transpose` which corresponds to transposing the texture
 - `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
 - `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+- `:identity` corresponding to no change/identity
 """
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
-    if action == :rotr90
-        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
-    elseif action == :rotl90
+    if action === :rotr90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
-    elseif action == :rot180
+    elseif action === :rotl90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action === :rot180
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
@@ -1071,6 +1099,8 @@ function uv_transform(action::Symbol)
         return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
     # elseif action == :surface
         # return Mat3f(I)
+    elseif action === :identity
+        return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end
