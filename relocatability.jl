@@ -39,7 +39,7 @@ paths = ["MakieCore", "", BACKEND]
 Pkg.develop(map(x -> (; path=joinpath(makie_dir, x)), paths))
 
 if BACKEND == "WGLMakie"
-    pkg"add Electron@5.1 Bonito#sd/small-fixes"
+    pkg"add Electron@5.1 Bonito#master"
 end
 
 open("MakieApp/src/MakieApp.jl", "w") do io
