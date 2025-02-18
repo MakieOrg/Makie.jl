@@ -63,8 +63,8 @@ function mixin_generic_plot_attributes()
         overdraw = false
         "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
         ssao = false
-        "sets whether this plot should be seen by `DataInspector`."
-        inspectable = true
+        "Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene."
+        inspectable = @inherit inspectable
         "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
         depth_shift = 0.0f0
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."

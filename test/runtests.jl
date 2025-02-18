@@ -27,6 +27,7 @@ using Makie: volume
 
     @testset "Plots" begin
         include("plots/primitives.jl")
+        include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
         include("plots/hist.jl")
