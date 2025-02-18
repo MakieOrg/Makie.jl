@@ -14,6 +14,7 @@
 - Fixed issue with `WGLMakie.voxels` not rendering on linux with firefox [#4756](https://github.com/MakieOrg/Makie.jl/pull/4756)
 - Updated `voxels` to use `uv_transform` interface instead of `uvmap` to give more control over texture mapping (i.e. to allow rotations) [#4758](https://github.com/MakieOrg/Makie.jl/pull/4758)
 - **Breaking** Changed generated `uv`s in `voxels` to more easily align texture maps. Also changed uvs to scale with `gap` so that voxels remain fully covered. [#4758](https://github.com/MakieOrg/Makie.jl/pull/4758)
+- Fixed `uv_transform = :rotr90` and `:rotl90` being swapped [#4758](https://github.com/MakieOrg/Makie.jl/pull/4758)
 - Cleaned up surface handling in GLMakie: Surface cells are now discarded when there is a nan in x, y or z. Fixed incorrect normal if x or y is nan [#4735](https://github.com/MakieOrg/Makie.jl/pull/4735)
 - Cleaned up `volume` plots: Added `:indexedabsorption` and `:additive` to WGLMakie, generalized `:mip` to include negative values, fixed missing conversions for rgba algorithms (`:additive`, `:absorptionrgba`), fixed missing conversion for `absorption` attribute & extended it to `:indexedabsorption` and `absorptionrgba`, added tests and improved docs. [#4726](https://github.com/MakieOrg/Makie.jl/pull/4726)
 
