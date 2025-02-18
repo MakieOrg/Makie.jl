@@ -32,6 +32,9 @@ end
     for (i, p) in enumerate(points)
         lines!(s, (p .+ Point2f(0, i)) .* 100, linewidth = 10)
     end
+    # These are "doesn't break" tests. They should not display anything
+    lines!(s, Point2f[])
+    lines!(s, Point2f[(100, 100)])
     s
 end
 
@@ -102,6 +105,7 @@ end
     f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!([-1.2, -1.2, 2, 2, 1, 0, -1.2], [-1.2, 2, 2, -1.2, -1.2, -1.2, -1.2], linewidth = 20, alpha = 0.5)
     f
 end
 
@@ -636,16 +640,57 @@ end
 end
 
 @reference_test "Surface with NaN points" begin
-    # prepare surface data
-    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
-    ns = copy(zs)
-    ns[4, 3:6] .= NaN
-    # plot surface
-    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
-    # plot a wireframe so we can see what's going on, and in which cells.
-    m = Makie.surface2mesh(to_value.(p.converted)...)
-    scatter!(a, m.position, color = isnan.(m.normal), depth_shift = -1f-3)
-    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    # This is supposed to verify a couple of things:
+    # - cells with nan in positions are not drawn
+    # - colors align to cell centers (via color checkerboard)
+    # - all normals are valid and interpolate correctly (lighting)
+    data = [x^2 + y^2 for x in range(-2, 0, length=11), y in range(-2, 0, length=11)]
+    cs = reshape([(:red, :blue)[mod1(i, 2)] for i in eachindex(data)], size(data))
+
+    f = Figure(size = (500, 1000), backgroundcolor = RGBf(0.3, 0.3, 0.3), figure_padding = (0,0,0,0))
+
+    # Test NaN in positions
+    for i in 1:3, j in 1:2
+        if j == 1
+            xs = collect(1.0:11.0)
+            ys = collect(1.0:11.0)
+        else
+            xs = Float32[x for x in 1:11, y in 1:11]
+            ys = Float32[y for x in 1:11, y in 1:11]
+        end
+        zs = copy(data)
+
+        # shift to second row if matrix
+        if i == 1
+            xs[(3:6) .+ (j-1) * 44] .= NaN
+        elseif i == 2
+            ys[(3:6) .+ (j-1) * 44] .= NaN
+        elseif i == 3
+            zs[4, 3:6] .= NaN
+        end
+
+        a, p = surface(f[i, j], xs, ys, zs, color = cs, nan_color = :red, axis = (show_axis = false,))
+        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        # plot a wireframe so we can see what's going on, and in which cells.
+        m = Makie.surface2mesh(to_value.(p.converted)...)
+        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+    end
+
+    # Test NaN in color
+    cs = copy(data)
+    cs[4, 3:6] .= NaN
+    for i in 1:2
+        nan_color = ifelse(i == 1, :transparent, :red)
+        a, p = surface(f[4, i], 1..11, 1..11, data, color = cs, colormap = [:white, :white];
+            nan_color, axis = (show_axis = false,))
+        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        m = Makie.surface2mesh(to_value.(p.converted)...)
+        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+    end
+
+    colgap!(f.layout, 0.0)
+    rowgap!(f.layout, 0.0)
+
     f
 end
 

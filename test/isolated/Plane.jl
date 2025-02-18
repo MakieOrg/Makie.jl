@@ -6,7 +6,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
             plane = Plane(Point3{T}(1), Vec3{T}(1, 1, 0))
             @test plane isa Plane{3, T}
             @test plane.normal ≈ normalize(Vec3{T}(1, 1, 0))
-            @test plane.distance ≈ T(sqrt(2.0)) 
+            @test plane.distance ≈ T(sqrt(2.0))
 
             plane = Plane(Point2{T}(1), Vec2{T}(0, 1))
             @test plane isa Plane{2, T}
@@ -16,7 +16,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
             plane = Plane(Vec3{T}(1), 2.0)
             @test plane isa Plane{3, T}
             @test plane.normal ≈ normalize(Vec3{T}(1))
-            @test plane.distance ≈ T(2) 
+            @test plane.distance ≈ T(2)
 
             clip_box = Rect3f(Point3f(0), Vec3f(1))
             planes = Makie.planes(clip_box)
@@ -28,6 +28,11 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
                 Plane3f(Vec3f( 0, -1,  0), -1f0),
                 Plane3f(Vec3f( 0,  0, -1), -1f0)
             ]
+
+            plane = Plane(Vec3{T}(0), 2.0)
+            @test plane isa Plane{3, T}
+            @test plane.normal ≈ Vec3{T}(0)
+            @test plane.distance ≈ T(2)
         end
     end
 
@@ -107,7 +112,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         plane = Plane3f(Point3f(0.5), Vec3f(0,0,1))
 
         # transform points
-        ds = let 
+        ds = let
             transformed = map(p -> Point3f(model * to_ndim(Point4f, p, 1)), ps)
             Makie.distance.((plane,), transformed)
         end
@@ -120,10 +125,10 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         bbox = Rect3d(Point3d(-1), Vec3d(2))
         planes = [Plane3f(Point3f(0.5), Vec3f(-0.5))]
         @test Makie.apply_clipping_planes(planes, bbox) == bbox
-       
+
         planes = [Plane3f(Point3f(0, 0, 0.5), Vec3f(-0.0, -0.0, -0.5))]
         @test Makie.apply_clipping_planes(planes, bbox) == Rect3d(Point3d(-1), Vec3d(2,2,1.5))
-       
+
         planes = Makie.planes(Rect3f(Point3f(-0.5), Vec3f(1)))
         bb = Makie.apply_clipping_planes(planes, bbox)
         @test minimum(bb) ≈ Vec3f(-0.5)
@@ -138,7 +143,7 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         ps = [2f0 .* rand(Point3f) .- 1f0 for _ in 1:1000]
         planes = Makie.planes(Rect3f(Point3f(-0.5), Vec3f(1)))
         inside = sum(Makie.is_visible.((planes,), ps))
-        
+
         # COV_EXCL_START
         f, a, p = scatter(ps)
         Makie.update_state_before_display!(f)

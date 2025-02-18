@@ -474,16 +474,19 @@ function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLik
             to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
 
-"""
-    convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
-
-Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and puts everything in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
+# TODO: Consider using RGB(A){N0f8} for all of these
+# RGBA/Vec4 is the native data type for :absorptionrgba, :additive
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
     return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
-            to_endpoints(z, "z", VolumeLike), el32convert(i))
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
+end
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.Color, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBf.(data))
+end
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.TransparentColor, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBAf.(data))
 end
 
 ################################################################################
@@ -1947,6 +1950,7 @@ end
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
+convert_attribute(value, ::key"absorption", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"gap", ::key"voxels") = ifelse(value <= 0.01, 0f0, Float32(value))
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
