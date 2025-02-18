@@ -402,3 +402,20 @@ end
     Makie.step!(st)
     st
 end
+
+# test #3315
+@reference_test "text with empty lines" begin
+    text(
+        0,0, 
+        text=rich(
+            rich("test", font = :bold), 
+            """
+            
+            more
+
+            """
+        ); 
+        markerspace = :data, 
+        axis = (; aspect = DataAspect())
+    )
+end
