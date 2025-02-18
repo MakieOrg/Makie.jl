@@ -17,6 +17,7 @@
 - Fixed integer underflow in GLMakie line indices which may have caused segmentation faults on mac [#4782](https://github.com/MakieOrg/Makie.jl/pull/4782)
 - Added `Axis3.clip` attribute to allow turning off clipping [#4791](https://github.com/MakieOrg/Makie.jl/pull/4791)
 - Fixed `Plane(Vec{N, T}(0), dist)` producing a `NaN` normal, which caused WGLMakie to break. (E.g. when rotating Axis3) [#4772](https://github.com/MakieOrg/Makie.jl/pull/4772)
+- Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
 
 ## [0.22.1] - 2025-01-17
 
