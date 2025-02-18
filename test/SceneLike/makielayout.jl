@@ -578,3 +578,4 @@ end
     @test isnothing(Makie.set!(tb, "hi"))
     @test_throws ErrorException Makie.set!(tb, "there")
     @test isnothing(Makie.unsafe_set!(tb, "there"))
+end
