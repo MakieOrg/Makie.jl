@@ -182,11 +182,11 @@ void main() {
     // map plane_vertex (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
     // use normal_dir to invert u/v direction based on which side is viewed
     o_tex_uv = vec2(0);
-    if (dim == 0) { // x normal, yz planes
+    if (dim == 0) { //        x normal, yz planes
         o_tex_uv = vec2(normal_dir, 1.0) * plane_vertex.yz;
     } else if (dim == 1) { // y normal, xz planes
         o_tex_uv = vec2(-normal_dir, 1.0) * plane_vertex.xz;
-    } else { // (dim == 2) z normal, xy planes
+    } else { // (dim == 2)    z normal, xy planes
         o_tex_uv = vec2(1.0, normal_dir) * plane_vertex.xy;
     }
 }
