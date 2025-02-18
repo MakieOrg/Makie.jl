@@ -406,13 +406,20 @@ end
     m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
 
     # Should create closed square and hexagonal cells
-    f = Figure()
+    f = Figure(size = (600, 300))
     a = Axis3(f[1, 1], aspect = :data,
         xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
     scatter!(a, ps, markersize = 30, transparency = true)
+
+    a = Axis3(f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false)
     f
 end
 

@@ -30,6 +30,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
 end
 
 # run the unit test suite
+include("isolated_tests.jl")
 include("unit_tests.jl")
 
 @testset "Reference Tests" begin
