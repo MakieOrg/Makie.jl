@@ -275,32 +275,38 @@ end
     volume(volume_data)
     volume(x, y, z, volume_data)
 
-Plots a volume, with optional physical dimensions `x, y, z`.
-Available algorithms are:
-* `:iso` => IsoValue
-* `:absorption` => Absorption
-* `:mip` => MaximumIntensityProjection
-* `:absorptionrgba` => AbsorptionRGBA
-* `:additive` => AdditiveRGBA
-* `:indexedabsorption` => IndexedAbsorptionRGBA
+Plots a volume with optional physical dimensions `x, y, z`.
+
+All volume plots are derived from casting rays for each drawn pixel. These rays
+intersect with the volume data to derive some color, usually based on the given
+colormap. How exactly the color is derived depends on the algorithm used.
 """
 @recipe Volume (
         x::EndPoints,
         y::EndPoints,
         z::EndPoints,
-        volume::AbstractArray{Float32,3}
+        # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
+        volume::AbstractArray{<: Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3}
     ) begin
-    "Sets the volume algorithm that is used."
+    """
+    Sets the volume algorithm that is used. Available algorithms are:
+    * `:iso`: Shows an isovalue surface within the given float data. For this only samples within `isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
+    * `:absorption`: Accumulates color based on the float values sampled from volume data. At each ray step (starting from the front) a value is sampled from the volume data and then used to sample the colormap. The resulting color is weighted by the ray step size and blended the previously accumulated color. The weight of each step can be adjusted with the multiplicative `absorption` attribute.
+    * `:mip`: Shows the maximum intensity projection of the given float data. This derives the color of a pixel from the largest value sampled from the respective ray.
+    * `:absorptionrgba`: This algorithm matches :absorption, but samples colors directly from RGBA volume data. For each ray step a color is sampled from the data, weighted by the ray step size and blended with the previously accumulated color. Also considers `absorption`.
+    * `:additive`: Accumulates colors using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)` where `sampled_color` is a sample of volume data at the current ray step.
+    * `:indexedabsorption`: This algorithm acts the same as :absorption, but interprets the volume data as indices. They are used as direct indices to the colormap. Also considers `absorption`.
+    """
     algorithm = :mip
-    "Sets the target value for the IsoValue algorithm."
+    "Sets the target value for the :iso algorithm. `accepted = isovalue - isorange < value < isovalue + isorange`"
     isovalue = 0.5
-    "Sets the range of values picked up by the IsoValue algorithm."
+    "Sets the maximum accepted distance from the isovalue for the :iso algorithm. `accepted = isovalue - isorange < value < isovalue + isorange`"
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
-    "Enables depth write for Volume, so that volume correctly occludes other objects."
+    "Enables depth write for :iso so that volume correctly occludes other objects."
     enable_depth = true
-    "Absorption multiplier for algorithm=:absorption. This changes how much light each voxel absorbs."
+    "Absorption multiplier for algorithm = :absorption, :absorptionrgba and :indexedabsorption. This changes how much light each voxel absorbs."
     absorption = 1f0
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
@@ -317,7 +323,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 """
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
-    "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`."
+    "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
     color = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
@@ -417,8 +423,13 @@ end
 
 Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
 """
-@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh},) begin
-    "Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates."
+@recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh},GeometryBasics.Mesh,GeometryBasics.MetaMesh},) begin
+    """
+    Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
+    A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain
+    texture coordinates. A `<: AbstractPattern` can be used to apply a repeated, pixel sampled pattern to
+    the mesh, e.g. for hatching.
+    """
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
     interpolate = true
@@ -469,8 +480,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
     "Sets the rotation of the marker. A `Billboard` rotation is always around the depth axis."
     rotation = Billboard()
-    "The offset of the marker from the given position in `markerspace` units. Default is centered around the position (markersize * -0.5)."
-    marker_offset = automatic
+    "The offset of the marker from the given position in `markerspace` units. An offset of 0 corresponds to a centered marker."
+    marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
@@ -522,6 +533,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
+    transform_marker = false
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -656,7 +669,7 @@ Plots polygons, which are defined by
     Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
     A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
     Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
-    One can also use `Makie.LinePattern`, to cover the poly with a regular stroke pattern.
+    One can also use a `<: AbstractPattern`, to cover the poly with a regular pattern, e.g. for hatching.
     """
     color = @inherit patchcolor
     "Sets the color of the outline around a marker."

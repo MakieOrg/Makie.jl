@@ -124,7 +124,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
             tick_callback(Makie.RegularRenderTick)
             # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
-            stop!(timer)
+            Makie.stop!(timer)
         end
         return
     end

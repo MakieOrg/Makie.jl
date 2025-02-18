@@ -1,15 +1,15 @@
 
 @reference_test "mesh textured and loaded" begin
     f = Figure(size = (600, 600))
-    
+
     moon = loadasset("moon.png")
-    ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon, 
+    ax, meshplot = mesh(f[1, 1], Sphere(Point3f(0), 1f0), color=moon,
         shading=NoShading, axis = (;show_axis=false))
     update_cam!(ax.scene, Vec3f(-2, 2, 2), Vec3f(0))
     cameracontrols(ax).settings.center[] = false # avoid recenter on display
-    
+
     earth = loadasset("earth.png")
-    m = uv_mesh(Tesselation(Sphere(Point3f(0), 1f0), 60))
+    m = uv_mesh(Tessellation(Sphere(Point3f(0), 1f0), 60))
     mesh(f[1, 2], m, color=earth, shading=NoShading)
 
     catmesh = loadasset("cat.obj")
@@ -24,7 +24,7 @@ end
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
-        return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
+        return GeometryBasics.mesh(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
     x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
@@ -52,7 +52,7 @@ end
     r = range(-1, stop=1, length=100)
     matr = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
     volume(f[1, 1], matr .* (matr .> 1.4), algorithm=:iso, isorange=0.05, isovalue=1.7, colorrange=(0, 1))
-    
+
     volume(f[1, 2], RNG.rand(32, 32, 32), algorithm=:mip)
 
     r = LinRange(-3, 3, 100);  # our value range
@@ -69,11 +69,22 @@ end
     ax.scene.clear[] = true
 
     r = range(-3pi, stop=3pi, length=100)
-    volume(f[2, 2], r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), 
+    volume(f[2, 2], r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z),
         colorrange=(0, 1), algorithm=:iso, isorange=0.1f0, axis = (;show_axis=false))
-    volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, 
+    volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip,
         colorrange=(0, 1), transformation=(translation=Vec3f(6pi, 0, 0),))
 
+    f
+end
+
+@reference_test "Volume absorption" begin
+    f = Figure(size = (600, 300))
+    r = range(-5, 5, length=31)
+    data = [cos(x*x + y*y + z*z)^2 for x in r, y in r, z in r]
+    absorption = 5.0
+    volume(f[1, 1], data, algorithm = :absorption; absorption)
+    volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
+    volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
     f
 end
 
@@ -315,7 +326,7 @@ end
     N = 3; nbfacese = 30; radius = 0.02
 
     large_sphere = Sphere(Point3f(0), 1f0)
-    positions = decompose(Point3f, large_sphere, 30)
+    positions = decompose(Point3f, Tessellation(large_sphere, 30))
     np = length(positions)
     pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
     pts = vcat(pts, 1.1 .* pts + RNG.randn(size(pts)) / perturbfactor) # light position influence ?
@@ -323,8 +334,8 @@ end
     ne = size(edges, 1); np = size(pts, 1)
     cylinder = Cylinder(Point3f(0), Point3f(0, 0, 1.0), 1f0)
     # define markers meshes
-    meshC = normal_mesh(Tesselation(cylinder, nbfacese))
-    meshS = normal_mesh(Tesselation(large_sphere, 20))
+    meshC = normal_mesh(Tessellation(cylinder, nbfacese))
+    meshS = normal_mesh(Tessellation(large_sphere, 20))
     # define colors, markersizes and rotations
     pG = [Point3f(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
     lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]).^2, dims=2))
@@ -411,7 +422,7 @@ end
 end
 
 @reference_test "Normals of a Cat" begin
-    x = loadasset("cat.obj")
+    x = GeometryBasics.expand_faceviews(loadasset("cat.obj"))
     f, a, p = mesh(x, color=:black)
     pos = map(decompose(Point3f, x), GeometryBasics.normals(x)) do p, n
         p => p .+ Point(normalize(n) .* 0.05f0)
@@ -434,7 +445,7 @@ end
     function colormesh((geometry, color))
         mesh1 = normal_mesh(geometry)
         npoints = length(GeometryBasics.coordinates(mesh1))
-        return GeometryBasics.pointmeta(mesh1; color=fill(color, npoints))
+        return GeometryBasics.mesh(mesh1; color=fill(color, npoints))
     end
     # create an array of differently colored boxes in the direction of the 3 axes
     x = Vec3f(0); baselen = 0.2f0; dirlen = 1f0
@@ -606,7 +617,7 @@ end
     a = LScene(f[1, 1])
     a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
     linesegments!(
-        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[], 
+        a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[],
         fxaa = true, transparency = false, linewidth = 3)
 
     p = mesh!(Sphere(Point3f(0,0,1), 1f0), transparency = false, color = :orange, backlight = 1.0)
@@ -661,11 +672,15 @@ end
 end
 
 @reference_test "Clip planes - volume" begin
-    f = Figure(size = (600, 400))
+    f = Figure(size = (600, 400), backgroundcolor = :black)
     r = -10:10
     data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
+    index_data = round.(Int, 10 .* abs.(data))
+    N = maximum(index_data)
+    density_data = 0.005 .* abs.(data)
+    rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
+
     clip_planes = [Plane3f(Vec3f(-1), 0.0)]
-    
     attr = (clip_planes = clip_planes, axis = (show_axis = false,))
 
     volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
@@ -675,14 +690,15 @@ end
 
     volume(f[1, 2], -10..10, -10..10, -10..10, data; attr...,
         algorithm = :mip)
-    volume(f[2, 2], -10..10, -10..10, -10..10, data; attr...,
+    volume(f[2, 2], -10..10, -10..10, -10..10, rgba_data; attr...,
         algorithm = :absorptionrgba)
 
-    volume(f[1, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :additive)
-    volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :indexedabsorption)
-    
+    # TODO: doesn't work as intended anymore?
+    volume(f[1, 3], -10..10, -10..10, -10..10, rgba_data; attr...,
+        algorithm = :additive, alpha = 0.01)
+    volume(f[2, 3], -10..10, -10..10, -10..10, index_data; attr...,
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N))
+
     f
 end
 
@@ -710,7 +726,7 @@ end
 @reference_test "volumeslices" begin
     r = range(-1, 1, length = 10)
     data = RNG.rand(10,10,10)
-    
+
     fig = Figure()
     volumeslices(fig[1, 1], r, r, r, data)
     a, p = volumeslices(fig[1, 2], r, r, r, data, bbox_visible = false, colormap = :RdBu,
@@ -719,4 +735,27 @@ end
     p.update_yz[](4)
     p.update_xy[](10)
     fig
+end
+
+@reference_test "MetaMesh (Sponza)" begin
+    m = load(Makie.assetpath("sponza/sponza.obj"), uvtype = Vec2f)
+    f, a, p = mesh(m)
+    cameracontrols(a).settings.center[] = false
+    cameracontrols(a).settings.fixed_axis[] = false # irrelevant here
+    update_cam!(a.scene, Vec3f(-15, 7, 1), Vec3f(3, 5, 0), Vec3f(0,1,0))
+    f
+end
+
+@reference_test "Mesh with 3d volume texture" begin
+    triangles = GLTriangleFace[(1, 2, 3), (3, 4, 1)]
+    uv3_mesh(p) = GeometryBasics.Mesh(p, triangles; uv=Vec3f.(p))
+    r = -5:0.1:5
+    data = [1 - (1 + cos(x) + cos(y^2) + cos(z)) for x in r, y in r, z in r]
+    # Define the positions
+    positions = [Point3f(0.5, 0, 0), Point3f(0.5, 1, 0), Point3f(0.5, 1, 1), Point3f(0.5, 0, 1)]
+    # Pass the volume plot to the color
+    f, ax, pl = mesh(uv3_mesh(positions), color=data, shading=NoShading, axis=(; show_axis=false))
+    positions = [Point3f(0.0, 0.5, 0), Point3f(1.0, 0.5, 0), Point3f(1, 0.5, 1), Point3f(0.0, 0.5, 1)]
+    mesh!(ax, uv3_mesh(positions); color=data, shading=NoShading)
+    f
 end

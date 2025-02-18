@@ -166,6 +166,25 @@ end
     f
 end
 
+@reference_test "Legend with scalar colors and alpha" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3, alpha = 0.5)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15, alpha = 0.5)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i", alpha = 0.5)
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i", alpha = 0.5)
+    end
+    Legend(f[1, 2], ax)
+    f
+end
+
 @reference_test "Legend overrides" begin
     f = Figure()
     ax = Axis(f[1, 1])
@@ -189,8 +208,8 @@ end
     Legend(
         f[1, 3],
         [
-            sc => (; markersize = 30),
-            [li => (; color = :red), sc => (; color = :cyan)],
+            sc => (; markersize = 30, alpha = 0.3),
+            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
             [li, sc] => Dict(:color => :cyan),
         ],
         ["Scatter", "Line and Scatter", "Another"],
@@ -303,6 +322,104 @@ end
         Axis3(f[fldmod1(i, 3)...], title = "$(revstr("x", x)) $(revstr("y", y)) $(revstr("z", z))", xreversed = x, yreversed = y, zreversed = z)
         surface!(0:0.5:10, 0:0.5:10, (x, y) -> (sin(x) + 0.5x) * (cos(y) + 0.5y))
     end
+    f
+end
+
+@reference_test "Axis3 fullbox" begin
+    f = Figure(size = (400, 400))
+    a = Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
+    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+
+    for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
+        kwargs = Dict(
+            Symbol(viskey, :spinesvisible) => false,
+            Symbol(colkey, :spinecolor_1) => :red,
+            Symbol(colkey, :spinecolor_2) => :green,
+            Symbol(colkey, :spinecolor_3) => :blue,
+            Symbol(colkey, :spinecolor_4) => :orange,
+        )
+        a = Axis3(
+            f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
+            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
+
+        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+    end
+    f
+end
+
+@reference_test "Axis3 viewmodes, xreversed, aspect, perspectiveness" begin
+    fig = Figure(size = (800, 1200))
+
+    protrusions = (40, 30, 20, 10)
+    perspectiveness = Observable(0.0)
+    cat = GeometryBasics.expand_faceviews(load(Makie.assetpath("cat.obj")))
+    cs = 1:length(Makie.coordinates(cat))
+
+    for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
+        gl = GridLayout(fig[by, bx])
+        Label(gl[0, 1:2], "viewmode = :$viewmode")
+        for (x, rev) in enumerate((true, false))
+            for (y, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
+                ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
+                    protrusions = protrusions, perspectiveness = perspectiveness)
+                mesh!(ax, cat, color = cs)
+
+                # for debug purposes
+                # layout area
+                fullarea = lift(ax.layoutobservables.computedbbox, ax.layoutobservables.protrusions) do bbox, prot
+                    mini = minimum(bbox) - Vec2(prot.left, prot.bottom)
+                    maxi = maximum(bbox) + Vec2(prot.right, prot.top)
+                    return Rect2f(mini, maxi - mini)
+                end
+                p = poly!(fig.scene, fullarea, color = RGBf(1, 0.8, 0.6), strokecolor = :red, strokewidth = 1.5)
+                translate!(p, 0, 0, -10_000)
+                # axis area = layout area - protrusions
+                p = poly!(fig.scene, ax.layoutobservables.computedbbox, color = RGBf(0.8, 0.9, 1), strokecolor = :blue, strokewidth = 1.5, linestyle = :dash)
+                translate!(p, 0, 0, -10_000)
+            end
+        end
+    end
+
+    fig
+
+    st = Stepper(fig)
+    Makie.step!(st)
+
+    perspectiveness[] = 1.0
+    Makie.step!(st)
+end
+
+@reference_test "Axis3 clipping" begin
+    # Data from Brillouin.jl
+    basis = Vec3f[[-6.2831855, 6.2831855, 6.2831855], [6.2831855, -6.2831855, 6.2831855], [6.2831855, 6.2831855, -6.2831855]]
+    fs = [[6, 3, 4, 14, 13, 5], [15, 13, 14, 17, 18, 16], [17, 14, 4, 11], [17, 11, 12, 24, 23, 18], [3, 1, 2, 12, 11, 4], [1, 3, 6, 10], [24, 12, 2, 22], [5, 13, 15, 8], [19, 20, 7, 8, 15, 16], [16, 18, 23, 19], [10, 6, 5, 8, 7, 9], [24, 22, 21, 20, 19, 23], [1, 10, 9, 21, 22, 2], [20, 21, 9, 7]]
+    verts = Vec3i[[1, -1, -2], [2, 1, -1], [1, -2, -1], [2, -1, 1], [-2, -3, -1], [-1, -3, -2], [-3, -1, -2], [-3, -2, -1], [-2, -1, -3], [-1, -2, -3], [3, 1, 2], [3, 2, 1], [-1, -2, 1], [1, -1, 2], [-2, -1, 1], [-1, 1, 2], [2, 1, 3], [1, 2, 3], [-1, 2, 1], [-2, 1, -1], [-1, 1, -2], [1, 2, -1], [1, 3, 2], [2, 3, 1]]
+    ps = map(((a,b,c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
+    ls = Point3f[]
+    for f in fs
+        append!(ls, ps[f])
+        push!(ls, ps[f[1]], Point3f(NaN))
+    end
+    _fs = decompose(GLTriangleFace, [NgonFace(f...) for f in fs])
+    m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
+
+    # Should create closed square and hexagonal cells
+    f = Figure(size = (600, 300))
+    a = Axis3(f[1, 1], aspect = :data,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    scatter!(a, ps, markersize = 30, transparency = true)
+
+    a = Axis3(f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false)
     f
 end
 

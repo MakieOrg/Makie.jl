@@ -56,6 +56,7 @@ macro reference_test(name, code)
                 # TODO, write to file and create an overview in the end, similar to the benchmark results!
                 println("Used $(mem)gb of $(round(total / 10^9; digits=3))gb RAM, time: $(elapsed)s")
             end
+            GC.gc(true)# Run GC, to catch accumulating memory early on (used RAM)
         end
     end
 end

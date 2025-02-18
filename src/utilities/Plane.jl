@@ -5,7 +5,13 @@ struct Plane{N, T}
     distance::T
 
     function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
-        return new{N, T}(normalize(normal), distance)
+        # Functions using Plane assume `normal` to be normalized. 
+        # `normalize()` turns 0 vectors into NaN vectors which we don't want, 
+        # so we explicitly handle normalization here
+        n = norm(normal)
+        ϵ = 100 * max(eps.(normal)...)
+        normalized = ifelse(n > ϵ, normal / n, Vec{N, T}(0))
+        return new{N, T}(normalized, distance)
     end
 end
 
@@ -13,7 +19,7 @@ end
     Plane(point::Point, normal::Vec)
     Plane(normal::Vec, distance::Real)
 
-Creates a Plane with the given `normal` containing the given `point`. The 
+Creates a Plane with the given `normal` containing the given `point`. The
 internal representation uses a `distance = dot(point, normal)` which can also be
 constructed directly.
 """
@@ -57,7 +63,7 @@ end
 """
     min_clip_distance(planes::Vector{<: Plane}, point)
 
-Returns the smallest absolute distance between the point each clip plane. If 
+Returns the smallest absolute distance between the point each clip plane. If
 the point is clipped by any plane, only negative distances are considered.
 """
 function min_clip_distance(planes::Vector{<: Plane}, point::VecTypes)
@@ -76,7 +82,7 @@ gl_plane_format(plane::Plane3) = to_ndim(Vec4f, plane.normal, plane.distance)
 """
     planes(rect::Rect3)
 
-Converts a 3D rect into a set of planes. Using these as clip planes will remove 
+Converts a 3D rect into a set of planes. Using these as clip planes will remove
 everything outside the rect.
 """
 function planes(rect::Rect3)
@@ -89,6 +95,16 @@ function planes(rect::Rect3)
         Plane3f(Vec3f(-1,  0,  0), -maxi[1]),
         Plane3f(Vec3f( 0, -1,  0), -maxi[2]),
         Plane3f(Vec3f( 0,  0, -1), -maxi[3])
+    ]
+end
+function planes(rect::Rect2)
+    mini = minimum(rect)
+    maxi = maximum(rect)
+    return [
+        Plane3f(Vec3f( 1,  0,  0),  mini[1]),
+        Plane3f(Vec3f( 0,  1,  0),  mini[2]),
+        Plane3f(Vec3f(-1,  0,  0), -maxi[1]),
+        Plane3f(Vec3f( 0, -1,  0), -maxi[2]),
     ]
 end
 
@@ -217,7 +233,7 @@ end
 """
     to_mesh(plane[; origin = Point3f(0), scale = 1])
 
-Generates a mesh corresponding to a finite section of the `plane` centered at 
+Generates a mesh corresponding to a finite section of the `plane` centered at
 `origin` and extending by `scale` in each direction.
 """
 function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where T
@@ -228,7 +244,7 @@ function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where T
     ps = Point3f[_origin - v1 - v2, _origin - v1 + v2, _origin + v1 - v2, _origin + v1 + v2]
     ns = [plane.normal for _ in 1:4]
     fs = GLTriangleFace[(1,2,3), (2, 3, 4)]
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; normals=ns), fs)
+    return GeometryBasics.Mesh(ps, fs; normal = ns)
 end
 
 function to_clip_space(cam::Camera, planes::Vector{<: Plane3})
@@ -284,7 +300,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
             if distances[i] * distances[j] <= 0.0 # sign change
                 # d(t) = m t + b, find t where distance d(t) = 0
                 t = - distances[i] / (distances[j]  - distances[i])
-                
+
                 # interpolating in clip_space does not work
                 p = pv * to_ndim(Point4f, (world_corners[j] - world_corners[i]) * t + world_corners[i], 1)
                 push!(zero_points, p[Vec(1,2,3)] / p[4])
