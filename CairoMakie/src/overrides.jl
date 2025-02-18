@@ -55,7 +55,7 @@ end
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     points = clip_poly(poly.clip_planes[], points, space, model)
     points = _project_position(scene, space, points, model, true)
     Cairo.move_to(screen.context, points[1]...)
@@ -92,7 +92,7 @@ draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_pol
 
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2, BezierPath}})
     model = poly.model[]::Mat4d
-    space = to_value(get(poly, :space, :data))::Symbol
+    space = poly.space[]::Symbol
     planes = poly.clip_planes[]::Vector{Plane3f}
 
     projected_shapes = map(shapes) do shape
@@ -178,7 +178,7 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     projected_polys = map(polygons) do polygon
         return project_polygon(poly, space, polygon, poly.clip_planes[], model)
     end
@@ -203,7 +203,7 @@ end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     projected_polys = map(polygons) do polygon
         project_multipolygon(poly, space, polygon, poly.clip_planes[], model)
     end
@@ -262,7 +262,7 @@ function draw_plot(scene::Scene, screen::Screen,
         color = coloralpha(basecolor, alpha(basecolor) * band.alpha[])
 
         model = band.model[]
-        space = to_value(get(band, :space, :data))
+        space = band.space[]
 
         upperpoints = band[1][]
         lowerpoints = band[2][]
@@ -312,7 +312,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
     model = pol.model[]
-    space = to_value(get(pol, :space, :data))
+    space = pol.space[]
     projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(tric.clip_planes[]), Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
