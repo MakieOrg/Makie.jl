@@ -1,3 +1,5 @@
+using InteractiveUtils: subtypes
+
 # Minimal sanity checks for Makie Layout
 @testset "Blocks constructors" begin
     fig = Figure()
@@ -16,6 +18,13 @@
     tb = fig[end + 1, :] = Textbox(fig)
     is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
+end
+
+@testset "Generic Block functionality" begin
+    for T in subtypes(Makie.Block)
+        T === Makie.AbstractAxis && continue
+        @test propertynames(T) isa Vector{Symbol}
+    end
 end
 
 @testset "deleting from axis" begin
