@@ -771,7 +771,7 @@ end
     fig
 end
 
-@testset "Voxel uvs" begin
+@reference_test "Voxel uvs" begin
     texture = FileIO.load(Makie.assetpath("debug_texture.png"))
     f,a,p = voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
     st = Stepper(f)
