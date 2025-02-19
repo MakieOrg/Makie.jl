@@ -424,3 +424,123 @@
     image!(scene2, full_screen, colormap = :viridis)
     scene2
 end
+
+
+@reference_test "DataInspector" begin
+    scene = Scene(camera = campixel!, size = (290, 140))
+
+    p1 = scatter!(scene, Point2f(20), markersize = 30)
+    p2 = meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
+    p3 = lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
+    p4 = linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
+    p5 = mesh!(scene, Rect2f(10, 80, 40, 40))
+    p6 = surface!(scene, 60..100, 80..120, [1 2; 3 4])
+    p7 = heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
+    p8 = image!(scene, 120..160, 60..100, [1 2; 3 4])
+
+    # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
+    p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
+    p10 = arrows!(scene, Point2f[(200, 30)], Vec2f[(0, 20)], linewidth = 5, arrowsize = Vec3f(20))
+    p11 = arrows!(scene, Point3f[(220, 80, 0)], Vec3f[(-30, -10, 0)], linewidth = 5, arrowsize = Vec3f(15))
+    p12 = contourf!(scene, 240..280, 10..50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
+    p13 = spy!(scene, 240..280, 60..100, [1 2 1; 2 0 2; 1 2 1])
+    p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+
+    di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1, textpadding = (2,2,2,2))
+    scene
+    e = events(scene)
+    st = Makie.Stepper(scene)
+
+    # Scatter
+    e.mouseposition[] = (20, 20)
+    Makie.step!(st)
+
+    # meshscatter
+    e.mouseposition[] = (90, 20)
+    Makie.step!(st)
+
+    # no hover (verify cleanup, sanity check)
+    e.mouseposition[] = (0, 0)
+    @test tt.visible[] == false
+    @test isempty(di.temp_plots)
+    Makie.step!(st)
+
+    # lines
+    e.mouseposition[] = (20, 40)
+    Makie.step!(st)
+    e.mouseposition[] = (40, 30)
+    Makie.step!(st)
+
+
+    # linesegments
+    e.mouseposition[] = (30, 60)
+    Makie.step!(st)
+    e.mouseposition[] = (55, 50)
+    Makie.step!(st)
+
+    # mesh
+    e.mouseposition[] = (30, 100)
+    Makie.step!(st)
+
+    # surface
+    e.mouseposition[] = (90, 110)
+    Makie.step!(st)
+
+    # heatmap
+    e.mouseposition[] = (130, 20)
+    Makie.step!(st)
+
+    # image
+    e.mouseposition[] = (150, 90)
+    Makie.step!(st)
+
+    # barplot
+    e.mouseposition[] = (200, 10)
+    Makie.step!(st)
+
+    # arrows
+    e.mouseposition[] = (200, 35) # 2D tail
+    Makie.step!(st)
+    e.mouseposition[] = (200, 45) # 2D head
+    Makie.step!(st)
+    e.mouseposition[] = (217, 79) # 3D tail
+    Makie.step!(st)
+    e.mouseposition[] = (181, 67) # 3D head
+    Makie.step!(st)
+
+    # contourf
+    e.mouseposition[] = (260, 30)
+    Makie.step!(st)
+
+    # spy
+    e.mouseposition[] = (260, 90)
+    Makie.step!(st)
+
+    # band
+    e.mouseposition[] = (205, 110)
+    Makie.step!(st)
+
+    st
+end
+
+@reference_test "DataInspector 2" begin
+    f = Figure(size = (500, 300))
+    a,p = volumeslices(f[1,1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
+    x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
+    y = sin.(2:2:20000) .* sin.(5:5:50000)
+    a, p2 = datashader(f[1, 2], Point2f.(x, y))
+    Colorbar(f[1,3], p2)
+    DataInspector(f)
+
+    st = Makie.Stepper(f)
+    e = events(scene)
+
+    e.mouseposition[] = (76, 194) # volumeslices
+    Makie.step!(st)
+    # e.mouseposition[] = (349, 141) # datashader <- broken
+    # Makie.step!(st)
+    e.mouseposition[] = (205, 260) # reset
+    Makie.step!(st)
+
+    st
+end

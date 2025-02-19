@@ -15,8 +15,8 @@
         @test Makie.color2text("img", 5, 7, RGBAf(0.6, 0.77777, 0.5, 0.3)) == "img[5, 7] = RGBA(0.60, 0.78, 0.50, 0.30)"
     end
 
-    # TODO: Consider moving this to GeometryBasics
-    @testset "Ray Math" begin
+    # TODO: Consider moving this to GeometryBasics (with ray intersection math)
+    @testset "2D position resolution" begin
         @testset "closest_point_on_line" begin
             @test Makie.closest_point_on_line(Point2(0, -1), (0, 1), Vec2(1,0)) == Point2(0.0, 0.0)
             @test Makie.closest_point_on_line(Point2f(0, 1), Point2f(2, 3), Vec2f(0,3)) == Point2f(1.0, 2.0)
