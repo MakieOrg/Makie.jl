@@ -21,16 +21,17 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
     Makie.register_computation!(plot.args[1]::Makie.ComputeGraph,
             [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :_lowclip, :_highclip],
             [:cairo_colors]
-        ) do (color, colorrange, colormap, nan_color, lowclip, highclip), changed, cached
-
+        ) do inputs, changed, cached
+        (color, colorrange, colormap, nan_color, lowclip, highclip) = inputs
         # colormapping
         if color[] isa AbstractVector{<:Real} || color[] isa Real
-            output = isnothing(cached) ? Vector{RGBAf}(undef, length(color[])) : cached[1][]
-            for (i, v) in enumerate(color[])
-                output[i] = sample_color(colormap[], v, colorrange[], lowclip[], highclip[], nan_color[])
+            output = map(color[]) do v
+                return sample_color(colormap[], v, colorrange[], lowclip[], highclip[], nan_color[])
             end
             return (output,)
         else # Raw colors
+            # Skip calculation if anything else changed
+            !isnothing(last) && !changed[1] && return nothing
             return (color[],)
         end
     end
@@ -126,9 +127,6 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
     end
     nothing
 end
-
-
-
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))

@@ -320,7 +320,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
             # Generate complex defaults
             robj = assemble_scatter_robj(atlas, attr.outputs[:marker][],
-                attr.outputs[:space][], attr.outputs[:markerspace][], args[1:7]...) do data
+                attr.outputs[:space][], attr.outputs[:markerspace][], values(args)[1:7]...) do data
 
                 # Generate name mapping
                 isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
@@ -343,7 +343,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
                 robj.vertexarray.bufferlength = length(args[3][])
                 # robj.vertexarray.indices = length(args[3][])
             end
-            update_robjs!(robj, args[3:end], changed[3:end], gl_names[3:end])
+            update_robjs!(robj, values(args)[3:end], values(changed)[3:end], gl_names[3:end])
 
         end
         screen.requires_update = true
@@ -558,7 +558,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
 
-            robj = assemble_lines_robj(args[1:7]..., attr[:linestyle]) do data
+            robj = assemble_lines_robj(values(args)[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
                 isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
@@ -576,7 +576,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
         else
             robj = output[1][]
-            update_robjs!(robj, args[4:end], changed[4:end], gl_names[4:end])
+            update_robjs!(robj, values(args)[4:end], values(changed)[4:end], gl_names[4:end])
         end
         screen.requires_update = true
         return (robj,)
@@ -689,7 +689,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
         if isnothing(output)
-            robj = assemble_linesegments_robj(args[1:7]..., attr[:linestyle]) do data
+            robj = assemble_linesegments_robj(values(args)[1:7]..., attr[:linestyle]) do data
 
                 # Generate name mapping
                 isnothing(get(data, :intensity, nothing)) || (input2glname[:synched_color] = :intensity)
@@ -712,7 +712,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
                 @assert gl_names[4] === :vertex
                 robj.vertexarray.indices = length(args[4][])
             end
-            update_robjs!(robj, args[4:end], changed[4:end], gl_names[4:end])
+            update_robjs!(robj, values(args)[4:end], values(changed)[4:end], gl_names[4:end])
         end
         screen.requires_update = true
         return (robj,)

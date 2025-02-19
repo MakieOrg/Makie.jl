@@ -66,9 +66,19 @@ function ComputeEdge(f, input, output)
     )
 end
 
+function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
+    values = ntuple(i -> dirty[i], length(Names))
+    return NamedTuple{Names,NTuple{length(Names),Bool}}(values)
+end
+
 function TypedEdge(edge::ComputeEdge)
-    inputs = ntuple(i -> edge.inputs[i].value, length(edge.inputs))
-    result = edge.callback(inputs, edge.inputs_dirty, nothing)
+    named_inputs = ntuple(length(edge.inputs)) do i
+        e = edge.inputs[i]
+        return e.name => e.value
+    end
+    inputs = NamedTuple(named_inputs)
+    dirty = _get_named_change(inputs, edge.inputs_dirty)
+    result = edge.callback(inputs, dirty, nothing)
 
     if result isa Tuple
         if length(result) != length(edge.outputs)
@@ -204,7 +214,6 @@ function update!(attr::ComputeGraph; kwargs...)
     end
     notify(attr.onchange)
     return attr
-
 end
 
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
@@ -239,7 +248,7 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value)
+    if isnothing(value) || is_same(edge.outputs[i][], value)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
@@ -258,21 +267,34 @@ function set_result!(edge::TypedEdge, result)
     rem = Base.tail(result)
     return set_result!(edge, rem, 1, next_val)
 end
+
+is_same(@nospecialize(a), @nospecialize(b)) = false
+function is_same(a::T, b::T) where T
+    if isbitstype(T)
+        # We can compare immutable isbits type per value with `===`
+        return a === b
+    else
+        # For mutable types, we can only compare them if they're not pointing to the same  object
+        # If they are the same, we have to give up since we cant test if they got mutated inbetween
+        # Otherwise we can compare by equivalence
+        same_object = a === b
+        return same_object ? false : a == b
+    end
+end
+
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
-        result = edge.callback(edge.inputs, edge.inputs_dirty, edge.outputs)
+        dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
+        result = edge.callback(edge.inputs, dirty, edge.outputs)
         if result === :deregister
             # TODO
         elseif result isa Tuple
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end
-            result_diff = map(result, edge.outputs) do r, o
-                r !== o[] && r == o[] ? nothing : r
-            end
-            set_result!(edge, result_diff)
+            set_result!(edge, result)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else

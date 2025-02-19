@@ -473,7 +473,7 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_colormapping!(attr)
     register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
                           [:data_limits]) do args, changed, last
-        return (_boundingbox(getindex.(args)...),)
+        return (_boundingbox(map(getindex, args)...),)
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
