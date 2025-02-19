@@ -55,9 +55,9 @@ end
 ### dealing with markersize and rotations
 ########################################
 
-_to_scale(f::AbstractFloat, idx) = Vec3f(f)
-_to_scale(v::Vec2f, idx) = Vec3f(v[1], v[2], 1)
-_to_scale(v::Vec3f, idx) = v
+_to_scale(f::Real, idx) = Vec3f(f)
+_to_scale(v::VecTypes{2}, idx) = Vec3f(v[1], v[2], 1)
+_to_scale(v::VecTypes{3}, idx) = v
 _to_scale(v::Vector, idx) = _to_scale(v[idx], idx)
 
 _to_rotation(x, idx) = to_rotation(x)
