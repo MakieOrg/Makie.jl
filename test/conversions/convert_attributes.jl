@@ -27,8 +27,8 @@ using Makie.Colors
         @test convert_attribute(wrap(I), key) == wrap(Mat{2, 3, Float32}(1,0,0,1,0,0))
 
         # Named
-        @test convert_attribute(wrap(:rotr90), key)  == wrap(Mat{2, 3, Float32}(0, -1, 1, 0, 0, 1))
-        @test convert_attribute(wrap(:rotl90), key)  == wrap(Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0))
+        @test convert_attribute(wrap(:rotr90), key)  == wrap(Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0))
+        @test convert_attribute(wrap(:rotl90), key)  == wrap(Mat{2, 3, Float32}(0, -1, 1, 0, 0, 1))
         @test convert_attribute(wrap(:swap_xy), key) == wrap(Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0))
         @test convert_attribute(wrap(:flip_x), key)  == wrap(Mat{2, 3, Float32}(-1, 0, 0, 1, 1, 0))
         @test convert_attribute(wrap(:flip_y), key)  == wrap(Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1))
@@ -36,8 +36,8 @@ using Makie.Colors
 
         # Chaining
         @test convert_attribute(wrap((:flip_x, :flip_xy, :flip_y)), key) == wrap(Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0))
-        @test convert_attribute(wrap((:rotr90, :swap_xy)), key) == wrap(Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1))
-        @test convert_attribute(wrap((:rotl90, (Vec2f(0.5, 0.5), Vec2f(0.5, 0.5)), :flip_y)), key) == wrap(Mat{2, 3, Float32}(0, 0.5, 0.5, 0, 0, 0.5))
+        @test convert_attribute(wrap((:rotr90, :swap_xy)), key) == wrap(Mat{2, 3, Float32}(-1, 0, 0, 1, 1, 0))
+        @test convert_attribute(wrap((:rotl90, (Vec2f(0.5, 0.5), Vec2f(0.5, 0.5)), :flip_y)), key) == wrap(Mat{2, 3, Float32}(0.0, -0.5, -0.5, 0.0, 1.0, 0.5))
     end
 
     @test convert_attribute(nothing, key) === nothing

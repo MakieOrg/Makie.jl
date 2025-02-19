@@ -63,8 +63,8 @@ function mixin_generic_plot_attributes()
         overdraw = false
         "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
         ssao = false
-        "sets whether this plot should be seen by `DataInspector`."
-        inspectable = true
+        "Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene."
+        inspectable = @inherit inspectable
         "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
         depth_shift = 0.0f0
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
@@ -275,32 +275,38 @@ end
     volume(volume_data)
     volume(x, y, z, volume_data)
 
-Plots a volume, with optional physical dimensions `x, y, z`.
-Available algorithms are:
-* `:iso` => IsoValue
-* `:absorption` => Absorption
-* `:mip` => MaximumIntensityProjection
-* `:absorptionrgba` => AbsorptionRGBA
-* `:additive` => AdditiveRGBA
-* `:indexedabsorption` => IndexedAbsorptionRGBA
+Plots a volume with optional physical dimensions `x, y, z`.
+
+All volume plots are derived from casting rays for each drawn pixel. These rays
+intersect with the volume data to derive some color, usually based on the given
+colormap. How exactly the color is derived depends on the algorithm used.
 """
 @recipe Volume (
         x::EndPoints,
         y::EndPoints,
         z::EndPoints,
-        volume::AbstractArray{Float32,3}
+        # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
+        volume::AbstractArray{<: Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3}
     ) begin
-    "Sets the volume algorithm that is used."
+    """
+    Sets the volume algorithm that is used. Available algorithms are:
+    * `:iso`: Shows an isovalue surface within the given float data. For this only samples within `isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
+    * `:absorption`: Accumulates color based on the float values sampled from volume data. At each ray step (starting from the front) a value is sampled from the volume data and then used to sample the colormap. The resulting color is weighted by the ray step size and blended the previously accumulated color. The weight of each step can be adjusted with the multiplicative `absorption` attribute.
+    * `:mip`: Shows the maximum intensity projection of the given float data. This derives the color of a pixel from the largest value sampled from the respective ray.
+    * `:absorptionrgba`: This algorithm matches :absorption, but samples colors directly from RGBA volume data. For each ray step a color is sampled from the data, weighted by the ray step size and blended with the previously accumulated color. Also considers `absorption`.
+    * `:additive`: Accumulates colors using `accumulated_color = 1 - (1 - accumulated_color) * (1 - sampled_color)` where `sampled_color` is a sample of volume data at the current ray step.
+    * `:indexedabsorption`: This algorithm acts the same as :absorption, but interprets the volume data as indices. They are used as direct indices to the colormap. Also considers `absorption`.
+    """
     algorithm = :mip
-    "Sets the target value for the IsoValue algorithm."
+    "Sets the target value for the :iso algorithm. `accepted = isovalue - isorange < value < isovalue + isorange`"
     isovalue = 0.5
-    "Sets the range of values picked up by the IsoValue algorithm."
+    "Sets the maximum accepted distance from the isovalue for the :iso algorithm. `accepted = isovalue - isorange < value < isovalue + isorange`"
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
-    "Enables depth write for Volume, so that volume correctly occludes other objects."
+    "Enables depth write for :iso so that volume correctly occludes other objects."
     enable_depth = true
-    "Absorption multiplier for algorithm=:absorption. This changes how much light each voxel absorbs."
+    "Absorption multiplier for algorithm = :absorption, :absorptionrgba and :indexedabsorption. This changes how much light each voxel absorbs."
     absorption = 1f0
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
@@ -612,15 +618,27 @@ Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
 being an invisible "air" voxel. Passing a chunk with matching type will directly
 set those values. Note that color handling is specialized for the internal
 representation and may behave a bit differently than usual.
+
+Note that `voxels` is currently considered experimental and may still see breaking
+changes in patch releases.
 """
 @recipe Voxels begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
     is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     """
-    Defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
-    are then used to sample a 2D texture passed through `color` for texture mapping.
+    Deprecated - use uv_transform
     """
     uvmap = nothing
+    """
+    To use texture mapping `uv_transform` needs to be defined and `color` needs to be an image.
+    The `uv_transform` can be given as a `Vector` where each index maps to a `UInt8` voxel id (skipping 0),
+    or as a `Matrix` where the second index maps to a side following the order `(-x, -y, -z, +x, +y, +z)`.
+    Each element acts as a `Mat{2, 3, Float32}` which is applied to `Vec3f(uv, 1)`, where uv's are generated to run from 0..1 for each voxel.
+    The result is then used to sample the texture.
+    UV transforms have a bunch of shorthands you can use, for example `(Point2f(x, y), Vec2f(xscale, yscale))`.
+    They are listed in `?Makie.uv_transform`.
+    """
+    uv_transform = nothing
     "Controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated)."
     interpolate = false
     """

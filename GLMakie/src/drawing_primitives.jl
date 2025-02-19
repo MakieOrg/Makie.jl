@@ -454,92 +454,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatt
     end
 end
 
-# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
-#     return cached_robj!(screen, scene, plot) do gl_attributes
-#         linestyle = pop!(gl_attributes, :linestyle)
-#         miter_limit = pop!(gl_attributes, :miter_limit)
-#         data = Dict{Symbol, Any}(gl_attributes)
-#         data[:miter_limit] = map(x -> Float32(cos(pi - x)), plot, miter_limit)
-#         positions = handle_view(plot[1], data)
-#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-#             Vec2f(ppu * origin(viewport))
-#         end
-#         space = plot.space
-
-#         # Handled manually without using OpenGL clipping
-#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-#         data[:num_clip_planes] = Observable(0)
-#         pop!(data, :clip_planes)
-#         data[:clip_planes] = map(plot, data[:projectionview], plot.clip_planes, space) do pv, planes, space
-#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
-
-#             clip_planes = Makie.to_clip_space(pv, planes)
-
-#             output = Vector{Vec4f}(undef, 8)
-#             for i in 1:min(length(planes), 8)
-#                 output[i] = Makie.gl_plane_format(clip_planes[i])
-#             end
-#             for i in min(length(planes), 8)+1:8
-#                 output[i] = Vec4f(0, 0, 0, -1e9)
-#             end
-#             return output
-#         end
-
-#         if isnothing(to_value(linestyle))
-#             data[:pattern] = nothing
-#             data[:fast] = true
-
-#             positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-#         else
-#             data[:pattern] = linestyle
-#             data[:fast] = false
-
-#             # TODO: Skip patch_model() when this branch is used
-#             pop!(data, :f32c)
-#             pvm = lift(plot, data[:projectionview], plot.model, f32_conversion_obs(scene), space) do pv, model, f32c, space
-#                 Makie.Mat4d(pv) * Makie.f32_convert_matrix(f32c, space) * model
-#             end
-#             transform_func = transform_func_obs(plot)
-#             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-#                 transformed = apply_transform(f, ps, space)
-#                 output = Vector{Point4f}(undef, length(transformed))
-#                 for i in eachindex(transformed)
-#                     output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
-#                 end
-#                 output
-#             end
-#         end
-
-#         if haskey(data, :intensity)
-#             data[:color] = pop!(data, :intensity)
-#         end
-
-#         return draw_lines(screen, positions, data)
-#     end
-# end
-
-# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::LineSegments))
-#     return cached_robj!(screen, scene, plot) do gl_attributes
-#         data = Dict{Symbol, Any}(gl_attributes)
-#         data[:pattern] = pop!(data, :linestyle)
-#         data[:scene_origin] = map(plot, data[:px_per_unit], scene.viewport) do ppu, viewport
-#             Vec2f(ppu * origin(viewport))
-#         end
-
-#         # Handled manually without using OpenGL clipping
-#         data[:_num_clip_planes] = pop!(data, :num_clip_planes)
-#         data[:num_clip_planes] = Observable(0)
-
-#         positions = handle_view(plot[1], data)
-#         positions = apply_transform_and_f32_conversion(plot, pop!(data, :f32c), positions)
-#         if haskey(data, :intensity)
-#             data[:color] = pop!(data, :intensity)
-#         end
-
-#         return draw_linesegments(screen, positions, data)
-#     end
-# end
-
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     return cached_robj!(screen, scene, plot) do gl_attributes
@@ -892,6 +806,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
+        elseif haskey(gl_attributes, :color)
+            color = pop!(gl_attributes, :color)
+            return draw_volume(screen, Tex(color), gl_attributes)
         else
             return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
@@ -977,15 +894,36 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         get!(gl_attributes, :color_map, nothing)
 
         # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap)
-        if !isnothing(to_value(uv_map))
-            gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
+        uv_map = pop!(gl_attributes, :uvmap, nothing)
+        uv_transform = pop!(gl_attributes, :uv_transform)
+
+        if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+            end
+
+            if !isnothing(to_value(uv_transform))
+                # new
+                packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+            else
+                # old, deprecated
+                @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+                packed = map(uv_map) do uvmap
+                    raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+                    converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+                    return Makie.pack_voxel_uv_transform(converted_uvt)
+                end
+            end
+            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
             interp = to_value(pop!(gl_attributes, :interpolate))
             interp = interp ? :linear : :nearest
             color = gl_attributes[:color]
             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
         elseif !isnothing(to_value(gl_attributes[:color]))
+            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+            end
             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
         end
 
