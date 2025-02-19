@@ -383,18 +383,19 @@ function assemble_lines_robj(
 end
 
 # Observables removed and adjusted to fit Compute Pipeline
-function generate_indices(positions, changed, cached)
-    if isnothing(cached)
-        indices = Cuint[]
-        valid = Float32[]
-    else
-        indices = empty!(cached[1][])
-        valid = cached[2][]
+# Observables removed and adjusted to fit Compute Pipeline
+function generate_indices(ps, indices=Cuint[], valid=Float32[])
+    empty!(indices)
+    resize!(valid, length(ps))
+
+    # can't draw a line with less than 2 points so there are no indices to generate
+    # and valid is irrelevant
+    if length(ps) < 2
+        valid .= 0 # just in case random data is problematic
+        return (indices, valid)
     end
 
-    ps = positions[1][]
     sizehint!(indices, length(ps) + 2)
-    resize!(valid, length(ps))
 
     # This loop identifies sections of line points A B C D E F bounded by
     # the start/end of the list ps or by NaN and generates indices for them:
@@ -418,42 +419,41 @@ function generate_indices(positions, changed, cached)
             if last_start_idx == -1
                 # place nan before section of line vertices
                 # (or duplicate ps[1])
-                push!(indices, i-1)
+                push!(indices, max(1, i - 1))
                 last_start_idx = length(indices) + 1
                 last_start_pos = p
             end
             # add line vertex
             push!(indices, i)
 
-        # case loop (loop index set, loop contains at least 3 segments, start == end)
-        elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-                (ps[max(1, i-1)] ≈ last_start_pos)
+            # case loop (loop index set, loop contains at least 3 segments, start == end)
+        elseif (last_start_idx != -1) &&
+            (length(indices) - last_start_idx > 2) &&
+            (ps[max(1, i - 1)] ≈ last_start_pos)
 
             # add ghost vertices before an after the loop to cleanly connect line
-            indices[last_start_idx-1] = max(1, i-2)
-            push!(indices, indices[last_start_idx+1], i)
+            indices[last_start_idx - 1] = max(1, i - 2)
+            push!(indices, indices[last_start_idx + 1], i)
             # mark the ghost vertices
-            valid[i-2] = 2
-            valid[indices[last_start_idx+1]] = 2
+            valid[i - 2] = 2
+            valid[indices[last_start_idx + 1]] = 2
             # not in loop anymore
             last_start_idx = -1
 
-        # non-looping line end
+            # non-looping line end
         elseif (last_start_idx != -1) # effective "last index not NaN"
             push!(indices, i)
             last_start_idx = -1
-        # else: we don't need to push repeated NaNs
+            # else: we don't need to push repeated NaNs
         end
     end
 
     # treat ps[end+1] as NaN to correctly finish the line
-    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-            (ps[end] ≈ last_start_pos)
-
-        indices[last_start_idx-1] = length(ps) - 1
-        push!(indices, indices[last_start_idx+1])
-        valid[end-1] = 2
-        valid[indices[last_start_idx+1]] = 2
+    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) && (ps[end] ≈ last_start_pos)
+        indices[last_start_idx - 1] = length(ps) - 1
+        push!(indices, indices[last_start_idx + 1])
+        valid[end - 1] = 2
+        valid[indices[last_start_idx + 1]] = 2
     elseif last_start_idx != -1
         push!(indices, length(ps))
     end
@@ -463,7 +463,18 @@ function generate_indices(positions, changed, cached)
     return (indices, valid)
 end
 
-
+function generate_indices(positions::NamedTuple, changed::NamedTuple, cached)
+    if isnothing(cached)
+        indices = Cuint[]
+        valid = Float32[]
+    else
+        indices = empty!(cached[1][])
+        valid = cached[2][]
+    end
+    ps = positions[1][]
+    indices, valid = generate_indices(ps, indices, valid)
+    return (indices, valid)
+end
 
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
