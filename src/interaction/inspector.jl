@@ -949,7 +949,7 @@ function show_poly(inspector, plot, poly, idx, source)
             p = lines!(
                 scene, line_collection, color = a.indicator_color,
                 transformation = Transformation(source),
-                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
             )
             push!(inspector.temp_plots, p)
@@ -1035,7 +1035,7 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
                     scene, [P1, P2], transformation = Transformation(plot.transformation),
-                    color = a.indicator_color, strokewidth = a.indicator_linewidth,
+                    color = a.indicator_color, linewidth = a.indicator_linewidth,
                     linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false,
                     depth_shift = -1f-3
