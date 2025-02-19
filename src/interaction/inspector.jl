@@ -1,11 +1,11 @@
 ### indicator data -> string
 ########################################
 
-vec2string(p::StaticVector{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
-vec2string(p::StaticVector{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
+vec2string(p::VecTypes{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
+vec2string(p::VecTypes{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
 
-position2string(p::StaticVector{2}) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
-position2string(p::StaticVector{3}) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
+position2string(p::VecTypes{2}) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
+position2string(p::VecTypes{3}) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3)
     p0 = origin(bbox)
@@ -1083,10 +1083,7 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     idx2d = spy._index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
         z = spy.z[][idx2d...]
-        tt.text[] = @sprintf(
-            "x: %0.6f\ny: %0.6f\nz: %0.6f",
-            idx2d..., z
-        )
+        tt.text[] = color2text("spy", idx2d..., z)
     else
         tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
     end
