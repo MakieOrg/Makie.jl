@@ -22,6 +22,7 @@
 - Fixed `Plane(Vec{N, T}(0), dist)` producing a `NaN` normal, which caused WGLMakie to break. (E.g. when rotating Axis3) [#4772](https://github.com/MakieOrg/Makie.jl/pull/4772)
 - Changed `inspectable` to be inherited from the parent scenes theme. [#4739](https://github.com/MakieOrg/Makie.jl/pull/4739)
 - Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
+- Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
 
 ## [0.22.1] - 2025-01-17
 
