@@ -67,13 +67,13 @@ _to_rotation(x::Vector, idx) = to_rotation(x[idx])
 ### Selecting a point on a nearby line
 ########################################
 
-function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
+function closest_point_on_line(A::VecTypes{2}, B::VecTypes{2}, P::VecTypes{2})
     # This only works in 2D
     AP = P .- A; AB = B .- A
-    A .+ AB * dot(AP, AB) / dot(AB, AB)
+    return A .+ AB .* clamp(dot(AP, AB) / dot(AB, AB), 0, 1)
 end
 
-function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6)
+function point_in_triangle(A::VecTypes{2}, B::VecTypes{2}, C::VecTypes{2}, P::VecTypes{2}, ϵ = 1e-6)
     # adjusted from ray_triangle_intersection
     AO = A .- P
     BO = B .- P
@@ -82,6 +82,7 @@ function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6
     A2 = 0.5 * (CO[1] * AO[2] - CO[2] * AO[1])
     A3 = 0.5 * (AO[1] * BO[2] - AO[2] * BO[1])
 
+    # ϵ > 0 gives bias to `true`
     return (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
 end
 
@@ -121,9 +122,10 @@ end
 
 Given a quad
 
-A --- B
-|     |
-D --- C
+   A --- B
+  /       \
+ /    __-- C
+D -'''
 
 this computes parameter `f` such that the line from `A + f * (B - A)` to
 `D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is
