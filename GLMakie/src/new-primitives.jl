@@ -16,28 +16,29 @@ end
 ### Generic (more or less)
 ################################################################################
 
-function update_robjs!(robj, args, changed, gl_names)
-    for (name, arg, has_changed) in zip(gl_names, args, changed)
-        if has_changed
-            if name === :visible
-                robj.visible = arg[]
-            elseif name === :indices
-                if robj.vertexarray.indices isa GLAbstraction.GPUArray
-                    GLAbstraction.update!(robj.vertexarray.indices, arg[])
-                else
-                    robj.vertexarray.indices = arg[]
-                end
-            elseif haskey(robj.uniforms, name)
-                if robj.uniforms[name] isa GLAbstraction.GPUArray
-                    GLAbstraction.update!(robj.uniforms[name], arg[])
-                else
-                    robj.uniforms[name] = arg[]
-                end
-            elseif haskey(robj.vertexarray.buffers, string(name))
-                GLAbstraction.update!(robj.vertexarray.buffers[string(name)], arg[])
+function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Dict{Symbol,Symbol})
+    for name in keys(args)
+        changed[name] || continue
+        value = args[name][]
+        gl_name = get(gl_names, name, name)
+        if name === :visible
+            robj.visible = value
+        elseif gl_name === :indices
+            if robj.vertexarray.indices isa GLAbstraction.GPUArray
+                GLAbstraction.update!(robj.vertexarray.indices, value)
             else
-                # println("Could not update ", name)
+                robj.vertexarray.indices = value
             end
+        elseif haskey(robj.uniforms, gl_name)
+            if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
+                GLAbstraction.update!(robj.uniforms[gl_name], value)
+            else
+                robj.uniforms[gl_name] = value
+            end
+        elseif haskey(robj.vertexarray.buffers, string(gl_name))
+            GLAbstraction.update!(robj.vertexarray.buffers[string(gl_name)], value)
+        else
+            # println("Could not update ", name)
         end
     end
 end
@@ -81,71 +82,52 @@ end
 
 # For use with register!(...)
 
-function generate_clip_planes!(attr, target_space::Symbol = :data)
-
-    if target_space === :data
-
-        register_computation!(attr, [:clip_planes, :space], [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, cached
-            output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
-            planes = input[1][]
-
-            if length(planes) > 8
-                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-            end
-
-            if Makie.is_data_space(input[2][])
-                N = min(8, length(planes))
-                for i in 1:N
-                    output[i] = Makie.gl_plane_format(planes[i])
-                end
-                for i in N+1 : 8
-                    output[i] = Vec4f(0, 0, 0, -1e9)
-                end
-            else
-                output .= Ref(Vec4f(0, 0, 0, -1e9))
-                N = 0
-            end
-
-            return (output, Int32(N))
-        end
-
-    elseif target_space === :clip
-
-        register_computation!(attr,
-            [:clip_planes, :space, :projectionview],
-            [:gl_clip_planes, :gl_num_clip_planes]
-        ) do input, changed, cached
-
-            output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
-            planes = input[1][]
-
-            if length(planes) > 8
-                @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-            end
-
-            if Makie.is_data_space(input[2][])
-                N = min(8, length(planes))
-                planes = Makie.to_clip_space(input[3][], planes) # this got added
-                for i in 1:N
-                    output[i] = Makie.gl_plane_format(planes[i])
-                end
-                for i in N+1 : 8
-                    output[i] = Vec4f(0, 0, 0, -1e9)
-                end
-            else
-                output .= Ref(Vec4f(0, 0, 0, -1e9))
-                N = 0
-            end
-
-            return (output, Int32(N))
-        end
-
-    else
-        # model for volume, voxels
-        error("TODO")
-
+function generate_clip_planes(planes, space, output)
+    if length(planes) > 8
+        @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
     end
+    if Makie.is_data_space(space)
+        N = min(8, length(planes))
+        for i in 1:N
+            output[i] = Makie.gl_plane_format(planes[i])
+        end
+        for i in N+1 : 8
+            output[i] = Vec4f(0, 0, 0, -1e9)
+        end
+    else
+        fill!(output, Vec4f(0, 0, 0, -1e9))
+        N = 0
+    end
+    return (output, Int32(N))
+end
 
+function generate_clip_planes(pvm, planes, space, output)
+    planes = Makie.to_clip_space(pvm, planes)
+    return generate_clip_planes(planes, space, output)
+end
+
+
+function generate_clip_planes!(attr, target_space::Symbol = :data)
+    if !haskey(attr, :projectionview)
+        scene = attr[:scene][]
+        # is projectionview enough to trigger on scene resize in all cases?
+        add_input!(attr, :projectionview, scene.camera.projectionview[])
+        on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+    end
+    register_computation!(
+        attr, [:clip_planes, :space, :projectionview], [:gl_clip_planes, :gl_num_clip_planes]
+    ) do input, changed, cached
+        output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
+        planes = input.clip_planes[]
+        if target_space === :data
+            if changed.projectionview && !changed.space && !changed.clip_planes
+                return nothing # ignore projectionview
+            end
+            return generate_clip_planes(planes, input.space[], output)
+        else
+            return generate_clip_planes(input.projectionview[], planes, input.space[], output)
+        end
+    end
     return
 end
 
@@ -153,50 +135,72 @@ end
 ### Scatter
 ################################################################################
 
-function assemble_scatter_robj(
-        add_uniforms!,
-        atlas, marker,
-        space, markerspace, # TODO: feels incomplete to me... Do matrices react correctly? What about markerspace with FastPixel?
-        scene, screen,
-        positions, # TODO: can probably be avoided by rewriting draw_scatter()
-        colormap, color, colornorm,
-        marker_shape
-    )
-
-    camera = scene[].camera
-    fast_pixel = marker isa FastPixel
+function assemble_scatter_robj(attr, args, uniforms, input2glname)
+    positions = args[1][]
+    screen = args.gl_screen[]
+    camera = args.scene[].camera
+    space = attr[:space][]
+    markerspace = attr[:markerspace][]
+    fast_pixel = attr[:marker][] isa FastPixel
     pspace = fast_pixel ? space : markerspace
-    distancefield = marker_shape[] === Cint(DISTANCEFIELD) ? get_texture!(screen[].glscreen, atlas) : nothing
+    colormap = args.alpha_colormap[]
+    color = args.scaled_color[]
+    colornorm = args.scaled_colorrange[]
+    marker_shape = args.sdf_marker_shape[]
+    distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas[]) : nothing
     data = Dict(
-        :vertex => positions[],
-        :indices => length(positions[]),
+        :vertex => positions,
+        :indices => length(positions),
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :distancefield => distancefield,
-        :px_per_unit => screen[].px_per_unit,   # technically not const?
+        :px_per_unit => screen.px_per_unit,   # technically not const?
         :ssao => false,                         # shader compilation const
-        :shape => marker_shape[],
+        :shape => marker_shape,
     )
 
-    add_color_attributes!(data, color[], colormap[], colornorm[])
-    add_camera_attributes!(data, screen[], camera, pspace)
+    add_color_attributes!(data, color, colormap, colornorm)
+    add_camera_attributes!(data, screen, camera, pspace)
 
-    add_uniforms!(data)
-
+    # Correct the name mapping
+    if !isnothing(get(data, :intensity, nothing))
+        input2glname[:scaled_color] = :intensity
+    end
+    if !isnothing(get(data, :image, nothing))
+        input2glname[:scaled_color] = :image
+    end
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
     if fast_pixel
-        return draw_pixel_scatter(screen[], positions[], data)
+        return draw_pixel_scatter(screen, positions, data)
     else
         # pass nothing to avoid going into image generating functions
-        return draw_scatter(screen[], (nothing, positions[]), data)
+        return draw_scatter(screen, (nothing, positions), data)
     end
+end
+
+
+function depthsort!(positions, depth_vals, indices, pvm)
+    pvm24 = pvm[Vec(3, 4), Vec(1, 2, 3, 4)] # only calculate zw
+    resize!(depth_vals, length(positions))
+    resize!(indices, length(positions))
+    map!(depth_vals, positions) do p
+        p4d = pvm24 * to_ndim(Point4f, to_ndim(Point3f, p, 0.0f0), 1.0f0)
+        return p4d[1] / p4d[2]
+    end
+    sortperm!(indices, depth_vals; rev=true)
+    indices .-= 1
+    return depth_vals, indices
 end
 
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     attr = plot.args[1]
-    add_input!(plot.args[1], :scene, scene)
+    add_input!(attr, :scene, scene)
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
     atlas = gl_texture_atlas()
+    add_input!(attr, :atlas, atlas)
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     if attr[:depthsorting][]
@@ -209,21 +213,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             [:gl_depth_cache, :gl_indices]
         ) do (pos, _, space, model), changed, cached
             pvm = Makie.space_to_clip(scene.camera, space[]) * model[]
-            pvm24 = pvm[Vec(3,4), Vec(1,2,3,4)] # only calculate zw
-            if isnothing(cached)
-                depth_vals = Vector{Float32}(undef, length(pos[]))
-                indices = Vector{Cuint}(undef, length(pos[]))
-            else
-                depth_vals = resize!(cached[1][], length(pos[]))
-                indices = resize!(cached[2][], length(pos[]))
-            end
-            map!(depth_vals, pos[]) do p
-                p4d = pvm24 * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
-                p4d[1] / p4d[2]
-            end
-            sortperm!(indices, depth_vals, rev = true)
-            indices .-= 1
-            return (depth_vals, indices)
+            depth_vals = isnothing(cached) ? Float32[] : cached[1][]
+            indices = isnothing(cached) ? Cuint[] : cached[2][]
+            return depthsort!(pos[], depth_vals, indices, pvm)
         end
     else
         register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
@@ -231,29 +223,26 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
     end
 
+    inputs = [
+        :positions_transformed_f32c,
+        # Special
+        :scene, :gl_screen, :atlas,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange,
+        :sdf_marker_shape
+    ]
     if attr[:marker][] isa FastPixel
-
         register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
             space[] == :pixel && return (Int32(0),)
             space[] == :data  && return (Int32(1),)
             return error("Unsupported markerspace for FastPixel marker: $space")
         end
 
-        register_computation!(
-            attr,
-            [:marker],
-            [:sdf_marker_shape],
-        ) do (marker,), changed, last
+        register_computation!(attr, [:marker], [:sdf_marker_shape]) do (marker,), changed, last
             return (marker[].marker_type,)
         end
-        inputs = [
-            # Special
-            :scene, :gl_screen,
-            # Needs explicit handling
-            :positions_transformed_f32c,
-            :alpha_colormap, :scaled_color, :scaled_colorrange,
-            :sdf_marker_shape,
-            # Simple forwards
+
+        uniforms = [
             :gl_markerspace, :quad_scale,
             :transparency, :fxaa, :visible,
             :model_f32c,
@@ -265,14 +254,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     else
         Makie.all_marker_computations!(attr, 2048, 64)
 
-        inputs = [
-            # Special
-            :scene, :gl_screen,
-            # Needs explicit handling
-            :positions_transformed_f32c,
-            :alpha_colormap, :scaled_color, :scaled_colorrange,
-            :sdf_marker_shape,
-            # Simple forwards
+        # Simple forwards
+        uniforms = [
             :sdf_uv,
             :quad_scale,
             :quad_offset,
@@ -283,7 +266,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :_lowclip, :_highclip, :nan_color,
             :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
         ]
-
     end
 
     generate_clip_planes!(attr)
@@ -311,40 +293,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
         :gl_indices => :indices
     )
-    gl_names = Symbol[]
 
-    register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, last
-        screen = args[2][]
-        !isopen(screen) && return :deregister
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
         if isnothing(last)
-
             # Generate complex defaults
-            robj = assemble_scatter_robj(atlas, attr.outputs[:marker][],
-                attr.outputs[:space][], attr.outputs[:markerspace][], values(args)[1:7]...) do data
-
-                # Generate name mapping
-                isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
-                isnothing(get(data, :image, nothing)) || (input2glname[:scaled_color] = :image)
-                gl_names = get.(Ref(input2glname), inputs, inputs)
-
-                # Simple defaults
-                foreach(8:length(args)) do idx
-                    data[gl_names[idx]] = args[idx][]
-                end
-                data[:overdraw] = attr.outputs[:overdraw][]
-
-            end
-
+            robj = assemble_scatter_robj(attr, args, uniforms, input2glname)
         else
-
             robj = last[1][]
             if changed[3] # position
-                haskey(robj.uniforms, :len) && (robj.uniforms[:len][] = length(args[3][]))
-                robj.vertexarray.bufferlength = length(args[3][])
+                if haskey(robj.uniforms, :len)
+                    robj.uniforms[:len][] = length(args[1][])
+                end
+                robj.vertexarray.bufferlength = length(args[1][])
                 # robj.vertexarray.indices = length(args[3][])
             end
-            update_robjs!(robj, values(args)[3:end], values(changed)[3:end], gl_names[3:end])
-
+            update_robjs!(robj, args, changed, input2glname)
         end
         screen.requires_update = true
         return (robj,)
@@ -360,26 +324,33 @@ end
 ### Lines
 ################################################################################
 
-function assemble_lines_robj(
-        add_uniforms!, space, scene, screen,
-        positions,
-        color, colormap, colornorm,
-        linestyle,
-    )
+function assemble_lines_robj(attr, args, uniforms, input2glname)
 
-    camera = scene[].camera
+    positions = args[1][] # changes name, so we use positional
+    linestyle = attr[:linestyle][]
+    camera = args.scene[].camera
     data = Dict{Symbol, Any}(
         :ssao => false,
-        :fast => isnothing(linestyle[]),
+        :fast => isnothing(linestyle),
         # :fast == true removes pattern from the shader so we don't need
         #               to worry about this
-        :vertex => positions[], # Needs to be set before draw_lines()
+        :vertex => positions, # Needs to be set before draw_lines()
+        :overdraw => attr[:overdraw][]
     )
 
-    add_camera_attributes!(data, screen[], camera, space[])
-    add_color_attributes_lines!(data, color[], colormap[], colornorm[])
-    add_uniforms!(data)
-    return draw_lines(screen[], positions[], data)
+    add_camera_attributes!(data, args.gl_screen[], camera, args.space[])
+    add_color_attributes_lines!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
+
+    if !isnothing(get(data, :intensity, nothing))
+        input2glname[:scaled_color] = :intensity
+    end
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_lines(args.gl_screen[], positions, data)
 end
 
 # Observables removed and adjusted to fit Compute Pipeline
@@ -472,16 +443,14 @@ function generate_indices(positions::NamedTuple, changed::NamedTuple, cached)
         valid = cached[2][]
     end
     ps = positions[1][]
-    indices, valid = generate_indices(ps, indices, valid)
-    return (indices, valid)
+    return generate_indices(ps, indices, valid)
 end
-
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     attr = plot.args[1]
 
     add_input!(attr, :scene, scene)
-    add_input!(attr, :screen, screen)
+    add_input!(attr, :gl_screen, screen)
 
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
@@ -498,7 +467,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     # position calculations for patterned lines
     # is projectionview enough to trigger on scene resize in all cases?
     add_input!(attr, :projectionview, scene.camera.projectionview[])
-    on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+    on(pv -> Makie.update!(attr, projectionview = pv), plot, scene.camera.projectionview)
     register_computation!(
         attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
@@ -509,13 +478,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(
         attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
     ) do (pvm32, positions), changed, cached
-        if isnothing(cached)
-            output = Vector{Point4f}(undef, length(positions[]))
-        else
-            output = resize!(cached[1][], length(positions[]))
-        end
-        @inbounds for i in eachindex(positions[])
-            output[i] = pvm32[] * to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0.0), 1.0)
+        output = isnothing(cached) ? Point4f[] : cached[1][]
+        resize!(cached[1][], length(positions[]))
+        map!(output, positions[]) do pos
+            return pvm32[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0.0), 1.0)
         end
         return (output,)
     end
@@ -541,11 +507,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     end
 
     inputs = [
-        # relevant to compile time decisions
-        :space, :scene, :screen,
+        # relevant to creation time decisions
         positions,
-        :scaled_color, :alpha_colormap, :scaled_colorrange,
-        # Auto
+        :space, :scene, :gl_screen,
+        :scaled_color, :alpha_colormap, :scaled_colorrange
+    ]
+        # uniforms getting passed through
+    uniforms = [
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit,
@@ -554,7 +522,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :_lowclip, :_highclip, :nan_color,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
-    input2glname = Dict{Symbol, Symbol}(
+
+    input2glname = Dict(
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
@@ -562,32 +531,16 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
+        :gl_clip_planes => :clip_planes,
+        :gl_num_clip_planes => :_num_clip_planes
     )
-    gl_names = Symbol[]
 
-    register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, output
         if isnothing(output)
-
-            robj = assemble_lines_robj(values(args)[1:7]..., attr[:linestyle]) do data
-
-                # Generate name mapping
-                isnothing(get(data, :intensity, nothing)) || (input2glname[:scaled_color] = :intensity)
-                gl_names = get.(Ref(input2glname), inputs, inputs)
-
-                # Simple defaults
-                foreach(7:length(args)) do idx
-                    data[gl_names[idx]] = args[idx][]
-                end
-
-                data[:overdraw] = attr.outputs[:overdraw][]
-
-                return
-            end
-
+            robj = assemble_lines_robj(attr, args, uniforms, input2glname)
         else
             robj = output[1][]
-            update_robjs!(robj, values(args)[4:end], values(changed)[4:end], gl_names[4:end])
+            update_robjs!(robj, args, changed, input2glname)
         end
         screen.requires_update = true
         return (robj,)
@@ -604,40 +557,41 @@ end
 ### LineSegments
 ################################################################################
 
-function assemble_linesegments_robj(
-    add_uniforms!,
-    space, scene, screen,
-    positions,
-    color, colormap, colornorm,
-    linestyle,
-)
-    camera = scene[].camera
+function assemble_linesegments_robj(attr, args, uniforms, input2glname)
+    positions = args[1][] # changes name, so we use positional
+    linestyle = attr[:linestyle][]
+    camera = args.scene[].camera
 
     data = Dict{Symbol, Any}(
         :ssao => false,
-        :vertex => positions[], # TODO: can be automated
+        :vertex => positions, # TODO: can be automated
+        :overdraw => attr[:overdraw][],
+        :indices => length(positions)
     )
-
-    add_camera_attributes!(data, screen[], camera, space[])
-    add_color_attributes_lines!(data, color[], colormap[], colornorm[])
-
-    add_uniforms!(data)
+    screen = args.gl_screen[]
+    add_camera_attributes!(data, screen, camera, args.space[])
+    add_color_attributes_lines!(data, args.synched_color[], args.alpha_colormap[], args.scaled_colorrange[])
+    if isnothing(get(data, :intensity, nothing))
+        input2glname[:synched_color] = :intensity
+    end
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
 
     # Here we do need to be careful with pattern because :fast does not
     # exist as a compile time switch
     # Running this after add_uniforms overwrites
-    if isnothing(linestyle[])
+    if isnothing(linestyle)
         data[:pattern] = nothing
     end
-
-
-    return draw_linesegments(screen[], positions[], data) # TODO: extract positions
+    return draw_linesegments(screen, positions, data) # TODO: extract positions
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     attr = plot.args[1]
     add_input!(plot.args[1], :scene, scene)
-    add_input!(attr, :screen, screen)
+    add_input!(attr, :gl_screen, screen)
     add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
     add_input!(attr, :viewport, scene.viewport[])
     on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
@@ -651,36 +605,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     end
 
     # linestyle/pattern handling
-    register_computation!(
-        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
-    ) do (linestyle,), changed, cached
-        if isnothing(linestyle[])
-            sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
-            len = 1f0 # should be irrelevant, compat for strictly solid lines
-        else
-            sdf = Makie.linestyle_to_sdf(linestyle[])
-            len = Float32(last(linestyle[]) - first(linestyle[]))
-        end
-
-        if isnothing(cached)
-            tex = Texture(screen.glscreen, sdf, x_repeat = :repeat)
-        else
-            tex = cached[1][]
-            GLAbstraction.update!(tex, sdf)
-        end
-
-        return (tex, len)
-    end
-
+    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
     add_input!(attr, :debug, false)
-
+    add_input!(attr, :projectionview, scene.camera.projectionview[])
+    on(pv -> Makie.update!(attr; projectionview=pv), plot, scene.camera.projectionview)
     generate_clip_planes!(attr)
 
     inputs = [
-        :space, :scene, :screen,
         :positions_transformed_f32c,
-        :synched_color, :alpha_colormap, :scaled_colorrange,
-        # Auto
+        :space, :scene, :gl_screen,
+        :synched_color, :alpha_colormap, :scaled_colorrange
+    ]
+    uniforms = [
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :transparency, :fxaa, :debug,
@@ -696,34 +632,16 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
-    gl_names = Symbol[]
 
-    register_computation!(attr, inputs, [:gl_renderobject]) do args, changed, output
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, output
         if isnothing(output)
-            robj = assemble_linesegments_robj(values(args)[1:7]..., attr[:linestyle]) do data
-
-                # Generate name mapping
-                isnothing(get(data, :intensity, nothing)) || (input2glname[:synched_color] = :intensity)
-                gl_names = get.(Ref(input2glname), inputs, inputs)
-
-                # Simple defaults
-                foreach(7:length(args)) do idx
-                    data[gl_names[idx]] = args[idx][]
-                end
-
-                @assert gl_names[4] === :vertex
-                data[:indices] = length(args[4][])
-                data[:overdraw] = attr.outputs[:overdraw][]
-
-                return
-            end
+            robj = assemble_linesegments_robj(attr, args, uniforms, input2glname)
         else
             robj = output[1][]
-            if changed[4]
-                @assert gl_names[4] === :vertex
-                robj.vertexarray.indices = length(args[4][])
+            if changed[1]
+                robj.vertexarray.indices = length(args[1][])
             end
-            update_robjs!(robj, values(args)[4:end], values(changed)[4:end], gl_names[4:end])
+            update_robjs!(robj, args, changed, input2glname)
         end
         screen.requires_update = true
         return (robj,)
