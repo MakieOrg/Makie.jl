@@ -122,10 +122,12 @@ end
 
 Given a quad
 
+```
    A --- B
-  /       \
+  /       \\
  /    __-- C
 D -'''
+```
 
 this computes parameter `f` such that the line from `A + f * (B - A)` to
 `D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is
