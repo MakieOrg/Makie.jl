@@ -195,6 +195,7 @@ excludes = Set([
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
     "Mesh with 3d volume texture", # Not implemented yet
     "Volume absorption",
+    "DataInspector", "DataInspector 2", # No DataInspector without pick/interactivity
 ])
 
 functions = [:volume, :volume!, :uv_mesh]

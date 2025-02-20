@@ -424,3 +424,98 @@
     image!(scene2, full_screen, colormap = :viridis)
     scene2
 end
+
+function hover_step(st, x, y)
+    # remove tooltip so we don't select it
+    e.mouseposition[] = (0, 0)
+    yield()
+    @test isempty(di.temp_plots) # verify cleanup
+    e.mouseposition[] = (x, y)
+    yield()
+    Makie.step!(st)
+end
+
+@reference_test "DataInspector" begin
+    scene = Scene(camera = campixel!, size = (290, 140))
+
+    p1 = scatter!(scene, Point2f(20), markersize = 30)
+    p2 = meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
+    p3 = lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
+    p4 = linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
+    p5 = mesh!(scene, Rect2f(10, 80, 40, 40))
+    p6 = surface!(scene, 60..100, 80..120, [1 2; 3 4])
+    p7 = heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
+    p8 = image!(scene, 120..160, 60..100, [1 2; 3 4])
+
+    # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
+    p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
+    p10 = arrows!(scene, Point2f[(200, 30)], Vec2f[(0, 20)], linewidth = 5, arrowsize = Vec3f(20))
+    p11 = arrows!(scene, Point3f[(220, 80, 0)], Vec3f[(-30, -10, 0)], linewidth = 5, arrowsize = Vec3f(15))
+    p12 = contourf!(scene, 240..280, 10..50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
+    p13 = spy!(scene, 240..280, 60..100, [1 2 1; 2 0 2; 1 2 1])
+    p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+
+    e = events(scene)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
+    di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1, textpadding = (2,2,2,2))
+    scene
+
+    st = Makie.Stepper(scene)
+
+    # Scatter
+    hover_step(st, 20, 20)
+    # meshscatter
+    hover_step(st, 90, 20)
+    # lines
+    hover_step(st, 20, 40)
+    hover_step(st, 40, 30)
+    # linesegments
+    hover_step(st, 30, 60)
+    hover_step(st, 55, 50)
+    # mesh
+    hover_step(st, 30, 100)
+    # surface
+    hover_step(st, 90, 110)
+    # heatmap
+    hover_step(st, 130, 20)
+    # image
+    hover_step(st, 150, 90)
+    # barplot
+    hover_step(st, 200, 10)
+    # arrows
+    hover_step(st, 200, 35) # 2D tail
+    hover_step(st, 200, 45) # 2D head
+    hover_step(st, 217, 79) # 3D tail
+    hover_step(st, 181, 67) # 3D head
+    # contourf
+    hover_step(st, 260, 30)
+    # spy
+    hover_step(st, 260, 90)
+    # band
+    hover_step(st, 205, 110)
+
+    st
+end
+
+@reference_test "DataInspector 2" begin
+    f = Figure(size = (500, 500))
+    a,p = volumeslices(f[1,1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
+    x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
+    y = sin.(2:2:20000) .* sin.(5:5:50000)
+    a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
+    a, p3 = heatmap(f[2, 2], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
+    Colorbar(f[1,3], p2)
+    e = events(f)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
+    DataInspector(f)
+    f
+
+    st = Makie.Stepper(f)
+
+    hover_step(st, 90, 411) # volumeslices
+    hover_step(st, 344, 388) # datashader
+    hover_step(st, 329, 137) # heatmap resampler
+    hover_step(st, 226, 267) # reset
+
+    st
+end

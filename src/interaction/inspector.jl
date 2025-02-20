@@ -1,11 +1,11 @@
 ### indicator data -> string
 ########################################
 
-vec2string(p::StaticVector{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
-vec2string(p::StaticVector{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
+vec2string(p::VecTypes{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
+vec2string(p::VecTypes{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
 
-position2string(p::StaticVector{2}) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
-position2string(p::StaticVector{3}) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
+position2string(p::VecTypes{2}) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
+position2string(p::VecTypes{3}) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3)
     p0 = origin(bbox)
@@ -55,9 +55,9 @@ end
 ### dealing with markersize and rotations
 ########################################
 
-_to_scale(f::AbstractFloat, idx) = Vec3f(f)
-_to_scale(v::Vec2f, idx) = Vec3f(v[1], v[2], 1)
-_to_scale(v::Vec3f, idx) = v
+_to_scale(f::Real, idx) = Vec3f(f)
+_to_scale(v::VecTypes{2}, idx) = Vec3f(v[1], v[2], 1)
+_to_scale(v::VecTypes{3}, idx) = v
 _to_scale(v::Vector, idx) = _to_scale(v[idx], idx)
 
 _to_rotation(x, idx) = to_rotation(x)
@@ -67,13 +67,13 @@ _to_rotation(x::Vector, idx) = to_rotation(x[idx])
 ### Selecting a point on a nearby line
 ########################################
 
-function closest_point_on_line(A::Point2f, B::Point2f, P::Point2f)
+function closest_point_on_line(A::VecTypes{2}, B::VecTypes{2}, P::VecTypes{2})
     # This only works in 2D
     AP = P .- A; AB = B .- A
-    A .+ AB * dot(AP, AB) / dot(AB, AB)
+    return A .+ AB .* clamp(dot(AP, AB) / dot(AB, AB), 0, 1)
 end
 
-function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6)
+function point_in_triangle(A::VecTypes{2}, B::VecTypes{2}, C::VecTypes{2}, P::VecTypes{2}, ϵ = 1e-6)
     # adjusted from ray_triangle_intersection
     AO = A .- P
     BO = B .- P
@@ -82,6 +82,7 @@ function point_in_triangle(A::Point2, B::Point2, C::Point2, P::Point2, ϵ = 1e-6
     A2 = 0.5 * (CO[1] * AO[2] - CO[2] * AO[1])
     A3 = 0.5 * (AO[1] * BO[2] - AO[2] * BO[1])
 
+    # ϵ > 0 gives bias to `true`
     return (A1 > -ϵ && A2 > -ϵ && A3 > -ϵ) || (A1 < ϵ && A2 < ϵ && A3 < ϵ)
 end
 
@@ -121,9 +122,12 @@ end
 
 Given a quad
 
-A --- B
-|     |
-D --- C
+```
+   A --- B
+  /       \\
+ /    __-- C
+D -'''
+```
 
 this computes parameter `f` such that the line from `A + f * (B - A)` to
 `D + f * (C - D)` crosses through the given point `P`. This assumes that `P` is
@@ -325,15 +329,7 @@ function on_hover(inspector)
         end
     end
 
-    if should_clear
-        plot = inspector.selection
-        if to_value(get(plot, :inspector_clear, automatic)) !== automatic
-            plot[:inspector_clear][](inspector, plot)
-        end
-        inspector.plot.visible[] = false
-        inspector.attributes.indicator_visible[] = false
-        inspector.plot.offset.val = inspector.attributes.offset[]
-    end
+    should_clear && clear_temporary_plots!(inspector, inspector.plot)
 
     return Consume(false)
 end
@@ -642,7 +638,7 @@ _to_array(x::AbstractArray) = x
 _to_array(x::Resampler) = x.data
 
 
-function show_imagelike(inspector, plot, name, idx, edge_based)
+function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = plot.interpolate[], zrange = _to_array(plot[3][]))
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
@@ -650,7 +646,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
     pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
     xrange = plot[1][]
     yrange = plot[2][]
-    zrange = _to_array(plot[3][])
+
     # Not on image/heatmap
     if isnan(pos)
         a.indicator_visible[] = false
@@ -658,7 +654,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
         return true
     end
 
-    if plot.interpolate[] || isnothing(idx)
+    if interpolate || isnothing(idx)
         i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
@@ -693,7 +689,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
-        if plot.interpolate[]
+        if interpolate
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Scatter)
                 clear_temporary_plots!(inspector, plot)
@@ -947,7 +943,7 @@ function show_poly(inspector, plot, poly, idx, source)
             p = lines!(
                 scene, line_collection, color = a.indicator_color,
                 transformation = Transformation(source),
-                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a.indicator_visible, inspectable = false, depth_shift = -1f-3
             )
             push!(inspector.temp_plots, p)
@@ -1033,7 +1029,7 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
                 clear_temporary_plots!(inspector, plot)
                 p = lines!(
                     scene, [P1, P2], transformation = Transformation(plot.transformation),
-                    color = a.indicator_color, strokewidth = a.indicator_linewidth,
+                    color = a.indicator_color, linewidth = a.indicator_linewidth,
                     linestyle = a.indicator_linestyle,
                     visible = a.indicator_visible, inspectable = false,
                     depth_shift = -1f-3
@@ -1081,10 +1077,7 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     idx2d = spy._index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
         z = spy.z[][idx2d...]
-        tt.text[] = @sprintf(
-            "x: %0.6f\ny: %0.6f\nz: %0.6f",
-            idx2d..., z
-        )
+        tt.text[] = color2text("S", idx2d..., z)
     else
         tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
     end
@@ -1103,4 +1096,10 @@ function show_data(inspector::DataInspector, hs::HeatmapShader, idx, pp::Image)
     # Indices get ignored anyways, since they're calculated from the mouse position + xrange/yrange of the heatmap
     # If we don't overwrite this here, show_data will get called on `pp`, which will use the small resampled version
     return show_data(inspector, hs, nothing)
+end
+
+
+function show_data(inspector::DataInspector, hs::DataShader, idx, pp::Image)
+    data = reshape(hs.canvas[].pixelbuffer, hs.canvas[].resolution)
+    return show_imagelike(inspector, pp, "C", idx, false, false, data)
 end
