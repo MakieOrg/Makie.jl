@@ -425,7 +425,7 @@
     scene2
 end
 
-function hover_step(st, x, y)
+function hover_step(st, di, e, x, y)
     # remove tooltip so we don't select it
     e.mouseposition[] = (0, 0)
     yield()
@@ -463,36 +463,36 @@ end
     st = Makie.Stepper(scene)
 
     # Scatter
-    hover_step(st, 20, 20)
+    hover_step(st, di, e, 20, 20)
     # meshscatter
-    hover_step(st, 90, 20)
+    hover_step(st, di, e, 90, 20)
     # lines
-    hover_step(st, 20, 40)
-    hover_step(st, 40, 30)
+    hover_step(st, di, e, 20, 40)
+    hover_step(st, di, e, 40, 30)
     # linesegments
-    hover_step(st, 30, 60)
-    hover_step(st, 55, 50)
+    hover_step(st, di, e, 30, 60)
+    hover_step(st, di, e, 55, 50)
     # mesh
-    hover_step(st, 30, 100)
+    hover_step(st, di, e, 30, 100)
     # surface
-    hover_step(st, 90, 110)
+    hover_step(st, di, e, 90, 110)
     # heatmap
-    hover_step(st, 130, 20)
+    hover_step(st, di, e, 130, 20)
     # image
-    hover_step(st, 150, 90)
+    hover_step(st, di, e, 150, 90)
     # barplot
-    hover_step(st, 200, 10)
+    hover_step(st, di, e, 200, 10)
     # arrows
-    hover_step(st, 200, 35) # 2D tail
-    hover_step(st, 200, 45) # 2D head
-    hover_step(st, 217, 79) # 3D tail
-    hover_step(st, 181, 67) # 3D head
+    hover_step(st, di, e, 200, 35) # 2D tail
+    hover_step(st, di, e, 200, 45) # 2D head
+    hover_step(st, di, e, 217, 79) # 3D tail
+    hover_step(st, di, e, 181, 67) # 3D head
     # contourf
-    hover_step(st, 260, 30)
+    hover_step(st, di, e, 260, 30)
     # spy
-    hover_step(st, 260, 90)
+    hover_step(st, di, e, 260, 90)
     # band
-    hover_step(st, 205, 110)
+    hover_step(st, di, e, 205, 110)
 
     st
 end
@@ -512,10 +512,10 @@ end
 
     st = Makie.Stepper(f)
 
-    hover_step(st, 90, 411) # volumeslices
-    hover_step(st, 344, 388) # datashader
-    hover_step(st, 329, 137) # heatmap resampler
-    hover_step(st, 226, 267) # reset
+    hover_step(st, di, e, 90, 411) # volumeslices
+    hover_step(st, di, e, 344, 388) # datashader
+    hover_step(st, di, e, 329, 137) # heatmap resampler
+    hover_step(st, di, e, 226, 267) # reset
 
     st
 end
