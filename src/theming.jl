@@ -149,7 +149,7 @@ const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
 # Basically like deepcopy but while merging it into another Attribute dict
-function merge_without_obs!(result::Attributes, theme::Attributes)
+function merge_without_obs!(result::Attributes, theme)
     dict = attributes(result)
     for (key, value) in theme
         if !haskey(dict, key)
