@@ -72,11 +72,10 @@ function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
 end
 
 function TypedEdge(edge::ComputeEdge)
-    named_inputs = ntuple(length(edge.inputs)) do i
-        e = edge.inputs[i]
-        return e.name => e.value
-    end
-    inputs = NamedTuple(named_inputs)
+    N = length(edge.inputs)
+    names = ntuple(i -> edge.inputs[i].name, N)
+    values = ntuple(i -> edge.inputs[i].value, N)
+    inputs = NamedTuple{names}(values)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
     result = edge.callback(inputs, dirty, nothing)
 
