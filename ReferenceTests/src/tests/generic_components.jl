@@ -455,69 +455,88 @@ end
 
     # Scatter
     e.mouseposition[] = (20, 20)
+    yield()
     Makie.step!(st)
 
     # meshscatter
     e.mouseposition[] = (90, 20)
+    yield()
     Makie.step!(st)
 
     # no hover (verify cleanup, sanity check)
     e.mouseposition[] = (0, 0)
+    yield()
     @test isempty(di.temp_plots)
     Makie.step!(st)
 
     # lines
     e.mouseposition[] = (20, 40)
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (40, 30)
+    yield()
     Makie.step!(st)
 
     # linesegments
     e.mouseposition[] = (30, 60)
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (55, 50)
+    yield()
     Makie.step!(st)
 
     # mesh
     e.mouseposition[] = (30, 100)
+    yield()
     Makie.step!(st)
 
     # surface
     e.mouseposition[] = (90, 110)
+    yield()
     Makie.step!(st)
 
     # heatmap
     e.mouseposition[] = (130, 20)
+    yield()
     Makie.step!(st)
 
     # image
     e.mouseposition[] = (150, 90)
+    yield()
     Makie.step!(st)
 
     # barplot
     e.mouseposition[] = (200, 10)
+    yield()
     Makie.step!(st)
 
     # arrows
     e.mouseposition[] = (200, 35) # 2D tail
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (200, 45) # 2D head
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (217, 79) # 3D tail
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (181, 67) # 3D head
+    yield()
     Makie.step!(st)
 
     # contourf
     e.mouseposition[] = (260, 30)
+    yield()
     Makie.step!(st)
 
     # spy
     e.mouseposition[] = (260, 90)
+    yield()
     Makie.step!(st)
 
     # band
     e.mouseposition[] = (205, 110)
+    yield()
     Makie.step!(st)
 
     st
@@ -539,12 +558,16 @@ end
     st = Makie.Stepper(f)
 
     e.mouseposition[] = (90, 411) # volumeslices
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (344, 388) # datashader
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (329, 137) # heatmap resampler
+    yield()
     Makie.step!(st)
     e.mouseposition[] = (226, 267) # reset
+    yield()
     Makie.step!(st)
 
     st
