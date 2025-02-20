@@ -155,6 +155,10 @@ end
 function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
     # FIXME: This uses _get_isoband_levels, from contourf.jl. This should be moved to an utils.jl file
+    if typeof(c.levels[]) <: Integer
+
+        c.levels[] += 1
+    end
     # Same issue is found in tricontour.jl
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         return _get_isoband_levels(Val(mode), levels, vec(zs))
