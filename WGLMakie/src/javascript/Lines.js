@@ -5,7 +5,11 @@ import {
     attribute_type,
 } from "./ThreeHelper.js";
 
+<<<<<<< HEAD:WGLMakie/src/javascript/Lines.js
 import { is_typed_array } from "./Serialization.js";
+=======
+import { deserialize_uniforms } from "./Serialization.js";
+>>>>>>> master:WGLMakie/src/Lines.js
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};

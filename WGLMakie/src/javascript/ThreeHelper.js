@@ -1,6 +1,6 @@
 import * as Camera from "./Camera.js";
 import { undefined, delete_three_scene, delete_plot, add_plot, create_texture, add_scene, scene_cache } from "./Serialization.js";
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 
 function first(x) {
     return x[Object.keys(x)[0]];

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Updated WGLMakie's threejs version from 0.157 to 0.173, fixing some threejs bugs [#4809](https://github.com/MakieOrg/Makie.jl/pull/4809).
 - Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
 - Added a tutorial on creating an inset plot [#4697](https://github.com/MakieOrg/Makie.jl/pull/4697)
@@ -23,6 +24,7 @@
 - Changed `inspectable` to be inherited from the parent scenes theme. [#4739](https://github.com/MakieOrg/Makie.jl/pull/4739)
 - Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
 - Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
+- Added `dpi` metadata to all rendered png files, where `px_per_unit = 1` means 96dpi, `px_per_unit = 2` means 192dpi, and so on. This gives frontends a chance to show plain Makie png images with the correct scaling [#4812](https://github.com/MakieOrg/Makie.jl/pull/4812).
 
 ## [0.22.1] - 2025-01-17
 
