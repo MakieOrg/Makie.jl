@@ -424,3 +424,34 @@
     image!(scene2, full_screen, colormap = :viridis)
     scene2
 end
+
+
+@testset "Tranformations and space" begin
+    transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :identity]
+    spaces = [:data, :pixel, :relative, :clip]
+
+    t = Transformation(
+        x -> 2 * x,
+        scale = Vec3f(0.75,2,1),
+        rotation = qrotation(Vec3f(0,0,1), 0.3)
+    )
+
+    grid = vcat(
+        [Point2f(x, y) for x in -1:6 for y in (-1, 6)],
+        [Point2f(x, y) for y in -1:6 for x in (-1, 6)]
+    )
+
+    f = Figure(size = (400, 500))
+    for (i, transform) in enumerate(transforms)
+        for (j, space, scale) in zip(eachindex(spaces), spaces, [1, 20, 0.2, 0.2])
+            a = LScene(f[i, j], show_axis = false, scenekw = (camera = cam2d!, transformation = t))
+            linesegments!(a, grid, transformation = :identity, color = :lightgray)
+            text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :identity)
+            scatter!(a,
+                [scale * Point2f(cos(x), sin(x)) for x in range(0.2, 1.3, length = 11)],
+                transformation = transform, space = space
+            )
+        end
+    end
+    f
+end
