@@ -483,7 +483,9 @@ end
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
     img = colorbuffer(screen)
-    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+    px_per_unit = screen.config.px_per_unit
+    dpi = px_per_unit * 96 # attach dpi metadata corresponding to 1 unit == 1 CSS pixel
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img; dpi)
     return
 end
 
