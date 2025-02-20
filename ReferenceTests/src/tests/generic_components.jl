@@ -425,16 +425,6 @@
     scene2
 end
 
-function hover_step(st, di, e, x, y)
-    # remove tooltip so we don't select it
-    e.mouseposition[] = (0, 0)
-    yield()
-    @test isempty(di.temp_plots) # verify cleanup
-    e.mouseposition[] = (x, y)
-    yield()
-    Makie.step!(st)
-end
-
 @reference_test "DataInspector" begin
     scene = Scene(camera = campixel!, size = (290, 140))
 
@@ -462,37 +452,30 @@ end
 
     st = Makie.Stepper(scene)
 
-    # Scatter
-    hover_step(st, di, e, 20, 20)
-    # meshscatter
-    hover_step(st, di, e, 90, 20)
-    # lines
-    hover_step(st, di, e, 20, 40)
-    hover_step(st, di, e, 40, 30)
-    # linesegments
-    hover_step(st, di, e, 30, 60)
-    hover_step(st, di, e, 55, 50)
-    # mesh
-    hover_step(st, di, e, 30, 100)
-    # surface
-    hover_step(st, di, e, 90, 110)
-    # heatmap
-    hover_step(st, di, e, 130, 20)
-    # image
-    hover_step(st, di, e, 150, 90)
-    # barplot
-    hover_step(st, di, e, 200, 10)
-    # arrows
-    hover_step(st, di, e, 200, 35) # 2D tail
-    hover_step(st, di, e, 200, 45) # 2D head
-    hover_step(st, di, e, 217, 79) # 3D tail
-    hover_step(st, di, e, 181, 67) # 3D head
-    # contourf
-    hover_step(st, di, e, 260, 30)
-    # spy
-    hover_step(st, di, e, 260, 90)
-    # band
-    hover_step(st, di, e, 205, 110)
+    mps = [
+        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
+        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35), (200, 45),
+        (217, 79), (181, 67), (260, 30), (260, 90), (205, 110)
+    ]
+
+    # compile?
+    for mp in mps
+        e.mouseposition[] = (0, 0)
+        yield()
+        e.mouseposition[] = mp
+        yield()
+    end
+
+    # record
+    for mp in mps
+        # remove tooltip so we don't select it
+        e.mouseposition[] = (0, 0)
+        yield()
+        @test isempty(di.temp_plots) # verify cleanup
+        e.mouseposition[] = mp
+        yield()
+        Makie.step!(st)
+    end
 
     st
 end
@@ -507,15 +490,27 @@ end
     Colorbar(f[1,3], p2)
     e = events(f)
     e.window_open[] = true # Prevent the hover event Channel from getting closed
-    DataInspector(f)
+    di = DataInspector(f)
     f
 
     st = Makie.Stepper(f)
 
-    hover_step(st, di, e, 90, 411) # volumeslices
-    hover_step(st, di, e, 344, 388) # datashader
-    hover_step(st, di, e, 329, 137) # heatmap resampler
-    hover_step(st, di, e, 226, 267) # reset
+    mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
+    for mp in mps
+        e.mouseposition[] = (0, 0)
+        yield()
+        e.mouseposition[] = mp
+        yield()
+    end
+
+    for mp in mps
+        e.mouseposition[] = (0, 0)
+        yield()
+        @test isempty(di.temp_plots) # verify cleanup
+        e.mouseposition[] = mp
+        yield()
+        Makie.step!(st)
+    end
 
     st
 end
