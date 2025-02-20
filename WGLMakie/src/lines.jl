@@ -1,67 +1,3 @@
-function nan_free_points_indices((inpoints,), changed, last)
-    last_indices = isnothing(last) ? UInt32[] : last[2][]
-    points = inpoints[]
-    isempty(points) && return (points, last_indices)
-    indices = UInt32[]
-    sizehint!(indices, length(points) + 2)
-    was_nan = true
-    loop_start = -1
-    for (i, p) in pairs(points)
-        if isnan(p)
-            # line section end (last was value, now nan)
-            if !was_nan
-                # does previous point close loop?
-                # loop started && 3+ segments && start == end
-                if loop_start != -1 &&
-                    (loop_start + 2 < length(indices)) &&
-                    (points[indices[loop_start]] ≈ points[i - 1])
-
-                    #               start -v             v- end
-                    # adjust from       j  j j+1 .. i-2 i-1
-                    # to           nan i-2 j j+1 .. i-2 i-1 j+1 nan
-                    # where start == end thus j == i-1
-                    # if nan is present in a quartet of vertices
-                    # (nan, i-2, j, i+1) the segment (i-2, j) will not
-                    # be drawn (which we want as that segment would overlap)
-
-                    # tweak duplicated vertices to be loop vertices
-                    push!(indices, indices[loop_start + 1])
-                    indices[loop_start - 1] = i - 2
-                    # nan is inserted at bottom (and not necessary for start/end)
-                else # no loop, duplicate end point
-                    push!(indices, i - 1)
-                end
-            end
-            loop_start = -1
-            was_nan = true
-        else
-            if was_nan
-                # line section start - duplicate point
-                push!(indices, i)
-                # first point in a potential loop
-                loop_start = length(indices) + 1
-            end
-            was_nan = false
-        end
-        # push normal line point (including nan)
-        push!(indices, i)
-    end
-    # Finish line (insert duplicate end point or close loop)
-    if !was_nan
-        if loop_start != -1 &&
-            (loop_start + 2 < length(indices)) &&
-            (points[indices[loop_start]] ≈ points[end])
-            push!(indices, indices[loop_start + 1])
-            indices[loop_start - 1] = prevind(points, lastindex(points))
-        else
-            push!(indices, lastindex(points))
-        end
-    end
-    indices_changed = indices != last_indices
-    points_changed = changed[1] || indices_changed
-    return (points_changed ? points[indices] : nothing, indices == last_indices ? nothing : indices)
-end
-
 function create_lines_data(islines, attr)
     uniforms = Dict(
         :model => attr.model_f32c[],
@@ -152,8 +88,7 @@ const LINE_INPUTS = [
     :depth_shift,
 ]
 
-function create_lines_robj(attr, islines, args, changed, last)
-    inputs = copy(LINE_INPUTS)
+function create_lines_robj(islines, args, changed, last)
     r = Dict(
         :image => :uniform_color,
         :scaled_colorrange => :colorrange,
@@ -165,24 +100,11 @@ function create_lines_robj(attr, islines, args, changed, last)
         :data_limit_points_transformed => :position,
         :model_f32c => :model,
     )
-    if islines
-        push!(inputs, :joinstyle, :gl_miter_limit)
-    end
     if isnothing(last)
-        return (create_lines_data(islines, (; zip(inputs, args)...)), Observable([]))
+        return (create_lines_data(islines, args), Observable([]))
     else
-        new_values = []
-        for i in eachindex(inputs)
-            if changed[i]
-                value = args[i][]
-                name = get(r, inputs[i], inputs[i])
-                push!(new_values, [name, serialize_three(value)])
-            end
-        end
-        if !isempty(new_values)
-            updater = last[2][]
-            updater[] = new_values
-        end
+        updater = last[2][]
+        update_values!(updater, plot_updates(args, changed, r))
         return nothing
     end
 end
@@ -202,7 +124,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     register_computation!(
-        (args...) -> create_lines_robj(attr, islines, args...),
+        (args...) -> create_lines_robj(islines, args...),
         attr,
         inputs,
         [:wgl_renderobject, :wgl_update_obs],

@@ -1,5 +1,28 @@
 using Makie: register_computation!
 
+function plot_updates(args, changed, name_map)
+    new_values = []
+    for (name, value) in pairs(args)
+        if changed[name]
+            name = get(name_map, name, name)
+            push!(new_values, [name, serialize_three(value[])])
+        end
+    end
+    return new_values
+end
+
+function update_values!(updater, values::Bonito.LargeUpdate)
+    isempty(values.data) && return
+    updater[] = values
+    return
+end
+
+function update_values!(updater, values)
+    isempty(values) && return
+    updater[] = values
+    return
+end
+
 function assemble_scatter_robj(attr)
     needs_mapping = !(attr._colorrange[] isa Nothing)
     dfield = attr.sdf_marker_shape[] === Cint(Makie.DISTANCEFIELD)
@@ -111,7 +134,6 @@ const SCATTER_INPUTS = [
 ]
 
 function create_robj(args, changed, last)
-    inputs = SCATTER_INPUTS
     r = Dict(
         :quad_scale => :markersize,
         :positions_transformed_f32c => :pos,
@@ -120,21 +142,16 @@ function create_robj(args, changed, last)
         :model_f32c => :model,
     )
     if isnothing(last)
-        program = assemble_scatter_robj((; zip(inputs, args)...))
+        program = assemble_scatter_robj(args)
         return (program, Observable([]))
     else
         updater = last[2][]
-        new_values = [
-            [get(r, inputs[i], inputs[i]), serialize_three(args[i][])] for i in 1:length(inputs) if changed[i]
-        ]
-        if !isempty(new_values)
-            updater[] = new_values
-        end
+        update_values!(updater, plot_updates(args, changed, r))
         return nothing
     end
 end
 
-function create_shader(scene::Scene, plot::Scatter)
+function create_shader(::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
     register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
@@ -239,7 +256,6 @@ function create_shader(::Scene, plot::Image)
     attr = plot.args[1]
     add_uv_mesh!(attr)
     register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        inputs = IMAGE_INPUTS
         r = Dict(
             :image => :uniform_color,
             :scaled_colorrange => :colorrange,
@@ -248,22 +264,11 @@ function create_shader(::Scene, plot::Image)
             :data_limit_points_transformed => :position,
         )
         if isnothing(last)
-            program = create_image_mesh((; zip(inputs, args)...))
+            program = create_image_mesh(args)
             return (program, Observable{Any}([]))
         else
             updater = last[2][]
-            new_values = map((1:length(inputs))[changed]) do i
-                name = get(r, inputs[i], inputs[i])
-                data = serialize_three(args[i][])
-                if name == :uniform_color || name == :colormap
-                    s = Int32[size(args[i][])...]
-                    data = [s, data]
-                end
-                return [name, data]
-            end
-            if !isempty(new_values)
-                updater[] = Bonito.LargeUpdate(new_values)
-            end
+            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
             return nothing
         end
     end
