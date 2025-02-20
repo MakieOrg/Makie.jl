@@ -47,6 +47,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
@@ -78,6 +81,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     broadcast_foreach(points_list, color,
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+    end
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
 end
 
@@ -113,6 +119,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
+    end
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
 end
 
@@ -187,6 +196,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
         Cairo.stroke(screen.context)
     end
 
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
@@ -211,6 +223,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
         end
     end
 
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 
@@ -264,6 +279,10 @@ function draw_plot(scene::Scene, screen::Screen,
             set_source(screen.context, color)
             Cairo.fill(screen.context)
         end
+
+        if basecolor isa Cairo.CairoPattern
+            pattern_set_matrix(basecolor, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+        end
     else
         for p in band.plots
             draw_plot(scene, screen, p)
@@ -308,6 +327,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     end
 
     draw_tripolys(projected_polys, colornumbers, colors)
+
+    if colors isa Cairo.CairoPattern
+        pattern_set_matrix(colors, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 
     return
 end

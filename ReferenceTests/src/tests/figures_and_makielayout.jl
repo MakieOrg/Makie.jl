@@ -166,6 +166,25 @@ end
     f
 end
 
+@reference_test "Legend with scalar colors and alpha" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3, alpha = 0.5)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15, alpha = 0.5)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i", alpha = 0.5)
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i", alpha = 0.5)
+    end
+    Legend(f[1, 2], ax)
+    f
+end
+
 @reference_test "Legend overrides" begin
     f = Figure()
     ax = Axis(f[1, 1])
@@ -189,8 +208,8 @@ end
     Legend(
         f[1, 3],
         [
-            sc => (; markersize = 30),
-            [li => (; color = :red), sc => (; color = :cyan)],
+            sc => (; markersize = 30, alpha = 0.3),
+            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
             [li, sc] => Dict(:color => :cyan),
         ],
         ["Scatter", "Line and Scatter", "Another"],
@@ -370,6 +389,38 @@ end
 
     perspectiveness[] = 1.0
     Makie.step!(st)
+end
+
+@reference_test "Axis3 clipping" begin
+    # Data from Brillouin.jl
+    basis = Vec3f[[-6.2831855, 6.2831855, 6.2831855], [6.2831855, -6.2831855, 6.2831855], [6.2831855, 6.2831855, -6.2831855]]
+    fs = [[6, 3, 4, 14, 13, 5], [15, 13, 14, 17, 18, 16], [17, 14, 4, 11], [17, 11, 12, 24, 23, 18], [3, 1, 2, 12, 11, 4], [1, 3, 6, 10], [24, 12, 2, 22], [5, 13, 15, 8], [19, 20, 7, 8, 15, 16], [16, 18, 23, 19], [10, 6, 5, 8, 7, 9], [24, 22, 21, 20, 19, 23], [1, 10, 9, 21, 22, 2], [20, 21, 9, 7]]
+    verts = Vec3i[[1, -1, -2], [2, 1, -1], [1, -2, -1], [2, -1, 1], [-2, -3, -1], [-1, -3, -2], [-3, -1, -2], [-3, -2, -1], [-2, -1, -3], [-1, -2, -3], [3, 1, 2], [3, 2, 1], [-1, -2, 1], [1, -1, 2], [-2, -1, 1], [-1, 1, 2], [2, 1, 3], [1, 2, 3], [-1, 2, 1], [-2, 1, -1], [-1, 1, -2], [1, 2, -1], [1, 3, 2], [2, 3, 1]]
+    ps = map(((a,b,c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
+    ls = Point3f[]
+    for f in fs
+        append!(ls, ps[f])
+        push!(ls, ps[f[1]], Point3f(NaN))
+    end
+    _fs = decompose(GLTriangleFace, [NgonFace(f...) for f in fs])
+    m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
+
+    # Should create closed square and hexagonal cells
+    f = Figure(size = (600, 300))
+    a = Axis3(f[1, 1], aspect = :data,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    scatter!(a, ps, markersize = 30, transparency = true)
+
+    a = Axis3(f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false)
+    f
 end
 
 @reference_test "Colorbar for recipes" begin

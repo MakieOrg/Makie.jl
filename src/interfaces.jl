@@ -140,7 +140,7 @@ function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<
     return (x, y, data)
 end
 
-function expand_dimensions(::VolumeLike, data::RealArray{3})
+function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
     x, y, z = map(x-> (0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
@@ -156,8 +156,8 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
             for (obs, arg) in zip(new_obs, expanded)
                 obs.val = arg
             end
-            # It should be enough to trigger the first observable since 
-            # this will go into `map(convert_arguments, new_obs...)` 
+            # It should be enough to trigger the first observable since
+            # this will go into `map(convert_arguments, new_obs...)`
             # Without this, we'll get 3 updates for `notify(data)` in `heatmap(data)`
             notify(new_obs[1])
             return

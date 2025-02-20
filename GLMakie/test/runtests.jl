@@ -6,7 +6,13 @@ using GeometryBasics: origin
 using Random
 using ReferenceTests
 
-if !GLMakie.ModernGL.enable_opengl_debugging
+# verify OpenGL object cleanup
+GLMakie.GLAbstraction.GLMAKIE_DEBUG[] = true
+
+deref(x) = x
+deref(x::Base.RefValue) = x[]
+
+if !deref(GLMakie.ModernGL.enable_opengl_debugging)
     # can't error, since we can't enable debugging for users
     @warn("TESTING WITHOUT OPENGL DEBUGGING")
 end
@@ -24,6 +30,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
 end
 
 # run the unit test suite
+include("isolated_tests.jl")
 include("unit_tests.jl")
 
 @testset "Reference Tests" begin
@@ -92,7 +99,7 @@ end
     events(f).tick[] = tick
     @test events(f).tick[] == tick
 
-    
+
     f, a, p = scatter(rand(10));
     tick_record = Makie.Tick[]
     on(t -> push!(tick_record, t), events(f).tick)
@@ -124,4 +131,93 @@ end
     end
 
     @test i == length(tick_record)+1
+end
+
+
+@testset "gl object deletion" begin
+    GLMakie.closeall()
+
+    # image so we have a user generated texture in the mix
+    # texture atlas is triggered by text
+    # include SSAO to make sure its cleanup works too
+    f,a,p = image(rand(4,4))
+    screen = display(f, ssao = true, visible = false)
+    colorbuffer(screen)
+
+    # verify that SSAO is active
+    @test screen.postprocessors[1] != GLMakie.empty_postprocessor()
+
+    framebuffer = screen.framebuffer
+    framebuffer_textures = copy(screen.framebuffer.buffers)
+    atlas_textures = first.(values(GLMakie.atlas_texture_cache))
+    shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
+    programs = [program for program in values(screen.shader_cache.program_cache)]
+    postprocessors = copy(screen.postprocessors)
+    robjs = last.(screen.renderlist)
+
+    GLMakie.destroy!(screen)
+
+    @testset "Texture Atlas" begin
+        @test !isempty(atlas_textures)
+        for tex in atlas_textures
+            @test tex.id == 0
+        end
+    end
+
+    @testset "Framebuffer" begin
+        @test framebuffer.id == 0
+        @test !isempty(framebuffer_textures)
+        for (k, tex) in framebuffer_textures
+            @test tex.id == 0
+        end
+    end
+
+    @testset "ShaderCache" begin
+        @test !isempty(shaders)
+        for shader in shaders
+            @test shader.id == 0
+        end
+        @test !isempty(programs)
+        for program in programs
+            @test program.id == 0
+        end
+    end
+
+    function validate_robj(robj)
+        for uniform in robj.uniforms
+            if to_value(uniform) isa GLMakie.GLAbstraction.GPUArray
+                @test to_value(uniform).id == 0
+            end
+        end
+        @test robj.vertexarray.id == 0
+        if robj.vertexarray.indices isa GLMakie.GLAbstraction.GPUArray
+            @test robj.vertexarray.indices.id == 0
+        end
+        for buffer in values(robj.vertexarray.buffers)
+            @test buffer.id == 0
+        end
+        @test robj.vertexarray.program.id == 0
+        for shader in robj.vertexarray.program.shader
+            @test shader.id == 0
+        end
+    end
+
+    @testset "PostProcessors" begin
+        @test map(pp -> length(pp.robjs), postprocessors) == [2,1,2,1]
+        for pp in postprocessors
+            for robj in pp.robjs
+                validate_robj(robj)
+            end
+        end
+    end
+
+    @testset "RenderObjects" begin
+        @test !isempty(robjs)
+        for robj in robjs
+            validate_robj(robj)
+        end
+    end
+
+    # Check that no finalizers triggered on un-freed objects throughout all tests
+    @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
 end

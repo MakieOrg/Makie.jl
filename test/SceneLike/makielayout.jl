@@ -1,3 +1,5 @@
+using InteractiveUtils: subtypes
+
 # Minimal sanity checks for Makie Layout
 @testset "Blocks constructors" begin
     fig = Figure()
@@ -16,6 +18,13 @@
     tb = fig[end + 1, :] = Textbox(fig)
     is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
+end
+
+@testset "Generic Block functionality" begin
+    for T in subtypes(Makie.Block)
+        T === Makie.AbstractAxis && continue
+        @test propertynames(T) isa Vector{Symbol}
+    end
 end
 
 @testset "deleting from axis" begin
@@ -209,6 +218,23 @@ end
         @test get_ticks(numbers, func, xs -> string.(xs) .* "kg", 0, 5) == (numbers, ["1.0kg", "1.5kg", "2.0kg"])
 
         @test get_ticks(WilkinsonTicks(5), identity, automatic, 1, 5) == ([1, 2, 3, 4, 5], ["1", "2", "3", "4", "5"])
+    end
+end
+
+@testset "Minor tick skip" begin
+    # Verify that minor ticks aren't calculated if they are not needed
+    f,a,_ = scatter(1:10, axis = (xticksmirrored = true,));
+    a.xminortickcolor[] = :red
+    Makie.update_state_before_display!(f)
+    plots = filter(p -> p.color[] == :red, a.blockscene.plots)
+    for p in plots
+        @test isempty(p.args[1][])
+        @test !p.visible[]
+    end
+    a.xminorticksvisible[] = true
+    for p in plots
+        @test !isempty(p.args[1][])
+        @test p.visible[]
     end
 end
 

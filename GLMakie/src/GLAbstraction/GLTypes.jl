@@ -21,19 +21,22 @@ cardinality(x) = length(x)
 cardinality(x::Number) = 1
 cardinality(x::Type{T}) where {T <: Number} = 1
 
-struct Shader
+mutable struct Shader
     name::Symbol
     source::Vector{UInt8}
     typ::GLenum
     id::GLuint
     context::GLContext
-    function Shader(name, source, typ, id)
-        new(Symbol(name), source, typ, id, current_context())
+
+    function Shader(context, name, source, typ, id)
+        obj = new(Symbol(name), source, typ, id, context)
+        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+        return obj
     end
 end
 
-function Shader(name, source::Vector{UInt8}, typ)
-    compile_shader(source, typ, name)
+function Shader(context, name, source::Vector{UInt8}, typ)
+    return compile_shader(context, source, typ, name)
 end
 
 name(s::Shader) = s.name
@@ -61,9 +64,9 @@ mutable struct GLProgram
     nametype::Dict{Symbol,GLenum}
     uniformloc::Dict{Symbol,Tuple}
     context::GLContext
-    function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple})
-        obj = new(id, shader, nametype, uniformloc, current_context())
-        finalizer(free, obj)
+    function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol,GLenum}, uniformloc::Dict{Symbol,Tuple}, context = first(shader).context)
+        obj = new(id, shader, nametype, uniformloc, context)
+        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
         obj
     end
 end
@@ -175,16 +178,22 @@ mutable struct GLVertexArray{T}
     indices::T
     context::GLContext
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
-        va = new(program, id, bufferlength, buffers, indices, current_context())
+        va = new(program, id, bufferlength, buffers, indices, program.context)
         return va
     end
 end
 
 """
-returns the length of the vertex array.
-This is amount of primitives stored in the vertex array, needed for `glDrawArrays`
+    length(vao::GLVertexArray)
+
+Returns the length of the vertex array. More specifically this returns the minimum
+of the lengths of each vertex buffer, i.e. the number of addressable vertices. If
+no vertex buffers are present -1 is returned.
 """
-length(vao::GLVertexArray) = length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
+function length(vao::GLVertexArray)
+    isempty(vao.buffers) && return -1
+    return mapreduce(length, min, values(vao.buffers))
+end
 
 GLVertexArray(vao::GLVertexArray) = GLVertexArray(vao.buffers, vao.program)
 
@@ -243,11 +252,12 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         indexes = len
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-    finalizer(free, obj)
+    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 using ShaderAbstractions: Buffer
 function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
+    ShaderAbstractions.switch_context!(program.context)
     # get the size of the first array, to assert later, that all have the same size
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -255,7 +265,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
         array = getproperty(buffers, property_name)
         attribute = string(property_name)
         # TODO: use glVertexAttribDivisor to allow multiples of the longest buffer
-        buffer = GLBuffer(array)
+        buffer = GLBuffer(program.context, array)
         bind(buffer)
         attribLocation = get_attribute_location(program.id, attribute)
         if attribLocation == -1
@@ -268,7 +278,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
     glBindVertexArray(0)
     indices = indexbuffer(triangles)
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indices)
-    finalizer(free, obj)
+    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 
@@ -279,14 +289,17 @@ function bind(va::GLVertexArray)
     glBindVertexArray(va.id)
 end
 
-
-function Base.show(io::IO, vao::GLVertexArray)
-    show(io, vao.program)
+Base.show(io::IO, vao::GLVertexArray) = print(io, "GLVertexArray $(vao.id)")
+function Base.show(io::IO, ::MIME"text/plain", vao::GLVertexArray)
+    # show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
-    print(io, "GLVertexArray $(vao.id) buffers: ")
-    writemime(io, MIME("text/plain"), vao.buffers)
-    println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
+    print(io, "buffers: ")
+    show(io, MIME("text/plain"), vao.buffers)
+    _print_indices(io, vao.indices)
 end
+_print_indices(io::IO, n::Integer) = print(io, "\nindices: ", Int64(n))
+_print_indices(io::IO, is::AbstractVector{<: Integer}) = print(io, "\nindices: ", Int64.(is))
+_print_indices(io::IO, fs) = print(io, "\nfaces: ", fs)
 
 ##################################################################################
 
@@ -340,9 +353,10 @@ end
 function RenderObject(
         data::Dict{Symbol,Any}, program,
         pre::Pre, post,
-        context=current_context()
+        context
     ) where Pre
     switch_context!(context)
+    require_context(context)
 
     # This is a lazy workaround for disabling updates of `requires_update` when
     # not rendering on demand. A cleaner implementation should probably go
@@ -369,20 +383,20 @@ function RenderObject(
             # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
             # the conversion is not unique. (E.g. Array -> Texture, TextureBuffer, GLBuffer, ...)
             # In these cases an explicit conversion target is required
-            data[k] = gl_convert(targets[k], v)
+            data[k] = gl_convert(context, targets[k], v)
         else
             k in (:indices, :visible, :ssao, :label, :cycle) && continue
 
             # structs are decomposed into fields
             #     $k.$fieldname -> v.$fieldname
             if isa_gl_struct(v)
-                merge!(data, gl_convert_struct(v, k))
+                merge!(data, gl_convert_struct(context, v, k))
                 delete!(data, k)
 
             # try direct conversion
-            elseif applicable(gl_convert, v)
+            elseif applicable(gl_convert, context, v)
                 try
-                    data[k] = gl_convert(v)
+                    data[k] = gl_convert(context, v)
                 catch e
                     @error "gl_convert for key `$k` failed"
                     rethrow(e)
@@ -397,14 +411,30 @@ function RenderObject(
     end
 
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
-    program = gl_convert(to_value(program), data) # "compile" lazyshader
+    program = gl_convert(context, to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), program)
+    require_context(context)
+
+    # Validate context of things in RenderObject
+    if GLMAKIE_DEBUG[]
+        require_context(program.context, context)
+        require_context(vertexarray.context, context)
+        for v in values(data)
+            if v isa TextureBuffer
+                require_context(v.buffer.context, context)
+                require_context(v.texture.context, context)
+            elseif v isa GPUArray
+                require_context(v.context, context)
+            end
+        end
+    end
 
     # remove all uniforms not occurring in shader
     # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
     special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
     for k in setdiff(keys(data), keys(program.nametype))
         if !(k in special)
+            !haskey(buffers, k) && (data[k] isa GPUArray) && free(data[k])
             delete!(data, k)
         end
     end
@@ -429,68 +459,52 @@ include("GLRenderObject.jl")
 
 ####################################################################################
 # freeing
-function free(x)
-    try
+
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
+function free(x::T) where {T}
+    # don't free if already freed (this should only be set by unsafe_free)
+    clean_up_observables(x)
+    x.id == 0 && return
+
+    # OpenGL has the annoying habit of reusing id's when creating a new context
+    # We need to make sure to only free the current one
+    if context_alive(x.context) && is_context_active(x.context)
         unsafe_free(x)
-    catch e
-        isa(e, ContextNotAvailable) && return # if context got destroyed no need to worry!
-        rethrow(e)
+    end
+    x.id = 0
+    return
+end
+
+function clean_up_observables(x::GLVertexArray)
+    for (_, buffer) in x.buffers
+        clean_up_observables(buffer)
+    end
+    if x.indices isa GPUArray
+        clean_up_observables(x.indices)
     end
 end
 
-function clean_up_observables(x::T) where T
+function clean_up_observables(x::T) where {T}
     if hasfield(T, :observers)
         foreach(off, x.observers)
         empty!(x.observers)
     end
 end
 
-# OpenGL has the annoying habit of reusing id's when creating a new context
-# We need to make sure to only free the current one
-function unsafe_free(x::GLProgram)
-    x.id == 0 && return
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
-    glDeleteProgram(x.id)
-    return
-end
-
-function unsafe_free(x::GLBuffer)
-    # don't free if already freed
-    x.id == 0 && return
-    clean_up_observables(x)
-    # don't free from other context
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
-    id = Ref(x.id)
-    glDeleteBuffers(1, id)
-    x.id = 0
-    return
-end
-
-function unsafe_free(x::Texture)
-    x.id == 0 && return
-    clean_up_observables(x)
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
-    id = Ref(x.id)
-    glDeleteTextures(x.id)
-    x.id = 0
-    return
-end
+unsafe_free(x::GLProgram) = glDeleteProgram(x.id)
+unsafe_free(x::Shader) = glDeleteShader(x.id)
+unsafe_free(x::GLBuffer) = glDeleteBuffers(x.id)
+unsafe_free(x::Texture) = glDeleteTextures(x.id)
 
 function unsafe_free(x::GLVertexArray)
-    x.id == 0 && return
-    GLAbstraction.context_alive(x.context) || return
-    GLAbstraction.switch_context!(x.context)
     for (key, buffer) in x.buffers
-        free(buffer)
+        unsafe_free(buffer)
+        buffer.id = 0
     end
     if x.indices isa GPUArray
-        free(x.indices)
+        unsafe_free(x.indices)
+        x.indices.id = 0
     end
-    id = Ref(x.id)
-    glDeleteVertexArrays(1, id)
-    x.id = 0
+    glDeleteVertexArrays(x.id)
     return
 end

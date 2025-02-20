@@ -371,10 +371,17 @@ function to_endpoints(x::Tuple{<:Real,<:Real})
 end
 to_endpoints(x::Interval) = to_endpoints(endpoints(x))
 to_endpoints(x::EndPoints) = x
-to_endpoints(x::AbstractVector) = to_endpoints((first(x), last(x)))
-function to_endpoints(x, dim)
-    x isa AbstractVector && !(x isa EndPoints) && print_range_warning(dim, x)
-    return to_endpoints(x)
+
+to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
+to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+function throw_range_error(value::T, side, trait) where {T}
+    error(
+        "Encountered `$T` with value $value on side $side in `convert_arguments` for the `$trait`
+        conversion. Using `$T` to specify one dimension of `$trait` is deprecated because `$trait`
+        sides always need exactly two values, start and stop. Use interval notation `start .. stop`,
+        a two-element tuple `(start, stop)` or `Makie.EndPoints(start, stop)` instead."
+    )
 end
 
 function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
@@ -411,17 +418,10 @@ function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
-function print_range_warning(side::String, value)
-    @warn "Encountered an `AbstractVector` with value $value on side $side in `convert_arguments` for the `ImageLike` trait.
-        Using an `AbstractVector` to specify one dimension of an `ImageLike` is deprecated because `ImageLike` sides always need exactly two values, start and stop.
-        Use interval notation `start .. stop` or a two-element tuple `(start, stop)` instead."
-end
-
-
 function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
                            data::AbstractMatrix{<:Union{Real,Colorant}})
-    x = to_endpoints(xs, "x")
-    y = to_endpoints(ys, "y")
+    x = to_endpoints(xs, "x", ImageLike)
+    y = to_endpoints(ys, "y", ImageLike)
     return (x, y, el32convert(data))
 end
 
@@ -470,18 +470,23 @@ end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
                            data::RealArray{3})
-    return (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(data))
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
 
-"""
-    convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
-
-Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and puts everything in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, i::RealArray{3})
-    (to_endpoints(x, "x"), to_endpoints(y, "y"), to_endpoints(z, "z"), el32convert(i))
+# TODO: Consider using RGB(A){N0f8} for all of these
+# RGBA/Vec4 is the native data type for :absorptionrgba, :additive
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
+end
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.Color, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBf.(data))
+end
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.TransparentColor, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBAf.(data))
 end
 
 ################################################################################
@@ -580,7 +585,7 @@ function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where 
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
     m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
-        geom; pointtype = Point{N, float_type(T)}, 
+        geom; pointtype = Point{N, float_type(T)},
         uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
     ))
     return (m,)
@@ -646,6 +651,13 @@ function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::Re
     return (vec(points), vec(f_out))
 end
 
+# Note: AbstractRange must be linear
+is_regularly_spaced(x::AbstractRange) = true
+function is_regularly_spaced(x::AbstractVector)
+    delta = x[2] - x[1]
+    return all(i -> x[i] - x[i-1] ≈ delta, 3:length(x))
+end
+
 """
     convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
 
@@ -654,16 +666,21 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(VL::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
+    # Verify grid regularity
+    is_regularly_spaced(x) || throw_range_error(x, "x", VolumeLike)
+    is_regularly_spaced(y) || throw_range_error(y, "y", VolumeLike)
+    is_regularly_spaced(z) || throw_range_error(z, "z", VolumeLike)
+
     _x, _y, _z = ntuple(Val(3)) do i
         A = (x, y, z)[i]
         return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
     end
-    # TODO only allow  unitranges to map over since we dont support irregular x/y/z values
-    return (map(to_endpoints, (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
 function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
@@ -964,8 +981,11 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Flo
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
-convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat{3, 3}, k::key"uv_transform") = convert_attribute(Mat3f(x), k)
+convert_attribute(x::Mat{2, 3}, k::key"uv_transform") = convert_attribute(Mat{2, 3, Float32}(x), k)
 convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
@@ -975,24 +995,48 @@ function convert_attribute(angle::Real, ::key"uv_transform")
     # rotate, translate back.
     # For patterns and in terms of what's actually happening to the uvs we
     # should not translate at all.
-    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+    error(
+        "Creating a uv_transform from a rotation angle is not implemented directly because one usually " *
+        "needs to translate as well to deal with the 0..1 value range. Use :rotr90, :rotl90, :rot180, " *
+        "Makie.uv_transform(angle) or multi-step expression (tuple) instead."
+    )
 end
 
 """
     uv_transform(args::Tuple)
     uv_transform(args...)
 
-Returns a 3x3 uv transformation matrix combinign all the given arguments. This
+Returns a 3x3 uv transformation matrix combining all the given arguments. This
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
 
 Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 `uv_transform(translation, scale)` as a special case.
 """
-uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
-uv_transform(packed...) = uv_transform(packed)
-uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+function uv_transform(packed::Tuple)
+    combine(a::Mat3f, b::Mat3f) = a * b
+    # The arrays have already been copied by uv_transform(array)
+    combine(a::Array, b::Mat3f) = a .= a .* Ref(b)
+    combine(a::Mat3f, b::Array) = b .= Ref(a) .* b
+    combine(a::Array, b::Array) = a .= a .* b
 
+    return mapfoldl(uv_transform, combine, packed)
+end
+uv_transform(packed...) = uv_transform(packed)
+
+"""
+    uv_transform(::UniformScaling)
+    uv_transform(::typeof(identity))
+
+Returns a 3x3 identity matrix When passing `I` or `identity`.
+"""
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
+
+# repeated for packed uv_transforms
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+uv_transform(x::Array) = uv_transform.(x)
+uv_transform(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
@@ -1032,14 +1076,15 @@ Creates a 3x3 uv transformation matrix from a given named action. They assume
 - `:swap_xy, :transpose` which corresponds to transposing the texture
 - `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
 - `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+- `:identity` corresponding to no change/identity
 """
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
-    if action == :rotr90
-        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
-    elseif action == :rotl90
+    if action === :rotr90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
-    elseif action == :rot180
+    elseif action === :rotl90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action === :rot180
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
@@ -1054,6 +1099,8 @@ function uv_transform(action::Symbol)
         return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
     # elseif action == :surface
         # return Mat3f(I)
+    elseif action === :identity
+        return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end
@@ -1922,7 +1969,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(default_marker_map(), marker)
         return to_spritemarker(default_marker_map()[marker])
     else
-        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with available_marker_symbols()")
+        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with `available_marker_symbols()`")
         return '●'
     end
 end
@@ -1933,6 +1980,7 @@ end
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
+convert_attribute(value, ::key"absorption", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"gap", ::key"voxels") = ifelse(value <= 0.01, 0f0, Float32(value))
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
