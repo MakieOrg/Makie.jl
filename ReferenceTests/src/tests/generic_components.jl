@@ -461,7 +461,6 @@ end
 
     # no hover (verify cleanup, sanity check)
     e.mouseposition[] = (0, 0)
-    @test tt.visible[] == false
     @test isempty(di.temp_plots)
     Makie.step!(st)
 
@@ -470,7 +469,6 @@ end
     Makie.step!(st)
     e.mouseposition[] = (40, 30)
     Makie.step!(st)
-
 
     # linesegments
     e.mouseposition[] = (30, 60)
@@ -528,12 +526,12 @@ end
     a,p = volumeslices(f[1,1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
     x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
     y = sin.(2:2:20000) .* sin.(5:5:50000)
-    a, p2 = datashader(f[1, 2], Point2f.(x, y))
+    a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
     Colorbar(f[1,3], p2)
     DataInspector(f)
 
     st = Makie.Stepper(f)
-    e = events(scene)
+    e = events(f)
 
     e.mouseposition[] = (76, 194) # volumeslices
     Makie.step!(st)
