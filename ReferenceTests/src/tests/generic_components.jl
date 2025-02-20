@@ -446,9 +446,11 @@ end
     p13 = spy!(scene, 240..280, 60..100, [1 2 1; 2 0 2; 1 2 1])
     p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
 
+    e = events(scene)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
     di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1, textpadding = (2,2,2,2))
     scene
-    e = events(scene)
+
     st = Makie.Stepper(scene)
 
     # Scatter
