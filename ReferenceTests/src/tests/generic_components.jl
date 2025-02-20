@@ -425,6 +425,15 @@
     scene2
 end
 
+function hover_step(st, x, y)
+    # remove tooltip so we don't select it
+    e.mouseposition[] = (0, 0)
+    yield()
+    @test isempty(di.temp_plots) # verify cleanup
+    e.mouseposition[] = (x, y)
+    yield()
+    Makie.step!(st)
+end
 
 @reference_test "DataInspector" begin
     scene = Scene(camera = campixel!, size = (290, 140))
@@ -454,90 +463,36 @@ end
     st = Makie.Stepper(scene)
 
     # Scatter
-    e.mouseposition[] = (20, 20)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 20, 20)
     # meshscatter
-    e.mouseposition[] = (90, 20)
-    yield()
-    Makie.step!(st)
-
-    # no hover (verify cleanup, sanity check)
-    e.mouseposition[] = (0, 0)
-    yield()
-    @test isempty(di.temp_plots)
-    Makie.step!(st)
-
+    hover_step(st, 90, 20)
     # lines
-    e.mouseposition[] = (20, 40)
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (40, 30)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 20, 40)
+    hover_step(st, 40, 30)
     # linesegments
-    e.mouseposition[] = (30, 60)
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (55, 50)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 30, 60)
+    hover_step(st, 55, 50)
     # mesh
-    e.mouseposition[] = (30, 100)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 30, 100)
     # surface
-    e.mouseposition[] = (90, 110)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 90, 110)
     # heatmap
-    e.mouseposition[] = (130, 20)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 130, 20)
     # image
-    e.mouseposition[] = (150, 90)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 150, 90)
     # barplot
-    e.mouseposition[] = (200, 10)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 200, 10)
     # arrows
-    e.mouseposition[] = (200, 35) # 2D tail
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (200, 45) # 2D head
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (217, 79) # 3D tail
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (181, 67) # 3D head
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 200, 35) # 2D tail
+    hover_step(st, 200, 45) # 2D head
+    hover_step(st, 217, 79) # 3D tail
+    hover_step(st, 181, 67) # 3D head
     # contourf
-    e.mouseposition[] = (260, 30)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 260, 30)
     # spy
-    e.mouseposition[] = (260, 90)
-    yield()
-    Makie.step!(st)
-
+    hover_step(st, 260, 90)
     # band
-    e.mouseposition[] = (205, 110)
-    yield()
-    Makie.step!(st)
+    hover_step(st, 205, 110)
 
     st
 end
@@ -557,18 +512,10 @@ end
 
     st = Makie.Stepper(f)
 
-    e.mouseposition[] = (90, 411) # volumeslices
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (344, 388) # datashader
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (329, 137) # heatmap resampler
-    yield()
-    Makie.step!(st)
-    e.mouseposition[] = (226, 267) # reset
-    yield()
-    Makie.step!(st)
+    hover_step(st, 90, 411) # volumeslices
+    hover_step(st, 344, 388) # datashader
+    hover_step(st, 329, 137) # heatmap resampler
+    hover_step(st, 226, 267) # reset
 
     st
 end

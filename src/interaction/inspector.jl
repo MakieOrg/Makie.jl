@@ -329,15 +329,7 @@ function on_hover(inspector)
         end
     end
 
-    if should_clear
-        plot = inspector.selection
-        if to_value(get(plot, :inspector_clear, automatic)) !== automatic
-            plot[:inspector_clear][](inspector, plot)
-        end
-        inspector.plot.visible[] = false
-        inspector.attributes.indicator_visible[] = false
-        inspector.plot.offset.val = inspector.attributes.offset[]
-    end
+    should_clear && clear_temporary_plots!(inspector, inspector.plot)
 
     return Consume(false)
 end
