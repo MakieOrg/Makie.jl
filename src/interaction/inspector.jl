@@ -646,7 +646,7 @@ _to_array(x::AbstractArray) = x
 _to_array(x::Resampler) = x.data
 
 
-function show_imagelike(inspector, plot, name, idx, edge_based)
+function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = plot.interpolate[], zrange = _to_array(plot[3][]))
     a = inspector.attributes
     tt = inspector.plot
     scene = parent_scene(plot)
@@ -654,7 +654,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
     pos = position_on_plot(plot, -1, apply_transform = false)[Vec(1, 2)] # index irrelevant
     xrange = plot[1][]
     yrange = plot[2][]
-    zrange = _to_array(plot[3][])
+
     # Not on image/heatmap
     if isnan(pos)
         a.indicator_visible[] = false
@@ -662,7 +662,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
         return true
     end
 
-    if plot.interpolate[] || isnothing(idx)
+    if interpolate || isnothing(idx)
         i, j, z = _interpolated_getindex(xrange, yrange, zrange, pos)
         x, y = pos
     else
@@ -697,7 +697,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
-        if plot.interpolate[]
+        if interpolate
             if inspector.selection != plot || (length(inspector.temp_plots) != 1) ||
                     !(inspector.temp_plots[1] isa Scatter)
                 clear_temporary_plots!(inspector, plot)
@@ -1104,4 +1104,10 @@ function show_data(inspector::DataInspector, hs::HeatmapShader, idx, pp::Image)
     # Indices get ignored anyways, since they're calculated from the mouse position + xrange/yrange of the heatmap
     # If we don't overwrite this here, show_data will get called on `pp`, which will use the small resampled version
     return show_data(inspector, hs, nothing)
+end
+
+
+function show_data(inspector::DataInspector, hs::DataShader, idx, pp::Image)
+    data = reshape(hs.canvas[].pixelbuffer, hs.canvas[].resolution)
+    return show_imagelike(inspector, pp, "C", idx, false, false, data)
 end

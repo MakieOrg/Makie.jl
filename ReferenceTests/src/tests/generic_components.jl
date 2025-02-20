@@ -524,22 +524,27 @@ end
 end
 
 @reference_test "DataInspector 2" begin
-    f = Figure(size = (500, 300))
+    f = Figure(size = (500, 500))
     a,p = volumeslices(f[1,1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
     x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
     y = sin.(2:2:20000) .* sin.(5:5:50000)
     a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
+    a, p3 = heatmap(f[2, 2], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
     Colorbar(f[1,3], p2)
+    e = events(f)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
     DataInspector(f)
+    f
 
     st = Makie.Stepper(f)
-    e = events(f)
 
-    e.mouseposition[] = (76, 194) # volumeslices
+    e.mouseposition[] = (90, 411) # volumeslices
     Makie.step!(st)
-    # e.mouseposition[] = (349, 141) # datashader <- broken
-    # Makie.step!(st)
-    e.mouseposition[] = (205, 260) # reset
+    e.mouseposition[] = (344, 388) # datashader
+    Makie.step!(st)
+    e.mouseposition[] = (329, 137) # heatmap resampler
+    Makie.step!(st)
+    e.mouseposition[] = (226, 267) # reset
     Makie.step!(st)
 
     st
