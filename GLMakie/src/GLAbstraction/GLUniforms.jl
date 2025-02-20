@@ -5,7 +5,7 @@
 
 const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
-    StaticVector, Mat, GLSL_COMPATIBLE_NUMBER_TYPES...,
+    StaticVector, Mat, Quaternion, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
     GLBuffer, GPUArray, Shader, GLProgram
 }
@@ -35,18 +35,21 @@ end
 
 gluniform(location::Integer, x::Nothing) = nothing
 
-function gluniform(location::Integer, x::Union{StaticVector, Mat, Colorant})
+function gluniform(location::Integer, x::Union{StaticVector, Quaternion, Mat, Colorant})
     xref = [x]
     gluniform(location, xref)
 end
 
 _size(p) = size(p)
 _size(p::Colorant) = (length(p),)
+_size(::Type{<: Quaternion}) = (4,)
 _size(p::Type{T}) where {T <: Colorant} = (length(p),)
 _ndims(p) = ndims(p)
 _ndims(p::Type{T}) where {T <: Colorant} = 1
+_ndims(p::Type{T}) where {T <: Quaternion} = 1
 
-@generated function gluniform(location::Integer, x::Vector{FSA}) where FSA <: Union{Mat, Colorant, StaticVector}
+# TODO: functions like glUniform4f(location, x, y, z, w) also exist and don't need pointers...
+@generated function gluniform(location::Integer, x::Vector{FSA}) where FSA <: Union{Mat, Colorant, StaticVector, Quaternion}
     func = uniformfunc(eltype(FSA), _size(FSA))
     callexpr = if _ndims(FSA) == 2
         :($func(location, length(x), GL_FALSE, x))
@@ -94,7 +97,8 @@ glsl_typename(t::Type{GLfloat}) = "float"
 glsl_typename(t::Type{GLdouble}) = "double"
 glsl_typename(t::Type{GLuint}) = "uint"
 glsl_typename(t::Type{GLint}) = "int"
-glsl_typename(t::Type{T}) where {T <: Union{StaticVector, Colorant}} = string(opengl_prefix(eltype(T)), "vec", length(T))
+glsl_typename(t::Type{T}) where {T <: Union{StaticVector, Quaternion, Colorant}} =
+    string(opengl_prefix(eltype(T)), "vec", length(T))
 glsl_typename(t::Type{TextureBuffer{T}}) where {T} = string(opengl_prefix(eltype(T)), "samplerBuffer")
 
 function glsl_typename(t::Texture{T, D}) where {T, D}
@@ -108,7 +112,7 @@ function glsl_typename(t::Type{T}) where T <: Mat
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(N, "x", M))
 end
 toglsltype_string(t::Observable) = toglsltype_string(to_value(t))
-function toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Texture, Colorant, TextureBuffer, Nothing}}
+function toglsltype_string(x::T) where {T<:Union{Real, Mat, StaticVector, Quaternion, Texture, Colorant, TextureBuffer, Nothing}}
     return "uniform $(glsl_typename(x))"
 end
 #Handle GLSL structs, which need to be addressed via single fields
@@ -189,6 +193,7 @@ gl_promote(x::Type{T}) where {T <: BGR} = BGR{gl_promote(eltype(T))}
 
 gl_promote(x::Type{Vec{N, T}}) where {N, T} = Vec{N, gl_promote(T)}
 gl_promote(x::Type{Point{N, T}}) where {N, T} = Point{N, gl_promote(T)}
+gl_promote(x::Type{Quaternion{T}}) where {T} = Quaternion{gl_promote(T)}
 
 # Note: GLContext is currently just Any
 gl_convert(::GLContext, x::AbstractVector{Vec3f}) = x

@@ -54,7 +54,7 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, per_vertex, plot, uniforms)
 end
 
-function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
+function create_shader(mscene::Scene, plot::Heatmap)
     f32c, model = Makie.patch_model(plot)
     mesh = limits_to_uvmesh(plot, f32c)
     uniforms = Dict(
@@ -105,8 +105,6 @@ function create_shader(mscene::Scene, plot::Volume)
     specular = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
     shininess = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
 
-
-
     uniforms = Dict{Symbol, Any}(
         :modelinv => modelinv,
         :isovalue => lift(Float32, plot, plot.isovalue),
@@ -131,8 +129,6 @@ function create_shader(mscene::Scene, plot::Volume)
     handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
 end
-
-
 
 xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
 xy_convert(x::AbstractArray, n) = x
