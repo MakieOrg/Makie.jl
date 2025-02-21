@@ -207,8 +207,7 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-# TODO implement
-Base.close(screen::Screen) = nothing
+Base.close(screen::Screen) = close(screen.session)
 
 function Base.size(screen::Screen)
     return size(screen.scene)
