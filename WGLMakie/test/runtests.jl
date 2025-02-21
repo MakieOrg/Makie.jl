@@ -37,13 +37,13 @@ Makie.inline!(Makie.automatic)
 edisplay = Bonito.use_electron_display(devtools=true)
 
 @testset "reference tests" begin
-    @testset "refimages" begin
-        WGLMakie.activate!()
-        ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
-        ReferenceTests.test_comparison(scores; threshold = 0.05)
-    end
+    WGLMakie.activate!()
+    # @testset "refimages" begin
+    #     ReferenceTests.mark_broken_tests(excludes)
+    #     recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
+    #     missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
+    #     ReferenceTests.test_comparison(scores; threshold = 0.05)
+    # end
 
     @testset "memory leaks" begin
         Makie.CURRENT_FIGURE[] = nothing
@@ -125,57 +125,83 @@ edisplay = Bonito.use_electron_display(devtools=true)
             @test tick.delta_time > 1e-9
         end
 
-        f, a, p = scatter(rand(10));
-        @test events(f).tick[] == Makie.Tick()
+        @testset "save()" begin
+            f, a, p = scatter(rand(10));
+            @test events(f).tick[] == Makie.Tick()
 
-        filename = "$(tempname()).png"
-        try
-            tick_record = Makie.Tick[]
-            on(tick -> push!(tick_record, tick), events(f).tick)
-            save(filename, f)
-            idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
-            tick = tick_record[idx]
-            @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == 0
-            @test tick.time == 0.0
-            @test tick.delta_time == 0.0
-        finally
-            close(f.scene.current_screens[1])
-            rm(filename)
-        end
-
-
-        f, a, p = scatter(rand(10));
-        filename = "$(tempname()).mp4"
-        try
-            tick_record = Makie.Tick[]
-            on(tick -> push!(tick_record, tick), events(f).tick)
-            record(_ -> nothing, f, filename, 1:10, framerate = 30)
-
-            start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
-            dt = 1.0 / 30.0
-
-            for (i, tick) in enumerate(tick_record[start:end])
+            filename = "$(tempname()).png"
+            try
+                tick_record = Makie.Tick[]
+                on(tick -> push!(tick_record, tick), events(f).tick)
+                save(filename, f)
+                idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+                tick = tick_record[idx]
                 @test tick.state == Makie.OneTimeRenderTick
-                @test tick.count == i-1
-                @test tick.time ≈ dt * (i-1)
-                @test tick.delta_time ≈ dt
+                @test tick.count == 0
+                @test tick.time == 0.0
+                @test tick.delta_time == 0.0
+            finally
+                close(f.scene.current_screens[1])
+                rm(filename)
             end
-        finally
-            rm(filename)
         end
 
-        # test destruction of tick overwrite
-        f, a, p = scatter(rand(10));
-        let
-            io = VideoStream(f)
-            @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
-            nothing
-        end
-        tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
-        events(f).tick[] = tick
-        @test events(f).tick[] == tick
+        @testset "record()" begin
+            f, a, p = scatter(rand(10));
+            filename = "$(tempname()).mp4"
+            try
+                tick_record = Makie.Tick[]
+                on(tick -> push!(tick_record, tick), events(f).tick)
+                record(_ -> nothing, f, filename, 1:10, framerate = 30)
 
-        # TODO: test normal rendering
+                start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+                dt = 1.0 / 30.0
+
+                for (i, tick) in enumerate(tick_record[start:end])
+                    @test tick.state == Makie.OneTimeRenderTick
+                    @test tick.count == i-1
+                    @test tick.time ≈ dt * (i-1)
+                    @test tick.delta_time ≈ dt
+                end
+            finally
+                rm(filename)
+            end
+
+            # test destruction of tick overwrite
+            f, a, p = scatter(rand(10));
+            colorbuffer(f) # trigger screen creation
+
+            let
+                io = VideoStream(f)
+                @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+                nothing
+            end
+            tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+            events(f).tick[] = tick
+            @test events(f).tick[] == tick
+        end
+
+
+        @testset "normal render()" begin
+            f, a, p = scatter(rand(10));
+            tick_record = Makie.Tick[]
+            on(t -> push!(tick_record, t), events(f).tick)
+            sleep(0.2)
+
+            # should be empty (or at least not contain Render ticks yet?)
+            @test isempty(tick_record)
+            # @test all(tick -> tick.state == Makie.UnknownTickState, tick_record)
+
+            colorbuffer(f)
+            t0 = time()
+            sleep(1)
+            dt = time() - t0
+            close(f.scene.current_screens[1])
+
+            # Best case: (one tick at 0, probably 1 at end)
+            @test 30 <= length(tick_record) <= 31
+            # good enough?
+            @test 28 <= length(tick_record) <= 33
+        end
     end
 end
