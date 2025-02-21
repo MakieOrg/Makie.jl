@@ -137,9 +137,11 @@ function initialize_block!(tbox::Textbox)
     onmouseleftdown(mouseevents) do state
         focus!(tbox)
 
-        if tbox.displayed_string[] == tbox.placeholder[] || tbox.displayed_string[] == " "
+        if tbox.displayed_string[] == tbox.placeholder[]
             tbox.displayed_string[] = " "
             cursorindex[] = 0
+            return Consume(true)
+        elseif tbox.displayed_string[] == " "
             return Consume(true)
         end
 
