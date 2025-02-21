@@ -118,16 +118,29 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
         return
     end
 
+    return
+end
+
+
+function connect_post_init_events(screen, scene)
+    @assert isopen(screen) "Window most be initialized first"
+
+    e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
+
+    # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
         if isopen(screen)
             tick_callback(Makie.RegularRenderTick)
-            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
+            # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
+            # @info "stopping $key"
             Makie.stop!(timer)
+            e.window_open[] = false
         end
         return
     end
 
     return
 end
+

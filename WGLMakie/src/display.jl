@@ -102,6 +102,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
+            connect_post_init_events(screen, scene)
         else
             # Will be an error from WGLMakie.js
             put!(screen.plot_initialized, initialized)
@@ -206,8 +207,7 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-# TODO implement
-Base.close(screen::Screen) = nothing
+Base.close(screen::Screen) = close(screen.session)
 
 function Base.size(screen::Screen)
     return size(screen.scene)
