@@ -45,60 +45,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
     #     ReferenceTests.test_comparison(scores; threshold = 0.05)
     # end
 
-    @testset "memory leaks" begin
-        Makie.CURRENT_FIGURE[] = nothing
-        app = App(nothing)
-        display(edisplay, app)
-        GC.gc(true);
-        # Somehow this may take a while to get emptied completely
-        p_key = "Object.keys(WGL.plot_cache)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout=50)
-        @show run(edisplay.window, p_key)
-        @test value == :success
-
-        s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout=50)
-        @show run(edisplay.window, s_keys)
-        @show app.session[].id
-        @show app.session[].parent
-        # It seems, we don't free all sessions right now, which needs fixing.
-        # @test value == :success
-
-        wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
-        @test isempty(wgl_plots)
-
-        session = edisplay.browserdisplay.handler.session
-        session_size = Base.summarysize(session) / 10^6
-        texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
-
-        @test length(WGLMakie.TEXTURE_ATLAS.listeners) == 1 # Only one from permanent Retain
-        @test length(session.session_objects) == 1 # Also texture atlas because of Retain
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
-            @test isempty(getfield(session, field))
-        end
-        server = session.connection.server
-        @test length(server.websocket_routes.table) == 1
-        @test server.websocket_routes.table[1][2] == session.connection
-        @test length(server.routes.table) == 2
-        @test server.routes.table[1][1] == "/browser-display"
-        @test server.routes.table[2][2] isa HTTPAssetServer
-        @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
-        @show length(WGLMakie.TEXTURE_ATLAS.listeners)
-        @show session_size texture_atlas_size
-
-        # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
-        # It could be related to the error in the console:
-        # " Trying to send to a closed session"
-        # So maybe a subsession closes and doesn't get freed?
-        @test session_size < 11
-        @test texture_atlas_size < 11
-
-        js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
-        js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
-        # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
-        # we used Retain for global_obs, so it should stay as long as root session is open
-        @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
-    end
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10));
@@ -204,4 +150,60 @@ edisplay = Bonito.use_electron_display(devtools=true)
             @test 28 <= length(tick_record) <= 33
         end
     end
+
+    @testset "memory leaks" begin
+        Makie.CURRENT_FIGURE[] = nothing
+        app = App(nothing)
+        display(edisplay, app)
+        GC.gc(true);
+        # Somehow this may take a while to get emptied completely
+        p_key = "Object.keys(WGL.plot_cache)"
+        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout=50)
+        @show run(edisplay.window, p_key)
+        @test value == :success
+
+        s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
+        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout=50)
+        @show run(edisplay.window, s_keys)
+        @show app.session[].id
+        @show app.session[].parent
+        # It seems, we don't free all sessions right now, which needs fixing.
+        # @test value == :success
+
+        wgl_plots = run(edisplay.window, "Object.keys(WGL.scene_cache)")
+        @test isempty(wgl_plots)
+
+        session = edisplay.browserdisplay.handler.session
+        session_size = Base.summarysize(session) / 10^6
+        texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
+
+        @test length(WGLMakie.TEXTURE_ATLAS.listeners) == 1 # Only one from permanent Retain
+        @test length(session.session_objects) == 1 # Also texture atlas because of Retain
+        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
+            @test isempty(getfield(session, field))
+        end
+        server = session.connection.server
+        @test length(server.websocket_routes.table) == 1
+        @test server.websocket_routes.table[1][2] == session.connection
+        @test length(server.routes.table) == 2
+        @test server.routes.table[1][1] == "/browser-display"
+        @test server.routes.table[2][2] isa HTTPAssetServer
+        @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
+        @show length(WGLMakie.TEXTURE_ATLAS.listeners)
+        @show session_size texture_atlas_size
+
+        # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
+        # It could be related to the error in the console:
+        # " Trying to send to a closed session"
+        # So maybe a subsession closes and doesn't get freed?
+        @test session_size < 11
+        @test texture_atlas_size < 11
+
+        js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
+        js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
+        # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
+        # we used Retain for global_obs, so it should stay as long as root session is open
+        @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
+    end
+
 end
