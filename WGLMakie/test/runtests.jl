@@ -100,6 +100,23 @@ edisplay = Bonito.use_electron_display(devtools=true)
         @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
     end
 
+    @testset "window open/closed" begin
+        f, a, p = scatter(rand(10));
+        @test events(f).window_open[] == false
+        @test Makie.isclosed(f.scene) == false
+        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
+
+        colorbuffer(f)
+        @test events(f).window_open[] == true
+        @test Makie.isclosed(f.scene) == false
+        @test !isempty(f.scene.current_screens) && isopen(first(f.scene.current_screens))
+
+        close(f.scene.current_screens[1])
+        @test events(f).window_open[] == false
+        @test Makie.isclosed(f.scene) == true
+        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
+    end
+
     @testset "Tick Events" begin
         function check_tick(tick, state, count)
             @test tick.state == state
