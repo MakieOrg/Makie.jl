@@ -18,7 +18,7 @@ See the documentation of `tricontourf` to learn about manual triangulations and 
 
 ## Examples
 
-Plot contours for the function $z = x^2 + y^2 + \text{noise}$ using 50 random points with normally distributed values for $x$ and $y$
+Plot contours for the function $z = x^2 + y^2 + \text{noise}$ using 50 random points with normally distributed values for $x$ and $y$.
 
 ```@figure
 using Random
@@ -120,25 +120,35 @@ triangulation_inner = reduce(hcat, map(i -> [0, 1, n] .+ i, 1:n))
 triangulation_outer = reduce(hcat, map(i -> [n-1, n, 0] .+ i, 1:n))
 triangulation = hcat(triangulation_inner, triangulation_outer)
 
+num_lines = 5
+num_bands = num_lines + 1
+
+num_lines = [1.0, 1.5, 3 ,5]
+num_bands = num_lines
 # Left plot with manual triangulation
-ff, ax, _ = tricontourf(
-    x, y, z, triangulation = triangulation,
+f, ax, _ = tricontourf(
+    x, y, z, triangulation = triangulation, levels = num_bands,
     axis = (; aspect = 1, title = "Manual triangulation")
     )
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-tricontour!(x, y, z, triangulation = triangulation, colormap=:reds)
+tricontour!(
+    x, y, z, triangulation = triangulation, colormap=:reds,
+    levels = num_lines
+    )
 
 # Right plot with default Delaunay
 tricontourf(
-    ff[1, 2], x, y, z, triangulation = Makie.DelaunayTriangulation(),
+    f[1, 2], x, y, z, triangulation = Makie.DelaunayTriangulation(),
+    levels = num_bands,
     axis = (; aspect = 1, title = "Delaunay triangulation")
     )
 tricontour!(
-    x, y, z, triangulation = Makie.DelaunayTriangulation(), colormap=:reds
+    x, y, z, triangulation = Makie.DelaunayTriangulation(), colormap=:reds,
+    levels = num_lines
     )
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 
-ff
+f
 ```
 
 ## Attributes
