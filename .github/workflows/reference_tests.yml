@@ -45,7 +45,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -95,7 +95,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -145,7 +145,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >

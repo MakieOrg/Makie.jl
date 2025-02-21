@@ -82,7 +82,7 @@ function mixin_generic_plot_attributes()
         behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
-        clip_planes = automatic
+        clip_planes = @inherit clip_planes automatic
     end
 end
 
@@ -264,7 +264,7 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
 """
 @recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
                  y::Union{EndPoints,RealVector, RealMatrix},
-                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+                 image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -486,6 +486,10 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     transform_marker = false
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
+    """
+    Sets the font to be used for character markers
+    """
+    font = "default"
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
