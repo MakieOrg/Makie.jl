@@ -154,17 +154,30 @@ end
 
 function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
-    # FIXME: This uses _get_isoband_levels, from contourf.jl. This should be moved to an utils.jl file
+    # FIXME: This uses _get_isoband_levels, from contourf.jl. 
+    # This should be moved to an utils.jl file
+    # Same issue is found in tricontourf.jl
     if typeof(c.levels[]) <: Integer
-
         c.levels[] += 1
     end
-    # Same issue is found in tricontour.jl
     c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(extrema_nan, c, c._computed_levels)
+
+    colorrange = lift(c, c._computed_levels, zs) do computed_levels, zs
+        if length(computed_levels) == 1
+            # Ensure a valid range using zs' extrema
+            mi, ma = extrema_nan(zs)
+            
+            return [prevfloat(mi), nextfloat(ma)]  # Ensures min-max spacing
+        end
+        # Normal case
+        mi, ma = extrema_nan(computed_levels)  
+        return [prevfloat(prevfloat(mi)), nextfloat(nextfloat(ma))]
+    end
+
+
     computed_colormap = lift(compute_contour_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
@@ -216,6 +229,9 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 append!(colors[], (fill(lc, length(pointvec) + 1)))                     
             end            
         end
+        # Remove last NaNs
+        pop!(points[])
+        pop!(colors[])
 
         notify(points)
         return
@@ -230,8 +246,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # TODO: add labels. See contours.jl
     # TODO: contour!() and tricontourf!() have different implemenations. Choose one to use here
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
-    # FIXME: Check number of levels and actual contour lines plotted
-    # FIXME: When level is integer, check how many levels are actually plotted
+    # FIXME: fix 
 
     lines!(
         c,
