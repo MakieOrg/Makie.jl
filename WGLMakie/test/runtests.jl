@@ -138,16 +138,24 @@ edisplay = Bonito.use_electron_display(devtools=true)
             @test isempty(tick_record)
             # @test all(tick -> tick.state == Makie.UnknownTickState, tick_record)
 
-            colorbuffer(f)
             t0 = time()
+            colorbuffer(f)
             sleep(1)
-            dt = time() - t0
             close(f.scene.current_screens[1])
+            dt_max = time() - t0
+            sleep(1)
 
-            # Best case: (one tick at 0, probably 1 at end)
-            @test 30 <= length(tick_record) <= 31
-            # good enough?
-            @test 28 <= length(tick_record) <= 33
+            # tests don't make this easy...
+            @test 28 <= length(tick_record) <= round(Int, 30dt_max) + 2
+            t = 0.0
+            for (i, tick) in enumerate(tick_record)
+                @test tick.state == Makie.RegularRenderTick
+                @test tick.count == i
+                @test tick.time > t
+                t = tick.time
+            end
+            # first tick is arbitrary
+            @test Makie.mean([tick.delta_time for tick in tick_record[2:end]]) ≈ 0.033 atol = 0.001
         end
     end
 
