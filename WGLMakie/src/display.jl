@@ -102,6 +102,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
+            connect_post_init_events(screen, scene)
         else
             # Will be an error from WGLMakie.js
             put!(screen.plot_initialized, initialized)
