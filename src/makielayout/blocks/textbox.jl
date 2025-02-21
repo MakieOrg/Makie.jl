@@ -20,7 +20,7 @@ function initialize_block!(tbox::Textbox)
 
     tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator) do str, validator
+    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
 
