@@ -446,8 +446,11 @@ end
     p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
 
     e = events(scene)
-    e.window_open[] = true # Prevent the hover event Channel from getting closed
-    di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1, textpadding = (2,2,2,2))
+    # Prevent the hover event Channel getting closed
+    e.window_open[] = true
+    # blocking = true forces immediately resolution of DataInspector updates
+    di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
+        textpadding = (2,2,2,2), blocking = true)
     scene
 
     st = Makie.Stepper(scene)
@@ -458,22 +461,13 @@ end
         (217, 79), (181, 67), (260, 30), (260, 90), (205, 110)
     ]
 
-    # compile?
-    for mp in mps
-        e.mouseposition[] = (0, 0)
-        yield()
-        e.mouseposition[] = mp
-        yield()
-    end
-
     # record
     for mp in mps
         # remove tooltip so we don't select it
-        e.mouseposition[] = (0, 0)
-        yield()
+        e.mouseposition[] = (289, 139)
+        colorbuffer(scene) # force update of picking buffer
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        yield()
         Makie.step!(st)
     end
 
@@ -490,25 +484,17 @@ end
     Colorbar(f[1,3], p2)
     e = events(f)
     e.window_open[] = true # Prevent the hover event Channel from getting closed
-    di = DataInspector(f)
+    di = DataInspector(f, blocking = true)
     f
 
     st = Makie.Stepper(f)
 
     mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
     for mp in mps
-        e.mouseposition[] = (0, 0)
-        yield()
-        e.mouseposition[] = mp
-        yield()
-    end
-
-    for mp in mps
-        e.mouseposition[] = (0, 0)
-        yield()
+        e.mouseposition[] = (1, 1)
+        colorbuffer(f) # force update of picking buffer
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        yield()
         Makie.step!(st)
     end
 

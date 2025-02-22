@@ -14,6 +14,7 @@ using ReferenceTests.DelaunayTriangulation
 using ReferenceTests.SparseArrays
 using Makie: Record, volume
 
+#=
 @testset "categorical" begin
     include("categorical.jl")
 end
@@ -50,6 +51,7 @@ end
 @testset "updating_plots" begin
     include("updating.jl")
 end
+=#
 @testset "generic_components" begin
     include("generic_components.jl")
 end

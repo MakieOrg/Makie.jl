@@ -246,7 +246,7 @@ function DataInspector(fig_or_block; kwargs...)
     DataInspector(get_scene(fig_or_block); kwargs...)
 end
 
-function DataInspector(scene::Scene; priority = 100, kwargs...)
+function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...)
     parent = root(scene)
     @assert origin(viewport(parent)[]) == Vec2f(0)
 
@@ -283,7 +283,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     # So that we can skip queued up updates with empty_channel!
     # And also not slow down the processing of e.mouseposition/e.scroll
     was_open = false
-    channel = Channel{Nothing}(Inf) do ch
+    channel = Channel{Nothing}(blocking ? 0 : Inf) do ch
         for _ in ch
             if isopen(scene)
                 was_open = true
@@ -303,7 +303,7 @@ function DataInspector(scene::Scene; priority = 100, kwargs...)
     on(base_attrib.enable_indicators) do enabled
         if !enabled
             yield()
-            clear_temporary_plots!(inspector, inspector.selection)
+            clear_temporary_plots!(inspector, inspector.plot)
         end
         return
     end
@@ -329,7 +329,10 @@ function on_hover(inspector)
         end
     end
 
-    should_clear && clear_temporary_plots!(inspector, inspector.plot)
+    if should_clear
+        inspector.plot.visible[] = false
+        clear_temporary_plots!(inspector, inspector.plot)
+    end
 
     return Consume(false)
 end
@@ -381,6 +384,9 @@ end
 
 # clears temporary plots (i.e. bboxes) and update selection
 function clear_temporary_plots!(inspector::DataInspector, plot)
+    inspector.attributes.indicator_visible[] = false
+    inspector.plot.offset.val = inspector.attributes.offset[]
+
     if inspector.selection !== plot
         if to_value(get(inspector.selection, :inspector_clear, automatic)) !== automatic
             inspector.selection[:inspector_clear][](inspector, inspector.selection)
