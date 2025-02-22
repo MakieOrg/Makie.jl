@@ -25,6 +25,7 @@
 - Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
 - Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
 - Added `tricontour` plot, which plots contour lines, similar to `tricontourf` [#4795](https://github.com/MakieOrg/Makie.jl/pull/4795). 
+
 ## [0.22.1] - 2025-01-17
 
 - Allow volume textures for mesh color, to e.g. implement a performant volume slice display [#2274](https://github.com/MakieOrg/Makie.jl/pull/2274).
