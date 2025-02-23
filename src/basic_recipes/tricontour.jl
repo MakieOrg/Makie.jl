@@ -45,12 +45,22 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
     """
     mode = :normal
+    """
+    The color of the contour lines. If `nothing`, the color is determined by the numerical values of the
+    contour levels in combination with `colormap` and `colorrange`.
+    """
+    color = nothing
+    """
+    A tuple with two min and max values of z to use in colormap. If `nothing`, the colorrange is determined from the minimum and maximum values in z
+    """
+    colorrange = nothing
     "Sets the colormap from which the line colors are sampled."
     colormap = @inherit colormap
     "Color transform function"
     colorscale = identity
     """The alpha (transparency) value of the colormap or color attribute."""
     alpha = 1.0
+    
     """
     This sets the color of an optional additional contour line for
     zs = `minimum(zs)`.
@@ -248,27 +258,34 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
     # FIXME: fix 
 
+   
+    color_args_computed = (
+        comp_color = colors,
+        comp_colormap =  c._computed_colormap,
+        comp_colorscale =  c.colorscale,
+        comp_colorrange = colorrange
+    )
+
+    final_color_args = process_color_args(
+        c, colors; color_args_computed...)
+    
+    _colorcase = final_color_args[:_colorcase]
+    atr = shared_attributes(c, Lines)
+    
+    if _colorcase === 1
+        atr[:color] = final_color_args[:color]
+    else
+        for (k,v) in pairs(final_color_args)
+            atr[k] = v
+        end
+        _colorcase = pop!(atr, :_colorcase)
+    end
+
+    @show atr
     lines!(
         c,
+        atr,
         points,
-        linewidth = c.linewidth,
-        linestyle = c.linestyle,
-        linecap = c.linecap,
-        joinstyle = c.joinstyle, 
-        miter_limit = c.miter_limit,
-        color = colors,
-        colormap = c._computed_colormap,
-        colorscale = c.colorscale,
-        colorrange = colorrange,
-        alpha = c.alpha,
-        highclip = highcolor,
-        lowclip = lowcolor,
-        nan_color = c.nan_color,
-        inspectable = c.inspectable,
-        transparency = c.transparency,
-        overdraw = c.overdraw,
-        depth_shift = c.depth_shift,
-        space = c.space
     )
 end
 
@@ -288,4 +305,40 @@ function line_tricontours(m::TriplotBase.TriMesh, z, levels)
         push!(contours, TriplotBase.generate_unfilled_contours(m, z, level))
     end
     return contours
+end
+
+function process_color_args(c, colors; kwargs...)
+    """ Process color arguments from user call and computed values"""
+
+    color = get(c, :color, nothing)
+
+    # Case 1: Single color is provided: ignore colormap, colorscale, colorrange
+    if !isnothing(to_color(to_value(color)))
+        println("CASE 1")
+        return (_colorcase = 1, color = color)
+    end
+
+    colormap = get(c, :colormap, nothing)
+    colorscale = get(c, :colorscale, nothing)
+    colorrange = get(c, :colorrange, nothing)
+
+    if isnothing(to_value(colormap))
+        colormap = kwargs[:computed_colormap]
+    end
+
+    if isnothing(to_value(colorscale))
+        colorscale = kwargs[:colorscale]
+    end
+
+    if isnothing(to_value(colorrange))
+        colorrange = kwargs[:comp_colorrange]
+    end
+
+    return (
+        _colorcase = 2,
+        color = colors,
+        colormap = colormap,
+        colorscale = colorscale,
+        colorrange = colorrange
+    )
 end
