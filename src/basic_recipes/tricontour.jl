@@ -281,7 +281,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         _colorcase = pop!(atr, :_colorcase)
     end
 
-    @show atr
     lines!(
         c,
         atr,
@@ -314,10 +313,10 @@ function process_color_args(c, colors; kwargs...)
 
     # Case 1: Single color is provided: ignore colormap, colorscale, colorrange
     if !isnothing(to_color(to_value(color)))
-        println("CASE 1")
         return (_colorcase = 1, color = color)
     end
 
+    # Case 2: use computed colors. Verify what other attributes were passed
     colormap = get(c, :colormap, nothing)
     colorscale = get(c, :colorscale, nothing)
     colorrange = get(c, :colorrange, nothing)
