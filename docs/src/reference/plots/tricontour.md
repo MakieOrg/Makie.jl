@@ -56,7 +56,7 @@ scatter!(
     x, y, color = z, colormap = :batlow,
     strokecolor = :black, strokewidth = 2
     )
-Colorbar(ff[1, 2], tr)
+Colorbar(f[1, 2], tr)
 f
 ```
 
