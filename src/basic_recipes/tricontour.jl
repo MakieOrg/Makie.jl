@@ -56,6 +56,17 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     colorrange = nothing
     "Sets the colormap from which the line colors are sampled."
     colormap = @inherit colormap
+
+    """
+    Determines whether the given colormap should be discretized based on contour levels. 
+
+    - If `true`, a discrete (categorical) colormap is generated, where colors are assigned based on the provided contour levels.
+    - If `false`, the given colormap is used  without discretization.
+
+    This setting is useful for categorical or stepped visualizations where distinct colors are needed for each contour level.
+    """
+    compute_discrete_colormap = true
+
     "Color transform function"
     colorscale = identity
     """The alpha (transparency) value of the colormap or color attribute."""
@@ -261,7 +272,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
    
     color_args_computed = (
         comp_color = colors,
-        comp_colormap =  c._computed_colormap,
         comp_colorscale =  c.colorscale,
         comp_colorrange = colorrange
     )
@@ -320,9 +330,9 @@ function process_color_args(c, colors; kwargs...)
     colormap = get(c, :colormap, nothing)
     colorscale = get(c, :colorscale, nothing)
     colorrange = get(c, :colorrange, nothing)
-
-    if isnothing(to_value(colormap))
-        colormap = kwargs[:computed_colormap]
+    compute_discrete_colormap = c.attributes[:compute_discrete_colormap]
+    if to_value(compute_discrete_colormap)
+        colormap = c.attributes[:_computed_colormap]
     end
 
     if isnothing(to_value(colorscale))
