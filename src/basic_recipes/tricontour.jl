@@ -9,6 +9,10 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontour begin
+    """
+    If `true`, adds text labels to the contour lines.
+    """
+    labels = false
     
     "Can be either an `Int` which results in n contour lines with equally spaced levels,
      or it can be an `AbstractVector{<:Real}` that lists n consecutive levels"
@@ -215,7 +219,9 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
     points = Observable(Point2f[])
     colors = Observable(Float64[])
-    
+    lev_pos_col = Observable(Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[])
+    labels = c.attributes[:labels]
+
     function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
         empty!(points[])
         empty!(colors[])
@@ -237,6 +243,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         # TODO: Fix the issue with colors here
         # contour_lines may contain multiple lines per level, each in a vector
         # Convert to a flat vector of points separated by NaNs
+        
         for (fc, lc) in zip(contour_lines, levels)
             pointvecs = map(fc.polylines) do vecs
                 map(Point2f, vecs)
@@ -247,7 +254,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
             for pointvec in pointvecs                
                 append!(points[], pointvec)
                 push!(points[], Point2f(NaN32))
-                append!(colors[], (fill(lc, length(pointvec) + 1)))                     
+                append!(colors[], (fill(lc, length(pointvec) + 1)))  
+                labels[] && push!(lev_pos_col[], label_info(lc, pointvec, to_color(:black)))
             end            
         end
         # Remove last NaNs
@@ -268,7 +276,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # TODO: contour!() and tricontourf!() have different implemenations. Choose one to use here
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
     # FIXME: fix 
-
    
     color_args_computed = (
         comp_color = colors,
@@ -279,6 +286,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     process_color_args!(atr, c, colors; color_args_computed...)
 
     lines!(c, atr, points)
+    text!(c, lev_pos_col)
+    c
 end
 
 function compute_triangulation(tri)
@@ -301,9 +310,7 @@ end
 
 function process_color_args!(atr, c, colors; kwargs...)
     """ Process color arguments from user call and computed values"""
-
     color = get(atr, :color, nothing)
-
     # Case 1: Single color is provided: ignore colormap, colorscale, colorrange
     if !isnothing(to_color(to_value(color)))
         # Use only :color. Remove other color attributes
@@ -312,19 +319,15 @@ function process_color_args!(atr, c, colors; kwargs...)
         end
         return
     end
-
     # Case 2: use computed colors. Verify what other attributes were passed
     atr[:color] = colors
-
     discretize_colormap = c.attributes[:discretize_colormap]
     if to_value(discretize_colormap)
         atr[:colormap] = c.attributes[:_computed_colormap]
     end
-
     colorrange = get(atr, :colorrange, nothing)
     if isnothing(to_value(colorrange))
         atr[:colorrange] = kwargs[:comp_colorrange]
     end
-
     return
 end
