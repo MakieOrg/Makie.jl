@@ -47,7 +47,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     mode = :normal
     """
     The color of the contour lines. If `nothing`, the color is determined by the numerical values of the
-    contour levels in combination with `colormap` and `colorrange`.
+    contour levels in combination with `colormap` and `colorrange`. If a `color` argument is specified, values of arguments `colorrange`, `colormap`, `colorscale` and `discretize_colormap` are ignored.
     """
     color = nothing
     """
@@ -65,7 +65,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
 
     This setting is useful for categorical or stepped visualizations where distinct colors are needed for each contour level.
     """
-    compute_discrete_colormap = true
+    discretize_colormap = true
 
     "Color transform function"
     colorscale = identity
@@ -275,27 +275,10 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         comp_colorscale =  c.colorscale,
         comp_colorrange = colorrange
     )
-
-    final_color_args = process_color_args(
-        c, colors; color_args_computed...)
-    
-    _colorcase = final_color_args[:_colorcase]
     atr = shared_attributes(c, Lines)
-    
-    if _colorcase === 1
-        atr[:color] = final_color_args[:color]
-    else
-        for (k,v) in pairs(final_color_args)
-            atr[k] = v
-        end
-        _colorcase = pop!(atr, :_colorcase)
-    end
+    process_color_args!(atr, c, colors; color_args_computed...)
 
-    lines!(
-        c,
-        atr,
-        points,
-    )
+    lines!(c, atr, points)
 end
 
 function compute_triangulation(tri)
@@ -316,38 +299,32 @@ function line_tricontours(m::TriplotBase.TriMesh, z, levels)
     return contours
 end
 
-function process_color_args(c, colors; kwargs...)
+function process_color_args!(atr, c, colors; kwargs...)
     """ Process color arguments from user call and computed values"""
 
-    color = get(c, :color, nothing)
+    color = get(atr, :color, nothing)
 
     # Case 1: Single color is provided: ignore colormap, colorscale, colorrange
     if !isnothing(to_color(to_value(color)))
-        return (_colorcase = 1, color = color)
+        # Use only :color. Remove other color attributes
+        for k in (:colormap, :colorscale, :colorrange)
+            haskey(atr, k) && delete!(atr, k)
+        end
+        return
     end
 
     # Case 2: use computed colors. Verify what other attributes were passed
-    colormap = get(c, :colormap, nothing)
-    colorscale = get(c, :colorscale, nothing)
-    colorrange = get(c, :colorrange, nothing)
-    compute_discrete_colormap = c.attributes[:compute_discrete_colormap]
-    if to_value(compute_discrete_colormap)
-        colormap = c.attributes[:_computed_colormap]
+    atr[:color] = colors
+
+    discretize_colormap = c.attributes[:discretize_colormap]
+    if to_value(discretize_colormap)
+        atr[:colormap] = c.attributes[:_computed_colormap]
     end
 
-    if isnothing(to_value(colorscale))
-        colorscale = kwargs[:colorscale]
-    end
-
+    colorrange = get(atr, :colorrange, nothing)
     if isnothing(to_value(colorrange))
-        colorrange = kwargs[:comp_colorrange]
+        atr[:colorrange] = kwargs[:comp_colorrange]
     end
 
-    return (
-        _colorcase = 2,
-        color = colors,
-        colormap = colormap,
-        colorscale = colorscale,
-        colorrange = colorrange
-    )
+    return
 end
