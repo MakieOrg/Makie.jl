@@ -178,8 +178,9 @@ function initialize_block!(m::Menu; default = 1)
         is_over_button = false
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
-            # Is inside the expanded menu selection
-            if mouseover(menuscene, optionpolys, optiontexts)
+            # Is inside the expanded menu selection (the polys cover the whole
+            # selectable area and are in pixel space relative to menuscene)
+            if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
                 was_inside_options = true
                 # we either clicked on an item or hover it
@@ -198,7 +199,8 @@ function initialize_block!(m::Menu; default = 1)
             return Consume(true)
         else
             # If not inside menuscene, we check the state for the menu button
-            if mouseover(blockscene, selectiontext, selectionpoly)
+            # (use position because selectionpoly is in blockscene)
+            if position in selectionpoly.converted[1][]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button = true
