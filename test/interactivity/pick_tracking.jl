@@ -118,7 +118,6 @@
 
         f = Figure(size = (100, 100))
         Makie.Checkbox(f[1, 1])
-        f
         Makie.update_state_before_display!(f)
 
         # click
@@ -134,7 +133,6 @@
 
         f = Figure(size = (200, 100))
         Makie.IntervalSlider(f[1, 1])
-        f
         Makie.update_state_before_display!(f)
 
         # left end drag
