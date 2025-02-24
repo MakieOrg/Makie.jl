@@ -117,7 +117,10 @@ function initialize_block!(m::Menu; default = 1)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         fontsize = m.fontsize, inspectable = false)
 
-    onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
+    onany(blockscene, optionstrings, m.textpadding, scenearea) do _, pad, bbox
+        # No need to update when the scene is hidden
+        widths(bbox) == Vec2i(0) && return
+
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
         bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
@@ -137,6 +140,7 @@ function initialize_block!(m::Menu; default = 1)
 
         update_option_colors!(0)
         notify(optionrects)
+        return
     end
     notify(optionstrings)
 
