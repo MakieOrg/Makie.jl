@@ -23,18 +23,25 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    scenearea = lift(blockscene, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
-                     ignore_equal_values=true) do bbox, h, d, open
-        !open ?
-            round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
-            round_to_IRect2D(BBox(
+    scenearea = Observable(Rect2i(0,0,0,0), ignore_equal_values=true)
+    map!(blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
+                     update = true) do bbox, h, d, open
+        if open
+            return round_to_IRect2D(BBox(
                 left(bbox),
                 right(bbox),
                 d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))))
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))
+            ))
+        else
+            # If the scene is not visible the scene placement and size does not
+            # matter for rendering. We still need to set the size to 0 for
+            # interactions though.
+            return Rect2i(0,0,0,0)
+        end
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
+    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true, visible = m.is_open)
     translate!(menuscene, 0, 0, 200)
 
     onany(blockscene, scenearea, listheight) do area, listheight
