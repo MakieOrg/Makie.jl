@@ -805,7 +805,9 @@ end
 
 @reference_test "Voxel - gap attribute" begin
     # test direct mapping of ids to colors & upsampling of vector colormap
-    voxels(RNG.rand(3,3,3), gap = 0.3)
+    f,a,p = voxels(RNG.rand(3,3,3), gap = 0.3)
+    rotate!(p, Vec3f(1,2,3), 0.8)
+    f
 end
 
 @reference_test "Plot transform overwrite" begin
