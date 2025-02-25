@@ -790,7 +790,7 @@ end
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
-    rotate!(p, Vec3f(1,2,3), 0.8)
+    Makie.rotate!(p, Vec3f(1,2,3), 0.8)
     fig
 end
 
