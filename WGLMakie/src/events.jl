@@ -123,7 +123,7 @@ end
 
 
 function connect_post_init_events(screen, scene)
-    @assert isopen(screen) "Window most be initialized first"
+    @assert isopen(screen) "Window must be initialized first"
 
     e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
