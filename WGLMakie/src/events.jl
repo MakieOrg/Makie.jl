@@ -123,6 +123,10 @@ end
 
 
 function connect_post_init_events(screen, scene)
+    for attempt in 1:10
+        isopen(screen) && break
+        sleep(0.1 * attempt)
+    end
     @assert isopen(screen) "Window must be initialized first"
 
     e = events(scene)

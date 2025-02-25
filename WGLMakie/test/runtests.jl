@@ -58,9 +58,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
         close(f.scene.current_screens[1])
         @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
-        # window_open checks isopen on a timer so we need to wait a little for it to update
-        # isclosed() relies on window_open, so it too needs some time
-        sleep(0.1)
         @test events(f).window_open[] == false
         @test Makie.isclosed(f.scene) == true
     end
