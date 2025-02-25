@@ -46,21 +46,40 @@ edisplay = Bonito.use_electron_display(devtools=true)
     end
 
     @testset "window open/closed" begin
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         @test events(f).window_open[] == false
         @test Makie.isclosed(f.scene) == false
         @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
-
-        display(edisplay, App(() -> f))
-        @test events(f).window_open[] == true
-        @test Makie.isclosed(f.scene) == false
-        @test !isempty(f.scene.current_screens) && isopen(first(f.scene.current_screens))
-
-        close(f.scene.current_screens[1])
-        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
-        @test events(f).window_open[] == false
-        @test Makie.isclosed(f.scene) == true
+        # This may take a bit
+        @testset "screen closing after not begin displayed anymore" begin
+            display(edisplay, App(f))
+            Bonito.wait_for(() -> events(f).window_open[])
+            @test !isempty(f.scene.current_screens)
+            screen = f.scene.current_screens[1]
+            @test events(f).window_open[] == true
+            @test Makie.isclosed(f.scene) == false
+            @test isopen(screen)
+            display(edisplay, App(nothing))
+            Bonito.wait_for(() -> events(f).window_open[] == false)
+            @test !isopen(screen)
+            @test events(f).window_open[] == false
+            @test Makie.isclosed(f.scene) == true
+        end
+        @testset "screen with explicit close" begin
+            f, a, p = scatter(rand(10))
+            display(edisplay, App(f))
+            Bonito.wait_for(() -> events(f).window_open[])
+            @test !isempty(f.scene.current_screens)
+            screen = f.scene.current_screens[1]
+            @test events(f).window_open[] == true
+            @test Makie.isclosed(f.scene) == false
+            close(f.scene.current_screens[1])
+            @test events(f).window_open[] == false
+            @test Makie.isclosed(f.scene) == true
+            @test Makie.isopen(f.scene) == false
+        end
     end
+
 
     @testset "Tick Events" begin
         function check_tick(tick, state, count)

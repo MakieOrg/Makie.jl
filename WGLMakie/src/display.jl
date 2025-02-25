@@ -179,8 +179,8 @@ end
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    session = get_screen_session(screen)
-    return !isnothing(session) && isopen(session)
+    isnothing(screen.scene) && return false
+    return screen.scene.events.window_open[]
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)
@@ -210,7 +210,6 @@ end
 function Base.close(screen::Screen)
     Makie.stop!(screen.tick_clock)
     events(screen.scene).window_open[] = false
-    close(screen.session)
     return
 end
 
