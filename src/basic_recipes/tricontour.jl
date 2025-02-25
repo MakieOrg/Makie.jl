@@ -13,6 +13,11 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If `true`, adds text labels to the contour lines.
     """
     labels = false
+
+    "The font of the contour labels."
+    labelfont = @inherit font
+    "Font size of the contour labels"
+    labelsize = 10 # arbitrary
     
     "Can be either an `Int` which results in n contour lines with equally spaced levels,
      or it can be an `AbstractVector{<:Real}` that lists n consecutive levels"
@@ -219,7 +224,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
     points = Observable(Point2f[])
     colors = Observable(Float64[])
-    lev_pos_col = Observable(Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[])
+    lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
     labels = c.attributes[:labels]
 
     function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
@@ -255,14 +260,18 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 append!(points[], pointvec)
                 push!(points[], Point2f(NaN32))
                 append!(colors[], (fill(lc, length(pointvec) + 1)))  
-                labels[] && push!(lev_pos_col[], label_info(lc, pointvec, to_color(:black)))
+                labels[] && push!(lev_pos_col, label_info(lc, pointvec, to_color(:black)))
             end            
         end
+        if length(points[]) == 0
+            throw(ArgumentError("No contour lines found for the given `levels`. Ensure that `z` contains values within the specified range."))
+        end        
         # Remove last NaNs
         pop!(points[])
         pop!(colors[])
 
         notify(points)
+        notify(colors)
         return
     end
 
@@ -284,10 +293,41 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     )
     atr = shared_attributes(c, Lines)
     process_color_args!(atr, c, colors; color_args_computed...)
-
     lines!(c, atr, points)
-    text!(c, lev_pos_col)
-    c
+    #---------
+    if !to_value(labels)
+        return
+    end
+    labelformatter = contour_label_formatter
+    @show lev_pos_col
+
+    @show c
+    pos = Point2f.([lpc[2][2][1:2] for lpc in lev_pos_col])    
+    txt = [labelformatter(lpc[1]) for lpc in lev_pos_col]
+    @show pos
+    @show txt
+    text!(
+        c,
+        pos;
+        color = :black,
+        text = txt,
+        align = (:center, :center),
+        )
+    return c
+
+
+    # texts = text!(
+    #     plot,
+    #     Observable(P[]);
+    #     color = Observable(RGBA{Float32}[]),
+    #     rotation = Observable(Float32[]),
+    #     text = Observable(String[]),
+    #     align = (:center, :center),
+    #     fontsize = labelsize,
+    #     font = labelfont,
+    #     transform_marker = false
+    # )
+
 end
 
 function compute_triangulation(tri)
