@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `contourf` (contour filled) now supports _curvilinear_ grids, where `x` and `y` are matrices (`contour` lines were added in v.0.22.0) [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
 - Updated WGLMakie's threejs version from 0.157 to 0.173, fixing some threejs bugs [#4809](https://github.com/MakieOrg/Makie.jl/pull/4809).
 - Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
@@ -26,6 +27,8 @@
 - Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
 - Added `dpi` metadata to all rendered png files, where `px_per_unit = 1` means 96dpi, `px_per_unit = 2` means 192dpi, and so on. This gives frontends a chance to show plain Makie png images with the correct scaling [#4812](https://github.com/MakieOrg/Makie.jl/pull/4812).
 - Fixed issue with tick event not triggering in WGLMakie [#4818](https://github.com/MakieOrg/Makie.jl/pull/4818)
+- Improved performance of some Blocks, mainly `Textbox` and `Menu` [#4821](https://github.com/MakieOrg/Makie.jl/pull/4821)
+- Fixed issue with `PolarAxis` not considering tick visibility in protrusion calculations. [#4823](https://github.com/MakieOrg/Makie.jl/pull/4823)
 
 ## [0.22.1] - 2025-01-17
 
