@@ -174,7 +174,8 @@ void main() {
     // the quad is associated with the "previous" or "next" slice of voxels. We
     // can derive that from the normal direction, as the normal always points
     // away from the voxel center.
-    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * o_normal) / size;
+    // requires object space normal (unit_vecs[dim])
+    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * normal_dir * unit_vecs[dim]) / size;
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
