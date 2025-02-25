@@ -179,8 +179,11 @@ end
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    isnothing(screen.scene) && return false
-    return screen.scene.events.window_open[]
+    # This function is used as the source of truth for dynamically setting
+    # window_open[] = false (as opposed to using close()), so it can't just
+    # rely on window_open. Check the session too.
+    return !isnothing(screen.scene) && screen.scene.events.window_open[] &&
+        !isnothing(screen.session) && isopen(screen.session)
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)

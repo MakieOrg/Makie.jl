@@ -46,7 +46,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
     end
 
     @testset "window open/closed" begin
-        f, a, p = scatter(rand(10))
+        f, a, p = scatter(rand(10));
         @test events(f).window_open[] == false
         @test Makie.isclosed(f.scene) == false
         @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
