@@ -56,12 +56,6 @@ end
         ]
     )
 
-    # simulated interaction
-    events(fig).mouseposition[] = (500, 380)
-    events(fig).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
-    events(fig).mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
-    events(fig).mouseposition[] = (500, 320)
-
     menu1.is_open = true
     menu4.is_open = true
 
