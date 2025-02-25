@@ -21,7 +21,7 @@
 
     # type text
     for (char, expected) in zip(collect("test"), [18, 39, 39, 39])
-        _key = eval(:(Makie.Keyboard.$(Symbol(char))))
+        _key = getproperty(Makie.Keyboard, Symbol(char))
         all_messages, summary_str = Bonito.collect_messages() do
             events(f).keyboardbutton[] = Makie.KeyEvent(_key, Keyboard.press)
             events(f).unicode_input[] = char
