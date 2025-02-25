@@ -26,6 +26,7 @@
 - Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
 - Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
 - Added `dpi` metadata to all rendered png files, where `px_per_unit = 1` means 96dpi, `px_per_unit = 2` means 192dpi, and so on. This gives frontends a chance to show plain Makie png images with the correct scaling [#4812](https://github.com/MakieOrg/Makie.jl/pull/4812).
+- Improved performance of some Blocks, mainly `Textbox` and `Menu` [#4821](https://github.com/MakieOrg/Makie.jl/pull/4821)
 - Fixed issue with `PolarAxis` not considering tick visibility in protrusion calculations. [#4823](https://github.com/MakieOrg/Makie.jl/pull/4823)
 
 ## [0.22.1] - 2025-01-17

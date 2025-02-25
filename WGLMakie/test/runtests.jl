@@ -37,8 +37,8 @@ Makie.inline!(Makie.automatic)
 edisplay = Bonito.use_electron_display(devtools=true)
 
 @testset "reference tests" begin
+    WGLMakie.activate!()
     @testset "refimages" begin
-        WGLMakie.activate!()
         ReferenceTests.mark_broken_tests(excludes)
         recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
         missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")

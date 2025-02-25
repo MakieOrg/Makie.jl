@@ -50,12 +50,15 @@ end
         [
             Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
             menu1                            menu3;
+            Box(fig, visible = false) Box(fig, visible = false);
             Label(fig, "B", width = nothing) Label(fig, "D", width = nothing);
             menu2                            menu4;
         ]
     )
-    menu2.is_open = true
+
+    menu1.is_open = true
     menu4.is_open = true
+
     fig
 end
 
