@@ -38,13 +38,12 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
 @testset "reference tests" begin
     WGLMakie.activate!()
-    # @testset "refimages" begin
-    #     ReferenceTests.mark_broken_tests(excludes)
-    #     recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
-    #     missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
-    #     ReferenceTests.test_comparison(scores; threshold = 0.05)
-    # end
-
+    @testset "refimages" begin
+        ReferenceTests.mark_broken_tests(excludes)
+        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
+        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
+        ReferenceTests.test_comparison(scores; threshold = 0.05)
+    end
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10));
@@ -52,15 +51,18 @@ edisplay = Bonito.use_electron_display(devtools=true)
         @test Makie.isclosed(f.scene) == false
         @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
 
-        colorbuffer(f)
+        display(edisplay, App(() -> f))
         @test events(f).window_open[] == true
         @test Makie.isclosed(f.scene) == false
         @test !isempty(f.scene.current_screens) && isopen(first(f.scene.current_screens))
 
         close(f.scene.current_screens[1])
+        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
+        # window_open checks isopen on a timer so we need to wait a little for it to update
+        # isclosed() relies on window_open, so it too needs some time
+        sleep(0.1)
         @test events(f).window_open[] == false
         @test Makie.isclosed(f.scene) == true
-        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
     end
 
     @testset "Tick Events" begin
