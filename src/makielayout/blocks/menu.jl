@@ -117,24 +117,33 @@ function initialize_block!(m::Menu; default = 1)
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         fontsize = m.fontsize, inspectable = false)
 
-    onany(blockscene, optionstrings, m.textpadding, scenearea) do _, pad, bbox
-        # No need to update when the scene is hidden
-        widths(bbox) == Vec2i(0) && return
-
+    # listheight needs to be up to date before showing the menuscene so that its
+    # direction is correct
+    gc_heights = map(blockscene, optiontexts.plots[1][1], m.textpadding) do gcs, pad
         gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
         bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
         heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
-        heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         h = sum(heights)
+        listheight[] = h
+        return (heights, h)
+    end
+
+    onany(blockscene, gc_heights, scenearea) do (heights, h), bbox
+        # No need to update when the scene is hidden
+        widths(bbox) == Vec2i(0) && return
+
+        pad = m.textpadding[] # gc_heights triggers on padding, so we don't need to react to it
+        # listheight[] = h
+
+        heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         list_y_bounds[] = h .- heights_cumsum
         texts_y = @views h .- 0.5 .* (heights_cumsum[1:end-1] .+ heights_cumsum[2:end])
         textpositions[] = Point2f.(pad[1], texts_y)
-        listheight[] = h
         w_bbox = width(bbox)
         # need to manipulate the vectors themselves, otherwise update errors when lengths change
-        resize!(optionrects.val, length(bbs))
+        resize!(optionrects.val, length(heights))
 
-        optionrects.val .= map(eachindex(bbs)) do i
+        optionrects.val .= map(eachindex(heights)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
 
