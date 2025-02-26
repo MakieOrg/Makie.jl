@@ -131,12 +131,12 @@ end
 ########################################################################################
 # OpenGL Arrays
 
-const GLArrayEltypes = Union{StaticVector,Real,Colorant}
+const GLArrayEltypes = Union{StaticVector, Quaternion, Real, Colorant}
 """
 Transform julia datatypes to opengl enum type
 """
 julia2glenum(x::Type{T}) where {T <: FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
-julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
+julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector, Quaternion, Colorant}} = julia2glenum(eltype(x))
 julia2glenum(::Type{OffsetInteger{O,T}}) where {O,T} = julia2glenum(T)
 julia2glenum(::Type{GLubyte})  = GL_UNSIGNED_BYTE
 julia2glenum(::Type{GLbyte})   = GL_BYTE
@@ -339,12 +339,14 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, visible[]
+            id, to_value(visible)
         )
-        push!(observables, visible)
-        on(visible) do visible
-            robj.visible = visible
-            return
+        if visible isa Observable # old way, set in GLMakie now
+            push!(observables, visible)
+            on(visible) do visible
+                robj.visible = visible
+                return
+            end
         end
         return robj
     end
