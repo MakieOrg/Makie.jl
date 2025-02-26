@@ -507,6 +507,18 @@ end
     @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
 end
 
+@testset "Legend data gathering" begin
+    @test make_fig(density!, rand(100)) isa Figure
+    @test make_fig(poly!, Rect2f(0,0,1,1)) isa Figure
+    @test make_fig(band!, rand(3), rand(3), rand(3)) isa Figure
+    @test make_fig(violin!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig(boxplot!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig(crossbar!, rand(3), rand(3), rand(3) .-1, rand(3) .+1) isa Figure
+    @test make_fig(scatter!, rand(3)) isa Figure
+    @test make_fig(lines!, rand(3)) isa Figure
+    @test make_fig(linesegments!, rand(8)) isa Figure
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp

@@ -33,6 +33,7 @@
 - Fixed issue with tick event not triggering in WGLMakie [#4818](https://github.com/MakieOrg/Makie.jl/pull/4818)
 - Improved performance of some Blocks, mainly `Textbox` and `Menu` [#4821](https://github.com/MakieOrg/Makie.jl/pull/4821)
 - Fixed issue with `PolarAxis` not considering tick visibility in protrusion calculations. [#4823](https://github.com/MakieOrg/Makie.jl/pull/4823)
+- Fixed some plots failing to create Legend entries due to missing attributes [#4826](https://github.com/MakieOrg/Makie.jl/pull/4826)
 
 ## [0.22.1] - 2025-01-17
 
