@@ -24361,8 +24361,9 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     if (resize_to) {
         const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
-        window.addEventListener("resize", (event)=>resize_callback_throttled());
-        setTimeout(resize_callback, 50);
+        const resizeObserver = new ResizeObserver(resize_callback_throttled);
+        resizeObserver.observe(canvas.parentElement);
+        resize_callback();
     }
 }
 function threejs_module(canvas) {

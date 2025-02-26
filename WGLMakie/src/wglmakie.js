@@ -353,13 +353,14 @@ function add_canvas_events(screen, comm, resize_to) {
             resize_callback,
             100
         );
-        window.addEventListener("resize", (event) =>
-            resize_callback_throttled()
-        );
+
+        // use resize observer to watch parent size changes
+        const resizeObserver = new ResizeObserver(resize_callback_throttled);
+        resizeObserver.observe(canvas.parentElement);
+
         // Fire the resize event once at the start to auto-size our window
-        // Without setTimeout, the parent doesn't have the right size yet?
-        // TODO, there should be a way to do this cleanly
-        setTimeout(resize_callback, 50);
+        // No need for setTimeout since resizeObserver should pick up on changes from now on
+        resize_callback();
     }
 }
 
