@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fix `resize_to=:parent` behavior of WGLMakie, resize is now triggered by resizes of parent element rather than window/viewport resizes [#4817](https://github.com/MakieOrg/Makie.jl/pull/4817).
 
 ## [0.22.2] - 2025-02-26
 
