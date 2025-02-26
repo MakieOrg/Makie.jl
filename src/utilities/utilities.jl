@@ -420,10 +420,10 @@ function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::Abstra
     return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
 end
 
-function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
+function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
-    ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
+    ps = matrix_grid(p -> apply_transform(transform_func, p), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
     rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
