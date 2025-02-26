@@ -508,6 +508,14 @@ end
 end
 
 @testset "Legend data gathering" begin
+    function make_fig(plot_func, args...)
+        f = Figure()
+        ax = Axis(f[1, 1])
+        plot_func(ax, args..., label="test")
+        Legend(f[1, 2], ax)
+        return f
+    end
+
     @test make_fig(density!, rand(100)) isa Figure
     @test make_fig(poly!, Rect2f(0,0,1,1)) isa Figure
     @test make_fig(band!, rand(3), rand(3), rand(3)) isa Figure
