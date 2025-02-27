@@ -266,14 +266,7 @@ function find_font_for_char(glyph, font::NativeFont)
 end
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
-    if FreeTypeAbstraction.glyph_index(font, glyph) == 0
-        for afont in alternativefonts()
-            if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
-                font = afont
-            end
-        end
-    end
-    return insert_glyph!(atlas, glyph, font)
+    return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
 end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
