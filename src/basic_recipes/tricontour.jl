@@ -13,9 +13,14 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If `true`, adds text labels to the contour lines.
     """
     labels = false
-
     "The font of the contour labels."
     labelfont = @inherit font
+    "Color of the contour labels, if `nothing` it matches `color` by default."
+    labelcolor = nothing  # matches color by default
+    """
+    Formats the numeric values of the contour levels to strings.
+    """
+    labelformatter = contour_label_formatter
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
     
@@ -141,11 +146,16 @@ function Makie.convert_arguments(
     return (tri, z)
 end
 
-function compute_contour_colormap(levels, cmap, elow, ehigh)
+function compute_contour_colormap(levels, cmap, elow, ehigh, discretize_colormap)
     levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
     n = length(levels_scaled)
 
+    
+
     _cmap = to_colormap(cmap)
+    if !discretize_colormap
+        return cgrad(cmap)
+    end
 
     if elow === :auto && ehigh !== :auto
         cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
@@ -194,12 +204,10 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-
     colorrange = lift(c, c._computed_levels, zs) do computed_levels, zs
         if length(computed_levels) == 1
             # Ensure a valid range using zs' extrema
-            mi, ma = extrema_nan(zs)
-            
+            mi, ma = extrema_nan(zs)            
             return [prevfloat(mi), nextfloat(ma)]  # Ensures min-max spacing
         end
         # Normal case
@@ -209,7 +217,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
 
     computed_colormap = lift(compute_contour_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
+                             c.extendhigh, c.discretize_colormap)
     c.attributes[:_computed_colormap] = computed_colormap
 
     lowcolor = Observable{RGBAf}()
@@ -227,7 +235,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
     labels = c.attributes[:labels]
 
-    function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
+    function (triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
         empty!(points[])
         empty!(colors[])
 
@@ -246,6 +254,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         contour_lines = line_tricontours(xs, ys, zs, trianglelist, levels)
 
         # TODO: Fix the issue with colors here
+    
         # contour_lines may contain multiple lines per level, each in a vector
         # Convert to a flat vector of points separated by NaNs
         
@@ -259,7 +268,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
             for pointvec in pointvecs                
                 append!(points[], pointvec)
                 push!(points[], Point2f(NaN32))
-                append!(colors[], (fill(lc, length(pointvec) + 1)))  
+                append!(colors[], (fill(lc, length(pointvec) + 1)))
                 labels[] && push!(lev_pos_col, label_info(lc, pointvec, to_color(:black)))
             end            
         end
@@ -275,17 +284,11 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         return
     end
 
-    onany(calculate_points, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
-    
-    # onany doesn't get called without a push, so we call
-    # it on a first run!
-    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
-
-    # TODO: add labels. See contours.jl
-    # TODO: contour!() and tricontourf!() have different implemenations. Choose one to use here
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
-    # FIXME: fix 
-   
+    # FIXME: make labels observable
+    # TODO: 
+
+    # Prepare color arguments
     color_args_computed = (
         comp_color = colors,
         comp_colorscale =  c.colorscale,
@@ -293,28 +296,41 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     )
     atr = shared_attributes(c, Lines)
     process_color_args!(atr, c, colors; color_args_computed...)
+
+    # Compute contours
+    onany(calculate_points, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
+    
+    # onany doesn't get called without a push, so we call
+    # it on a first run!
+    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
+
+
     lines!(c, atr, points)
     #---------
     if !to_value(labels)
         return
     end
-    labelformatter = contour_label_formatter
-    @show lev_pos_col
+    @extract c (labelsize, labelfont, labelcolor, labelformatter)
+    pos = Observable(Point2f.([lpc[2][2][1:2] for lpc in lev_pos_col]))
+    txt = [labelformatter[](lpc[1]) for lpc in lev_pos_col]
 
-    @show c
-    pos = Point2f.([lpc[2][2][1:2] for lpc in lev_pos_col])    
-    txt = [labelformatter(lpc[1]) for lpc in lev_pos_col]
-    @show pos
-    @show txt
+    if isnothing(to_value(labelcolor))
+        cm = to_colormap(atr[:colormap][])
+        colscale = atr[:colorscale][]
+        colrange = Tuple(colscale.(atr[:colorrange][]))
+        labelcolor = [interpolated_getindex(cm, colscale(lpc[1]), colrange) for lpc in lev_pos_col]
+    end
     text!(
         c,
         pos;
-        color = :black,
+        color = labelcolor,
         text = txt,
         align = (:center, :center),
+        fontsize = labelsize,
+        font = labelfont,        
         )
     return c
-
+    # cm = to_value(tr.plots[1].attributes[:colormap])
 
     # texts = text!(
     #     plot,
@@ -361,10 +377,11 @@ function process_color_args!(atr, c, colors; kwargs...)
     end
     # Case 2: use computed colors. Verify what other attributes were passed
     atr[:color] = colors
-    discretize_colormap = c.attributes[:discretize_colormap]
-    if to_value(discretize_colormap)
-        atr[:colormap] = c.attributes[:_computed_colormap]
-    end
+    atr[:colormap] = c.attributes[:_computed_colormap]
+    # discretize_colormap = c.attributes[:discretize_colormap]
+    # if to_value(discretize_colormap)
+    #     atr[:colormap] = c.attributes[:_computed_colormap]
+    # end
     colorrange = get(atr, :colorrange, nothing)
     if isnothing(to_value(colorrange))
         atr[:colorrange] = kwargs[:comp_colorrange]
