@@ -150,7 +150,6 @@ function compute_contour_colormap(levels, cmap, elow, ehigh, discretize_colormap
     levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
     n = length(levels_scaled)
 
-    
 
     _cmap = to_colormap(cmap)
     if !discretize_colormap
@@ -200,7 +199,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     if typeof(c.levels[]) <: Integer
         c.levels[] += 1
     end
-    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
+    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode      
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
@@ -232,13 +231,14 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
     points = Observable(Point2f[])
     colors = Observable(Float64[])
-    lev_pos_col = Tuple{Float32,NTuple{3,Point3f},RGBA{Float32}}[]
+    lev_pos = Observable(Tuple{Float32,NTuple{3,Point3f}}[])
+
     labels = c.attributes[:labels]
 
-    function (triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
+    function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
         empty!(points[])
         empty!(colors[])
-
+        empty!(lev_pos[])
         levels = copy(levels)
 
         # adjust outer levels to be inclusive
@@ -269,7 +269,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 append!(points[], pointvec)
                 push!(points[], Point2f(NaN32))
                 append!(colors[], (fill(lc, length(pointvec) + 1)))
-                labels[] && push!(lev_pos_col, label_info(lc, pointvec, to_color(:black)))
+                labels[] && push!(lev_pos[], label_info(lc, pointvec))
             end            
         end
         if length(points[]) == 0
@@ -278,15 +278,17 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         # Remove last NaNs
         pop!(points[])
         pop!(colors[])
+        labels[] && pop!(lev_pos[])
 
+        # Update observables
         notify(points)
         notify(colors)
+        labels[] && notify(lev_pos)
         return
     end
 
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
     # FIXME: make labels observable
-    # TODO: 
 
     # Prepare color arguments
     color_args_computed = (
@@ -302,29 +304,51 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])    
+    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-
+    # Plot countour lines
     lines!(c, atr, points)
-    #---------
+
     if !to_value(labels)
+        # Don't add labels 
         return
     end
-    @extract c (labelsize, labelfont, labelcolor, labelformatter)
-    pos = Observable(Point2f.([lpc[2][2][1:2] for lpc in lev_pos_col]))
-    txt = [labelformatter[](lpc[1]) for lpc in lev_pos_col]
 
-    if isnothing(to_value(labelcolor))
-        cm = to_colormap(atr[:colormap][])
-        colscale = atr[:colorscale][]
-        colrange = Tuple(colscale.(atr[:colorrange][]))
-        labelcolor = [interpolated_getindex(cm, colscale(lpc[1]), colrange) for lpc in lev_pos_col]
+    @extract c (labelsize, labelfont, labelcolor, labelformatter)
+    # Initialize observables for annotating labels with text!
+    lbl_pos = Observable(Point2f[]);
+    lbl_text = Observable(String[]);
+    lbl_rot = Observable(Float32[]);
+    lbl_col = Observable(RGBA{Float32}[]); # only used if labelcolor is empty
+
+    # Update label observables whenever lev_pos changes
+    pos_text_lblcol = lift(lev_pos) do lev_pos
+        # Clear previous data
+        (empty!(obs[]) for obs in (lbl_pos, lbl_text, lbl_rot, lbl_col))
+        # Update data
+        lbl_pos.val = Point2f.([lp[2][2][1:2] for lp in lev_pos])
+        lbl_text.val = [labelformatter[](lp[1]) for lp in lev_pos]        
+
+        if isnothing(to_value(labelcolor))
+            # Compute color for each label to use when labelcolor is set to nothing
+            cm = to_colormap(atr[:colormap][])
+            colscale = atr[:colorscale][]
+            colrange = Tuple(colscale.(atr[:colorrange][]))
+            lbl_col[] = [interpolated_getindex(cm, colscale(lp[1]), colrange) for lp in lev_pos]
+
+            labelcolor.val = lbl_col[]
+        end
+        # Update values
+        (notify(obs) for obs in (lbl_pos, lbl_text, lbl_rot, labelcolor))
     end
+    
+
+   
     text!(
         c,
-        pos;
+        lbl_pos;
         color = labelcolor,
-        text = txt,
+        text = lbl_text,
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,        
@@ -378,13 +402,21 @@ function process_color_args!(atr, c, colors; kwargs...)
     # Case 2: use computed colors. Verify what other attributes were passed
     atr[:color] = colors
     atr[:colormap] = c.attributes[:_computed_colormap]
-    # discretize_colormap = c.attributes[:discretize_colormap]
-    # if to_value(discretize_colormap)
-    #     atr[:colormap] = c.attributes[:_computed_colormap]
-    # end
     colorrange = get(atr, :colorrange, nothing)
     if isnothing(to_value(colorrange))
         atr[:colorrange] = kwargs[:comp_colorrange]
     end
     return
+end
+
+function label_info(lev, vertices)
+    """ Returns 3 middle points for each contour lines that are used to place labels"""
+    # Adapted from contours.jl
+    mid = ceil(Int, 0.5f0 * length(vertices))
+    # take 3 pts around half segment
+    pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
+    (
+        lev,
+        map(p -> to_ndim(Point3f, p, lev), Tuple(pts))
+    )
 end
