@@ -151,6 +151,50 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
 
+
+## Example: animate the contour of a function with a chaning parameter
+
+Make a video of the contours for the function $z = a*x^2 + y^2$ as $a$ changes from -2 to +2,
+using 300 random points with normally distributed values for $x$ and $y$ in [-1, 1]
+
+```@figure
+using GLMakie
+using Random
+Random.seed!(123)
+
+# Set up
+npoints = 300  # Number of random points
+x = 2 .* rand(npoints) .- 1  # Random x in [-1, 1]
+y = 2 .* rand(npoints) .- 1  # Random y in [-1, 1]
+
+# Function to compute z values
+a = Observable(0.0)
+z = @lift $a .* x .^ 2 .+ y .^ 2
+
+# Create a reactive title using `lift`
+b = @lift round($a; digits=2)
+title_text = @lift "z = $($b) * x^2 + y^2"
+
+# Set up figure
+fig = Figure()
+
+ax = Axis(fig[1, 1], xlabel = "x", ylabel = "y",title = title_text)
+scatter!(ax, x, y)
+contour_plot = tricontour!(ax, x, y, z, levels=10, colormap=:viridis, labels=true)
+Colorbar(fig[1,2], contour_plot.plots[1])
+display(fig)
+# Animation loop
+framerate = 30
+duration = 8  # Desired duration in seconds
+total_frames = framerate * duration  # Total number of frames
+aa = range(-2, 2, length=total_frames)  # Generate `total_frames` values for `a`
+
+record(fig, "my_contour_animation.mp4", aa;
+        framerate = framerate) do ak
+    a[] = ak
+end
+```
+
 ## Attributes
 
 ```@attrdocs
