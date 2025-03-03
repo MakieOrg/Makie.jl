@@ -1162,7 +1162,7 @@ end
     fig
 end
 
-@testset "Scatter fonts" begin
+@reference_test "Scatter fonts" begin
     scene = Scene(size = (150, 150), camera = campixel!)
 
     # Just needs to not be Fira Mona here, but good to test the default too
