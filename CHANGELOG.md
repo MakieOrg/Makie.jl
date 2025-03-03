@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added `font` attribute and fixed faulty defaulting in `scatter` [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 
 ## [0.22.2] - 2025-02-26
 
