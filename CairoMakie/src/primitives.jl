@@ -320,7 +320,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4d(I)
 
-    font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
+    font = to_font(primitive.fonts, primitive.font[])
     colors = to_color(primitive.calculated_colors[])
     markerspace = primitive.markerspace[]
     space = primitive.space[]
