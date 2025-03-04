@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Adjusted `DataInspector` tooltips for `spy` to be heatmap-like and `datashader` to show the number of binned markers [#4810](https://github.com/MakieOrg/Makie.jl/pull/4810)
 
 ## [0.22.2] - 2025-02-26
 
