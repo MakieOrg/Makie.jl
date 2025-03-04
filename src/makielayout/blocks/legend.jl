@@ -503,9 +503,9 @@ function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
         color = color,
         strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
         strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
-        colormap = plot.colormap,
-        colorrange = plot.colorrange,
-        alpha = plot.alpha,
+        colormap = get(plot, :colormap, :viridis),
+        colorrange = get(plot, :colorrange, automatic),
+        alpha = get(plot, :alpha, 1f0),
     )]
 end
 
@@ -533,7 +533,7 @@ function legendelements(plot::Union{Poly, Density}, legend)
         colormap = plot.colormap,
         colorrange = plot.colorrange,
         linestyle = plot.linestyle,
-        alpha = plot.alpha,
+        alpha = get(plot, :alpha, 1f0)
     )]
 end
 
@@ -720,7 +720,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 end
 
 get_plots(p::AbstractPlot) = [p]
-# NOTE: this is important, since we know that `get_plots` is only ever called on the toplevel, 
+# NOTE: this is important, since we know that `get_plots` is only ever called on the toplevel,
 # we can assume that any plotlist on the toplevel should be decomposed into individual plots.
 # However, if the user passes a label argument with a legend override, what do we do?
 get_plots(p::PlotList) = haskey(p.attributes, :label) && p.attributes[:label] isa Pair ? [p] : p.plots

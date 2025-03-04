@@ -1,4 +1,4 @@
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import { OrbitControls } from "./OrbitControls.js";
 
 // Unitless is the scene pixel unit space
