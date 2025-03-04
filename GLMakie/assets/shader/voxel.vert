@@ -4,6 +4,7 @@
 
 // debug FLAGS
 // #define DEBUG_RENDER_ORDER
+{{DEBUG_FLAG_DEFINE}}
 
 in vec2 vertices;
 
@@ -173,12 +174,20 @@ void main() {
     // the quad is associated with the "previous" or "next" slice of voxels. We
     // can derive that from the normal direction, as the normal always points
     // away from the voxel center.
-    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * o_normal) / size;
+    // requires object space normal (unit_vecs[dim])
+    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * normal_dir * unit_vecs[dim]) / size;
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
 
     // map plane_vertex (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
-    // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * plane_vertex);
+    // use normal_dir to invert u/v direction based on which side is viewed
+    o_tex_uv = vec2(0);
+    if (dim == 0) { //        x normal, yz planes
+        o_tex_uv = vec2(normal_dir, 1.0) * plane_vertex.yz;
+    } else if (dim == 1) { // y normal, xz planes
+        o_tex_uv = vec2(-normal_dir, 1.0) * plane_vertex.xz;
+    } else { // (dim == 2)    z normal, xy planes
+        o_tex_uv = vec2(1.0, normal_dir) * plane_vertex.xy;
+    }
 }

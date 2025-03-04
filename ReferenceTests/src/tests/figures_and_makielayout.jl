@@ -50,12 +50,15 @@ end
         [
             Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
             menu1                            menu3;
+            Box(fig, visible = false) Box(fig, visible = false);
             Label(fig, "B", width = nothing) Label(fig, "D", width = nothing);
             menu2                            menu4;
         ]
     )
-    menu2.is_open = true
+
+    menu1.is_open = true
     menu4.is_open = true
+
     fig
 end
 
@@ -233,20 +236,10 @@ end
     fig
 end
 
-@reference_test "PolarAxis surface" begin
-    f = Figure()
-    ax = PolarAxis(f[1, 1])
-    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
-    p = surface!(ax, 0..2pi, 0..10, zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
-    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
-    translate!(p, 0, 0, -200)
-    Colorbar(f[1, 2], p)
-    f
-end
-
-# may fail in WGLMakie due to missing dashes
-@reference_test "PolarAxis scatterlines spine" begin
-    f = Figure(size = (800, 400))
+@reference_test "PolarAxis decorations" begin
+    # may fail in WGLMakie due to missing dashes
+    # tests: some decorations, theta_as_x, title, scatter, lines
+    f = Figure(size = (800, 800), backgroundcolor = :gray)
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
@@ -254,16 +247,14 @@ end
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
+    rlims!(ax2, 0, 1.5)
     scatterlines!(ax2, range(0, 10pi, length=100), range(0, 1, length=100), color = 1:100)
-    f
-end
 
-# may fail in CairoMakie due to different text stroke handling
-# and in WGLMakie due to missing stroke
-@reference_test "PolarAxis decorations" begin
-    f = Figure(size = (400, 400), backgroundcolor = :black)
+    # may fail in CairoMakie due to different text stroke handling
+    # and in WGLMakie due to missing stroke
+    # tests: decorations
     ax = PolarAxis(
-        f[1, 1],
+        f[2, 1],
         backgroundcolor = :black,
         rminorgridvisible = true, rminorgridcolor = :red,
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
@@ -278,6 +269,15 @@ end
         thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
         rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
+
+    # tests: surface, grid layering, hidedecorations!() effect on spacing
+    ax = PolarAxis(f[2, 2], gridz = 1, backgroundcolor = :lightblue)
+    hidedecorations!(ax)
+    ax.rgridvisible[] = true
+    ax.thetagridvisible[] = true
+    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
+    p = surface!(ax, 0..2pi, 0..10, zeros(size(zs)), color = zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
+    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     f
 end
 
@@ -406,13 +406,20 @@ end
     m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
 
     # Should create closed square and hexagonal cells
-    f = Figure()
+    f = Figure(size = (600, 300))
     a = Axis3(f[1, 1], aspect = :data,
         xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
     scatter!(a, ps, markersize = 30, transparency = true)
+
+    a = Axis3(f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false)
     f
 end
 

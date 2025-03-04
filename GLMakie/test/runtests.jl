@@ -30,6 +30,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
 end
 
 # run the unit test suite
+include("isolated_tests.jl")
 include("unit_tests.jl")
 
 @testset "Reference Tests" begin
@@ -109,7 +110,7 @@ end
     sleep(0.1)
     GLMakie.closeall()
 
-        # Why does it start with a skipped tick?
+    # Why does it start with a skipped tick?
     i = 1
     while tick_record[i].state == Makie.SkippedRenderTick
         check_tick(tick_record[1], Makie.SkippedRenderTick, i)
@@ -132,6 +133,11 @@ end
     @test i == length(tick_record)+1
 end
 
+
+
+
+# NOTE: Keep this at the end! It also verifies that all cleanup is complete after
+#       all other tests have finished
 
 @testset "gl object deletion" begin
     GLMakie.closeall()

@@ -32,6 +32,9 @@ end
     for (i, p) in enumerate(points)
         lines!(s, (p .+ Point2f(0, i)) .* 100, linewidth = 10)
     end
+    # These are "doesn't break" tests. They should not display anything
+    lines!(s, Point2f[])
+    lines!(s, Point2f[(100, 100)])
     s
 end
 
@@ -102,6 +105,7 @@ end
     f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!([-1.2, -1.2, 2, 2, 1, 0, -1.2], [-1.2, 2, 2, -1.2, -1.2, -1.2, -1.2], linewidth = 20, alpha = 0.5)
     f
 end
 
@@ -767,6 +771,16 @@ end
     fig
 end
 
+@reference_test "Voxel uvs" begin
+    texture = FileIO.load(Makie.assetpath("debug_texture.png"))
+    f,a,p = voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
+    st = Stepper(f)
+    Makie.step!(st)
+    update_cam!(a.scene, 5pi/4, -pi/4)
+    Makie.step!(st)
+    st
+end
+
 @reference_test "Voxel - colors and colormap" begin
     # test direct mapping of ids to colors & upsampling of vector colormap
     fig = Figure(size = (800, 400))
@@ -776,6 +790,7 @@ end
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    Makie.rotate!(p, Vec3f(1,2,3), 0.8)
     fig
 end
 
