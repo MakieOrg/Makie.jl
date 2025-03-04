@@ -6,17 +6,30 @@ This section describes all the processing stages that are applied to data given 
 
 The pipeline can be broadly be summarized in 3 parts each with a few steps:
 
-1. Conversions which mainly normalize types
-    1. `expand_dimensions()` adds defaulted/generated data (e.g. x, y in `image()`)
-    2. `dim_convert` processes special types like Units
-    3. `convert_arguments()` normalizes numeric types & data formats
-2. Transformations which transform data on a per-plot basis
-    1. `transform_func` is a function applied to data
-    2. `model` matrix applies linear transformations
-3. Projections which project data from one coordinate system to another
-    1. `view` matrix moves data from "world" space to a camera "view/eye" space
-    2. `projection` matrix moves from the camera space to "clip" space
-    3. `viewport` moves "clip" space to "pixel/screen" space
+```@raw html
+<ol>
+    <li>Conversions which mainly normalize types
+        <ol>
+            <li>`expand_dimensions()` adds defaulted/generated data (e.g. x, y in `image()`)</li>
+            <li>`dim_convert` processes special types like Units</li>
+            <li>`convert_arguments()` normalizes numeric types & data formats</li>
+        </ol>
+    </li>
+    <li>Transformations which transform data on a per-plot basis
+        <ol>
+            <li>`transform_func` is a function applied to data</li>
+            <li>`model` matrix applies linear transformations</li>
+        </ol>
+    </li>
+    <li>Projections which project data from one coordinate system to another
+        <ol>
+            <li>`view` matrix moves data from "world" space to a camera "view/eye" space</li>
+            <li>`projection` matrix moves from the camera space to "clip" space</li>
+            <li>`viewport` moves "clip" space to "pixel/screen" space</li>
+        </ol>
+    </li>
+</ol>
+```
 
 As a **user** you have direct control over the `model` matrix (1.2) with the `scale!()`, `translate!()` and `rotate!()` functions.
 You have indirect control over projections (3) with the `space` attribute.
