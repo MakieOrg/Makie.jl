@@ -222,7 +222,7 @@ function get_space(x)
 end
 
 const EXCLUDE_KEYS = Set([:transformation, :tickranges, :ticklabels, :raw, :SSAO,
-                        :lightposition, :material, :axis_cycler, :fonts, :font,
+                        :lightposition, :material, :axis_cycler,
                         :inspector_label, :inspector_hover, :inspector_clear, :inspectable,
                         :colorrange, :colormap, :colorscale, :highclip, :lowclip, :nan_color,
                         :calculated_colors, :space, :markerspace, :model, :dim_conversions, :material])
@@ -451,7 +451,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                         return nothing
                     end
                 end
-                font = map(f -> to_font(plot[:fonts], f), plot[:font])
+                font = map(to_font, pop!(gl_attributes, :font))
                 gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
                 get!(gl_attributes, :uv_offset_width) do
                     return Makie.primitive_uv_offset_width(atlas, marker, font)
