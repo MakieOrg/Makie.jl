@@ -169,18 +169,23 @@ function Base.show(io::IO, graph::ComputeGraph)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
+    if isempty(graph.inputs) && isempty(graph.outputs)
+        print(io, "ComputeGraph()")
+        return io
+    end
+
     println(io, "ComputeGraph():")
 
     print(io, "  Inputs:")
     ks = sort!(collect(keys(graph.inputs)), by = string)
-    pad = mapreduce(k -> length(string(k)), max, ks)
+    pad = mapreduce(k -> length(string(k)), max, ks, init = 0)
     for k in ks
         print(io, "\n    :", rpad(string(k), pad), " => ", graph.inputs[k])
     end
 
     print(io, "\n\n  Outputs:")
     ks = sort!(collect(keys(graph.outputs)), by = string)
-    pad = mapreduce(k -> length(string(k)), max, ks)
+    pad = mapreduce(k -> length(string(k)), max, ks, init = 0)
     for k in ks
         print(io, "\n    :", rpad(string(k), pad), " => ", graph.outputs[k])
     end
