@@ -125,6 +125,19 @@ If none of these work for you, take a look at the other backends, which all work
 
 If you get an error pointing to [GLFW.jl](https://github.com/JuliaGL/GLFW.jl), please look into the existing [GLFW issues](https://github.com/JuliaGL/GLFW.jl/issues), and also google for those errors. This is then very likely something that needs fixing in the  [glfw c library](https://github.com/glfw/glfw) or in the GPU drivers.
 
+If you get a segfault or things are not rendering correctly you can turn on debug flags to get more information. Note that `ModernGL.jl` requires recompilation for its debug flags, so you should start from a fresh session:
+```julia
+# enable OpenGL debug code
+ENV["MODERNGL_DEBUGGING"] = "true"
+Pkg.build("ModernGL")
+
+using GLMakie
+# enable GLMakie's sanity checks
+GLMakie.GLAbstraction.GLMAKIE_DEBUG[] = true
+
+# problematic code ...
+```
+
 !!! warning
     GLMakie is not thread-safe! Makie functions to display in GLMakie or updates to `Observable` displayed in GLMakie windows from other threads may not work as expected or cause a segmentation fault.
 
@@ -156,6 +169,6 @@ Troubleshooting:
 
 ## GLMakie does not show Figure or crashes on full screen mode on macOS
 
-MacOS gives a warning if a graphical user interface (GUI) is not started from an AppBundle and this exception can crash the Julia process that initiated the GUI. 
+MacOS gives a warning if a graphical user interface (GUI) is not started from an AppBundle and this exception can crash the Julia process that initiated the GUI.
 This warning only occurs if macOS Settings->Desktop & Dock->Menu Bar->Automatically hide and show the menu bar is not set to Never.
 Therefore make sure this setting is set to `Never` to enable the use of GLMakie on macOS.
