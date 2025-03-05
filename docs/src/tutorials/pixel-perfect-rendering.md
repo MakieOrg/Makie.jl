@@ -107,7 +107,7 @@ scene
 
 Similarly you can also use `camera = cam_relative!` to get 0..1 coordinates.
 
-#### GLMakie
+#### GLMakie Anti-aliasing
 
 GLMakie uses FXAA to smooth out hard edges in the rendered image.
 That means it will interpolate and/or blur pixels with significant brightness differences.
