@@ -14,7 +14,7 @@ In `image` you can set where the plot starts and ends, i.e. you set where the le
 In `heatmap` you usually set where the cells centers are, though you can also set the edges by passing `size + 1` x and y values.
 With the right settings both can be made to look the same:
 
-```@example
+```@figure
 using CairoMakie
 
 data = [1 2; 3 4; 5 6]
@@ -40,7 +40,7 @@ Let us consider the case of creating a plain image from some data, without any o
 In this case it is not useful to work with `Figure` and `Axis` as they both use up space through padding and layouting.
 Instead, we use a `Scene` directly. An empty scene of a specific size can be created with
 
-```@example
+```@figure
 using CairoMakie
 
 scene = Scene(size = (200, 100), camera = campixel!)
@@ -50,7 +50,7 @@ Here we explicitly set `camera = campixel!` so that the scene uses pixel units.
 More specifically, this sets the bottom left corner of the scene to (0, 0) and the top right corner to `size`.
 Using those limits we can now draw an `image` (or `heatmap`) plot filling the scene exactly:
 
-```@example
+```@figure
 using CairoMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
@@ -71,7 +71,7 @@ For `heatmap` we need to be a bit careful though because `0:600` is going to giv
 the 201 we need.
 To fix this we will need to explicitly include the size of each cell as the step of range.
 
-```@example
+```@figure
 using CairoMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
@@ -96,7 +96,7 @@ If you create a scene without a camera, it will default to a clip space camera.
 With that the size of coordinates of the scene always range from -1 to 1.
 That may simplify plotting a bit, as you don't have to adjust the image limits when adjusting the scene limits:
 
-```@example
+```@figure
 using CairoMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
@@ -113,7 +113,7 @@ GLMakie uses FXAA to smooth out hard edges in the rendered image.
 That means it will interpolate and/or blur pixels with significant brightness differences.
 This is something we don't want here, so we should turn it off:
 
-```@example backend=GLMakie
+```@figure backend=GLMakie
 using GLMakie
 
 data = [ifelse(x > 180, 0, x/100) * ifelse(y > 80, 0, y/50) for x in 1:200, y in 1:100]
@@ -135,7 +135,7 @@ We can continue relying on the `Scene` mechanics we used above by using an `LSce
 Here we will need to set the `width` and `height` instead of `size` to let layouting know how much space the LScene needs.
 `resize_to_layout!()` is also quite useful to fit the Figure to the size of the scenes:
 
-```@example
+```@figure
 using CairoMakie
 
 # length(50:50) = 101
@@ -160,7 +160,7 @@ See [Creating complex layouts](@ref).
 
 If you want to plot to an `Axis` you can effectively just replace `LScene` in the example above:
 
-```@example
+```@figure
 using CairoMakie
 
 # length(50:50) = 101
