@@ -136,6 +136,8 @@ Here we will need to set the `width` and `height` instead of `size` to let layou
 `resize_to_layout!()` is also quite useful to fit the Figure to the size of the scenes:
 
 ```@example
+using CairoMakie
+
 # length(50:50) = 101
 data = [x*y/1000 for x in -50:50, y in -50:50]
 
@@ -159,6 +161,8 @@ See [Creating complex layouts](@ref).
 If you want to plot to an `Axis` you can effectively just replace `LScene` in the example above:
 
 ```@example
+using CairoMakie
+
 # length(50:50) = 101
 data = [x*y/1000 for x in -50:50, y in -50:50]
 
