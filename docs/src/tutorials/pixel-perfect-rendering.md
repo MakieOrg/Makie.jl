@@ -154,7 +154,6 @@ fig
 ```
 
 To control the white space the figure generates, you can adjust `Figure(figure_padding = ...)` for the outer padding and `rowgap!(fig, ...)` and `colgap!(fig.layout, ...)` for the inner gaps.
-See [Creating complex layouts](@ref).
 
 ### Using Axis
 
