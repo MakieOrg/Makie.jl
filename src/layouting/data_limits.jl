@@ -89,7 +89,7 @@ function data_limits(plot::Scatter)
             get_texture_atlas(),
             plot.marker[],
             plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
+            to_font(plot.font[]),
             plot
         )
         rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
