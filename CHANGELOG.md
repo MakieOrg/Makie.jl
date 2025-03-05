@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fixed GLMakie embedding support [#4848](https://github.com/MakieOrg/Makie.jl/pull/4848).
 
 ## [0.22.2] - 2025-02-26
 
