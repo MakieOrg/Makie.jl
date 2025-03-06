@@ -1,7 +1,7 @@
 # Node struct
 struct DNode{N}
     idx::Int
-    position::Point{N, Float32}
+    position::Point{N, Float64}
     children::Union{Tuple{Int,Int}, Nothing}
 end
 
@@ -48,8 +48,8 @@ function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
     l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
     
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
-    append!(ret_points, Makie.to_ndim.(Point3f, l, 0))
-    push!(ret_points, Point3f(NaN)) # separate segments
+    append!(ret_points, Makie.to_ndim.(Point3d, l, 0))
+    push!(ret_points, Point3d(NaN)) # separate segments
 
     if isnothing(groups)
         cgroup = 0
@@ -72,7 +72,7 @@ end
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
     args = @extract plot (color, groups)
 
-    points_vec = Observable{Vector{GeometryBasics.Point{2, Float32}}}([])
+    points_vec = Observable{Vector{GeometryBasics.Point{2, Float64}}}([])
     colors_vec = Observable{Any}([])
 
     length(plot[1][])>1 && lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
@@ -102,7 +102,7 @@ function dendrogram_connectors(::Val{:box}, parent::DNode{2}, child1::DNode{2}, 
     x1 = child1.position[1]
     x2 = child2.position[1]
 
-    return Point2f[(x1, child1.position[2]), (x1, yp), (x2, yp), (x2, child2.position[2])]
+    return Point2d[(x1, child1.position[2]), (x1, yp), (x2, yp), (x2, child2.position[2])]
 end
 
 function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
@@ -110,7 +110,7 @@ function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, 
     x1 = child1.position[1]
     x2 = child2.position[1]
 
-    return Point3f[
+    return Point3d[
         (x1, child1.position[2], child1.position[3]), 
         (x1, yp, (parent.position[3] + child1.position[3])./2), 
         (x2, yp, (parent.position[3] + child2.position[3])./2), 
@@ -124,14 +124,14 @@ end
 function find_merge(n1, n2; height=1)
     newx = min(n1[1], n2[1]) + abs((n1[1] - n2[1])) / 2
     newy = max(n1[2], n2[2]) + height
-    return Point2f(newx, newy)
+    return Point2d(newx, newy)
 end
 
 function find_merge(n1::DNode{2}, n2::DNode{2}; height=1, index=max(n1.idx, n2.idx)+1)
     newx = min(n1.position[1], n2.position[1]) + abs((n1.position[1] - n2.position[1])) / 2
     newy = max(n1.position[2], n2.position[2]) + height
 
-    return DNode{2}(index, Point2f(newx, newy), (n1.idx, n2.idx))
+    return DNode{2}(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
 function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.idx)+1)
@@ -139,7 +139,7 @@ function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.i
     newy = max(n1.position[2], n2.position[2]) + height
     newz = min(n1.position[3], n2.position[3]) + abs((n1.position[3] - n2.position[3])) / 2
 
-    return DNode{3}(index, Point3f(newx, newy, newz), (n1.idx, n2.idx))
+    return DNode{3}(index, Point3d(newx, newy, newz), (n1.idx, n2.idx))
 end
 
 function Makie.convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
@@ -156,7 +156,7 @@ end
 
 function hcl_nodes(hcl; useheight=false)
     nleaves = length(hcl.order)
-    nodes = Dict(i => DNode(i, Point2f(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order)))
+    nodes = Dict(i => DNode(i, Point2d(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order)))
     nm = maximum(keys(nodes))
 
     for (m1, m2) in eachrow(hcl.merges)
