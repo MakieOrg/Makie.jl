@@ -4,9 +4,9 @@ function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
 end
 
 function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
-    xi = Float32.(to_endpoints(xs))
-    yi = Float32.(to_endpoints(ys))
-    zi = Float32.(to_endpoints(zs))
+    xi = Float32.(to_endpoints(xs, "x", Voxels))
+    yi = Float32.(to_endpoints(ys, "y", Voxels))
+    zi = Float32.(to_endpoints(zs, "z", Voxels))
     return convert_arguments(T, xi, yi, zi, chunk)
 end
 
@@ -52,7 +52,7 @@ function calculated_attributes!(::Type{<:Voxels}, plot)
         dummy_data = Observable(UInt8[1, 255])
 
         # Always sample N colors
-        cmap = map(plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
+        cmap = lift(plot, plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
             cm = if cmap isa Vector && length(cmap) != 255
                 resample_cmap(cmap, 253)
             else
@@ -187,7 +187,7 @@ function plot!(plot::Voxels)
     end
 
     # Initial limits
-    map!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
+    lift!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
         if colorrange !== automatic
             return colorrange
         end
@@ -206,6 +206,40 @@ function plot!(plot::Voxels)
 
     return
 end
+
+pack_voxel_uv_transform(uv_transform::Nothing) = nothing
+
+function pack_voxel_uv_transform(uv_transform::Vector{Mat{2,3,Float32,6}})
+    # first dim is continuous
+    output = Matrix{Vec2f}(undef, 3, length(uv_transform))
+    for i in eachindex(uv_transform)
+        for j in 1:3
+            output[j, i] = uv_transform[i][Vec(1,2), j]
+        end
+    end
+    return output
+end
+
+function pack_voxel_uv_transform(uv_transform::Matrix{Mat{2,3,Float32,6}})
+    # first dim is continuous
+    output = Array{Vec2f, 3}(undef, 3, size(uv_transform)...)
+    for i in axes(uv_transform, 2)
+        for j in axes(uv_transform, 1)
+            for k in 1:3
+                output[k, j, i] = uv_transform[j, i][Vec(1,2), k]
+            end
+        end
+    end
+    return output
+end
+
+function uvmap_to_uv_transform(uvmap::Array)
+    return map(uvmap) do (l, r, b, t)
+        return (Point2f(l, b), Vec2f(r-l, t-b))
+    end
+end
+
+
 
 function voxel_size(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))

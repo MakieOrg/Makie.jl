@@ -20,12 +20,17 @@ base_unit(x::Period) = base_unit(Quantity(x))
 
 unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
 unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
-unit_string(unit::Unitful.FreeUnits) = unit_string(base_unit(unit))
+unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
+
+is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
+is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
+is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
+is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -132,10 +137,10 @@ using Unitful, CairoMakie
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 ```
 
-Fix unit to always use Meter & display unit in the xlabel:
+Fix unit to always use Meter & display unit in the ylabel:
 ```julia
 uc = Makie.UnitfulConversion(u"m"; units_in_label=false)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, xlabel="x (km)"))
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, ylabel="y (m)"))
 ```
 """
 struct UnitfulConversion <: AbstractDimConversion
@@ -159,7 +164,18 @@ function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
         imini = min(imini, mini)
         imaxi = max(imaxi, maxi)
     end
-    new_unit = best_unit(imini, imaxi)
+    # If a unit only consists off of one element, e.g. "mm" or "J", try to find
+    # the best prefix. Otherwise (e.g. "kg/m^3") use the unit as is and don't
+    # change it.
+    if is_compound_unit(imini)
+        if conversion.unit[] === automatic
+            new_unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
+        else
+            return
+        end
+    else
+        new_unit = best_unit(imini, imaxi)
+    end
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
     end
@@ -167,14 +183,28 @@ end
 
 needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
 
+# TODO: Convert the unit to rich text arguments instead of parsing the string
+# TODO: Could also consider UnitfulLatexify?
+function unit_string_to_rich(str::String)
+    chunks = split(str, '^')
+    output = Any[string(chunks[1])]
+    for chunk in chunks[2:end] # each chunk starts after a ^
+        pieces = split(chunk, ' ')
+        push!(output, superscript(string(pieces[1]))) # pieces[1] is immediately after ^
+        push!(output, join(pieces[2:end])) # rest is before the next ^
+    end
+    return rich(output...)
+end
+
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
     unit_str = unit_string(unit)
+    rich_unit_str = unit_string_to_rich(unit_str)
     tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
     if conversion.units_in_label[]
-        labels = labels .* unit_str
+        labels = map(lbl -> rich(lbl, rich_unit_str), labels)
     end
     return tick_vals, labels
 end

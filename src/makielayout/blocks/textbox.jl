@@ -20,7 +20,7 @@ function initialize_block!(tbox::Textbox)
 
     tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator) do str, validator
+    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
 
@@ -73,6 +73,7 @@ function initialize_block!(tbox::Textbox)
         charbbs(textplot)
     end
 
+    cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
 
         textplot = t.blockscene.plots[1]
@@ -90,16 +91,45 @@ function initialize_block!(tbox::Textbox)
             return
         end
 
-        if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+        line_ps = if 0 < ci < length(bbs)
+            leftline(bbs[ci+1])
         elseif ci == 0
-            [leftline(bbs[1])...]
+            leftline(bbs[1])
         else
-            [leftline(bbs[ci])...] .+ Point2f(hadvances[ci], 0)
+            leftline(bbs[ci]) .+ (Point2f(hadvances[ci], 0),)
         end
+
+        # could this be done statically as
+        # max_height = font.height / font.units_per_EM * fontsize
+        max_height = abs(line_ps[1][2] - line_ps[2][2])
+        if !(cursorsize[][2] ≈ max_height)
+            cursorsize[] = Vec2f(1, max_height)
+        end
+
+        return 0.5 * (line_ps[1] + line_ps[2])
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
+    cursor = scatter!(scene, cursorpoints, marker = Rect, color = tbox.cursorcolor,
+        markersize = cursorsize, inspectable = false)
+
+    on(cursorpoints) do cpts
+        typeof(tbox.width[]) <: Number || return
+
+        # translate scene to keep cursor within box
+        rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]
+        offset = if rel_cursor_pos <= 0
+            -rel_cursor_pos
+        elseif rel_cursor_pos < tbox.width[]
+            0
+        else
+            tbox.width[] - rel_cursor_pos
+        end
+        translate!(Accum, scene, offset, 0, 0)
+
+        # don't let right side of box be empty if length of text exceeds box width
+        offset = tbox.width[] - right(displayed_charbbs[][end])
+        scene.transformation.translation[][1] < offset < 0 && translate!(scene, offset, 0, 0)
+    end
 
     tbox.cursoranimtask = nothing
 
@@ -118,13 +148,19 @@ function initialize_block!(tbox::Textbox)
     onmouseleftdown(mouseevents) do state
         focus!(tbox)
 
-        if tbox.displayed_string[] == tbox.placeholder[] || tbox.displayed_string[] == " "
+        if tbox.displayed_string[] == tbox.placeholder[]
             tbox.displayed_string[] = " "
             cursorindex[] = 0
             return Consume(true)
+        elseif tbox.displayed_string[] == " "
+            return Consume(true)
         end
 
-        pos = state.data
+        if typeof(tbox.width[]) <: Number
+            pos = state.data .- scene.transformation.translation[][1:2]
+        else
+            pos = state.data
+        end
         closest_charindex = argmin(
             [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
         )
@@ -238,7 +274,7 @@ function initialize_block!(tbox::Textbox)
                     removechar!(cursorindex[])
                 elseif key == Keyboard.delete
                     removechar!(cursorindex[] + 1)
-                elseif key == Keyboard.enter
+                elseif key == Keyboard.enter || key == Keyboard.kp_enter
                     # don't do anything for invalid input which should stay red
                     if displayed_is_valid[]
                         # submit the written text

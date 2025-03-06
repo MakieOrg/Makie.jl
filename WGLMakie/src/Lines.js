@@ -6,7 +6,6 @@ import {
 } from "./Shaders.js";
 
 import { deserialize_uniforms } from "./Serialization.js";
-import { IntType } from "./THREE.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -39,8 +38,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
         /// Linessegments
         ////////////////////////////////////////////////////////////////////////
 
-        return `precision mediump int;
-            precision highp float;
+        return `precision highp float;
+            precision highp int;
 
             ${attribute_decl}
 
@@ -101,7 +100,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         p2 = p1;
                         return;
                     }
-                    
+
                     // one outside - shorten segment
                     else if (d1 < 0.0)
                     {
@@ -188,7 +187,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -239,8 +238,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
         /// Lines
         ////////////////////////////////////////////////////////////////////////
 
-        return `precision mediump int;
-            precision highp float;
+        return `precision highp float;
+            precision highp int;
 
             ${attribute_decl}
 
@@ -385,7 +384,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     // distance from clip planes with negative clipped
                     d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
                     d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
-            
+
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
                         p2 = p1;
@@ -404,9 +403,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         isvalid[3] = false;
                     }
                 }
-            
+
                 return;
-            } 
+            }
 
             ////////////////////////////////////////////////////////////////////////
             // Main
@@ -640,7 +639,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -733,7 +732,7 @@ function lines_fragment_shader(uniforms, attributes) {
     // uncomment for debug rendering
     // #define DEBUG
 
-    precision mediump int;
+    precision highp int;
     precision highp float;
     precision mediump sampler2D;
     precision mediump sampler3D;
@@ -854,12 +853,16 @@ function lines_fragment_shader(uniforms, attributes) {
         return -10.0;
     }
 
+    vec2 encode_uint_to_float(uint value) {
+        float lower = float(value & 0xFFFFu) / 65535.0;
+        float upper = float(value >> 16u) / 65535.0;
+        return vec2(lower, upper);
+    }
+
     vec4 pack_int(uint id, uint index) {
         vec4 unpack;
-        unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-        unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-        unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-        unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+        unpack.rg = encode_uint_to_float(id);
+        unpack.ba = encode_uint_to_float(index);
         return unpack;
     }
 

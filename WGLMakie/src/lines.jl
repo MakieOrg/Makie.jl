@@ -7,11 +7,11 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :depth_shift => plot.depth_shift,
         :picking => false,
         :linecap => linecap,
-        :scene_origin => map(vp -> Vec2f(origin(vp)), plot, scene.viewport)
+        :scene_origin => lift(vp -> Vec2f(origin(vp)), plot, scene.viewport)
     )
     if plot isa Lines
         uniforms[:joinstyle] = joinstyle
-        uniforms[:miter_limit] = map(x -> cos(pi - x), plot, plot.miter_limit)
+        uniforms[:miter_limit] = lift(x -> cos(pi - x), plot, plot.miter_limit)
     end
 
     # TODO: maybe convert nothing to Sampler([-1.0]) to allowed dynamic linestyles?
@@ -20,7 +20,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         uniforms[:pattern_length] = 1f0
     else
         uniforms[:pattern] = Sampler(lift(Makie.linestyle_to_sdf, plot, linestyle); x_repeat=:repeat)
-        uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), linestyle)
+        uniforms[:pattern_length] = lift(ls -> Float32(last(ls) - first(ls)), plot, linestyle)
     end
 
     color = plot.calculated_colors
@@ -41,9 +41,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
     # This is mostly NaN handling. The shader only draws a segment if each
     # involved point are not NaN, i.e. p1 -- p2 is only drawn if all of
-    # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to dublicate p2 to
+    # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to duplicate p2 to
     # make the p1 -- p2 segment draw, which is what indices does.
-    indices = Observable(Int[])
+    indices = Observable(UInt32[])
     points_transformed = lift(
             plot, f32c, transform_func_obs(plot), plot.model, plot[1], plot.space
         ) do f32c, tf, model, ps, space
@@ -59,7 +59,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
             was_nan = true
             loop_start_idx = -1
-            for (i, p) in enumerate(transformed_points)
+            for (i, p) in pairs(transformed_points)
                 if isnan(p)
                     # line section end (last was value, now nan)
                     if !was_nan
@@ -76,12 +76,12 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                             # (nan, i-2, j, i+1) the segment (i-2, j) will not
                             # be drawn (which we want as that segment would overlap)
 
-                            # tweak dublicated vertices to be loop vertices
+                            # tweak duplicated vertices to be loop vertices
                             push!(indices[], indices[][loop_start_idx+1])
                             indices[][loop_start_idx-1] = i-2
                             # nan is inserted at bottom (and not necessary for start/end)
 
-                        else # no loop, dublicate end point
+                        else # no loop, duplicate end point
                             push!(indices[], i-1)
                         end
                     end
@@ -90,7 +90,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 else
 
                     if was_nan
-                        # line section start - dublicate point
+                        # line section start - duplicate point
                         push!(indices[], i)
                         # first point in a potential loop
                         loop_start_idx = length(indices[])+1
@@ -102,15 +102,15 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 push!(indices[], i)
             end
 
-            # Finish line (insert dublicate end point or close loop)
+            # Finish line (insert duplicate end point or close loop)
             if !was_nan
                 if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
                     (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
 
                     push!(indices[], indices[][loop_start_idx+1])
-                    indices[][loop_start_idx-1] = length(transformed_points)-1
+                    indices[][loop_start_idx-1] = prevind(transformed_points, lastindex(transformed_points))
                 else
-                    push!(indices[], length(transformed_points))
+                    push!(indices[], lastindex(transformed_points))
                 end
             end
 
@@ -118,7 +118,10 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         end
     end
     positions = lift(serialize_buffer_attribute, plot, points_transformed)
-    attributes = Dict{Symbol, Any}(:linepoint => positions)
+    attributes = Dict{Symbol, Any}(
+        :linepoint => positions,
+        :lineindex => lift(_ -> serialize_buffer_attribute(indices[]), plot, points_transformed),
+    )
 
     # TODO: in Javascript
     # NOTE: clip.w needs to be available in shaders to avoid line inversion problems
@@ -131,7 +134,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         pvm = lift(plot, cam.projectionview, cam.pixel_space, plot.space, uniforms[:model]) do _, _, space, model
             return Makie.space_to_clip(cam, space, true) * model
         end
-        attributes[:lastlen] = map(plot, points_transformed, pvm, cam.resolution) do ps, pvm, res
+        attributes[:lastlen] = lift(plot, points_transformed, pvm, cam.resolution) do ps, pvm, res
             output = Vector{Float32}(undef, length(ps))
 
             if !isempty(ps)
@@ -142,9 +145,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 prev = scale .* Point2f(clip) ./ clip[4]
 
                 # calculate cumulative pixel scale length
-                output[1] = 0f0   # dublicated point
+                output[1] = 0f0   # duplicated point
                 output[2] = 0f0   # start of first line segment
-                output[end] = 0f0 # dublicated end point
+                output[end] = 0f0 # duplicated end point
                 i = 3           # end of first line segment, start of second
                 while i < length(ps)
                     if isfinite(ps[i])
@@ -173,7 +176,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             return serialize_buffer_attribute(output)
         end
     else
-        attributes[:lastlen] = map(plot, points_transformed) do ps
+        attributes[:lastlen] = lift(plot, points_transformed) do ps
             return serialize_buffer_attribute(zeros(Float32, length(ps)))
         end
     end
@@ -184,7 +187,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_end")] = attr
         else
             # TODO: to js?
-            # dublicates per vertex attributes to match positional dublication
+            # duplicates per vertex attributes to match positional duplication
             # min(idxs, end) avoids update order issues here
             attributes[name] = lift(plot, indices, attr) do idxs, vals
                 serialize_buffer_attribute(vals[min.(idxs, end)])
@@ -193,11 +196,11 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     end
 
     # Handle clip planes
-    uniforms[:num_clip_planes] = map(plot, plot.clip_planes, plot.space) do planes, space
+    uniforms[:num_clip_planes] = lift(plot, plot.clip_planes, plot.space) do planes, space
         return Makie.is_data_space(space) ? length(planes) : 0
     end
 
-    uniforms[:clip_planes] = map(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
+    uniforms[:clip_planes] = lift(plot, scene.camera.projectionview, plot.clip_planes, plot.space) do pv, planes, space
         Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
         if length(planes) > 8

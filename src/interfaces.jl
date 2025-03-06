@@ -23,8 +23,7 @@ function calculated_attributes!(::Type{<: AbstractPlot}, plot)
 end
 
 function calculated_attributes!(::Type{<: Mesh}, plot)
-    mesha = lift(GeometryBasics.attributes, plot, plot.mesh)
-    color = haskey(mesha[], :color) ? lift(x-> x[:color], plot, mesha) : plot.color
+    color = hasproperty(plot.mesh[], :color) ? lift(x -> x.color, plot, plot.mesh) : plot.color
     color_and_colormap!(plot, color)
     return
 end
@@ -62,13 +61,6 @@ end
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
-
-    replace_automatic!(plot, :marker_offset) do
-        # default to middle
-        return lift(plot, plot[:markersize]) do msize
-            return to_2d_scale(map(x -> x .* -0.5f0, msize))
-        end
-    end
 
     replace_automatic!(plot, :markerspace) do
         lift(plot, plot.markersize) do ms
@@ -111,7 +103,7 @@ function get_kw_values(func, names, kw)
 end
 
 function get_kw_obs(names, kw)
-    isempty(names) && return Observable((;))
+    isempty(names) && return Observable(Pair{Symbol, Any}[])
     kw_copy = copy(kw)
     init = get_kw_values(to_value, names, kw_copy)
     obs = Observable(init; ignore_equal_values=true)
@@ -134,6 +126,8 @@ expand_dimensions(trait, args...) = nothing
 
 expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
+expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
+    (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))
 
 function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     # Float32, because all ploteable sizes should fit into float32
@@ -146,7 +140,7 @@ function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<
     return (x, y, data)
 end
 
-function expand_dimensions(::VolumeLike, data::RealArray{3})
+function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
     x, y, z = map(x-> (0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
@@ -162,7 +156,10 @@ function apply_expand_dimensions(trait, args, args_obs, deregister)
             for (obs, arg) in zip(new_obs, expanded)
                 obs.val = arg
             end
-            foreach(notify, new_obs)
+            # It should be enough to trigger the first observable since
+            # this will go into `map(convert_arguments, new_obs...)`
+            # Without this, we'll get 3 updates for `notify(data)` in `heatmap(data)`
+            notify(new_obs[1])
             return
         end
         append!(deregister, fs)
@@ -278,15 +275,9 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     ArgTyp = MakieCore.argtypes(args2)
     FinalPlotFunc = plotfunc(plottype(P, args2...))
     foreach(x -> delete!(user_attributes, x), attr)
-    pl = Plot{FinalPlotFunc,ArgTyp}(user_attributes, Any[args_obs...], Observable[converted_obs...],
-                                      deregister)
-    used_attr_obs = map(k-> get!(pl.attributes, k, Observable{Any}(nothing)), attr)
-    onany(pl, used_attr_obs...) do args...
-        zipped = filter(((k, v),) -> !isnothing(v), collect(zip(attr, args)))
-        kw_obs[] = map(x-> x[1] => x[2], zipped)
-        return
-    end
-    return pl
+    return Plot{FinalPlotFunc,ArgTyp}(
+        user_attributes, kw_obs, Any[args_obs...],
+        Observable[converted_obs...], deregister)
 end
 
 """
@@ -376,7 +367,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     if t_user isa Transformation
         plot.transformation = t_user
     else
-        if t_user isa Automatic
+        if t_user isa Union{Nothing, Automatic}
             plot.transformation = Transformation()
         else
             t = Transformation()
@@ -401,6 +392,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     conversions = get_conversions(plot)
     if !isnothing(conversions)
         connect_conversions!(scene.conversions, conversions)
+    end
+    attr = used_attributes(plot)
+    used_attr_obs = map(k -> get!(plot.attributes, k, Observable{Any}(nothing)), attr)
+    onany(plot, used_attr_obs...) do args...
+        zipped = filter(((k, v),) -> !isnothing(v), collect(zip(attr, args)))
+        plot.kw_obs[] = map(x -> x[1] => x[2], zipped)
+        return
     end
     return plot
 end

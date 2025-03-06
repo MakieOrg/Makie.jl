@@ -1,14 +1,11 @@
 
-@reference_test "Test heatmap + image overlap" begin
-    heatmap(RNG.rand(32, 32))
-    image!(map(x -> RGBAf(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
-    current_figure()
-end
-
-@reference_test "Test RGB heatmaps" begin
+@reference_test "RGB heatmap, heatmap + image overlap" begin
     fig = Figure()
-    heatmap(fig[1, 1], RNG.rand(RGBf, 32, 32))
-    heatmap(fig[1, 2], RNG.rand(RGBAf, 32, 32))
+    heatmap(fig[1, 1], RNG.rand(32, 32))
+    image!(map(x -> RGBAf(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
+
+    heatmap(fig[2, 1], RNG.rand(RGBf, 32, 32))
+    heatmap(fig[2, 2], RNG.rand(RGBAf, 32, 32))
     fig
 end
 
@@ -61,7 +58,7 @@ end
     fig
 end
 
-@reference_test "FEM polygon 2D" begin
+@reference_test "FEM poly and mesh" begin
     coordinates = [
         0.0 0.0;
         0.5 0.0;
@@ -84,50 +81,55 @@ end
         5 8 9;
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    poly(coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
+
+    f = Figure()
+    poly(f[1, 1], coordinates, connectivity, color=color, strokecolor=(:black, 0.6), strokewidth=4)
+
+    a, meshplot = mesh(f[2, 1], coordinates, connectivity, color=color, shading=NoShading)
+    wireframe!(meshplot[1], color=(:black, 0.6), linewidth=3)
+
+    cat = loadasset("cat.obj")
+    vertices = decompose(Point3f, cat)
+    faces = decompose(TriangleFace{Int}, cat)
+    coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
+    connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
+    mesh(f[1:2, 2],
+        coordinates, connectivity,
+        color=RNG.rand(length(vertices))
+    )
+
+    f
 end
 
-@reference_test "FEM mesh 2D" begin
-    coordinates = [
-        0.0 0.0;
-        0.5 0.0;
-        1.0 0.0;
-        0.0 0.5;
-        0.5 0.5;
-        1.0 0.5;
-        0.0 1.0;
-        0.5 1.0;
-        1.0 1.0;
-    ]
-    connectivity = [
-        1 2 5;
-        1 4 5;
-        2 3 6;
-        2 5 6;
-        4 5 8;
-        4 7 8;
-        5 6 9;
-        5 8 9;
-    ]
-    color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=NoShading)
-    wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
-    fig
-end
-
-@reference_test "colored triangle" begin
-    mesh(
+@reference_test "colored triangle (mesh, poly, 3D) + poly stroke" begin
+    f = Figure()
+    mesh(f[1, 1],
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color=[:red, :green, :blue],
         shading=NoShading
     )
-end
 
-@reference_test "colored triangle with poly" begin
-    poly(
+    poly(f[1, 2],
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
         color=[:red, :green, :blue],
         strokecolor=:black, strokewidth=2
     )
+
+    x = [0, 1, 2, 0]
+    y = [0, 0, 1, 2]
+    z = [0, 2, 0, 1]
+    color = [:red, :green, :blue, :yellow]
+    i = [0, 0, 0, 1]
+    j = [1, 2, 3, 2]
+    k = [2, 3, 1, 3]
+    # indices interpreted as triangles (every 3 sequential indices)
+    indices = [1, 2, 3,   1, 3, 4,   1, 4, 2,   2, 3, 4]
+    mesh(f[2, 1], x, y, z, indices, color=color)
+
+    ax, p = poly(f[2, 2], [Rect2f(0, 0, 1, 1)], color=:green, strokewidth=50, strokecolor=:black)
+    xlims!(ax, -0.5, 1.5)
+    ylims!(ax, -0.5, 1.5)
+
+    f
 end
 
 @reference_test "scale_plot" begin
@@ -149,35 +151,12 @@ end
     linesegments!(ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
-    fig
-end
-
-@reference_test "Text Annotation" begin
-    text(
-        ". This is an annotation!",
-        position=(300, 200),
-        align=(:center,  :center),
-        fontsize=60,
-        font="Blackchancery"
-    )
-end
-
-@reference_test "Text rotation" begin
-    fig = Figure()
-    ax = fig[1, 1] = Axis(fig)
-    pos = (500, 500)
-    posis = Point2f[]
-    for r in range(0, stop=2pi, length=20)
-        p = pos .+ (sin(r) * 100.0, cos(r) * 100)
-        push!(posis, p)
-        text!(ax, "test",
-            position=p,
-            fontsize=50,
-            rotation=1.5pi - r,
-            align=(:center, :center)
-        )
-    end
-    scatter!(ax, posis, markersize=10)
+    poly!(ax, [Polygon(decompose(Point2f, Rect2f(150, 0, 100, 100))), Polygon(decompose(Point2f, Circle(Point2f(350, 200), 50)))],
+        color=:gray, strokewidth=10, strokecolor=:red)
+    # single objects
+    poly!(ax, Circle(Point2f(50, 350), 50), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Rect2f(0, 150, 100, 100), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Polygon(decompose(Point2f, Rect2f(150, 300, 100, 100))), color=:gray, strokewidth=10, strokecolor=:red)
     fig
 end
 
@@ -393,18 +372,12 @@ end
 end
 
 
-@reference_test "Simple pie chart" begin
-    fig = Figure(size=(800, 800))
+@reference_test "Simple pie charts" begin
+    fig = Figure()
     pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
+    pie(fig[1, 2], 1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
+    pie(fig[2, 1], 0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
     fig
-end
-
-@reference_test "Hollow pie chart" begin
-    pie(1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
-end
-
-@reference_test "Open pie chart" begin
-    pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
 @reference_test "Pie with Segment-specific Radius" begin
@@ -419,7 +392,7 @@ end
     rs = 8
     rs_inner = sqrt.(vs_inner ./ vs) * rs
 
-    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    lp = Makie.Pattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, backgroundcolor=:transparent)
     # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
@@ -466,14 +439,6 @@ end
 @reference_test "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
-end
-
-
-@reference_test "Line Function" begin
-    x = range(0, stop=3pi)
-    fig, ax, lineplot = lines(x, sin.(x))
-    lines!(ax, x, cos.(x), color=:blue)
-    fig
 end
 
 @reference_test "Grouped bar" begin
@@ -609,14 +574,12 @@ end
 @reference_test "Array of Images Scatter" begin
     img = Makie.logo()
     scatter(1:2, 1:2, marker = [img, img], markersize=reverse(size(img) ./ 10), axis=(limits=(0.5, 2.5, 0.5, 2.5),))
-end
 
-@reference_test "Image Scatter different sizes" begin
-    img = Makie.logo()
     img2 = load(Makie.assetpath("doge.png"))
     images = [img, img2]
     markersize = map(img-> Vec2f(reverse(size(img) ./ 10)), images)
-    scatter(1:2, 1:2, marker = images, markersize=markersize, axis=(limits=(0.5, 2.5, 0.5, 2.5),))
+    scatter!(2:-1:1, 1:2, marker = images, markersize=markersize)
+    current_figure()
 end
 
 @reference_test "2D surface with explicit color" begin
@@ -716,11 +679,6 @@ end
     fig
 end
 
-@reference_test "multi rect with poly" begin
-    # use thick strokewidth, so it will make tests fail if something is missing
-    poly([Rect2f(0, 0, 1, 1)], color=:green, strokewidth=100, strokecolor=:black)
-end
-
 @reference_test "minor grid & scales" begin
     data = LinRange(0.01, 0.99, 200)
     f = Figure(size = (800, 800))
@@ -754,6 +712,12 @@ end
         outline_linewidth = 5, offset = 30, triangle_size = 15,
         strokewidth = 2f0, strokecolor = :cyan
     )
+    # Test depth (this part is expected to fail in CairoMakie)
+    p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
+    translate!(p, 0, 0, 100)
+    mesh!(ax,
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4],
+        shading = NoShading, color = :orange)
     fig
 end
 
@@ -907,6 +871,51 @@ end
     f
 end
 
+@reference_test "contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
+    ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
+@reference_test "filled contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+
+    fig
+end
+
 @reference_test "contour labels 3D" begin
     fig = Figure()
     Axis3(fig[1, 1])
@@ -918,14 +927,6 @@ end
     contour3d!(-zs; levels = -levels, labels = true, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
-end
-
-@reference_test "marker offset in data space" begin
-    f = Figure()
-    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
-    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
-    lines!(ax, Rect(0, 0, 1, 10), color=:red)
-    f
 end
 
 @reference_test "trimspine" begin
@@ -1053,29 +1054,6 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
-end
-
-@reference_test "Latex labels after the fact" begin
-    f = Figure(fontsize = 50)
-    ax = Axis(f[1, 1])
-    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    f
-end
-
-@reference_test "Rich text" begin
-    f = Figure(fontsize = 30, size = (800, 600))
-    ax = Axis(f[1, 1],
-        limits = (1, 100, 0.001, 1),
-        xscale = log10,
-        yscale = log2,
-        title = rich("A ", rich("title", color = :red, font = :bold_italic)),
-        xlabel = rich("X", subscript("label", fontsize = 25)),
-        ylabel = rich("Y", superscript("label")),
-    )
-    Label(f[1, 2], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)), tellheight = false)
-    Label(f[1, 3], rich("X", superscript("super"), subscript("sub")), tellheight = false)
-    f
 end
 
 @reference_test "bracket scalar" begin
@@ -1375,7 +1353,7 @@ end
 @reference_test "Triplot with nonlinear transformation" begin
     f = Figure()
     ax = PolarAxis(f[1, 1])
-    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]] 
+    points = Point2f[(phi, r) for r in 1:10 for phi in range(0, 2pi, length=36)[1:35]]
     noise = i -> 1f-4 * (isodd(i) ? 1 : -1) * i/sqrt(50) # should have small discrepancy
     points = points .+ [Point2f(noise(i), noise(i)) for i in eachindex(points)]
     # The noise forces the triangulation to be unique. Not using RNG to not disrupt the RNG stream later
@@ -1386,7 +1364,7 @@ end
 @reference_test "Triplot after adding points and make sure the representative_point_list is correctly updated" begin
     points = [(0.0,0.0),(0.95,0.0),(1.0,1.4),(0.0,1.0)] # not 1 so that we have a unique triangulation
     tri = Observable(triangulate(points; delete_ghosts = false))
-    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true)
+    fig, ax, sc = triplot(tri, show_points = true, markersize = 14, show_ghost_edges = true, recompute_centers = true, linestyle = :dash)
     for p in [(0.3, 0.5), (-1.5, 2.3), (0.2, 0.2), (0.2, 0.5)]
         add_point!(tri[], p)
     end
@@ -1511,6 +1489,18 @@ end
     fig
 end
 
+@reference_test "Voronoiplot with empty polygons and automatic color generation" begin
+    points = [0.153071 0.210363 0.447987 0.765468 -0.681145 1.88393 -1.05474 -0.52126 1.102 0.675978 1.75767 1.19744;
+        -0.16884 -0.492721 -1.30937 0.573229 -2.39049 -0.249817 -1.15057 -0.480175 0.226354 1.18442 1.66382 -1.23949];
+    tri = triangulate(points)
+    xmin, xmax, ymin, ymax = -1 / 2, 1 / 2, -1.0, 1.0
+    clip_points = ((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax))
+    clip_vertices = (1, 2, 3, 4, 1)
+    clip_polygon = (clip_points, clip_vertices)
+    clipped_vorn = voronoi(tri, clip=true, clip_polygon=clip_polygon)
+    voronoiplot(clipped_vorn)
+end
+
 function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
@@ -1558,12 +1548,39 @@ end
     fig = Figure()
     xs = vcat([fill(i, i * 1000) for i in 1:4]...)
     ys = vcat(RNG.randn(6000), RNG.randn(4000) * 2)
-    for (i, scale) in enumerate([:area, :count, :width])
-        ax = Axis(fig[i, 1])
-        violin!(ax, xs, ys; scale, show_median=true)
-        Makie.xlims!(0.2, 4.8)
-        ax.title = "scale=:$(scale)"
-    end
+    ax, p = violin(fig[1, 1], xs, ys; scale = :area, show_median=true)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:area"
+    ax, p = violin(fig[2, 1], xs, ys; scale = :count, mediancolor = :red, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:count"
+    ax, p = violin(fig[3, 1], xs, ys; scale = :width, show_median=true, mediancolor = :orange, medianlinewidth = 5)
+    Makie.xlims!(0.2, 4.8); ax.title = "scale=:width"
+    fig
+end
+
+@reference_test "Violin" begin
+    fig = Figure()
+
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = vcat(RNG.randn(300), (1.5 .* RNG.rand(300)).^2, -(1.5 .* RNG.rand(300)).^2)
+    violin(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 900)
+    violin(fig[1, 2], categories, values, dodge = dodge,
+        color = map(d->d==1 ? :yellow : :orange, dodge),
+        strokewidth = 2, strokecolor = :black, gap = 0.1, dodge_gap = 0.5
+    )
+
+    violin(fig[2, 1], categories, values, orientation = :horizontal,
+        color = :gray, side = :left
+    )
+
+    violin!(categories, values, orientation = :horizontal,
+        color = :yellow, side = :right, strokewidth = 2, strokecolor = :black,
+        weights = abs.(values)
+    )
+
+    # TODO: test bandwidth, boundary
+
     fig
 end
 
@@ -1600,4 +1617,312 @@ end
     data[1, 1] = NaN
     spy(f[2, 2], data; highclip=:red, lowclip=(:grey, 0.5), nan_color=:black, colorrange=(0.3, 0.7))
     f
+end
+
+@reference_test "Datashader AggCount" begin
+    data = [RNG.randn(Point2f, 10_000); (Ref(Point2f(1, 1)) .+ 0.3f0 .* RNG.randn(Point2f, 10_000))]
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data; async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data; async = false, binsize = 3)
+    ax3 = Axis(f[2, 1])
+    datashader!(ax3, data; async = false, operation = xs -> log10.(xs .+ 1))
+    ax4 = Axis(f[2, 2])
+    datashader!(ax4, data; async = false, point_transform = -)
+    f
+end
+
+@reference_test "Datashader AggMean" begin
+    with_z(p2) = Point3f(p2..., cos(p2[1]) * sin(p2[2]))
+    data2d = RNG.randn(Point2f, 100_000)
+    data3d = map(with_z, data2d)
+    f = Figure()
+    ax = Axis(f[1, 1])
+    datashader!(ax, data3d; agg = Makie.AggMean(), operation = identity, async = false)
+    ax2 = Axis(f[1, 2])
+    datashader!(ax2, data3d; agg = Makie.AggMean(), operation = identity, async = false, binsize = 3)
+    f
+end
+
+@reference_test "Heatmap Shader" begin
+    data = Makie.peaks(10_000)
+    data2 = map(data) do x
+        Float32(round(x))
+    end
+    f = Figure()
+    ax1, pl1 = heatmap(f[1, 1], Resampler(data))
+    ax2, pl2 = heatmap(f[1, 2], Resampler(data))
+    limits!(ax2, 2800, 4800, 2800, 5000)
+    ax3, pl3 = heatmap(f[2, 1], Resampler(data2))
+    ax4, pl4 = heatmap(f[2, 2], Resampler(data2))
+    limits!(ax4, 3000, 3090, 3460, 3500)
+    heatmap(f[3, 1], (1000, 2000), (500, 1000), Resampler(data2))
+    ax = Axis(f[3, 2])
+    limits!(ax, (0, 1), (0, 1))
+    heatmap!(ax, (1, 2), (1, 2), Resampler(data2))
+    Colorbar(f[:, 3], pl1)
+    sleep(1) # give the async operations some time
+    f
+end
+
+@reference_test "boxplot" begin
+    fig = Figure()
+
+    categories = vcat(fill(1, 300), fill(2, 300), fill(3, 300))
+    values = RNG.randn(900) .+ range(-1, 1, length=900)
+    boxplot(fig[1, 1], categories, values)
+
+    dodge = RNG.rand(1:2, 900)
+    boxplot(fig[1, 2], categories, values, dodge = dodge, show_notch = true,
+        color = map(d->d==1 ? :blue : :red, dodge),
+        outliercolor = RNG.rand([:red, :green, :blue, :black, :orange], 900)
+    )
+
+    ax_vert = Axis(fig[2,1];
+        xlabel = "categories",
+        ylabel = "values",
+        xticks = (1:3, ["one", "two", "three"])
+    )
+    ax_horiz = Axis(fig[2,2];
+        xlabel="values",
+        ylabel="categories",
+        yticks=(1:3, ["one", "two", "three"])
+    )
+
+    weights = 1.0 ./ (1.0 .+ abs.(values))
+    boxplot!(ax_vert, categories, values, orientation=:vertical, weights = weights,
+        gap = 0.5,
+        show_notch = true, notchwidth = 0.75,
+        markersize = 5, strokewidth = 2.0, strokecolor = :black,
+        medianlinewidth = 5, mediancolor = :orange,
+        whiskerwidth = 1.0, whiskerlinewidth = 3, whiskercolor = :green,
+        outlierstrokewidth = 1.0, outlierstrokecolor = :red,
+        width = 1.5,
+    )
+    boxplot!(ax_horiz, categories, values; orientation=:horizontal, width = categories ./ 3)
+
+    fig
+end
+
+@reference_test "crossbar" begin
+    fig = Figure()
+
+    xs = [1, 1, 2, 2, 3, 3]
+    ys = RNG.rand(6)
+    ymins = ys .- 1
+    ymaxs = ys .+ 1
+    dodge = [1, 2, 1, 2, 1, 2]
+
+    crossbar(fig[1, 1], xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
+
+    crossbar(fig[1, 2], xs, ys, ymins, ymaxs,
+        dodge = dodge, dodge_gap = 0.25,
+        gap = 0.05,
+        midlinecolor = :blue, midlinewidth = 5,
+        show_notch = true, notchwidth = 0.3,
+        notchmin = ys .- (0.05:0.05:0.3), notchmax = ys .+ (0.3:-0.05:0.05),
+        strokewidth = 2, strokecolor = :black,
+        orientation = :horizontal, color = (:gray, 0.5)
+    )
+    fig
+end
+
+@reference_test "ecdfplot" begin
+    f = Figure(size = (500, 250))
+
+    x = RNG.randn(200)
+    ecdfplot(f[1, 1], x, color = (:blue, 0.3))
+    ecdfplot!(x, color = :red, npoints=10, step = :pre, linewidth = 3)
+    ecdfplot!(x, color = :orange, npoints=10, step = :center, linewidth = 3)
+    ecdfplot!(x, color = :green, npoints=10, step = :post, linewidth = 3)
+
+    w = @. x^2 * (1 - x)^2
+    ecdfplot(f[1, 2], x)
+    ecdfplot!(x; weights = w, color=:orange)
+
+    f
+end
+
+@reference_test "qqnorm" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3
+    qqnorm(fig[1, 1], xs, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqnorm(fig[1, 2], xs, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqnorm(fig[2, 1], xs, qqline = :fit, linestyle = :dash, linewidth = 6)
+    qqnorm(fig[2, 2], xs, qqline = :identity, color = :orange)
+    fig
+end
+
+@reference_test "qqplot" begin
+    fig = Figure()
+    xs = 2 .* RNG.randn(10) .+ 3; ys = RNG.randn(10)
+    qqplot(fig[1, 1], xs, ys, qqline = :fitrobust, strokecolor = :cyan, strokewidth = 2)
+    qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
+    qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
+    qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
+    fig
+end
+
+@reference_test "rainclouds" begin
+    Makie.RAINCLOUD_RNG[] = RNG.STABLE_RNG
+    data = RNG.randn(1000)
+    data[1:200] .+= 3
+    data[201:500] .-= 3
+    data[501:end] .= 3 .* abs.(data[501:end]) .- 3
+    labels = vcat(fill("red", 500), fill("green", 500))
+
+    fig = Figure()
+    rainclouds(fig[1, 1], labels, data, plot_boxplots = false, cloud_width = 2.0,
+        markersize = 5.0)
+    rainclouds(fig[1, 2], labels, data, color = labels, orientation = :horizontal, cloud_width = 2.0)
+    rainclouds(fig[2, 1], labels, data, clouds = hist, hist_bins = 30, boxplot_nudge = 0.1,
+        center_boxplot = false, boxplot_width = 0.2, whiskerwidth = 1.0, strokewidth = 3.0)
+    rainclouds(fig[2, 2], labels, data, color = labels, side = :right, violin_limits = extrema)
+    fig
+end
+
+@reference_test "series" begin
+    fig = Figure()
+    data = cumsum(RNG.randn(4, 21), dims = 2)
+
+    ax, sp = series(fig[1, 1], data, labels=["label $i" for i in 1:4],
+        linewidth = 4, linestyle = :dot, markersize = 15, solid_color = :black)
+    axislegend(ax, position = :lt)
+
+    ax, sp = series(fig[2, 1], data, labels=["label $i" for i in 1:4], markersize = 10.0,
+        marker = Circle, markercolor = :transparent, strokewidth = 2.0, strokecolor = :black)
+    axislegend(ax, position = :lt)
+
+    fig
+end
+
+@reference_test "stairs" begin
+    f = Figure()
+
+    xs = LinRange(0, 4pi, 21)
+    ys = sin.(xs)
+
+    stairs(f[1, 1], xs, ys)
+    stairs(f[2, 1], xs, ys; step=:post, color=:blue, linestyle=:dash)
+    stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
+
+    f
+end
+
+@reference_test "stem" begin
+    f = Figure()
+
+    xs = LinRange(0, 4pi, 30)
+    stem(f[1, 1], xs, sin.(xs))
+
+    stem(f[1, 2], xs, sin,
+        offset = 0.5, trunkcolor = :blue, marker = :rect,
+        stemcolor = :red, color = :orange,
+        markersize = 15, strokecolor = :red, strokewidth = 3,
+        trunklinestyle = :dash, stemlinestyle = :dashdot)
+
+    stem(f[2, 1], xs, sin.(xs),
+        offset = LinRange(-0.5, 0.5, 30),
+        color = LinRange(0, 1, 30), colorrange = (0, 0.5),
+        trunkcolor = LinRange(0, 1, 30), trunkwidth = 5)
+
+    ax, p = stem(f[2, 2], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
+        offset = Point3f.(0.5xs, sin.(xs), cos.(xs)),
+        stemcolor = LinRange(0, 1, 30), stemcolormap = :Spectral, stemcolorrange = (0, 0.5))
+
+    center!(ax.scene)
+    zoom!(ax.scene, 0.8)
+    ax.scene.camera_controls.settings[:center] = false
+
+    f
+end
+
+@reference_test "waterfall" begin
+    y = [6, 4, 2, -8, 3, 5, 1, -2, -3, 7]
+
+    fig = Figure()
+    waterfall(fig[1, 1], y)
+    waterfall(fig[1, 2], y, show_direction = true, marker_pos = :cross,
+        marker_neg = :hline, direction_color = :yellow)
+
+    colors = Makie.wong_colors()
+    x = repeat(1:2, inner=5)
+    group = repeat(1:5, outer=2)
+
+    waterfall(fig[2, 1], x, y, dodge = group, color = colors[group],
+        show_direction = true, show_final = true, final_color=(colors[6], 1//3),
+        dodge_gap = 0.1, gap = 0.05)
+
+    x = repeat(1:5, outer=2)
+    group = repeat(1:2, inner=5)
+
+    waterfall(fig[2, 2], x, y, dodge = group, color = colors[group],
+        show_direction = true, stack = :x, show_final = true)
+
+    fig
+end
+
+@reference_test "ablines + hvlines + hvspan" begin
+    f = Figure()
+
+    ax = Axis(f[1, 1])
+    hspan!(ax, -1, -0.9, color = :lightblue, alpha = 0.5, strokewidth = 2, strokecolor = :black)
+    hspan!(ax, 0.9, 1, xmin = 0.2, xmax = 0.8)
+    vspan!(ax, -1, -0.9)
+    vspan!(ax, 0.9, 1, ymin = 0.2, ymax = 0.8, strokecolor = RGBf(0,1,0.1), strokewidth = 3)
+
+    ablines!([0.3, 0.7], [-0.2, 0.2], color = :orange, linewidth = 4, linestyle = :dash)
+
+    hlines!(ax, -0.8)
+    hlines!(ax, 0.8, xmin = 0.2, xmax = 0.8)
+    vlines!(ax, -0.8, color = :green, linewidth = 3)
+    vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
+
+    f
+end
+
+@reference_test "Color Patterns" begin
+    f = Figure()
+    a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
+
+    pattern = Makie.Pattern('x', width = 0.7, linecolor = (:red, 0.5), backgroundcolor = (:blue, 0.5))
+    mesh!(a, Circle(Point2f(0, 3), 1f0), color = pattern, shading = NoShading)
+
+    r = range(0, 2pi, length=21)[1:end-1]
+    img = [RGBf(0.5 + 0.5 * sin(x), 0.2, 0.5 + 0.5 * cos(y)) for x in r, y in r]
+    mesh!(a, Circle(Point2f(3, 3), 1f0), color = Makie.Pattern(img), shading = NoShading)
+
+    surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
+    meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
+        color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
+end
+
+@reference_test "Color patterns in recipes" begin
+    pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
+
+    f = Figure(size = (500, 400))
+    a = Axis(f[1, 1])
+    xlims!(-0.25, 6.6)
+
+    vs = [1, 2, 2, 3, 3, 3]
+    hist!(a, 0.5 .* vs, color = pattern, bins = 3, gap = 0.2, direction = :x)
+    density!(a, vs, color = pattern)
+    poly!(a, [0, 0, 1, 1], [2, 3, 3, 2], color = pattern)
+    band!(a, [2, 3, 4], [2.5, 3, 2], [3.5, 3.5, 3], color = pattern)
+    barplot!(a, [5, 6], [3, 2], color = pattern)
+    pie!(a, 4, 1, vs, radius = 0.5, color = pattern) # TODO: per element
+    hspan!(a, 4, 4.5, color = pattern)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
 end

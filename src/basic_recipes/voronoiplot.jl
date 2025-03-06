@@ -36,6 +36,8 @@ DelaunayTriangulation.jl.
     MakieCore.mixin_colormap_attributes()...
 end
 
+preferred_axis_type(::Voronoiplot) = Axis
+
 function _clip_polygon(poly::Polygon, circle::Circle)
     # Sutherland-Hodgman adjusted
     @assert isempty(poly.interiors) "Polygon must not have holes for clipping."
@@ -50,7 +52,7 @@ function _clip_polygon(poly::Polygon, circle::Circle)
         return A + AB * t
     end
 
-    input = Point2f.(first.(poly.exterior))
+    input = Point2f.(poly.exterior)
     output = sizehint!(Point2f[], length(input))
 
     for i in eachindex(input)
@@ -97,6 +99,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
     for i in DelTri.each_generator(vorn)
+        !DelTri.has_polygon(vorn, i) && continue 
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
             return Point2f(DelTri.getxy(coords))
@@ -173,7 +176,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
-            cs = [i for i in DelTri.each_generator(vorn)]
+            cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
             return cs
         elseif color isa AbstractArray
             @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),

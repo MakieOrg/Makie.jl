@@ -1,4 +1,4 @@
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import {
     delete_scenes,
@@ -19,23 +19,54 @@ import { events2unitless } from "./Camera.js";
 
 window.THREE = THREE;
 
-export function render_scene(scene, picking = false) {
-    const { camera, renderer, px_per_unit } = scene.screen;
-    const canvas = renderer.domElement;
+function dispose_screen(screen) {
+    const { renderer, picking_target, root_scene } = screen;
+    if (renderer) {
+        const canvas = renderer.domElement;
+        if (canvas.parentNode) {
+            canvas.parentNode.removeChild(canvas);
+        }
+        renderer.state.reset();
+        renderer.forceContextLoss();
+        renderer.dispose();
+    }
+
+    if (screen.texture_atlas) {
+        // we need a better observable API to deregister callbacks,
+        // Right now one can only deregister a callback from within the callback by returning false.
+        // So we notify the whole texture atlas with the texture that needs to go & deregister.
+        const data = TEXTURE_ATLAS[0].value;
+        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
+        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas = undefined;
+    }
+    if (root_scene) {
+        delete_three_scene(root_scene);
+    }
+    if (picking_target) {
+        picking_target.dispose();
+    }
+    Object.keys(screen).forEach((key) => delete screen[key]);
+    return;
+}
+
+function check_screen(screen) {
+    if (!screen || !screen.renderer) {
+        dispose_screen(screen);
+        return false;
+    }
+    const canvas = screen.renderer.domElement;
     if (!document.body.contains(canvas)) {
         console.log("removing WGL context, canvas is not in the DOM anymore!");
-        if (scene.screen.texture_atlas) {
-            // we need a better observable API to deregister callbacks,
-            // Right now one can only deregister a callback from within the callback by returning false.
-            // So we notify the whole texture atlas with the texture that needs to go & deregister.
-            const data = TEXTURE_ATLAS[0].value;
-            TEXTURE_ATLAS[0].notify(scene.screen.texture_atlas, true);
-            TEXTURE_ATLAS[0].value = data;
-            scene.screen.texture_atlas = undefined;
-        }
-        delete_three_scene(scene);
-        renderer.state.reset();
-        renderer.dispose();
+        dispose_screen(screen);
+        return false;
+    }
+    return true;
+}
+
+export function render_scene(scene, picking = false) {
+    const { renderer, camera, px_per_unit } = scene.screen;
+    if (!check_screen(scene.screen)) {
         return false;
     }
     // dont render invisible scenes
@@ -68,6 +99,9 @@ function start_renderloop(three_scene) {
     // make sure we immediately render the first frame and dont wait 30ms
     let last_time_stamp = performance.now();
     function renderloop(timestamp) {
+        if (!check_screen(three_scene.screen)) {
+            return false;
+        }
         if (timestamp - last_time_stamp > time_per_frame) {
             const all_rendered = render_scene(three_scene);
             if (!all_rendered) {
@@ -77,10 +111,22 @@ function start_renderloop(three_scene) {
             }
             last_time_stamp = performance.now();
         }
-        window.requestAnimationFrame(renderloop);
+        requestAnimationFrame(renderloop);
     }
+    function _check_screen() {
+        // make sure we delete the screen if the canvas is not in the DOM anymore
+        if (!check_screen(three_scene.screen)){
+            return;
+        }
+        // this can't happen via requestAnimationFrame
+        // since it may not be called after the canvas got removed.
+        // So we need another check outside the renderloop (which can run a lot slower)
+        setTimeout(_check_screen, 1000);
+    }
+
     // render one time before starting loop, so that we don't wait 30ms before first render
     render_scene(three_scene);
+    _check_screen();
     renderloop();
 }
 
@@ -195,6 +241,11 @@ function on_shader_error(gl, program, glVertexShader, glFragmentShader) {
 
 function add_canvas_events(screen, comm, resize_to) {
     const { canvas,  winscale } = screen;
+
+    canvas.addEventListener("webglcontextlost", (event) => {
+        dispose_screen(screen);
+    });
+
     function mouse_callback(event) {
         const [x, y] = events2unitless(screen, event);
         comm.notify({ mouseposition: [x, y] });
@@ -237,9 +288,7 @@ function add_canvas_events(screen, comm, resize_to) {
 
     function keydown(event) {
         // Prevent the default browser behavior for `Space`, which is to scroll.
-        if (event.code === "Space") {
-            event.preventDefault();
-        }
+        event.preventDefault();
         comm.notify({
             keydown: [event.code, event.key],
         });
@@ -249,6 +298,7 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("keydown", keydown);
 
     function keyup(event) {
+        event.preventDefault();
         comm.notify({
             keyup: event.code,
         });
@@ -390,7 +440,11 @@ function add_picking_target(screen) {
     // 2) Only Area we pick
     //      It's currently not as easy to change the offset + area of the camera
     //      So, we'll need to make that easier first
-    screen.picking_target = new THREE.WebGLRenderTarget(w, h);
+    screen.picking_target = new THREE.WebGLRenderTarget(w, h, {
+        type: THREE.FloatType,
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+    });
     return;
 }
 
@@ -443,7 +497,7 @@ function create_scene(
     set_render_size(screen, width, height);
 
     const three_scene = deserialize_scene(scenes, screen);
-
+    screen.root_scene = three_scene;
     start_renderloop(three_scene);
 
     canvas_width.on((w_h) => {
@@ -496,6 +550,37 @@ function set_picking_uniforms(
     return next_id;
 }
 
+function decode_float_to_uint(r, g) {
+    const lower = Math.round(r * 65535);
+    const upper = Math.round(g * 65535);
+    return (upper << 16) | lower;
+}
+
+function read_pixels(renderer, picking_target, x, y, w, h) {
+    const nbytes = w * h * 4;
+    const pixel_bytes = new Float32Array(nbytes);
+    //read the pixel
+    renderer.readRenderTargetPixels(
+        picking_target,
+        x, // x
+        y, // y
+        w, // width
+        h, // height
+        pixel_bytes
+    );
+    const result = [];
+    for (let i = 0; i < pixel_bytes.length; i += 4) {
+        const r = pixel_bytes[i];
+        const g = pixel_bytes[i + 1];
+        const b = pixel_bytes[i + 2];
+        const a = pixel_bytes[i + 3];
+        const id = decode_float_to_uint(r, g);
+        const index = decode_float_to_uint(b, a);
+        result.push([id, index]);
+    }
+    return result;
+}
+
 /**
  *
  * @param {*} scene
@@ -514,30 +599,23 @@ export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
     // render the scene
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
-    render_scene(scene, true);
+    const rendered = render_scene(scene, true);
+    if (!rendered) {
+        return;
+    }
     renderer.setRenderTarget(null); // reset render target
-    const nbytes = w * h * 4;
-    const pixel_bytes = new Uint8Array(nbytes);
-    //read the pixel
-    renderer.readRenderTargetPixels(
+    const picked_plots_array = read_pixels(
+        renderer,
         picking_target,
-        x, // x
-        y, // y
-        w, // width
-        h, // height
-        pixel_bytes
+        x,
+        y,
+        w,
+        h
     );
 
-
     const picked_plots = {};
-    const picked_plots_array = [];
 
-    const reinterpret_view = new DataView(pixel_bytes.buffer);
-
-    for (let i = 0; i < pixel_bytes.length / 4; i++) {
-        const id = reinterpret_view.getUint16(i * 4);
-        const index = reinterpret_view.getUint16(i * 4 + 2);
-        picked_plots_array.push([id, index]);
+    picked_plots_array.forEach(([id, index]) => {
         if (!picked_plots[id]) {
             picked_plots[id] = [];
         }
@@ -546,7 +624,8 @@ export function pick_native(scene, _x, _y, _w, _h, apply_ppu=true) {
         if (!picked_plots[id].includes(index)) {
             picked_plots[id].push(index);
         }
-    }
+    })
+
     // dict of plot_uuid => primitive_index (e.g. instance id or triangle index)
     const plots = [];
     const id_to_plot = {};
@@ -567,26 +646,19 @@ export function get_picking_buffer(scene) {
     // render the scene
     renderer.setRenderTarget(picking_target);
     set_picking_uniforms(scene, 1, true);
-    render_scene(scene, true);
-    renderer.setRenderTarget(null); // reset render target
-    const nbytes = w * h * 4;
-    const pixel_bytes = new Uint8Array(nbytes);
-    //read the pixel
-    renderer.readRenderTargetPixels(
-        picking_target,
-        0, // x
-        0, // y
-        w, // width
-        h, // height
-        pixel_bytes
-    );
-    const reinterpret_view = new DataView(pixel_bytes.buffer);
-    const picked_plots_array = []
-    for (let i = 0; i < pixel_bytes.length / 4; i++) {
-        const id = reinterpret_view.getUint16(i * 4);
-        const index = reinterpret_view.getUint16(i * 4 + 2);
-        picked_plots_array.push([id, index]);
+    const rendered = render_scene(scene, true);
+    if (!rendered) {
+        return;
     }
+    renderer.setRenderTarget(null); // reset render target
+    const picked_plots_array = read_pixels(
+        renderer,
+        picking_target,
+        x,
+        y,
+        w,
+        h
+    );
     return {picked_plots_array, w, h};
 }
 
@@ -607,7 +679,7 @@ export function pick_closest(scene, xy, range) {
     const dy = y1 - y0;
     const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
     const plot_matrix = plot_data.data;
-    let min_dist = 1e30;
+    let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [null, 0];
     const x = xy[0] * px_per_unit + 1 - x0;
     const y = xy[1] * px_per_unit + 1 - y0;
@@ -641,8 +713,11 @@ export function pick_sorted(scene, xy, range) {
 
     const dx = x1 - x0;
     const dy = y1 - y0;
-
-    const [plot_data, selected] = pick_native(scene, x0, y0, dx, dy, false);
+    const picked = pick_native(scene, x0, y0, dx, dy, false);
+    if (!picked) {
+        return null;
+    }
+    const [plot_data, selected] = picked;
     if (selected.length == 0) {
         return null;
     }
@@ -676,13 +751,20 @@ export function pick_sorted(scene, xy, range) {
 }
 
 export function pick_native_uuid(scene, x, y, w, h) {
-    const [_, picked_plots] = pick_native(scene, x, y, w, h);
+    const picked = pick_native(scene, x, y, w, h);
+    if (!picked) {
+        return [];
+    }
+    const [_, picked_plots] = picked;
     return picked_plots.map(([p, index]) => [p.plot_uuid, index]);
 }
 
 export function pick_native_matrix(scene, x, y, w, h) {
-    const [matrix, _] = pick_native(scene, x, y, w, h);
-    return matrix;
+    const picked = pick_native(scene, x, y, w, h);
+    if (!picked) {
+        return { data: [], size: [0, 0] };
+    }
+    return picked[0];
 }
 
 export function register_popup(popup, scene, plots_to_pick, callback) {
@@ -693,7 +775,11 @@ export function register_popup(popup, scene, plots_to_pick, callback) {
     const { canvas } = scene.screen;
     canvas.addEventListener("mousedown", (event) => {
         const [x, y] = events2unitless(scene.screen, event);
-        const [_, picks] = pick_native(scene, x, y, 1, 1);
+        const picked = pick_native(scene, x, y, 1, 1);
+        if (!picked) {
+            return
+        }
+        const [_, picks] = picked;
         if (picks.length == 1) {
             const [plot, index] = picks[0];
             if (plots_to_pick.has(plot.plot_uuid)) {

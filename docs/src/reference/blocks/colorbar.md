@@ -75,7 +75,7 @@ fig
 ```
 
 
-We can't use `cgrad(...; categorical=true)` for this, since it has an ambigious meaning for true categorical values.
+We can't use `cgrad(...; categorical=true)` for this, since it has an ambiguous meaning for true categorical values.
 
 ## Attributes
 

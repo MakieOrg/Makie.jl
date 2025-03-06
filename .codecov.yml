@@ -2,3 +2,6 @@ comment: false
 coverage:
   status:
     project: false
+    patch: false
+github_checks:
+    annotations: false

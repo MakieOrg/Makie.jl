@@ -77,7 +77,7 @@ function Base.merge!(target::Attributes, args::Attributes...)
     return target
 end
 
-Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
+Base.merge(target::Attributes, args::Attributes...) = merge!(deepcopy(target), args...)
 
 function Base.getproperty(x::Union{Attributes, AbstractPlot}, key::Symbol)
     if hasfield(typeof(x), key)

@@ -59,10 +59,16 @@ function initialize_block!(sl::Slider)
         selected_index[] = closest_index(rng, sl.value[])
     end
 
-    on(topscene, selected_index) do i
-        sl.value[] = sliderrange[][i]
+    onany(topscene, selected_index, dragging) do i, dragging
+        new_val = get(sliderrange[], i, nothing)
+        has_value = !isnothing(new_val)
+        has_changed = sl.value[] != new_val
+        drag_updates = sl.update_while_dragging[] || !dragging[]
+        if has_value && has_changed && drag_updates
+            sl.value[] = new_val
+        end
     end
-
+    sl.value[] = sliderrange[][selected_index[]]
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], sl.startvalue[])
 

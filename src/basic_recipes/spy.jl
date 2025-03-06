@@ -34,6 +34,11 @@ spy(0..1, 0..1, x)
     """
     markersize = automatic
     """
+    Makes the marker size smaller to create a gap between the markers.
+    The unit of this is in data space.
+    """
+    marker_gap = 0
+    """
     By default a frame will be drawn around the data, which uses the `framecolor` attribute for its color.
     """
     framecolor = :black
@@ -69,8 +74,8 @@ function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where T
 end
 
 function convert_arguments(::Type{<:Spy}, xs, ys, matrix::AbstractMatrix)
-    x = to_endpoints(xs, "x")
-    y = to_endpoints(ys, "y")
+    x = to_endpoints(xs, "x", "Spy")
+    y = to_endpoints(ys, "y", "Spy")
     return (x, y, convert(SparseArrays.SparseMatrixCSC, matrix))
 end
 
@@ -85,19 +90,24 @@ function Makie.plot!(p::Spy)
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
-    markersize = lift(p, p.markersize, rect, p.z) do msize, rect, z
+    markersize = lift(p, p.markersize, rect, p.z, p.marker_gap) do msize, rect, z, gap
         if msize === automatic
-            widths(rect) ./ Vec2(size(z))
+            (widths(rect) ./ Vec2(size(z))) .- gap
         else
             msize
         end
     end
-    # TODO correctly align marker
-    xycol = lift(p, rect, p.z, markersize) do rect, z, markersize
+    index_map = Observable(Dict{Int, Tuple{Int, Int}}(); ignore_equal_values=true)
+    p._index_map = index_map
+    xyc = lift(p, p.z; ignore_equal_values=true) do z
         x, y, color = SparseArrays.findnz(z)
+        index_map[] = Dict(enumerate(zip(x, y)))
+        return (x, y, color, size(z))
+    end
+    xycol = lift(p, rect, xyc, markersize) do rect, (x, y, color, size_z), markersize
         mhalf = markersize ./ 2
         points = map(x, y) do x, y
-            p01 = (Point2(x, y) .- 1) ./ Point2(size(z))
+            p01 = (Point2(x, y) .- 1) ./ Point2(size_z)
             return (p01 .* widths(rect)) .+ minimum(rect) .+ mhalf
         end
         points, convert(Vector{Float32}, color)
@@ -112,14 +122,14 @@ function Makie.plot!(p::Spy)
         color = color,
         markerspace = :data,
         marker = p.marker, markersize = markersize,
-        inspectable = p.inspectable, visible = p.visible,
         MakieCore.colormap_attributes(p)...,
+        MakieCore.generic_plot_attributes(p)...
     )
 
     lines!(p, rect,
         color = p.framecolor,
         linewidth = p.framesize,
-        inspectable = p.inspectable,
-        visible = p.framevisible
+        visible = p.framevisible,
+        inspectable = false
     )
 end

@@ -52,5 +52,5 @@ vec4 get_color(sampler2D intensity, vec2 uv, vec2 color_norm, sampler1D color_ma
 
 void main(){
     vec4 color = get_color(intensity, o_uv, color_norm, color_map);
-    write2framebuffer(color, uvec2(o_objectid.x, 0));
+    write2framebuffer(color, uvec2(o_objectid.x, o_objectid.y));
 }

@@ -1,4 +1,4 @@
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import { OrbitControls } from "./OrbitControls.js";
 
 // Unitless is the scene pixel unit space
@@ -75,13 +75,18 @@ export function attach_3d_camera(
     scene.orbitcontrols = controls;
 
     controls.addEventListener("change", (e) => {
-        const view = camera.matrixWorldInverse;
-        const projection = camera.projectionMatrix;
         const [width, height] = cam3d.resolution.value;
-        const [x, y, z] = camera.position;
+        const position = camera.position;
+        const lookat = controls.target;
+        const [x, y, z] = position;
+        const dist = position.distanceTo(lookat);
         camera.aspect = width / height;
+        camera.near = dist * 0.1;
+        camera.far = dist * 5;
         camera.updateProjectionMatrix();
         camera.updateWorldMatrix();
+        const view = camera.matrixWorldInverse;
+        const projection = camera.projectionMatrix;
         makie_camera.update_matrices(
             view.elements,
             projection.elements,
