@@ -1,8 +1,8 @@
 using Dates, Observables
 import Unitful
-using Unitful: Quantity, @u_str, uconvert, ustrip
+using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
 
-const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
+const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.LogScaled,Unitful.Units}
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
@@ -11,10 +11,23 @@ MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
+# Quantity
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
-base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
+base_unit(x::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
+
+# LogScaled
+base_unit(q::LogScaled) = base_unit(typeof(q))
+base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?, Tval}}) where {N, B, P, Tval<:Real} = N
+base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?}}) where {N, B, P} = N
+base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S, T}}) where {N, B, P, S, T} = N
+base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S}}) where {N, B, P, S} = N
+base_unit(x::Type{Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}}) where {T<:LogScaled} = base_unit(T)
+base_unit(::Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}) where {T<:LogScaled} = base_unit(T)
+#base_unit(x::Symbol) = string(x)
+#base_unit(x::String) = x
+
 base_unit(x::Unitful.Unit) = x
 base_unit(x::Period) = base_unit(Quantity(x))
 
@@ -23,6 +36,8 @@ unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
 unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
+unit_string(::Type{T}) where T <: Unitful.LogScaled = string(Unitful.logunit(T))
+unit_string(unit::Unitful.MixedUnits) = string(unit)
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
@@ -31,6 +46,7 @@ is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
 is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
 is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
 is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
+is_compound_unit(::LogScaled) = false
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -74,7 +90,9 @@ function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
 
-get_all_base10_units(value) = get_all_base10_units(base_unit(value))
+function get_all_base10_units(value)
+    get_all_base10_units(base_unit(value))
+end
 
 function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
     return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
@@ -91,8 +109,13 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = (min + max) / 2.0
-    all_units = get_all_base10_units(middle)
+    middle = (min + max) * 0.5
+    all_units = if middle isa LogScaled
+        # Use given LogScaled unit
+        return [base_unit(middle)]
+    else
+        get_all_base10_units(middle)
+    end
     _, index = findmin(all_units) do unit
         raw_value = abs(unit_convert(unit, middle))
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
@@ -114,7 +137,6 @@ function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQu
     conv = uconvert(to_free_unit(unit, value), value)
     return Float64(ustrip(conv))
 end
-
 
 # Overload conversion functions for Axis, to properly display units
 
@@ -158,7 +180,12 @@ end
 function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     conversion.automatic_units || return
     eltype, extrema = eltype_extrema(value_obs[])
-    conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
+    #conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
+    conversion.extrema[value_obs.id] = if eltype <: Gain
+        extrema
+    else
+        promote(Quantity.(extrema)...)
+    end
     imini, imaxi = extrema
     for (mini, maxi) in values(conversion.extrema)
         imini = min(imini, mini)
