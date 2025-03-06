@@ -22,6 +22,7 @@ errorbars!(xs, ys, higherrors; color = :red, label="data") # same low and high e
 # plot position scatters so low and high errors can be discriminated
 scatter!(xs, ys; markersize = 3, color = :black, label="data")
 
+# the `label=` must be the same for merge to work
 # without merge, two separate legend items will appear
 axislegend(merge=true)
 
