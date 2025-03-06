@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-
+- Use the `bar_default_fillto` method from [#3004](https://github.com/MakieOrg/Makie.jl/pull/3004) in stacked barplots as well, to stop the first member of the stack from disappearing in log scale [#4670](https://github.com/MakieOrg/Makie.jl/pull/4849).
 
 ## [0.22.2] - 2025-02-26
 
