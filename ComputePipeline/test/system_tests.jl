@@ -1,5 +1,3 @@
-using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException
-
 @testset "Full System Test" begin
     parent = ComputeGraph()
     add_input!(parent, :pin1, 1)
@@ -219,10 +217,14 @@ using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException
             @test graph.outputs[:trans2].value[] == "nothing1"
         end
 
-        # graph & parent
-        @test_throws ResolveException graph[:merged][] == [2,4,6]
-        # eval to escape testset scope
-        @eval f32(key, x) = Float32.(x)
+    end
+
+    # graph & parent
+    @test_throws ResolveException graph[:merged][] == [2,4,6]
+    # needs to be in the same scope as previous f32 definition
+    f32(key, x) = Float32.(x)
+
+    @testset "Updates continued" begin
 
         @testset "child graph resolve state" begin
             @test graph.outputs[:merged][] == [2,4,6]
