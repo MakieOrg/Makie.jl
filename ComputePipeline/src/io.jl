@@ -28,6 +28,7 @@ end
 
 
 edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
+edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
 edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
 
 function edge_callback_location(edge::ComputeEdge)

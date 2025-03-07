@@ -404,15 +404,30 @@ backed by a `Computed`, i.e. a node in the compute graph with the same `name`
 which holds the result of `callback(value)`. It can be accessed by `graph[:name]`
 or `graph.name` and its value can be read by dereferencing it, i.e `graph[name][]`.
 """
-add_input!(attr::ComputeGraph, key::Symbol, value) = add_input!((k, v)-> v, attr, key, value)
+add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
 
 # TODO: error tracking would be better if we didn't wrap the user function
+struct InputFunctionWrapper{FT} <: Function
+    key::Symbol
+    user_func::FT
+end
+(x::InputFunctionWrapper)(v) = x.user_func(x.key, v)
+(x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1][]), )
+
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+end
+
+# TODO: error tracking would be better if we didn't wrap the user function
+function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
-    haskey(attr.inputs, key) && return # TODO: Should this error/warn?
+    if haskey(attr.inputs, key)
+        @error("Cannot attach input with name $key - already exists!")
+        return
+    end
 
     output = Computed(key, RefValue{Any}())
-    input = Input(key, value, (v) -> conversion_func(key, v), output)
+    input = Input(key, value, func, output)
     output.parent = input
     output.parent_idx = 1
     # Needs to be Any, since input can change type
@@ -426,6 +441,7 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
         add_input!(conversion_func, attr, k, v)
     end
 end
+
 
 # for recipe -> recipe (mostly)
 """
@@ -444,9 +460,7 @@ end
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Computed)
     input_name = Symbol(:parent_, key)
     attr.outputs[input_name] = value
-    register_computation!(attr, [input_name], [key]) do (input,), changed, last
-        return (conversion_func(key, input[]),)
-    end
+    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [input_name], [key])
     return
 end
 
