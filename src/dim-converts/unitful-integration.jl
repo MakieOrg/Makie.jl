@@ -11,21 +11,10 @@ MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
 
-# Quantity
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
-base_unit(x::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
+base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
-
-# LogScaled
-#base_unit(q::LogScaled) = base_unit(typeof(q))
-#base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?, Tval}}) where {N, B, P, Tval<:Real} = N
-#base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?}}) where {N, B, P} = N
-#base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S, Tval}}) where {N, B, P, S, Tval} = N
-#base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S}}) where {N, B, P, S} = N
-#base_unit(x::Type{Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}}) where {T<:LogScaled} = base_unit(T)
-#base_unit(::Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}) where {T<:LogScaled} = base_unit(T)
-
 base_unit(x::Unitful.Unit) = x
 base_unit(x::Period) = base_unit(Quantity(x))
 
@@ -89,9 +78,7 @@ function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
 
-function get_all_base10_units(value)
-    get_all_base10_units(base_unit(value))
-end
+get_all_base10_units(value) = get_all_base10_units(base_unit(value))
 
 function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
     return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
@@ -108,7 +95,7 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = min + max / 0.5
+    middle = min + max / 2.0
     all_units = get_all_base10_units(middle)
     _, index = findmin(all_units) do unit
         raw_value = abs(unit_convert(unit, middle))
@@ -120,7 +107,7 @@ function best_unit(min, max)
     return all_units[index]
 end
 
-best_unit(min::LogScaled, max::LogScaled) = Unitful.logunit(min) 
+best_unit(min::LogScaled, max::LogScaled) = Unitful.logunit(min)
 
 unit_convert(::Automatic, x) = x
 
@@ -128,11 +115,15 @@ function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful
     return unit_convert.(Ref(unit), x)
 end
 
+unit_convert(unit::Unitful.MixedUnits, x::AbstractArray) = unit_convert.(Ref(unit), x)
+
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
     return Float64(ustrip(conv))
 end
+
+unit_convert(unit::Unitful.MixedUnits, value) = Float64(ustrip(value))
 
 # Overload conversion functions for Axis, to properly display units
 
@@ -176,8 +167,7 @@ end
 function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     conversion.automatic_units || return
     eltype, extrema = eltype_extrema(value_obs[])
-    #conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
-    conversion.extrema[value_obs.id] = if eltype <: Unitful.Gain
+    conversion.extrema[value_obs.id] = if eltype <: Unitful.LogScaled
         extrema
     else
         promote(Quantity.(extrema)...)
@@ -237,6 +227,7 @@ function convert_dim_observable(conversion::UnitfulConversion, value_obs::Observ
         if !isempty(values)
             # try if conversion works, to through error if not!
             # Is there a function for this to check in Unitful?
+            unit_convert(unit, values[1])
             unit_convert(unit, values[1])
         end
         update_extrema!(conversion, value_obs)
