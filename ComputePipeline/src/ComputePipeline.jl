@@ -224,12 +224,16 @@ function mark_dirty!(input::Input)
 end
 
 function Base.setindex!(computed::Computed, value)
-    computed.value[] = value
-    return mark_dirty!(computed)
+    if computed.parent isa Input
+        return setindex!(computed.parent, value)
+    else
+        computed.value[] = value
+        return mark_dirty!(computed)
+    end
 end
 
 function Base.setindex!(input::Input, value)
-    input.value[] = value
+    input.value = value
     return mark_dirty!(input)
 end
 
