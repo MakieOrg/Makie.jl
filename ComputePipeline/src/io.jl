@@ -8,7 +8,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     println(io, "Computed:")
-    println(io, "  name: :", computed.name)
+    println(io, "  name = :", computed.name)
     if hasparent(computed)
         if computed.parent isa Input
             println(io, "  parent = ", computed.parent)
@@ -274,18 +274,21 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
             c = ifelse(was_dirty, :light_black, ifelse(name in marked, :red, :light_green))
             was_dirty |= name in marked # only mark first unresolved input
             printstyled(io, name, color = c)
-            i != N && print(", ")
+            print(io, ", ")
         end
-        println(io, "), …)")
+        println(io, "), changed, cached)")
 
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
 
         idx = findfirst(computed -> computed.name in marked, edge.inputs)
         if idx === nothing # All resolved
-            println(io, "  with edge inputs:")
+            print(io, "  with edge inputs:")
+            ioc = IOContext(io, :limit => true)
             for input in edge.inputs
-                println(io, "    ", input.name, " = ", typeof(input.value[]))
+                print(io, "\n    ", input.name, " = ")
+                show(ioc, input.value[])
             end
+            println(io)
             print_root_inputs(io, edge)
         else # idx is first dirty
             trace_error(io, edge.inputs[idx], marked)
