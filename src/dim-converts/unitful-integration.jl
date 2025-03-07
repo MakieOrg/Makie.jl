@@ -95,7 +95,7 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = min + max / 2.0
+    middle = (min + max) / 2.0
     all_units = get_all_base10_units(middle)
     _, index = findmin(all_units) do unit
         raw_value = abs(unit_convert(unit, middle))
@@ -227,7 +227,6 @@ function convert_dim_observable(conversion::UnitfulConversion, value_obs::Observ
         if !isempty(values)
             # try if conversion works, to through error if not!
             # Is there a function for this to check in Unitful?
-            unit_convert(unit, values[1])
             unit_convert(unit, values[1])
         end
         update_extrema!(conversion, value_obs)
