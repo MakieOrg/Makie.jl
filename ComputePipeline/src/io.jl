@@ -18,11 +18,9 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     else
         println(io, "parent = #undef")
     end
-    if isdefined(computed, :value) && isassigned(computed.value)
-        print(io, "  value = ", computed.value[])
-    else
-        print(io, "  value = #undef")
-    end
+    v = isdefined(computed, :value) && isassigned(computed.value) ? computed.value[] : "#undef"
+    print(io, "  value = ")
+    printstyled(io, "$v", color = ifelse(isdirty(computed), :light_black, :normal))
 end
 
 
@@ -95,17 +93,29 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     print(io, "  inputs:")
     for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
-        print(io, "\n    ", dirty ? '↻' : '✓', ' ', v)
+        if dirty
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 
     print(io, "\n  outputs:")
     for v in edge.outputs
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if dirty
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 
     print(io, "\n  dependents:")
     for v in edge.dependents
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if isdirty(v)
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 end
 
@@ -122,10 +132,19 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
     f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
     printstyled(io, " $loc\n", color = :light_black)
-    println(io, "  output:   ", input.dirty ? '↻' : '✓', ' ', input.output)
+    print(io, "  output:   ")
+    if isdirty(input)
+        printstyled(io, "↻ $(input.output)\n", color = :light_black)
+    else
+        println(io, "✓ ", input.output)
+    end
     print(io, "  dependents:")
     for v in input.dependents
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if isdirty(v)
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            println(io, "\n    ✓ ", v)
+        end
     end
 end
 
@@ -188,7 +207,9 @@ function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
     ks = sort!(collect(keys(graph.outputs)), by = string)
     pad = mapreduce(k -> length(string(k)), max, ks, init = 0)
     for k in ks
-        print(io, "\n    :", rpad(string(k), pad), " => ", graph.outputs[k])
+        output = graph.outputs[k]
+        print(io, "\n    :", rpad(string(k), pad), " => ")
+        printstyled(io, "$output", color = ifelse(isdirty(output), :light_black, :normal))
     end
     return io
 end
