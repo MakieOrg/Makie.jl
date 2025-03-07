@@ -18,15 +18,13 @@ base_unit(x::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
 base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 
 # LogScaled
-base_unit(q::LogScaled) = base_unit(typeof(q))
-base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?, Tval}}) where {N, B, P, Tval<:Real} = N
-base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?}}) where {N, B, P} = N
-base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S, T}}) where {N, B, P, S, T} = N
-base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S}}) where {N, B, P, S} = N
-base_unit(x::Type{Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}}) where {T<:LogScaled} = base_unit(T)
-base_unit(::Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}) where {T<:LogScaled} = base_unit(T)
-#base_unit(x::Symbol) = string(x)
-#base_unit(x::String) = x
+#base_unit(q::LogScaled) = base_unit(typeof(q))
+#base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?, Tval}}) where {N, B, P, Tval<:Real} = N
+#base_unit(::Type{Unitful.Gain{Unitful.LogInfo{N, B, P}, :?}}) where {N, B, P} = N
+#base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S, Tval}}) where {N, B, P, S, Tval} = N
+#base_unit(::Type{Unitful.Level{Unitful.LogInfo{N, B, P}, S}}) where {N, B, P, S} = N
+#base_unit(x::Type{Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}}) where {T<:LogScaled} = base_unit(T)
+#base_unit(::Unitful.MixedUnits{T, Unitful.FreeUnits{(), Unitful.NoDims, nothing}}) where {T<:LogScaled} = base_unit(T)
 
 base_unit(x::Unitful.Unit) = x
 base_unit(x::Period) = base_unit(Quantity(x))
@@ -36,11 +34,12 @@ unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
 unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
-unit_string(::Type{T}) where T <: Unitful.LogScaled = string(Unitful.logunit(T))
-unit_string(unit::Unitful.MixedUnits) = string(unit)
+unit_string(unit::T) where T <: Unitful.MixedUnits = string(unit)
+unit_string(unit::Unitful.LogScaled) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
+unit_string_long(unit::Unitful.LogScaled) = string(unit)
 
 is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
 is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
@@ -109,13 +108,8 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = (min + max) * 0.5
-    all_units = if middle isa LogScaled
-        # Use given LogScaled unit
-        return [base_unit(middle)]
-    else
-        get_all_base10_units(middle)
-    end
+    middle = min + max / 0.5
+    all_units = get_all_base10_units(middle)
     _, index = findmin(all_units) do unit
         raw_value = abs(unit_convert(unit, middle))
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
@@ -125,6 +119,8 @@ function best_unit(min, max)
     end
     return all_units[index]
 end
+
+best_unit(min::LogScaled, max::LogScaled) = Unitful.logunit(min) 
 
 unit_convert(::Automatic, x) = x
 
@@ -181,7 +177,7 @@ function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     conversion.automatic_units || return
     eltype, extrema = eltype_extrema(value_obs[])
     #conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
-    conversion.extrema[value_obs.id] = if eltype <: Gain
+    conversion.extrema[value_obs.id] = if eltype <: Unitful.Gain
         extrema
     else
         promote(Quantity.(extrema)...)
