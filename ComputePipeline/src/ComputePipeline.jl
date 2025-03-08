@@ -410,7 +410,11 @@ or `graph.name` and its value can be read by dereferencing it, i.e `graph[name][
 """
 add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
 
-# TODO: error tracking would be better if we didn't wrap the user function
+# For cleaner printing and error tracking we do not use an anonymous function
+#   value -> conversion_function(key, value)
+# or
+#   (value,), changed, cached -> conversion_function(key, value)
+# but instead create an explicit wrapper here.
 struct InputFunctionWrapper{FT} <: Function
     key::Symbol
     user_func::FT
@@ -422,11 +426,10 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
 end
 
-# TODO: error tracking would be better if we didn't wrap the user function
 function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
-    if haskey(attr.inputs, key)
-        @error("Cannot attach input with name $key - already exists!")
+    if haskey(attr.inputs, key) || haskey(attr.outputs, key)
+        error("Cannot attach input with name $key - already exists!")
         return
     end
 
@@ -447,6 +450,8 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
 end
 
 
+# TODO: These functions place the given Computed node into the graph. This
+#       typically results in `key != node.name`, which invites errors
 # for recipe -> recipe (mostly)
 """
     add_input!([callback], compute_graph, name::Symbol, node::Computed)
@@ -456,12 +461,20 @@ This does not create an `Input` and thus makes `name` only updatable through
 updates of `node`.
 """
 function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
+    if haskey(attr.outputs, key)
+        error("Cannot attach throughput with name $key - already exists!")
+        return
+    end
     attr.outputs[key] = value
     return
 end
 
 # for recipe -> primitive (mostly)
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Computed)
+    if haskey(attr.outputs, key)
+        error("Cannot attach throughput with name $key - already exists!")
+        return
+    end
     input_name = Symbol(:parent_, key)
     attr.outputs[input_name] = value
     register_computation!(InputFunctionWrapper(key, conversion_func), attr, [input_name], [key])
@@ -507,12 +520,17 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
             # fine, we won't be overwriting an edge
         elseif length(existing) != length(outputs)
             combined = join(existing, ", ")
-            error("Cannot register computation because some outputs already have parent edges: $combined")
+            error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
             e1 = attr.outputs[outputs[1]].parent
+
+            if length(inputs) != length(e1.inputs)
+                error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
+            end
+
             if !all(attr.outputs[k].parent == e1 for k in outputs)
-                bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
-                error("Not all outputs are computed from the same edge. $bad_keys do not match first output.")
+                # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
+                error("Cannot register computation: $outputs already have multiple parent compute edges.")
             end
 
             if e1.callback != f
@@ -520,10 +538,29 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
                 func1, loc1 = edge_callback_to_string(f)
                 func2, loc2 = edge_callback_to_string(e1.callback)
                 error(
-                    "The callback function of the edge does not match the already registered callback.\n" *
-                    "  $func1 $loc1\n  $func2 $loc2\n  $(methods(f))"
+                    "Cannot register computation: The outputs already have a parent compute edge using " *
+                    "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
                 )
             end
+
+            # We can not rely on e1.inputs.name here because name can be different
+            # from the key in attr.outputs
+            inputs_to_verify = Set(e1.inputs)
+            for key in inputs
+                if attr.outputs[key] in inputs_to_verify
+                    delete!(inputs_to_verify, attr.outputs[key])
+                else
+                    error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                    "that uses a different set of inputs. (Failed to find $( attr.outputs[key]) in existing)")
+                end
+            end
+            if !isempty(inputs_to_verify)
+                error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
+            end
+
+            bt = backtrace()
+            @warn "Skipping creating of compute edge:" exception = (ErrorException("Identical ComputeEdge already exists."), bt)
 
             # edge already exists
             return

@@ -1,5 +1,39 @@
 # Individual components
 
+@testset "Graph Initialization" begin
+    parent = ComputeGraph()
+    add_input!(parent, :in1, 1)
+    graph = ComputeGraph()
+    add_input!(graph, :in1, parent.in1)
+    add_input!(graph, :in2, 2)
+    foo(inputs, changed, cached) = (inputs[1][] + inputs[2][],)
+    register_computation!(foo, graph, [:in1, :in2], [:merged])
+
+    @testset "Overwrite Errors" begin
+        @test_throws ErrorException add_input!(parent, :in1, 1)
+        @test_throws ErrorException add_input!(graph, :in1, 1)
+        @test_throws ErrorException add_input!(graph, :in2, 1)
+        @test_throws ErrorException add_input!(graph, :in1, parent.in1)
+        @test_throws ErrorException add_input!(graph, :in2, parent.in1)
+
+        # different inputs, same function = different edge -> error
+        @test_throws ErrorException register_computation!(foo, graph, [:in1], [:merged])
+        # same inputs, same function = same edge
+        original_stderr = stderr
+        @test begin
+            read_pipe, write_pipe = redirect_stderr()
+            register_computation!(foo, graph, [:in1, :in2], [:merged])
+            redirect_stderr(original_stderr)
+            close(write_pipe)
+            # Just check that we're printing something for now
+            readline(read_pipe) != ""
+        end
+        # same inputs, different function = different edge -> error
+        goo(inputs, changed, cached) = (inputs[1][] * inputs[2][],)
+        @test_throws ErrorException register_computation!(goo, graph, [:in1, :in2], [:merged])
+    end
+end
+
 @testset "Graph Interaction" begin
     graph = ComputeGraph()
     add_input!(graph, :in1, 1)
