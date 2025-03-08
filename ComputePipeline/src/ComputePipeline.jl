@@ -430,14 +430,6 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, trg::Symbo
     return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, trg, value)
 end
 
-# function add_input!(callback, attr::ComputeGraph, key::Symbol, targets::Vector{Symbol}, value)
-#     key in targets || error("Name of input $key must be in the targets = $targets.")
-#     anon_key = Symbol(:anon_, key)
-#     _add_input!(identity, attr, key, anon_key, value)
-#     register_computation!(callback, attr, [anon_key], targets)
-#     return
-# end
-
 function _add_input!(func, attr::ComputeGraph, key::Symbol, target::Symbol, value)
     @assert !(value isa Computed)
     haskey(attr.inputs, key) && error("Cannot create input with name $key - already exists!")
