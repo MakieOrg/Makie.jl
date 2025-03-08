@@ -107,7 +107,8 @@ function best_unit(min, max)
     return all_units[index]
 end
 
-best_unit(min::LogScaled, max::LogScaled) = Unitful.logunit(min)
+best_unit(min::LogScaled, max) = Unitful.logunit(min)
+best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
 
 unit_convert(::Automatic, x) = x
 
