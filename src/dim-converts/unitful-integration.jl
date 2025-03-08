@@ -34,7 +34,7 @@ is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
 is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
 is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
 is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
-is_compound_unit(::LogScaled) = false
+is_compound_unit(::T) where T <: Union{Unitful.LogScaled, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = false
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -124,7 +124,7 @@ function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQu
     return Float64(ustrip(conv))
 end
 
-unit_convert(unit::Unitful.MixedUnits, value) = Float64(ustrip(value))
+unit_convert(unit::T, value) where T <: Union{Unitful.MixedUnits, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = Float64(ustrip(value))
 
 # Overload conversion functions for Axis, to properly display units
 
