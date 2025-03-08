@@ -262,7 +262,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :image,
             :transparency, :fxaa, :visible,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
-            :model_f32c, :rotation, :transform_marker,
+            :model_f32c, :rotation, :billboard, :transform_marker,
             :_lowclip, :_highclip, :nan_color,
             :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
         ]

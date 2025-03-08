@@ -473,7 +473,17 @@ end
 
 function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
-    add_attributes!(Scatter, attr, user_kw)
+    add_attributes!(Scatter, attr, user_kw, Set([:rotation]))
+    register_computation!(attr, [:anon_rotation], [:rotation, :billboard]) do (input,), changed, cached
+        rot = convert_attribute(input[], key"rotation"(), key"scatter"())
+        billboard = input[] isa Billboard
+        if cached === nothing || cached[2][] != billboard
+            return (rot, billboard)
+        else
+            return (rot, nothing)
+        end
+    end
+
     register_arguments!(Scatter, attr, user_kw, args...)
     register_marker_computations!(attr)
     register_colormapping!(attr)
