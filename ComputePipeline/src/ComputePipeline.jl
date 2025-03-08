@@ -408,7 +408,8 @@ backed by a `Computed`, i.e. a node in the compute graph with the same `name`
 which holds the result of `callback(value)`. It can be accessed by `graph[:name]`
 or `graph.name` and its value can be read by dereferencing it, i.e `graph[name][]`.
 """
-add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
+add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, key, value)
+add_input!(attr::ComputeGraph, key::Symbol, trg::Symbol, value) = _add_input!(identity, attr, key, trg, value)
 
 # For cleaner printing and error tracking we do not use an anonymous function
 #   value -> conversion_function(key, value)
@@ -423,15 +424,24 @@ end
 (x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1][]), )
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
-    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, key, value)
+end
+function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, trg::Symbol, value)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, trg, value)
 end
 
-function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
+# function add_input!(callback, attr::ComputeGraph, key::Symbol, targets::Vector{Symbol}, value)
+#     key in targets || error("Name of input $key must be in the targets = $targets.")
+#     anon_key = Symbol(:anon_, key)
+#     _add_input!(identity, attr, key, anon_key, value)
+#     register_computation!(callback, attr, [anon_key], targets)
+#     return
+# end
+
+function _add_input!(func, attr::ComputeGraph, key::Symbol, target::Symbol, value)
     @assert !(value isa Computed)
-    if haskey(attr.inputs, key) || haskey(attr.outputs, key)
-        error("Cannot attach input with name $key - already exists!")
-        return
-    end
+    haskey(attr.inputs, key) && error("Cannot create input with name $key - already exists!")
+    haskey(attr.outputs, target) && error("Cannot create conversion target node with name $target - already exists!")
 
     output = Computed(key, RefValue{Any}())
     input = Input(key, value, func, output)
@@ -439,7 +449,7 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     output.parent_idx = 1
     # Needs to be Any, since input can change type
     attr.inputs[key] = input
-    attr.outputs[key] = output
+    attr.outputs[target] = output
     return
 end
 

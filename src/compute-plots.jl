@@ -290,7 +290,7 @@ const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
 obs_to_value(obs::Observables.AbstractObservable) = to_value(obs)
 obs_to_value(x) = x
 
-function add_attributes!(::Type{T}, attr, kwargs) where {T}
+function add_attributes!(::Type{T}, attr, kwargs, deferred_conversion = Set{Symbol}()) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
@@ -313,8 +313,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
 
         # primitives use convert_attributes, recipe plots don't
         if is_primitive
-            add_input!(attr, k, obs_to_value(value)) do key, value
-                return convert_attribute(value, Key{key}(), Key{name}())
+            if k in deferred_conversion
+                add_input!(attr, k, Symbol(:anon_, k), obs_to_value(value))
+            else
+                add_input!(attr, k, obs_to_value(value)) do key, value
+                    return convert_attribute(value, Key{key}(), Key{name}())
+                end
             end
         else
             add_input!(attr, k, obs_to_value(value))
