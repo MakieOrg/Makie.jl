@@ -17,8 +17,10 @@ end
 
     # Edge case: Quaternionf(0,0,0,1) should not default billboard to true
     scene3 = Scene(parent, viewport = Rect2f(150, 0, 150, 300), camera = cam3d!)
-    scatter!(scene3, [-0.5, 0.5], [0.5, 0.5], [0, 0], marker = Rect,
-        rotation = [Quaternionf(0,0,0,1), Quaternionf(0.01,0,0,1)], markersize = 0.5, markerspace = :data)
+    scatter!(scene3, (0.5, 0.5, 0), marker = Rect,
+        rotation = Quaternionf(0.01,0,0,1), markersize = 0.5, markerspace = :data)
+    scatter!(scene3, (-0.5, 0.5, 0), marker = Rect,
+        rotation = Quaternionf(0,0,0,1), markersize = 0.5, markerspace = :data)
     scatter!(scene3, [-0.5, 0.5], [-0.5, -0.5], [0, 0], marker = Rect, markersize = 0.5, markerspace = :data)
 
     parent
