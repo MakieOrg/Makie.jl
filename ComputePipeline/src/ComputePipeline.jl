@@ -589,10 +589,10 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
                 "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
             end
 
-            # bt = backtrace()
-            # @warn "Skipping creating of compute edge:" exception = (ErrorException("Identical ComputeEdge already exists."), bt)
-            display(attr)
-            error("Skipping creating of compute edge: Identical ComputeEdge already exists.")
+            @warn "Identical ComputeEdge already exists. Skipped insertion of new edge"
+            @debug "Generating stacktrace" exception = (ErrorException(""), backtrace())
+            # display(attr)
+            # error("Skipping creating of compute edge: Identical ComputeEdge already exists.")
 
             # edge already exists
             return

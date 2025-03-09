@@ -19,15 +19,7 @@
         # different inputs, same function = different edge -> error
         @test_throws ErrorException register_computation!(foo, graph, [:in1], [:merged])
         # same inputs, same function = same edge
-        original_stderr = stderr
-        @test begin
-            read_pipe, write_pipe = redirect_stderr()
-            register_computation!(foo, graph, [:in1, :in2], [:merged])
-            redirect_stderr(original_stderr)
-            close(write_pipe)
-            # Just check that we're printing something for now
-            readline(read_pipe) != ""
-        end
+        @test_logs (:warn, "Identical ComputeEdge already exists. Skipped insertion of new edge") register_computation!(foo, graph, [:in1, :in2], [:merged])
         # same inputs, different function = different edge -> error
         goo(inputs, changed, cached) = (inputs[1][] * inputs[2][],)
         @test_throws ErrorException register_computation!(goo, graph, [:in1, :in2], [:merged])
