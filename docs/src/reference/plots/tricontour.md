@@ -21,7 +21,10 @@ See the documentation of `tricontourf` to learn about manual triangulations and 
 Plot contours for the function $z = x^2 + y^2 + \text{noise}$ using 50 random points with normally distributed values for $x$ and $y$.
 
 ```@figure
+using CairoMakie
 using Random
+
+CairoMakie.activate!()
 Random.seed!(1234)
 
 x = randn(50)
@@ -151,7 +154,44 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
 
+**Create a Delaunay triangulation for an irregular domain and use it to draw contour lines for $z = f(x,y)$**
+```@figure
+using DelaunayTriangulation
 
+outer = [
+    (0.0,0.0),(2.0,1.0),(4.0,0.0),
+    (6.0,2.0),(2.0,3.0),(3.0,4.0),
+    (6.0,6.0),(0.0,6.0),(0.0,0.0)
+];
+inner = [
+    (1.0,5.0),(2.0,4.0),(1.01,1.01),
+    (1.0,1.0),(0.99,1.01),(1.0,5.0)
+];
+boundary_points = [[outer], [inner]]
+boundary_nodes, points = convert_boundary_points_to_indices(boundary_points)
+tri = triangulate(points; boundary_nodes = boundary_nodes)
+
+refine!(tri; max_area=1e-3*get_area(tri))
+
+f, ax, tr = triplot(
+    tri, show_constrained_edges = true, constrained_edge_linewidth = 3,
+    constrained_edge_color = :black,
+    show_convex_hull = true, strokecolor=(:gray, 0.2), strokewidth = 2
+    )
+
+x = [p[1] for p in tri.points];
+y = [p[2] for p in tri.points];
+z = @. (sin(x)-3)^2 + (cos(y)-3)^2 - 10;
+
+tr = tricontour!(
+    ax, tri, z, labels=true, levels = collect(-2:2:16),
+    linewidth=3.0, labelsize=12, colormap = :cividis, labelcolor=:red,)
+
+
+Colorbar(f[1,2] ,tr.plots[2])
+ax.title[]= L"f(x,y) = (sin(x) - 3)^2 + (cos(y) - 3)^2 - 10"
+f
+```
 ## Example: animate the contour of a function with a chaning parameter
 
 Make a video of the contours for the function $z = a*x^2 + y^2$ as $a$ changes from -2 to +2,
@@ -160,6 +200,7 @@ using 300 random points with normally distributed values for $x$ and $y$ in [-1,
 ```@figure
 using GLMakie
 using Random
+GLMakie.activate!()
 Random.seed!(123)
 
 # Set up
