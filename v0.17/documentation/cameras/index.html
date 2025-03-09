@@ -1,0 +1,1529 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Cameras
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        Cameras
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#cameras">
+                          Cameras
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#pixel_camera">
+                              Pixel Camera
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#2d_camera">
+                              2D Camera
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#3d_camera">
+                              3D Camera
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#general_remarks">
+                              General Remarks
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="cameras">
+            <a class="header-anchor" href="#cameras">
+              Cameras
+            </a>
+          </h1>
+          <p>
+            A
+            <code>
+              Camera
+            </code>
+            is simply a viewport through which the Scene is visualized.
+            <code>
+              Makie
+            </code>
+            offers 2D and 3D projections, and 2D plots can be projected in 3D!
+          </p>
+          <p>
+            To specify the camera you want to use for your Scene, you can set the
+            <code>
+              camera
+            </code>
+            attribute.  Currently, we offer four types of camera:
+          </p>
+          <p>
+            <a href="../../api/#campixel!">
+              <code>
+                campixel!
+              </code>
+            </a>
+            <a href="../../api/#cam2d!">
+              <code>
+                cam2d!
+              </code>
+            </a>
+            <code>
+              cam3d!
+            </code>
+            <code>
+              cam3d_cad!
+            </code>
+          </p>
+          <p>
+            which will mutate the camera of the Scene into the specified type.
+          </p>
+          <h2 id="pixel_camera">
+            <a class="header-anchor" href="#pixel_camera">
+              Pixel Camera
+            </a>
+          </h2>
+          <p>
+            The pixel camera (
+            <a href="../../api/#campixel!(scene)">
+              <code>
+                campixel!(scene)
+              </code>
+            </a>
+            ) projects the scene in pixel space, i.e. each integer step in the displayed data will correspond to one pixel. There are no controls for this camera. The clipping limits are set to
+            <code>
+              (-10_000, 10_000)
+            </code>
+            .
+          </p>
+          <h2 id="2d_camera">
+            <a class="header-anchor" href="#2d_camera">
+              2D Camera
+            </a>
+          </h2>
+          <p>
+            The 2D camera (
+            <a href="../../api/#cam2d!(scene)">
+              <code>
+                cam2d!(scene)
+              </code>
+            </a>
+            ) uses an orthographic projection with a fixed rotation and aspect ratio. You can set the following attributes via keyword arguments in
+            <code>
+              cam2d!
+            </code>
+            or by accessing the camera struct
+            <code>
+              cam = cameracontrols(scene)
+            </code>
+            :
+          </p>
+          <ul>
+            <li>
+              <p>
+                <code>
+                  zoomspeed = 0.10f0
+                </code>
+                sets the speed of mouse wheel zooms.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  zoombutton = nothing
+                </code>
+                sets an additional key that needs to be pressed in order to zoom. Defaults to no key.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  panbutton = Mouse.right
+                </code>
+                sets the mouse button that needs to be pressed to translate the view.
+              </p>
+            </li>
+            <li>
+              <p>
+                <code>
+                  selectionbutton = (Keyboard.space, Mouse.left)
+                </code>
+                sets a set of buttons that need to be pressed to perform rectangle zooms.
+              </p>
+            </li>
+          </ul>
+          <p>
+            Note that this camera is not used by
+            <code>
+              Axis
+            </code>
+            . It is used, by default, for 2D
+            <code>
+              LScene
+            </code>
+            s and
+            <code>
+              Scene
+            </code>
+            s.
+          </p>
+          <h2 id="3d_camera">
+            <a class="header-anchor" href="#3d_camera">
+              3D Camera
+            </a>
+          </h2>
+          <div class="docstring">
+            <div class="doc-header" id="Camera3D">
+              <a href="#Camera3D">
+                Camera3D
+              </a>
+            </div>
+            <div class="doc-content">
+              <pre><code>Camera3D(scene[; attributes...])</code>              </pre>
+              <p>
+                Creates a 3d camera with a lot of controls.
+              </p>
+              <p>
+                The 3D camera is (or can be) unrestricted in terms of rotations and translations. Both
+                <code>
+                  cam3d!(scene)
+                </code>
+                and
+                <code>
+                  cam3d_cad!(scene)
+                </code>
+                create this camera type. Unlike the 2D camera, settings and controls are stored in the
+                <code>
+                  cam.attributes
+                </code>
+                field rather than in the struct directly, but can still be passed as keyword arguments. The general camera settings include
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      fov = 45f0
+                    </code>
+                    sets the "neutral" field of view, i.e. the fov corresponding to no zoom. This is irrelevant if the camera uses an orthographic projection.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      near = automatic
+                    </code>
+                    sets the value of the near clip. By default this will be chosen based on the scenes bounding box. The final value is in
+                    <code>
+                      cam.near
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      far = automatic
+                    </code>
+                    sets the value of the far clip. By default this will be chosen based on the scenes bounding box. The final value is in
+                    <code>
+                      cam.far
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      rotation_center = :lookat
+                    </code>
+                    sets the default center for camera rotations. Currently allows
+                    <code>
+                      :lookat
+                    </code>
+                    or
+                    <code>
+                      :eyeposition
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      projectiontype = Perspective
+                    </code>
+                    sets the type of the projection. Can be
+                    <code>
+                      Orthographic
+                    </code>
+                    or
+                    <code>
+                      Perspective
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      fixed_axis = false
+                    </code>
+                    : If true panning uses the (world/plot) z-axis instead of the camera up direction.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      zoom_shift_lookat = true
+                    </code>
+                    : If true attempts to keep data under the cursor in view when zooming.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      cad = false
+                    </code>
+                    : If true rotates the view around
+                    <code>
+                      lookat
+                    </code>
+                    when zooming off-center.
+                  </p>
+                </li>
+              </ul>
+              <p>
+                The camera view follows from the position of the camera
+                <code>
+                  eyeposition
+                </code>
+                , the point which the camera focuses
+                <code>
+                  lookat
+                </code>
+                and the up direction of the camera
+                <code>
+                  upvector
+                </code>
+                . These can be accessed as
+                <code>
+                  cam.eyeposition
+                </code>
+                etc and adjusted via
+                <code>
+                  update_cam!(scene, cameracontrols(scene), eyeposition, lookat[, upvector = Vec3f(0, 0, 1)])
+                </code>
+                . They can also be passed as keyword arguments when the camera is constructed.
+              </p>
+              <p>
+                The camera can be controlled by keyboard and mouse. The keyboard has the following available attributes
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      up_key   = Keyboard.r
+                    </code>
+                    sets the key for translations towards the top of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      down_key = Keyboard.f
+                    </code>
+                    sets the key for translations towards the bottom of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      left_key  = Keyboard.a
+                    </code>
+                    sets the key for translations towards the left of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      right_key = Keyboard.d
+                    </code>
+                    sets the key for translations towards the right of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      forward_key  = Keyboard.w
+                    </code>
+                    sets the key for translations into the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      backward_key = Keyboard.s
+                    </code>
+                    sets the key for translations out of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      zoom_in_key   = Keyboard.u
+                    </code>
+                    sets the key for zooming into the scene (enlarge, via fov).
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      zoom_out_key  = Keyboard.o
+                    </code>
+                    sets the key for zooming out of the scene (shrink, via fov).
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      stretch_view_key  = Keyboard.page_up
+                    </code>
+                    sets the key for moving
+                    <code>
+                      eyepostion
+                    </code>
+                    away from
+                    <code>
+                      lookat
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      contract_view_key = Keyboard.page_down
+                    </code>
+                    sets the key for moving
+                    <code>
+                      eyeposition
+                    </code>
+                    towards
+                    <code>
+                      lookat
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      pan_left_key  = Keyboard.j
+                    </code>
+                    sets the key for rotations around the screens vertical axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      pan_right_key = Keyboard.l
+                    </code>
+                    sets the key for rotations around the screens vertical axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      tilt_up_key   = Keyboard.i
+                    </code>
+                    sets the key for rotations around the screens horizontal axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      tilt_down_key = Keyboard.k
+                    </code>
+                    sets the key for rotations around the screens horizontal axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      roll_clockwise_key        = Keyboard.e
+                    </code>
+                    sets the key for rotations of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      roll_counterclockwise_key = Keyboard.q
+                    </code>
+                    sets the key for rotations of the screen.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      keyboard_rotationspeed = 1f0
+                    </code>
+                    sets the speed of keyboard based rotations.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      keyboard_translationspeed = 0.5f0
+                    </code>
+                    sets the speed of keyboard based translations.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      keyboard_zoomspeed = 1f0
+                    </code>
+                    sets the speed of keyboard based zooms.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      update_rate = 1/30
+                    </code>
+                    sets the rate at which keyboard based camera updates are evaluated.
+                  </p>
+                </li>
+              </ul>
+              <p>
+                and mouse interactions are controlled by
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      translation_button = Mouse.right
+                    </code>
+                    sets the mouse button for drag-translations. (up/down/left/right)
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      scroll_mod = true
+                    </code>
+                    sets an additional modifier button for scroll-based zoom. (true being neutral)
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      rotation_button = Mouse.left
+                    </code>
+                    sets the mouse button for drag-rotations. (pan, tilt)
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      mouse_rotationspeed = 1f0
+                    </code>
+                    sets the speed of mouse rotations.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      mouse_translationspeed = 0.5f0
+                    </code>
+                    sets the speed of mouse translations.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      mouse_zoomspeed = 1f0
+                    </code>
+                    sets the speed of mouse zooming (mousewheel).
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      circular_rotation = (true, true, true)
+                    </code>
+                    enables circular rotations for (fixed x, fixed y, fixed z) rotation axis. (This means drawing a circle with your mouse around the center of the scene will result in a continuous rotation.)
+                  </p>
+                </li>
+              </ul>
+              <p>
+                There are also a few generally applicable controls:
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      fix_x_key = Keyboard.x
+                    </code>
+                    sets the key for fixing translations and rotations to the (world/plot) x-axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      fix_y_key = Keyboard.y
+                    </code>
+                    sets the key for fixing translations and rotations to the (world/plot) y-axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      fix_z_key = Keyboard.z
+                    </code>
+                    sets the key for fixing translations and rotations to the (world/plot) z-axis.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      reset = Keyboard.home
+                    </code>
+                    sets the key for fully resetting the camera. This equivalent to setting
+                    <code>
+                      lookat = Vec3f(0)
+                    </code>
+                    ,
+                    <code>
+                      upvector = Vec3f(0, 0, 1)
+                    </code>
+                    ,
+                    <code>
+                      eyeposition = Vec3f(3)
+                    </code>
+                    and then calling
+                    <code>
+                      center!(scene)
+                    </code>
+                    .
+                  </p>
+                </li>
+              </ul>
+              <p>
+                You can also make adjustments to the camera position, rotation and zoom by calling relevant functions:
+              </p>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      translate_cam!(scene, v)
+                    </code>
+                    will translate the camera by the given world/plot space vector
+                    <code>
+                      v
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      rotate_cam!(scene, angles)
+                    </code>
+                    will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or
+                    <code>
+                      Vec3f(0, 0, +-1)
+                    </code>
+                    if
+                    <code>
+                      fixed_axis = true
+                    </code>
+                    , and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current
+                    <code>
+                      rotation_center
+                    </code>
+                    of the camera.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      zoom!(scene, zoom_step)
+                    </code>
+                    will change the zoom level of the scene without translating or rotating the scene.
+                    <code>
+                      zoom_step
+                    </code>
+                    applies multiplicatively to
+                    <code>
+                      cam.zoom_mult
+                    </code>
+                    which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <h2 id="general_remarks">
+            <a class="header-anchor" href="#general_remarks">
+              General Remarks
+            </a>
+          </h2>
+          <p>
+            To force a plot to be visualized in 3D, you can set the limits to have a nonzero (z)-axis interval, or ensure that a 3D camera type is used. For example, you could pass the keyword argument
+            <code>
+              limits = Rect([0,0,0],[1,1,1])
+            </code>
+            , or
+            <code>
+              camera = cam3d!
+            </code>
+            .
+          </p>
+          <p>
+            Often, when modifying the Scene, the camera can get "out of sync" with the Scene. To fix this, you can call the
+            <a href="../../api/#update_cam!">
+              <code>
+                update_cam!
+              </code>
+            </a>
+            function on the Scene.
+          </p>
+          <p>
+            Buttons passed to the 2D and 3D camera are forwarded to
+            <code>
+              ispressed
+            </code>
+            . As such you can pass
+            <code>
+              false
+            </code>
+            to disable an interaction,
+            <code>
+              true
+            </code>
+            to ignore a modifier, any button, collection of buttons or even logical expressions of buttons. See the events documentation for more details.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: August 04, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.17.13, GLMakie: v0.6.13, CairoMakie: v0.8.13, WGLMakie: v0.6.13
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
