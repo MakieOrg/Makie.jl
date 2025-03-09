@@ -345,7 +345,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
             colrange = Tuple(colscale.(atr[:colorrange][]))
             texts.color[] = [interpolated_getindex(cm, colscale(lp[1]), colrange) for lp in lev_pos]
         else
-            @show length(lev_pos)
             texts.color[] = fill(to_color(labelcolor), length(lev_pos))
         end
 
