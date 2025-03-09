@@ -25,3 +25,16 @@ end
 
     parent
 end
+
+@reference_test "Categorical color interpolation" begin
+    cg = cgrad(:viridis, 5, categorical = true, scale = log10);
+    kwargs = (colorrange = (0, 1000), colormap = cg, marker = Rect, markersize = 30, strokewidth = 0)
+    scene = Scene(size = (500, 200))
+    image!(scene, -1..1, -1..1, reshape(cg.colors.colors, (1, 5)), interpolate = false)
+    for i in 2:5
+        edge = cg.values[i]
+        y = range(-1, 1, length=6)[i]
+        p = scatter!(scene, -1..1, fill(y, 11), color = (1000 .+ (-3:7)) * edge; kwargs...)
+    end
+    scene
+end
