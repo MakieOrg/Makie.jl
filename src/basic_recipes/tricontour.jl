@@ -305,69 +305,56 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # onany doesn't get called without a push, so we call
     # it on a first run!
     calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
-
-    # Plot countour lines
-    lines!(c, atr, points)
-
-    if !to_value(labels)
-        # Don't add labels 
-        return
-    end
-
     @extract c (labelsize, labelfont, labelcolor, labelformatter)
-    # Initialize observables for annotating labels with text!
-    lbl_pos = Observable(Point2f[]);
-    lbl_text = Observable(String[]);
-    lbl_rot = Observable(Float32[]);
-    lbl_col = Observable(RGBA{Float32}[]); # only used if labelcolor is empty
 
+    texts = text!(
+        c,
+        Observable(Point2f[]);
+        color = Observable(RGBA{Float32}[]),
+        # rotation = Observable(Float32[]),
+        text = Observable(String[]),
+        align = (:center, :center),
+        fontsize = labelsize,
+        font = labelfont,
+        transform_marker = false
+    )
+    scene = parent_scene(c)
     # Update label observables whenever lev_pos changes
-    pos_text_lblcol = lift(lev_pos) do lev_pos
+    lift(
+    c, scene.camera.projectionview, transformationmatrix(c), scene.viewport,
+    labels, labelcolor, labelformatter, lev_pos
+    ) do _, _, _, labels, labelcolor, labelformatter, lev_pos
+        labels || return
         # Clear previous data
-        (empty!(obs[]) for obs in (lbl_pos, lbl_text, lbl_rot, lbl_col))
+        empty!(texts.positions[])
+        empty!(texts.text[])
+        # empty!(texts.rotation[])
+        empty!(texts.color[])
+
         # Update data
-        lbl_pos.val = Point2f.([lp[2][2][1:2] for lp in lev_pos])
-        lbl_text.val = [labelformatter[](lp[1]) for lp in lev_pos]        
+        texts.positions[] = Point2f.([lp[2][2][1:2] for lp in lev_pos])
+        texts.text[] = [labelformatter(lp[1]) for lp in lev_pos]
 
         if isnothing(to_value(labelcolor))
             # Compute color for each label to use when labelcolor is set to nothing
             cm = to_colormap(atr[:colormap][])
             colscale = atr[:colorscale][]
             colrange = Tuple(colscale.(atr[:colorrange][]))
-            lbl_col[] = [interpolated_getindex(cm, colscale(lp[1]), colrange) for lp in lev_pos]
-
-            labelcolor.val = lbl_col[]
+            texts.color[] = [interpolated_getindex(cm, colscale(lp[1]), colrange) for lp in lev_pos]
+        else
+            texts.color[] = to_color(labelcolor)
         end
-        # Update values
-        (notify(obs) for obs in (lbl_pos, lbl_text, lbl_rot, labelcolor))
+
+        # Notify observables to propagate changes
+        notify(texts.positions)
+        notify(texts.text)
+        notify(texts.color)
     end
-    
 
-   
-    text!(
-        c,
-        lbl_pos;
-        color = labelcolor,
-        text = lbl_text,
-        align = (:center, :center),
-        fontsize = labelsize,
-        font = labelfont,        
-        )
+
+    # Plot countour lines
+    lines!(c, atr, points)
     return c
-    # cm = to_value(tr.plots[1].attributes[:colormap])
-
-    # texts = text!(
-    #     plot,
-    #     Observable(P[]);
-    #     color = Observable(RGBA{Float32}[]),
-    #     rotation = Observable(Float32[]),
-    #     text = Observable(String[]),
-    #     align = (:center, :center),
-    #     fontsize = labelsize,
-    #     font = labelfont,
-    #     transform_marker = false
-    # )
-
 end
 
 function compute_triangulation(tri)
