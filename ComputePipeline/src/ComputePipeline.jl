@@ -288,7 +288,9 @@ function update!(attr::ComputeGraph; kwargs...)
     return attr
 end
 
-Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
+# TODO: should this check inputs, outputs, both?
+# Note: WGLMakie relies on this checking output to avoid double-defining
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key) || haskey(attr.outputs, key)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
@@ -587,8 +589,10 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
                 "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
             end
 
-            bt = backtrace()
-            @warn "Skipping creating of compute edge:" exception = (ErrorException("Identical ComputeEdge already exists."), bt)
+            # bt = backtrace()
+            # @warn "Skipping creating of compute edge:" exception = (ErrorException("Identical ComputeEdge already exists."), bt)
+            display(attr)
+            error("Skipping creating of compute edge: Identical ComputeEdge already exists.")
 
             # edge already exists
             return

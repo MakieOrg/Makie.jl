@@ -112,23 +112,26 @@ end
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.args[1]
 
-    Makie.add_computation!(attr, scene, :scene_origin)
-    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+    # TODO: cleanup this stuff when the screen closes, do this, or allow multi-init?
+    if !haskey(attr, :wgl_update_obs) || !haskey(attr, :wgl_renderobject)
+        Makie.add_computation!(attr, scene, :scene_origin)
+        Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
 
-    islines = plot isa Lines
-    inputs = copy(LINE_INPUTS)
+        islines = plot isa Lines
+        inputs = copy(LINE_INPUTS)
 
-    if islines
-        Makie.add_computation!(attr, :gl_miter_limit)
-        push!(inputs, :joinstyle, :gl_miter_limit)
+        if islines
+            Makie.add_computation!(attr, :gl_miter_limit)
+            push!(inputs, :joinstyle, :gl_miter_limit)
+        end
+
+        register_computation!(
+            (args...) -> create_lines_robj(islines, args...),
+            attr,
+            inputs,
+            [:wgl_renderobject, :wgl_update_obs],
+        )
     end
-
-    register_computation!(
-        (args...) -> create_lines_robj(islines, args...),
-        attr,
-        inputs,
-        [:wgl_renderobject, :wgl_update_obs],
-    )
 
     dict = attr[:wgl_renderobject][]
     dict[:uuid] = js_uuid(plot)

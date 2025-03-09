@@ -153,11 +153,14 @@ end
 
 function create_shader(::Scene, plot::Scatter)
     attr = plot.args[1]
-    Makie.all_marker_computations!(attr, 1024, 32)
-    register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
+    # TODO: cleanup this stuff when the screen closes, do this, or allow multi-init?
+    if !haskey(attr, :wgl_update_obs) || !haskey(attr, :wgl_renderobject)
+        Makie.all_marker_computations!(attr, 1024, 32)
+        register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
+        on(attr.onchange) do _
+            attr[:wgl_renderobject][]
+            return nothing
+        end
     end
     return attr[:wgl_renderobject][]
 end
@@ -200,10 +203,11 @@ function create_image_mesh(attr)
     i = Vec(1, 2, 3)
     M = convert_attribute(:rotl90, Makie.Key{:uv_transform}(), Makie.Key{:image}())
     uv_transform = Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+    colorrange = attr.scaled_colorrange[]
     uniforms = Dict(
         :color => false,
         :uniform_color => Sampler(attr.image[]),
-        :colorrange => Vec2f(attr.scaled_colorrange[]),
+        :colorrange => colorrange === nothing ? Vec2f(0,1) : Vec2f(colorrange),
         :colormap => Sampler(attr.colormap[]),
         :highclip => attr._highclip[],
         :lowclip => attr._lowclip[],
@@ -254,22 +258,25 @@ const IMAGE_INPUTS = [
 
 function create_shader(::Scene, plot::Image)
     attr = plot.args[1]
-    add_uv_mesh!(attr)
-    register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict(
-            :image => :uniform_color,
-            :scaled_colorrange => :colorrange,
-            :_highclip => :highclip,
-            :_lowclip => :lowclip,
-            :data_limit_points_transformed => :position,
-        )
-        if isnothing(last)
-            program = create_image_mesh(args)
-            return (program, Observable{Any}([]))
-        else
-            updater = last[2][]
-            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-            return nothing
+    # TODO: cleanup this stuff when the screen closes, do this, or allow multi-init?
+    if !haskey(attr, :wgl_update_obs) || !haskey(attr, :wgl_renderobject)
+        add_uv_mesh!(attr)
+        register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+            r = Dict(
+                :image => :uniform_color,
+                :scaled_colorrange => :colorrange,
+                :_highclip => :highclip,
+                :_lowclip => :lowclip,
+                :data_limit_points_transformed => :position,
+            )
+            if isnothing(last)
+                program = create_image_mesh(args)
+                return (program, Observable{Any}([]))
+            else
+                updater = last[2][]
+                update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
+                return nothing
+            end
         end
     end
     on(attr.onchange) do _
