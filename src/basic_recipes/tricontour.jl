@@ -311,15 +311,18 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         c,
         Observable(Point2f[]);
         color = Observable(RGBA{Float32}[]),
-        # rotation = Observable(Float32[]),
+        rotation = Observable(Float32[]),
         text = Observable(String[]),
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
         transform_marker = false
     )
-    scene = parent_scene(c)
+
+    # (code for labels is adapted from contours.jl)
     # Update label observables whenever lev_pos changes
+    scene = parent_scene(c)
+    space = c.space[]
     lift(
     c, scene.camera.projectionview, transformationmatrix(c), scene.viewport,
     labels, labelcolor, labelformatter, lev_pos
@@ -328,13 +331,13 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         # Clear previous data
         empty!(texts.positions[])
         empty!(texts.text[])
-        # empty!(texts.rotation[])
+        empty!(texts.rotation[])
         empty!(texts.color[])
 
-        # Update data
-        texts.positions[] = Point2f.([lp[2][2][1:2] for lp in lev_pos])
+        # Update text for labels
         texts.text[] = [labelformatter(lp[1]) for lp in lev_pos]
 
+        # Update color for labels
         if isnothing(to_value(labelcolor))
             # Compute color for each label to use when labelcolor is set to nothing
             cm = to_colormap(atr[:colormap][])
@@ -345,10 +348,31 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
             texts.color[] = to_color(labelcolor)
         end
 
+        # Update rotation angle and position for labels
+        for (lev, (p1, p2, p3)) in lev_pos
+            px_pos1 = project(scene, apply_transform(transform_func(c), p1, space))
+            px_pos3 = project(scene, apply_transform(transform_func(c), p3, space))
+            rot_from_horz::Float32 = angle(px_pos1, px_pos3)
+            # transition from an angle from horizontal axis in [-π; π]
+            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
+            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
+                rot_from_horz - copysign(Float32(π), rot_from_horz)
+            else
+                rot_from_horz
+            end
+            push!(texts.rotation[], rot_from_vert)
+
+            p = p2  # try to position label around center
+            isnan(p) && (p = p1)
+            isnan(p) && (p = p3)
+            push!(texts.positions[], p)
+        end
+        
         # Notify observables to propagate changes
         notify(texts.positions)
         notify(texts.text)
         notify(texts.color)
+        notify(texts.rotation)
     end
 
 
