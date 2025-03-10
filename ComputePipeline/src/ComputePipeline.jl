@@ -487,19 +487,16 @@ function Base.delete!(attr::ComputeGraph, edge::Input)
 
     # All outputs lose their parent computation so they should probably be removed
     # Could also disconnect them, but what's the point of a loose node?
-    for computed in edge.outputs
-        for (k, v) in attr.outputs
-            if v === computed
-                delete!(attr.outputs, k)
-                break
-            end
+    for k in keys(attr.inputs)
+        if attr.inputs[k] === edge
+            delete!(attr.inputs, k)
+            break
         end
     end
 
-    # Input also exists in attr.input, so delete that
-    for (k, v) in attr.inputs
-        if v === edge
-            delete!(attr.inputs, k)
+    for k in keys(attr.outputs)
+        if attr.outputs[k] === edge.output
+            delete!(attr.outputs, k)
             break
         end
     end
