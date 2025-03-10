@@ -534,48 +534,48 @@ end
 xy_convert(x::AbstractArray, n) = copy(x)
 xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
-    t = Makie.transform_func_obs(plot)
+# function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
+#     t = Makie.transform_func_obs(plot)
 
-    if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
-        # Fast path for regular heatmaps
-        return draw_image(screen, scene, plot)
-    end
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        mat = plot[3]
-        space = plot.space # needs to happen before connect_camera! call
-        xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
-            # TODO: fix heatmaps for transforms that mix dimensions:
-            # - transform_func's like Polar
-            # - model matrices with rotation & Float32 precisionissues
-            x1d = xy_convert(x, size(mat[], 1))
-            y1d = xy_convert(y, size(mat[], 2))
+#     if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
+#         # Fast path for regular heatmaps
+#         return draw_image(screen, scene, plot)
+#     end
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         mat = plot[3]
+#         space = plot.space # needs to happen before connect_camera! call
+#         xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
+#             # TODO: fix heatmaps for transforms that mix dimensions:
+#             # - transform_func's like Polar
+#             # - model matrices with rotation & Float32 precisionissues
+#             x1d = xy_convert(x, size(mat[], 1))
+#             y1d = xy_convert(y, size(mat[], 2))
 
-            x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
-            y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
+#             x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
+#             y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
 
-            return (x1d, y1d)
-        end
-        xpos = lift(first, plot, xypos)
-        ypos = lift(last, plot, xypos)
-        gl_attributes[:position_x] = Texture(screen.glscreen, xpos, minfilter = :nearest)
-        gl_attributes[:position_y] = Texture(screen.glscreen, ypos, minfilter = :nearest)
-        # number of planes used to render the heatmap
-        gl_attributes[:instances] = lift(plot, xpos, ypos) do x, y
-            (length(x)-1) * (length(y)-1)
-        end
-        interp = to_value(pop!(gl_attributes, :interpolate))
-        interp = interp ? :linear : :nearest
-        intensity = haskey(gl_attributes, :intensity) ? pop!(gl_attributes, :intensity) : pop!(gl_attributes, :color)
-        if intensity isa ShaderAbstractions.Sampler
-            gl_attributes[:intensity] = to_value(intensity)
-        else
-            gl_attributes[:intensity] = Texture(screen.glscreen, el32convert(intensity); minfilter=interp)
-        end
+#             return (x1d, y1d)
+#         end
+#         xpos = lift(first, plot, xypos)
+#         ypos = lift(last, plot, xypos)
+#         gl_attributes[:position_x] = Texture(screen.glscreen, xpos, minfilter = :nearest)
+#         gl_attributes[:position_y] = Texture(screen.glscreen, ypos, minfilter = :nearest)
+#         # number of planes used to render the heatmap
+#         gl_attributes[:instances] = lift(plot, xpos, ypos) do x, y
+#             (length(x)-1) * (length(y)-1)
+#         end
+#         interp = to_value(pop!(gl_attributes, :interpolate))
+#         interp = interp ? :linear : :nearest
+#         intensity = haskey(gl_attributes, :intensity) ? pop!(gl_attributes, :intensity) : pop!(gl_attributes, :color)
+#         if intensity isa ShaderAbstractions.Sampler
+#             gl_attributes[:intensity] = to_value(intensity)
+#         else
+#             gl_attributes[:intensity] = Texture(screen.glscreen, el32convert(intensity); minfilter=interp)
+#         end
 
-        return draw_heatmap(screen, gl_attributes)
-    end
-end
+#         return draw_heatmap(screen, gl_attributes)
+#     end
+# end
 
 function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
     return cached_robj!(screen, scene, plot) do gl_attributes

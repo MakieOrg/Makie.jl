@@ -131,6 +131,22 @@ function generate_clip_planes!(attr, target_space::Symbol = :data)
     return
 end
 
+function generic_robj_setup(screen, scene, plot)
+    attr = plot.args[1]
+    add_input!(attr, :scene, scene)
+    add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
+    return attr
+end
+
+function finalize_robj(screen, scene, plot)
+    attr = plot.args[1]
+    robj = attr[:gl_renderobject][]
+    screen.cache2plot[robj.id] = plot
+    screen.cache[objectid(plot)] = robj
+    push!(screen, scene, robj)
+    return robj
+end
+
 ################################################################################
 ### Scatter
 ################################################################################
@@ -195,13 +211,12 @@ end
 
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
-    attr = plot.args[1]
-    add_input!(attr, :scene, scene)
+    attr = generic_robj_setup(screen, scene, plot)
+
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
     atlas = gl_texture_atlas()
     add_input!(attr, :atlas, atlas)
-    add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
 
     if attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
@@ -313,10 +328,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         screen.requires_update = true
         return (robj,)
     end
-    robj = attr[:gl_renderobject][]
-    screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
+
+    robj = finalize_robj(screen, scene, plot)
+
     return robj
 end
 
@@ -447,10 +461,7 @@ function generate_indices(positions::NamedTuple, changed::NamedTuple, cached)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
-    attr = plot.args[1]
-
-    add_input!(attr, :scene, scene)
-    add_input!(attr, :gl_screen, screen)
+    attr = generic_robj_setup(screen, scene, plot)
 
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
@@ -546,10 +557,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (robj,)
     end
 
-    robj = attr[:gl_renderobject][]
-    screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
+    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -589,9 +597,8 @@ function assemble_linesegments_robj(attr, args, uniforms, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
-    attr = plot.args[1]
-    add_input!(plot.args[1], :scene, scene)
-    add_input!(attr, :gl_screen, screen)
+    attr = generic_robj_setup(screen, scene, plot)
+
     add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
     add_input!(attr, :viewport, scene.viewport[])
     on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
@@ -647,10 +654,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         return (robj,)
     end
 
-    robj = attr[:gl_renderobject][]
-    screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
+    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -702,9 +706,11 @@ end
 
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Image)
-    attr = plot.args[1]
-    add_input!(attr, :scene, scene)
-    add_input!(attr, :gl_screen, screen)
+    return draw_atomic_as_image(screen, scene, plot)
+end
+
+function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
+    attr = generic_robj_setup(screen, scene, plot)
 
     generate_clip_planes!(attr)
 
@@ -744,9 +750,115 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Image)
         screen.requires_update = true
         return (robj,)
     end
-    robj = attr[:gl_renderobject][]
-    screen.cache2plot[robj.id] = plot
-    screen.cache[objectid(plot)] = robj
-    push!(screen, scene, robj)
+
+    robj = finalize_robj(screen, scene, plot)
+    return robj
+end
+
+################################################################################
+### Heatmap
+################################################################################
+
+function assemble_heatmap_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+
+    r = Rect2f(0,0,1,1)
+
+    data = Dict{Symbol, Any}(
+        :position_x => Texture(screen.glscreen, args[1][], minfilter = :nearest),
+        :position_y => Texture(screen.glscreen, args[2][], minfilter = :nearest),
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => false,
+    )
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+
+    colormap = args.alpha_colormap[]
+    color = args.scaled_color[]
+    colornorm = args.scaled_colorrange[]
+    add_color_attributes!(data, color, colormap, colornorm)
+
+    # always use :image with specific interpolation settings, so remove:
+    pop!(data, :image, nothing)
+    pop!(data, :intensity, nothing)
+
+    # Correct the name mapping
+    input2glname[:scaled_color] = :intensity
+    interp = args.interpolate[] ? :linear : :nearest
+    if color isa ShaderAbstractions.Sampler
+        data[:intensity] = color
+    else
+        data[:intensity] = Texture(screen.glscreen, color; minfilter = interp)
+    end
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_heatmap(screen, data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
+    attr = plot.args[1]
+
+    # TODO: requires position transforms in Makie
+    # # Fast path for regular heatmaps
+    # t = Makie.transform_func_obs(plot)
+    # if attr[:x][] isa Makie.EndPoints && attr[:y][] isa Makie.EndPoints && Makie.is_identity_transform(t[])
+    #     return draw_atomic_as_image(screen, scene, plot)
+    # end
+
+    generic_robj_setup(screen, scene, plot)
+
+    generate_clip_planes!(attr)
+
+    Makie.add_computation!(attr, scene, Val(:heatmap_transform))
+
+    register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:instances]) do (x, y), changed, cached
+        return ((length(x[]) - 1) * (length(y[]) - 1), )
+    end
+
+    inputs = [
+        :x_transformed_f32c, :y_transformed_f32c,
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+    ]
+    uniforms = [
+        :_lowclip, :_highclip, :nan_color,
+        :transparency, :fxaa, :visible,
+        :model_f32c, :instances,
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+    ]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :x_transformed_f32c => :position_x, :y_transformed_f32c => :position_y,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+        :scaled_color => :image,
+
+        :model_f32c => :model,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_heatmap_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
     return robj
 end

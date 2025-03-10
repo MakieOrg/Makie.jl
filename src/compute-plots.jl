@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -593,7 +593,8 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     return attr[:cb_colormapping][]
 end
 
-
+# Note: GLMakie version of this in backend-functionality.
+# TODO: check if reusable?
 # function apply_transform_and_model(plot::Heatmap, data, output_type=Point3d)
 #     return apply_transform_and_model(
 #         to_value(plot.model[]), plot.transform_func[], data, to_value(get(plot, :space, :data)), output_type
