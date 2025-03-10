@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
 
 ## [0.22.2] - 2025-02-26
 
