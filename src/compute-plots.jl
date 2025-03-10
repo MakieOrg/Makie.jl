@@ -431,6 +431,13 @@ function compute_plot(::Type{Image}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Image, attr, user_kw)
     register_arguments!(Image, attr, user_kw, args...)
+    register_computation!(attr, [:x, :y], [:positions]) do (x, y), changed, cached
+        x0, x1 = x[]
+        y0, y1 = y[]
+        return (decompose(Point2d, Rect2d(x0, y0, x1-x0, y1-y0)),)
+    end
+    register_position_transforms!(attr)
+
     register_colormapping!(attr, :image)
     register_computation!(
         attr,

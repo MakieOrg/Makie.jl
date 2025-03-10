@@ -653,3 +653,100 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     push!(screen, scene, robj)
     return robj
 end
+
+################################################################################
+### Image
+################################################################################
+
+function assemble_image_robj(attr, args, uniforms, input2glname)
+    positions = args[1][] # changes name, so we use positional
+    screen = args.gl_screen[]
+
+    r = Rect2f(0,0,1,1)
+
+    data = Dict{Symbol, Any}(
+        :vertices => positions,
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => false,
+        :faces => decompose(GLTriangleFace, r),
+        :texturecoordinates => decompose_uv(r),
+        :picking_mode => "#define PICKING_INDEX_FROM_UV",
+    )
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+
+    colormap = args.alpha_colormap[]
+    color = args.scaled_color[]
+    colornorm = args.scaled_colorrange[]
+    add_color_attributes!(data, color, colormap, colornorm)
+
+    # always use :image with specific interpolation settings, so remove:
+    pop!(data, :image, nothing)
+    pop!(data, :intensity, nothing)
+
+    # Correct the name mapping
+    input2glname[:scaled_color] = :image
+    interp = args.interpolate[] ? :linear : :nearest
+    data[:image] = Texture(screen.glscreen, color; minfilter = interp)
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_mesh(screen, data)
+end
+
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+    attr = plot.args[1]
+    add_input!(attr, :scene, scene)
+    add_input!(attr, :gl_screen, screen)
+
+    generate_clip_planes!(attr)
+
+    inputs = [
+        :positions_transformed_f32c,
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+    ]
+    uniforms = [
+        :_lowclip, :_highclip, :nan_color,
+        :transparency, :fxaa, :visible,
+        :model_f32c,
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+    ]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :positions_transformed_f32c => :vertices,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+        :scaled_color => :image,
+
+        :model_f32c => :model,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_image_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+    robj = attr[:gl_renderobject][]
+    screen.cache2plot[robj.id] = plot
+    screen.cache[objectid(plot)] = robj
+    push!(screen, scene, robj)
+    return robj
+end
