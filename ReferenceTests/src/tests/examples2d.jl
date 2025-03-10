@@ -1108,6 +1108,12 @@ end
     f
 end
 
+@reference_test "Log scale stacked barplot" begin
+    f = Figure()
+    barplot(f[1,1], [1,2,3,1,2,3], [1,2,3,1,2,3], stack=[1,1,1,2,2,2], color=[1,1,1,2,2,2], gap=0; axis=(; yscale=log))
+    f
+end
+
 @reference_test "Log scale histogram (barplot)" begin
     f = Figure()
     hist(
