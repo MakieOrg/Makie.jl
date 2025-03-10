@@ -262,7 +262,7 @@ function plot_to_screen(plot, points::AbstractVector)
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
     return map(points) do p
-        transformed = apply_transform(transform_func(plot), p, space)
+        transformed = apply_transform(transform_func(plot), p)
         p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         return Point2f(p4d) / p4d[4]
     end
@@ -273,7 +273,7 @@ function plot_to_screen(plot, p::VecTypes)
     space = to_value(get(plot, :space, :data))
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
-    transformed = apply_transform(transform_func(plot), p, space)
+    transformed = apply_transform(transform_func(plot), p)
     p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
     return Point2f(p4d) / p4d[4]
 end
@@ -288,7 +288,7 @@ function screen_to_plot(plot, points::AbstractVector)
     return map(points) do p
         pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
         p3 = Point3d(pre_transform) / pre_transform[4]
-        return apply_transform(itf, p3, space)
+        return apply_transform(itf, p3)
     end
 end
 
@@ -299,7 +299,7 @@ function screen_to_plot(plot, p::VecTypes)
         clip_to_space(cam, space) * space_to_clip(cam, :pixel)
     pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
     p3 = Point3d(pre_transform) / pre_transform[4]
-    return apply_transform(itf, p3, space)
+    return apply_transform(itf, p3)
 end
 
 # ignore whiskers when determining data limits

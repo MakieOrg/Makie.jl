@@ -461,7 +461,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     end
 
     uniforms[:num_clip_planes] = serialize_three(
-        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
+        Makie.is_data_space(plot) ? length(clip_planes[]) : 0
     )
     onany(plot, plot.clip_planes, plot.space) do planes, space
         N = Makie.is_data_space(space) ? length(planes) : 0

@@ -8,7 +8,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     # We may also want a cheap version that only considers forward
     # transformations (i.e. drops textsize etc when markerspace is not part of
     # the plot.space -> target_space conversion chain)
-    if target_space == :data
+    if Makie.is_data_space(target_space)
         # This also transforms string boundingboxes if space == markerspace
         return apply_transform_and_model(plot, data_limits(plot))
     elseif target_space == plot.markerspace[]

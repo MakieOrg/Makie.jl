@@ -74,7 +74,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
         # Adjusted from error_and_rangebars
         spvm = clip_to_space(scene.camera, :pixel) * space_to_clip(scene.camera, space) * model
-        transformed = apply_transform(tf, pos, space)
+        transformed = apply_transform(tf, pos)
         p4d = spvm * to_ndim(Point4f, to_ndim(Point3f, transformed, 0), 1)
         return Point3f(p4d) / p4d[4]
     end
