@@ -18,8 +18,16 @@
 
         # different inputs, same function = different edge -> error
         @test_throws ErrorException register_computation!(foo, graph, [:in1], [:merged])
-        # same inputs, same function = same edge
-        @test_logs (:warn, "Identical ComputeEdge already exists. Skipped insertion of new edge") register_computation!(foo, graph, [:in1, :in2], [:merged])
+
+        # same inputs, same function = same edge, this should work and not change the existing callback
+        # TODO: How do we test that the edge does not get updated (to a new edge with the same content)?
+        #       Is objectid sufficient?
+        @test begin
+            id = objectid(graph[:merged].parent)
+            register_computation!(foo, graph, [:in1, :in2], [:merged])
+            id == objectid(graph[:merged].parent)
+        end
+
         # same inputs, different function = different edge -> error
         goo(inputs, changed, cached) = (inputs[1][] * inputs[2][],)
         @test_throws ErrorException register_computation!(goo, graph, [:in1, :in2], [:merged])
