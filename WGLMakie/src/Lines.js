@@ -6,7 +6,6 @@ import {
 } from "./Shaders.js";
 
 import { deserialize_uniforms } from "./Serialization.js";
-import { IntType } from "./THREE.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};

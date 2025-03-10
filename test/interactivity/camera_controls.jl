@@ -2,6 +2,9 @@
 # This testset is based on the results the current camera system has. If
 # cam3d! is updated this is likely to break.
 @testset "cam3d!" begin
+    Makie.PICK_TRACKING[] = true
+    init = Makie._PICK_COUNTER[]
+
     scene = Scene(size=(800, 600));
     e = events(scene)
     cam3d!(scene, fixed_axis=true, cad=false, zoom_shift_lookat=false)
@@ -95,4 +98,6 @@
     @test cc.lookat[]       ≈ Vec3f(0)
     @test cc.eyeposition[]  ≈ 0.6830134f0 * Vec3f(3)
     @test cc.upvector[]     ≈ Vec3f(0.0, 0.0, 1.0)
+
+    @test init == Makie._PICK_COUNTER[]
 end

@@ -66,6 +66,10 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+function Makie.px_per_unit(s::Screen)::Float64
+    return something(s.config.px_per_unit, 1.0)
+end
+
 function Screen(; config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(config))
     return Screen(nothing, config)
@@ -98,6 +102,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
+            connect_post_init_events(screen, scene)
         else
             # Will be an error from WGLMakie.js
             put!(screen.plot_initialized, initialized)
@@ -174,8 +179,11 @@ end
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    session = get_screen_session(screen)
-    return !isnothing(session) && isopen(session)
+    # This function is used as the source of truth for dynamically setting
+    # window_open[] = false (as opposed to using close()), so it can't just
+    # rely on window_open. Check the session too.
+    return !isnothing(screen.scene) && screen.scene.events.window_open[] &&
+        !isnothing(screen.session) && isopen(screen.session)
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)
@@ -202,8 +210,11 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-# TODO implement
-Base.close(screen::Screen) = nothing
+function Base.close(screen::Screen)
+    Makie.stop!(screen.tick_clock)
+    events(screen.scene).window_open[] = false
+    return
+end
 
 function Base.size(screen::Screen)
     return size(screen.scene)

@@ -642,3 +642,7 @@ function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     default_str = Makie.attribute_default_expressions(t)[s]
     return repl_docstring(nameof(t), s, docs, examples, default_str)
 end
+
+# collect() doesn't seem to be necessary but the propertynames docstring says
+# "tuple or vector" so lets not return a KeySet
+Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
