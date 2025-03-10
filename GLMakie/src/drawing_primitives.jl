@@ -602,9 +602,9 @@ function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Image)
-    return draw_image(screen, scene, plot)
-end
+# function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+#     return draw_image(screen, scene, plot)
+# end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)
     # signals not supported for shading yet
