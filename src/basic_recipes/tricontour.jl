@@ -252,8 +252,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
         trianglelist = compute_triangulation(triangulation)
         contour_lines = line_tricontours(xs, ys, zs, trianglelist, levels)
-
-        # TODO: Fix the issue with colors here
     
         # contour_lines may contain multiple lines per level, each in a vector
         # Convert to a flat vector of points separated by NaNs
@@ -288,7 +286,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     end
 
     # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
-    # FIXME: make labels observable
+    # TODO: handle single contour such as levels = [0.0]
+    # TODO: trim contour lines where labels are placed
 
     # Prepare color arguments
     color_args_computed = (
@@ -375,11 +374,53 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         notify(texts.rotation)
     end
 
+    bboxes = lift(c, labels, texts.text; ignore_equal_values=true) do labels, _
+        labels || return
+        return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
+            # drop the depth component of the bounding box for 3D
+            px_pos = project(scene, apply_transform(transform_func(c), pt, space))
+            bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
+            isfinite_rect(bb) || return Rect2f()
+            Rect2f(bb)
+        end
+    end
+    
+    masked_lines = lift(c, labels, bboxes, points) do labels, bboxes, segments
+        labels || return segments
 
+        # Skip masking if bboxes is empty
+        isempty(bboxes) && return segments
+        # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
+        count(isnan, segments) > length(segments) / 10 && return segments
+        n = 1
+        bb = bboxes[n]
+        nlab = length(bboxes)
+        masked = copy(segments)
+        nan = Point2f(NaN32)
+        for (i, p) in enumerate(segments)
+            if isnan(p) && n < nlab
+                bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
+                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
+            elseif project(scene, apply_transform(transform_func(c), p, space)) in bb
+                masked[i] = nan
+                for dir in (-1, +1)
+                    j = i
+                    while true
+                        j += dir
+                        checkbounds(Bool, segments, j) || break
+                        project(scene, apply_transform(transform_func(c), segments[j], space)) in bb || break
+                        masked[j] = nan
+                    end
+                end
+            end
+        end
+        masked
+    end
     # Plot countour lines
-    lines!(c, atr, points)
+    lines!(c, atr, masked_lines)
     return c
 end
+
 
 function compute_triangulation(tri)
     return [T[j] for T in DelTri.each_solid_triangle(tri), j in 1:3]'
