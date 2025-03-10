@@ -102,7 +102,7 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     print(io, "\n  outputs:")
     for v in edge.outputs
-        if dirty
+        if isdirty(v)
             printstyled(io, "\n    ↻ $v", color = :light_black)
         else
             print(io, "\n    ✓ ", v)
