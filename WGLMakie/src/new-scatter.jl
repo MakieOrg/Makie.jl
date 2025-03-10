@@ -153,14 +153,11 @@ end
 
 function create_shader(::Scene, plot::Scatter)
     attr = plot.args[1]
-    # TODO: cleanup this stuff when the screen closes, do this, or allow multi-init?
-    if !haskey(attr, :wgl_update_obs) || !haskey(attr, :wgl_renderobject)
-        Makie.all_marker_computations!(attr, 1024, 32)
-        register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
-        on(attr.onchange) do _
-            attr[:wgl_renderobject][]
-            return nothing
-        end
+    Makie.all_marker_computations!(attr, 1024, 32)
+    register_computation!(create_robj, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
+    on(attr.onchange) do _
+        attr[:wgl_renderobject][]
+        return nothing
     end
     return attr[:wgl_renderobject][]
 end
@@ -258,25 +255,22 @@ const IMAGE_INPUTS = [
 
 function create_shader(::Scene, plot::Image)
     attr = plot.args[1]
-    # TODO: cleanup this stuff when the screen closes, do this, or allow multi-init?
-    if !haskey(attr, :wgl_update_obs) || !haskey(attr, :wgl_renderobject)
-        add_uv_mesh!(attr)
-        register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-            r = Dict(
-                :image => :uniform_color,
-                :scaled_colorrange => :colorrange,
-                :_highclip => :highclip,
-                :_lowclip => :lowclip,
-                :data_limit_points_transformed => :position,
-            )
-            if isnothing(last)
-                program = create_image_mesh(args)
-                return (program, Observable{Any}([]))
-            else
-                updater = last[2][]
-                update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-                return nothing
-            end
+    add_uv_mesh!(attr)
+    register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        r = Dict(
+            :image => :uniform_color,
+            :scaled_colorrange => :colorrange,
+            :_highclip => :highclip,
+            :_lowclip => :lowclip,
+            :data_limit_points_transformed => :position,
+        )
+        if isnothing(last)
+            program = create_image_mesh(args)
+            return (program, Observable{Any}([]))
+        else
+            updater = last[2][]
+            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
+            return nothing
         end
     end
     on(attr.onchange) do _
