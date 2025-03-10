@@ -316,7 +316,7 @@ function on_hover(inspector)
     mp = mouseposition_px(parent)
     should_clear = true
     for (plt, idx) in pick_sorted(parent, mp, inspector.attributes.range[])
-        if to_value(get(plt.attributes, :inspectable, true))
+        if to_value(get(plt, :inspectable, true))
             # show_data should return true if it created a tooltip
             if show_data_recursion(inspector, plt, idx)
                 should_clear = false
@@ -711,7 +711,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based)
                 push!(inspector.temp_plots, p)
             else
                 p = inspector.temp_plots[1]
-                p[1].val[1] = pos
+                p[1][][1] = pos
                 notify(p[1])
             end
         else
