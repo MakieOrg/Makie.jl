@@ -62,6 +62,7 @@ using Makie: volume
         include("interactivity/camera_controls.jl")
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
+        include("interactivity/DataInspector.jl")
     end
 
     include("boundingboxes.jl")
