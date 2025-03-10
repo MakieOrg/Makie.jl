@@ -25,3 +25,41 @@ end
 
     parent
 end
+
+@reference_test "Categorical color interpolation" begin
+    parent = Scene(size = (500, 500))
+
+    # test with cgrad
+    # - optimally switch near horizontal center (colormap gets upscaled to colorrange)
+    # - no interpolation (match image behind marker/line (slightly above or below))
+    scene = Scene(parent, viewport = Rect2f(0, 0, 500, 190))
+    cg = cgrad(:viridis, 5, categorical = true, scale = log10);
+    scatter_kwargs = (colorrange = (0, 1000), colormap = cg, marker = Rect, markersize = 25)
+    line_kwargs = (colorrange = (0, 1000), colormap = cg, linewidth = 10)
+    image!(scene, -1..1, -1..1, reshape(cg.colors.colors, (1, 5)), interpolate = false)
+    for i in 2:5
+        edge = cg.values[i]
+        y = range(-1, 1, length=6)[i]
+        scatter!(scene, -1..1, fill(y, 15), color = round(Int, 1000 * edge) .+ (-5:9); scatter_kwargs...)
+        lines!(scene, -1..1, fill(y, 15),   color = round(Int, 1000 * edge) .+ (-5:9); line_kwargs...)
+    end
+
+    # test with categorical
+    # - optimally alternate between black and white (no downscaling of colormap)
+    # - no interpolation (match image behind marker/line (slightly above or below))
+    scene = Scene(parent, viewport = Rect2f(0, 200, 500, 300))
+    cg = Categorical([RGBf(i%2, i%2, i%2) for i in 0:1000]);
+    scatter_kwargs = (colorrange = (0, 1000), colormap = cg, marker = Rect, markersize = 20, alpha = 1)
+    line_kwargs = (colorrange = (0, 1000), colormap = cg, linewidth = 8, alpha = 1)
+    cm = to_colormap(cg)
+    image!(scene, -1..1, -1..1, reshape(cm[1:6], (1, 6)), interpolate = false)
+    p = nothing
+    for i in 1:5
+        edge = 100 * i
+        y = range(-1, 1, length=7)[i+1]
+        p = scatter!(scene, -1..1, fill(y, 15), color = edge .+ (-7:7); scatter_kwargs...)
+        lines!(scene, -1..1, fill(y, 15), color = edge .+ (-7:7); line_kwargs...)
+    end
+
+    parent
+end
