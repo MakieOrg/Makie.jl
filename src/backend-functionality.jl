@@ -7,7 +7,9 @@ add_computation!(attr::ComputeGraph, scene::Scene, symbols::Symbol...) =
 add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr, Val.(symbols)...)
 
 function add_computation!(attr, scene, ::Val{:scene_origin})
-    add_input!(attr, :viewport, scene.viewport[])
+    if !haskey(attr, :viewport) # TODO: avoid calling this multiple times?
+        add_input!(attr, :viewport, scene.viewport[])
+    end
     on(viewport -> Makie.update!(attr; viewport=viewport), scene.viewport) # TODO: This doesn't update immediately?
     register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
         !changed[1] && return nothing
