@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -540,6 +540,59 @@ function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,An
 
     T = typeof(attr[:positions][])
     p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+# TODO: it may make sense to just remove Mesh in convert_arguments?
+# TODO: this could probably be reused by meshscatter
+function register_mesh_decomposition!(attr)
+    register_computation!(attr, [:mesh], [:positions, :faces]) do (mesh,), changed, cached
+        if mesh[] isa Vector
+            @info "TODO: Vector{Mesh}"
+            return (coordinates(mesh[][1]), decompose(GLTriangleFace, mesh[][1]))
+        else
+            return (coordinates(mesh[]), decompose(GLTriangleFace, mesh[]))
+        end
+    end
+
+    # texturecoordinates, normals return nothing when no data is present and
+    # reflect types in mesh. May need further conversions
+
+    # TODO: if we're throwing away normals when they are not used we should throw away uvs too...
+    register_computation!(attr, [:mesh], [:texturecoordinates]) do (mesh,), changed, cached
+        if mesh[] isa Vector
+            return (texturecoordinates(mesh[][1]),)
+        else
+            return (texturecoordinates(mesh[]),) # will be nothing if none exist
+        end
+    end
+
+    register_computation!(attr, [:mesh, :matcap, :shading], [:normals]) do (mesh, matcap, shading), changed, cached
+        if shading[] != NoShading || matcap !== nothing
+            if mesh[] isa Vector
+                return (normals(mesh[][1]),)
+            else
+                return (normals(mesh[]),)
+            end
+        else
+            return nothing
+        end
+    end
+end
+
+function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Mesh, attr, user_kw)
+    register_arguments!(Mesh, attr, user_kw, args...)
+    register_mesh_decomposition!(attr)
+    register_position_transforms!(attr)
+    register_colormapping!(attr)
+    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
+        return (Rect3d(positions[]),)
+    end
+    T = typeof(attr[:arg1][])
+    p = Plot{mesh,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
     return p
 end

@@ -862,3 +862,125 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     robj = finalize_robj(screen, scene, plot)
     return robj
 end
+
+################################################################################
+### Mesh
+################################################################################
+
+# mesh_inner part 1
+function add_mesh_color_attributes!(data, color, colormap, colornorm, interpolate)
+    # Note: assuming el32convert, Pattern convert to happen in Makie or earlier elsewhere
+    interp = interpolate ? :linear : :nearest
+    colorname = :vertex_color
+
+    if color isa Colorant
+        data[:vertex_color] = color
+        colorname = :vertex_color
+    # elseif color isa Makie.AbstractPattern
+        # TODO: needs to happen earlier, in Makie color pipeline
+        # img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
+        # data[:image] = ShaderAbstractions.Sampler(img, x_repeat = :repeat)
+    elseif color isa ShaderAbstractions.Sampler
+        data[:image] = color
+        colorname = :image
+    elseif color isa AbstractMatrix{<:Colorant}
+        data[:image] = Texture(screen.glscreen, color, minfilter = interp)
+        colorname = :image
+    elseif color isa AbstractVector{<: Colorant}
+        data[:vertex_color] = color
+        colorname = :vertex_color
+
+    else # colormapped
+
+        data[:color_map] = colormap
+        data[:color_norm] = colornorm
+
+        if color isa Union{AbstractMatrix{<: Real}, AbstractArray{<: Real, 3}}
+            data[:image] = Texture(screen.glscreen, color, minfilter = interp)
+            colorname = :image
+        elseif color isa AbstractVector{<: Real}
+            data[:vertex_color] = color
+            colorname = :vertex_color
+        else
+            error("Unsupported color type: $(typeof(to_value(color)))")
+        end
+    end
+
+    # TODO: adjust input2glname[:scaled_color] = colorname
+    # (name of input may change?)
+    return colorname
+end
+
+
+function assemble_mesh_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+
+    data = Dict{Symbol, Any}()
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+
+    input2glname[:scaled_color] = add_mesh_color_attributes!(data,
+        args.scaled_color[],
+        args.alpha_colormap[],
+        args.scaled_colorrange[],
+        args.interpolate[]
+    )
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    data[:normals] == nothing && delete!(data, :normals)
+    data[:texturecoordinates] == nothing && delete!(data, :texturecoordinates)
+
+    return draw_mesh(screen, data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
+    attr = plot.args[1]
+
+    generic_robj_setup(screen, scene, plot)
+
+    generate_clip_planes!(attr)
+
+    # TODO: normalmatrices, lighting, poly plot!() overwrite for vector of meshes
+
+    inputs = [
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+    ]
+    uniforms = [
+        :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :_lowclip, :_highclip, :nan_color,
+        :transparency, :ssao, :fxaa, :visible,
+        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+    ]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :positions_transformed_f32c => :vertices,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+        :scaled_color => :image, :model_f32c => :model,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_mesh_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
+    return robj
+end

@@ -577,30 +577,30 @@ xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 #     end
 # end
 
-function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        position = lift(plot, plot[1], plot[2]) do x, y
-            xmin, xmax = x
-            ymin, ymax = y
-            rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
-            return decompose(Point2d, rect)
-        end
-        gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
-        rect = Rect2f(0, 0, 1, 1)
-        gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = decompose_uv(rect)
-        get!(gl_attributes, :shading, NoShading)
-        _interp = to_value(pop!(gl_attributes, :interpolate, true))
-        interp = _interp ? :linear : :nearest
-        if haskey(gl_attributes, :intensity)
-            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :intensity); minfilter=interp)
-        else
-            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :color); minfilter=interp)
-        end
-        gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
-        return draw_mesh(screen, gl_attributes)
-    end
-end
+# function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         position = lift(plot, plot[1], plot[2]) do x, y
+#             xmin, xmax = x
+#             ymin, ymax = y
+#             rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+#             return decompose(Point2d, rect)
+#         end
+#         gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
+#         rect = Rect2f(0, 0, 1, 1)
+#         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
+#         gl_attributes[:texturecoordinates] = decompose_uv(rect)
+#         get!(gl_attributes, :shading, NoShading)
+#         _interp = to_value(pop!(gl_attributes, :interpolate, true))
+#         interp = _interp ? :linear : :nearest
+#         if haskey(gl_attributes, :intensity)
+#             gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :intensity); minfilter=interp)
+#         else
+#             gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :color); minfilter=interp)
+#         end
+#         gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
+#         return draw_mesh(screen, gl_attributes)
+#     end
+# end
 
 # function draw_atomic(screen::Screen, scene::Scene, plot::Image)
 #     return draw_image(screen, scene, plot)
@@ -667,16 +667,16 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     return draw_mesh(screen, gl_attributes)
 end
 
-function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
-    x = cached_robj!(screen, scene, meshplot) do gl_attributes
-        t = transform_func_obs(meshplot)
-        space = meshplot.space # needs to happen before connect_camera! call
-        x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
-        return x
-    end
+# function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
+#     x = cached_robj!(screen, scene, meshplot) do gl_attributes
+#         t = transform_func_obs(meshplot)
+#         space = meshplot.space # needs to happen before connect_camera! call
+#         x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+#         return x
+#     end
 
-    return x
-end
+#     return x
+# end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     robj = cached_robj!(screen, scene, plot) do gl_attributes
