@@ -77,6 +77,7 @@ function add_camera_attributes!(data, screen, camera, space)
     data[:projectionview] = Makie.get_projectionview(camera, space)
     data[:view] = Makie.get_view(camera, space)
     data[:upvector] = camera.upvector
+    data[:eyeposition] = camera.eyeposition
     return data
 end
 
@@ -129,6 +130,63 @@ function generate_clip_planes!(attr, target_space::Symbol = :data)
         end
     end
     return
+end
+
+# This one plays nice with out system, only needs model
+function register_world_normalmatrix!(attr, model = :model_f32c)
+    register_computation!(attr, [model], [:world_normalmatrix]) do (m,), _, __
+        return (Mat3f(transpose(inv(m[][Vec(1,2,3), Vec(1,2,3)]))), )
+    end
+end
+
+# This one does not, requires the who-knows-when-it-updates view matrix...
+function add_view_normalmatrix!(data, attr, model = :model_f32c)
+    model = Observable(Mat3f)
+    register_computation!(attr, [model], Symbol[]) do (model,), _, __
+        model[] = m[Vec(1,2,3), Vec(1,2,3)]
+        return nothing
+    end
+    data[:view_normalmatrix] = map(data[:view], model) do v, m
+        return Mat3f(transpose(inv(v[Vec(1,2,3), Vec(1,2,3)] * m)))
+    end
+end
+
+# TODO: handle these on the scene level once and reuse them
+function add_light_attributes!(scene, data, attr)
+    haskey(attr, :shading) || return
+
+    shading = attr[:shading][]
+    if shading == FastShading
+
+        dirlight = Makie.get_directional_light(scene)
+
+        if isnothing(dirlight)
+            data[:light_direction] = Observable(Vec3f(0))
+            data[:light_color] = Observable(RGBf(0,0,0))
+        else
+            data[:light_direction] = if dirlight.camera_relative
+                map(data[:view], dirlight.direction) do view, dir
+                    return normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
+                end
+            else
+                map(normalize, dirlight.direction)
+            end
+
+            data[:light_color] = dirlight.color
+        end
+
+        ambientlight = Makie.get_ambient_light(scene)
+        if !isnothing(ambientlight)
+            data[:ambient] = ambientlight.color
+        else
+            data[:ambient] = Observable(RGBf(0,0,0))
+        end
+
+    elseif shading == MultiLightShading
+
+        handle_lights(data, screen, scene.lights)
+
+    end
 end
 
 function generic_robj_setup(screen, scene, plot)
@@ -915,25 +973,34 @@ end
 function assemble_mesh_robj(attr, args, uniforms, input2glname)
     screen = args.gl_screen[]
 
-    data = Dict{Symbol, Any}()
+    data = Dict{Symbol, Any}(
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => attr[:ssao][],
+        :shading => attr[:shading][]
+    )
 
     camera = args.scene[].camera
     add_camera_attributes!(data, screen, camera, args.space[])
 
-    input2glname[:scaled_color] = add_mesh_color_attributes!(data,
+    input2glname[:scaled_color] = add_mesh_color_attributes!(
+        screen, data,
         args.scaled_color[],
         args.alpha_colormap[],
         args.scaled_colorrange[],
         args.interpolate[]
     )
 
+    add_light_attributes!(args.scene[], data, attr)
+
     # Transfer over uniforms
     for name in uniforms
         data[get(input2glname, name, name)] = args[name][]
     end
 
-    data[:normals] == nothing && delete!(data, :normals)
-    data[:texturecoordinates] == nothing && delete!(data, :texturecoordinates)
+    data[:normals] === nothing && delete!(data, :normals)
+    data[:texturecoordinates] === nothing && delete!(data, :texturecoordinates)
 
     return draw_mesh(screen, data)
 end
@@ -944,6 +1011,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     generic_robj_setup(screen, scene, plot)
 
     generate_clip_planes!(attr)
+    register_world_normalmatrix!(attr)
 
     # TODO: normalmatrices, lighting, poly plot!() overwrite for vector of meshes
 
@@ -956,8 +1024,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     uniforms = [
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :_lowclip, :_highclip, :nan_color,
-        :transparency, :ssao, :fxaa, :visible,
-        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+        :transparency, :fxaa, :visible,
+        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix
     ]
 
     input2glname = Dict{Symbol, Symbol}(
