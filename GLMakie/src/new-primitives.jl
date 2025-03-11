@@ -228,7 +228,7 @@ function assemble_scatter_robj(attr, args, uniforms, input2glname)
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :distancefield => distancefield,
         :px_per_unit => screen.px_per_unit,   # technically not const?
-        :ssao => false,                         # shader compilation const
+        :ssao => false,                       # shader compilation const
         :shape => marker_shape,
     )
 
@@ -922,11 +922,107 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
 end
 
 ################################################################################
+### Surface
+################################################################################
+
+function assemble_surface_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+
+    data = Dict{Symbol, Any}(
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => attr[:ssao][],
+        :shading => attr[:shading][]
+    )
+
+    colorname = add_mesh_color_attributes!(
+        screen, data,
+        args.scaled_color[],
+        args.alpha_colormap[],
+        args.scaled_colorrange[],
+        args.interpolate[]
+    )
+    @assert colorname == :image
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+    add_light_attributes!(args.scene[], data, attr)
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_surface(screen, data[:image], data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
+    attr = plot.args[1]
+
+    generic_robj_setup(screen, scene, plot)
+    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, scene, Val(:surface_transform))
+    register_world_normalmatrix!(attr)
+
+    register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
+        return ((size(z[],1)-1) * (size(z[],2)-1), )
+    end
+
+    # TODO: not part of the conversion pipeline on master... but shouldn't it be?
+    register_computation!(attr, [:z], [:z_converted]) do (z,), changed, cached
+        return (el32convert(z[]), )
+    end
+
+    inputs = [
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+    ]
+    uniforms = [
+        :x_transformed_f32c, :y_transformed_f32c, :z_converted,
+        :_lowclip, :_highclip, :nan_color,
+        :transparency, :fxaa, :visible,
+        :model_f32c, :instances,
+        :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :invert_normals, :uv_transform
+    ]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :x_transformed_f32c => :position_x, :y_transformed_f32c => :position_y,
+        :z_converted => :position_z,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :image,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+        :model_f32c => :model,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_surface_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
+    return robj
+end
+
+################################################################################
 ### Mesh
 ################################################################################
 
 # mesh_inner part 1
-function add_mesh_color_attributes!(data, color, colormap, colornorm, interpolate)
+function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, interpolate)
     # Note: assuming el32convert, Pattern convert to happen in Makie or earlier elsewhere
     interp = interpolate ? :linear : :nearest
     colorname = :vertex_color
@@ -1009,7 +1105,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     attr = plot.args[1]
 
     generic_robj_setup(screen, scene, plot)
-
     generate_clip_planes!(attr)
     register_world_normalmatrix!(attr)
 

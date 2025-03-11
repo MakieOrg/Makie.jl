@@ -678,82 +678,82 @@ end
 #     return x
 # end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
-    robj = cached_robj!(screen, scene, plot) do gl_attributes
-        color = pop!(gl_attributes, :color)
-        img = nothing
-        # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
-        if haskey(gl_attributes, :intensity)
-            img = pop!(gl_attributes, :intensity)
-        elseif to_value(color) isa Makie.AbstractPattern
-            pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
-            gl_attributes[:color_map] = nothing
-            gl_attributes[:color] = nothing
-            gl_attributes[:color_norm] = nothing
-        elseif isa(to_value(color), AbstractMatrix{<: Colorant})
-            img = color
-            gl_attributes[:color_map] = nothing
-            gl_attributes[:color] = nothing
-            gl_attributes[:color_norm] = nothing
-        end
+# function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
+#     robj = cached_robj!(screen, scene, plot) do gl_attributes
+#         color = pop!(gl_attributes, :color)
+#         img = nothing
+#         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
+#         if haskey(gl_attributes, :intensity)
+#             img = pop!(gl_attributes, :intensity)
+#         elseif to_value(color) isa Makie.AbstractPattern
+#             pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
+#             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
+#             gl_attributes[:color_map] = nothing
+#             gl_attributes[:color] = nothing
+#             gl_attributes[:color_norm] = nothing
+#         elseif isa(to_value(color), AbstractMatrix{<: Colorant})
+#             img = color
+#             gl_attributes[:color_map] = nothing
+#             gl_attributes[:color] = nothing
+#             gl_attributes[:color_norm] = nothing
+#         end
 
-        space = plot.space
-        interp = to_value(pop!(gl_attributes, :interpolate, true))
-        interp = interp ? :linear : :nearest
-        gl_attributes[:image] = Texture(screen.glscreen, img; minfilter=interp)
+#         space = plot.space
+#         interp = to_value(pop!(gl_attributes, :interpolate, true))
+#         interp = interp ? :linear : :nearest
+#         gl_attributes[:image] = Texture(screen.glscreen, img; minfilter=interp)
 
-        @assert to_value(plot[3]) isa AbstractMatrix
-        gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
-        types = map(v -> typeof(to_value(v)), plot[1:2])
+#         @assert to_value(plot[3]) isa AbstractMatrix
+#         gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
 
-        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            t = Makie.transform_func_obs(plot)
-            mat = plot[3]
-            xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
-                # Only if transform doesn't do anything, we can stay linear in 1/2D
-                if Makie.is_identity_transform(t) && isnothing(f32c)
-                    return (x, y)
-                elseif Makie.is_translation_scale_matrix(model)
-                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
-                    else
-                        # If we do any transformation, we have to assume things aren't on the grid anymore
-                        # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
-                    end
-                    return (first.(matrix), last.(matrix))
-                else
-                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
-                    else
-                        # If we do any transformation, we have to assume things aren't on the grid anymore
-                        # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
-                    end
-                    return (first.(matrix), last.(matrix))
-                end
-            end
-            xpos = lift(first, plot, xypos)
-            ypos = lift(last, plot, xypos)
-            args = map((xpos, ypos, mat)) do arg
-                Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
-            end
-            if isnothing(img)
-                gl_attributes[:image] = args[3]
-            end
-            return draw_surface(screen, args, gl_attributes)
-        else
-            gl_attributes[:ranges] = to_range.(to_value.(plot[1:2]))
-            z_data = Texture(screen.glscreen, lift(el32convert, plot, plot[3]); minfilter=:linear)
-            if isnothing(img)
-                gl_attributes[:image] = z_data
-            end
-            return draw_surface(screen, z_data, gl_attributes)
-        end
-    end
-    return robj
-end
+#         types = map(v -> typeof(to_value(v)), plot[1:2])
+#         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
+#             t = Makie.transform_func_obs(plot)
+#             mat = plot[3]
+#             xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
+#                 # Only if transform doesn't do anything, we can stay linear in 1/2D
+#                 if Makie.is_identity_transform(t) && isnothing(f32c)
+#                     return (x, y)
+#                 elseif Makie.is_translation_scale_matrix(model)
+#                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+#                         Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
+#                     else
+#                         # If we do any transformation, we have to assume things aren't on the grid anymore
+#                         # so x + y need to become matrices.
+#                         [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+#                     end
+#                     return (first.(matrix), last.(matrix))
+#                 else
+#                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+#                         Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
+#                     else
+#                         # If we do any transformation, we have to assume things aren't on the grid anymore
+#                         # so x + y need to become matrices.
+#                         [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
+#                     end
+#                     return (first.(matrix), last.(matrix))
+#                 end
+#             end
+#             xpos = lift(first, plot, xypos)
+#             ypos = lift(last, plot, xypos)
+#             args = map((xpos, ypos, mat)) do arg
+#                 Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
+#             end
+#             if isnothing(img)
+#                 gl_attributes[:image] = args[3]
+#             end
+#             return draw_surface(screen, args, gl_attributes)
+#         else
+#             gl_attributes[:ranges] = to_range.(to_value.(plot[1:2]))
+#             z_data = Texture(screen.glscreen, lift(el32convert, plot, plot[3]); minfilter=:linear)
+#             if isnothing(img)
+#                 gl_attributes[:image] = z_data
+#             end
+#             return draw_surface(screen, z_data, gl_attributes)
+#         end
+#     end
+#     return robj
+# end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     return cached_robj!(screen, scene, plot) do gl_attributes

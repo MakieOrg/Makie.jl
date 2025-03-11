@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -50,6 +50,7 @@ function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
 end
 
 # temp fix axis selection
+args_preferred_axis(::Type{<: Surface}, attr::ComputeGraph) = LScene
 function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     result = args_preferred_axis(PT, attr[:positions][])
     isnothing(result) && return Axis
@@ -282,11 +283,30 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 # TODO: this won't work because Text is both primitive and not
+# TODO: Also true for mesh (see poly.jl, mesh.jl)
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
-obs_to_value(obs::Observables.AbstractObservable) = to_value(obs)
-obs_to_value(x) = x
+
+# TODO: add this to ComputePipeline?
+function ComputePipeline.add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(attr, k, obs[])
+    on(obs) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+    end
+    return
+end
+function ComputePipeline.add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(f, attr, k, obs[])
+    on(obs) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+    end
+    return
+end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
@@ -311,20 +331,11 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
 
         # primitives use convert_attributes, recipe plots don't
         if is_primitive
-            add_input!(attr, k, obs_to_value(value)) do key, value
+            add_input!(attr, k, value) do key, value
                 return convert_attribute(value, Key{key}(), Key{name}())
             end
         else
-            add_input!(attr, k, obs_to_value(value))
-        end
-
-        if value isa Observable
-            on(value) do new_val
-                old = getproperty(attr, k)[]
-                if old != new_val
-                    setproperty!(attr, k, new_val)
-                end
-            end
+            add_input!(attr, k, value)
         end
 
         # Hack-fix variable type
@@ -524,6 +535,26 @@ function compute_plot(::Type{Heatmap}, args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof((attr[:x][], attr[:y][], attr[:image][]))
     p = Plot{heatmap,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+function compute_plot(::Type{Surface}, args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Surface, attr, user_kw)
+    register_arguments!(Surface, attr, user_kw, args...)
+    register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
+        return (isnothing(color[]) ? z[] : color[],)
+    end
+    register_colormapping!(attr, :color_with_default)
+    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
+        xlims = extrema(x)
+        ylims = extrema(y)
+        zlims = extrema(z)
+        return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
+    end
+    T = typeof((attr[:x][], attr[:y][], attr[:z][]))
+    p = Plot{surface,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
     return p
 end

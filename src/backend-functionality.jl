@@ -108,7 +108,6 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         return (xps, yps)
     end
 
-    # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
     register_computation!(attr,
         [:x_transformed, :y_transformed, :model, :f32c],
         [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
@@ -146,6 +145,55 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
             end
             m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
             return (xs, ys, m)
+        end
+    end
+end
+
+# Note: VERY similar to heatmap, but heatmap shader currently only allows 1D x, y
+#       Could consider updating shader to accept matrix x, y and not always draw
+#       rects but that might be a larger chunk of work...
+function add_computation!(attr, scene, ::Val{:surface_transform})
+    xy_convert(x::AbstractArray, y::AbstractMatrix) = Point2.(x, y)
+    xy_convert(x::AbstractArray, y::AbstractVector) = Point2.(x, y')
+
+    # TODO: Shouldn't this include transforming z?
+    # TODO: If we're always creating a Matrix of Points the backends should just
+    #       use that directly instead of going back to a x and y matrix representation
+    register_computation!(attr,
+            [:x, :y, :transform_func, :space],
+            [:xy_transformed]
+        ) do (x, y, func, space), changed, last
+        return (apply_transform(func[], xy_convert(x[], y[]), space[]), )
+    end
+
+    register_computation!(attr,
+        [:xy_transformed, :model, :f32c],
+        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
+    ) do (xy, model, f32c), changed, cached
+        # TODO: this should be done in one nice function
+        # This is simplified, skipping what's commented out
+
+        # trans, scale = decompose_translation_scale_matrix(model)
+        # is_rot_free = is_translation_scale_matrix(model)
+        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
+            m = changed.model ? Mat4f(model[]) : nothing
+            xys = changed.xy_transformed || changed.f32c ? el32convert(xy[]) : nothing
+            return (first.(xys), last.(xys), m)
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        # elseif is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            # TODO: avoid reallocating?
+            xys = map(xy[]) do pos
+                p4d = model[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+                return f32_convert(f32c[], p4d[Vec(1, 2)])
+            end
+            m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
+            return (first.(xys), last.(xys), m)
         end
     end
 end
