@@ -815,121 +815,121 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
+# function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
 
-        # voxel ids
-        tex = Texture(screen.glscreen, plot.converted[end], minfilter = :nearest)
+#         # voxel ids
+#         tex = Texture(screen.glscreen, plot.converted[end], minfilter = :nearest)
 
-        # local update
-        buffer = Vector{UInt8}(undef, 1)
-        on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
-            required_length = length(is) * length(js) * length(ks)
-            if length(buffer) < required_length
-                resize!(buffer, required_length)
-            end
-            idx = 1
-            for k in ks, j in js, i in is
-                buffer[idx] = plot.converted[end].val[i, j, k]
-                idx += 1
-            end
-            GLAbstraction.texsubimage(tex, buffer, is, js, ks)
-            return
-        end
+#         # local update
+#         buffer = Vector{UInt8}(undef, 1)
+#         on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
+#             required_length = length(is) * length(js) * length(ks)
+#             if length(buffer) < required_length
+#                 resize!(buffer, required_length)
+#             end
+#             idx = 1
+#             for k in ks, j in js, i in is
+#                 buffer[idx] = plot.converted[end].val[i, j, k]
+#                 idx += 1
+#             end
+#             GLAbstraction.texsubimage(tex, buffer, is, js, ks)
+#             return
+#         end
 
-        # adjust model matrix according to x/y/z limits
-        gl_attributes[:model] = map(
-                plot, plot.converted...,  pop!(gl_attributes, :model)
-            ) do xs, ys, zs, chunk, model
-            mini = minimum.((xs, ys, zs))
-            width = maximum.((xs, ys, zs)) .- mini
-            return Mat4f(model *
-                Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
-            )
-        end
+#         # adjust model matrix according to x/y/z limits
+#         gl_attributes[:model] = map(
+#                 plot, plot.converted...,  pop!(gl_attributes, :model)
+#             ) do xs, ys, zs, chunk, model
+#             mini = minimum.((xs, ys, zs))
+#             width = maximum.((xs, ys, zs)) .- mini
+#             return Mat4f(model *
+#                 Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+#             )
+#         end
 
-        # Handled manually without using OpenGL clipping
-        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
-        gl_attributes[:num_clip_planes] = Observable(0)
-        pop!(gl_attributes, :clip_planes)
-        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+#         # Handled manually without using OpenGL clipping
+#         gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+#         gl_attributes[:num_clip_planes] = Observable(0)
+#         pop!(gl_attributes, :clip_planes)
+#         gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
+#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            # model/modelinv has no perspective projection so we should be fine
-            # with just applying it to the plane origin and transpose(inv(modelinv))
-            # to plane.normal
-            modelinv = inv(model)
-            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
+#             # model/modelinv has no perspective projection so we should be fine
+#             # with just applying it to the plane origin and transpose(inv(modelinv))
+#             # to plane.normal
+#             modelinv = inv(model)
+#             @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
-                normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
-                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
+#             output = Vector{Vec4f}(undef, 8)
+#             for i in 1:min(length(planes), 8)
+#                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+#                 normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
+#                 distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+#                     Vec3f(normal[1], normal[2], normal[3]))
+#                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+#             end
+#             for i in min(length(planes), 8)+1:8
+#                 output[i] = Vec4f(0, 0, 0, -1e9)
+#             end
 
-            return output
-        end
+#             return output
+#         end
 
-        # color attribute adjustments
-        pop!(gl_attributes, :lowclip, nothing)
-        pop!(gl_attributes, :highclip, nothing)
-        # Invalid:
-        pop!(gl_attributes, :nan_color, nothing)
-        pop!(gl_attributes, :alpha, nothing) # Why is this even here?
-        pop!(gl_attributes, :intensity, nothing)
-        pop!(gl_attributes, :color_norm, nothing)
-        # cleanup
-        pop!(gl_attributes, :_limits)
-        pop!(gl_attributes, :is_air)
+#         # color attribute adjustments
+#         pop!(gl_attributes, :lowclip, nothing)
+#         pop!(gl_attributes, :highclip, nothing)
+#         # Invalid:
+#         pop!(gl_attributes, :nan_color, nothing)
+#         pop!(gl_attributes, :alpha, nothing) # Why is this even here?
+#         pop!(gl_attributes, :intensity, nothing)
+#         pop!(gl_attributes, :color_norm, nothing)
+#         # cleanup
+#         pop!(gl_attributes, :_limits)
+#         pop!(gl_attributes, :is_air)
 
-        # make sure these exist
-        get!(gl_attributes, :color, nothing)
-        get!(gl_attributes, :color_map, nothing)
+#         # make sure these exist
+#         get!(gl_attributes, :color, nothing)
+#         get!(gl_attributes, :color_map, nothing)
 
-        # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap, nothing)
-        uv_transform = pop!(gl_attributes, :uv_transform)
+#         # process texture mapping
+#         uv_map = pop!(gl_attributes, :uvmap, nothing)
+#         uv_transform = pop!(gl_attributes, :uv_transform)
 
-        if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
-            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
-                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
-            end
+#         if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+#             if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+#                 error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+#             end
 
-            if !isnothing(to_value(uv_transform))
-                # new
-                packed = map(Makie.pack_voxel_uv_transform, uv_transform)
-            else
-                # old, deprecated
-                @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
-                packed = map(uv_map) do uvmap
-                    raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
-                    converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
-                    return Makie.pack_voxel_uv_transform(converted_uvt)
-                end
-            end
-            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
+#             if !isnothing(to_value(uv_transform))
+#                 # new
+#                 packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+#             else
+#                 # old, deprecated
+#                 @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+#                 packed = map(uv_map) do uvmap
+#                     raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+#                     converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+#                     return Makie.pack_voxel_uv_transform(converted_uvt)
+#                 end
+#             end
+#             gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
-            interp = to_value(pop!(gl_attributes, :interpolate))
-            interp = interp ? :linear : :nearest
-            color = gl_attributes[:color]
-            gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
-        elseif !isnothing(to_value(gl_attributes[:color]))
-            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
-                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
-            end
-            gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
-        end
+#             interp = to_value(pop!(gl_attributes, :interpolate))
+#             interp = interp ? :linear : :nearest
+#             color = gl_attributes[:color]
+#             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
+#         elseif !isnothing(to_value(gl_attributes[:color]))
+#             if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+#                 error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+#             end
+#             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
+#         end
 
-        # for depthsorting
-        gl_attributes[:view_direction] = camera(scene).view_direction
+#         # for depthsorting
+#         gl_attributes[:view_direction] = camera(scene).view_direction
 
-        return draw_voxels(screen, tex, gl_attributes)
-    end
-end
+#         return draw_voxels(screen, tex, gl_attributes)
+#     end
+# end

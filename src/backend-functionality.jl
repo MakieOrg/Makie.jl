@@ -197,3 +197,13 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
         end
     end
 end
+
+function add_computation!(attr, scene, ::Val{:voxel_model})
+    register_computation!(attr, [:x, :y, :z, :chunk_u8, :model], [:voxel_model]) do (xs, ys, zs, chunk, model), changed, cached
+        mini  = minimum.((xs[], ys[], zs[]))
+        width = maximum.((xs[], ys[], zs[])) .- mini
+        return (Mat4f(model[] *
+            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk[])))
+        ), )
+    end
+end

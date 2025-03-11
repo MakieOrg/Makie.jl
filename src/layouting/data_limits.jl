@@ -83,10 +83,10 @@ function data_limits(plot::Text)
     end
 end
 
-function data_limits(plot::Voxels)
-    xyz = to_value.(plot.converted[1:3])
-    return Rect3d(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
-end
+# function data_limits(plot::Voxels)
+#     xyz = to_value.(plot.converted[1:3])
+#     return Rect3d(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
+# end
 
 # includes markersize and rotation
 function data_limits(plot::MeshScatter)

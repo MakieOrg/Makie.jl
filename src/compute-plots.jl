@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -51,6 +51,7 @@ end
 
 # temp fix axis selection
 args_preferred_axis(::Type{<: Surface}, attr::ComputeGraph) = LScene
+args_preferred_axis(::Type{<: Voxels}, attr::ComputeGraph) = LScene
 function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     result = args_preferred_axis(PT, attr[:positions][])
     isnothing(result) && return Axis
@@ -216,12 +217,6 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         inputs = map(enumerate(args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
-            if input_args[i] isa Observable
-                on(input_args[i]) do arg
-                    setproperty!(attr, Symbol(:arg, i), arg)
-                    return
-                end
-            end
             return sym
         end
     else

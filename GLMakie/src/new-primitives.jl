@@ -5,6 +5,7 @@ using Makie.ComputePipeline
 ################################################################################
 
 function missing_uniforms(robj)
+    @info "Verifying uniforms"
     for (key, value) in robj.vertexarray.program.uniformloc
         if !haskey(robj.uniforms, key)
             @info "Missing $key"
@@ -78,6 +79,7 @@ function add_camera_attributes!(data, screen, camera, space)
     data[:view] = Makie.get_view(camera, space)
     data[:upvector] = camera.upvector
     data[:eyeposition] = camera.eyeposition
+    data[:view_direction] = camera.view_direction
     return data
 end
 
@@ -107,42 +109,58 @@ function generate_clip_planes(pvm, planes, space, output)
     return generate_clip_planes(planes, space, output)
 end
 
-
-function generate_clip_planes!(attr, target_space::Symbol = :data)
-    if !haskey(attr, :projectionview)
-        scene = attr[:scene][]
-        # is projectionview enough to trigger on scene resize in all cases?
-        add_input!(attr, :projectionview, scene.camera.projectionview[])
-        on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+function generate_model_space_clip_planes(model, planes, space, output)
+    modelinv = inv(model)
+    @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
+    planes = map(planes) do plane
+        origin = modelinv * to_ndim(Point4f, plane.distance * plane.normal, 1)
+        normal = transpose(model) * to_ndim(Vec4f, plane.normal, 0)
+        return Plane3f(origin[Vec(1,2,3)] / origin[4], normal[Vec(1,2,3)])
     end
-    register_computation!(
-        attr, [:clip_planes, :space, :projectionview], [:gl_clip_planes, :gl_num_clip_planes]
-    ) do input, changed, cached
+    return generate_clip_planes(planes, space, output)
+end
+
+
+function generate_clip_planes!(attr, target_space::Symbol = :world, modelname = :model_f32c)
+    inputs = [:clip_planes, :space]
+    target_space == :model && push!(inputs, modelname)
+    if target_space == :clip
+        if !haskey(attr, :projectionview)
+            scene = attr[:scene][]
+            # is projectionview enough to trigger on scene resize in all cases?
+            add_input!(attr, :projectionview, scene.camera.projectionview[])
+            on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+        end
+        push!(inputs, :projectionview)
+    end
+
+    register_computation!(attr, inputs, [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, cached
         output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
         planes = input.clip_planes[]
-        if target_space === :data
-            if changed.projectionview && !changed.space && !changed.clip_planes
-                return nothing # ignore projectionview
-            end
+        if target_space === :world
             return generate_clip_planes(planes, input.space[], output)
-        else
+        elseif target_space === :model
+            return generate_model_space_clip_planes(getproperty(input, modelname)[], planes, input.space[], output)
+        elseif target_space === :clip
             return generate_clip_planes(input.projectionview[], planes, input.space[], output)
+        else
+            error("Unknown space $target_space.")
         end
     end
     return
 end
 
 # This one plays nice with out system, only needs model
-function register_world_normalmatrix!(attr, model = :model_f32c)
-    register_computation!(attr, [model], [:world_normalmatrix]) do (m,), _, __
+function register_world_normalmatrix!(attr, modelname = :model_f32c)
+    register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
         return (Mat3f(transpose(inv(m[][Vec(1,2,3), Vec(1,2,3)]))), )
     end
 end
 
 # This one does not, requires the who-knows-when-it-updates view matrix...
-function add_view_normalmatrix!(data, attr, model = :model_f32c)
+function add_view_normalmatrix!(data, attr, modelname = :model_f32c)
     model = Observable(Mat3f)
-    register_computation!(attr, [model], Symbol[]) do (model,), _, __
+    register_computation!(attr, [modelname], Symbol[]) do (model,), _, __
         model[] = m[Vec(1,2,3), Vec(1,2,3)]
         return nothing
     end
@@ -1137,6 +1155,113 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         if isnothing(last)
             # Generate complex defaults
             robj = assemble_mesh_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
+    return robj
+end
+
+
+################################################################################
+### Voxels
+################################################################################
+
+
+function assemble_voxel_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+
+    voxel_id = Texture(screen.glscreen, args.chunk_u8[], minfilter = :nearest)
+    uvt = args.packed_uv_transform[]
+    data = Dict{Symbol, Any}(
+        :voxel_id => voxel_id,
+        :uv_transform => isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest),
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => attr[:ssao][],
+        :shading => attr[:shading][]
+    )
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+    add_light_attributes!(args.scene[], data, attr)
+
+    if haskey(args, :color)
+        interp = attr[:interpolate][] ? :linear : :nearest
+        data[:color] = Texture(screen.glscreen, args.color[], minfilter = interp)
+    end
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_voxels(screen, voxel_id, data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
+    attr = plot.args[1]
+
+    generic_robj_setup(screen, scene, plot)
+    Makie.add_computation!(attr, scene, Val(:voxel_model))
+    generate_clip_planes!(attr, :model, :voxel_model)
+
+    register_world_normalmatrix!(attr, :voxel_model)
+
+    register_computation!(attr, [:chunk_u8, :gap], [:instances]) do (chunk, gap), changed, cached
+        N = sum(size(chunk[]))
+        return (ifelse(gap[] > 0.01, 2 * N, N + 3),)
+    end
+
+    # TODO: can this be reused in WGLMakie?
+    # TODO: Should this verify that color is a texture?
+    register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
+        if !isnothing(uvt[])
+            return (Makie.pack_voxel_uv_transform(uv_transform[]),)
+        elseif !isnothing(uvmap[])
+            @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+            raw_uvt = Makie.uvmap_to_uv_transform(uvmap[])
+            converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+            return (Makie.pack_voxel_uv_transform(converted_uvt[]),)
+        else
+            return (nothing,)
+        end
+    end
+
+    inputs = [
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :chunk_u8, :packed_uv_transform
+    ]
+    uniforms = [
+        :instances, :colormap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :transparency, :fxaa, :visible,
+        :voxel_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :gap
+    ]
+
+    haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
+    haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
+
+    input2glname = Dict{Symbol, Symbol}(
+        :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
+        :voxel_colormap => :color_map, :voxel_color => :color,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_voxel_robj(attr, args, uniforms, input2glname)
         else
             robj = last[1][]
             update_robjs!(robj, args, changed, input2glname)

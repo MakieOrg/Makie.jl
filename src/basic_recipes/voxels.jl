@@ -1,3 +1,158 @@
+#=
+Backend Implementation Notes
+- lowclip, highclip are built into colormap
+- colorrange should not be fetched, use static (1, 255)
+- voxel_colormap is only defined if colormapping is used
+- colors is only define dif 1:1 mapping is used
+
+- x, y, z, chunk_u8 is output data
+
+renamed _limtis -> value_limits
+=#
+
+# TODO: Bad workaround for now
+MakieCore.argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
+conversion_trait(::Type{Voxels}, args...) = Voxels
+
+function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
+    X, Y, Z = map(x -> EndPoints(-0.5*x, 0.5*x), size(chunk))
+    return (X, Y, Z, chunk)
+end
+
+function convert_arguments(::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
+    xi = Float32.(to_endpoints(xs, "x", Voxels))
+    yi = Float32.(to_endpoints(ys, "y", Voxels))
+    zi = Float32.(to_endpoints(zs, "z", Voxels))
+    return (xi, yi, zi, chunk)
+end
+
+function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
+                           zs::EndPoints, chunk::Array{<: Real,3})
+    return (xs, ys, zs, chunk)
+end
+
+function register_voxel_conversions!(attr)
+
+    register_computation!(attr, [:chunk, :colorrange, :is_air], [:value_limits]) do (chunk, colorrange, is_air), changed, cached
+        colorrange[] !== automatic && return (colorrange[],)
+
+        mini, maxi = (Inf, -Inf)
+        for elem in chunk[]
+            is_air[](elem) && continue
+            mini = min(mini, elem)
+            maxi = max(maxi, elem)
+        end
+        if !(isfinite(mini) && isfinite(maxi) && isa(mini, Real))
+            throw(ArgumentError("Voxel Chunk contains invalid data, resulting in invalid limits ($mini, $maxi)."))
+        end
+        return ((mini, maxi),)
+    end
+
+    register_computation!(attr, [:value_limits, :is_air, :colorscale, :chunk],
+            [:chunk_u8]) do (lims, is_air, scale, chunk), changed, cached
+
+        # No conversions necessary so no new array necessary. Should still
+        # propagate updates though
+        chunk[] isa Array{UInt8, 3} && return (chunk[], )
+
+        chunk_u8 = isnothing(cached) ? Array{UInt8, 3}(undef, size(chunk[])) : cached[1][]
+
+        mini, maxi = apply_scale(scale[], lims[])
+        maxi = max(mini + 10eps(float(mini)), maxi)
+        @inbounds for i in eachindex(chunk[])
+            _update_voxel(chunk_u8, chunk[], i, is_air[], scale[], mini, maxi)
+        end
+
+        return (chunk_u8,)
+    end
+end
+
+# TODO: Does have some overlap with the normal version...
+function register_voxel_colormapping!(attr)
+    # TODO: Is resolving this immediately fine?
+    if isnothing(attr[:color][])
+
+        register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
+            N = 253 + (lowclip[] === automatic) + (highclip[] === automatic)
+            cm = add_alpha.(resample_cmap(cmap[], N), alpha[])
+            if lowclip[] !== automatic
+                cm = [to_color(lowclip[]); cm]
+            end
+            if highclip[] !== automatic
+                cm = [cm; to_color(highclip[])]
+            end
+            return (cm,)
+        end
+
+    else
+
+        register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
+            if color[] isa AbstractVector # one color per id
+                output = Vector{RGBAf}(undef, 255)
+                @inbounds for i in 1:min(255, length(color[]))
+                    output[i] = add_alpha(to_color(color[][i]), alpha[])
+                end
+                for i in min(255, length(color[]))+1 : 255
+                    output[i] = RGBAf(0,0,0,0)
+                end
+            elseif color[] isa AbstractArray # image/texture
+                output = add_alpha.(to_color.(color[]), alpha[])
+            elseif color[] isa Colorant # static
+                c = add_alpha(to_color(color[]), alpha[])
+                output = [c for _ in 1:255]
+            end
+            return (output,)
+        end
+
+    end
+end
+
+function compute_plot(::Type{Voxels}, args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Voxels, attr, user_kw)
+    register_arguments!(Voxels, attr, user_kw, args...)
+    register_voxel_conversions!(attr)
+    register_voxel_colormapping!(attr)
+    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+        return (Rect3d(Vec3.(x[], y[], z[])...),)
+    end
+    T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:chunk][]))
+    p = Plot{voxels,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+Base.@propagate_inbounds function _update_voxel(
+        output::Array{UInt8, 3}, input::Array, i::Integer,
+        is_air::Function, scale, mini::Real, maxi::Real
+    )
+
+    @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
+    # Rescale data to UInt8 range for voxel ids
+    c = 252.99998
+    @inbounds begin
+        x = input[i]
+        if is_air(x)
+            output[i] = 0x00
+        else
+            lin = clamp(c * (apply_scale(scale, x) - mini) / (maxi - mini) + 2, 1, 255)
+            output[i] = trunc(UInt8, lin)
+        end
+    end
+    return nothing
+end
+
+Base.@propagate_inbounds function _update_voxel(
+        output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
+        is_air::Function, scale, mini::Real, maxi::Real
+    )
+    return nothing
+end
+
+
+
+#=
+
 function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
     X, Y, Z = map(x-> (-0.5*x, 0.5*x), size(chunk))
     return convert_arguments(T, X, Y, Z, chunk)
@@ -207,6 +362,8 @@ function plot!(plot::Voxels)
     return
 end
 
+=#
+
 pack_voxel_uv_transform(uv_transform::Nothing) = nothing
 
 function pack_voxel_uv_transform(uv_transform::Vector{Mat{2,3,Float32,6}})
@@ -239,7 +396,7 @@ function uvmap_to_uv_transform(uvmap::Array)
     end
 end
 
-
+# TODO: for CairoMakie
 
 function voxel_size(p::Voxels)
     mini = minimum.(to_value.(p.converted[1:3]))
