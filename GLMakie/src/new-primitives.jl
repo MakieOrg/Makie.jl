@@ -674,7 +674,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
     ) do (pvm32, positions), changed, cached
         output = isnothing(cached) ? Point4f[] : cached[1][]
-        resize!(cached[1][], length(positions[]))
+        resize!(output, length(positions[]))
         map!(output, positions[]) do pos
             return pvm32[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0.0), 1.0)
         end
