@@ -420,39 +420,39 @@ end
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
-    return cached_robj!(screen, scene, plot) do gl_attributes
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
 
-        # signals not supported for shading yet
-        marker = pop!(gl_attributes, :marker)
+#         # signals not supported for shading yet
+#         marker = pop!(gl_attributes, :marker)
 
-        positions = handle_view(plot[1], gl_attributes)
-        f32c = pop!(gl_attributes, :f32c)
-        positions = apply_transform_and_f32_conversion(plot, f32c, positions)
+#         positions = handle_view(plot[1], gl_attributes)
+#         f32c = pop!(gl_attributes, :f32c)
+#         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
 
-        # If the vertices of the scattered mesh, markersize and (if it applies) model
-        # are float32 safe we should be able to just correct for any scaling from
-        # float32convert in the shader, after those conversions.
-        # We should also be fine as long as rotation = identity (also in model).
-        # If neither is the case we would have to combine vertices with positions and
-        # transform them to world space (post float32convert) on the CPU. We then can't
-        # do instancing anymore, so meshscatter becomes pointless.
-        if !isnothing(scene.float32convert)
-            gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-                # we must use new_f32c with transform_marker = true,
-                # because model might be merged into f32c (robj.model = I)
-                # with transform_marker = false we must use the old f32c
-                # as we don't want model to apply
-                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-            end
-        end
+#         # If the vertices of the scattered mesh, markersize and (if it applies) model
+#         # are float32 safe we should be able to just correct for any scaling from
+#         # float32convert in the shader, after those conversions.
+#         # We should also be fine as long as rotation = identity (also in model).
+#         # If neither is the case we would have to combine vertices with positions and
+#         # transform them to world space (post float32convert) on the CPU. We then can't
+#         # do instancing anymore, so meshscatter becomes pointless.
+#         if !isnothing(scene.float32convert)
+#             gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+#                 # we must use new_f32c with transform_marker = true,
+#                 # because model might be merged into f32c (robj.model = I)
+#                 # with transform_marker = false we must use the old f32c
+#                 # as we don't want model to apply
+#                 return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+#             end
+#         end
 
-        if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-            gl_attributes[:image] = gl_attributes[:color]
-        end
-        return draw_mesh_particle(screen, (marker, positions), gl_attributes)
-    end
-end
+#         if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+#             gl_attributes[:image] = gl_attributes[:color]
+#         end
+#         return draw_mesh_particle(screen, (marker, positions), gl_attributes)
+#     end
+# end
 
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})

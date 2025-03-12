@@ -10,9 +10,9 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
             if mesh_obs isa Observable
                 val = map(m -> getproperty(m, name), m)
             end
-            if val[] isa AbstractVector
+            if to_value(val) isa AbstractVector
                 result[target] = GLBuffer(context, val)
-            elseif val[] isa AbstractMatrix
+            elseif to_value(val) isa AbstractMatrix
                 result[target] = Texture(context, val)
             else
                 error("unsupported attribute: $(name)")

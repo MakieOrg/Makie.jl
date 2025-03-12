@@ -48,33 +48,33 @@ function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     return bb_ref[]
 end
 
-# same as data_limits except using iterate_transformed
-function boundingbox(plot::MeshScatter, space::Symbol = :data)
-    # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotation)
-    marker_bb = Rect3d(marker)
-    positions = iterate_transformed(plot)
-    scales = markersize
-    # fast path for constant markersize
-    if scales isa VecTypes{3} && rotation isa Quaternion
-        bb = Rect3d(positions)
-        marker_bb = rotation * (marker_bb * scales)
-        if plot.transform_marker[]::Bool
-            model = (plot.model[][Vec(1,2,3), Vec(1,2,3)])::Mat3d
-            corners = [model * p for p in coordinates(marker_bb)]
-            mini = minimum(corners); maxi = maximum(corners)
-            return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
-        end
-        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
-    else
-        # TODO: optimize const scale, var rot and var scale, const rot
-        if plot.transform_marker[]::Bool
-            return limits_with_marker_transforms(positions, scales, rotation, plot.model[], marker_bb)
-        else
-            return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
-        end
-    end
-end
+# # same as data_limits except using iterate_transformed
+# function boundingbox(plot::MeshScatter, space::Symbol = :data)
+#     # TODO: avoid mesh generation here if possible
+#     @get_attribute plot (marker, markersize, rotation)
+#     marker_bb = Rect3d(marker)
+#     positions = iterate_transformed(plot)
+#     scales = markersize
+#     # fast path for constant markersize
+#     if scales isa VecTypes{3} && rotation isa Quaternion
+#         bb = Rect3d(positions)
+#         marker_bb = rotation * (marker_bb * scales)
+#         if plot.transform_marker[]::Bool
+#             model = (plot.model[][Vec(1,2,3), Vec(1,2,3)])::Mat3d
+#             corners = [model * p for p in coordinates(marker_bb)]
+#             mini = minimum(corners); maxi = maximum(corners)
+#             return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
+#         end
+#         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+#     else
+#         # TODO: optimize const scale, var rot and var scale, const rot
+#         if plot.transform_marker[]::Bool
+#             return limits_with_marker_transforms(positions, scales, rotation, plot.model[], marker_bb)
+#         else
+#             return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+#         end
+#     end
+# end
 
 function limits_with_marker_transforms(positions, scales, rotation, model, element_bbox)
     isempty(positions) && return Rect3d()

@@ -215,3 +215,38 @@ function add_computation!(attr, scene, ::Val{:volume_model})
         return (Mat4f(model[] * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
     end
 end
+
+# TODO: Is this reusable?
+# repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
+function add_computation!(attr, scene, ::Val{:uv_transform_packing})
+    register_computation!(attr, [:uv_transform], [:packed_uv_transform]) do (uvt,), changed, cached
+        if uvt[] isa Vector
+            # 3x Vec2 should match the element order of glsl mat3x2
+            output = Vector{Vec2f}(undef, 3 * length(uvt[]))
+            for i in eachindex(uvt[])
+                output[3 * (i-1) + 1] = uvt[][i][Vec(1, 2)]
+                output[3 * (i-1) + 2] = uvt[][i][Vec(3, 4)]
+                output[3 * (i-1) + 3] = uvt[][i][Vec(5, 6)]
+            end
+            return (output,)
+        else
+            return (uvt[],)
+        end
+    end
+end
+
+function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
+    # TODO: Is this correct?
+    # TODO: Probably needs changes if more fast paths are brought back
+
+    # If the vertices of the scattered mesh, markersize and (if it applies) model
+    # are float32 safe we should be able to just correct for any scaling from
+    # float32convert in the shader, after those conversions.
+    # We should also be fine as long as rotation = identity (also in model).
+    # If neither is the case we would have to combine vertices with positions and
+    # transform them to world space (post float32convert) on the CPU. We then can't
+    # do instancing anymore, so meshscatter becomes pointless.
+    register_computation!(attr, [:f32c], [:f32c_scale]) do (f32c, ), changed, cached
+        return (Makie.is_identity_transform(f32c[]) ? Vec3f(1) : Vec3f(f32c[].scale), )
+    end
+end

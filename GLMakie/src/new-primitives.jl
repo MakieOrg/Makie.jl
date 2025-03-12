@@ -207,8 +207,8 @@ function add_light_attributes!(scene, data, attr)
     end
 end
 
-function generic_robj_setup(screen, scene, plot)
-    attr = plot.args[1]
+function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
+    attr = plot.args[1]::ComputeGraph
     add_input!(attr, :scene, scene)
     add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
     return attr
@@ -398,6 +398,118 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
                 end
                 robj.vertexarray.bufferlength = length(args[1][])
                 # robj.vertexarray.indices = length(args[3][])
+            end
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
+
+    return robj
+end
+
+################################################################################
+### MeshScatter
+################################################################################
+
+function assemble_meshscatter_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+    scene = args.scene[]
+    camera = args.scene[].camera
+
+    data = Dict{Symbol, Any}(
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        :ssao => attr[:ssao][],
+        :shading => attr[:shading][]
+
+        # :color_map => nothing,
+        # :color_norm => nothing,
+        # :view_normalmatrix => Mat4f(I),
+        # :image => nothing,
+        # :matcap => nothing,
+    )
+
+    if args.packed_uv_transform[] isa Vector{Vec2f}
+        data[:uv_transform] = TextureBuffer(screen.glscreen, args.packed_uv_transform[])
+    else
+        data[:uv_transform] = args.packed_uv_transform[]
+    end
+
+    add_color_attributes!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
+    add_camera_attributes!(data, screen, camera, attr[:space][])
+    add_light_attributes!(scene, data, attr)
+
+    # Correct the name mapping
+    if !isnothing(get(data, :intensity, nothing))
+        input2glname[:scaled_color] = :intensity
+    end
+    if !isnothing(get(data, :image, nothing))
+        input2glname[:scaled_color] = :image
+    end
+    if !isnothing(get(data, :color, nothing))
+        input2glname[:scaled_color] = :color
+    end
+
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    marker = attr[:marker][]
+    positions = data[:position]
+    return draw_mesh_particle(screen, (marker, positions), data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
+    attr = generic_robj_setup(screen, scene, plot)
+
+    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    register_world_normalmatrix!(attr)
+
+    register_computation!(attr, [:positions_transformed_f32c], [:instances]) do (pos, ), changed, cached
+        return (length(pos[]),)
+    end
+
+    inputs = [
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_color, :scaled_colorrange,
+        :packed_uv_transform,
+    ]
+    uniforms = [
+        :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
+        :_lowclip, :_highclip, :nan_color, # :matcap,
+        :transparency, :fxaa, :visible,
+        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix, :shading
+    ]
+
+    input2glname = Dict{Symbol, Symbol}(
+        :positions_transformed_f32c => :position, :markersize => :scale,
+        :packed_uv_transform => :uv_transform,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :color,
+        :model_f32c => :model,
+        :_lowclip => :lowclip, :_highclip => :highclip,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_meshscatter_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            if changed.positions_transformed_f32c
+                if haskey(robj.uniforms, :len)
+                    robj.uniforms[:len][] = length(args.positions_transformed_f32c[])
+                end
             end
             update_robjs!(robj, args, changed, input2glname)
         end
@@ -1086,6 +1198,7 @@ end
 
 function assemble_mesh_robj(attr, args, uniforms, input2glname)
     screen = args.gl_screen[]
+    camera = args.scene[].camera
 
     data = Dict{Symbol, Any}(
         # Compile time variable
@@ -1095,7 +1208,6 @@ function assemble_mesh_robj(attr, args, uniforms, input2glname)
         :shading => attr[:shading][]
     )
 
-    camera = args.scene[].camera
     add_camera_attributes!(data, screen, camera, args.space[])
 
     input2glname[:scaled_color] = add_mesh_color_attributes!(
@@ -1175,6 +1287,7 @@ end
 
 function assemble_voxel_robj(attr, args, uniforms, input2glname)
     screen = args.gl_screen[]
+    camera = args.scene[].camera
 
     voxel_id = Texture(screen.glscreen, args.chunk_u8[], minfilter = :nearest)
     uvt = args.packed_uv_transform[]
@@ -1188,7 +1301,6 @@ function assemble_voxel_robj(attr, args, uniforms, input2glname)
         :shading => attr[:shading][]
     )
 
-    camera = args.scene[].camera
     add_camera_attributes!(data, screen, camera, args.space[])
     add_light_attributes!(args.scene[], data, attr)
 

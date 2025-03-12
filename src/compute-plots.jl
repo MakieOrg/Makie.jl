@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -58,6 +58,7 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     return result
 end
 
+# TODO: is this data_limits or boundingbox()?
 function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
     if space === markerspace
         bb = Rect3d()
@@ -81,6 +82,22 @@ function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offs
         return Rect3d(positions)
     end
 end
+
+function _meshscatter_data_limits(positions, marker, markersize, rotation)
+    # TODO: avoid mesh generation here if possible
+    marker_bb = Rect3d(marker)
+    scales = markersize
+    # fast path for constant markersize
+    if scales isa VecTypes{3} && rotation isa Quaternion
+        bb = Rect3d(positions)
+        marker_bb = rotation * (marker_bb * scales)
+        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+    else
+        # TODO: optimize const scale, var rot and var scale, const rot
+        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+    end
+end
+
 
 function add_alpha(color, alpha)
     return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
@@ -566,6 +583,22 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+function compute_plot(::Type{MeshScatter}, args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(MeshScatter, attr, user_kw)
+    register_arguments!(MeshScatter, attr, user_kw, args...)
+    register_marker_computations!(attr)
+    register_colormapping!(attr)
+    register_computation!(attr, [:positions, :marker, :markersize, :rotation],
+                          [:data_limits]) do args, changed, last
+        return (_meshscatter_data_limits(map(getindex, args)...),)
+    end
+    T = typeof(attr[:positions][])
+    p = Plot{meshscatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
     return p
 end

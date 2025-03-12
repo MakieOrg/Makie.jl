@@ -89,22 +89,22 @@ end
 # end
 
 # includes markersize and rotation
-function data_limits(plot::MeshScatter)
-    # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotation)
-    marker_bb = Rect3d(marker)
-    positions = point_iterator(plot)
-    scales = markersize
-    # fast path for constant markersize
-    if scales isa VecTypes{3} && rotation isa Quaternion
-        bb = Rect3d(positions)
-        marker_bb = rotation * (marker_bb * scales)
-        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
-    else
-        # TODO: optimize const scale, var rot and var scale, const rot
-        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
-    end
-end
+# function data_limits(plot::MeshScatter)
+#     # TODO: avoid mesh generation here if possible
+#     @get_attribute plot (marker, markersize, rotation)
+#     marker_bb = Rect3d(marker)
+#     positions = point_iterator(plot)
+#     scales = markersize
+#     # fast path for constant markersize
+#     if scales isa VecTypes{3} && rotation isa Quaternion
+#         bb = Rect3d(positions)
+#         marker_bb = rotation * (marker_bb * scales)
+#         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+#     else
+#         # TODO: optimize const scale, var rot and var scale, const rot
+#         return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+#     end
+# end
 
 # include bbox from scaled markers
 function limits_with_marker_transforms(positions, scales, rotation, element_bbox)
