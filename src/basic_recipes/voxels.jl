@@ -114,7 +114,8 @@ function compute_plot(::Type{Voxels}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
-        return (Rect3d(Vec3.(x[], y[], z[])...),)
+        mini, maxi = Vec3.(x[], y[], z[])
+        return (Rect3d(mini, maxi .- mini),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:chunk][]))
     p = Plot{voxels,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])

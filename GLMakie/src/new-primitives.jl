@@ -1295,9 +1295,9 @@ function assemble_voxel_robj(attr, args, uniforms, input2glname)
     add_camera_attributes!(data, screen, camera, args.space[])
     add_light_attributes!(args.scene[], data, attr)
 
-    if haskey(args, :color)
+    if haskey(args, :voxel_color)
         interp = attr[:interpolate][] ? :linear : :nearest
-        data[:color] = Texture(screen.glscreen, args.color[], minfilter = interp)
+        data[:color] = Texture(screen.glscreen, args.voxel_color[], minfilter = interp)
     end
 
     # Transfer over uniforms
@@ -1331,7 +1331,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
             @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
             raw_uvt = Makie.uvmap_to_uv_transform(uvmap[])
             converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
-            return (Makie.pack_voxel_uv_transform(converted_uvt[]),)
+            return (Makie.pack_voxel_uv_transform(converted_uvt),)
         else
             return (nothing,)
         end
@@ -1341,7 +1341,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :chunk_u8, :packed_uv_transform
+        :chunk_u8, :packed_uv_transform, :voxel_color
     ]
     uniforms = [
         :instances, :colormap,
