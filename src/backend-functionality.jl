@@ -207,3 +207,11 @@ function add_computation!(attr, scene, ::Val{:voxel_model})
         ), )
     end
 end
+
+function add_computation!(attr, scene, ::Val{:volume_model})
+    register_computation!(attr, [:x, :y, :z, :model], [:volume_model]) do (xs, ys, zs, model), changed, cached
+        mini  = minimum.((xs[], ys[], zs[]))
+        width = maximum.((xs[], ys[], zs[])) .- mini
+        return (Mat4f(model[] * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
+    end
+end

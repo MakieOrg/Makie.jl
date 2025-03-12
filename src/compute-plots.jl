@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume}
 
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -675,6 +675,21 @@ function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
     end
     T = typeof(attr[:arg1][])
     p = Plot{mesh,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
+    p.transformation = Transformation()
+    return p
+end
+
+function compute_plot(::Type{Volume}, args::Tuple, user_kw::Dict{Symbol,Any})
+    attr = ComputeGraph()
+    add_attributes!(Volume, attr, user_kw)
+    register_arguments!(Volume, attr, user_kw, args...)
+    register_position_transforms!(attr)
+    register_colormapping!(attr, :volume)
+    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+        return (Rect3d(Vec3.(x[], y[], z[])...),)
+    end
+    T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:volume][]))
+    p = Plot{volume,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
     return p
 end

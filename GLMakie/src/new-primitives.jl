@@ -1273,3 +1273,94 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     robj = finalize_robj(screen, scene, plot)
     return robj
 end
+
+
+################################################################################
+### Volume
+################################################################################
+
+
+function assemble_volume_robj(attr, args, uniforms, input2glname)
+    screen = args.gl_screen[]
+
+    interp = attr[:interpolate][] ? :linear : :nearest
+    volume_data = Texture(screen.glscreen, args.volume[], minfilter = interp)
+
+    data = Dict{Symbol, Any}(
+        # Compile time variable
+        :overdraw => attr[:overdraw][],
+        # Constants
+        :ssao => attr[:ssao][],
+        :shading => attr[:shading][]
+    )
+
+    camera = args.scene[].camera
+    add_camera_attributes!(data, screen, camera, args.space[])
+    add_light_attributes!(args.scene[], data, attr)
+
+    if args.volume[] isa AbstractArray{<:Real}
+        data[:color_map] = args.alpha_colormap[]
+        data[:color_norm] = args.scaled_colorrange[]
+    end
+
+    # Transfer over uniforms
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name][]
+    end
+
+    return draw_volume(screen, volume_data, data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
+    attr = plot.args[1]
+
+    generic_robj_setup(screen, scene, plot)
+    Makie.add_computation!(attr, scene, Val(:volume_model)) # bit different from voxel_model
+
+    # TODO: check if these should be the normal model matrix (for voxel too)
+    generate_clip_planes!(attr, :model, :volume_model) # <--
+    register_world_normalmatrix!(attr, :volume_model) # <--
+
+    # TODO: reuse in clip planes
+    register_computation!(attr, [:volume_model], [:modelinv]) do (model,), changed, cached
+        return (Mat4f(inv(model[])),)
+    end
+
+    inputs = [
+        # Special
+        :space, :scene, :gl_screen,
+        # Needs explicit handling
+        :alpha_colormap, :scaled_colorrange
+    ]
+    uniforms = [
+        :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange, :enable_depth,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :transparency, :fxaa, :visible,
+        :volume_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+    ]
+
+    haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
+    haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
+
+    input2glname = Dict{Symbol, Symbol}(
+        :volume => :volumedata, :volume_model => :model,
+        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+    )
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        screen = args.gl_screen[]
+        if isnothing(last)
+            # Generate complex defaults
+            robj = assemble_volume_robj(attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
+    robj = finalize_robj(screen, scene, plot)
+    return robj
+end
