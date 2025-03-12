@@ -128,8 +128,7 @@ function generate_clip_planes!(attr, target_space::Symbol = :world, modelname = 
         if !haskey(attr, :projectionview)
             scene = attr[:scene][]
             # is projectionview enough to trigger on scene resize in all cases?
-            add_input!(attr, :projectionview, scene.camera.projectionview[])
-            on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+            add_input!(attr, :projectionview, scene.camera.projectionview)
         end
         push!(inputs, :projectionview)
     end
@@ -296,8 +295,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
     if attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
-        add_input!(attr, :projectionview, scene.camera.projectionview[])
-        on(pv -> Makie.update!(attr, projectionview = pv), scene.camera.projectionview)
+        add_input!(attr, :projectionview, scene.camera.projectionview)
 
         register_computation!(attr,
             [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
@@ -654,9 +652,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
 
-    add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
-    add_input!(attr, :viewport, scene.viewport[])
-    on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
+    add_input!(attr, :px_per_unit, screen.px_per_unit)
+    add_input!(attr, :viewport, scene.viewport)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin, :resolution]
     ) do (ppu, viewport), changed, output
@@ -665,8 +662,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     # position calculations for patterned lines
     # is projectionview enough to trigger on scene resize in all cases?
-    add_input!(attr, :projectionview, scene.camera.projectionview[])
-    on(pv -> Makie.update!(attr, projectionview = pv), plot, scene.camera.projectionview)
+    add_input!(attr, :projectionview, scene.camera.projectionview)
     register_computation!(
         attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
@@ -787,9 +783,8 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     attr = generic_robj_setup(screen, scene, plot)
 
-    add_input!(attr, :px_per_unit, screen.px_per_unit[]) # TODO: probably needs update!()
-    add_input!(attr, :viewport, scene.viewport[])
-    on(viewport -> Makie.update!(attr, viewport = viewport), scene.viewport) # TODO: This doesn't update immediately?
+    add_input!(attr, :px_per_unit, screen.px_per_unit)
+    add_input!(attr, :viewport, scene.viewport)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin]
     ) do (ppu, viewport), changed, output
@@ -802,8 +797,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     # linestyle/pattern handling
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
     add_input!(attr, :debug, false)
-    add_input!(attr, :projectionview, scene.camera.projectionview[])
-    on(pv -> Makie.update!(attr; projectionview=pv), plot, scene.camera.projectionview)
+    add_input!(attr, :projectionview, scene.camera.projectionview)
     generate_clip_planes!(attr)
 
     inputs = [

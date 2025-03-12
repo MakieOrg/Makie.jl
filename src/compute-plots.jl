@@ -299,27 +299,6 @@ end
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
-
-# TODO: add this to ComputePipeline?
-function ComputePipeline.add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(attr, k, obs[])
-    on(obs) do new_val
-        if attr.inputs[k].value != new_val
-            setproperty!(attr, k, new_val)
-        end
-    end
-    return
-end
-function ComputePipeline.add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(f, attr, k, obs[])
-    on(obs) do new_val
-        if attr.inputs[k].value != new_val
-            setproperty!(attr, k, new_val)
-        end
-    end
-    return
-end
-
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
     name = plotkey(T)

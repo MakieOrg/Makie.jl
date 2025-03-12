@@ -378,6 +378,30 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     return
 end
 
+function ComputePipeline.add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(attr, k, obs[])
+    # typemax-1 so it doesn't get disturbed by other listeners but can still be
+    # blocked by a typamax obs
+    on(obs, priority = typemax(Int)-1) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+        return Consume(false)
+    end
+    return
+end
+
+function ComputePipeline.add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(f, attr, k, obs[])
+    on(obs, priority = typemax(Int)-1) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+        return Consume(false)
+    end
+    return
+end
+
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
