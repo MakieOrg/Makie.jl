@@ -239,6 +239,7 @@ function assemble_scatter_robj(attr, args, uniforms, input2glname)
     colornorm = args.scaled_colorrange[]
     marker_shape = args.sdf_marker_shape[]
     distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas[]) : nothing
+
     data = Dict(
         :vertex => positions,
         :indices => length(positions),
@@ -246,6 +247,8 @@ function assemble_scatter_robj(attr, args, uniforms, input2glname)
         :distancefield => distancefield,
         :px_per_unit => screen.px_per_unit,   # technically not const?
         :ssao => false,                       # shader compilation const
+        :transparency => attr[:transparency][],
+        :overdraw => attr[:overdraw][],
         :shape => marker_shape,
     )
 
@@ -333,7 +336,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
         uniforms = [
             :gl_markerspace, :quad_scale,
-            :transparency, :fxaa, :visible,
+            :fxaa, :visible,
             :model_f32c,
             :_lowclip, :_highclip, :nan_color,
             :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
@@ -349,7 +352,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :quad_scale,
             :quad_offset,
             :image,
-            :transparency, :fxaa, :visible,
+            :fxaa, :visible,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
             :_lowclip, :_highclip, :nan_color,
@@ -419,15 +422,10 @@ function assemble_meshscatter_robj(attr, args, uniforms, input2glname)
 
     data = Dict{Symbol, Any}(
         # Compile time variable
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
+        :shading => attr[:shading][],
         :ssao => attr[:ssao][],
-        :shading => attr[:shading][]
-
-        # :color_map => nothing,
-        # :color_norm => nothing,
-        # :view_normalmatrix => Mat4f(I),
-        # :image => nothing,
-        # :matcap => nothing,
     )
 
     if args.packed_uv_transform[] isa Vector{Vec2f}
@@ -482,9 +480,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
         :_lowclip, :_highclip, :nan_color, # :matcap,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix, :shading
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -530,12 +528,14 @@ function assemble_lines_robj(attr, args, uniforms, input2glname)
     linestyle = attr[:linestyle][]
     camera = args.scene[].camera
     data = Dict{Symbol, Any}(
-        :ssao => false,
         :fast => isnothing(linestyle),
         # :fast == true removes pattern from the shader so we don't need
         #               to worry about this
         :vertex => positions, # Needs to be set before draw_lines()
-        :overdraw => attr[:overdraw][]
+        :transparency => attr[:transparency][],
+        :overdraw => attr[:overdraw][],
+        :ssao => false,
+        :debug => attr[:debug][],
     )
 
     add_camera_attributes!(data, args.gl_screen[], camera, args.space[])
@@ -681,7 +681,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (output,)
     end
 
-
     add_input!(attr, :debug, false)
 
     generate_clip_planes!(attr, :clip) # requires projectionview
@@ -712,7 +711,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit,
-        :transparency, :fxaa, :debug, :visible,
+        :fxaa, :visible,
         :model_f32c,
         :_lowclip, :_highclip, :nan_color,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
@@ -750,15 +749,14 @@ end
 ################################################################################
 
 function assemble_linesegments_robj(attr, args, uniforms, input2glname)
-    positions = args[1][] # changes name, so we use positional
     linestyle = attr[:linestyle][]
     camera = args.scene[].camera
 
     data = Dict{Symbol, Any}(
-        :ssao => false,
-        :vertex => positions, # TODO: can be automated
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        :indices => length(positions)
+        :debug => attr[:debug][],
+        :ssao => false,
     )
     screen = args.gl_screen[]
     add_camera_attributes!(data, screen, camera, args.space[])
@@ -777,7 +775,7 @@ function assemble_linesegments_robj(attr, args, uniforms, input2glname)
     if isnothing(linestyle)
         data[:pattern] = nothing
     end
-    return draw_linesegments(screen, positions, data) # TODO: extract positions
+    return draw_linesegments(screen, data[:vertex], data) # TODO: extract positions
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
@@ -800,16 +798,19 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     add_input!(attr, :projectionview, scene.camera.projectionview)
     generate_clip_planes!(attr)
 
+    register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
+        return (length(positions[]),)
+    end
+
     inputs = [
-        :positions_transformed_f32c,
         :space, :scene, :gl_screen,
         :synched_color, :alpha_colormap, :scaled_colorrange
     ]
     uniforms = [
+        :positions_transformed_f32c, :indices,
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :transparency, :fxaa, :debug,
-        :visible,
+        :fxaa, :visible,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
@@ -827,9 +828,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
             robj = assemble_linesegments_robj(attr, args, uniforms, input2glname)
         else
             robj = output[1][]
-            if changed[1]
-                robj.vertexarray.indices = length(args[1][])
-            end
             update_robjs!(robj, args, changed, input2glname)
         end
         screen.requires_update = true
@@ -845,20 +843,19 @@ end
 ################################################################################
 
 function assemble_image_robj(attr, args, uniforms, input2glname)
-    positions = args[1][] # changes name, so we use positional
     screen = args.gl_screen[]
 
     r = Rect2f(0,0,1,1)
 
     data = Dict{Symbol, Any}(
-        :vertices => positions,
-        # Compile time variable
-        :overdraw => attr[:overdraw][],
-        # Constants
-        :ssao => false,
         :faces => decompose(GLTriangleFace, r),
         :texturecoordinates => decompose_uv(r),
+
+        # Compile time variable/constants
         :picking_mode => "#define PICKING_INDEX_FROM_UV",
+        :transparency => attr[:transparency][],
+        :overdraw => attr[:overdraw][],
+        :ssao => false,
     )
 
     camera = args.scene[].camera
@@ -875,7 +872,7 @@ function assemble_image_robj(attr, args, uniforms, input2glname)
 
     # Correct the name mapping
     input2glname[:scaled_color] = :image
-    interp = args.interpolate[] ? :linear : :nearest
+    interp = attr[:interpolate][] ? :linear : :nearest
     data[:image] = Texture(screen.glscreen, color; minfilter = interp)
 
     # Transfer over uniforms
@@ -897,15 +894,15 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
     generate_clip_planes!(attr)
 
     inputs = [
-        :positions_transformed_f32c,
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+        :alpha_colormap, :scaled_color, :scaled_colorrange,
     ]
     uniforms = [
+        :positions_transformed_f32c,
         :_lowclip, :_highclip, :nan_color,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :model_f32c,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
@@ -949,9 +946,9 @@ function assemble_heatmap_robj(attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
         :position_x => Texture(screen.glscreen, args[1][], minfilter = :nearest),
         :position_y => Texture(screen.glscreen, args[2][], minfilter = :nearest),
-        # Compile time variable
+        # Compile time variable, Constants
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        # Constants
         :ssao => false,
     )
 
@@ -969,7 +966,7 @@ function assemble_heatmap_robj(attr, args, uniforms, input2glname)
 
     # Correct the name mapping
     input2glname[:scaled_color] = :intensity
-    interp = args.interpolate[] ? :linear : :nearest
+    interp = attr[:interpolate][] ? :linear : :nearest
     if color isa ShaderAbstractions.Sampler
         data[:intensity] = color
     else
@@ -1009,11 +1006,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+        :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
     uniforms = [
         :_lowclip, :_highclip, :nan_color,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :model_f32c, :instances,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
@@ -1053,11 +1050,11 @@ function assemble_surface_robj(attr, args, uniforms, input2glname)
     screen = args.gl_screen[]
 
     data = Dict{Symbol, Any}(
-        # Compile time variable
+        # Compile time variable, Constants
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        # Constants
+        :shading => attr[:shading][],
         :ssao => attr[:ssao][],
-        :shading => attr[:shading][]
     )
 
     colorname = add_mesh_color_attributes!(
@@ -1065,7 +1062,7 @@ function assemble_surface_robj(attr, args, uniforms, input2glname)
         args.scaled_color[],
         args.alpha_colormap[],
         args.scaled_colorrange[],
-        args.interpolate[]
+        attr[:interpolate][]
     )
     @assert colorname == :image
 
@@ -1102,12 +1099,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+        :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
     uniforms = [
         :x_transformed_f32c, :y_transformed_f32c, :z_converted,
         :_lowclip, :_highclip, :nan_color,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :model_f32c, :instances,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
@@ -1195,11 +1192,11 @@ function assemble_mesh_robj(attr, args, uniforms, input2glname)
     camera = args.scene[].camera
 
     data = Dict{Symbol, Any}(
-        # Compile time variable
+        # Compile time variable, Constants
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        # Constants
+        :shading => attr[:shading][],
         :ssao => attr[:ssao][],
-        :shading => attr[:shading][]
     )
 
     add_camera_attributes!(data, screen, camera, args.space[])
@@ -1209,7 +1206,7 @@ function assemble_mesh_robj(attr, args, uniforms, input2glname)
         args.scaled_color[],
         args.alpha_colormap[],
         args.scaled_colorrange[],
-        args.interpolate[]
+        attr[:interpolate][]
     )
 
     add_light_attributes!(args.scene[], data, attr)
@@ -1238,12 +1235,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :alpha_colormap, :scaled_color, :scaled_colorrange, :interpolate,
+        :alpha_colormap, :scaled_color, :scaled_colorrange,
     ]
     uniforms = [
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :_lowclip, :_highclip, :nan_color,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix
     ]
@@ -1288,11 +1285,11 @@ function assemble_voxel_robj(attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
         :voxel_id => voxel_id,
         :uv_transform => isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest),
-        # Compile time variable
+        # Compile time variable, Constants
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        # Constants
+        :shading => attr[:shading][],
         :ssao => attr[:ssao][],
-        :shading => attr[:shading][]
     )
 
     add_camera_attributes!(data, screen, camera, args.space[])
@@ -1349,7 +1346,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     uniforms = [
         :instances, :colormap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :voxel_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :gap
     ]
@@ -1393,11 +1390,12 @@ function assemble_volume_robj(attr, args, uniforms, input2glname)
     volume_data = Texture(screen.glscreen, args.volume[], minfilter = interp)
 
     data = Dict{Symbol, Any}(
-        # Compile time variable
+        # Compile time variable, Constants
+        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
-        # Constants
+        :shading => attr[:shading][],
         :ssao => attr[:ssao][],
-        :shading => attr[:shading][]
+        :enable_depth => attr[:enable_depth][],
     )
 
     camera = args.scene[].camera
@@ -1439,9 +1437,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :alpha_colormap, :scaled_colorrange
     ]
     uniforms = [
-        :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange, :enable_depth,
+        :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :transparency, :fxaa, :visible,
+        :fxaa, :visible,
         :volume_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
     ]
 
