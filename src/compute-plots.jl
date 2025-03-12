@@ -218,8 +218,7 @@ end
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
     # TODO expand_dims + dim_converts
     # Only 2 and 3d conversions are supported, and only
-    args = map(to_value, input_args)
-    PTrait = conversion_trait(P, args...)
+    PTrait = conversion_trait(P, map(to_value, input_args)...)
 
     if all(arg -> arg isa Computed, input_args)
 
@@ -231,11 +230,12 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 
     elseif !any(arg -> arg isa Computed, input_args)
 
-        inputs = map(enumerate(args)) do (i, arg)
+        inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
             return sym
         end
+
     else
         error("args should be either all Computed or all other things. $input_args")
     end
