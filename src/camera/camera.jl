@@ -119,7 +119,7 @@ Returns true if the current mouseposition is inside the given scene.
 """
 is_mouseinside(x) = is_mouseinside(get_scene(x))
 function is_mouseinside(scene::Scene)
-    return Vec(scene.events.mouseposition[]) in viewport(scene)[]
+    return scene.visible[] && in(Vec(scene.events.mouseposition[]), viewport(scene)[])
     # Check that mouse is not inside any other screen
     # for child in scene.children
     #     is_mouseinside(child) && return false

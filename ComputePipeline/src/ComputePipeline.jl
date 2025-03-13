@@ -507,6 +507,30 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     return
 end
 
+function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(attr, k, obs[])
+    # typemax-1 so it doesn't get disturbed by other listeners but can still be
+    # blocked by a typamax obs
+    on(obs, priority = typemax(Int)-1) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+        return Consume(false)
+    end
+    return
+end
+
+function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
+    add_input!(f, attr, k, obs[])
+    on(obs, priority = typemax(Int)-1) do new_val
+        if attr.inputs[k].value != new_val
+            setproperty!(attr, k, new_val)
+        end
+        return Consume(false)
+    end
+    return
+end
+
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
 """
@@ -671,19 +695,16 @@ function Base.delete!(attr::ComputeGraph, edge::Input)
 
     # All outputs lose their parent computation so they should probably be removed
     # Could also disconnect them, but what's the point of a loose node?
-    for computed in edge.outputs
-        for (k, v) in attr.outputs
-            if v === computed
-                delete!(attr.outputs, k)
-                break
-            end
+    for k in keys(attr.inputs)
+        if attr.inputs[k] === edge
+            delete!(attr.inputs, k)
+            break
         end
     end
 
-    # Input also exists in attr.input, so delete that
-    for (k, v) in attr.inputs
-        if v === edge
-            delete!(attr.inputs, k)
+    for k in keys(attr.outputs)
+        if attr.outputs[k] === edge.output
+            delete!(attr.outputs, k)
             break
         end
     end
