@@ -509,10 +509,13 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     return
 end
 
+add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable) = add_input!(f, attr, k, k, obs)
+add_input!(attr::ComputeGraph, k::Symbol, target::Symbol, obs::Observable) = add_input!(attr, k, target, obs)
+
 function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(attr, k, obs[])
+    _add_input!(identity, attr, k, k, obs[])
     # typemax-1 so it doesn't get disturbed by other listeners but can still be
-    # blocked by a typamax obs
+    # blocked by a typemax obs
     on(obs, priority = typemax(Int)-1) do new_val
         if attr.inputs[k].value != new_val
             setproperty!(attr, k, new_val)
@@ -522,8 +525,8 @@ function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     return
 end
 
-function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(f, attr, k, obs[])
+function add_input!(f, attr::ComputeGraph, k::Symbol, target::Symbol, obs::Observable)
+    add_input!(f, attr, k, target, obs[])
     on(obs, priority = typemax(Int)-1) do new_val
         if attr.inputs[k].value != new_val
             setproperty!(attr, k, new_val)
