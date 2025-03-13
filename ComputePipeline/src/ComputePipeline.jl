@@ -215,7 +215,7 @@ function update!(attr::ComputeGraph; kwargs...)
     return attr
 end
 
-Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key)
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key) || haskey(attr.outputs, key)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?

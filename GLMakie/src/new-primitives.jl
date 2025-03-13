@@ -1326,7 +1326,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     # TODO: Should this verify that color is a texture?
     register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
         if !isnothing(uvt[])
-            return (Makie.pack_voxel_uv_transform(uv_transform[]),)
+            return (Makie.pack_voxel_uv_transform(uvt[]),)
         elseif !isnothing(uvmap[])
             @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
             raw_uvt = Makie.uvmap_to_uv_transform(uvmap[])
@@ -1341,18 +1341,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # Special
         :space, :scene, :gl_screen,
         # Needs explicit handling
-        :chunk_u8, :packed_uv_transform, :voxel_color
+        :chunk_u8, :packed_uv_transform
     ]
     uniforms = [
-        :instances, :colormap,
+        :instances,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :fxaa, :visible,
         :voxel_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :gap
     ]
 
-    haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
     haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
+    haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
 
     input2glname = Dict{Symbol, Symbol}(
         :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
