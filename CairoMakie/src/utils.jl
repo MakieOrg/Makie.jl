@@ -577,6 +577,15 @@ cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
 
 to_cairo_image(img::AbstractMatrix{<: Colorant}) =  to_cairo_image(to_uint32_color.(img))
 
+function to_cairo_image(img::AbstractMatrix{UInt32})
+    # we need to convert from column-major to row-major storage,
+    # therefore we permute the dimensions.
+    # the materialization is necessary since the image is passed directly to Cairo.
+    materialized_matrix = collect(permutedims(img)) 
+    return Cairo.CairoARGBSurface(materialized_matrix) 
+end
+
+# This code path is more efficient since it avoids iterating over the returned matrix if we don't have to.
 function to_cairo_image(img::Matrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y

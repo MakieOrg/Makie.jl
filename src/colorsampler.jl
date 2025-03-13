@@ -155,7 +155,7 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
                            colormap, colorscale, colorrange::Vec2,
                            lowclip::Union{Automatic,RGBAf},
                            highclip::Union{Automatic,RGBAf},
-                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
+                           nan_color::RGBAf)::Union{AbstractArray{RGBAf, N},RGBAf} where {N}
     cmin, cmax = colorrange
     scaled_cmin = apply_scale(colorscale, cmin)
     scaled_cmax = apply_scale(colorscale, cmax)
@@ -379,7 +379,7 @@ end
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
-    return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
+    return lift((args...)-> numbers_to_colors(args...)[1], plot, cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
                       cm.nan_color)
 end
 
