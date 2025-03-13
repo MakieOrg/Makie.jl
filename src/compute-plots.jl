@@ -674,6 +674,16 @@ function register_mesh_decomposition!(attr)
             return nothing
         end
     end
+
+    register_computation!(attr, [:mesh, :color], [:mesh_color]) do (mesh, color), changed, cached
+        if hasproperty(mesh[], :color)
+            return (mesh[].color, )
+        else
+            return (color[], )
+        end
+    end
+
+
 end
 
 function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
@@ -682,7 +692,7 @@ function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_arguments!(Mesh, attr, user_kw, args...)
     register_mesh_decomposition!(attr)
     register_position_transforms!(attr)
-    register_colormapping!(attr)
+    register_colormapping!(attr, :mesh_color)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions[]),)
     end
