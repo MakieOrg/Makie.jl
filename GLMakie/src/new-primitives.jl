@@ -201,7 +201,7 @@ function add_light_attributes!(scene, data, attr)
 
     elseif shading == MultiLightShading
 
-        handle_lights(data, screen, scene.lights)
+        handle_lights(data, attr[:gl_screen][], scene.lights)
 
     end
 end
