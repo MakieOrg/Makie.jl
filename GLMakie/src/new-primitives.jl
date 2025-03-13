@@ -30,6 +30,9 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
             else
                 robj.vertexarray.indices = value
             end
+        elseif gl_name === :instances
+            # TODO: Is this risky since postprocessors are variable?
+            robj.postrenderfunction.n_instances[] = value
         elseif haskey(robj.uniforms, gl_name)
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.uniforms[gl_name], value)
