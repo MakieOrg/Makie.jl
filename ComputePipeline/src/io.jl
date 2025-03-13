@@ -38,12 +38,21 @@ function edge_callback_location(edge::ComputeEdge)
     outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
     return edge_callback_location(edge.callback, inputT, outputT)
 end
-edge_callback_location(input::Input) = edge_callback_location(input.f, (typeof(input.value),))
 
 edge_callback_location(f, arg1, arg3) = edge_callback_location(f, (arg1, Vector{Bool}, arg3))
 
 function edge_callback_location(f, args)
     file, line = Base.functionloc(f, args)
+    return "$file:$line"
+end
+
+function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any, <: Any, <: Any})
+    file, line = Base.functionloc(f.user_func, (x.key, args[1][1][]))
+    return "$file:$line"
+end
+
+function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any})
+    file, line = Base.functionloc(f.user_func, (x.key, args[1]))
     return "$file:$line"
 end
 
