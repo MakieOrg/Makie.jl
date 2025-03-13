@@ -307,7 +307,7 @@ end
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
-function add_attributes!(::Type{T}, attr, kwargs) where {T}
+function add_attributes!(::Type{T}, attr, kwargs, deferred_conversion = Set{Symbol}()) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
@@ -330,8 +330,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
 
         # primitives use convert_attributes, recipe plots don't
         if is_primitive
-            add_input!(attr, k, value) do key, value
-                return convert_attribute(value, Key{key}(), Key{name}())
+            if k in deferred_conversion
+                add_input!(attr, k, Symbol(:anon_, k), value)
+            else
+                add_input!(attr, k, value) do key, value
+                    return convert_attribute(value, Key{key}(), Key{name}())
+                end
             end
         else
             add_input!(attr, k, value)
@@ -560,7 +564,17 @@ end
 
 function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
-    add_attributes!(Scatter, attr, user_kw)
+    add_attributes!(Scatter, attr, user_kw, Set([:rotation]))
+    register_computation!(attr, [:anon_rotation], [:rotation, :billboard]) do (input,), changed, cached
+        rot = convert_attribute(input[], key"rotation"(), key"scatter"())
+        billboard = input[] isa Billboard
+        if cached === nothing || cached[2][] != billboard
+            return (rot, billboard)
+        else
+            return (rot, nothing)
+        end
+    end
+
     register_arguments!(Scatter, attr, user_kw, args...)
     register_marker_computations!(attr)
     register_colormapping!(attr)

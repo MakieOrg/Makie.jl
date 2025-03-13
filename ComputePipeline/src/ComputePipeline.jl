@@ -433,7 +433,8 @@ add_input!(graph, :first_node, 1)
 add_input!((k, v) -> Float32(v), graph, :second_node, 2)
 ```
 """
-add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
+add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, key, value)
+add_input!(attr::ComputeGraph, key::Symbol, trg::Symbol, value) = _add_input!(identity, attr, key, trg, value)
 
 # For cleaner printing and error tracking we do not use an anonymous function
 #   value -> conversion_function(key, value)
@@ -448,15 +449,16 @@ end
 (x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1][]), )
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
-    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, key, value)
+end
+function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, trg::Symbol, value)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, trg, value)
 end
 
-function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
+function _add_input!(func, attr::ComputeGraph, key::Symbol, target::Symbol, value)
     @assert !(value isa Computed)
-    if haskey(attr.inputs, key) || haskey(attr.outputs, key)
-        error("Cannot attach input with name $key - already exists!")
-        return
-    end
+    haskey(attr.inputs, key) && error("Cannot create input with name $key - already exists!")
+    haskey(attr.outputs, target) && error("Cannot create conversion target node with name $target - already exists!")
 
     output = Computed(key, RefValue{Any}())
     input = Input(key, value, func, output)
@@ -464,7 +466,7 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     output.parent_idx = 1
     # Needs to be Any, since input can change type
     attr.inputs[key] = input
-    attr.outputs[key] = output
+    attr.outputs[target] = output
     return
 end
 
@@ -507,10 +509,13 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     return
 end
 
+add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable) = add_input!(f, attr, k, k, obs)
+add_input!(attr::ComputeGraph, k::Symbol, target::Symbol, obs::Observable) = add_input!(attr, k, target, obs)
+
 function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(attr, k, obs[])
+    _add_input!(identity, attr, k, k, obs[])
     # typemax-1 so it doesn't get disturbed by other listeners but can still be
-    # blocked by a typamax obs
+    # blocked by a typemax obs
     on(obs, priority = typemax(Int)-1) do new_val
         if attr.inputs[k].value != new_val
             setproperty!(attr, k, new_val)
@@ -520,8 +525,8 @@ function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     return
 end
 
-function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
-    add_input!(f, attr, k, obs[])
+function add_input!(f, attr::ComputeGraph, k::Symbol, target::Symbol, obs::Observable)
+    add_input!(f, attr, k, target, obs[])
     on(obs, priority = typemax(Int)-1) do new_val
         if attr.inputs[k].value != new_val
             setproperty!(attr, k, new_val)
