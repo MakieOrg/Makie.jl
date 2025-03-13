@@ -218,8 +218,8 @@ end
 
 # TODO: Is this reusable?
 # repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
-function add_computation!(attr, scene, ::Val{:uv_transform_packing})
-    register_computation!(attr, [:uv_transform], [:packed_uv_transform]) do (uvt,), changed, cached
+function add_computation!(attr, scene, ::Val{:uv_transform_packing}, uv_transform_name = :uv_transform)
+    register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, cached
         if uvt[] isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
             output = Vector{Vec2f}(undef, 3 * length(uvt[]))
@@ -248,5 +248,29 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     # do instancing anymore, so meshscatter becomes pointless.
     register_computation!(attr, [:f32c], [:f32c_scale]) do (f32c, ), changed, cached
         return (Makie.is_identity_transform(f32c[]) ? Vec3f(1) : Vec3f(f32c[].scale), )
+    end
+end
+
+# optionally converts uv_transform to the one used with patterns
+# WGLMakie should call this with target_mat3 = true
+function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname = :model_f32c, colorname = :color, target_mat3 = false)
+    haskey(attr, :projectionview) || add_input!(attr, :projectionview, camera(scene).projectionview)
+    haskey(attr, :viewport) || add_input!(attr, :viewport, viewport(scene))
+
+    register_computation!(attr,
+        [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
+        [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached
+
+        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern[] || changed.uv_transform
+        if needs_update
+            if is_pattern[]
+                new_uvt = Makie.pattern_uv_transform(uvt[], pv[] * model[], widths(vp[]), pattern[], target_mat3)
+                return (new_uvt, )
+            else
+                return (uvt[],)
+            end
+        else
+            return nothing
+        end
     end
 end

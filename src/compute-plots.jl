@@ -155,22 +155,27 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     end
 
     register_computation!(
-        attr,
-        [colorname, :colorscale, :alpha],
-                          [:scaled_color]) do (color, colorscale, alpha), changed, last
+            attr,
+            [colorname, :colorscale, :alpha],
+            [:scaled_color, :fetch_pixel]
+        ) do (color, colorscale, alpha), changed, last
+
         all(changed) || return nothing
 
         val = if color[] isa Union{AbstractArray{<: Real}, Real}
             el32convert(apply_scale(colorscale[], color[]))
+        elseif color[] isa AbstractPattern
+            ShaderAbstractions.Sampler(add_alpha.(to_image(color[]), alpha[]), x_repeat=:repeat)
         elseif color[] isa AbstractArray
             add_alpha.(color[], alpha[])
         else
             add_alpha(color[], alpha[])
         end
+
         if !isnothing(last) && last[1][] == val
             return nothing
         else
-            return (val,)
+            return (val, color[] isa AbstractPattern)
         end
     end
 end
