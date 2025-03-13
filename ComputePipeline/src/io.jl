@@ -299,3 +299,17 @@ function trace_error(io::IO, edge::Input, marked = nothing)
     end
     return
 end
+
+show_inputs(node::Computed) = show_inputs(stdout, node)
+function show_inputs(io::IO, node::Computed, tab = 0)
+    println(io, "    "^tab, node)
+    show_inputs(io, node.parent, tab+1)
+end
+function show_inputs(io::IO, node::Input, tab = 0)
+    println(io, "    "^tab, node)
+end
+function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
+    for node in edge.inputs
+        show_inputs(io, node, tab)
+    end
+end
