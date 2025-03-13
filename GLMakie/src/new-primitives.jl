@@ -811,6 +811,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :fxaa, :visible,
+        :_lowclip, :_highclip, :nan_color,
         :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
@@ -1440,6 +1441,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :fxaa, :visible,
+        # :_lowclip, :_highclip, :nan_color,
         :volume_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
     ]
 
