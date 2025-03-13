@@ -6,9 +6,10 @@ add_computation!(attr::ComputeGraph, scene::Scene, symbols::Symbol...) =
 
 add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr, Val.(symbols)...)
 
+# TODO: px_per_unit?
 function add_computation!(attr, scene, ::Val{:scene_origin})
-    add_input!(attr, :viewport, scene.viewport[])
-    on(viewport -> Makie.update!(attr; viewport=viewport), scene.viewport) # TODO: This doesn't update immediately?
+    # TODO: avoid calling this multiple times?
+    haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport[])
     register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
         !changed[1] && return nothing
         new_val = Vec2f(origin(viewport[]))
@@ -87,4 +88,190 @@ function get_lastlen(points::Vector{Point2f}, pvm::Mat4, res::Vec2f, islines::Bo
         end
     end
     return output
+end
+
+function add_computation!(attr, scene, ::Val{:heatmap_transform})
+    xy_convert(x::AbstractArray, n) = copy(x)
+    xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
+
+    # TODO: consider just using a grid of points?
+    register_computation!(attr,
+            [:x, :y, :image, :transform_func, :space],
+            [:x_transformed, :y_transformed]
+        ) do (x, y, img, func, space), changed, last
+
+        x1d = xy_convert(x[], size(img[], 1))
+        xps = apply_transform(func[], Point2.(x1d, 0), space[])
+
+        y1d = xy_convert(y[], size(img[], 2))
+        yps = apply_transform(func[], Point2.(0, y1d), space[])
+
+        return (xps, yps)
+    end
+
+    register_computation!(attr,
+        [:x_transformed, :y_transformed, :model, :f32c],
+        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
+    ) do (x, y, model, f32c), changed, cached
+        # TODO: this should be done in one nice function
+        # This is simplified, skipping what's commented out
+
+        # trans, scale = decompose_translation_scale_matrix(model)
+        # is_rot_free = is_translation_scale_matrix(model)
+        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
+            m = changed.model ? Mat4f(model[]) : nothing
+            xs = changed.x_transformed || changed.f32c ? el32convert(first.(x[])) : nothing
+            ys = changed.y_transformed || changed.f32c ? el32convert(last.(y[])) : nothing
+            return (xs, ys, m)
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        # elseif is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            # TODO: avoid reallocating?
+            xs = Vector{Float32}(undef, length(x[]))
+            @inbounds for i in eachindex(output)
+                p4d = to_ndim(Point4d, to_ndim(Point3d, x[][i], 0), 1)
+                p4d = model[] * p4d
+                xs[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)], 1)
+            end
+            ys = Vector{Float32}(undef, length(y[]))
+            @inbounds for i in eachindex(output)
+                p4d = to_ndim(Point4d, to_ndim(Point3d, y[][i], 0), 1)
+                p4d = model[] * p4d
+                ys[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)], 2)
+            end
+            m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
+            return (xs, ys, m)
+        end
+    end
+end
+
+# Note: VERY similar to heatmap, but heatmap shader currently only allows 1D x, y
+#       Could consider updating shader to accept matrix x, y and not always draw
+#       rects but that might be a larger chunk of work...
+function add_computation!(attr, scene, ::Val{:surface_transform})
+    xy_convert(x::AbstractArray, y::AbstractMatrix) = Point2.(x, y)
+    xy_convert(x::AbstractArray, y::AbstractVector) = Point2.(x, y')
+
+    # TODO: Shouldn't this include transforming z?
+    # TODO: If we're always creating a Matrix of Points the backends should just
+    #       use that directly instead of going back to a x and y matrix representation
+    register_computation!(attr,
+            [:x, :y, :transform_func, :space],
+            [:xy_transformed]
+        ) do (x, y, func, space), changed, last
+        return (apply_transform(func[], xy_convert(x[], y[]), space[]), )
+    end
+
+    register_computation!(attr,
+        [:xy_transformed, :model, :f32c],
+        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
+    ) do (xy, model, f32c), changed, cached
+        # TODO: this should be done in one nice function
+        # This is simplified, skipping what's commented out
+
+        # trans, scale = decompose_translation_scale_matrix(model)
+        # is_rot_free = is_translation_scale_matrix(model)
+        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
+            m = changed.model ? Mat4f(model[]) : nothing
+            xys = changed.xy_transformed || changed.f32c ? el32convert(xy[]) : nothing
+            return (first.(xys), last.(xys), m)
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        # elseif is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            # TODO: avoid reallocating?
+            xys = map(xy[]) do pos
+                p4d = model[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+                return f32_convert(f32c[], p4d[Vec(1, 2)])
+            end
+            m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
+            return (first.(xys), last.(xys), m)
+        end
+    end
+end
+
+function add_computation!(attr, scene, ::Val{:voxel_model})
+    register_computation!(attr, [:x, :y, :z, :chunk_u8, :model], [:voxel_model]) do (xs, ys, zs, chunk, model), changed, cached
+        mini  = minimum.((xs[], ys[], zs[]))
+        width = maximum.((xs[], ys[], zs[])) .- mini
+        return (Mat4f(model[] *
+            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk[])))
+        ), )
+    end
+end
+
+function add_computation!(attr, scene, ::Val{:volume_model})
+    register_computation!(attr, [:x, :y, :z, :model], [:volume_model]) do (xs, ys, zs, model), changed, cached
+        mini  = minimum.((xs[], ys[], zs[]))
+        width = maximum.((xs[], ys[], zs[])) .- mini
+        return (Mat4f(model[] * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
+    end
+end
+
+# TODO: Is this reusable?
+# repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
+function add_computation!(attr, scene, ::Val{:uv_transform_packing}, uv_transform_name = :uv_transform)
+    register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, cached
+        if uvt[] isa Vector
+            # 3x Vec2 should match the element order of glsl mat3x2
+            output = Vector{Vec2f}(undef, 3 * length(uvt[]))
+            for i in eachindex(uvt[])
+                output[3 * (i-1) + 1] = uvt[][i][Vec(1, 2)]
+                output[3 * (i-1) + 2] = uvt[][i][Vec(3, 4)]
+                output[3 * (i-1) + 3] = uvt[][i][Vec(5, 6)]
+            end
+            return (output,)
+        else
+            return (uvt[],)
+        end
+    end
+end
+
+function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
+    # TODO: Is this correct?
+    # TODO: Probably needs changes if more fast paths are brought back
+
+    # If the vertices of the scattered mesh, markersize and (if it applies) model
+    # are float32 safe we should be able to just correct for any scaling from
+    # float32convert in the shader, after those conversions.
+    # We should also be fine as long as rotation = identity (also in model).
+    # If neither is the case we would have to combine vertices with positions and
+    # transform them to world space (post float32convert) on the CPU. We then can't
+    # do instancing anymore, so meshscatter becomes pointless.
+    register_computation!(attr, [:f32c], [:f32c_scale]) do (f32c, ), changed, cached
+        return (Makie.is_identity_transform(f32c[]) ? Vec3f(1) : Vec3f(f32c[].scale), )
+    end
+end
+
+# optionally converts uv_transform to the one used with patterns
+# WGLMakie should call this with target_mat3 = true
+function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname = :model_f32c, colorname = :color, target_mat3 = false)
+    haskey(attr, :projectionview) || add_input!(attr, :projectionview, camera(scene).projectionview)
+    haskey(attr, :viewport) || add_input!(attr, :viewport, viewport(scene))
+
+    register_computation!(attr,
+        [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
+        [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached
+
+        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern[] || changed.uv_transform
+        if needs_update
+            if is_pattern[]
+                new_uvt = Makie.pattern_uv_transform(uvt[], pv[] * model[], widths(vp[]), pattern[], target_mat3)
+                return (new_uvt, )
+            else
+                return (uvt[],)
+            end
+        else
+            return nothing
+        end
+    end
 end

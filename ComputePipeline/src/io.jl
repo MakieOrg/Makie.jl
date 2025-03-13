@@ -102,7 +102,7 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     print(io, "\n  outputs:")
     for v in edge.outputs
-        if dirty
+        if isdirty(v)
             printstyled(io, "\n    ↻ $v", color = :light_black)
         else
             print(io, "\n    ✓ ", v)
@@ -328,4 +328,18 @@ function trace_error(io::IO, edge::Input, marked = nothing)
         printstyled(io, "$(edge.name)\n", color = :green)
     end
     return
+end
+
+show_inputs(node::Computed) = show_inputs(stdout, node)
+function show_inputs(io::IO, node::Computed, tab = 0)
+    println(io, "    "^tab, node)
+    show_inputs(io, node.parent, tab+1)
+end
+function show_inputs(io::IO, node::Input, tab = 0)
+    println(io, "    "^tab, node)
+end
+function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
+    for node in edge.inputs
+        show_inputs(io, node, tab)
+    end
 end

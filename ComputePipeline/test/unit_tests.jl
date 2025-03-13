@@ -18,16 +18,16 @@
 
         # different inputs, same function = different edge -> error
         @test_throws ErrorException register_computation!(foo, graph, [:in1], [:merged])
-        # same inputs, same function = same edge
-        original_stderr = stderr
+
+        # same inputs, same function = same edge, this should work and not change the existing callback
+        # TODO: How do we test that the edge does not get updated (to a new edge with the same content)?
+        #       Is objectid sufficient?
         @test begin
-            read_pipe, write_pipe = redirect_stderr()
+            id = objectid(graph[:merged].parent)
             register_computation!(foo, graph, [:in1, :in2], [:merged])
-            redirect_stderr(original_stderr)
-            close(write_pipe)
-            # Just check that we're printing something for now
-            readline(read_pipe) != ""
+            id == objectid(graph[:merged].parent)
         end
+
         # same inputs, different function = different edge -> error
         goo(inputs, changed, cached) = (inputs[1][] * inputs[2][],)
         @test_throws ErrorException register_computation!(goo, graph, [:in1, :in2], [:merged])
@@ -153,3 +153,56 @@ end
     end
 end
 
+@testset "Graph io" begin
+    parent = ComputeGraph()
+    add_input!(parent, :in1, 1)
+    graph = ComputeGraph()
+    add_input!(graph, :in1, parent.in1)
+    add_input!(graph, :in2, 2)
+    foo2(inputs, changed, cached) = (inputs[1][] + inputs[2][], inputs[1][] - inputs[2][])
+    register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
+    bar(inputs, changed, cached) = (inputs[1][],)
+    register_computation!(bar, graph, [:added], [:output])
+    register_computation!(bar, graph, [:output], [:output2])
+    register_computation!(bar, graph, [:subtracted], [:output3])
+
+    graph[:in1][]
+
+    @testset "brief show()" begin
+        # TODO: This counts edges in graph because part of graph continues parent - Should it?
+        @test sprint(show, parent) == "ComputeGraph(1 input, 1 output, 4 edges)"
+        @test sprint(show, graph) == "ComputeGraph(1 input, 7 outputs, 4 edges)"
+        @test sprint(show, graph.inputs[:in2]) == "Input(:in2, 2)"
+        @test sprint(show, graph[:in1]) == "Computed(:in1, 1)"
+        @test sprint(show, graph[:in2]) == "Computed(:in2, #undef)"
+        @test sprint(show, graph[:added].parent) == "ComputeEdge(foo2(…), 2 inputs, 2 outputs, 2 dependents)"
+        @test sprint(show, graph[:output].parent) == "ComputeEdge(bar(…), 1 input, 1 output, 1 dependent)"
+        @test sprint(show, graph[:output2].parent) == "ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)"
+    end
+
+    @testset "brief show()" begin
+        m = MIME"text/plain"()
+        @test sprint(show, m, parent) == "ComputeGraph():\n  Inputs:\n    :in1 => Input(:in1, 1)\n\n  Outputs:\n    :in1 => Computed(:in1, 1)"
+        @test sprint(show, m, graph) == "ComputeGraph():\n  Inputs:\n    :in2 => Input(:in2, 2)\n\n  Outputs:\n    :added      => Computed(:added, #undef)\n    :in1        => Computed(:in1, 1)\n    :in2        => Computed(:in2, #undef)\n    :output     => Computed(:output, #undef)\n    :output2    => Computed(:output2, #undef)\n    :output3    => Computed(:output3, #undef)\n    :subtracted => Computed(:subtracted, #undef)"
+
+        # Work around function path that's printed
+        s = sprint(show, m, graph.inputs[:in2])
+        @test contains(s, "Input:\n  name:     :in2\n  value:    2\n  callback: identity(::Int64) @ ")
+        @test contains(s, "\n  output:   ↻ Computed(:in2, #undef)\n  dependents:\n    ↻ ComputeEdge(foo2(…), 2 inputs, 2 outputs, 2 dependents)")
+
+        @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = Input(:in1, 1)\n  value = 1"
+        @test sprint(show, m, graph[:in2]) == "Computed:\n  name = :in2\n  parent = Input(:in2, 2)\n  value = #undef"
+
+        s = sprint(show, m, graph[:added].parent)
+        @test contains(s, "ComputeEdge:\n  callback:\n    foo2(::Tuple{Ref{Int64}, Ref{Any}}, ::Vector{Bool}, ::Nothing)\n    @ ")
+        @test contains(s, "\n  inputs:\n    ↻ Computed(:in1, 1)\n    ↻ Computed(:in2, #undef)\n  outputs:\n    ↻ Computed(:added, #undef)\n    ↻ Computed(:subtracted, #undef)\n  dependents:\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 1 dependent)\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)")
+
+        s = sprint(show, m, graph[:output].parent)
+        @test contains(s, "ComputeEdge:\n  callback:\n    bar(::Tuple, ::Vector{Bool}, ::Nothing)\n    @ ")
+        @test contains(s, "\n  inputs:\n    ↻ Computed(:added, #undef)\n  outputs:\n    ↻ Computed(:output, #undef)\n  dependents:\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)")
+
+        s = sprint(show, m, graph[:output2].parent)
+        @test contains(s, "ComputeEdge:\n  callback:\n    bar(::Tuple, ::Vector{Bool}, ::Nothing)\n    @ ")
+        @test contains(s, "\n  inputs:\n    ↻ Computed(:output, #undef)\n  outputs:\n    ↻ Computed(:output2, #undef)\n  dependents:")
+    end
+end

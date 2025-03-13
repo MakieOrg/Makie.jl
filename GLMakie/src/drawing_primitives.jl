@@ -420,39 +420,39 @@ end
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
 
-function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
-    return cached_robj!(screen, scene, plot) do gl_attributes
+# function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::MeshScatter))
+#     return cached_robj!(screen, scene, plot) do gl_attributes
 
-        # signals not supported for shading yet
-        marker = pop!(gl_attributes, :marker)
+#         # signals not supported for shading yet
+#         marker = pop!(gl_attributes, :marker)
 
-        positions = handle_view(plot[1], gl_attributes)
-        f32c = pop!(gl_attributes, :f32c)
-        positions = apply_transform_and_f32_conversion(plot, f32c, positions)
+#         positions = handle_view(plot[1], gl_attributes)
+#         f32c = pop!(gl_attributes, :f32c)
+#         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
 
-        # If the vertices of the scattered mesh, markersize and (if it applies) model
-        # are float32 safe we should be able to just correct for any scaling from
-        # float32convert in the shader, after those conversions.
-        # We should also be fine as long as rotation = identity (also in model).
-        # If neither is the case we would have to combine vertices with positions and
-        # transform them to world space (post float32convert) on the CPU. We then can't
-        # do instancing anymore, so meshscatter becomes pointless.
-        if !isnothing(scene.float32convert)
-            gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-                # we must use new_f32c with transform_marker = true,
-                # because model might be merged into f32c (robj.model = I)
-                # with transform_marker = false we must use the old f32c
-                # as we don't want model to apply
-                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-            end
-        end
+#         # If the vertices of the scattered mesh, markersize and (if it applies) model
+#         # are float32 safe we should be able to just correct for any scaling from
+#         # float32convert in the shader, after those conversions.
+#         # We should also be fine as long as rotation = identity (also in model).
+#         # If neither is the case we would have to combine vertices with positions and
+#         # transform them to world space (post float32convert) on the CPU. We then can't
+#         # do instancing anymore, so meshscatter becomes pointless.
+#         if !isnothing(scene.float32convert)
+#             gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+#                 # we must use new_f32c with transform_marker = true,
+#                 # because model might be merged into f32c (robj.model = I)
+#                 # with transform_marker = false we must use the old f32c
+#                 # as we don't want model to apply
+#                 return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+#             end
+#         end
 
-        if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
-            gl_attributes[:image] = gl_attributes[:color]
-        end
-        return draw_mesh_particle(screen, (marker, positions), gl_attributes)
-    end
-end
+#         if haskey(gl_attributes, :color) && to_value(gl_attributes[:color]) isa AbstractMatrix{<: Colorant}
+#             gl_attributes[:image] = gl_attributes[:color]
+#         end
+#         return draw_mesh_particle(screen, (marker, positions), gl_attributes)
+#     end
+# end
 
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
@@ -534,77 +534,77 @@ end
 xy_convert(x::AbstractArray, n) = copy(x)
 xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
-    t = Makie.transform_func_obs(plot)
+# function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
+#     t = Makie.transform_func_obs(plot)
 
-    if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
-        # Fast path for regular heatmaps
-        return draw_image(screen, scene, plot)
-    end
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        mat = plot[3]
-        space = plot.space # needs to happen before connect_camera! call
-        xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
-            # TODO: fix heatmaps for transforms that mix dimensions:
-            # - transform_func's like Polar
-            # - model matrices with rotation & Float32 precisionissues
-            x1d = xy_convert(x, size(mat[], 1))
-            y1d = xy_convert(y, size(mat[], 2))
+#     if plot.x[] isa Makie.EndPoints && plot.y[] isa Makie.EndPoints && Makie.is_identity_transform(t[])
+#         # Fast path for regular heatmaps
+#         return draw_image(screen, scene, plot)
+#     end
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         mat = plot[3]
+#         space = plot.space # needs to happen before connect_camera! call
+#         xypos = lift(plot, pop!(gl_attributes, :f32c), t, plot.model, plot[1], plot[2], space) do f32c, t, model, x, y, space
+#             # TODO: fix heatmaps for transforms that mix dimensions:
+#             # - transform_func's like Polar
+#             # - model matrices with rotation & Float32 precisionissues
+#             x1d = xy_convert(x, size(mat[], 1))
+#             y1d = xy_convert(y, size(mat[], 2))
 
-            x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
-            y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
+#             x1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, x1d, 1, space)
+#             y1d = Makie.apply_transform_and_f32_conversion(f32c, t, model, y1d, 2, space)
 
-            return (x1d, y1d)
-        end
-        xpos = lift(first, plot, xypos)
-        ypos = lift(last, plot, xypos)
-        gl_attributes[:position_x] = Texture(screen.glscreen, xpos, minfilter = :nearest)
-        gl_attributes[:position_y] = Texture(screen.glscreen, ypos, minfilter = :nearest)
-        # number of planes used to render the heatmap
-        gl_attributes[:instances] = lift(plot, xpos, ypos) do x, y
-            (length(x)-1) * (length(y)-1)
-        end
-        interp = to_value(pop!(gl_attributes, :interpolate))
-        interp = interp ? :linear : :nearest
-        intensity = haskey(gl_attributes, :intensity) ? pop!(gl_attributes, :intensity) : pop!(gl_attributes, :color)
-        if intensity isa ShaderAbstractions.Sampler
-            gl_attributes[:intensity] = to_value(intensity)
-        else
-            gl_attributes[:intensity] = Texture(screen.glscreen, el32convert(intensity); minfilter=interp)
-        end
+#             return (x1d, y1d)
+#         end
+#         xpos = lift(first, plot, xypos)
+#         ypos = lift(last, plot, xypos)
+#         gl_attributes[:position_x] = Texture(screen.glscreen, xpos, minfilter = :nearest)
+#         gl_attributes[:position_y] = Texture(screen.glscreen, ypos, minfilter = :nearest)
+#         # number of planes used to render the heatmap
+#         gl_attributes[:instances] = lift(plot, xpos, ypos) do x, y
+#             (length(x)-1) * (length(y)-1)
+#         end
+#         interp = to_value(pop!(gl_attributes, :interpolate))
+#         interp = interp ? :linear : :nearest
+#         intensity = haskey(gl_attributes, :intensity) ? pop!(gl_attributes, :intensity) : pop!(gl_attributes, :color)
+#         if intensity isa ShaderAbstractions.Sampler
+#             gl_attributes[:intensity] = to_value(intensity)
+#         else
+#             gl_attributes[:intensity] = Texture(screen.glscreen, el32convert(intensity); minfilter=interp)
+#         end
 
-        return draw_heatmap(screen, gl_attributes)
-    end
-end
+#         return draw_heatmap(screen, gl_attributes)
+#     end
+# end
 
-function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        position = lift(plot, plot[1], plot[2]) do x, y
-            xmin, xmax = x
-            ymin, ymax = y
-            rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
-            return decompose(Point2d, rect)
-        end
-        gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
-        rect = Rect2f(0, 0, 1, 1)
-        gl_attributes[:faces] = decompose(GLTriangleFace, rect)
-        gl_attributes[:texturecoordinates] = decompose_uv(rect)
-        get!(gl_attributes, :shading, NoShading)
-        _interp = to_value(pop!(gl_attributes, :interpolate, true))
-        interp = _interp ? :linear : :nearest
-        if haskey(gl_attributes, :intensity)
-            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :intensity); minfilter=interp)
-        else
-            gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :color); minfilter=interp)
-        end
-        gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
-        return draw_mesh(screen, gl_attributes)
-    end
-end
+# function draw_image(screen::Screen, scene::Scene, plot::Union{Heatmap, Image})
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         position = lift(plot, plot[1], plot[2]) do x, y
+#             xmin, xmax = x
+#             ymin, ymax = y
+#             rect = Rect2(xmin, ymin, xmax - xmin, ymax - ymin)
+#             return decompose(Point2d, rect)
+#         end
+#         gl_attributes[:vertices] = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), position)
+#         rect = Rect2f(0, 0, 1, 1)
+#         gl_attributes[:faces] = decompose(GLTriangleFace, rect)
+#         gl_attributes[:texturecoordinates] = decompose_uv(rect)
+#         get!(gl_attributes, :shading, NoShading)
+#         _interp = to_value(pop!(gl_attributes, :interpolate, true))
+#         interp = _interp ? :linear : :nearest
+#         if haskey(gl_attributes, :intensity)
+#             gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :intensity); minfilter=interp)
+#         else
+#             gl_attributes[:image] = Texture(screen.glscreen, pop!(gl_attributes, :color); minfilter=interp)
+#         end
+#         gl_attributes[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
+#         return draw_mesh(screen, gl_attributes)
+#     end
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Image)
-    return draw_image(screen, scene, plot)
-end
+# function draw_atomic(screen::Screen, scene::Scene, plot::Image)
+#     return draw_image(screen, scene, plot)
+# end
 
 function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=:data)
     # signals not supported for shading yet
@@ -667,269 +667,269 @@ function mesh_inner(screen::Screen, mesh, transfunc, gl_attributes, plot, space=
     return draw_mesh(screen, gl_attributes)
 end
 
-function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
-    x = cached_robj!(screen, scene, meshplot) do gl_attributes
-        t = transform_func_obs(meshplot)
-        space = meshplot.space # needs to happen before connect_camera! call
-        x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
-        return x
-    end
+# function draw_atomic(screen::Screen, scene::Scene, meshplot::Mesh)
+#     x = cached_robj!(screen, scene, meshplot) do gl_attributes
+#         t = transform_func_obs(meshplot)
+#         space = meshplot.space # needs to happen before connect_camera! call
+#         x = mesh_inner(screen, meshplot[1], t, gl_attributes, meshplot, space)
+#         return x
+#     end
 
-    return x
-end
+#     return x
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
-    robj = cached_robj!(screen, scene, plot) do gl_attributes
-        color = pop!(gl_attributes, :color)
-        img = nothing
-        # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
-        if haskey(gl_attributes, :intensity)
-            img = pop!(gl_attributes, :intensity)
-        elseif to_value(color) isa Makie.AbstractPattern
-            pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
-            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
-            gl_attributes[:color_map] = nothing
-            gl_attributes[:color] = nothing
-            gl_attributes[:color_norm] = nothing
-        elseif isa(to_value(color), AbstractMatrix{<: Colorant})
-            img = color
-            gl_attributes[:color_map] = nothing
-            gl_attributes[:color] = nothing
-            gl_attributes[:color_norm] = nothing
-        end
+# function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
+#     robj = cached_robj!(screen, scene, plot) do gl_attributes
+#         color = pop!(gl_attributes, :color)
+#         img = nothing
+#         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
+#         if haskey(gl_attributes, :intensity)
+#             img = pop!(gl_attributes, :intensity)
+#         elseif to_value(color) isa Makie.AbstractPattern
+#             pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, color)
+#             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:linear)
+#             gl_attributes[:color_map] = nothing
+#             gl_attributes[:color] = nothing
+#             gl_attributes[:color_norm] = nothing
+#         elseif isa(to_value(color), AbstractMatrix{<: Colorant})
+#             img = color
+#             gl_attributes[:color_map] = nothing
+#             gl_attributes[:color] = nothing
+#             gl_attributes[:color_norm] = nothing
+#         end
 
-        space = plot.space
-        interp = to_value(pop!(gl_attributes, :interpolate, true))
-        interp = interp ? :linear : :nearest
-        gl_attributes[:image] = Texture(screen.glscreen, img; minfilter=interp)
+#         space = plot.space
+#         interp = to_value(pop!(gl_attributes, :interpolate, true))
+#         interp = interp ? :linear : :nearest
+#         gl_attributes[:image] = Texture(screen.glscreen, img; minfilter=interp)
 
-        @assert to_value(plot[3]) isa AbstractMatrix
-        gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
-        types = map(v -> typeof(to_value(v)), plot[1:2])
+#         @assert to_value(plot[3]) isa AbstractMatrix
+#         gl_attributes[:instances] = map(z -> (size(z,1)-1) * (size(z,2)-1), plot[3])
 
-        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            t = Makie.transform_func_obs(plot)
-            mat = plot[3]
-            xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
-                # Only if transform doesn't do anything, we can stay linear in 1/2D
-                if Makie.is_identity_transform(t) && isnothing(f32c)
-                    return (x, y)
-                elseif Makie.is_translation_scale_matrix(model)
-                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
-                    else
-                        # If we do any transformation, we have to assume things aren't on the grid anymore
-                        # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
-                    end
-                    return (first.(matrix), last.(matrix))
-                else
-                    matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
-                    else
-                        # If we do any transformation, we have to assume things aren't on the grid anymore
-                        # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
-                    end
-                    return (first.(matrix), last.(matrix))
-                end
-            end
-            xpos = lift(first, plot, xypos)
-            ypos = lift(last, plot, xypos)
-            args = map((xpos, ypos, mat)) do arg
-                Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
-            end
-            if isnothing(img)
-                gl_attributes[:image] = args[3]
-            end
-            return draw_surface(screen, args, gl_attributes)
-        else
-            gl_attributes[:ranges] = to_range.(to_value.(plot[1:2]))
-            z_data = Texture(screen.glscreen, lift(el32convert, plot, plot[3]); minfilter=:linear)
-            if isnothing(img)
-                gl_attributes[:image] = z_data
-            end
-            return draw_surface(screen, z_data, gl_attributes)
-        end
-    end
-    return robj
-end
+#         types = map(v -> typeof(to_value(v)), plot[1:2])
+#         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
+#             t = Makie.transform_func_obs(plot)
+#             mat = plot[3]
+#             xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
+#                 # Only if transform doesn't do anything, we can stay linear in 1/2D
+#                 if Makie.is_identity_transform(t) && isnothing(f32c)
+#                     return (x, y)
+#                 elseif Makie.is_translation_scale_matrix(model)
+#                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+#                         Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
+#                     else
+#                         # If we do any transformation, we have to assume things aren't on the grid anymore
+#                         # so x + y need to become matrices.
+#                         [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+#                     end
+#                     return (first.(matrix), last.(matrix))
+#                 else
+#                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
+#                         Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
+#                     else
+#                         # If we do any transformation, we have to assume things aren't on the grid anymore
+#                         # so x + y need to become matrices.
+#                         [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
+#                     end
+#                     return (first.(matrix), last.(matrix))
+#                 end
+#             end
+#             xpos = lift(first, plot, xypos)
+#             ypos = lift(last, plot, xypos)
+#             args = map((xpos, ypos, mat)) do arg
+#                 Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
+#             end
+#             if isnothing(img)
+#                 gl_attributes[:image] = args[3]
+#             end
+#             return draw_surface(screen, args, gl_attributes)
+#         else
+#             gl_attributes[:ranges] = to_range.(to_value.(plot[1:2]))
+#             z_data = Texture(screen.glscreen, lift(el32convert, plot, plot[3]); minfilter=:linear)
+#             if isnothing(img)
+#                 gl_attributes[:image] = z_data
+#             end
+#             return draw_surface(screen, z_data, gl_attributes)
+#         end
+#     end
+#     return robj
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        model = plot.model
-        x, y, z = plot[1], plot[2], plot[3]
-        gl_attributes[:model] = lift(plot, model, x, y, z) do m, xyz...
-            mi = minimum.(xyz)
-            maxi = maximum.(xyz)
-            w = maxi .- mi
-            m2 = Mat4f(
-                w[1], 0, 0, 0,
-                0, w[2], 0, 0,
-                0, 0, w[3], 0,
-                mi[1], mi[2], mi[3], 1
-            )
-            return convert(Mat4f, m) * m2
-        end
-        gl_attributes[:modelinv] = const_lift(inv, gl_attributes[:model])
+# function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         model = plot.model
+#         x, y, z = plot[1], plot[2], plot[3]
+#         gl_attributes[:model] = lift(plot, model, x, y, z) do m, xyz...
+#             mi = minimum.(xyz)
+#             maxi = maximum.(xyz)
+#             w = maxi .- mi
+#             m2 = Mat4f(
+#                 w[1], 0, 0, 0,
+#                 0, w[2], 0, 0,
+#                 0, 0, w[3], 0,
+#                 mi[1], mi[2], mi[3], 1
+#             )
+#             return convert(Mat4f, m) * m2
+#         end
+#         gl_attributes[:modelinv] = const_lift(inv, gl_attributes[:model])
 
-        # Handled manually without using OpenGL clipping
-        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
-        gl_attributes[:num_clip_planes] = Observable(0)
-        pop!(gl_attributes, :clip_planes)
-        gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes, plot.space) do modelinv, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+#         # Handled manually without using OpenGL clipping
+#         gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+#         gl_attributes[:num_clip_planes] = Observable(0)
+#         pop!(gl_attributes, :clip_planes)
+#         gl_attributes[:clip_planes] = map(plot, gl_attributes[:modelinv], plot.clip_planes, plot.space) do modelinv, planes, space
+#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            # model/modelinv has no perspective projection so we should be fine
-            # with just applying it to the plane origin and transpose(inv(modelinv))
-            # to plane.normal
-            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
+#             # model/modelinv has no perspective projection so we should be fine
+#             # with just applying it to the plane origin and transpose(inv(modelinv))
+#             # to plane.normal
+#             @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
-                normal = transpose(gl_attributes[:model][]) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
-                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
+#             output = Vector{Vec4f}(undef, 8)
+#             for i in 1:min(length(planes), 8)
+#                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+#                 normal = transpose(gl_attributes[:model][]) * to_ndim(Vec4f, planes[i].normal, 0)
+#                 distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+#                     Vec3f(normal[1], normal[2], normal[3]))
+#                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+#             end
+#             for i in min(length(planes), 8)+1:8
+#                 output[i] = Vec4f(0, 0, 0, -1e9)
+#             end
 
-            return output
-        end
+#             return output
+#         end
 
-        interp = to_value(pop!(gl_attributes, :interpolate))
-        interp = interp ? :linear : :nearest
-        Tex(x) = Texture(screen.glscreen, x; minfilter=interp)
-        if haskey(gl_attributes, :intensity)
-            intensity = pop!(gl_attributes, :intensity)
-            return draw_volume(screen, Tex(intensity), gl_attributes)
-        elseif haskey(gl_attributes, :color)
-            color = pop!(gl_attributes, :color)
-            return draw_volume(screen, Tex(color), gl_attributes)
-        else
-            return draw_volume(screen, Tex(plot[4]), gl_attributes)
-        end
-    end
-end
+#         interp = to_value(pop!(gl_attributes, :interpolate))
+#         interp = interp ? :linear : :nearest
+#         Tex(x) = Texture(screen.glscreen, x; minfilter=interp)
+#         if haskey(gl_attributes, :intensity)
+#             intensity = pop!(gl_attributes, :intensity)
+#             return draw_volume(screen, Tex(intensity), gl_attributes)
+#         elseif haskey(gl_attributes, :color)
+#             color = pop!(gl_attributes, :color)
+#             return draw_volume(screen, Tex(color), gl_attributes)
+#         else
+#             return draw_volume(screen, Tex(plot[4]), gl_attributes)
+#         end
+#     end
+# end
 
-function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
-    return cached_robj!(screen, scene, plot) do gl_attributes
-        @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
+# function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
+#     return cached_robj!(screen, scene, plot) do gl_attributes
+#         @assert to_value(plot.converted[end]) isa Array{UInt8, 3}
 
-        # voxel ids
-        tex = Texture(screen.glscreen, plot.converted[end], minfilter = :nearest)
+#         # voxel ids
+#         tex = Texture(screen.glscreen, plot.converted[end], minfilter = :nearest)
 
-        # local update
-        buffer = Vector{UInt8}(undef, 1)
-        on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
-            required_length = length(is) * length(js) * length(ks)
-            if length(buffer) < required_length
-                resize!(buffer, required_length)
-            end
-            idx = 1
-            for k in ks, j in js, i in is
-                buffer[idx] = plot.converted[end].val[i, j, k]
-                idx += 1
-            end
-            GLAbstraction.texsubimage(tex, buffer, is, js, ks)
-            return
-        end
+#         # local update
+#         buffer = Vector{UInt8}(undef, 1)
+#         on(plot, pop!(gl_attributes, :_local_update)) do (is, js, ks)
+#             required_length = length(is) * length(js) * length(ks)
+#             if length(buffer) < required_length
+#                 resize!(buffer, required_length)
+#             end
+#             idx = 1
+#             for k in ks, j in js, i in is
+#                 buffer[idx] = plot.converted[end].val[i, j, k]
+#                 idx += 1
+#             end
+#             GLAbstraction.texsubimage(tex, buffer, is, js, ks)
+#             return
+#         end
 
-        # adjust model matrix according to x/y/z limits
-        gl_attributes[:model] = map(
-                plot, plot.converted...,  pop!(gl_attributes, :model)
-            ) do xs, ys, zs, chunk, model
-            mini = minimum.((xs, ys, zs))
-            width = maximum.((xs, ys, zs)) .- mini
-            return Mat4f(model *
-                Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
-            )
-        end
+#         # adjust model matrix according to x/y/z limits
+#         gl_attributes[:model] = map(
+#                 plot, plot.converted...,  pop!(gl_attributes, :model)
+#             ) do xs, ys, zs, chunk, model
+#             mini = minimum.((xs, ys, zs))
+#             width = maximum.((xs, ys, zs)) .- mini
+#             return Mat4f(model *
+#                 Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+#             )
+#         end
 
-        # Handled manually without using OpenGL clipping
-        gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
-        gl_attributes[:num_clip_planes] = Observable(0)
-        pop!(gl_attributes, :clip_planes)
-        gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
-            Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+#         # Handled manually without using OpenGL clipping
+#         gl_attributes[:_num_clip_planes] = pop!(gl_attributes, :num_clip_planes)
+#         gl_attributes[:num_clip_planes] = Observable(0)
+#         pop!(gl_attributes, :clip_planes)
+#         gl_attributes[:clip_planes] = map(plot, gl_attributes[:model], plot.clip_planes, plot.space) do model, planes, space
+#             Makie.is_data_space(space) || return [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
 
-            # model/modelinv has no perspective projection so we should be fine
-            # with just applying it to the plane origin and transpose(inv(modelinv))
-            # to plane.normal
-            modelinv = inv(model)
-            @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
+#             # model/modelinv has no perspective projection so we should be fine
+#             # with just applying it to the plane origin and transpose(inv(modelinv))
+#             # to plane.normal
+#             modelinv = inv(model)
+#             @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
 
-            output = Vector{Vec4f}(undef, 8)
-            for i in 1:min(length(planes), 8)
-                origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
-                normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
-                distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
-                    Vec3f(normal[1], normal[2], normal[3]))
-                output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
-            end
-            for i in min(length(planes), 8)+1:8
-                output[i] = Vec4f(0, 0, 0, -1e9)
-            end
+#             output = Vector{Vec4f}(undef, 8)
+#             for i in 1:min(length(planes), 8)
+#                 origin = modelinv * to_ndim(Point4f, planes[i].distance * planes[i].normal, 1)
+#                 normal = transpose(model) * to_ndim(Vec4f, planes[i].normal, 0)
+#                 distance = dot(Vec3f(origin[1], origin[2], origin[3]) / origin[4],
+#                     Vec3f(normal[1], normal[2], normal[3]))
+#                 output[i] = Vec4f(normal[1], normal[2], normal[3], distance)
+#             end
+#             for i in min(length(planes), 8)+1:8
+#                 output[i] = Vec4f(0, 0, 0, -1e9)
+#             end
 
-            return output
-        end
+#             return output
+#         end
 
-        # color attribute adjustments
-        pop!(gl_attributes, :lowclip, nothing)
-        pop!(gl_attributes, :highclip, nothing)
-        # Invalid:
-        pop!(gl_attributes, :nan_color, nothing)
-        pop!(gl_attributes, :alpha, nothing) # Why is this even here?
-        pop!(gl_attributes, :intensity, nothing)
-        pop!(gl_attributes, :color_norm, nothing)
-        # cleanup
-        pop!(gl_attributes, :_limits)
-        pop!(gl_attributes, :is_air)
+#         # color attribute adjustments
+#         pop!(gl_attributes, :lowclip, nothing)
+#         pop!(gl_attributes, :highclip, nothing)
+#         # Invalid:
+#         pop!(gl_attributes, :nan_color, nothing)
+#         pop!(gl_attributes, :alpha, nothing) # Why is this even here?
+#         pop!(gl_attributes, :intensity, nothing)
+#         pop!(gl_attributes, :color_norm, nothing)
+#         # cleanup
+#         pop!(gl_attributes, :_limits)
+#         pop!(gl_attributes, :is_air)
 
-        # make sure these exist
-        get!(gl_attributes, :color, nothing)
-        get!(gl_attributes, :color_map, nothing)
+#         # make sure these exist
+#         get!(gl_attributes, :color, nothing)
+#         get!(gl_attributes, :color_map, nothing)
 
-        # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap, nothing)
-        uv_transform = pop!(gl_attributes, :uv_transform)
+#         # process texture mapping
+#         uv_map = pop!(gl_attributes, :uvmap, nothing)
+#         uv_transform = pop!(gl_attributes, :uv_transform)
 
-        if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
-            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
-                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
-            end
+#         if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+#             if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+#                 error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+#             end
 
-            if !isnothing(to_value(uv_transform))
-                # new
-                packed = map(Makie.pack_voxel_uv_transform, uv_transform)
-            else
-                # old, deprecated
-                @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
-                packed = map(uv_map) do uvmap
-                    raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
-                    converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
-                    return Makie.pack_voxel_uv_transform(converted_uvt)
-                end
-            end
-            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
+#             if !isnothing(to_value(uv_transform))
+#                 # new
+#                 packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+#             else
+#                 # old, deprecated
+#                 @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+#                 packed = map(uv_map) do uvmap
+#                     raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+#                     converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+#                     return Makie.pack_voxel_uv_transform(converted_uvt)
+#                 end
+#             end
+#             gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
-            interp = to_value(pop!(gl_attributes, :interpolate))
-            interp = interp ? :linear : :nearest
-            color = gl_attributes[:color]
-            gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
-        elseif !isnothing(to_value(gl_attributes[:color]))
-            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
-                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
-            end
-            gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
-        end
+#             interp = to_value(pop!(gl_attributes, :interpolate))
+#             interp = interp ? :linear : :nearest
+#             color = gl_attributes[:color]
+#             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
+#         elseif !isnothing(to_value(gl_attributes[:color]))
+#             if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+#                 error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+#             end
+#             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
+#         end
 
-        # for depthsorting
-        gl_attributes[:view_direction] = camera(scene).view_direction
+#         # for depthsorting
+#         gl_attributes[:view_direction] = camera(scene).view_direction
 
-        return draw_voxels(screen, tex, gl_attributes)
-    end
-end
+#         return draw_voxels(screen, tex, gl_attributes)
+#     end
+# end

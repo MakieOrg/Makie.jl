@@ -73,10 +73,10 @@ end
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
 function draw_mesh_particle(screen, p, data)
-    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    rot = vec2quaternion(rot)
-    delete!(data, :rotation)
-    to_opengl_mesh!(screen.glscreen, data, p[1])
+    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
+    # rot = vec2quaternion(rot)
+    # delete!(data, :rotation)
+    to_opengl_mesh!(screen.glscreen, data, p[1]) # TODO: new functions need something else
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
@@ -86,7 +86,11 @@ function draw_mesh_particle(screen, p, data)
     end
 
     # TODO: use instance attributes
-    if to_value(data[:uv_transform]) isa Vector
+    if to_value(data[:uv_transform]) isa TextureBuffer
+        # compat with new rendering
+
+        # TODO: v delete this
+    elseif to_value(data[:uv_transform]) isa Vector
         transforms = pop!(data, :uv_transform)
         @gen_defaults! data begin
             uv_transform = map(transforms) do transforms

@@ -690,6 +690,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         # TODO: cleanup in the future
         if plot isa Makie.ComputePlots
             delete!(plot.args[1], :gl_renderobject)
+            delete!(plot.args[1], :gl_screen)
         end
     end
     screen.requires_update = true
@@ -1053,7 +1054,9 @@ function poll_updates(screen)
                 plot.args[1][:gl_renderobject][]
             catch e
                 @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
-                ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject])
+                # TODO: mark the output as resolved so we don't repeatedly pull in errors
+                #       Wouldn't setting inputs_dirty break state though?
+                # ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject]) <-- doesn't exist yet
             end
         end
     end

@@ -672,7 +672,7 @@ end
         a, p = surface(f[i, j], xs, ys, zs, color = cs, nan_color = :red, axis = (show_axis = false,))
         a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
         # plot a wireframe so we can see what's going on, and in which cells.
-        m = Makie.surface2mesh(to_value.(p.converted)...)
+        m = Makie.surface2mesh(xs, ys, zs)
         wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
 
@@ -684,7 +684,7 @@ end
         a, p = surface(f[4, i], 1..11, 1..11, data, color = cs, colormap = [:white, :white];
             nan_color, axis = (show_axis = false,))
         a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
-        m = Makie.surface2mesh(to_value.(p.converted)...)
+        m = Makie.surface2mesh(1..1, 1..1, data)
         wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
 
@@ -790,6 +790,7 @@ end
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    Makie.rotate!(p, Vec3f(1,2,3), 0.8)
     fig
 end
 
@@ -867,8 +868,8 @@ end
     fig
 end
 
-@testset "per element uv_transform" begin
-    cow = loadasset("cow.png")
+@reference_test "per element uv_transform" begin
+    cow = FileIO.load(assetpath("cow.png"))
 
     N = 8; M = 10
     f = Figure(size = (500, 400))

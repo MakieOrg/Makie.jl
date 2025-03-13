@@ -200,10 +200,11 @@ function create_image_mesh(attr)
     i = Vec(1, 2, 3)
     M = convert_attribute(:rotl90, Makie.Key{:uv_transform}(), Makie.Key{:image}())
     uv_transform = Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+    colorrange = attr.scaled_colorrange[]
     uniforms = Dict(
         :color => false,
         :uniform_color => Sampler(attr.image[]),
-        :colorrange => Vec2f(attr.scaled_colorrange[]),
+        :colorrange => colorrange === nothing ? Vec2f(0,1) : Vec2f(colorrange),
         :colormap => Sampler(attr.colormap[]),
         :highclip => attr._highclip[],
         :lowclip => attr._lowclip[],
