@@ -211,8 +211,13 @@ end
 
 function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
     attr = plot.args[1]::ComputeGraph
-    add_input!(attr, :scene, scene)
-    add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
+    haskey(attr, :scene) || add_input!(attr, :scene, scene)
+    if haskey(attr, :gl_screen)
+        # Can't have two screens so just update it?
+        Makie.update!(attr, gl_screen = screen)
+    else
+        add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
+    end
     return attr
 end
 
@@ -297,11 +302,16 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
     atlas = gl_texture_atlas()
-    add_input!(attr, :atlas, atlas)
+    if haskey(attr, :atlas)
+        # TODO: Do we need to update this?
+        Makie.update!(attr, atlas = atlas)
+    else
+        add_input!(attr, :atlas, atlas)
+    end
 
     if attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
-        add_input!(attr, :projectionview, scene.camera.projectionview)
+        haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
 
         register_computation!(attr,
             [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
@@ -656,8 +666,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
 
-    add_input!(attr, :px_per_unit, screen.px_per_unit)
-    add_input!(attr, :viewport, scene.viewport)
+    haskey(attr, :px_per_unit) || add_input!(attr, :px_per_unit, screen.px_per_unit)
+    haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin, :resolution]
     ) do (ppu, viewport), changed, output
@@ -666,7 +676,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     # position calculations for patterned lines
     # is projectionview enough to trigger on scene resize in all cases?
-    add_input!(attr, :projectionview, scene.camera.projectionview)
+    haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
     register_computation!(
         attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
@@ -685,7 +695,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (output,)
     end
 
-    add_input!(attr, :debug, false)
+    haskey(attr, :debug) || add_input!(attr, :debug, false)
 
     generate_clip_planes!(attr, :clip) # requires projectionview
 
@@ -785,21 +795,18 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     attr = generic_robj_setup(screen, scene, plot)
 
-    add_input!(attr, :px_per_unit, screen.px_per_unit)
-    add_input!(attr, :viewport, scene.viewport)
+    haskey(attr, :px_per_unit) || add_input!(attr, :px_per_unit, screen.px_per_unit)
+    haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin]
     ) do (ppu, viewport), changed, output
         return (Vec2f(ppu[] * origin(viewport[])),)
     end
-    if !haskey(attr, :scene)
-        add_input!(plot.args[1], :scene, scene)
-    end
 
     # linestyle/pattern handling
     Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
-    add_input!(attr, :debug, false)
-    add_input!(attr, :projectionview, scene.camera.projectionview)
+    haskey(attr, :debug) || add_input!(attr, :debug, false)
+    haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
     generate_clip_planes!(attr)
 
     register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
