@@ -50,8 +50,11 @@ function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
 end
 
 # temp fix axis selection
-args_preferred_axis(::Type{<: Surface}, attr::ComputeGraph) = LScene
 args_preferred_axis(::Type{<: Voxels}, attr::ComputeGraph) = LScene
+function args_preferred_axis(::Type{<: Surface}, attr::ComputeGraph)
+    lims = attr[:data_limits][]
+    return widths(lims)[3] == 0 ? Axis : LScene
+end
 function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     result = args_preferred_axis(PT, attr[:positions][])
     isnothing(result) && return Axis
@@ -539,9 +542,9 @@ function compute_plot(::Type{Surface}, args::Tuple, user_kw::Dict{Symbol,Any})
     end
     register_colormapping!(attr, :color_with_default)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
-        xlims = extrema(x)
-        ylims = extrema(y)
-        zlims = extrema(z)
+        xlims = extrema(x[])
+        ylims = extrema(y[])
+        zlims = extrema(z[])
         return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:z][]))
