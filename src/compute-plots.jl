@@ -160,8 +160,6 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             [:scaled_color, :fetch_pixel]
         ) do (color, colorscale, alpha), changed, last
 
-        all(changed) || return nothing
-
         val = if color[] isa Union{AbstractArray{<: Real}, Real}
             el32convert(apply_scale(colorscale[], color[]))
         elseif color[] isa AbstractPattern
@@ -175,7 +173,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         if !isnothing(last) && last[1][] == val
             return nothing
         else
-            return (val, color[] isa AbstractPattern)
+            return (val, isnothing(last) ? color[] isa AbstractPattern : nothing)
         end
     end
 end
