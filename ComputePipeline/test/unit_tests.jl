@@ -170,8 +170,8 @@ end
 
     @testset "brief show()" begin
         # TODO: This counts edges in graph because part of graph continues parent - Should it?
-        @test sprint(show, parent) == "ComputeGraph(1 input, 1 output, 4 edges)"
-        @test sprint(show, graph) == "ComputeGraph(1 input, 7 outputs, 4 edges)"
+        @test sprint(show, parent) == "ComputeGraph(1 input, 1 output, 5 edges)"
+        @test sprint(show, graph) == "ComputeGraph(1 input, 7 outputs, 5 edges)"
         @test sprint(show, graph.inputs[:in2]) == "Input(:in2, 2)"
         @test sprint(show, graph[:in1]) == "Computed(:in1, 1)"
         @test sprint(show, graph[:in2]) == "Computed(:in2, #undef)"
@@ -190,7 +190,7 @@ end
         @test contains(s, "Input:\n  name:     :in2\n  value:    2\n  callback: identity(::Int64) @ ")
         @test contains(s, "\n  output:   ↻ Computed(:in2, #undef)\n  dependents:\n    ↻ ComputeEdge(foo2(…), 2 inputs, 2 outputs, 2 dependents)")
 
-        @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = Input(:in1, 1)\n  value = 1"
+        @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = ComputeEdge(compute_identity(…), 1 input, 1 output, 1 dependent) @ output 1\n  value = 1"
         @test sprint(show, m, graph[:in2]) == "Computed:\n  name = :in2\n  parent = Input(:in2, 2)\n  value = #undef"
 
         s = sprint(show, m, graph[:added].parent)

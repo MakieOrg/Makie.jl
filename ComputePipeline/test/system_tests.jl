@@ -98,9 +98,11 @@
             e1 = parent.outputs[:pout1].parent
             e2 = parent.outputs[:pout2].parent
 
+            @test length(e1.dependents) == 2
+            @test length(e2.dependents) == 1
             @test e1.dependents[1] === graph.outputs[:trans1].parent
             @test e1.dependents[2] === graph.outputs[:trans3].parent
-            @test isempty(e2.dependents)
+            @test e2.dependents[1] === graph.outputs[:trans2].parent
         end
 
         @testset "Inputs" begin
@@ -126,21 +128,15 @@
 
         output_names = [
             :in1, :in2, :in3, :in4,
-            :parent_trans1, :parent_trans3, # implementation detail
             :trans1, :trans2, :trans3,
             :inputs324, :changed1324, :cached14, :discard10, :merged
         ]
 
         @testset "Outputs" begin
-            @test length(graph.outputs) == 14
+            @test length(graph.outputs) == 12
 
             for name in output_names
-                # TODO: This makes printing a bit wonky?
-                if name in [:parent_trans1, :trans2, :parent_trans3] # reused from parent
-                    @test parent.outputs[graph.outputs[name].name] === graph.outputs[name]
-                else
-                    @test graph.outputs[name].name === name
-                end
+                @test graph.outputs[name].name === name
             end
         end
 
@@ -151,45 +147,45 @@
                 @test edges[i] === graph.inputs[Symbol(:in, i)]
             end
 
-            @test edges[5] === parent.outputs[:pout1].parent
-            @test edges[6] === parent.outputs[:pout3].parent
+            @test edges[5].callback === InputFunctionWrapper(:trans1, to_int)
+            @test edges[5].dependents == [edges[12]]
+            @test edges[5].inputs == [parent.outputs[:pout1]]
+            @test edges[5].outputs == [graph.outputs[:trans1]]
 
-            @test edges[7].callback === InputFunctionWrapper(:trans1, to_int)
-            @test edges[7].dependents == [edges[14]]
-            @test edges[7].inputs == [parent.outputs[:pout1]]
-            @test edges[7].outputs == [graph.outputs[:trans1]]
+            @test edges[6].callback === ComputePipeline.compute_identity
+            @test isempty(edges[6].dependents)
+            @test edges[6].inputs == [parent.outputs[:pout2]]
+            @test edges[6].outputs == [graph.outputs[:trans2]]
 
-            @test edges[8] === parent.outputs[:pout2].parent
+            @test edges[7].callback === InputFunctionWrapper(:trans3, to_int)
+            @test edges[7].dependents == [edges[12]]
+            @test edges[7].inputs == [parent.outputs[:pout3]]
+            @test edges[7].outputs == [graph.outputs[:trans3]]
 
-            @test edges[9].callback === InputFunctionWrapper(:trans3, to_int)
-            @test edges[9].dependents == [edges[14]]
-            @test edges[9].inputs == [parent.outputs[:pout3]]
-            @test edges[9].outputs == [graph.outputs[:trans3]]
+            @test edges[8].callback === reflect_inputs
+            @test isempty(edges[8].dependents)
+            @test edges[8].inputs == getindex.(Ref(graph.outputs), [:in3, :in2, :in4])
+            @test edges[8].outputs == [graph.outputs[:inputs324]]
 
-            @test edges[10].callback === reflect_inputs
+            @test edges[9].callback === reflect_changed
+            @test isempty(edges[9].dependents)
+            @test edges[9].inputs == getindex.(Ref(graph.outputs), [:in1, :in3, :in2, :in4])
+            @test edges[9].outputs == [graph.outputs[:changed1324]]
+
+            @test edges[10].callback === reflect_cached
             @test isempty(edges[10].dependents)
-            @test edges[10].inputs == getindex.(Ref(graph.outputs), [:in3, :in2, :in4])
-            @test edges[10].outputs == [graph.outputs[:inputs324]]
+            @test edges[10].inputs == getindex.(Ref(graph.outputs), [:in1, :in4])
+            @test edges[10].outputs == [graph.outputs[:cached14]]
 
-            @test edges[11].callback === reflect_changed
+            @test edges[11].callback === discard
             @test isempty(edges[11].dependents)
-            @test edges[11].inputs == getindex.(Ref(graph.outputs), [:in1, :in3, :in2, :in4])
-            @test edges[11].outputs == [graph.outputs[:changed1324]]
+            @test edges[11].inputs == [graph.outputs[:in1]]
+            @test edges[11].outputs == [graph.outputs[:discard10]]
 
-            @test edges[12].callback === reflect_cached
+            @test edges[12].callback === merge_data
             @test isempty(edges[12].dependents)
-            @test edges[12].inputs == getindex.(Ref(graph.outputs), [:in1, :in4])
-            @test edges[12].outputs == [graph.outputs[:cached14]]
-
-            @test edges[13].callback === discard
-            @test isempty(edges[13].dependents)
-            @test edges[13].inputs == [graph.outputs[:in1]]
-            @test edges[13].outputs == [graph.outputs[:discard10]]
-
-            @test edges[14].callback === merge_data
-            @test isempty(edges[14].dependents)
-            @test edges[14].inputs == getindex.(Ref(graph.outputs), [:trans1, :trans3])
-            @test edges[14].outputs == [graph.outputs[:merged]]
+            @test edges[12].inputs == getindex.(Ref(graph.outputs), [:trans1, :trans3])
+            @test edges[12].outputs == [graph.outputs[:merged]]
         end
     end
 
@@ -210,11 +206,9 @@
             @test parent.outputs[:pout2].value[] == "nothing1" # read
             @test parent.outputs[:pin1].value[] == 1
             @test parent.outputs[:pin2].value[] === nothing
-        end
 
-        @testset "updates caused by parent resolve" begin
-            @test !isdirty(graph.outputs[:trans2])
-            @test graph.outputs[:trans2].value[] == "nothing1"
+            # Does not update child node
+            @test isdirty(graph.outputs[:trans2])
         end
 
     end
@@ -230,15 +224,11 @@
             @test graph.outputs[:merged][] == [2,4,6]
             @test !isdirty(graph.outputs[:trans1])
             @test !isdirty(graph.outputs[:trans3])
-            @test !isdirty(graph.outputs[:parent_trans1])
-            @test !isdirty(graph.outputs[:parent_trans3])
             @test !isdirty(parent.outputs[:pout1])
             @test !isdirty(parent.outputs[:pout3])
             @test !isdirty(parent.outputs[:pin3])
             @test graph.outputs[:trans1].value[] == Int64[0,1,2]
             @test graph.outputs[:trans3].value[] == Int64[2,3,4]
-            @test graph.outputs[:parent_trans1].value[] == Float32[0,1,2]
-            @test graph.outputs[:parent_trans3].value[] == Float32[2,3,4]
             @test parent.outputs[:pout1].value[] == Float32[0,1,2]
             @test parent.outputs[:pout3].value[] == Float32[2,3,4]
             @test parent.outputs[:pin3].value[] == Float32[1,2,3]
@@ -266,8 +256,7 @@
                 @test !isdirty(v)
             end
             for key in keys(graph.outputs)
-                key == :discard10 && continue
-                @test !isdirty(graph.outputs[key])
+                @test isdirty(graph.outputs[key]) == in(key, (:trans2, :discard10))
             end
 
             update!(graph, in1 = 11)
@@ -281,8 +270,6 @@
             @test isdirty(parent.outputs[:pin3])
             @test isdirty(parent.outputs[:pout1])
             @test isdirty(parent.outputs[:pout3])
-            @test isdirty(graph.outputs[:parent_trans1])
-            @test isdirty(graph.outputs[:parent_trans3])
             @test isdirty(graph.outputs[:trans1])
             @test isdirty(graph.outputs[:trans3])
             @test isdirty(graph.outputs[:merged])
@@ -294,8 +281,6 @@
             # partial
             @test graph[:trans3][] == [4,3,2]
             @test !isdirty(graph.outputs[:trans3])
-            @test !isdirty(graph.outputs[:parent_trans3])
-            @test !isdirty(graph.outputs[:parent_trans1]) # same as pout1
             @test !isdirty(parent.outputs[:pout3])
             @test !isdirty(parent.outputs[:pout1]) # same edge as pout3, so updated with pout3
             @test !isdirty(parent.outputs[:pin3])
@@ -308,9 +293,7 @@
             @test graph[:merged][] == [6,4,2]
             @test !isdirty(graph.outputs[:merged])
             @test !isdirty(graph.outputs[:trans1])
-            @test !isdirty(graph.outputs[:parent_trans1])
             @test !isdirty(graph.outputs[:trans3])
-            @test !isdirty(graph.outputs[:parent_trans3])
             @test !isdirty(parent.outputs[:pout3])
             @test !isdirty(parent.outputs[:pout1]) # same edge as pout3
             @test !isdirty(parent.outputs[:pin3])

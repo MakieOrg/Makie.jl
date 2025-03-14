@@ -474,6 +474,7 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     end
 end
 
+compute_identity(inputs, changed, cached) = getindex.(values(inputs))
 
 # TODO: These functions place the given Computed node into the graph. This
 #       typically results in `key != node.name`, which invites errors
@@ -482,6 +483,7 @@ end
     add_input!([callback], compute_graph, name::Symbol, node::Computed)
 
 Connects an output `node` of another compute graph to the given `compute_graph`.
+
 This does not create a settable input, meaning you cannot use
 `update!(graph, name = new_value)` to update it. It is solely updated by the
 connected node.
@@ -489,9 +491,13 @@ connected node.
 function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
-        return
     end
-    attr.outputs[key] = value
+    # This skips checks and allows direct passing of input nodes.
+    # With one input & output, the checks boil down to:
+    # 1. input exists
+    # 2. output does not exist (or is already what we want to create)
+    # which are given here
+    unsafe_register!(compute_identity, attr, [value], (key,))
     return
 end
 
@@ -499,11 +505,8 @@ end
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Computed)
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
-        return
     end
-    input_name = Symbol(:parent_, key)
-    attr.outputs[input_name] = value
-    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [input_name], [key])
+    unsafe_register!(InputFunctionWrapper(key, conversion_func), attr, [value], (key,))
     return
 end
 
@@ -630,17 +633,19 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     end
 
     _inputs = Computed[attr.outputs[k] for k in inputs]
-    new_edge = ComputeEdge(f, _inputs)
-    for (k, input) in zip(inputs, _inputs)
-        if hasparent(input)
-            push!(input.parent.dependents, new_edge)
-        else
-            push!(attr.inputs[k].dependents, new_edge)
-        end
+    unsafe_register!(f, attr, _inputs, outputs)
+    return
+end
+
+function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, output_names)
+    new_edge = ComputeEdge(f, inputs)
+    for input in inputs
+        @assert hasparent(input)
+        push!(input.parent.dependents, new_edge)
     end
 
     # use order of namedtuple, which should not change!
-    for (i, symbol) in enumerate(outputs)
+    for (i, symbol) in enumerate(output_names)
         # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
         value = get!(attr.outputs, symbol, Computed(symbol))
         value.parent = new_edge
