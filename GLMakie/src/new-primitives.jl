@@ -216,6 +216,10 @@ end
 function register_robj!(constructor, screen, scene, plot, inputs, uniforms, input2glname)
     attr = plot.args[1]
 
+    # These must always be there!
+    push!(uniforms, :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :visible, :fxaa)
+    push!(input2glname, :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes)
+
     register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
         if isnothing(last)
             # Generate complex defaults
@@ -355,12 +359,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
 
         uniforms = [
-            :gl_markerspace, :quad_scale,
-            :fxaa, :visible,
-            :model_f32c,
-            :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices, :gl_len
-            # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offste
+            :gl_markerspace, :quad_scale, :model_f32c,
+            :_lowclip, :_highclip, :nan_color, :gl_indices, :gl_len
+            # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
         ]
 
     else
@@ -368,15 +369,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
         # Simple forwards
         uniforms = [
-            :sdf_uv,
-            :quad_scale,
-            :quad_offset,
-            :image,
-            :fxaa, :visible,
+            :sdf_uv, :quad_scale, :quad_offset,
+            :image, :_lowclip, :_highclip, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
-            :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices, :gl_len
+            :gl_indices, :gl_len
         ]
     end
 
@@ -402,7 +399,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
         :gl_indices => :indices, :gl_len => :len
     )
 
@@ -479,8 +475,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
         :_lowclip, :_highclip, :nan_color, # :matcap,
-        :fxaa, :visible, :fetch_pixel,
-        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :gl_len
     ]
@@ -492,7 +487,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :scaled_color => :color,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
         :gl_len => :len
     )
 
@@ -694,11 +688,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     uniforms = [
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
-        :scene_origin, :px_per_unit,
-        :fxaa, :visible,
-        :model_f32c,
+        :scene_origin, :px_per_unit, :model_f32c,
         :_lowclip, :_highclip, :nan_color,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
     input2glname = Dict(
@@ -709,8 +700,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes,
-        :gl_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_lines_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -783,9 +772,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c, :indices,
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :fxaa, :visible,
         :_lowclip, :_highclip, :nan_color,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -794,7 +781,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_linesegments_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -864,8 +850,7 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
     uniforms = [
         :positions_transformed_f32c,
         :_lowclip, :_highclip, :nan_color,
-        :fxaa, :visible, :model_f32c, :uv_transform,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
+        :model_f32c, :uv_transform,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -873,7 +858,6 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :scaled_color => :image, :model_f32c => :model,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
     robj = register_robj!(assemble_image_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -953,9 +937,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     ]
     uniforms = [
         :_lowclip, :_highclip, :nan_color,
-        :fxaa, :visible,
         :model_f32c, :instances,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -964,7 +946,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         :_lowclip => :lowclip, :_highclip => :highclip,
         :scaled_color => :image,
         :model_f32c => :model,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
     robj = register_robj!(assemble_heatmap_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -1034,9 +1015,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     uniforms = [
         :x_transformed_f32c, :y_transformed_f32c, :z_converted,
         :_lowclip, :_highclip, :nan_color,
-        :fxaa, :visible,
         :model_f32c, :instances,
-        :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :invert_normals, :pattern_uv_transform, :fetch_pixel
     ]
@@ -1048,7 +1027,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :scaled_color => :image,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :model_f32c => :model,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
         :pattern_uv_transform => :uv_transform
     )
 
@@ -1154,9 +1132,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     ]
     uniforms = [
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :_lowclip, :_highclip, :nan_color,
-        :fxaa, :visible,
-        :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :_lowclip, :_highclip, :nan_color, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :pattern_uv_transform, :fetch_pixel
     ]
@@ -1166,7 +1142,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :scaled_color => :image, :model_f32c => :model,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
         :pattern_uv_transform => :uv_transform
     )
 
@@ -1248,11 +1223,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         :chunk_u8, :packed_uv_transform
     ]
     uniforms = [
-        :instances,
+        :instances, :voxel_model, :gap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :fxaa, :visible,
-        :voxel_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
-        :gap
     ]
 
     haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
@@ -1261,7 +1233,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     input2glname = Dict{Symbol, Symbol}(
         :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
     robj = register_robj!(assemble_voxel_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -1329,9 +1300,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     uniforms = [
         :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :fxaa, :visible,
         # :_lowclip, :_highclip, :nan_color,
-        :volume_model, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
+        :volume_model,
     ]
 
     haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
@@ -1340,7 +1310,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     input2glname = Dict{Symbol, Symbol}(
         :volume => :volumedata, :volume_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
     robj = register_robj!(assemble_volume_robj, screen, scene, plot, inputs, uniforms, input2glname)
