@@ -223,9 +223,9 @@ Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
 function draw_scatter(screen, (marker, position), data)
-    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    rot = vec2quaternion(rot)
-    delete!(data, :rotation)
+    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
+    # rot = vec2quaternion(rot)
+    # delete!(data, :rotation)
 
     if to_value(pop!(data, :depthsorting, false))
         data[:indices] = map(
