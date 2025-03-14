@@ -4,12 +4,27 @@ using Makie.ComputePipeline
 ### Util, delete later
 ################################################################################
 
-function missing_uniforms(robj)
+function missing_uniforms(robj, inputs, input2name)
     @info "Verifying uniforms"
-    for (key, value) in robj.vertexarray.program.uniformloc
-        if !haskey(robj.uniforms, key)
-            @info "Missing $key"
-        end
+    inputset = Set([get(input2name, k, k) for k in inputs])
+    uniformset = union(
+        keys(robj.vertexarray.program.uniformloc),
+        Symbol.(collect(keys(robj.vertexarray.buffers))),
+        [:visible]
+    )
+    # Set by other means
+    skip = [
+        :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction,
+        :objectid,
+        :ambient, :light_color, :light_direction
+    ]
+    for k in setdiff(uniformset, inputset)
+        k in skip && continue
+        printstyled("Missing uniform $k\n", color = :red)
+    end
+    for k in setdiff(inputset, uniformset)
+        k in [:indices, :instances, :fxaa] && continue
+        printstyled("Discard input $k\n", color = :yellow)
     end
 end
 
@@ -234,11 +249,13 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
         return (robj,)
     end
 
-    attr = plot.args[1]
     robj = attr[:gl_renderobject][]
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
+
+    # TODO: for debugging/checking uniforms, remove later
+    # missing_uniforms(robj, [inputs; uniforms;], input2glname)
 
     return robj
 end
@@ -248,7 +265,6 @@ end
 ################################################################################
 
 function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    positions = args[1][]
     camera = scene.camera
     space = attr[:space][]
     markerspace = attr[:markerspace][]
@@ -261,8 +277,6 @@ function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniform
     distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas[]) : nothing
 
     data = Dict(
-        :vertex => positions,
-        :indices => length(positions),
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :distancefield => distancefield,
         :px_per_unit => screen.px_per_unit,   # technically not const?
@@ -286,10 +300,10 @@ function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniform
         data[get(input2glname, name, name)] = args[name][]
     end
     if fast_pixel
-        return draw_pixel_scatter(screen, positions, data)
+        return draw_pixel_scatter(screen, data[:position], data)
     else
         # pass nothing to avoid going into image generating functions
-        return draw_scatter(screen, (nothing, positions), data)
+        return draw_scatter(screen, (nothing, data[:position]), data)
     end
 end
 
@@ -340,7 +354,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     end
 
     inputs = [
-        :positions_transformed_f32c,
         # Special
         :atlas,
         # Needs explicit handling
@@ -359,6 +372,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
 
         uniforms = [
+            :positions_transformed_f32c,
             :gl_markerspace, :quad_scale, :model_f32c,
             :_lowclip, :_highclip, :nan_color, :gl_indices, :gl_len
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
@@ -369,11 +383,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
         # Simple forwards
         uniforms = [
+            :positions_transformed_f32c,
             :sdf_uv, :quad_scale, :quad_offset,
             :image, :_lowclip, :_highclip, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
-            :gl_indices, :gl_len
+            :gl_indices, :gl_len, :marker_offset
         ]
     end
 
@@ -474,20 +489,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     ]
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
-        :_lowclip, :_highclip, :nan_color, # :matcap,
+        :_lowclip, :_highclip, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :gl_len
+        :gl_len, :transform_marker
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position, :markersize => :scale,
         :packed_uv_transform => :uv_transform,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :scaled_color => :color,
-        :model_f32c => :model,
-        :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_len => :len
+        :scaled_color => :color, :_lowclip => :lowclip, :_highclip => :highclip,
+        :model_f32c => :model, :gl_len => :len, :transform_marker => :scale_primitive,
     )
 
     robj = register_robj!(assemble_meshscatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -689,7 +702,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :_lowclip, :_highclip, :nan_color,
+        :_lowclip, :_highclip, :nan_color, :debug
     ]
 
     input2glname = Dict(
@@ -772,7 +785,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c, :indices,
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :_lowclip, :_highclip, :nan_color,
+        :_lowclip, :_highclip, :nan_color, :debug
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -1014,7 +1027,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     ]
     uniforms = [
         :x_transformed_f32c, :y_transformed_f32c, :z_converted,
-        :_lowclip, :_highclip, :nan_color,
+        :_lowclip, :_highclip, :nan_color, :matcap,
         :model_f32c, :instances,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :invert_normals, :pattern_uv_transform, :fetch_pixel
@@ -1132,7 +1145,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     ]
     uniforms = [
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :_lowclip, :_highclip, :nan_color, :model_f32c,
+        :_lowclip, :_highclip, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :pattern_uv_transform, :fetch_pixel
     ]
@@ -1223,7 +1236,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         :chunk_u8, :packed_uv_transform
     ]
     uniforms = [
-        :instances, :voxel_model, :gap,
+        :instances, :voxel_model, :gap, :depthsorting,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
     ]
 
@@ -1282,9 +1295,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:volume_model)) # bit different from voxel_model
 
-    # TODO: check if these should be the normal model matrix (for voxel too)
+    # TODO: check if this should be the normal model matrix (for voxel too)
     generate_clip_planes!(attr, scene, :model, :volume_model) # <--
-    register_world_normalmatrix!(attr, :volume_model) # <--
 
     # TODO: reuse in clip planes
     register_computation!(attr, [:volume_model], [:modelinv]) do (model,), changed, cached
@@ -1299,7 +1311,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     ]
     uniforms = [
         :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :diffuse, :specular, :shininess, :backlight,
         # :_lowclip, :_highclip, :nan_color,
         :volume_model,
     ]
