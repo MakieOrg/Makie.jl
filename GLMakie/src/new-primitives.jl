@@ -172,7 +172,7 @@ function add_view_normalmatrix!(data, attr, modelname = :model_f32c)
 end
 
 # TODO: handle these on the scene level once and reuse them
-function add_light_attributes!(scene, data, attr)
+function add_light_attributes!(screen, scene, data, attr)
     haskey(attr, :shading) || return
 
     shading = attr[:shading][]
@@ -204,7 +204,7 @@ function add_light_attributes!(scene, data, attr)
 
     elseif shading == MultiLightShading
 
-        handle_lights(data, attr[:gl_screen][], scene.lights)
+        handle_lights(data, screen, scene.lights)
 
     end
 end
@@ -212,16 +212,32 @@ end
 function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
     attr = plot.args[1]::ComputeGraph
     add_input!(attr, :scene, scene)
-    add_input!(attr, :gl_screen, screen) # TODO: how do we clean this up?
     return attr
 end
 
-function finalize_robj(screen, scene, plot)
+function register_robj!(constructor, screen, scene, plot, inputs, uniforms, input2glname)
+    attr = plot.args[1]
+
+    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+        if isnothing(last)
+            # Generate complex defaults
+            # TODO: Should we add an initializer in ComputePipeline to extract this?
+            # That would simplify this code and remove attr, uniforms from the enclosed variables here
+            robj = constructor(screen, attr, args, uniforms, input2glname)
+        else
+            robj = last[1][]
+            update_robjs!(robj, args, changed, input2glname)
+        end
+        screen.requires_update = true
+        return (robj,)
+    end
+
     attr = plot.args[1]
     robj = attr[:gl_renderobject][]
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
+
     return robj
 end
 
@@ -229,9 +245,8 @@ end
 ### Scatter
 ################################################################################
 
-function assemble_scatter_robj(attr, args, uniforms, input2glname)
+function assemble_scatter_robj(screen, attr, args, uniforms, input2glname)
     positions = args[1][]
-    screen = args.gl_screen[]
     camera = args.scene[].camera
     space = attr[:space][]
     markerspace = attr[:markerspace][]
@@ -318,10 +333,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         end
     end
 
+    register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
+        return (length(ps[]),)
+    end
+
     inputs = [
         :positions_transformed_f32c,
         # Special
-        :scene, :gl_screen, :atlas,
+        :scene, :atlas,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange,
         :sdf_marker_shape
@@ -342,7 +361,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :fxaa, :visible,
             :model_f32c,
             :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices, :gl_len
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offste
         ]
 
@@ -359,7 +378,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
             :_lowclip, :_highclip, :nan_color,
-            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices
+            :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :gl_indices, :gl_len
         ]
     end
 
@@ -386,30 +405,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
-        :gl_indices => :indices
+        :gl_indices => :indices, :gl_len => :len
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_scatter_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            if changed[3] # position
-                if haskey(robj.uniforms, :len)
-                    robj.uniforms[:len][] = length(args[1][])
-                end
-                robj.vertexarray.bufferlength = length(args[1][])
-                # robj.vertexarray.indices = length(args[3][])
-            end
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
-
-    robj = finalize_robj(screen, scene, plot)
+    robj = register_robj!(assemble_scatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -418,8 +417,7 @@ end
 ### MeshScatter
 ################################################################################
 
-function assemble_meshscatter_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
+function assemble_meshscatter_robj(screen, attr, args, uniforms, input2glname)
     scene = args.scene[]
     camera = args.scene[].camera
 
@@ -439,7 +437,7 @@ function assemble_meshscatter_robj(attr, args, uniforms, input2glname)
 
     add_color_attributes!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
     add_camera_attributes!(data, screen, camera, attr[:space][])
-    add_light_attributes!(scene, data, attr)
+    add_light_attributes!(screen, scene, data, attr)
 
     # Correct the name mapping
     if !isnothing(get(data, :intensity, nothing))
@@ -470,13 +468,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     register_world_normalmatrix!(attr)
 
-    register_computation!(attr, [:positions_transformed_f32c], [:instances]) do (pos, ), changed, cached
-        return (length(pos[]),)
+    register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
+        return (length(pos[]), length(pos[]))
     end
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange,
         :packed_uv_transform,
@@ -487,6 +485,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :fxaa, :visible, :fetch_pixel,
         :model_f32c, :gl_clip_planes, :gl_num_clip_planes, :depth_shift,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :gl_len
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -497,27 +496,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :model_f32c => :model,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
+        :gl_len => :len
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_meshscatter_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            if changed.positions_transformed_f32c
-                if haskey(robj.uniforms, :len)
-                    robj.uniforms[:len][] = length(args.positions_transformed_f32c[])
-                end
-            end
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
-
-    robj = finalize_robj(screen, scene, plot)
+    robj = register_robj!(assemble_meshscatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -526,11 +508,12 @@ end
 ### Lines
 ################################################################################
 
-function assemble_lines_robj(attr, args, uniforms, input2glname)
+function assemble_lines_robj(screen, attr, args, uniforms, input2glname)
 
     positions = args[1][] # changes name, so we use positional
     linestyle = attr[:linestyle][]
     camera = args.scene[].camera
+
     data = Dict{Symbol, Any}(
         :fast => isnothing(linestyle),
         # :fast == true removes pattern from the shader so we don't need
@@ -542,7 +525,7 @@ function assemble_lines_robj(attr, args, uniforms, input2glname)
         :debug => attr[:debug][],
     )
 
-    add_camera_attributes!(data, args.gl_screen[], camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space[])
     add_color_attributes_lines!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
 
     if !isnothing(get(data, :intensity, nothing))
@@ -554,7 +537,7 @@ function assemble_lines_robj(attr, args, uniforms, input2glname)
         data[get(input2glname, name, name)] = args[name][]
     end
 
-    return draw_lines(args.gl_screen[], positions, data)
+    return draw_lines(screen, positions, data)
 end
 
 # Observables removed and adjusted to fit Compute Pipeline
@@ -707,7 +690,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     inputs = [
         # relevant to creation time decisions
         positions,
-        :space, :scene, :gl_screen,
+        :space, :scene,
         :scaled_color, :alpha_colormap, :scaled_colorrange
     ]
         # uniforms getting passed through
@@ -733,18 +716,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_num_clip_planes => :_num_clip_planes
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, output
-        if isnothing(output)
-            robj = assemble_lines_robj(attr, args, uniforms, input2glname)
-        else
-            robj = output[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_lines_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -752,7 +725,7 @@ end
 ### LineSegments
 ################################################################################
 
-function assemble_linesegments_robj(attr, args, uniforms, input2glname)
+function assemble_linesegments_robj(screen, attr, args, uniforms, input2glname)
     linestyle = attr[:linestyle][]
     camera = args.scene[].camera
 
@@ -762,12 +735,14 @@ function assemble_linesegments_robj(attr, args, uniforms, input2glname)
         :debug => attr[:debug][],
         :ssao => false,
     )
-    screen = args.gl_screen[]
+
     add_camera_attributes!(data, screen, camera, args.space[])
     add_color_attributes_lines!(data, args.synched_color[], args.alpha_colormap[], args.scaled_colorrange[])
+
     if isnothing(get(data, :intensity, nothing))
         input2glname[:synched_color] = :intensity
     end
+
     # Transfer over uniforms
     for name in uniforms
         data[get(input2glname, name, name)] = args[name][]
@@ -807,7 +782,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     end
 
     inputs = [
-        :space, :scene, :gl_screen,
+        :space, :scene,
         :synched_color, :alpha_colormap, :scaled_colorrange
     ]
     uniforms = [
@@ -828,18 +803,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :_num_clip_planes
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, output
-        if isnothing(output)
-            robj = assemble_linesegments_robj(attr, args, uniforms, input2glname)
-        else
-            robj = output[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_linesegments_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -847,9 +812,7 @@ end
 ### Image
 ################################################################################
 
-function assemble_image_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
-
+function assemble_image_robj(screen, attr, args, uniforms, input2glname)
     r = Rect2f(0,0,1,1)
 
     data = Dict{Symbol, Any}(
@@ -900,7 +863,7 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange,
     ]
@@ -919,20 +882,8 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_image_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_image_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -940,11 +891,7 @@ end
 ### Heatmap
 ################################################################################
 
-function assemble_heatmap_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
-
-    r = Rect2f(0,0,1,1)
-
+function assemble_heatmap_robj(screen, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
         :position_x => Texture(screen.glscreen, args[1][], minfilter = :nearest),
         :position_y => Texture(screen.glscreen, args[2][], minfilter = :nearest),
@@ -1006,7 +953,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     inputs = [
         :x_transformed_f32c, :y_transformed_f32c,
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
@@ -1022,25 +969,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :_lowclip => :lowclip, :_highclip => :highclip,
         :scaled_color => :image,
-
         :model_f32c => :model,
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_heatmap_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_heatmap_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -1048,9 +982,7 @@ end
 ### Surface
 ################################################################################
 
-function assemble_surface_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
-
+function assemble_surface_robj(screen, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
         # Compile time variable, Constants
         :transparency => attr[:transparency][],
@@ -1070,7 +1002,7 @@ function assemble_surface_robj(attr, args, uniforms, input2glname)
 
     camera = args.scene[].camera
     add_camera_attributes!(data, screen, camera, args.space[])
-    add_light_attributes!(args.scene[], data, attr)
+    add_light_attributes!(screen, args.scene[], data, attr)
 
     # Transfer over uniforms
     for name in uniforms
@@ -1101,7 +1033,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
@@ -1126,20 +1058,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :pattern_uv_transform => :uv_transform
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_surface_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_surface_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -1188,8 +1108,7 @@ function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, in
 end
 
 
-function assemble_mesh_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
+function assemble_mesh_robj(screen, attr, args, uniforms, input2glname)
     camera = args.scene[].camera
 
     data = Dict{Symbol, Any}(
@@ -1210,7 +1129,7 @@ function assemble_mesh_robj(attr, args, uniforms, input2glname)
         attr[:interpolate][]
     )
 
-    add_light_attributes!(args.scene[], data, attr)
+    add_light_attributes!(screen, args.scene[], data, attr)
 
     # Transfer over uniforms
     for name in uniforms
@@ -1235,7 +1154,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange,
     ]
@@ -1257,20 +1176,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :pattern_uv_transform => :uv_transform
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_mesh_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_mesh_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -1280,8 +1187,7 @@ end
 ################################################################################
 
 
-function assemble_voxel_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
+function assemble_voxel_robj(screen, attr, args, uniforms, input2glname)
     camera = args.scene[].camera
 
     voxel_id = Texture(screen.glscreen, args.chunk_u8[], minfilter = :nearest)
@@ -1297,7 +1203,7 @@ function assemble_voxel_robj(attr, args, uniforms, input2glname)
     )
 
     add_camera_attributes!(data, screen, camera, args.space[])
-    add_light_attributes!(args.scene[], data, attr)
+    add_light_attributes!(screen, args.scene[], data, attr)
 
     if haskey(args, :voxel_color)
         interp = attr[:interpolate][] ? :linear : :nearest
@@ -1343,7 +1249,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :chunk_u8, :packed_uv_transform
     ]
@@ -1364,20 +1270,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_voxel_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_voxel_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
 
@@ -1387,9 +1281,7 @@ end
 ################################################################################
 
 
-function assemble_volume_robj(attr, args, uniforms, input2glname)
-    screen = args.gl_screen[]
-
+function assemble_volume_robj(screen, attr, args, uniforms, input2glname)
     interp = attr[:interpolate][] ? :linear : :nearest
     volume_data = Texture(screen.glscreen, args.volume[], minfilter = interp)
 
@@ -1404,7 +1296,7 @@ function assemble_volume_robj(attr, args, uniforms, input2glname)
 
     camera = args.scene[].camera
     add_camera_attributes!(data, screen, camera, args.space[])
-    add_light_attributes!(args.scene[], data, attr)
+    add_light_attributes!(screen, args.scene[], data, attr)
 
     if args.volume[] isa AbstractArray{<:Real}
         data[:color_map] = args.alpha_colormap[]
@@ -1436,7 +1328,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
 
     inputs = [
         # Special
-        :space, :scene, :gl_screen,
+        :space, :scene,
         # Needs explicit handling
         :alpha_colormap, :scaled_colorrange
     ]
@@ -1457,19 +1349,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes,
     )
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
-        screen = args.gl_screen[]
-        if isnothing(last)
-            # Generate complex defaults
-            robj = assemble_volume_robj(attr, args, uniforms, input2glname)
-        else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
-        end
-        screen.requires_update = true
-        return (robj,)
-    end
+    robj = register_robj!(assemble_volume_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
-    robj = finalize_robj(screen, scene, plot)
     return robj
 end
