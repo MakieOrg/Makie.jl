@@ -507,6 +507,17 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     return
 end
 
+"""
+    add_input!([callback], compute_graph, name::Symbol, obs::Observable)
+
+Connects an `Observable` as a input to the given `compute_graph`. The input will
+be updated automatically whenever the observable updates. It can also be updated
+through the usual `update!(graph, name = new_value)` call.
+
+The Observable listener is set up with `priority = typemax(Int)-1` and
+`Consume(false)`. This means it will take precedence over all but `typemax(Int)`
+priority and not block later updates.
+"""
 function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(attr, k, obs[])
     # typemax-1 so it doesn't get disturbed by other listeners but can still be
