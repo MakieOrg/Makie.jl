@@ -206,3 +206,166 @@ end
         @test contains(s, "\n  inputs:\n    ↻ Computed(:output, #undef)\n  outputs:\n    ↻ Computed(:output2, #undef)\n  dependents:")
     end
 end
+
+@testset "deletion" begin
+    foo(inputs, changed, cached) = (inputs[1][],)
+    foo2(inputs, changed, cached) = (inputs[1][] + inputs[2][], inputs[1][] - inputs[2][])
+
+    @testset "public interface" begin
+        graph = ComputeGraph()
+        add_input!(graph, :in, 1)
+        register_computation!(foo, graph, [:in], [:out])
+
+        # These should not be available
+        @test_throws MethodError delete!(graph, graph.inputs[:in]) # Input
+        @test_throws MethodError delete!(graph, graph.outputs[:in]) # Computed
+        @test_throws MethodError delete!(graph, graph.outputs[:out].parent) # ComputeEdge
+
+        @test_throws KeyError delete!(graph, :unknown)
+
+        @test begin delete!(graph, :out); true end
+    end
+
+    @testset "Input" begin
+        graph = ComputeGraph()
+        add_input!(graph, :in, 1)
+
+        # Deleting an input should be possible and delete both the Input and the
+        # related Computed if there are no obstructions
+        @test haskey(graph.inputs, :in)
+        @test haskey(graph.outputs, :in)
+        delete!(graph, :in)
+        @test !haskey(graph.inputs, :in)
+        @test !haskey(graph.outputs, :in)
+
+        add_input!(graph, :in, 1)
+        @test haskey(graph.inputs, :in)
+        @test haskey(graph.outputs, :in)
+
+        register_computation!(foo, graph, [:in], [:out])
+
+        # Deleting an input node with dependents is not allowed
+        @test_throws ErrorException delete!(graph, :in)
+
+        # Unless you allow deleting child nodes
+        delete!(graph, :in, recursive = true)
+        @test !haskey(graph.inputs, :in)
+        @test !haskey(graph.outputs, :in)
+        @test !haskey(graph.outputs, :out)
+    end
+
+    @testset "Computed" begin
+        parent = ComputeGraph()
+        add_input!(parent, :parent_node, 1)
+
+        graph = ComputeGraph()
+        add_input!(graph, :in1, parent.parent_node)
+        add_input!(graph, :in2, 2)
+
+        # Deleting a leaf node without siblings is valid
+        @testset "Leaf Node" begin
+            # ... with a Computed --> Computed --> Computed
+            register_computation!(foo, graph, [:in1], [:output])
+
+            @test haskey(graph.outputs, :output)
+            @test !isempty(graph.outputs[:in1].parent.dependents)
+            delete!(graph, :output)
+            @test !haskey(graph.outputs, :output)
+            @test isempty(graph.outputs[:in1].parent.dependents)
+
+            # ... with a Input --> Computed --> Computed
+            register_computation!(foo, graph, [:in2], [:output])
+
+            @test haskey(graph.outputs, :output)
+            @test !isempty(graph.outputs[:in2].parent.dependents)
+            delete!(graph, :output)
+            @test !haskey(graph.outputs, :output)
+            @test isempty(graph.outputs[:in2].parent.dependents)
+        end
+
+        # Deleting a leaf node with siblings requires force = true
+        @testset "Siblings" begin
+            register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
+
+            @test_throws ErrorException delete!(graph, :added)
+            @test !isempty(graph.outputs[:in1].parent.dependents)
+            @test !isempty(graph.outputs[:in2].parent.dependents)
+            @test haskey(graph.outputs, :added)
+            @test haskey(graph.outputs, :subtracted)
+
+            delete!(graph, :added, force = true)
+            @test isempty(graph.outputs[:in1].parent.dependents)
+            @test isempty(graph.outputs[:in2].parent.dependents)
+            @test !haskey(graph.outputs, :added)
+            @test !haskey(graph.outputs, :subtracted)
+
+            # check symmetry
+            register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
+            @test_throws ErrorException delete!(graph, :subtracted)
+            @test !isempty(graph.outputs[:in1].parent.dependents)
+            @test !isempty(graph.outputs[:in2].parent.dependents)
+            @test haskey(graph.outputs, :added)
+            @test haskey(graph.outputs, :subtracted)
+
+            delete!(graph, :subtracted, force = true)
+            @test isempty(graph.outputs[:in1].parent.dependents)
+            @test isempty(graph.outputs[:in2].parent.dependents)
+            @test !haskey(graph.outputs, :added)
+            @test !haskey(graph.outputs, :subtracted)
+        end
+
+        # Deleting a node with further children requires recursive = true
+        @testset "Children" begin
+            register_computation!(foo, graph, [:in1], [:output])
+            register_computation!(foo, graph, [:output], [:output2])
+
+            @test_throws ErrorException delete!(graph, :output)
+            @test haskey(graph.outputs, :output)
+            @test haskey(graph.outputs, :output2)
+            @test !isempty(graph.outputs[:in1].parent.dependents)
+            @test !isempty(graph.outputs[:output].parent.dependents)
+
+            delete!(graph, :output, recursive = true)
+            @test !haskey(graph.outputs, :output)
+            @test !haskey(graph.outputs, :output2)
+            @test isempty(graph.outputs[:in1].parent.dependents)
+        end
+
+        # Nodes that connect one graph to another should follow the same rules
+        # as normal nodes
+        @testset "Graph Connector Node" begin
+            @test haskey(parent.outputs, :parent_node)
+            @test haskey(graph.outputs, :in1)
+            @test !isempty(parent.outputs[:parent_node].parent.dependents)
+            @test isempty(graph.outputs[:in1].parent.dependents)
+
+            @test_throws KeyError delete!(graph, :parent_node)
+
+            delete!(graph, :in1)
+            @test haskey(parent.outputs, :parent_node)
+            @test !haskey(graph.outputs, :in1)
+            @test isempty(parent.outputs[:parent_node].parent.dependents)
+
+            add_input!(graph, :in1, parent.parent_node)
+            register_computation!(foo, graph, [:in1], [:output])
+
+            @test haskey(parent.outputs, :parent_node)
+            @test haskey(graph.outputs, :in1)
+            @test haskey(graph.outputs, :output)
+            @test !isempty(parent.outputs[:parent_node].parent.dependents)
+            @test !isempty(graph.outputs[:in1].parent.dependents)
+            @test isempty(graph.outputs[:output].parent.dependents)
+
+            @test_throws ErrorException delete!(graph, :in1)
+
+            delete!(graph, :in1, recursive = true)
+            @test haskey(parent.outputs, :parent_node)
+            @test !haskey(graph.outputs, :in1)
+            @test !haskey(graph.outputs, :output)
+            @test isempty(parent.outputs[:parent_node].parent.dependents)
+
+            # TODO:: Anything special for graph barriers?
+        end
+    end
+
+end

@@ -656,74 +656,88 @@ function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, outpu
     return
 end
 
-# TODO:
-# What exactly should these do? Just remove the specific object, or clean up
-# invalid dependents as well? Or maybe both should be possible?
+"""
+    delete!(graph::ComputeGraph, key::Symbol[; force = false, recursive = false])
 
-# GLMakie only *requires* an endpoint to be deleted atm so lets keep this simple
-# for now
-function Base.delete!(attr::ComputeGraph, key::Symbol)
-    haskey(attr.outputs, key) || return attr
+Deletes a node from the given graph based on its name.
 
-    computed = attr.outputs[key]
-    if hasparent(computed)
-        delete!(attr, computed.parent)
-    else
-        delete!(attr.outputs, key)
-    end
-
+If `recursive = true` all child nodes of the selected node are deleted. If
+`force = true` all siblings are deleted. If either exists without the respective
+option being true an error will be thrown.
+"""
+function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
+    haskey(attr.outputs, key) || throw(KeyError(key))
+    _delete!(attr, attr.outputs[key], force, recursive)
     return attr
 end
 
-function Base.delete!(attr::ComputeGraph, edge::ComputeEdge)
+function _delete!(attr::ComputeGraph, node::Computed, force::Bool, recursive::Bool)
+    @assert hasparent(node)
+    _delete!(attr, node.parent, force, recursive)
+    return attr
+end
+
+function validate_deletion(edge::ComputeEdge, force::Bool, recursive::Bool)
+    force && recursive && return
+    if !(length(edge.outputs) == 1 || force)
+        error("Cannot delete node because it or one of its dependents has siblings. Set `force = true` to also delete siblings.")
+    end
+    if !(recursive || isempty(edge.dependents))
+        error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
+    end
+    foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
+end
+
+function validate_deletion(edge::Input, force::Bool, recursive::Bool)
+    force && recursive && return
+    if !(recursive || isempty(edge.dependents))
+        error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
+    end
+    foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
+end
+
+function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive::Bool)
+    validate_deletion(edge, force, recursive)
+    return unsafe_delete!(attr, edge)
+end
+
+function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
+    # all dependents become invalid as their parent computation no longer runs
+    for dependent in edge.dependents
+        unsafe_delete!(attr, dependent)
+    end
+
     # deregister this edge as a dependency of its parents
     for computed in edge.inputs
-        if hasparent(computed)
-            parent_edge = computed.parent
-            filter!(e -> e === edge, parent_edge.dependents)
-        end
+        @assert hasparent(computed)
+        parent_edge = computed.parent
+        filter!(e -> e !== edge, parent_edge.dependents)
     end
 
-    # all dependents become invalid as their parent computation no longer runs
-    for dependent in edge.dependents
-        delete!(attr, dependent)
-    end
-
-    # All outputs lose their parent computation so they should probably be removed
-    # Could also disconnect them, but what's the point of a loose node?
+    # Delete output nodes of this edge
     for computed in edge.outputs
-        for (k, v) in attr.outputs
-            if v === computed
-                delete!(attr.outputs, k)
-                break
-            end
-        end
+        k = computed.name
+        @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
+        delete!(attr.outputs, k)
     end
 
     return attr
 end
 
-function Base.delete!(attr::ComputeGraph, edge::Input)
+function unsafe_delete!(attr::ComputeGraph, edge::Input)
     # all dependents become invalid as their parent computation no longer runs
     for dependent in edge.dependents
-        delete!(attr, dependent)
+        unsafe_delete!(attr, dependent)
     end
 
-    # All outputs lose their parent computation so they should probably be removed
-    # Could also disconnect them, but what's the point of a loose node?
-    for k in keys(attr.inputs)
-        if attr.inputs[k] === edge
-            delete!(attr.inputs, k)
-            break
-        end
-    end
+    # Delete output node of this edge
+    k = edge.name
+    @assert haskey(attr.outputs, k) && attr.outputs[k] === edge.output
+    delete!(attr.outputs, k)
 
-    for k in keys(attr.outputs)
-        if attr.outputs[k] === edge.output
-            delete!(attr.outputs, k)
-            break
-        end
-    end
+    # Delete Input
+    @assert haskey(attr.inputs, k) && attr.inputs[k] === edge
+    delete!(attr.inputs, k)
 
     return attr
 end
