@@ -336,7 +336,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     end
 
     register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (length(ps[]),)
+        return (Int32(length(ps[])),)
     end
 
     inputs = [
@@ -462,7 +462,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     register_world_normalmatrix!(attr)
 
     register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
-        return (length(pos[]), length(pos[]))
+        return (length(pos[]), Int32(length(pos[])))
     end
 
     inputs = [
