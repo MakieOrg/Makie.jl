@@ -583,6 +583,10 @@ function draw_glyph_collection(
 
     model = _deref(_model)
     model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
+    if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
+        model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
+    end
+
     id = Mat4f(I)
 
     glyph_pos = let
