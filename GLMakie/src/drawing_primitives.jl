@@ -456,7 +456,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 plot.transform_marker, get(plot, :markerspace, plot.space)
             ) do new_f32c, old_f32c, transform_marker, markerspace
                 if markerspace == :data
-                    return Vec3f(transform_marker ? new_f32c.scaling : old_f32c.scale)
+                    return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
                 else
                     return Vec3f(1)
                 end
