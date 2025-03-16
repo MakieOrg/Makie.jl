@@ -431,22 +431,22 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
         cam = scene.camera
 
+        #=
+        If markerspace == :data in Scatter, we consider markersize, marker_offset
+        and quad_offset to be given in the pre-float32convert coordinate system.
+        Therefore we need to apply float32convert.scale (offset is already
+        applied in positions). Since this is only a multiplication (whose result
+        is in float safe units) we can apply it on the GPU
+
+        The same goes for MeshScatter based on `space == :data`. Here only
+        markersize is affected
+
+        Note that if the model matrix has rotation and gets applied on the
+        CPU with the float32convert, it should also get applied on the CPU
+        for markersize, marker_offset and quad_offset (with transform_marker = true).
+        This is not done yet as it requires shader rewrites
+        =#
         if !isnothing(scene.float32convert)
-            #=
-            If markerspace == :data in Scatter, we consider markersize, marker_offset
-            and quad_offset to be given in the pre-float32convert coordinate system.
-            Therefore we need to apply float32convert.scale (offset is already
-            applied in positions). Since this is only a multiplication (whose result
-            is in float safe units) we can apply it on the GPU
-
-            The same goes for MeshScatter based on `space == :data`. Here only
-            markersize is affected
-
-            Note that if the model matrix has rotation and gets applied on the
-            CPU with the float32convert, it should also get applied on the CPU
-            for markersize, marker_offset and quad_offset (with transform_marker = true).
-            This is not done yet as it requires shader rewrites
-            =#
             gl_attributes[:f32c_scale] = lift(plot, f32c, get(plot, :markerspace, plot.space)) do old_f32c, markerspace
                 if markerspace == :data
                     return Vec3f(old_f32c.scale)
@@ -455,7 +455,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                 end
             end
         else
-            gl_attributes[:f32c_scale] = Vec2f(1)
+            gl_attributes[:f32c_scale] = Vec3f(1)
         end
 
         if plot isa Scatter
@@ -624,7 +624,8 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        pos = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), gl_attributes[:position])
+        f32c = pop!(gl_attributes, :f32c)
+        pos = apply_transform_and_f32_conversion(plot, f32c, gl_attributes[:position])
         space = plot.space
         markerspace = plot.markerspace
         offset = pop!(gl_attributes, :offset, Vec2f(0))
@@ -688,6 +689,19 @@ function draw_atomic(screen::Screen, scene::Scene,
         # gl_attributes[:preprojection] = Observable(Mat4f(I))
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
             Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
+        end
+
+        # See Scatter
+        if !isnothing(scene.float32convert)
+            gl_attributes[:f32c_scale] = lift(plot, f32c, plot.markerspace) do old_f32c, markerspace
+                if markerspace == :data
+                    return Vec3f(old_f32c.scale)
+                else
+                    return Vec3f(1)
+                end
+            end
+        else
+            gl_attributes[:f32c_scale] = Vec3f(1)
         end
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
