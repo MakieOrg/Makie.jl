@@ -147,9 +147,12 @@ function Makie.convert_arguments(
 end
 
 function compute_contour_colormap(levels, cmap, elow, ehigh, discretize_colormap)
-    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    n = length(levels_scaled)
-
+    n = length(levels)
+    if n == 1
+        levels_scaled = [0.5]
+    else
+        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+    end
 
     _cmap = to_colormap(cmap)
     if !discretize_colormap
