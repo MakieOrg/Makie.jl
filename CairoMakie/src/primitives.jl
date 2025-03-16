@@ -318,12 +318,17 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     ctx = screen.context
     positions = primitive[1][]
     isempty(positions) && return
+    markerspace = primitive.markerspace[]
+    space = primitive.space[]
+
     size_model = transform_marker ? model : Mat4d(I)
+    if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
+        size_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * size_model
+    end
 
     font = to_font(to_value(get(primitive, :font, Makie.defaultfont())))
     colors = to_color(primitive.calculated_colors[])
-    markerspace = primitive.markerspace[]
-    space = primitive.space[]
+
     transfunc = Makie.transform_func(primitive)
     billboard = primitive.rotation[] isa Billboard
 

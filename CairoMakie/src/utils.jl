@@ -87,7 +87,26 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
-        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
+        p_yflip = Vec2d(p[1], (1f0 - 2f0 * yflip) * p[2])
+        # normalize to between 0 and 1
+        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+    end
+    # multiply with scene resolution for final position
+    return p_0_to_1 .* res
+end
+
+# Scatter has already applied f32convert and model, which the function above
+# would reapply. This one avoids that.
+function scatter_project_position(scene::Scene, markerspace, point::VecTypes{N, T1}, yflip::Bool) where {N, T1 <: Real}
+    T = promote_type(Float32, T1) # always Float, at least Float32
+    res = scene.camera.resolution[]
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
+    clip = Makie.space_to_clip(scene.camera, markerspace) * p4d
+    @inbounds begin
+        # between -1 and 1
+        p = (clip ./ clip[4])[Vec(1, 2)]
+        # flip y to match cairo
+        p_yflip = Vec2d(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
         p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
@@ -115,15 +134,15 @@ function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation
     xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
     yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
 
-    proj_pos = _project_position(scene, markerspace, origin, id, true)
+    proj_pos = scatter_project_position(scene, markerspace, origin, true)
 
     if billboard && Makie.is_data_space(markerspace)
         p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
-        xproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, id, true)
-        yproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, id, true)
+        xproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, true)
+        yproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, true)
     else
-        xproj = _project_position(scene, markerspace, origin + xvec, id, true)
-        yproj = _project_position(scene, markerspace, origin + yvec, id, true)
+        xproj = scatter_project_position(scene, markerspace, origin + xvec, true)
+        yproj = scatter_project_position(scene, markerspace, origin + yvec, true)
     end
 
     xdiff = xproj - proj_pos
