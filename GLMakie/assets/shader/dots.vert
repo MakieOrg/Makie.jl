@@ -72,7 +72,7 @@ void main(){
         vec3 scale_vec = upvector * f32c_scale.y * scale.x;
         vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
         float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
-        gl_PointSize = clamp(ceil(0.5 * yup *  resolution.y), 0.0, 1e6);
+        gl_PointSize = ceil(0.5 * yup *  resolution.y);
         clip_pos += projectionview * vec4(f32c_scale * marker_offset, 0);
     }
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
