@@ -441,15 +441,22 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         The same goes for MeshScatter based on `space == :data`. Here only
         markersize is affected
 
-        Note that if the model matrix has rotation and gets applied on the
-        CPU with the float32convert, it should also get applied on the CPU
-        for markersize, marker_offset and quad_offset (with transform_marker = true).
-        This is not done yet as it requires shader rewrites
+        Note that if `transform_marker = true` the model matrix should apply to
+        marker attributes. When the model matrix is not float safe it gets merged
+        into float32convert if possible. This is the difference between "old_f32c"
+        (no model) and "new_f32c" (maybe with model scale + trans) here.
+
+        Merging is only possible without rotation in model. If there is rotation
+        the model matrix should be applied on the CPU, but isn't yet. This will
+        require shader rewrites if it's not too niche to ignore.
         =#
         if !isnothing(scene.float32convert)
-            gl_attributes[:f32c_scale] = lift(plot, f32c, get(plot, :markerspace, plot.space)) do old_f32c, markerspace
+            gl_attributes[:f32c_scale] = lift(plot,
+                f32c, scene.float32convert.scaling,
+                plot.transform_marker, get(plot, :markerspace, plot.space)
+            ) do new_f32c, old_f32c, transform_marker, markerspace
                 if markerspace == :data
-                    return Vec3f(old_f32c.scale)
+                    return Vec3f(transform_marker ? new_f32c.scaling : old_f32c.scale)
                 else
                     return Vec3f(1)
                 end

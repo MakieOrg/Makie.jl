@@ -97,7 +97,7 @@ void main(){
     vec3 pos;
     {{position_calc}}
     g_world_position  = vec3(model * vec4(pos, 1));
-    g_marker_offset   = f32c_scale * (scale_primitive ? mat3(model) * marker_offset : marker_offset);
+    g_marker_offset   = (scale_primitive ? mat3(model) * f32c_scale * marker_offset : f32c_scale * marker_offset);
     g_offset_width.xy = f32c_scale.xy * quad_offset.xy;
     g_offset_width.zw = f32c_scale.xy * scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
