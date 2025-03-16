@@ -5,16 +5,16 @@ tricontour
 ```
 
 ## Related methods
-- Use `tricontour` to plot contour lines using unstructured data in 2D.
-- Use `tricontourf` to plot filled contours using unstructured data in 2D.
-- Use `contour` to plot contour lines using a grid in 2D.
-- Use `contour3d` to plot contour lines using a grid in 3D.
-- Use `contourf` to plot contour lines using a grid in 2D.
-- Use `triplot` to plot a triangulation in 2D
+- Use `tricontour`(@ref) to plot contour lines using unstructured data in 2D.
+- Use `tricontourf`(@ref) to plot filled contours using unstructured data in 2D.
+- Use `contour`(@ref) to plot contour lines using a grid in 2D.
+- Use `contour3d`(@ref) to plot contour lines using a grid in 3D.
+- Use `contourf`(@ref) to plot contour lines using a grid in 2D.
+- Use `triplot`(@ref) to plot a triangulation in 2D
 
 ## Triangulations and Relative mode
 
-See the documentation of `tricontourf` to learn about manual triangulations and about passing relative level values.
+See the documentation of `tricontourf`(@ref) to learn about manual triangulations and about passing relative level values.
 
 ## Examples
 
