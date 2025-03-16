@@ -55,23 +55,25 @@ uniform mat4 projection, projectionview, view, model;
 uniform int markerspace;
 uniform float px_per_unit;
 uniform vec3 upvector;
+uniform vec3 f32c_scale;
+
+#define PIXEL_SPACE 0
+#define WORLD_SPACE 1
 
 void main(){
     vec4 world_position = model * _position(vertex);
     process_clip_planes(world_position.xyz);
     vec4 clip_pos = projectionview * world_position;
-    if (markerspace == 0) {
-        // pixelspace
+    if (markerspace == PIXEL_SPACE) {
         clip_pos += vec4(2.0 * px_per_unit * marker_offset / vec3(resolution, 1), 0);
         gl_PointSize = px_per_unit * scale.x;
     } else {
-        // dataspace with 3D camera
         // to have a billboard, we project the upvector
-        vec3 scale_vec = upvector * scale.x;
+        vec3 scale_vec = upvector * f32c_scale.y * scale.x;
         vec4 up_clip = projectionview * vec4(world_position.xyz + scale_vec, 1);
         float yup = abs(up_clip.y - clip_pos.y) / clip_pos.w;
-        gl_PointSize = ceil(0.5 * yup *  resolution.y);
-        clip_pos += projectionview * vec4(marker_offset, 0);
+        gl_PointSize = clamp(ceil(0.5 * yup *  resolution.y), 0.0, 1e6);
+        clip_pos += projectionview * vec4(f32c_scale * marker_offset, 0);
     }
     gl_Position = vec4(clip_pos.xy, clip_pos.z + (clip_pos.w * depth_shift), clip_pos.w);
 

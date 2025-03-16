@@ -31,7 +31,7 @@ ivec2 ind2sub(ivec2 dim, int linearindex);
 ivec3 ind2sub(ivec3 dim, int linearindex);
 
 {{scale_type}}   scale; // so in the case of distinct x,y,z, there's no chance to unify them under one variable
-
+uniform vec3 f32c_scale;
 
 {{marker_offset_type}} marker_offset;
 {{quad_offset_type}} quad_offset;
@@ -97,9 +97,9 @@ void main(){
     vec3 pos;
     {{position_calc}}
     g_world_position  = vec3(model * vec4(pos, 1));
-    g_marker_offset   = scale_primitive ? mat3(model) * marker_offset : marker_offset;
-    g_offset_width.xy = quad_offset.xy;
-    g_offset_width.zw = scale.xy;
+    g_marker_offset   = f32c_scale * (scale_primitive ? mat3(model) * marker_offset : marker_offset);
+    g_offset_width.xy = f32c_scale.xy * quad_offset.xy;
+    g_offset_width.zw = f32c_scale.xy * scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;

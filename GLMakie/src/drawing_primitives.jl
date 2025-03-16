@@ -431,6 +431,33 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
         cam = scene.camera
 
+        if !isnothing(scene.float32convert)
+            #=
+            If markerspace == :data in Scatter, we consider markersize, marker_offset
+            and quad_offset to be given in the pre-float32convert coordinate system.
+            Therefore we need to apply float32convert.scale (offset is already
+            applied in positions). Since this is only a multiplication (whose result
+            is in float safe units) we can apply it on the GPU
+
+            The same goes for MeshScatter based on `space == :data`. Here only
+            markersize is affected
+
+            Note that if the model matrix has rotation and gets applied on the
+            CPU with the float32convert, it should also get applied on the CPU
+            for markersize, marker_offset and quad_offset (with transform_marker = true).
+            This is not done yet as it requires shader rewrites
+            =#
+            gl_attributes[:f32c_scale] = lift(plot, f32c, get(plot, :markerspace, plot.space)) do old_f32c, markerspace
+                if markerspace == :data
+                    return Vec3f(old_f32c.scale)
+                else
+                    return Vec3f(1)
+                end
+            end
+        else
+            gl_attributes[:f32c_scale] = Vec2f(1)
+        end
+
         if plot isa Scatter
             mspace = plot.markerspace
             gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
@@ -466,8 +493,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
-                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
+            to_keep = Set([
+                :color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
+                :projectionview, :projection, :view, :visible, :resolution, :transparency, :f32c_scale
+            ])
             filter!(gl_attributes) do (k, v,)
                 return (k in to_keep)
             end
@@ -481,23 +510,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter
-                # If the vertices of the scattered mesh, markersize and (if it applies) model
-                # are float32 safe we should be able to just correct for any scaling from
-                # float32convert in the shader, after those conversions.
-                # We should also be fine as long as rotation = identity (also in model).
-                # If neither is the case we would have to combine vertices with positions and
-                # transform them to world space (post float32convert) on the CPU. We then can't
-                # do instancing anymore, so meshscatter becomes pointless.
-                if !isnothing(scene.float32convert)
-                    gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-                        # we must use new_f32c with transform_marker = true,
-                        # because model might be merged into f32c (robj.model = I)
-                        # with transform_marker = false we must use the old f32c
-                        # as we don't want model to apply
-                        return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-                    end
-                end
-
                 if haskey(gl_attributes, :color)
                     if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
                         pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
