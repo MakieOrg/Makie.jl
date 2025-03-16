@@ -700,9 +700,12 @@ function draw_atomic(screen::Screen, scene::Scene,
 
         # See Scatter
         if !isnothing(scene.float32convert)
-            gl_attributes[:f32c_scale] = lift(plot, f32c, plot.markerspace) do old_f32c, markerspace
+            gl_attributes[:f32c_scale] = lift(plot,
+                f32c, scene.float32convert.scaling,
+                plot.transform_marker, plot.markerspace
+            ) do new_f32c, old_f32c, transform_marker, markerspace
                 if markerspace == :data
-                    return Vec3f(old_f32c.scale)
+                    return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
                 else
                     return Vec3f(1)
                 end
