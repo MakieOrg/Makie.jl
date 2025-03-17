@@ -152,6 +152,8 @@ instead of uploading this texture 10x in every plot.
 struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
     dims::NTuple{2, Int}
 end
+Base.size(x::NoDataTextureAtlas) = x.dims
+Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
@@ -274,6 +276,10 @@ function scatter_shader(scene::Scene, attributes, plot)
         lens = [k => length(v) for (k, v) in per_instance]
         error("Not all have the same length: $(lens)")
     end
+
+    display(per_instance)
+    display(uniform_dict)
+
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
