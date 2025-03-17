@@ -167,24 +167,6 @@ function serialize_three(fta::NoDataTextureAtlas)
     return tex
 end
 
-function add_f32c_scale!(uniforms, scene, plot, f32c)
-    if !isnothing(scene.float32convert)
-        uniforms[:f32c_scale] = lift(plot,
-            f32c, scene.float32convert.scaling,
-            plot.transform_marker, get(plot, :markerspace, plot.space)
-        ) do new_f32c, old_f32c, transform_marker, markerspace
-            if markerspace == :data
-                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-            else
-                return Vec3f(1)
-            end
-        end
-    else
-        uniforms[:f32c_scale] = Vec3f(1)
-    end
-    return
-end
-
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
     per_instance_keys = (:pos, :rotation, :markersize, :color, :intensity,
@@ -293,7 +275,7 @@ function create_shader(scene::Scene, plot::Scatter)
     f32c, model = Makie.patch_model(plot)
     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
-    add_f32c_scale!(attributes, scene, plot, f32c)
+    Makie.add_f32c_scale!(attributes, scene, plot, f32c)
 
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = model
@@ -361,7 +343,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :glowcolor => plot.glowcolor,
     )
 
-    add_f32c_scale!(uniforms, scene, plot, f32c)
+    Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
 
     return scatter_shader(scene, uniforms, plot_attributes)
 end
