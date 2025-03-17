@@ -87,7 +87,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
         # flip y to match cairo
-        p_yflip = Vec2d(p[1], (1f0 - 2f0 * yflip) * p[2])
+        p_yflip = Vec2f(p[1], (1f0 - 2f0 * yflip) * p[2])
         # normalize to between 0 and 1
         p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
     end
@@ -97,18 +97,17 @@ end
 
 # Scatter has already applied f32convert and model, which the function above
 # would reapply. This one avoids that.
-function scatter_project_position(scene::Scene, markerspace, point::VecTypes{N, T1}, yflip::Bool) where {N, T1 <: Real}
-    T = promote_type(Float32, T1) # always Float, at least Float32
+function scatter_project_position(scene::Scene, markerspace, point::VecTypes, yflip::Bool)
     res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
+    p4d = to_ndim(Vec4d, to_ndim(Vec3d, point, 0.0), 1.0)
     clip = Makie.space_to_clip(scene.camera, markerspace) * p4d
     @inbounds begin
         # between -1 and 1
-        p = (clip ./ clip[4])[Vec(1, 2)]
+        p = clip[Vec(1,2)] ./ clip[4]
         # flip y to match cairo
-        p_yflip = Vec2d(p[1], (1f0 - 2f0 * yflip) * p[2])
+        p_yflip = Vec2d(p[1], (1.0 - 2.0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1f0) ./ 2f0
+        p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
