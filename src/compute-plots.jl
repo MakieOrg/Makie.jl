@@ -289,6 +289,9 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 end
 
 function register_marker_computations!(attr::ComputeGraph)
+    register_computation!(attr, [:rotation], [:_rotation, :billboard]) do inputs, changed, cached
+        return inputs[1][]
+    end
 
     register_computation!(attr, [:marker, :markersize],
                           [:quad_offset, :quad_scale]) do (marker, markersize), changed, last
@@ -564,7 +567,7 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_arguments!(Scatter, attr, user_kw, args...)
     register_marker_computations!(attr)
     register_colormapping!(attr)
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :_rotation],
                           [:data_limits]) do args, changed, last
         return (_boundingbox(map(getindex, args)...),)
     end

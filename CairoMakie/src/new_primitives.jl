@@ -133,8 +133,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
            p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
 
-    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+    markersize, strokecolor, strokewidth, marker, marker_offset, rotation_billboard,
     transform_marker, model, markerspace, space, clip_planes = args
+
+    rotation, billboard = rotation_billboard
 
     attr = p.args[1]
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
@@ -172,7 +174,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
 
     font = p.font[]
     colors = cairo_colors(p)
-    billboard = p.rotation[] isa Billboard
 
     return draw_atomic_scatter(
         scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,

@@ -944,6 +944,9 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
+convert_attribute(b::Billboard, ::key"rotation", ::key"scatter") = (to_rotation(b.rotation), true)
+convert_attribute(x, k::key"rotation", ::key"scatter") = (convert_attribute(x, k), false)
+
 convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
