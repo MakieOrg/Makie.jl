@@ -122,9 +122,9 @@ function project_marker(scene, markerspace, origin, scale, rotation, model, bill
     scale3 = to_ndim(Vec2d, scale, first(scale))
     model33 = model[Vec(1,2,3), Vec(1,2,3)]
     origin3 = to_ndim(Point3d, origin, 0)
-    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, Mat4d(I), billboard)
+    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, billboard)
 end
-function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, id = Mat4d(I), billboard = false)
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
     # the CairoMatrix is found by transforming the right and up vector
     # of the marker into screen space and then subtracting the projected
     # origin. The resulting vectors give the directions in which the character

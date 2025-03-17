@@ -587,8 +587,6 @@ function draw_glyph_collection(
         model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
     end
 
-    id = Mat4f(I)
-
     glyph_pos = let
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
@@ -630,7 +628,7 @@ function draw_glyph_collection(
         end
 
         scale2 = scale isa Number ? Vec2d(scale, scale) : scale
-        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33, id)
+        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
 
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)
