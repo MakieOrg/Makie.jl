@@ -85,7 +85,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
     @extract arrowplot (
         points, directions, colormap, colorscale, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
-        arrowhead, arrowsize, arrowcolor, quality,
+        arrowhead, arrowsize, arrowcolor, quality, transform_marker,
         # passthrough
         diffuse, specular, shininess, shading,
         fxaa, ssao, transparency, visible, inspectable
@@ -93,7 +93,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
 
     line_c = lift((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
     arrow_c = lift((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
-    fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
+    fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic -> true for 3D, false for 2D
+    tm = lift(tm -> tm == automatic ? N == 3 : tm, arrowplot, transform_marker) # automatic -> true for 3D, false for 2D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
     if N == 2
@@ -139,6 +140,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
+            transform_marker = tm
         )
         scatter!(
             arrowplot,
@@ -148,7 +150,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             color = arrow_c, rotation = rotations, strokewidth = 0.0,
                  colormap=colormap, markerspace=arrowplot.markerspace, colorrange=arrowplot.colorrange,
             fxaa = fxaa_bool, inspectable = inspectable,
-            transparency = transparency, visible = visible
+            transparency = transparency, visible = visible,
+            transform_marker = tm
         )
     else
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
@@ -184,7 +187,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             color = line_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
             diffuse = diffuse, specular = specular, shininess = shininess,
-            inspectable = inspectable, transparency = transparency, visible = visible
+            inspectable = inspectable, transparency = transparency, visible = visible,
+            transform_marker = tm
         )
         meshscatter!(
             arrowplot,
@@ -193,7 +197,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             color = arrow_c, colormap = colormap, colorscale = colorscale, colorrange = arrowplot.colorrange,
             fxaa = fxaa_bool, ssao = ssao, shading = shading,
             diffuse = diffuse, specular = specular, shininess = shininess,
-            inspectable = inspectable, transparency = transparency, visible = visible
+            inspectable = inspectable, transparency = transparency, visible = visible,
+            transform_marker = tm
         )
     end
 

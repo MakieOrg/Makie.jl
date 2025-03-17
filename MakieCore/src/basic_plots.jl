@@ -801,4 +801,6 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = automatic
 end
