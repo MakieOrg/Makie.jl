@@ -31,7 +31,7 @@ using Makie: apply_transform_and_f32_conversion, f32_conversion_obs, f32_convert
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
-const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
+const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 # using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
 include("display.jl")
@@ -39,6 +39,7 @@ include("three_plot.jl")
 include("serialization.jl")
 include("events.jl")
 include("particles.jl")
+include("new-scatter.jl")
 include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
@@ -83,6 +84,7 @@ function __init__()
         TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
         return
     end
+
     DISABLE_JS_FINALZING[] = false
     return
 end
