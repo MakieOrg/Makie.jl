@@ -85,25 +85,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     colorscale = identity
     """The alpha (transparency) value of the colormap or color attribute."""
     alpha = 1.0
-    
-    """
-    This sets the color of an optional additional contour line for
-    zs = `minimum(zs)`.
-    If it's `:auto`, the lower end of the colormap is picked
-    and the remaining colors are shifted accordingly.
-    If it's any color representation, this color is used.
-    If it's `nothing`, no line is added.
-    """
-    extendlow = nothing
-    """
-    This sets the color of an optional additional contour line for
-    zs = `maximum(zs)`.
-    If it's `:auto`, the high end of the colormap is picked
-    and the remaining colors are shifted accordingly.
-    If it's any color representation, this color is used.
-    If it's `nothing`, no band is added.
-    """
-    extendhigh = nothing
     nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
@@ -146,53 +127,21 @@ function Makie.convert_arguments(
     return (tri, z)
 end
 
-function compute_contour_colormap(levels, cmap, elow, ehigh, discretize_colormap)
+function compute_contour_colormap(levels, cmap, discretize_colormap)
+
+    if !discretize_colormap
+        return cgrad(cmap)
+    end
     n = length(levels)
     if n == 1
         levels_scaled = [0.5]
     else
         levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
     end
-
     _cmap = to_colormap(cmap)
-    if !discretize_colormap
-        return cgrad(cmap)
-    end
-
-    if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    else
-        cm = cgrad(_cmap, levels_scaled; categorical=true)
-    end
-    return cm
+    return cgrad(_cmap, levels_scaled; categorical=true)
 end
 
-function compute_lowcolor(el, cmap)
-    if isnothing(el)
-        return RGBAf(0, 0, 0, 0)
-    elseif el === automatic || el === :auto
-        return RGBAf(to_colormap(cmap)[begin])
-    else
-        return to_color(el)::RGBAf
-    end
-end
-
-function compute_highcolor(eh, cmap)
-    if isnothing(eh)
-        return RGBAf(0, 0, 0, 0)
-    elseif eh === automatic || eh === :auto
-        return RGBAf(to_colormap(cmap)[end])
-    else
-        return to_color(eh)::RGBAf
-    end
-end
 
 function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
@@ -218,19 +167,11 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     end
 
 
-    computed_colormap = lift(compute_contour_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh, c.discretize_colormap)
+    computed_colormap = lift(
+        compute_contour_colormap, c, c._computed_levels,
+        c.colormap, c.discretize_colormap
+        )
     c.attributes[:_computed_colormap] = computed_colormap
-
-    lowcolor = Observable{RGBAf}()
-    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
-    c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, c.extendlow)
-
-    highcolor = Observable{RGBAf}()
-    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
-    c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, c.extendhigh)
 
     points = Observable(Point2f[])
     colors = Observable(Float64[])
@@ -238,7 +179,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
     labels = c.attributes[:labels]
 
-    function calculate_points(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)  
+    function calculate_points(triangulation, zs, levels::Vector{Float32})  
         empty!(points[])
         empty!(colors[])
         empty!(lev_pos[])
@@ -247,8 +188,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         # adjust outer levels to be inclusive
         levels[1] = prevfloat(levels[1])
         levels[end] = nextfloat(levels[end])
-        is_extended_low && pushfirst!(levels, -Inf)
-        is_extended_high && push!(levels, Inf)
+
 
         xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
         ys = [DelTri.gety(p) for p in DelTri.each_point(triangulation)]
@@ -302,11 +242,11 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     process_color_args!(atr, c, colors; color_args_computed...)
 
     # Compute contours
-    onany(calculate_points, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
+    onany(calculate_points, c, tri, zs, c._computed_levels)
     
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_points(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+    calculate_points(tri[], zs[], c._computed_levels[])
     @extract c (labelsize, labelfont, labelcolor, labelformatter)
 
     texts = text!(
