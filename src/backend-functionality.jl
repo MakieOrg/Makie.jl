@@ -8,7 +8,8 @@ add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr
 
 # TODO: px_per_unit?
 function add_computation!(attr, scene, ::Val{:scene_origin})
-    add_input!(attr, :viewport, scene.viewport)
+    # TODO: avoid calling this multiple times?
+    haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport[])
     register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
         !changed[1] && return nothing
         new_val = Vec2f(origin(viewport[]))

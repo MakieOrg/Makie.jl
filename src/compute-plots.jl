@@ -273,7 +273,9 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     # Hack-fix variable type
     attr[:transform_func].value = RefValue{Any}(identity)
 
-    add_input!(attr, :model, Mat4d(I))
+    # TODO: Should we get rid of model as a documented attribute?
+    #       (On master, it acts as an overwrite, making translate!() etc not work)
+    @assert haskey(attr, :model) ":model is currently assumed to be initialized from default attributes"
     # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
     add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
 

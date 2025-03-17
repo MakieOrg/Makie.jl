@@ -689,8 +689,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
         # TODO: cleanup in the future
         if plot isa Makie.ComputePlots
-            delete!(plot.args[1], :gl_renderobject)
-            delete!(plot.args[1], :gl_screen)
+            haskey(plot.args[1], :gl_renderobject) && delete!(plot.args[1], :gl_renderobject)
         end
     end
     screen.requires_update = true

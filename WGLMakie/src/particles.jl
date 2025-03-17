@@ -152,6 +152,7 @@ instead of uploading this texture 10x in every plot.
 struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
     dims::NTuple{2, Int}
 end
+Base.show(io::IO, x::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",

@@ -8,7 +8,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     println(io, "Computed:")
-    println(io, "  name: :", computed.name)
+    println(io, "  name = :", computed.name)
     if hasparent(computed)
         if computed.parent isa Input
             println(io, "  parent = ", computed.parent)
@@ -18,16 +18,15 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     else
         println(io, "parent = #undef")
     end
-    if isdefined(computed, :value) && isassigned(computed.value)
-        print(io, "  value = ", computed.value[])
-    else
-        print(io, "  value = #undef")
-    end
+    v = isdefined(computed, :value) && isassigned(computed.value) ? computed.value[] : "#undef"
+    print(io, "  value = ")
+    printstyled(io, "$v", color = ifelse(isdirty(computed), :light_black, :normal))
 end
 
 
 
 edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
+edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
 edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
 
 function edge_callback_location(edge::ComputeEdge)
@@ -39,12 +38,21 @@ function edge_callback_location(edge::ComputeEdge)
     outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
     return edge_callback_location(edge.callback, inputT, outputT)
 end
-edge_callback_location(input::Input) = edge_callback_location(input.f, (typeof(input.value),))
 
 edge_callback_location(f, arg1, arg3) = edge_callback_location(f, (arg1, Vector{Bool}, arg3))
 
 function edge_callback_location(f, args)
     file, line = Base.functionloc(f, args)
+    return "$file:$line"
+end
+
+function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any, <: Any, <: Any})
+    file, line = Base.functionloc(f.user_func, (x.key, args[1][1][]))
+    return "$file:$line"
+end
+
+function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any})
+    file, line = Base.functionloc(f.user_func, (x.key, args[1]))
     return "$file:$line"
 end
 
@@ -94,17 +102,29 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
 
     print(io, "  inputs:")
     for (dirty, v) in zip(edge.inputs_dirty, edge.inputs)
-        print(io, "\n    ", dirty ? '↻' : '✓', ' ', v)
+        if dirty
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 
     print(io, "\n  outputs:")
     for v in edge.outputs
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if isdirty(v)
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 
     print(io, "\n  dependents:")
     for v in edge.dependents
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if isdirty(v)
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            print(io, "\n    ✓ ", v)
+        end
     end
 end
 
@@ -121,10 +141,19 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
     f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
     printstyled(io, " $loc\n", color = :light_black)
-    println(io, "  output:   ", input.dirty ? '↻' : '✓', ' ', input.output)
+    print(io, "  output:   ")
+    if isdirty(input)
+        printstyled(io, "↻ $(input.output)\n", color = :light_black)
+    else
+        println(io, "✓ ", input.output)
+    end
     print(io, "  dependents:")
     for v in input.dependents
-        print(io, "\n    ", isdirty(v) ? '↻' : '✓', ' ', v)
+        if isdirty(v)
+            printstyled(io, "\n    ↻ $v", color = :light_black)
+        else
+            println(io, "\n    ✓ ", v)
+        end
     end
 end
 
@@ -169,20 +198,27 @@ function Base.show(io::IO, graph::ComputeGraph)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
+    if isempty(graph.inputs) && isempty(graph.outputs)
+        print(io, "ComputeGraph()")
+        return io
+    end
+
     println(io, "ComputeGraph():")
 
     print(io, "  Inputs:")
     ks = sort!(collect(keys(graph.inputs)), by = string)
-    pad = mapreduce(k -> length(string(k)), max, ks)
+    pad = mapreduce(k -> length(string(k)), max, ks, init = 0)
     for k in ks
         print(io, "\n    :", rpad(string(k), pad), " => ", graph.inputs[k])
     end
 
     print(io, "\n\n  Outputs:")
     ks = sort!(collect(keys(graph.outputs)), by = string)
-    pad = mapreduce(k -> length(string(k)), max, ks)
+    pad = mapreduce(k -> length(string(k)), max, ks, init = 0)
     for k in ks
-        print(io, "\n    :", rpad(string(k), pad), " => ", graph.outputs[k])
+        output = graph.outputs[k]
+        print(io, "\n    :", rpad(string(k), pad), " => ")
+        printstyled(io, "$output", color = ifelse(isdirty(output), :light_black, :normal))
     end
     return io
 end
@@ -247,18 +283,21 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
             c = ifelse(was_dirty, :light_black, ifelse(name in marked, :red, :light_green))
             was_dirty |= name in marked # only mark first unresolved input
             printstyled(io, name, color = c)
-            i != N && print(", ")
+            print(io, ", ")
         end
-        println(io, "), …)")
+        println(io, "), changed, cached)")
 
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
 
         idx = findfirst(computed -> computed.name in marked, edge.inputs)
         if idx === nothing # All resolved
-            println(io, "  with edge inputs:")
+            print(io, "  with edge inputs:")
+            ioc = IOContext(io, :limit => true)
             for input in edge.inputs
-                println(io, "    ", input.name, " = ", typeof(input.value[]))
+                print(io, "\n    ", input.name, " = ")
+                show(ioc, input.value[])
             end
+            println(io)
             print_root_inputs(io, edge)
         else # idx is first dirty
             trace_error(io, edge.inputs[idx], marked)

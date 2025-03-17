@@ -6,6 +6,7 @@ on:
       - '*.md'
     branches:
       - master
+      - sd/compute-graph
   push:
     tags:
       - '*'
@@ -17,6 +18,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  compute-pipeline:
+    name: ComputePipeline Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1'
+        os:
+          - ubuntu-20.04
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - name: Develop and test ComputePipeline
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./ComputePipeline"
+          Pkg.test("ComputePipeline")
+
   makie:
     name: Julia ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
