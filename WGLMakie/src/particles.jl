@@ -276,10 +276,6 @@ function scatter_shader(scene::Scene, attributes, plot)
         lens = [k => length(v) for (k, v) in per_instance]
         error("Not all have the same length: $(lens)")
     end
-
-    display(per_instance)
-    display(uniform_dict)
-
     return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
