@@ -140,7 +140,6 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
             linewidth=lift(lw -> lw === automatic ? 1.0f0 : lw, arrowplot, linewidth),
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible,
-            transform_marker = tm
         )
         scatter!(
             arrowplot,
