@@ -325,6 +325,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
     color = nothing
+    matcap = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
@@ -517,6 +518,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 `markersize` is a scaling applied to the primitive passed as `marker`.
 """
 @recipe MeshScatter (positions,) begin
+    matcap = nothing
     "Sets the color of the marker."
     color = @inherit markercolor
     "Sets the scattered mesh."

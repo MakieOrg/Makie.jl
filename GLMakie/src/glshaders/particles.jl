@@ -227,7 +227,7 @@ function draw_scatter(screen, (marker, position), data)
     # rot = vec2quaternion(rot)
     # delete!(data, :rotation)
 
-    if to_value(pop!(data, :depthsorting, false))
+    if !haskey(data, :indices) && to_value(pop!(data, :depthsorting, false))
         data[:indices] = map(
             data[:projectionview], data[:preprojection], data[:model],
             position
