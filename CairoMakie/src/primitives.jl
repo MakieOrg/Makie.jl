@@ -318,10 +318,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     ctx = screen.context
     positions = primitive[1][]
     isempty(positions) && return
-    markerspace = primitive.markerspace[]
-    space = primitive.space[]
+    markerspace = primitive.markerspace[]::Symbol
+    space = primitive.space[]::Symbol
 
-    size_model = transform_marker ? model : Mat4d(I)
+    size_model = transform_marker::Bool ? model::Mat4d : Mat4d(I)
     if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
         size_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * size_model
     end
@@ -333,14 +333,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     billboard = primitive.rotation[] isa Billboard
 
     return draw_atomic_scatter(scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth, marker,
-                               marker_offset, rotation, model, positions, size_model, font, markerspace,
-                               space, clip_planes, billboard)
+                               marker_offset, rotation, model::Mat4d, positions, size_model, font, markerspace,
+                               space, clip_planes::Vector{Plane3f}, billboard)
 end
 
 function draw_atomic_scatter(
         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, model, positions, size_model, font,
-        markerspace, space, clip_planes, billboard
+        marker, marker_offset, rotation, model::Mat4d, positions, size_model::Mat4d, font,
+        markerspace::Symbol, space::Symbol, clip_planes::Vector{Plane3f}, billboard::Bool
     )
 
     transformed = apply_transform(transfunc, positions, space)
@@ -349,7 +349,7 @@ function draw_atomic_scatter(
         Makie.space_to_clip(scene.camera, space) *
         Makie.f32_convert_matrix(scene.float32convert, space) *
         model
-    model33 = size_model[Vec(1,2,3), Vec(1,2,3)]
+    model33 = size_model[Vec(1,2,3), Vec(1,2,3)]::Mat3d
 
     Makie.broadcast_foreach_index(view(transformed, indices), indices, colors, markersize, strokecolor,
             strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
@@ -544,8 +544,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset, primitive.transformation, transform_marker,
-        clip_planes
+        model::Mat4d, space::Symbol, markerspace::Symbol, offset,
+        primitive.transformation::Makie.Transformation,
+        transform_marker, clip_planes::Vector{Plane3f}
     )
 
     nothing
@@ -553,7 +554,7 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation, transform_marker,
+        model, space, markerspace, offset, transformation, transform_marker,
         clip_planes
     )
 
