@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 
 ## [0.22.2] - 2025-02-26
 
