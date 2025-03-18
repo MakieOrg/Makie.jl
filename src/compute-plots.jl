@@ -107,27 +107,28 @@ function add_alpha(color, alpha)
 end
 
 function register_colormapping!(attr::ComputeGraph, colorname=:color)
-    register_computation!(attr, [:colormap, :alpha],
-                          [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), changed, last
-        icm = colormap[] # the raw input colormap e.g. :viridis
-        raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
+    # TODO: raw_colormap doesn't seem to be used?
+    #       Colorbar only uses it when its the same as alpha_colormap (when mapping === nothing)
+    register_computation!(
+            attr, [:colormap, :alpha],
+            [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]
+        ) do (packed, a), changed, last
+
+        colormap, raw_colormap, mapping, type = packed[]
         if a[] < 1.0
-            alpha_colormap = add_alpha.(colormap[], a[])
+            colormap .= add_alpha.(colormap, a[])
             raw_colormap .= add_alpha.(raw_colormap, a[])
-        else
-            alpha_colormap = colormap[]
         end
-        color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
-        return (alpha_colormap, raw_colormap, color_mapping)
+        return (colormap, raw_colormap, mapping, type)
     end
 
     for key in (:lowclip, :highclip)
         sym = Symbol(:_, key)
         register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
             if input[] === automatic
-                (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
+                return (ifelse(key === :lowclip, first(cmap[][1]), last(cmap[][1])),)
             else
-                (to_color(input[]),)
+                return (to_color(input[]),)
             end
         end
     end
@@ -289,6 +290,9 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 end
 
 function register_marker_computations!(attr::ComputeGraph)
+    register_computation!(attr, [:rotation], [:_rotation, :billboard]) do inputs, changed, cached
+        return inputs[1][]
+    end
 
     register_computation!(attr, [:marker, :markersize],
                           [:quad_offset, :quad_scale]) do (marker, markersize), changed, last
@@ -564,7 +568,7 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_arguments!(Scatter, attr, user_kw, args...)
     register_marker_computations!(attr)
     register_colormapping!(attr)
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :_rotation],
                           [:data_limits]) do args, changed, last
         return (_boundingbox(map(getindex, args)...),)
     end

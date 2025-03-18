@@ -380,7 +380,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :positions_transformed_f32c,
             :gl_markerspace, :quad_scale, :model_f32c,
             :_lowclip, :_highclip, :nan_color, :gl_indices, :gl_len
-            # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
+            :_rotation
         ]
 
     else
@@ -393,7 +393,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :image, :_lowclip, :_highclip, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
-            :gl_indices, :gl_len, :marker_offset
+            :gl_indices, :gl_len, :marker_offset,
+            :_rotation, :billboard
         ]
     end
 
@@ -419,7 +420,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :_lowclip => :lowclip, :_highclip => :highclip,
-        :gl_indices => :indices, :gl_len => :len
+        :gl_indices => :indices, :gl_len => :len,
+        :_rotation => :rotation
     )
 
     robj = register_robj!(assemble_scatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
