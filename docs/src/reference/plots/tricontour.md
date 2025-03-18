@@ -117,7 +117,7 @@ Colorbar(f[1, 2], tr.plots[2])
 f
 ```
 
-**Example comparing `:relative` and `:normal` modes of for levels in `tricontour`**
+**Example comparing `:relative` and `:normal` level modes in `tricontour`**
 
 When `mode = :normal`, the `levels` parameter can be an integer indicating the number of contour lines or a one dimensional array (or range) indicating the desired values of $z$.
 
