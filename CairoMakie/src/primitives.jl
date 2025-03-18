@@ -321,7 +321,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
     markerspace = primitive.markerspace[]::Symbol
     space = primitive.space[]::Symbol
 
-    size_model = transform_marker::Bool ? model::Mat4d : Mat4d(I)
+    size_model = transform_marker::Bool ? Mat4d(model) : Mat4d(I)
     if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
         size_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * size_model
     end
@@ -544,7 +544,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model::Mat4d, space::Symbol, markerspace::Symbol, offset,
+        Mat4d(model), space::Symbol, markerspace::Symbol, offset,
         primitive.transformation::Makie.Transformation,
         transform_marker, clip_planes::Vector{Plane3f}
     )

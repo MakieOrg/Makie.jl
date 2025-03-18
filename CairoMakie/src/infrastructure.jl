@@ -43,9 +43,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
         # the backend module which should be used to render the scene, and the pixel density
         # at which it should be rendered.
-        rasterize = to_value(get(p, :rasterize, false))::Bool
-        if rasterize != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, rasterize)
+        if to_value(get(p, :rasterize, false)) != false && should_rasterize
+            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
         else # draw vector
             draw_plot(pparent, screen, p)
         end
