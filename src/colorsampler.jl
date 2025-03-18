@@ -394,7 +394,7 @@ function assemble_colors(::Number, color, plot)
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
     return lift(
             cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled,
-            cm.lowclip, cm.highclip, cm.nan_color, c.color_mapping_type
+            cm.lowclip, cm.highclip, cm.nan_color, cm.color_mapping_type
         ) do vals, cm, cs, cr, lw, hc, nc, ct
         return numbers_to_colors(vals, cm, cs, cr, lw, hc, nc, ct == continuous)[1]
     end
