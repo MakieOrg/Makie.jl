@@ -906,7 +906,22 @@ convert_attribute(x, key::Key) = x
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
-convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+function convert_attribute(colormap, ::key"colormap")
+    # PlotUtils.ColorGradient may process a colorscale, which results in colors
+    # not applying to a linear range of values. To deal with this we:
+    # - resample colors to fit a linear range in to_colormap
+    # - return the untransformed colors from to_raw_colormap
+    # - return the values corresponding to raw colors from to_color_mapping()
+    # to_colormapping_type() somewhat independently categorizes colormaps into
+    # categorical, continuous and banded
+
+    cm = to_colormap(colormap)
+    # often the same as the above, so pass the previous result along to be reused
+    raw_cm = to_raw_colormap(colormap, cm)
+    mapping = to_color_mapping(colormap)
+    type = to_colormapping_type(colormap)
+    return (cm, raw_cm, mapping, type)
+end
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
@@ -1612,6 +1627,44 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     # 256 is just a high enough constant, without being too big to slow things down.
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
+
+# Enum types: categorical banded continuous
+"""
+    to_colormapping_type(colormap)
+
+Returns `continuous`, `categorical` or `banded` according to the type of the
+colormap passed.
+
+Note: Currently recognizes all named colormaps as continuous. To recognize them
+as categorical they need to be wrapped in `Categorical(colormap)`.
+"""
+to_colormapping_type(::Any) = continuous
+to_colormapping_type(::Categorical) = categorical
+to_colormapping_type(::PlotUtils.CategoricalColorGradient) = categorical # banded?
+to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
+to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
+# TODO: some Symbols should probably be considered categorical?
+# TODO: Would be nice if we could extract more information like colorscale from
+#       PlotUtils, colormapping types from ColorSchemes, ...
+
+"""
+    to_raw_colromap(colormap[, cached_colormap = to_colormap(colormap)])
+
+Returns the colormap with conversion but without resampling. This only differs
+from `to_colormap` for `PlotUtils.ColorGradient`.
+"""
+to_raw_colormap(colormap::PlotUtils.ColorGradient, cm) = to_colormap(colormap.colors)
+to_raw_colormap(::Any, cm) = cm
+to_raw_colormap(x::Any) = to_raw_colormap(x, to_colormap(x)) # for users?
+
+"""
+    to_color_mapping(colormap)
+
+Returns the values associated with (raw) colors in a `PlotUtils.ColorGradient`.
+Returns nothing for everything else.
+"""
+to_color_mapping(colormap::PlotUtils.ColorGradient) = colormap.values
+to_color_mapping(::Any) = nothing
 
 # Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
