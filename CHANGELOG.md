@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
 
 ## [0.22.2] - 2025-02-26
 
