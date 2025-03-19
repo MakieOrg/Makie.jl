@@ -195,6 +195,7 @@ include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
+include("basic_recipes/text_background.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
