@@ -392,7 +392,7 @@ end
     rs = 8
     rs_inner = sqrt.(vs_inner ./ vs) * rs
 
-    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    lp = Makie.Pattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, backgroundcolor=:transparent)
     # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
@@ -890,6 +890,28 @@ end
     # and now, we plot!
     fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
     ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
+@reference_test "filled contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
 
     fig
 end
@@ -1467,6 +1489,18 @@ end
     fig
 end
 
+@reference_test "Voronoiplot with empty polygons and automatic color generation" begin
+    points = [0.153071 0.210363 0.447987 0.765468 -0.681145 1.88393 -1.05474 -0.52126 1.102 0.675978 1.75767 1.19744;
+        -0.16884 -0.492721 -1.30937 0.573229 -2.39049 -0.249817 -1.15057 -0.480175 0.226354 1.18442 1.66382 -1.23949];
+    tri = triangulate(points)
+    xmin, xmax, ymin, ymax = -1 / 2, 1 / 2, -1.0, 1.0
+    clip_points = ((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax))
+    clip_vertices = (1, 2, 3, 4, 1)
+    clip_polygon = (clip_points, clip_vertices)
+    clipped_vorn = voronoi(tri, clip=true, clip_polygon=clip_polygon)
+    voronoiplot(clipped_vorn)
+end
+
 function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
@@ -1846,4 +1880,49 @@ end
     vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
 
     f
+end
+
+@reference_test "Color Patterns" begin
+    f = Figure()
+    a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
+
+    pattern = Makie.Pattern('x', width = 0.7, linecolor = (:red, 0.5), backgroundcolor = (:blue, 0.5))
+    mesh!(a, Circle(Point2f(0, 3), 1f0), color = pattern, shading = NoShading)
+
+    r = range(0, 2pi, length=21)[1:end-1]
+    img = [RGBf(0.5 + 0.5 * sin(x), 0.2, 0.5 + 0.5 * cos(y)) for x in r, y in r]
+    mesh!(a, Circle(Point2f(3, 3), 1f0), color = Makie.Pattern(img), shading = NoShading)
+
+    surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
+    meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
+        color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
+end
+
+@reference_test "Color patterns in recipes" begin
+    pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
+
+    f = Figure(size = (500, 400))
+    a = Axis(f[1, 1])
+    xlims!(-0.25, 6.6)
+
+    vs = [1, 2, 2, 3, 3, 3]
+    hist!(a, 0.5 .* vs, color = pattern, bins = 3, gap = 0.2, direction = :x)
+    density!(a, vs, color = pattern)
+    poly!(a, [0, 0, 1, 1], [2, 3, 3, 2], color = pattern)
+    band!(a, [2, 3, 4], [2.5, 3, 2], [3.5, 3.5, 3], color = pattern)
+    barplot!(a, [5, 6], [3, 2], color = pattern)
+    pie!(a, 4, 1, vs, radius = 0.5, color = pattern) # TODO: per element
+    hspan!(a, 4, 4.5, color = pattern)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
 end

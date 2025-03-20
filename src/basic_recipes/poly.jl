@@ -66,8 +66,8 @@ function poly_convert(geometries::AbstractVector, transform_func=identity)
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{2, T}, transform_func=identity) where {T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{2,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
@@ -91,7 +91,9 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     outer = coordinates(polygon.exterior)
     # TODO consider applying f32 convert here too. We would need to identify this though...
     PT = float_type(outer)
-    points = Vector{PT}[apply_transform(transform_func, outer)]
+    # Note that this should not be coerced to be a `Vector{PT}`,
+    # since `apply_transform` can change points from e.g 2D to 3D.
+    points = [apply_transform(transform_func, outer)]
     points_flat = PT[outer;]
     for inner in polygon.interiors
         inner_points = coordinates(inner)

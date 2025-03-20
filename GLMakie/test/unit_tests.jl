@@ -190,7 +190,7 @@ end
 
     empty!(ax)
 
-    tex_atlas = GLMakie.get_texture!(GLMakie.gl_texture_atlas())
+    tex_atlas = GLMakie.get_texture!(screen.glscreen, GLMakie.gl_texture_atlas())
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
@@ -485,4 +485,27 @@ end
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
     @test robj.uniforms[:projectionview][] == cam.projectionview[]
+end
+
+@testset "Empty vertex indices" begin
+    # #4782 fixed some segfaults with rendering on mac related to out-of-bounds
+    # vertex indices. One issue was that an empty set of indices would still
+    # upload one random index to the GPU (per comment this is necessary on some
+    # systems) and still issue a draw call (which should be discarded by the
+    # Graphics API due to the drawn primitive).
+    scene = Scene()
+    p = lines!(scene, Point2f[])
+    screen = display(scene, visible = false)
+    robj = screen.cache[objectid(p)]
+    indexbuffer = robj.vertexarray.indices
+    @test isempty(indexbuffer)
+    @test length(indexbuffer) == 0 # skip condition for draw call
+
+    real_bytesize = let GL = GLMakie.GLAbstraction.ModernGL
+        GLMakie.GLAbstraction.bind(indexbuffer)
+        value = Ref{GL.GLint}(0)
+        GL.glGetBufferParameteriv(indexbuffer.buffertype, GL.GL_BUFFER_SIZE, value)
+        value[]
+    end
+    @test real_bytesize[] == sizeof(eltype(indexbuffer))
 end
