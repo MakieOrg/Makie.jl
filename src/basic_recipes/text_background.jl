@@ -30,16 +30,17 @@ function transform_to_bbox(plot::Makie.Text; keep_aspect = false, limits = Rect2
         plot.transformation.model, plot.transformation.transform_func,
         plot.position, plot.converted...) do args...
 
-        bbox = Rect2d(boundingbox(plot, plot.markerspace[]))
+        bbox = boundingbox(plot, plot.markerspace[])
+        z = minimum(bbox)[3]
         l, r, b, t = pad
-        bbox = Rect2d(minimum(bbox) .- (l, b), widths(bbox) .+ (l, b) .+ (r, t))
+        bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
         s = widths(bbox) ./ widths(limits)
         if keep_aspect
             s = Vec2d(maximum(s))
         end
         scale[] = to_ndim(Vec3d, s, 1)
         # translate center for keep_aspect = true
-        translation[] = to_ndim(Point3d, (minimum(bbox) + 0.5 * widths(bbox)) .- s .* (minimum(limits) + 0.5 * widths(limits)), 0)
+        translation[] = to_ndim(Point3d, (minimum(bbox) + 0.5 * widths(bbox)) .- s .* (minimum(limits) + 0.5 * widths(limits)), z)
         return Consume(false)
     end
 
