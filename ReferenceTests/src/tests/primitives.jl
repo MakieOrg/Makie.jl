@@ -1180,3 +1180,12 @@ end
 
     scene
 end
+
+@testset "Subpixel Scatter" begin
+    scene = Scene(size = (100, 100))
+    scatter!(scene, [(x, y) for x in range(-1, 0, length=100) for y in range(-1, 0, length=100)], markersize=0.0,  color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in range(-1, 0, length=100) for y in range(0, 1, length=100)],  markersize=0.2,  color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in range(0, 1, length=100) for y in range(-1, 0, length=100)],  markersize=0.6, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in range(0, 1, length=100) for y in range(0, 1, length=100)],   markersize=1.0,   color = :black, marker = Rect)
+    scene
+end
