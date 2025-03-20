@@ -187,7 +187,6 @@ function RectangleZoom(restrict_x=false, restrict_y=false, modifier=true)
 end
 RectangleZoom(callback, restrict_x=false, restrict_y=false, modifier=true) =
     RectangleZoom(; callback, restrict_x, restrict_y, modifier)
-end
 
 function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
     rect_scene = Scene(ax.scene)
