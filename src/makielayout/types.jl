@@ -185,7 +185,7 @@ function RectangleZoom(restrict_x=false, restrict_y=false, modifier=true)
     end
     return RectangleZoom(; callback, restrict_x, restrict_y, modifier)
 end
-RectangleZoom(callback, restrict_x=false, restrict_y=false, modifier=true) =
+RectangleZoom(callback::Function, restrict_x=false, restrict_y=false, modifier=true) =
     RectangleZoom(; callback, restrict_x, restrict_y, modifier)
 
 function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
