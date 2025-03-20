@@ -165,28 +165,29 @@ struct LimitReset
 end
 
 
-Base.@kwdef mutable struct RectangleZoom
+mutable struct RectangleZoom
     callback::Function
-    active::Observable{Bool} = Observable(false)
+    active::Observable{Bool}
     restrict_x::Bool
     restrict_y::Bool
-    from::Union{Nothing, Point2d} = nothing
-    to::Union{Nothing, Point2d} = nothing
-    rectnode::Observable{Rect2d} = Observable(Rect2d(0, 0, 1, 1))
+    from::Union{Nothing, Point2d}
+    to::Union{Nothing, Point2d}
+    rectnode::Observable{Rect2d}
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(restrict_x=false, restrict_y=false, modifier=true)
+function RectangleZoom(restrict_x::Bool=false, restrict_y::Bool=false, modifier::Bool=true)
     callback = (ax, newlims) -> let
         if !(0 in widths(newlims))
             ax.targetlimits[] = newlims
         end
         return
     end
-    return RectangleZoom(; callback, restrict_x, restrict_y, modifier)
+    return RectangleZoom(callback, Observable(false), restrict_x, restrict_y,
+        nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier)
 end
-RectangleZoom(callback::Function, restrict_x=false, restrict_y=false, modifier=true) =
-    RectangleZoom(; callback, restrict_x, restrict_y, modifier)
+RectangleZoom(callback::Function, restrict_x::Bool=false, restrict_y::Bool=false, modifier::Bool=true) =
+    RectangleZoom(callback, restrict_x, restrict_y, modifier)
 
 function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
     rect_scene = Scene(ax.scene)
