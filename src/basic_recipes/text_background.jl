@@ -14,7 +14,7 @@
     """
     background_color = @inherit patchcolor
     "Sets the color of the outline around a marker."
-    background_strokecolor = automatic
+    background_strokecolor = :black
     "Sets the width of the outline."
     background_strokewidth = 1
     """
@@ -133,11 +133,18 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
 
     transformed_shape = Observable(PolyElements[plot.shape[]])
 
+    # FXAA generates artifacts if:
+    # mesh has fxaa = true and text/lines has false
+    # and the luma/brightness difference between text_color/strokecolor and background_color is low enough
+
+    # The defaults use fxaa = false to remove artifacting and use an opaque
+    # stroke to hide the pixelated border.
+
     pp = poly!(
         plot, transformed_shape,
         color = plot.background_color,
         # hide pixelated mesh behind outline of the same color by default
-        strokecolor = map((a, b) -> a === automatic ? b : a, plot.background_strokecolor, plot.background_color),
+        strokecolor = plot.background_strokecolor,
         strokewidth = plot.background_strokewidth,
         linestyle = plot.background_linestyle,
         linecap = plot.background_linecap,
