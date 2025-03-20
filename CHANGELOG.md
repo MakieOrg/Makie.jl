@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add a global Axis/Axis3D registry for default interactions [#4531](https://github.com/MakieOrg/Makie.jl/pull/4531).
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
 
