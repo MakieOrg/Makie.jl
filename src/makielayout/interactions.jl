@@ -194,9 +194,10 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return Consume(true)
 
     elseif event.type === MouseEventTypes.leftdragstop
-        newlims = r.rectnode[]
-        if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+        try
+            r.callback(ax, r.rectnode[])
+        catch e
+            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
