@@ -1825,7 +1825,15 @@ end
         "The color of y spine 3 opposite of the ticks"
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
-        zspinecolor_3 = :black
+        zspinecolor_3 = :black       
+        "Controls if the 4. Spines are created to close the outline box"
+        front_spines = false
+        "The color of x spine 4"
+        xspinecolor_4 = :black
+        "The color of y spine 4"
+        yspinecolor_4 = :black
+        "The color of z spine 4"
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
