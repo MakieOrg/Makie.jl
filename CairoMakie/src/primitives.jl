@@ -341,6 +341,9 @@ function is_degenerate(M::Mat2f)
     return any(isnan, M) || l1 ≈ 0 || l2 ≈ 0 || dot(v1, v2)^2 ≈ l1 * l2
 end
 
+is_approx_zero(x) = isapprox(x, 0)
+is_approx_zero(v::VecTypes) = any(x -> isapprox(x, 0), v)
+
 function draw_atomic_scatter(
         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, model, positions, size_model, font,
@@ -361,7 +364,7 @@ function draw_atomic_scatter(
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
-        (isnan(markersize) || isapprox(markersize, 0)) && return
+        (isnan(markersize) || is_approx_zero(markersize)) && return
 
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
         o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Vec3d, mo, 0)
