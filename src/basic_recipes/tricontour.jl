@@ -129,15 +129,12 @@ end
 
 function compute_contour_colormap(levels, cmap, discretize_colormap)
 
-    if !discretize_colormap
+    if !discretize_colormap || length(levels)==1
         return cgrad(cmap)
     end
-    n = length(levels)
-    if n == 1
-        levels_scaled = [0.5]
-    else
-        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    end
+
+    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+
     _cmap = to_colormap(cmap)
     return cgrad(_cmap, levels_scaled; categorical=true)
 end
@@ -171,6 +168,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         compute_contour_colormap, c, c._computed_levels,
         c.colormap, c.discretize_colormap
         )
+    
     c.attributes[:_computed_colormap] = computed_colormap
 
     points = Observable(Point2f[])
