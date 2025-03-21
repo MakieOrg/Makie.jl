@@ -231,8 +231,6 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         clip_planes = plot.clip_planes,
     )
 
-
-
     scene = Makie.parent_scene(plot)
 
     # since CairoMakie consider translation/model in render order we should use
