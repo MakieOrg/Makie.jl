@@ -124,8 +124,12 @@
     depth_shift = 0.0
 end
 
-function convert_arguments(::Type{<: TextLabel}, pos::VecTypes, text::AbstractString)
-    return ([pos], [text])
+function convert_arguments(::Type{<: TextLabel}, pos, text::AbstractString)
+    return (convert_arguments(PointBased(), pos)[1], [text])
+end
+
+function convert_arguments(::Type{<: TextLabel}, x, y, text::AbstractString)
+    return (convert_arguments(PointBased(), x, y)[1], [text])
 end
 
 function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, pad, keep_aspect)
