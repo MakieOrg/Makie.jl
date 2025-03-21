@@ -211,13 +211,14 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
                 labels[] && push!(lev_pos[], label_info(lc, pointvec))
             end            
         end
+
         if length(points[]) == 0
             throw(ArgumentError("No contour lines found for the given `levels`. Ensure that `z` contains values within the specified range."))
-        end        
+        end      
+
         # Remove last NaNs
         pop!(points[])
         pop!(colors[])
-        labels[] && pop!(lev_pos[])
 
         # Update observables
         notify(points)
@@ -263,6 +264,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # Update label observables whenever lev_pos changes
     scene = parent_scene(c)
     space = c.space[]
+    
     lift(
     c, scene.camera.projectionview, transformationmatrix(c), scene.viewport,
     labels, labelcolor, labelformatter, lev_pos
@@ -276,7 +278,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
 
         # Update text for labels
         texts.text[] = [labelformatter(lp[1]) for lp in lev_pos]
-
+        
         # Update color for labels
         if isnothing(to_value(labelcolor))
             # Compute color for each label to use when labelcolor is set to nothing
