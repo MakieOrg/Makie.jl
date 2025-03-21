@@ -929,6 +929,211 @@ end
     fig
 end
 
+@reference_test "comparison of tricontourf and tricontour" begin
+    x = RNG.randn(100)
+    y = RNG.randn(100)
+    z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* RNG.randn(100);
+    levels = 5;
+
+    f, ax, trf = tricontourf(x, y, z, levels = levels);
+    ax.title = "tricontourf and tricontour"
+    scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
+    Colorbar(f[1, 2], trf);
+
+    # Add contour lines
+    trl = tricontour!(
+        ax, x, y, z,
+        levels = levels - 1,
+        colormap=:reds,
+        linewidth=3,  linestyle=:dashdot,
+        );
+    Colorbar(f[1, 3], trl.plots[2]);
+
+    f
+end
+
+@reference_test "comparison of tricontour and contour" begin
+
+    f = Figure()
+    ax1 = Axis(f[1, 1], title="contour and tricontour", aspect = DataAspect())
+
+    xs = LinRange(0, 10, 100)
+    ys = LinRange(0, 15, 100)
+    xs1 = [x for x in xs, y in ys]
+    ys1 = [y for x in xs, y in ys]
+    zs1 = [cos(x) * sin(y) for x in xs, y in ys]
+    
+    levels = -1:0.1:1
+    contour!(ax1, xs1, ys1, zs1, levels=levels)
+    
+    mask_region(x, y) = ((x-5)/4)^2 + ((y-7)/6)^2 < 1
+    
+    xs2 = [x for x in xs, y in ys if mask_region(x,y)]
+    ys2 = [y for x in xs, y in ys if mask_region(x,y)]
+    zs2 = [cos(x) * sin(y) for x in xs, y in ys if mask_region(x,y)]
+
+    tr = tricontour!(
+        ax1, xs2[:], ys2[:], zs2[:], levels=levels,
+        color=:black, linestyle = :dash
+        )
+    f
+end
+
+@reference_test "tricontour with :relative and :normal level modes" begin
+    
+    x = RNG.randn(100)
+    y = RNG.randn(100)
+    z = x .* y
+    
+    f = Figure()
+    ax1 = Axis(f[1,1], title="Normal `levels` (values of z)")
+    ax2 = Axis(f[1,2], title="Relative `levels` (percentiles of z)")
+    levels = [0.1, 0.25, 0.5, 0.75, 1.0]
+
+    tr_abs_levels = tricontour!(
+        ax1, x, y, z, colormap = :viridis, linewidth = 3, alpha=0.5,
+        levels = levels, mode=:normal
+        )
+    tr_rel_levels = tricontour!(
+        ax2, x, y, z, colormap = :viridis, linewidth = 3, alpha=0.5,
+        levels = levels, mode=:relative
+        )
+
+    scatter!(
+        ax1, x, y, color = z, colormap = :viridis,
+        strokecolor = :black, strokewidth = 2
+        )
+    scatter!(
+        ax2, x, y, color = z, colormap = :viridis,
+        strokecolor = :black, strokewidth = 2
+        )
+    
+    Colorbar(f[2, 1], tr_abs_levels.plots[2], vertical = false)
+    Colorbar(f[2, 2], tr_rel_levels.plots[2], vertical = false)
+
+    f
+end
+
+@reference_test "tricontour level options (no labels)" begin
+
+    xs = LinRange(-5, 5, 100);
+    ys = LinRange(-5, 5, 100);
+    X = [x for x in xs, y in ys][:];
+    Y = [y for x in xs, y in ys][:];
+
+    # Implicit shape of a heart: f(x, y) = k
+    f = (x,y) -> x^2 + (y - (x^2)^(1/3))^2
+    Z = f.(X, Y)
+    
+    fig = Figure()
+    ax1 = Axis(fig[1,1], title="Default (10 levels)")
+    ax2 = Axis(fig[1,3], title="Integer levels (5 levels)")
+    ax3 = Axis(fig[2,1], title="Vector of 4 floats as levels")
+    ax4 = Axis(fig[2,3], title="Vector with single value as level")
+
+    tr1 = tricontour!(ax1, X, Y, Z)
+    Colorbar(fig[1, 2], tr1.plots[2])
+
+    tr2 = tricontour!(
+        ax2, X, Y, Z,
+        levels = 5, labels=true
+        )
+    Colorbar(fig[1, 4], tr2.plots[2])
+
+    tr3 = tricontour!(
+        ax3, X, Y, Z, levels = [0.5, 1.0, 2.0, 3.0]
+        )
+    Colorbar(fig[2, 2], tr3.plots[2])
+
+    tr4 = tricontour!( ax4, X, Y, Z, levels = [2.0])
+    Colorbar(fig[2, 4], tr4.plots[2])
+    
+    fig
+    
+end
+
+@reference_test "tricontour level options (with labels)" begin
+
+    xs = LinRange(-5, 5, 100);
+    ys = LinRange(-5, 5, 100);
+    X = [x for x in xs, y in ys][:];
+    Y = [y for x in xs, y in ys][:];
+
+    # Implicit shape of a heart: f(x, y) = k
+    f = (x,y) -> x^2 + (y - (x^2)^(1/3))^2
+    Z = f.(X, Y)
+    
+    fig = Figure()
+    ax1 = Axis(fig[1,1], title="Default (10 levels)")
+    ax2 = Axis(fig[1,3], title="Integer levels (5 levels)")
+    ax3 = Axis(fig[2,1], title="Vector of 4 floats as levels")
+    ax4 = Axis(fig[2,3], title="Vector with single value as level")
+
+    tr1 = tricontour!(ax1, X, Y, Z, labels = true)
+    Colorbar(fig[1, 2], tr1.plots[2])
+
+    tr2 = tricontour!(
+        ax2, X, Y, Z,
+        levels = 5, labels = true
+        )
+    Colorbar(fig[1, 4], tr2.plots[2])
+
+    tr3 = tricontour!(
+        ax3, X, Y, Z,
+        levels = [0.5, 1.0, 2.0, 3.0], labels = true
+        )
+    Colorbar(fig[2, 2], tr3.plots[2])
+
+    tr4 = tricontour!(
+        ax4, X, Y, Z,
+        levels = [2.0], labels = true
+        )
+    Colorbar(fig[2, 4], tr4.plots[2])
+    
+    fig
+    
+end
+
+@reference_test "tricontour and triplot with Delaunay Triangulation" begin
+    
+    using DelaunayTriangulation
+    
+    outer = [
+        (0.0,0.0),(2.0,1.0),(4.0,0.0),
+        (6.0,2.0),(2.0,3.0),(3.0,4.0),
+        (6.0,6.0),(0.0,6.0),(0.0,0.0)
+    ];
+    inner = [
+        (1.0,5.0),(2.0,4.0),(1.01,1.01),
+        (1.0,1.0),(0.99,1.01),(1.0,5.0)
+    ];
+    boundary_points = [[outer], [inner]]
+    boundary_nodes, points = convert_boundary_points_to_indices(boundary_points)
+    tri = triangulate(points; boundary_nodes = boundary_nodes)
+    
+    refine!(tri; max_area=1e-3*get_area(tri))
+    
+    f, ax, tr = triplot(
+        tri, show_constrained_edges = true, constrained_edge_linewidth = 3,
+        constrained_edge_color = :black,
+        show_convex_hull = true, strokecolor=(:gray, 0.2), strokewidth = 2
+        )
+    
+    x = [p[1] for p in tri.points];
+    y = [p[2] for p in tri.points];
+    z = @. (sin(x)-3)^2 + (cos(y)-3)^2 - 10;
+    
+    tr = tricontour!(
+        ax, tri, z, labels=true, levels = collect(-2:2:16),
+        linewidth=3.0, labelsize=12, colormap = :cividis, labelcolor=:red,)
+    
+    Colorbar(f[1,2] ,tr.plots[2])
+    ax.title[]= L"f(x,y) = (sin(x) - 3)^2 + (cos(y) - 3)^2 - 10"
+    f
+    
+    f
+end
+
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
         f = Figure(size = (800, 800))
