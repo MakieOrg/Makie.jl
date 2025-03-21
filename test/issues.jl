@@ -46,4 +46,12 @@
         @test p.plots[1].plots[1].transformation.model[][3, 4] == 10.0
         @test p.plots[1].plots[2].transformation.model[][3, 4] == 10.0
     end
+
+    @testset "#4883 colorscale that breaks sort" begin
+        data = Makie.peaks()
+        f, a, p = image(data; colorscale = -)
+        @test p.calculated_colors[].colorrange_scaled[][1] == -maximum(data)
+        @test p.calculated_colors[].colorrange_scaled[][2] == -minimum(data)
+        @test issorted(p.calculated_colors[].colorrange_scaled[])
+    end
 end
