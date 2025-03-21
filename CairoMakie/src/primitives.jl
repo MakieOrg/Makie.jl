@@ -332,6 +332,18 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Scat
                                space, clip_planes, billboard)
 end
 
+function is_degenerate(M::Mat2f)
+    v1 = M[Vec(1,2), 1]
+    v2 = M[Vec(1,2), 2]
+    l1 = dot(v1, v1)
+    l2 = dot(v2, v2)
+    # Bad cases:   nan   ||     0 vector     ||   linearly dependent
+    return any(isnan, M) || l1 ≈ 0 || l2 ≈ 0 || dot(v1, v2)^2 ≈ l1 * l2
+end
+
+is_approx_zero(x) = isapprox(x, 0)
+is_approx_zero(v::VecTypes) = any(x -> isapprox(x, 0), v)
+
 function draw_atomic_scatter(
         scene, ctx, transfunc, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, model, positions, size_model, font,
@@ -352,7 +364,7 @@ function draw_atomic_scatter(
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
-        isnan(markersize) && return
+        (isnan(markersize) || is_approx_zero(markersize)) && return
 
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
         o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ model33 * to_ndim(Vec3d, mo, 0)
@@ -366,8 +378,8 @@ function draw_atomic_scatter(
         # could be projected more accurately by projecting each point individually
         # and then building the shape.
 
-        # Enclosed area of the marker must be at least 1 pixel?
-        (abs(det(jl_mat)) < 1) && return
+        # make sure the matrix is not degenerate
+        is_degenerate(jl_mat) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         Cairo.save(ctx)
