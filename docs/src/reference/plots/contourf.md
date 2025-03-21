@@ -84,6 +84,37 @@ contourf!(volcano, levels = 10)
 f
 ```
 
+
+
+### Curvilinear grids
+
+`contourf` also supports _curvilinear_ grids, where `x` and `y` are both matrices of the same size as `z`.
+This is similar to the input that [`surface`](@ref) accepts.
+
+Let's warp a regular grid of `x` and `y` by some nonlinear function, and plot its contours:
+
+```@figure
+x = -10:10
+y = -10:10
+# The curvilinear grid:
+xs = [x + 0.01y^3 for x in x, y in y]
+ys = [y + 10cos(x/40) for x in x, y in y]
+# Now, for simplicity, we calculate the `zs` values to be
+# the radius from the center of the grid (0, 10).
+zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+# We can use Makie's tick finders to get some nice looking contour levels:
+levels = Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+# and now, we plot!
+f = Figure()
+ax1 = Axis(f[1, 1])
+ctrf1 = contourf!(ax1, x, y, zs; levels = levels)
+ax2 = Axis(f[1, 2])
+ctrf2 = contourf!(ax2, xs, ys, zs; levels = levels)
+f
+```
+
+
+
 ## Attributes
 
 ```@attrdocs

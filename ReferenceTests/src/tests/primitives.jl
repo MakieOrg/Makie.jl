@@ -790,6 +790,7 @@ end
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    Makie.rotate!(p, Vec3f(1,2,3), 0.8)
     fig
 end
 
@@ -1159,4 +1160,23 @@ end
     end
 
     fig
+end
+
+@reference_test "Scatter fonts" begin
+    scene = Scene(size = (150, 150), camera = campixel!)
+
+    # Just needs to not be Fira Mona here, but good to test the default too
+    @test Makie.to_font(Makie.automatic) == Makie.to_font("TeX Gyre Heros Makie")
+
+    scatter!(scene, (40,  40), marker=Rect, markersize=45, color = :black, strokecolor = :red, strokewidth = 1)
+    scatter!(scene, (40,  40), marker='◇', markersize=45, color = :white)
+    scatter!(scene, (110, 40), marker=Rect, markersize=45, color = :green, strokecolor = :red, strokewidth = 1)
+    text!(scene,    (110, 40), text = "◇", fontsize = 45, align = (:center, :center), color = :white)
+
+    scatter!(scene, (40,  110), marker=Rect, font = "Fira Mono", markersize=45, color = :black, strokecolor = :red, strokewidth = 1)
+    scatter!(scene, (40,  110), marker='◇',  font = "Fira Mono", markersize=45, color = :white)
+    scatter!(scene, (110, 110), marker=Rect, font = "Fira Mono", markersize=45, color = :green, strokecolor = :red, strokewidth = 1)
+    text!(scene,    (110, 110), text = "◇",  font = "Fira Mono", fontsize = 45, align = (:center, :center), color = :white)
+
+    scene
 end

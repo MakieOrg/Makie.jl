@@ -3,6 +3,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     geom = Rect2f(Point2f(0), Vec2f(1.0))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
     shading = pop!(data, :shading, FastShading)
+    debug = to_value(pop!(data, :debug, ""))
     @gen_defaults! data begin
         voxel_id = main => Texture
         gap = 0f0
@@ -26,7 +27,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
-                "DEBUG_FLAG_DEFINE" => to_value(get(data, :debug, ""))
+                "DEBUG_FLAG_DEFINE" => debug
             )
         )
     end

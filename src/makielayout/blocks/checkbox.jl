@@ -54,7 +54,7 @@ function initialize_block!(c::Checkbox)
         visible = @lift($ischecked || $ishovered),
     )
 
-    mouseevents = addmouseevents!(scene, shp, sc)
+    mouseevents = addmouseevents!(scene, checkboxrect)
 
     onmouseleftclick(mouseevents) do _
         newstatus = c.onchange[](c.checked[])
@@ -72,7 +72,7 @@ function initialize_block!(c::Checkbox)
     on(scene, c.size; update = true) do sz
         c.layoutobservables.autosize[] = Float64.((sz, sz))
     end
-    
+
     return
 end
 

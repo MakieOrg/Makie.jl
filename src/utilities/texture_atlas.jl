@@ -256,7 +256,7 @@ function find_font_for_char(glyph, font::NativeFont)
     FreeTypeAbstraction.glyph_index(font, glyph) != 0 && return font
     # it seems that linebreaks are not found which messes up font metrics
     # if another font is selected just for those chars
-    glyph in ('\n', '\r', '\t') && return font
+    glyph in ('\n', '\r', '\t', UInt32(0)) && return font
     for afont in alternativefonts()
         if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
             return afont
@@ -266,14 +266,7 @@ function find_font_for_char(glyph, font::NativeFont)
 end
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
-    if FreeTypeAbstraction.glyph_index(font, glyph) == 0
-        for afont in alternativefonts()
-            if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
-                font = afont
-            end
-        end
-    end
-    return insert_glyph!(atlas, glyph, font)
+    return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
 end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
