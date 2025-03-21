@@ -128,6 +128,34 @@ function convert_arguments(::Type{<: TextLabel}, pos::VecTypes, text::AbstractSt
     return ([pos], [text])
 end
 
+function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, pad, keep_aspect)
+    (l, r, b, t) = pad
+
+    cam = Ref(camera(parent_scene(plot)))
+    transformed = apply_transform_and_model(plot, positions)
+    ms_positions = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+    rotations = to_rotation(plot.rotation[])
+
+    transformations = Vector{Tuple{Vec2d, Vec2d, Float64}}(undef, length(glyph_collections))
+
+    for i in eachindex(glyph_collections)
+        bbox = string_boundingbox(glyph_collections[i], ms_positions[i], sv_getindex(rotations, i))
+        z = minimum(bbox)[3]
+        bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
+        scale = widths(bbox) ./ widths(limits)
+        if keep_aspect
+            scale = Vec2d(maximum(s))
+        end
+        # translate center for keep_aspect = true
+        translation = minimum(bbox) + 0.5 * widths(bbox) .- scale .* (minimum(limits) + 0.5 * widths(limits))
+
+        transformations[i] = (translation, scale, z)
+    end
+
+    return transformations
+end
+
+
 function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: AbstractVector{String}}}) where {Dim}
     # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
 
@@ -226,45 +254,49 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.pad, plot.keep_aspect,
+            native_tp.position, native_tp.converted[1],
+
             camera(scene).projectionview, viewport(scene),
             native_tp.transformation.model, native_tp.transformation.transform_func,
-            native_tp.position, native_tp.converted[1], native_tp.strokewidth, native_tp.glowwidth,
+            # these are difficult because they are not in markerspace but always pixel space...
+            native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, (l, r, b, t), keep_aspect, args...
+        ) do limits, pad, keep_aspect, positions, glyph_collections, args...
 
-        bbox = boundingbox(native_tp, native_tp.markerspace[])
-        z = minimum(bbox)[3]
-        bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
-        scale = widths(bbox) ./ widths(limits)
-        if keep_aspect
-            scale = Vec2d(maximum(s))
-        end
-        # translate center for keep_aspect = true
-        translation = minimum(bbox) + 0.5 * widths(bbox) .- scale .* (minimum(limits) + 0.5 * widths(limits))
-        # return (to_ndim(Point3d, translation, z), scale)
-        return (translation, scale, z)
+        return text_boundingbox_transforms(native_tp, positions, glyph_collections, limits, pad, keep_aspect)
     end
 
     map!(
             plot, transformed_shape,
             plot.shape, plot.cornerradius, plot.cornersegments, translation_scale_z
-        ) do shape, cornerradius, cornersegments, (translation, scale, z)
+        ) do shape, cornerradius, cornersegments, transformations
 
-        if shape isa Rect && cornerradius > 0
-            mini = scale .* minimum(shape) .+ translation[Vec(1,2)]
-            ws = scale .* widths(shape)
-            verts = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
-            mesh = poly_convert(verts)
-        else
-            verts = convert_arguments(PointBased(), shape)[1]
-            verts = [scale .* p .+ translation[Vec(1,2)] for p in verts]
-            mesh = poly_convert(verts)
+        elements = Vector{PolyElements}(undef, length(transformations))
+
+        for i in eachindex(transformations)
+            translation, scale, z = transformations[i]
+
+            if shape isa Rect && cornerradius > 0
+                mini = scale .* minimum(shape) .+ translation[Vec(1,2)]
+                ws = scale .* widths(shape)
+                verts = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
+                mesh = poly_convert(verts)
+            else
+                verts = convert_arguments(PointBased(), shape)[1]
+                verts = [scale .* p .+ translation[Vec(1,2)] for p in verts]
+                mesh = poly_convert(verts)
+            end
+
+            elements[i] = mesh
         end
-        return PolyElements[mesh]
+
+        return elements
     end
 
-    on(plot, translation_scale_z, update = true) do (_, __, z)
-        translate!(pp, 0, 0, z-1)
+    on(plot, translation_scale_z, update = true) do transformations
+        # translate can't be done per element and running translations through
+        # positions arguments results in wrong z order in CairoMakie
+        translate!(pp, 0, 0, transformations[1][3] - 1)
         return Consume(false)
     end
 
