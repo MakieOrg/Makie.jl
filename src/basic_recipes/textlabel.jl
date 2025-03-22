@@ -265,7 +265,10 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
             native_tp.space, native_tp.markerspace
         ) do limits, pad, keep_aspect, positions, glyph_collections, args...
 
-        return text_boundingbox_transforms(native_tp, positions, glyph_collections, limits, pad, keep_aspect)
+        return text_boundingbox_transforms(
+            native_tp, positions, glyph_collections,
+            limits, to_lrbt_padding(pad), keep_aspect
+        )
     end
 
     map!(
