@@ -105,7 +105,7 @@
     behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
     parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
     """
-    clip_planes = automatic
+    clip_planes = Plane3f[]
 
 
     "background object to place behind text"
