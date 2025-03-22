@@ -48,7 +48,7 @@
     end
 
     @testset "#4883 colorscale that breaks sort" begin
-        data = Makie.peaks()
+        data = Float32.(Makie.peaks())
         f, a, p = image(data; colorscale = -)
         @test p.calculated_colors[].colorrange_scaled[][1] == -maximum(data)
         @test p.calculated_colors[].colorrange_scaled[][2] == -minimum(data)
