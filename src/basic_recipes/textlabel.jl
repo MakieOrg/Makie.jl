@@ -48,10 +48,17 @@
     font = @inherit font
     "Used as a dictionary to look up fonts specified by `Symbol`, for example `:regular`, `:bold` or `:italic`."
     fonts = @inherit fonts
+    # Note: handling these in arbitrary markerspace is difficult, because they
+    #       always act in pixel space.
     "Sets the color of the outline around a marker."
     text_strokecolor = (:black, 0.0)
     "Sets the width of the outline around a marker."
     text_strokewidth = 0
+    "Sets the color of the glow effect around the text."
+    glowcolor = (:black, 0.0)
+    "Sets the size of a glow effect around the text."
+    glowwidth = 0.0
+
     "Sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
     align = (:left, :bottom)
     "Rotates text around the given position"
@@ -66,10 +73,6 @@
     # markerspace = :pixel
     # "Controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
     # transform_marker = false
-    "Sets the color of the glow effect around the text."
-    glowcolor = (:black, 0.0)
-    "Sets the size of a glow effect around the text."
-    glowwidth = 0.0
     "The offset of the text from the given position in `markerspace` units."
     offset = (0.0, 0.0)
     "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
@@ -199,10 +202,32 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,
         clip_planes = plot.clip_planes,
+        transformation = Transformation(), # already processed in bbox calculation
     )
 
+    # Transforming to pixel space so we can use translate!() for z ordering. If
+    # CairoMakie would consider clip space w/ depth_shift for z ordering we could
+    # rely on that instead.
+    scene = Makie.parent_scene(plot)
+    pixel_pos = map(
+            plot, plot[1],
+            camera(scene).projectionview, viewport(scene),
+            plot.model, plot.transformation.transform_func,
+            plot.space, plot.draw_on_top #, native_tp.markerspace
+        ) do positions, pv, vp, m, tf, s, draw_on_top #, ms
+        cam = Ref(camera(parent_scene(plot)))
+        transformed = apply_transform_and_model(plot, positions)
+        px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
+        if draw_on_top
+            return Point2f.(px_pos)
+        else
+            return px_pos
+        end
+        # return Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+    end
+
     tp = text!(
-        plot, plot[1], text = plot[2],
+        plot, pixel_pos, text = plot[2],
         color = plot.text_color,
         strokecolor = plot.text_strokecolor,
         strokewidth = plot.text_strokewidth,
@@ -224,28 +249,26 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         transparency = plot.transparency,
         overdraw = plot.overdraw,
         inspectable = plot.inspectable,
-        space = plot.space,
+        # TODO:: generalize markerspace
+        # - if we pre-transform we should go to markerspace and set space = plot.markerspace
+        # - if we don't we should set space = plot.space[] and markerspace = plot.markerspace
+        space = :pixel,
         inspector_label = plot.inspector_label,
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,
         clip_planes = plot.clip_planes,
     )
 
-    scene = Makie.parent_scene(plot)
-
     # since CairoMakie consider translation/model in render order we should use
-    # translate!() to order these plots. This is wrong in 3D
+    # translate!() to order these plots. (This does not work in 3D with
+    # space = :data)
     on(plot, plot.draw_on_top, update = true) do draw_on_top
         if draw_on_top
-            if !is_translation_scale_matrix(camera(scene).projectionview[])
-                error("draw_on_top = true requires a 2D Scene/Axis")
-            end
-            if Dim != 2
-                error("draw_on_top = true requires 2D text positions")
-            end
             translate!(tp, 0, 0, 10_000)
+            translate!(pp, 0, 0, 10_000)
         else
             translate!(tp, 0, 0, 0)
+            translate!(pp, 0, 0, 0)
         end
         return Consume(false)
     end
@@ -257,17 +280,14 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
             plot,
             plot.shape_limits, plot.pad, plot.keep_aspect,
             native_tp.position, native_tp.converted[1],
-
-            camera(scene).projectionview, viewport(scene),
-            native_tp.transformation.model, native_tp.transformation.transform_func,
             # these are difficult because they are not in markerspace but always pixel space...
             native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, pad, keep_aspect, positions, glyph_collections, args...
+        ) do limits, pad, keep_aspect, positions, glyph_collections, sw, gw, args...
 
         return text_boundingbox_transforms(
             native_tp, positions, glyph_collections,
-            limits, to_lrbt_padding(pad), keep_aspect
+            limits, to_lrbt_padding(pad) .+ to_lrbt_padding(sw + gw), keep_aspect
         )
     end
 
@@ -298,16 +318,9 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         return elements
     end
 
-    on(plot, translation_scale_z, update = true) do transformations
-        # translate can't be done per element and running translations through
-        # positions arguments results in wrong z order in CairoMakie
-        translate!(pp, 0, 0, transformations[1][3] - 1)
-        return Consume(false)
-    end
-
     return plot
 end
 
 # TODO: maybe back-transform?
-data_limits(p::TextLabel) = data_limits(p.plots[2])
-boundingbox(p::TextLabel, space::Symbol) = boundingbox(p.plots[2], space)
+data_limits(p::TextLabel) = Rect3d(p[1][])
+boundingbox(p::TextLabel, space::Symbol) = apply_transform_and_model(p, data_limits(p))
