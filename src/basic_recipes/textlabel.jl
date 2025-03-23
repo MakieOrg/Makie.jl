@@ -112,9 +112,9 @@
 
 
     "background object to place behind text"
-    shape = Rect2f(-1, -1, 2, 2)
+    shape = Rect2f(0, 0, 1, 1)
     "Limits of background which should be transformed to match the text boundingbox"
-    shape_limits = Rect2f(-1, -1, 2, 2)
+    shape_limits = Rect2f(0, 0, 1, 1)
     "left-right-bottom-top padding"
     pad = Vec4f(2)
     "Should the aspect ratio of the background change?"
