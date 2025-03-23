@@ -300,17 +300,15 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
             if shape isa Rect && cornerradius > 0
                 mini = scale .* minimum(shape) .+ translation[Vec(1,2)]
                 ws = scale .* widths(shape)
-                verts = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
-                mesh = poly_convert(verts)
+                element = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
             elseif hasmethod(shape, (Vec2d, Vec2d))
-                mesh = poly_convert(shape(translation, scale))
+                element = shape(translation, scale)
             else
                 verts = convert_arguments(PointBased(), shape)[1]
-                verts = [scale .* p .+ translation[Vec(1,2)] for p in verts]
-                mesh = poly_convert(verts)
+                element = Point2f[scale .* p .+ translation[Vec(1,2)] for p in verts]
             end
 
-            elements[i] = mesh
+            elements[i] = element
         end
 
         return elements
