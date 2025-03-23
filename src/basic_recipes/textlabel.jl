@@ -191,7 +191,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         stroke_depth_shift = plot.depth_shift,
         # move poly slightly behind - this is unnecessary atm because we also
         # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 1f-5, plot, plot.depth_shift),
+        depth_shift = map(x -> x + 1f-7, plot, plot.depth_shift),
         fxaa = plot.background_fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
@@ -209,21 +209,22 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     # CairoMakie would consider clip space w/ depth_shift for z ordering we could
     # rely on that instead.
     scene = Makie.parent_scene(plot)
-    pixel_pos = map(
+    pixel_pos = Observable(Point2f[])
+    pixel_z = Observable(0.0)
+    onany(
             plot, plot[1],
             camera(scene).projectionview, viewport(scene),
             plot.model, plot.transformation.transform_func,
-            plot.space, plot.draw_on_top #, native_tp.markerspace
+            plot.space, plot.draw_on_top, #, native_tp.markerspace,
+            update = true
         ) do positions, pv, vp, m, tf, s, draw_on_top #, ms
         cam = Ref(camera(parent_scene(plot)))
         transformed = apply_transform_and_model(plot, positions)
+        # Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
         px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
-        if draw_on_top
-            return Point2f.(px_pos)
-        else
-            return px_pos
-        end
-        # return Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
+        pixel_pos[] = Point2f.(px_pos)
+        pixel_z[] = draw_on_top ? 0 : px_pos[1][3] # See <1>
+        return Consume(false)
     end
 
     tp = text!(
@@ -262,14 +263,8 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     # since CairoMakie consider translation/model in render order we should use
     # translate!() to order these plots. (This does not work in 3D with
     # space = :data)
-    on(plot, plot.draw_on_top, update = true) do draw_on_top
-        if draw_on_top
-            translate!(tp, 0, 0, 10_000)
-            translate!(pp, 0, 0, 10_000)
-        else
-            translate!(tp, 0, 0, 0)
-            translate!(pp, 0, 0, 0)
-        end
+    onany(plot, plot.draw_on_top, pixel_z, update = true) do draw_on_top, z
+        translate!(tp, 0, 0, draw_on_top ? 10_000 : z + 0.01)
         return Consume(false)
     end
 
@@ -279,13 +274,13 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.pad, plot.keep_aspect,
-            native_tp.position, native_tp.converted[1], plot.offset,
+            pixel_pos, native_tp.converted[1], pixel_z, plot.offset,
             # these are difficult because they are not in markerspace but always pixel space...
             native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, pad, keep_aspect, positions, glyph_collections, offset, sw, gw, args...
+        ) do limits, pad, keep_aspect, positions, glyph_collections, z, offset, sw, gw, args...
 
-        pos = [p + sv_getindex(offset, i) for (i, p) in enumerate(positions)]
+        pos = [to_ndim(Point3f, p, z) + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
         return text_boundingbox_transforms(
             native_tp, pos, glyph_collections,
             limits, to_lrbt_padding(pad) .+ to_lrbt_padding(sw + gw), keep_aspect
@@ -319,6 +314,15 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
         end
 
         return elements
+    end
+
+    onany(plot, plot.draw_on_top, translation_scale_z, update = true) do draw_on_top, transforms
+        # TODO: Because CairoMakie only considers transformations in its depth sorting
+        #       we are forced to rely on translate!() for it here. This means we can't
+        #       do per-element z sorting. <1>
+        z = transforms[1][3]
+        translate!(pp, 0, 0, (draw_on_top ? 10_000 : z) - 0.01)
+        return Consume(false)
     end
 
     return plot
