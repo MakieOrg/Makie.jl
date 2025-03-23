@@ -279,14 +279,15 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.pad, plot.keep_aspect,
-            native_tp.position, native_tp.converted[1],
+            native_tp.position, native_tp.converted[1], plot.offset,
             # these are difficult because they are not in markerspace but always pixel space...
             native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, pad, keep_aspect, positions, glyph_collections, sw, gw, args...
+        ) do limits, pad, keep_aspect, positions, glyph_collections, offset, sw, gw, args...
 
+        pos = [p + sv_getindex(offset, i) for (i, p) in enumerate(positions)]
         return text_boundingbox_transforms(
-            native_tp, positions, glyph_collections,
+            native_tp, pos, glyph_collections,
             limits, to_lrbt_padding(pad) .+ to_lrbt_padding(sw + gw), keep_aspect
         )
     end
