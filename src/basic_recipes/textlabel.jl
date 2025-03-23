@@ -166,7 +166,7 @@ end
 function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: AbstractVector{String}}}) where {Dim}
     # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
 
-    transformed_shape = Observable(PolyElements[plot.shape[]])
+    transformed_shape = Observable(PolyElements[])
 
     # FXAA generates artifacts if:
     # mesh has fxaa = true and text/lines has false
@@ -307,6 +307,8 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
                 ws = scale .* widths(shape)
                 verts = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
                 mesh = poly_convert(verts)
+            elseif hasmethod(shape, (Vec2d, Vec2d))
+                mesh = poly_convert(shape(translation, scale))
             else
                 verts = convert_arguments(PointBased(), shape)[1]
                 verts = [scale .* p .+ translation[Vec(1,2)] for p in verts]
