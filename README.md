@@ -3,7 +3,7 @@
       <source media="(prefers-color-scheme: dark)" 
         srcset="/assets/logo_with_text_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/logo_with_text.svg" width="350">
+        src="/assets/logo_with_text.svg" height="100">
     </picture>
 </div>
 
