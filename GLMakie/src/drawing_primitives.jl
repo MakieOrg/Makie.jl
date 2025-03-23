@@ -451,7 +451,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                         return nothing
                     end
                 end
-                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+                font = map(to_font, pop!(gl_attributes, :font))
                 gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
                 get!(gl_attributes, :uv_offset_width) do
                     return Makie.primitive_uv_offset_width(atlas, marker, font)
