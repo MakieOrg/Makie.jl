@@ -293,9 +293,9 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     end
 
     map!(
-            plot, transformed_shape,
-            plot.shape, plot.cornerradius, plot.cornersegments, translation_scale_z
-        ) do shape, cornerradius, cornersegments, transformations
+        plot, transformed_shape,
+        plot.shape, plot.cornerradius, plot.cornersegments, translation_scale_z
+    ) do shape, cornerradius, cornersegments, transformations
 
         elements = Vector{PolyElements}(undef, length(transformations))
 
