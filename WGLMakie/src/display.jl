@@ -122,6 +122,13 @@ function Bonito.jsrender(session::Session, fig::Makie.FigureLike)
     return Bonito.jsrender(session, Makie.get_scene(fig))
 end
 
+function Bonito.jsrender(s::Session, value::Observable{Makie.GridLayoutSpec})
+    f, ax, pl = plot(value)
+    return Bonito.jsrender(s, f)
+end
+
+
+
 
 """
     WithConfig(fig::Makie.FigureLike; screen_config...)
@@ -325,7 +332,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
     if js_uuid(scene) in screen.displayed_scenes
         return true
     else
-        if !(js_uuid(scene.parent) in screen.displayed_scenes)
+        if !(js_uuid(scene.parent) in screen.displayed_scenes) && !isnothing(scene.parent)
             # Parents serialize their child scenes, so we only need to
             # serialize & update the parent scene
             return insert_scene!(session, screen, scene.parent)
