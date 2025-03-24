@@ -69,7 +69,7 @@ flat out vec2 f_sprite_scale;
 
 bool is_clipped(vec3 world_pos)
 {
-    // We clip scatter points based on the user position rather than the 
+    // We clip scatter points based on the user position rather than the
     // sprite vertex positions.
     // distance = dot(world_pos - plane.point, plane.normal)
     // precalculated: dot(plane.point, plane.normal) -> plane.w
@@ -129,7 +129,7 @@ void main(void)
     // Position of sprite center in marker space + clipping
     if (is_clipped(g_world_position[0]))
         return;
-    
+
     vec4 p = preprojection * vec4(g_world_position[0], 1);
     vec3 position = p.xyz / p.w + g_marker_offset[0];
 
