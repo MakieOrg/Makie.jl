@@ -4,6 +4,10 @@
 
 """
 @recipe TextLabel begin
+    # text-like
+    position = (0, 0)
+    text = ""
+
     # TODO: consider using one depth shift and handling per-element shift internally
     # Poly background
     """
@@ -127,13 +131,59 @@
     depth_shift = 0.0
 end
 
-function convert_arguments(::Type{<: TextLabel}, pos, text::AbstractString)
-    return (convert_arguments(PointBased(), pos)[1], [text])
+convert_arguments(::Type{<: TextLabel}, args...) = convert_arguments(Text, args...)
+convert_arguments(::Type{<: TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
+convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]), )
+convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
+
+function plot!(plot::TextLabel{<:Tuple{<:AbstractString}})
+    attrs = copy(plot.attributes) # TODO: does this need to be a copy?
+    pop!(attrs, :calculated_colors, nothing)
+    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    plot
 end
 
-function convert_arguments(::Type{<: TextLabel}, x, y, text::AbstractString)
-    return (convert_arguments(PointBased(), x, y)[1], [text])
+function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
+    attrs = copy(plot.attributes)
+    pop!(attrs, :calculated_colors, nothing)
+    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    plot
 end
+
+function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
+    strings_and_positions = plot[1]
+
+    strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
+
+    positions = Observable(
+        Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
+    )
+
+    attrs = plot.attributes
+    pop!(attrs, :position)
+    pop!(attrs, :calculated_colors, nothing)
+    pop!(attrs, :text)
+
+    textlabel!(plot, positions, text = strings; attrs...)
+
+    # update both text and positions together
+    on(plot, strings_and_positions) do str_pos
+        strs = first.(str_pos)
+        poss = to_ndim.(Ref(Point3d), last.(str_pos), 0)
+
+        strings_unequal = strings.val != strs
+        pos_unequal = positions.val != poss
+        strings_unequal && (strings.val = strs)
+        pos_unequal && (positions.val = poss)
+        # Check for equality very important, otherwise we get an infinite loop
+        strings_unequal && notify(strings)
+        pos_unequal && notify(positions)
+
+        return
+    end
+    plot
+end
+
 
 function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, pad, keep_aspect)
     (l, r, b, t) = pad
@@ -163,7 +213,7 @@ function text_boundingbox_transforms(plot, positions, glyph_collections::Vector,
 end
 
 
-function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: AbstractVector{String}}}) where {Dim}
+function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
 
     transformed_shape = Observable(PolyElements[])
@@ -228,7 +278,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
     end
 
     tp = text!(
-        plot, pixel_pos, text = plot[2],
+        plot, pixel_pos, text = plot.text,
         color = plot.text_color,
         strokecolor = plot.text_strokecolor,
         strokewidth = plot.text_strokewidth,
@@ -327,5 +377,6 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: VecTypes{Dim}}, <: 
 end
 
 # TODO: maybe back-transform?
-data_limits(p::TextLabel) = Rect3d(p[1][])
+data_limits(p::TextLabel) = data_limits(p.plots[end])
+data_limits(p::TextLabel{<: Tuple{<: AbstractVector{<: Point}}}) = Rect3d(p[1][])
 boundingbox(p::TextLabel, space::Symbol) = apply_transform_and_model(p, data_limits(p))
