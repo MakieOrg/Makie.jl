@@ -176,7 +176,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     marker = nothing
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
-        font = get(attributes, :font, Observable(Makie.defaultfont()))
+        font = map(Makie.to_font, pop!(attributes, :font))
         marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
             marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
