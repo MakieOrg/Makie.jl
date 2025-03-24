@@ -12,7 +12,7 @@ using CairoMakie
 using FileIO
 
 f, a, p = image(rotr90(load(assetpath("cow.png"))))
-textlabel!(a, Point2f(200, 100), text = "cow", fontsize = 16)
+textlabel!(a, Point2f(200, 150), text = "cow", fontsize = 20)
 f
 ```
 
