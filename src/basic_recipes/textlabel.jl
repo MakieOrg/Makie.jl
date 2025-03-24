@@ -1,7 +1,9 @@
 """
-    textbackground(text_plot)
+    textlabel(positions, text; attributes...)
+    textlabel(position; text, attributes...)
+    textlabel(text_position; attributes...)
 
-
+Plots the given text(s) with a background(s) at the given position(s).
 """
 @recipe TextLabel begin
     # text-like args interface
@@ -17,7 +19,7 @@
     Sets the color of the background. Can be a `Vector{<:Colorant}` for per vertex colors, a single `Colorant`
     or an `<: AbstractPattern` to cover the poly with a regular pattern, e.g. for hatching.
     """
-    background_color = @inherit patchcolor
+    background_color = :white
     "Sets the color of the outline around the background"
     background_strokecolor = :black
     "Sets the width of the outline."
@@ -66,7 +68,7 @@
     glowwidth = 0.0
 
     "Sets the alignment of the string with respect to `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
-    align = (:left, :bottom)
+    align = (:center, :center)
     "Rotates the text around the given position. This affects the size of the textlabel but not its rotation"
     text_rotation = 0.0
     # "The fontsize in units depending on `markerspace`."
@@ -137,7 +139,7 @@
     "Controls whether the aspect ratio of the background shape is kept during rescaling"
     keep_aspect = false
     "Sets the corner radius when given a Rect2 background shape."
-    cornerradius = 0.0
+    cornerradius = 5.0
     "Sets the number of vertices involved in a rounded corner. Must be at least 2."
     cornervertices = 10
     "Controls whether the textlabel is drawn in front (true, default) or at a depth appropriate to its position."
@@ -149,6 +151,7 @@ end
 convert_arguments(::Type{<: TextLabel}, args...) = convert_arguments(Text, args...)
 convert_arguments(::Type{<: TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
 convert_arguments(::Type{<: TextLabel}, p::VecTypes, str) = ([(str, p)],)
+convert_arguments(::Type{<: TextLabel}, ps::AbstractVector{<: VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
 convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]), )
 convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
 
