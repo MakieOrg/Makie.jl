@@ -701,7 +701,6 @@ end
     ax = Axis(f[1, 1])
     textlabel!(ax,
         [1, 2, 3], [1, 1, 1], ["Label $i" for i in 1:3],
-        # background_strokewidth = [1, 0, 3], # TODO: shouldn't poly allow this?
         background_color = :white, align = (:left, :bottom)
     )
     textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])

@@ -4,49 +4,51 @@
 
 """
 @recipe TextLabel begin
-    # text-like
-    position = (0, 0)
+    # text-like args interface
+    "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
+    "Deprecated: Specifies the position of the text. Use the positional argument to `text` instead."
+    position = (0, 0)
 
-    # TODO: consider using one depth shift and handling per-element shift internally
+    # TODO: does not include color mapping for text, backgrounds and background strokes
+
     # Poly background
     """
-    Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
-    A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
-    Vector or Matrices of numbers can be used as well, which will use the colormap arguments to map the numbers to colors.
-    One can also use a `<: AbstractPattern`, to cover the poly with a regular pattern, e.g. for hatching.
+    Sets the color of the background. Can be a `Vector{<:Colorant}` for per vertex colors, a single `Colorant`
+    or an `<: AbstractPattern` to cover the poly with a regular pattern, e.g. for hatching.
     """
     background_color = @inherit patchcolor
-    "Sets the color of the outline around a marker."
+    "Sets the color of the outline around the background"
     background_strokecolor = :black
     "Sets the width of the outline."
     background_strokewidth = 1
     """
-    Sets the dash pattern of the line. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
+    Sets the dash pattern of the outline. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
 
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     background_linestyle = nothing
-    background_linecap = @inherit linecap
+    """
+    Controls the rendering of outline corners. Options are `:miter` for sharp corners,
+    `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     background_joinstyle = @inherit joinstyle
+    "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     background_miter_limit = @inherit miter_limit
+    "Controls whether the background renders with fxaa (anti-aliasing, GLMakie only). This is set to `false` by default to prevent artifacts around text."
     background_fxaa = false
+    "Controls whether the background reacts to light."
     background_shading = NoShading
-
-    # """
-    # Depth shift of stroke plot. This is useful to avoid z-fighting between the stroke and the fill.
-    # """
-    # background_stroke_depth_shift = -1.0f-5
-    # "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
-    # background_depth_shift = -1.0f-5
+    "Sets the alpha value (opaqueness) of the background outline."
     background_stroke_alpha = 1.0
+    "Sets the alpha value (opaqueness) of the background."
     background_alpha = 1.0
 
-
     # Text
-    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}`, or one colorant for the whole text. If color is a vector of numbers, the colormap args are used to map the numbers to colors."
+    "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}` or one colorant for the whole text."
     text_color = @inherit textcolor
     "Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file"
     font = @inherit font
@@ -54,38 +56,39 @@
     fonts = @inherit fonts
     # Note: handling these in arbitrary markerspace is difficult, because they
     #       always act in pixel space.
-    "Sets the color of the outline around a marker."
+    "Sets the color of the outline around text."
     text_strokecolor = (:black, 0.0)
-    "Sets the width of the outline around a marker."
+    "Sets the width of the outline around text."
     text_strokewidth = 0
-    "Sets the color of the glow effect around the text."
+    "Sets the color of the glow effect around text."
     glowcolor = (:black, 0.0)
-    "Sets the size of a glow effect around the text."
+    "Sets the size of a glow effect around text."
     glowwidth = 0.0
 
-    "Sets the alignment of the string w.r.t. `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
+    "Sets the alignment of the string with respect to `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
     align = (:left, :bottom)
-    "Rotates text around the given position"
+    "Rotates the text around the given position. This affects the size of the textlabel but not its rotation"
     text_rotation = 0.0
-    "The fontsize in units depending on `markerspace`."
+    # "The fontsize in units depending on `markerspace`."
+    "The fontsize in pixel units."
     fontsize = @inherit fontsize
-    "Sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
+    "Sets the alignment of text with respect to its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
     justification = automatic
     "The lineheight multiplier."
     lineheight = 1.0
+    # TODO: Generalize markerspace
     # "Sets the space in which `fontsize` acts. See `Makie.spaces()` for possible inputs."
     # markerspace = :pixel
     # "Controls whether the model matrix (without translation) applies to the glyph itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
     # transform_marker = false
-    "The offset of the text from the given position in `markerspace` units."
+    "The offset of the textlabel from the given position in `markerspace` units."
     offset = (0.0, 0.0)
     "Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping."
     word_wrap_width = -1
+    "Sets the alpha value (opaqueness) of the text."
     text_alpha = 1.0
-    # "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
-    # text_depth_shift = 0.0f0
+    "Controls whether the text renders with fxaa (anti-aliasing, GLMakie only). Setting this to true will reduce text quality."
     text_fxaa = false
-
 
     # Generic
     transformation = automatic
@@ -115,19 +118,31 @@
     clip_planes = Plane3f[]
 
 
-    "background object to place behind text"
+    """
+    Controls the shape of the background. Can be a GeometryPrimitive, mesh or function `(origin, size) -> coordinates`.
+    The former two options are automatically rescaled to the padded bounding box of the rendered text. By default (0, 0)
+    will be the lower left corner and (1, 1) the upper right corner of the padded bounding box. See `shape_limits`.
+    """
     shape = Rect2f(0, 0, 1, 1)
-    "Limits of background which should be transformed to match the text boundingbox"
+    """
+    Sets the coordinates in `shape` space that should be transformed to match the size of the text bounding box.
+    For example, `shape_limits = Rect2f(-1, -1, 2, 2)` results in transforming (-1, 1) to the lower left corner
+    of the padded text bounding box and (1, 1) to the upper right corner. If the `shape` contains coordinates
+    outside this range, they will rendered outside the padded text bounding box.
+    """
     shape_limits = Rect2f(0, 0, 1, 1)
-    "left-right-bottom-top padding"
+    # TODO: Generalize markerspace
+    "Sets the padding between the text bounding box and background shape."
     pad = Vec4f(2)
-    "Should the aspect ratio of the background change?"
+    "Controls whether the aspect ratio of the background shape is kept during rescaling"
     keep_aspect = false
+    "Sets the corner radius when given a Rect2 background shape."
     cornerradius = 0.0
-    cornersegments = 10
-
+    "Sets the number of vertices involved in a rounded corner. Must be at least 2."
+    cornervertices = 10
+    "Controls whether the textlabel is drawn in front (true, default) or at a depth appropriate to its position."
     draw_on_top = true
-
+    "Adjusts the depth value of the textlabel after all other transformations, i.e. in clip space where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
     depth_shift = 0.0
 end
 
@@ -233,7 +248,6 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         strokecolor = plot.background_strokecolor,
         strokewidth = plot.background_strokewidth,
         linestyle = plot.background_linestyle,
-        linecap = plot.background_linecap,
         joinstyle = plot.background_joinstyle,
         miter_limit = plot.background_miter_limit,
         shading = plot.background_shading,
@@ -340,8 +354,8 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
 
     map!(
         plot, transformed_shape,
-        plot.shape, plot.cornerradius, plot.cornersegments, translation_scale_z
-    ) do shape, cornerradius, cornersegments, transformations
+        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z
+    ) do shape, cornerradius, cornervertices, transformations
 
         elements = Vector{PolyElements}(undef, length(transformations))
 
@@ -351,7 +365,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
             if shape isa Rect && cornerradius > 0
                 mini = scale .* minimum(shape) .+ translation[Vec(1,2)]
                 ws = scale .* widths(shape)
-                element = roundedrectvertices(Rect(mini, ws), cornerradius, cornersegments)
+                element = roundedrectvertices(Rect(mini, ws), cornerradius, cornervertices)
             elseif hasmethod(shape, (Vec2d, Vec2d))
                 element = shape(translation, scale)
             else
