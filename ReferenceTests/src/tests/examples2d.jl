@@ -696,6 +696,85 @@ end
     f
 end
 
+@reference_test "textlabel" begin
+    f = Figure(size = (500, 500))
+    ax = Axis(f[1, 1])
+    textlabel!(ax,
+        [1, 2, 3], [1, 1, 1], ["Label $i" for i in 1:3],
+        # background_strokewidth = [1, 0, 3], # TODO: shouldn't poly allow this?
+        background_color = :white, align = (:left, :bottom)
+    )
+    textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
+    textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
+        background_color = :orange,
+        text_rotation = pi/8,
+        word_wrap_width = 8,
+        cornerradius = 10,
+        cornersegments = 2,
+        justification = :center,
+        align = (:center, :center)
+    )
+
+    textlabel!(
+        ax, (1, -1), "Circle",
+        shape = Circle(Point2f(0.5), 0.5),
+        pad = Vec4f(5),
+        keep_aspect = true
+    )
+
+    textlabel!(
+        ax, 2, -1, text = "~ ~ ~ ~ ~ ~\nStylized Label\n~ ~ ~ ~ ~ ~",
+        background_color = RGBf(0.7, 0.8, 1),
+        background_strokecolor = RGBf(0, 0.1, 0.4),
+        background_strokewidth = 3,
+        background_linestyle = :dash,
+        background_joinstyle = :round,
+        background_stroke_alpha = 0.8,
+        background_alpha = 0.5,
+        text_color = RGBf(1, 0.2, 0),
+        font = "Noto Sans",
+        text_strokecolor = RGBf(0.7, 0, 0.1),
+        text_strokewidth = 2,
+        glowcolor = RGBAf(0.8, 1, 0.3),
+        glowwidth = 2,
+        align = (:center, :center),
+        fontsize = 20,
+        justification = :center,
+        lineheight = 0.7,
+        offset = (0.0, -10.0),
+        text_alpha = 0.8,
+
+        shape = Circle(Point2f(0), 1),
+        shape_limits = Rect2f(-1, -1, 2, 2),
+        pad = Vec4f(10),
+    )
+
+    textlabel!(
+        ax, (3, -1), "Below",
+        cornerradius = 10, fontsize = 20, align = (:center, :center),
+        draw_on_top = false
+    )
+
+    p = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
+    translate!(p, 0, 0, 10)
+
+    xlims!(ax, 0.8, 3.4)
+    ylims!(ax, -1.6, 1.4)
+
+    ax = Axis3(f[2, 1])
+    m = load(assetpath("brain.stl"))
+    mesh!(ax, m, color = [RGBf(abs.(n)...) for n in normals(m)])
+    textlabel!(ax, Point3f(0), text = "Brain", background_color = :white)
+
+    textlabel!(ax,
+        ["-x -x", "+z\n+z", "-y -y"], position = [(-65, 0, 0), (0, 0, 45), (0, -90, 0)],
+        background_color = :lightgray, align = (:center, :center),
+        draw_on_top = false
+    )
+
+    f
+end
+
 @reference_test "Tooltip" begin
     fig, ax, p = scatter(Point2f(0,0))
     xlims!(ax, -10, 10)

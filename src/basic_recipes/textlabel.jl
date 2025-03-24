@@ -133,6 +133,7 @@ end
 
 convert_arguments(::Type{<: TextLabel}, args...) = convert_arguments(Text, args...)
 convert_arguments(::Type{<: TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
+convert_arguments(::Type{<: TextLabel}, p::VecTypes, str) = ([(str, p)],)
 convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]), )
 convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
 
@@ -201,7 +202,7 @@ function text_boundingbox_transforms(plot, positions, glyph_collections::Vector,
         bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
         scale = widths(bbox) ./ widths(limits)
         if keep_aspect
-            scale = Vec2d(maximum(s))
+            scale = Vec2d(maximum(scale))
         end
         # translate center for keep_aspect = true
         translation = minimum(bbox) + 0.5 * widths(bbox) .- scale .* (minimum(limits) + 0.5 * widths(limits))
