@@ -6,53 +6,79 @@
 #           Drawing pipeline           #
 ########################################
 
+function collect_scenes(scene, scenes = Scene[])
+    scene.visible[] || return scenes
+    push!(scenes, scene)
+    for child in scene.children
+        collect_scenes(child, scenes)
+    end
+    return scenes
+end
+
 # The main entry point into the drawing pipeline
 function cairo_draw(screen::Screen, scene::Scene)
-    Cairo.save(screen.context)
-    draw_background(screen, scene)
+    _, root_height = widths(viewport(Makie.root(scene))[])
 
-    allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
-    sort!(allplots; by=Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
 
-    last_scene = scene
+    scenes = collect_scenes(scene)
 
-    Cairo.save(screen.context)
-    for p in allplots
-        check_parent_plots(p) do plot
-            to_value(get(plot, :visible, true))
-        end || continue
-        # only prepare for scene when it changes
-        # this should reduce the number of unnecessary clipping masks etc.
-        pparent = Makie.parent_scene(p)
-        pparent.visible[] || continue
-        if pparent != last_scene
-            Cairo.restore(screen.context)
-            Cairo.save(screen.context)
-            prepare_for_scene(screen, pparent)
-            last_scene = pparent
+    start = 1
+    while start < length(scenes)+1
+        stop = start
+        while (stop < length(scenes)) && !scenes[stop+1].clear[]
+            stop += 1
         end
-        Cairo.save(screen.context)
+        
+        draw_single_background(screen, scenes[start], root_height)
 
-        # When a plot is too large to save with a reasonable file size on a vector backend,
-        # the user can choose to rasterize it when plotting to vector backends, by using the
-        # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
-        # the density of rasterization (in terms of a direct scaling factor.)
-        # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
-        # the backend module which should be used to render the scene, and the pixel density
-        # at which it should be rendered.
-        if to_value(get(p, :rasterize, false)) != false && should_rasterize
-            draw_plot_as_image(pparent, screen, p, p[:rasterize][])
-        else # draw vector
-            draw_plot(pparent, screen, p)
+        plots = Plot[]
+        for i in start:stop
+            Makie.collect_atomic_plots(scenes[i].plots, plots; is_atomic_plot = is_cairomakie_atomic_plot)
+        end
+        sort!(plots; by=Makie.zvalue2d)
+        
+        last_scene = scene
+        Cairo.save(screen.context)
+        for p in plots
+            check_parent_plots(p) do plot
+                to_value(get(plot, :visible, true))
+            end || continue
+            # only prepare for scene when it changes
+            # this should reduce the number of unnecessary clipping masks etc.
+            pparent = Makie.parent_scene(p)
+            if pparent != last_scene
+                Cairo.restore(screen.context)
+                Cairo.save(screen.context)
+                prepare_for_scene(screen, pparent)
+                last_scene = pparent
+            end
+            Cairo.save(screen.context)
+    
+            # When a plot is too large to save with a reasonable file size on a vector backend,
+            # the user can choose to rasterize it when plotting to vector backends, by using the
+            # `rasterize` keyword argument.  This can be set to a Bool or an Int which describes
+            # the density of rasterization (in terms of a direct scaling factor.)
+            # TODO: In future, this can also be set to a Tuple{Module, Int} which describes
+            # the backend module which should be used to render the scene, and the pixel density
+            # at which it should be rendered.
+            if to_value(get(p, :rasterize, false)) != false && should_rasterize
+                draw_plot_as_image(pparent, screen, p, p[:rasterize][])
+            else # draw vector
+                draw_plot(pparent, screen, p)
+            end
+            Cairo.restore(screen.context)
         end
         Cairo.restore(screen.context)
+        
+        start = stop + 1
     end
-    Cairo.restore(screen.context)
+
     return
 end
+
 
 """
     is_cairomakie_atomic_plot(plot::Plot)::Bool
@@ -106,12 +132,7 @@ function prepare_for_scene(screen::Screen, scene::Scene)
     return
 end
 
-function draw_background(screen::Screen, scene::Scene)
-    w, h = Makie.widths(viewport(Makie.root(scene))[])
-    return draw_background(screen, scene, h)
-end
-
-function draw_background(screen::Screen, scene::Scene, root_h)
+function draw_single_background(screen::Screen, scene::Scene, root_h)
     cr = screen.context
     Cairo.save(cr)
     if scene.clear[]
@@ -125,7 +146,6 @@ function draw_background(screen::Screen, scene::Scene, root_h)
         fill(cr)
     end
     Cairo.restore(cr)
-    foreach(child_scene-> draw_background(screen, child_scene, root_h), scene.children)
 end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
