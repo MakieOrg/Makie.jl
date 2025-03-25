@@ -66,12 +66,19 @@ that are multiples of pi, printed like "1π", "2π", etc.:
 ```
 MultiplesTicks(5, pi, "π")
 ```
+
+If `strip_zero == true`, then the resulting labels
+will be checked and any label that is a multiple of 0
+will be set to "0".
 """
 struct MultiplesTicks
     n_ideal::Int
     multiple::Float64
     suffix::String
+    strip_zero::Bool
 end
+
+MultiplesTicks(n_ideal, multiple, suffix; strip_zero = false) = MultiplesTicks(n_ideal, multiple, suffix, strip_zero)
 
 """
     AngularTicks(label_factor, suffix[, n_ideal::Vector{Vec2f}])
@@ -163,29 +170,36 @@ end
 struct ScrollZoom
     speed::Float32
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function ScrollZoom(speed, reset_delay)
-    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
-    prev_xticklabelspace::RefValue{Union{Automatic, Float64}}
-    prev_yticklabelspace::RefValue{Union{Automatic, Float64}}
+    prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
+    prev_yticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
     reset_delay::Float32
 end
 
 function DragPan(reset_delay)
-    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Float64}}(0.0), RefValue{Union{Automatic, Float64}}(0.0), reset_delay)
+    return DragPan(RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
 
 struct DragRotate
 end
+
+mutable struct FocusOnCursor
+    last_time::Float64
+    timeout::Float64
+    skip::Int64
+end
+FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
 
 struct ScrollEvent
     x::Float32
@@ -296,9 +310,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xlabelvisible::Bool = true
         "Controls if the ylabel is visible."
         ylabelvisible::Bool = true
-        "The padding between the xlabel and the ticks or axis."
+        "The additional padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
-        "The padding between the ylabel and the ticks or axis."
+        "The additional padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The xlabel rotation in radians."
         xlabelrotation = Makie.automatic
@@ -320,10 +334,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xticklabelsvisible::Bool = true
         "Controls if the yticklabels are visible."
         yticklabelsvisible::Bool = true
-        "The space reserved for the xticklabels."
-        xticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
-        "The space reserved for the yticklabels."
-        yticklabelspace::Union{Makie.Automatic, Float64} = Makie.automatic
+        "The space reserved for the xticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        xticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
+        "The space reserved for the yticklabels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
+        yticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The space between xticks and xticklabels."
         xticklabelpad::Float64 = 2f0
         "The space between yticks and yticklabels."
@@ -535,6 +549,8 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
         yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        "Button that needs to be pressed to allow scroll zooming."
+        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -562,6 +578,16 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
         is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
+
+        !!! warning
+            `autolimitaspect` can introduce cyclical updates which result in stack overflow errors.
+            This happens when the expanded limits have different ticks than the unexpanded ones.
+            The difference in size causes a relayout which might again result in different autolimits
+            to match the new aspect ratio, new ticks and again a relayout.
+
+            You can hide the ticklabels or fix `xticklabelspace` and `yticklabelspace` to avoid the relayouts.
+            You can choose the amount of space manually or pick the current automatic one with `tight_ticklabel_spacing!`.
+
         """
         autolimitaspect = nothing
         """
@@ -672,16 +698,19 @@ end
 
 function RectangleZoom(f::Function, ax::Axis; kw...)
     r = RectangleZoom(f; kw...)
-    selection_vertices = lift(_selection_vertices, ax.blockscene, Observable(ax.scene), ax.finallimits,
+    rect_scene = Scene(ax.scene)
+    selection_vertices = lift(_selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
                               r.rectnode)
     # manually specify correct faces for a rectangle with a rectangle hole inside
     faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
     # plot to blockscene, so ax.scene stays exclusive for user plots
     # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(ax.blockscene, selection_vertices, faces, color = (:black, 0.2), shading = NoShading,
-                 inspectable = false, visible=r.active, transparency=true)
+    mesh = mesh!(rect_scene,
+        selection_vertices, faces, space=:pixel,
+        color = (:black, 0.2), shading = NoShading,
+        inspectable = false, transparency=true, overdraw=true, visible=r.active)
     # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 100)
+    translate!(mesh, 0, 0, 1000)
     return r
 end
 
@@ -743,7 +772,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         ticks = Makie.automatic
         "Format for ticks."
         tickformat = Makie.automatic
-        "The space reserved for the tick labels."
+        "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
         ticklabelspace = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3f0
@@ -935,14 +964,16 @@ end
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
+        "If false, slider only updates value once dragging stops"
+        update_while_dragging = true
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
     end
 end
 
 """
-A grid of horizontal `Slider`s, where each slider has one name label on the left,
-and a value label on the right.
+A grid of one or more horizontal `Slider`s, where each slider has a
+name label on the left and a value label on the right.
 
 Each `NamedTuple` you pass specifies one `Slider`. You always have to pass `range`
 and `label`, and optionally a `format` for the value label. Beyond that, you can set
@@ -1089,16 +1120,88 @@ end
     end
 end
 
+const CHECKMARK_BEZIER = scale(BezierPath(
+    "M 81.449219,-0.08203125A 7.5,7.5 0 0 0 76.628906,3.0332031L 38.113281,58.792969 18.806641,34.650391A 7.5,7.5 0 0 0 8.265625,33.478516 7.5,7.5 0 0 0 7.0917969,44.019531L 32.697266,76.037109A 7.50075,7.50075 0 0 0 44.724609,75.615234L 88.970703,11.558594A 7.5,7.5 0 0 0 87.0625,1.125 7.5,7.5 0 0 0 81.449219,-0.08203125Z",
+    fit = true,
+    flipy = true,
+), 0.85)
+
+@Block Checkbox begin
+    @attributes begin
+        "The horizontal alignment of the checkbox in its suggested boundingbox"
+        halign = :center
+        "The vertical alignment of the checkbox in its suggested boundingbox"
+        valign = :center
+        "The width setting of the checkbox."
+        width = Auto()
+        "The height setting of the checkbox."
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The size (width/height) of the checkbox"
+        size = 11
+        "The size of the checkmark, relative to the size."
+        checkmarksize = 0.85
+        "The checkmark marker symbol. Anything that `scatter` can use."
+        checkmark = CHECKMARK_BEZIER
+        "Roundness of the checkbox poly, 0 is square, 1 is circular."
+        roundness = 0.15
+        "The strokewidth of the checkbox poly."
+        checkboxstrokewidth = 1.5
+        "The color of the checkbox background when checked."
+        checkboxcolor_checked = COLOR_ACCENT[]
+        "The color of the checkbox background when unchecked."
+        checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
+        "The strokecolor of the checkbox background when checked."
+        checkboxstrokecolor_checked = COLOR_ACCENT[]
+        "The strokecolor of the checkbox background when unchecked."
+        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
+        "The color of the checkmark when unchecked."
+        checkmarkcolor_unchecked = :transparent
+        "The color of the checkmark when the mouse clicks the checkbox."
+        checkmarkcolor_checked = :white
+        "The align mode of the checkbox in its parent GridLayout."
+        alignmode = Inside()
+        "If the checkbox is currently checked. This value should not be modified directly."
+        checked = false
+        "A function that is called when the user clicks to check or uncheck. The function is passed the current status as a `Bool` and needs to return a `Bool` that decides the checked status after the click. Intended for implementation of radio buttons."
+        onchange = !
+    end
+end
+
+"""
+A switch with two states.
+
+## Constructors
+
+```julia
+Toggle(fig_or_scene; kwargs...)
+```
+
+## Examples
+
+```julia
+t_horizontal = Toggle(fig[1, 1])
+t_vertical = Toggle(fig[2, 1], orientation = :vertical)
+t_diagonal = Toggle(fig[3, 1], orientation = pi/4)
+on(t_vertical.active) do switch_is_on
+    switch_is_on ? println("good morning!") : println("good night")
+end
+```
+
+"""
 @Block Toggle begin
     @attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
         "The vertical alignment of the toggle in its suggested bounding box."
         valign = :center
-        "The width of the toggle."
-        width = 32
-        "The height of the toggle."
-        height = 18
+        "The width of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        width = Auto()
+        "The height of the bounding box.  Use `length` and `markersize` to set the dimensions of the toggle."
+        height = Auto()
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -1122,6 +1225,12 @@ end
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
+        "The orientation of the toggle.  Can be :horizontal, :vertical, or -pi to pi.  0 is horizontal with \"on\" being to the right."
+        orientation = :horizontal
+        "The length of the toggle."
+        length = 32
+        "The size of the button."
+        markersize = 18
     end
 end
 
@@ -1247,6 +1356,7 @@ end
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
+    scene::Scene
     entrygroups::Observable{Vector{EntryGroup}}
     _tellheight::Observable{Bool}
     _tellwidth::Observable{Bool}
@@ -1362,6 +1472,8 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+        "The default alpha for legend elements"
+        alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
@@ -1485,11 +1597,13 @@ end
 
 @Block Axis3 <: AbstractAxis begin
     scene::Scene
-    finallimits::Observable{Rect3f}
+    finallimits::Observable{Rect3d}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
+    axis_offset::Observable{Vec2d} # center of scene -> center of Axis3
+    zoom_mult::Observable{Float64}
     @attributes begin
         """
         Global state for the x dimension conversion.
@@ -1533,6 +1647,8 @@ end
         if aesthetics are more important than neutral presentation.
         """
         perspectiveness = 0f0
+        "Sets the minimum value for `near`. Increasing this value will make objects close to the camera clip earlier. Reducing this value too much results in depth values becoming inaccurate. Must be > 0."
+        near = 1e-3
         """
         Controls the lengths of the three axes relative to each other.
 
@@ -1557,8 +1673,14 @@ end
           - `:stretch` pulls the cuboid corners to the frame edges such that the available space is filled completely.
             The chosen `aspect` is not maintained using this setting, so `:stretch` should not be used
             if a particular aspect is needed.
+          - `:free` behaves like `:fit` but changes some interactions. Zooming affects the whole axis rather
+            than just the content. This allows you to zoom in on content without it getting clipped by the 3D
+            bounding box of the Axis3. `zoommode = :cursor` is disabled. Translations can no also affect the axis as
+            a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
+        "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
+        clip::Bool = true
         "The background color"
         backgroundcolor = :transparent
         "The x label"
@@ -1693,6 +1815,14 @@ end
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
         zspinecolor_3 = :black
+        "Controls if the 4. Spines are created to close the outline box"
+        front_spines = false
+        "The color of x spine 4"
+        xspinecolor_4 = :black
+        "The color of y spine 4"
+        yspinecolor_4 = :black
+        "The color of z spine 4"
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
@@ -1764,8 +1894,8 @@ end
         "Controls if the xz panel is visible"
         xzpanelvisible = true
         "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
-        targetlimits = Rect3f(Vec3f(0, 0, 0), Vec3f(1, 1, 1))
-        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
+        targetlimits = Rect3d(Vec3d(0), Vec3d(1))
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, yhigh, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
         limits = (nothing, nothing, nothing)
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin = (0.05, 0.05)
@@ -1779,6 +1909,45 @@ end
         yreversed::Bool = false
         "Controls if the z axis goes upwards (false) or downwards (true) in default camera orientation."
         zreversed::Bool = false
+        "Controls whether decorations are cut off outside the layout area assigned to the axis."
+        clip_decorations::Bool = false
+
+        # Interaction
+        "Locks interactive zooming in the x direction."
+        xzoomlock::Bool = false
+        "Locks interactive zooming in the y direction."
+        yzoomlock::Bool = false
+        "Locks interactive zooming in the z direction."
+        zzoomlock::Bool = false
+        "The key for limiting zooming to the x direction."
+        xzoomkey::IsPressedInputType = Keyboard.x
+        "The key for limiting zooming to the y direction."
+        yzoomkey::IsPressedInputType = Keyboard.y
+        "The key for limiting zooming to the z direction."
+        zzoomkey::IsPressedInputType = Keyboard.z
+        """
+        Controls what reference point is used when zooming. Can be `:center` for centered zooming or `:cursor`
+        for zooming centered approximately where the cursor is. This is disabled with `viewmode = :free`.
+        """
+        zoommode::Symbol = :center
+
+        "Locks interactive translation in the x direction."
+        xtranslationlock::Bool = false
+        "Locks interactive translation in the y direction."
+        ytranslationlock::Bool = false
+        "Locks interactive translation in the z direction."
+        ztranslationlock::Bool = false
+        "The key for limiting translation to the x direction."
+        xtranslationkey::IsPressedInputType = Keyboard.x
+        "The key for limiting translations to the y direction."
+        ytranslationkey::IsPressedInputType = Keyboard.y
+        "The key for limiting translations to the y direction."
+        ztranslationkey::IsPressedInputType = Keyboard.z
+        "Sets the key that must be pressed to translate the whole axis (as opposed to the content) with `viewmode = :free`."
+        axis_translation_mod::IsPressedInputType = Keyboard.left_control | Keyboard.right_control
+
+        "Sets the key/button for centering the Axis3 on the currently hovered position."
+        cursorfocuskey::IsPressedInputType = Keyboard.left_alt & Mouse.left
     end
 end
 
@@ -1821,7 +1990,7 @@ end
         "The background color of the axis."
         backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
-        sample_density::Int = 120
+        sample_density::Int = 90
         "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
         clip::Bool = true
         "Sets the color of the clip polygon. Mainly for debug purposes."
@@ -1868,7 +2037,7 @@ end
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
-        rticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), 16)
+        rticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
@@ -1904,7 +2073,7 @@ end
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."
-        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :yticklabelsize), 16)
+        thetaticklabelsize::Float32 = inherit(scene, (:Axis, :xticklabelsize), inherit(scene, :fontsize, 16))
         "The font of the `theta` tick labels."
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."

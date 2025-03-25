@@ -4,7 +4,6 @@
 heatmap
 ```
 
-
 ## Examples
 
 ### Two vectors and a matrix
@@ -127,7 +126,7 @@ setting the colorrange explicitly, so that it is independent of the data shown b
 that particular heatmap.
 
 Since the heatmaps in the example below have the same colorrange and colormap, any of them
-can be passed to `Colorbar` to give the colorbar the same attributes. Alternativly,
+can be passed to `Colorbar` to give the colorbar the same attributes. Alternatively,
 the colorbar attributes can be set explicitly.
 
 ```@figure
@@ -163,6 +162,54 @@ fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
 Colorbar(fig[1, 2], hm)
 
 fig
+```
+
+## Plotting large Heatmaps
+
+You can wrap your data into `Makie.Resampler`, to automatically resample large heatmaps only for the viewing area.
+When zooming in, it will update the resampled version, to show it at best fidelity.
+It blocks updates while any mouse or keyboard button is pressed, to not spam e.g. WGLMakie with data updates.
+This goes well with `Axis(figure; zoombutton=Keyboard.left_control)`.
+You can disable this behavior with:
+
+`Resampler(data; update_while_button_pressed=true)`.
+
+
+Example:
+
+```julia
+using Downloads, FileIO, GLMakie
+# 30000×22943 image
+path = Downloads.download("https://upload.wikimedia.org/wikipedia/commons/7/7e/In_the_Conservatory.jpg")
+img = rotr90(load(path))
+f, ax, pl = heatmap(Resampler(img); axis=(; aspect=DataAspect()), figure=(;size=size(img)./20))
+hidedecorations!(ax)
+f
+```
+```@raw html
+<video mute autoplay loop playsinline controls src="/assets/heatmap-resampler.mp4" />
+```
+
+For better down sampling quality we recommend using `Makie.Pyramid` (might be moved to another package), which creates a simple gaussian pyramid for efficient and artifact free down sampling:
+
+```julia
+pyramid = Makie.Pyramid(img)
+fsize = (size(img) ./ 30) .* (1, 2)
+fig, ax, pl = heatmap(Resampler(pyramid);
+    axis=(; aspect=DataAspect(), title="Pyramid"), figure=(; size=fsize))
+hidedecorations!(ax)
+ax, pl = heatmap(fig[2, 1], Resampler(img1);
+    axis=(; aspect=DataAspect(), title="No Pyramid"))
+hidedecorations!(ax)
+save("heatmap-pyramid.png", fig)
+```
+![Submarine cables](../../assets/heatmap-pyramid.png)
+
+Any other Array type is allowed in `Resampler`, and it may also implement it's own interpolation strategy by overloading:
+```julia
+function (array::ArrayType)(xrange::LinRange, yrange::LinRange)
+    ...
+end
 ```
 
 ## Attributes

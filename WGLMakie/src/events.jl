@@ -43,12 +43,16 @@ function code_to_keyboard(code::String)
         return Keyboard.caps_lock
     elseif sym === :contextmenu
         return Keyboard.menu
+    elseif sym === :left_meta
+        return Keyboard.left_super
+    elseif sym === :right_meta
+        return Keyboard.right_super
     else
         return Keyboard.unknown
     end
 end
 
-function connect_scene_events!(scene::Scene, comm::Observable)
+function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
@@ -113,5 +117,34 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         end
         return
     end
+
     return
 end
+
+
+function connect_post_init_events(screen, scene)
+    for attempt in 1:10
+        isopen(screen) && break
+        sleep(0.1 * attempt)
+    end
+    @assert isopen(screen) "Window must be initialized first"
+
+    e = events(scene)
+    tick_callback = Makie.TickCallback(e.tick)
+
+    # key = rand(UInt16) # Is the right clock closing?
+    Makie.start!(screen.tick_clock) do timer
+        if isopen(screen)
+            tick_callback(Makie.RegularRenderTick)
+            # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
+        else
+            # @info "stopping $key"
+            Makie.stop!(timer)
+            e.window_open[] = false
+        end
+        return
+    end
+
+    return
+end
+

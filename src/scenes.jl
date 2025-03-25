@@ -72,7 +72,7 @@ mutable struct Scene <: AbstractScene
     float32convert::Union{Nothing, Float32Convert}
 
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{Plot}
 
     theme::Attributes
 
@@ -93,6 +93,7 @@ mutable struct Scene <: AbstractScene
     cycler::Cycler
 
     conversions::DimConversions
+    isclosed::Bool
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -109,7 +110,8 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector
+            lights::Vector;
+            deregister_callbacks=Observables.ObserverFunction[]
         )
         scene = new(
             parent,
@@ -128,14 +130,22 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             convert(Vector{AbstractLight}, lights),
-            Observables.ObserverFunction[],
+            deregister_callbacks,
             Cycler(),
-            DimConversions()
+            DimConversions(),
+            false
         )
+        on(scene, events.window_open) do open
+            if !open
+                scene.isclosed = true
+            end
+        end
         finalizer(free, scene)
         return scene
     end
 end
+
+isclosed(scene::Scene) = scene.isclosed
 
 # on & map versions that deregister when scene closes!
 function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
@@ -213,6 +223,7 @@ function Scene(;
         ssao = SSAO(),
         lights = automatic,
         theme = Attributes(),
+        deregister_callbacks=Observables.ObserverFunction[],
         theme_kw...
     )
 
@@ -244,7 +255,8 @@ function Scene(;
     scene = Scene(
         parent, events, viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights
+        children, current_screens, bg, visible, ssao, _lights;
+        deregister_callbacks=deregister_callbacks
     )
     camera isa Function && camera(scene)
 
@@ -292,6 +304,7 @@ function Scene(
         viewport=nothing,
         clear=false,
         camera=nothing,
+        visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
         kw...
@@ -301,18 +314,35 @@ function Scene(
         camera_controls = EmptyCamera()
     end
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    deregister_callbacks = Observables.ObserverFunction[]
+    _visible = Observable(true)
+    if visible isa Observable
+        listener = on(visible; update=true) do v
+            _visible[] = v
+        end
+        push!(deregister_callbacks, listener)
+    elseif visible isa Bool
+        _visible[] = visible
+    else
+        error("Unsupported typer visible: $(typeof(visible))")
+    end
     child = Scene(;
         events=events,
         viewport=child_px_area,
         clear=convert(Observable{Bool}, clear),
         camera=camera,
+        visible=_visible,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
         current_screens=copy(parent.current_screens),
         theme=theme(parent),
+        deregister_callbacks=deregister_callbacks,
         kw...
     )
+    # if !isnothing(listener)
+    #     push!(child.deregister_callbacks, listener)
+    # end
     if isnothing(viewport)
         map!(identity, child, child_px_area, parent.viewport)
     elseif viewport isa Rect2
@@ -406,6 +436,8 @@ function delete_scene!(scene::Scene)
 end
 
 function free(scene::Scene)
+    # Errors should be handled at a lower level because otherwise
+    # some of the cleanup will be incomplete.
     empty!(scene; free=true)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
@@ -418,6 +450,7 @@ function free(scene::Scene)
     return
 end
 
+# Note: called from scene finalizer if free = true
 function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
@@ -463,38 +496,85 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     end
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
     end
     foreach(free, plot.plots)
-    empty!(plot.plots)
+    # empty!(plot.plots)
     empty!(plot.deregister_callbacks)
-    empty!(plot.attributes)
     free(plot.transformation)
     return
 end
 
+# Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
-    len = length(scene.plots)
     filter!(x -> x !== plot, scene.plots)
-    if length(scene.plots) == len
-        error("$(typeof(plot)) not in scene!")
-    end
+    # TODO, if we want to delete a subplot of a plot,
+    # It won't be in scene.plots directly, but will still be deleted
+    # by delete!(screen, scene, plot)
+    # Should we check here if the plot is in the scene as a subplot?
+    # on the other hand, delete!(Dict(:a=>1), :b) also doesn't error...
+
+    # if length(scene.plots) == len
+    #     error("$(typeof(plot)) not in scene!")
+    # end
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
     free(plot)
 end
+
+supports_move_to(::MakieScreen) = false
+
+function supports_move_to(plot::Plot)
+    scene = get_scene(plot)
+    return all(scene.current_screens) do screen
+        return supports_move_to(screen)
+    end
+end
+
+# function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+#     # TODO, move without deleting!
+#     # Will be easier with Observable refactor
+#     delete!(screen, scene, plot)
+#     insert!(screen, scene, plot)
+#     return
+# end
+
+function move_to!(plot::Plot, scene::Scene)
+    if plot.parent === scene
+        return
+    end
+
+    if is_space_compatible(plot, scene)
+        obsfunc = connect!(transformation(scene), transformation(plot))
+        append!(plot.deregister_callbacks, obsfunc)
+    end
+    for screen in root(scene).current_screens
+        if supports_move_to(screen)
+            move_to!(screen, plot, scene)
+        end
+    end
+    current_parent = parent_scene(plot)
+    filter!(x -> x !== plot, current_parent.plots)
+    push!(scene.plots, plot)
+    plot.parent = scene
+    return
+end
+
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
@@ -566,6 +646,7 @@ end
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
+parent_scene(::Nothing) = nothing
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 

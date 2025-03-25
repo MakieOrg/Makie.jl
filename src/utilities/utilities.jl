@@ -24,7 +24,7 @@ end
 function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
     cols = to_colormap(cmap)
     r = range(0.0, stop=1.0, length=ncolors)
-    if alpha isa Tuple{<:Number, <:Number}
+    if alpha isa Tuple{Number, Number}
         alphas = LinRange(alpha..., ncolors)
     else
         alphas = alpha
@@ -218,6 +218,48 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
 end
 
 
+# used for lines in CairoMakie
+"""
+    broadcast_foreach_index(f, arg, indices, args...)
+
+Like broadcast_foreach but with indexing. The first arg is assumed to already
+have indices applied while the remaining ones use the given indices.
+
+Effectively calls:
+```
+for (raw_idx, idx) in enumerate(indices)
+    f(arg[raw_idx], attr_broadcast_getindex(args, idx)...)
+end
+```
+"""
+@generated function broadcast_foreach_index(f, arg1, indices, args...)
+    N = length(args)
+    quote
+        lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
+        maxlen = maximum(lengths)
+        any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
+        if any_wrong_length
+            error("All non scalars need same length, Found lengths for each argument: $lengths, $(map(typeof, args))")
+        end
+        if (maxlen > 1) && (length(last(indices)) > maxlen) # assuming indices sorted
+            error("Indices must be in range. Found $(last(indices)) > $maxlen.")
+        end
+        if length(indices) != length(arg1)
+            error("First arg out of bounds.")
+        end
+        # skip if there's a zero length element (like an empty annotations collection, etc)
+        # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+        0 in lengths && return
+
+        for (raw, i) in enumerate(indices)
+            Base.Cartesian.@ncall $N f arg1[raw] (j -> attr_broadcast_getindex(args[j], i))
+        end
+
+        return
+    end
+end
+
+
 """
     from_dict(::Type{T}, dict)
 Creates the type `T` from the fields in dict.
@@ -256,7 +298,7 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     d = defaults()
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
-        # TODO have a mark that says "theme uncomplete" and only then get the defaults
+        # TODO have a mark that says "theme incomplete" and only then get the defaults
         d = merge!(to_value(theme(scene, key)), d)
     end
     return merge!(input, d)
@@ -356,13 +398,12 @@ which ignores all contributions from points with `NaN` components.
 
 Equivalent in application to `GeometryBasics.normals`.
 """
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
     normals_result = zeros(Vec3f, length(vertices))
-    free_verts = GeometryBasics.metafree.(vertices)
 
     for face in faces
 
-        v1, v2, v3 = free_verts[face]
+        v1, v2, v3 = vertices[face]
         # we can get away with two edges since faces are planar.
         n = nan_aware_orthogonal_vector(v1, v2, v3)
 
@@ -375,30 +416,26 @@ function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{3,T}}, faces
     return normals_result
 end
 
-function nan_aware_normals(vertices::AbstractVector{<:AbstractPoint{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
     return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
 end
 
-
-function nan_aware_normals(vertices::AbstractVector{<:GeometryBasics.PointMeta{D,T}}, faces::AbstractVector{F}) where {D,T,F<:NgonFace}
-    return nan_aware_normals(collect(GeometryBasics.metafree.(vertices)), faces)
-end
-
 function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
-    # crate a `Matrix{Point3}`
+    # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
-    rect = Tesselation(Rect2f(0, 0, 1, 1), size(zs))
+    rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
     # we use quad faces so that color handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
     # create the uv (texture) vectors
-    uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
+    uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(GeometryBasics.meta(ps; uv=uv, normals = nan_aware_normals(ps, faces)), faces, )
+    return GeometryBasics.Mesh(ps, faces; uv=uv, normal = nan_aware_normals(ps, faces))
 end
 
 
@@ -413,14 +450,24 @@ Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
 function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    g = map(CartesianIndices(z)) do i
-        return f(Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]))
-    end
-    return vec(g)
+    return f(matrix_grid(x, y, z))
 end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(x)..., size(z, 2)), z)
+    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+end
+
+function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
+    if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
+        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[[1,2,2,1], [1,1,2,2]])
+    else
+        ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
+    end
+    return vec(ps)
 end
 
 ############################################################
@@ -527,7 +574,7 @@ Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
     valid_attributes = attribute_names(target)
-    existing_attributes = attribute_names(typeof(plot))
+    existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)
     return drop_attributes(plot, to_drop)
 end

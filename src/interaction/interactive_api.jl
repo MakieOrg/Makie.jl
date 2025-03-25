@@ -1,6 +1,9 @@
 export mouseover, mouseposition, hovered_scene
 export select_rectangle, select_line, select_point
 
+# for debug/test tracking of pick
+const PICK_TRACKING = Ref(false)
+const _PICK_COUNTER = Ref(0)
 
 """
     mouseover(fig/ax/scene, plots::AbstractPlot...)
@@ -50,9 +53,25 @@ end
 
 
 """
-    pick(fig/ax/scene, x, y)
+    pick(fig/ax/scene, x, y[, range])
+    pick(fig/ax/scene, xy::VecLike[, range])
 
-Returns the plot under pixel position `(x, y)`.
+Returns the plot and element index under the given pixel position `xy = Vec(x, y)`.
+If `range` is given, the nearest plot up to a distance of `range` is returned instead.
+
+The `plot` returned by this function is always a primitive plot, i.e. one that
+is not composed of other plot types.
+
+The index returned relates to the main input of the respective primitive plot.
+- For `scatter` and `meshscatter` it is an index into the positions given to the plot.
+- For `text` it is an index into the merged character array.
+- For `lines` and `linesegments` it is the end position of the selected line segment.
+- For `image`, `heatmap` and `surface` it is the linear index into the matrix argument of the plot (i.e. the given image, value or z-value matrix) that is closest to the selected position.
+- For `voxels` it is the linear index into the given 3D Array.
+- For `mesh` it is the largest vertex index of the picked triangle face.
+- For `volume` it is always 0.
+
+See also: `pick_sorted`
 """
 pick(obj, x::Number, y::Number) = pick(get_scene(obj), x, y)
 function pick(scene::Scene, x::Number, y::Number)
@@ -60,34 +79,36 @@ function pick(scene::Scene, x::Number, y::Number)
 end
 
 
-"""
-    pick(fig/ax/scene, xy::VecLike)
-
-Return the plot under pixel position xy.
-"""
 pick(obj) = pick(get_scene(obj), events(obj).mouseposition[])
 pick(obj, xy::VecTypes{2}) = pick(get_scene(obj), xy)
 function pick(scene::Scene, xy::VecTypes{2})
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
-    pick(scene, screen, Vec{2, Float64}(xy))
+    return pick(scene, screen, Vec{2, Float64}(xy))
 end
 
-"""
-    pick(fig/ax/scene, xy::VecLike, range)
-
-Return the plot closest to xy within a given range.
-"""
 pick(obj, range::Real) = pick(get_scene(obj), events(obj).mouseposition[], range)
 pick(obj, xy::VecTypes{2}, range::Real) = pick(get_scene(obj), xy, range)
+pick(obj, x::Real, y::Real, range::Real) = pick(get_scene(obj), Vec2(x, y), range)
 function pick(scene::Scene, xy::VecTypes{2}, range::Real)
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
-    pick_closest(scene, screen, xy, range)
+    if PICK_TRACKING[]
+        # if the Makie implementation is used we'd double count if we just increment here
+        last = _PICK_COUNTER[]
+        result = pick_closest(scene, screen, xy, range)
+        _PICK_COUNTER[] = last
+        return result
+    else
+        return pick_closest(scene, screen, xy, range)
+    end
 end
 
 # The backend may handle this more optimally
 function pick_closest(scene::SceneLike, screen, xy, range)
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     w, h = widths(screen)
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
     x0, y0 = max.(1, floor.(Int, xy .- range))
@@ -101,7 +122,7 @@ function pick_closest(scene::SceneLike, screen, xy, range)
     x, y =  xy .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (picks[i, j][1] != nothing)
+        if (d < min_dist) && (picks[i, j][1] !== nothing)
             min_dist = d
             selected = (i, j)
         end
@@ -116,15 +137,26 @@ using InteractiveUtils
     pick_sorted(fig/ax/scene, xy::VecLike, range)
 
 Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region
-sorted by distance to `xy`.
+sorted by distance to `xy`. See [`pick`](@ref) for more details.
 """
 function pick_sorted(scene::Scene, xy, range)
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
+    if PICK_TRACKING[]
+        # if the Makie implementation is used we'd double count if we just increment here
+        last = _PICK_COUNTER[]
+        result = pick_sorted(scene, screen, xy, range)
+        _PICK_COUNTER[] = last
+        return result
+    else
+        return pick_sorted(scene, screen, xy, range)
+    end
     return pick_sorted(scene, screen, xy, range)
 end
 
 function pick_sorted(scene::Scene, screen, xy, range)
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     w, h = size(scene)
     if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
         return Tuple{AbstractPlot, Int}[]
@@ -161,6 +193,7 @@ screen boundaries.
 """
 pick(x, rect::Rect2i) = pick(get_scene(x), rect)
 function pick(scene::Scene, rect::Rect2i)
+    PICK_TRACKING[] && (_PICK_COUNTER[] += 1)
     screen = getscreen(scene)
     screen === nothing && return Tuple{AbstractPlot, Int}[]
     return pick(scene, screen, rect)
@@ -347,13 +380,12 @@ The `kwargs...` are propagated into `scatter!` which plots the selected point.
 """
 function select_point(scene; blocking = false, priority=2, kwargs...)
     key = Mouse.left
-    pmarker = Circle(Point2f(0, 0), Float32(1))
     waspressed = Observable(false)
     point = Observable([Point2f(0,0)])
     point_ret = Observable(Point2f(0,0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
-        scene, point; visible = false, marker = pmarker, markersize = 20px,
+        scene, point; visible = false, marker = Circle, markersize = 20px,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 

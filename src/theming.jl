@@ -9,7 +9,7 @@ function wong_colors(alpha = 1.0)
         RGB(0/255, 158/255, 115/255), # green
         RGB(204/255, 121/255, 167/255), # reddish purple
         RGB(86/255, 180/255, 233/255), # sky blue
-        RGB(213/255, 94/255, 0/255), # vermillion
+        RGB(213/255, 94/255, 0/255), # vermilion
         RGB(240/255, 228/255, 66/255), # yellow
     ]
     return RGBAf.(colors, alpha)
@@ -45,6 +45,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     markercolor = :black,
     markerstrokecolor = :black,
     markerstrokewidth = 0,
+    markerfont = "TeX Gyre Heros Makie",
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,
@@ -64,14 +65,15 @@ const MAKIE_DEFAULT_THEME = Attributes(
     limits = automatic,
     SSAO = Attributes(
         # enable = false,
-        bias = 0.025f0,       # z threshhold for occlusion
+        bias = 0.025f0,       # z threshold for occlusion
         radius = 0.5f0,       # range of sample positions (in world space)
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
     inspectable = true,
+    clip_planes = Vector{Plane3f}(),
 
-    # Vec is equvalent to 36° right/east, 39° up/north from camera position
+    # Vec is equivalent to 36° right/east, 39° up/north from camera position
     # The order here is Vec3f(right of, up from, towards) viewer/camera
     light_direction = Vec3f(-0.45679495, -0.6293204, -0.6287243),
     camera_relative_light = true, # Only applies to default DirectionalLight
@@ -192,7 +194,7 @@ current_default_theme() = CURRENT_DEFAULT_THEME
 
 
 """
-    set_theme(theme; kwargs...)
+    set_theme!(theme; kwargs...)
 
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.

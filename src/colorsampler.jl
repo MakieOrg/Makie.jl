@@ -54,7 +54,14 @@ function interpolated_getindex(cmap::AbstractArray{T}, i01::AbstractFloat) where
     return convert(T, downc * (one(interp_val) - interp_val) + upc * interp_val)
 end
 
-function nearest_getindex(cmap::AbstractArray, value::AbstractFloat)
+function nearest_getindex(cmap::AbstractArray, value::Real, norm::VecTypes)
+    cmin, cmax = norm
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
+    return nearest_getindex(cmap, i01)
+end
+
+function nearest_getindex(cmap::AbstractArray, i01::Real)
     idx = round(Int, i01 * (length(cmap) - 1)) + 1
     return cmap[idx]
 end
@@ -148,14 +155,16 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primi
     highclip = get_attribute(primitive, :highclip)::RGBAf
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))::RGBAf
 
-    return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color)
+    return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color, true)
 end
 
-function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
-                           colormap, colorscale, colorrange::Vec2,
-                           lowclip::Union{Automatic,RGBAf},
-                           highclip::Union{Automatic,RGBAf},
-                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
+function numbers_to_colors(
+        numbers::Union{AbstractArray{<:Number, N},Number},
+        colormap, colorscale, colorrange::Vec2,
+        lowclip::Union{Automatic,RGBAf}, highclip::Union{Automatic,RGBAf},
+        nan_color::RGBAf, interpolate
+    )::Union{Array{RGBAf, N},RGBAf} where {N}
+
     cmin, cmax = colorrange
     scaled_cmin = apply_scale(colorscale, cmin)
     scaled_cmax = apply_scale(colorscale, cmax)
@@ -164,15 +173,16 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
         if isnan(scaled_number)
             return nan_color
-        elseif !isnothing(lowclip) && scaled_number < scaled_cmin
+        elseif lowclip !== automatic && scaled_number < scaled_cmin
             return lowclip
-        elseif !isnothing(highclip) && scaled_number > scaled_cmax
+        elseif highclip !== automatic && scaled_number > scaled_cmax
             return highclip
         end
-        return interpolated_getindex(
-            colormap,
-            scaled_number,
-            (scaled_cmin, scaled_cmax))
+        if interpolate
+            return interpolated_getindex(colormap, scaled_number, (scaled_cmin, scaled_cmax))
+        else
+            return nearest_getindex(colormap, scaled_number, (scaled_cmin, scaled_cmax))
+        end
     end
 end
 
@@ -257,11 +267,11 @@ function _colormapping(
         @nospecialize(highclip),
         @nospecialize(nan_color),
         color_mapping_type) where {V <: AbstractArray{T, N}} where {N, T}
-
     map_colors = Observable(RGBAf[]; ignore_equal_values=true)
     raw_colormap = Observable(RGBAf[]; ignore_equal_values=true)
     mapping = Observable{Union{Nothing,Vector{Float64}}}(nothing; ignore_equal_values=true)
     colorscale = convert(Observable{Function}, colorscale)
+    colorscale.ignore_equal_values = true
 
     function update_colors(cmap, a)
         colors = to_colormap(cmap)
@@ -300,8 +310,15 @@ function _colormapping(
         return Vec2f(apply_scale(scale, range))
     end
 
-    color_scaled = lift(color_tight, colorscale) do color, scale
-        return el32convert(apply_scale(scale, color))
+    color_scaled = Observable(el32convert(apply_scale(colorscale[], color_tight[])))
+    onany(color_tight, colorscale) do color, scale
+        scaled = el32convert(apply_scale(scale, color))
+        # If they're exactly the same we assume the user called notify
+        # So we trigger an update...
+        # If they're `== && !==`, we assume it's staying the same
+        if color_scaled[] === scaled || color_scaled[] != scaled
+            color_scaled[] = scaled
+        end
     end
     CT = ColorMapping{N,V,typeof(color_scaled[])}
 
@@ -332,7 +349,15 @@ function ColorMapping(
         color_mapping_type=lift(colormapping_type, colormap; ignore_equal_values=true)) where {N}
 
     T = _array_value_type(color)
-    color_tight = convert(Observable{T}, colors_obs)::Observable{T}
+    color_tight = Observable{T}(color)
+    # We need to copy, to check for changes
+    # Since users may re-use the array when pushing updates
+    on(colors_obs) do new_colors
+        if color_tight[] === new_colors || color_tight[] != new_colors
+            color_tight[] = new_colors
+        end
+    end
+     # color_tight.ignore_equal_values = true
     _colormapping(color_tight, colors_obs, colormap, colorrange,
                          colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
 end
@@ -343,12 +368,15 @@ function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nosp
 end
 
 function to_color(c::ColorMapping)
-    return numbers_to_colors(c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[], lowclip(c)[], highclip(c)[], c.nan_color[])
+    return numbers_to_colors(
+        c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[],
+        lowclip(c)[], highclip(c)[], c.nan_color[], c.color_mapping_type[] == continuous)
 end
 
 function Base.get(c::ColorMapping, value::Number)
-    return numbers_to_colors([value], c.colormap[], c.scale[], c.colorrange_scaled[], lowclip(c)[],
-                             highclip(c)[], c.nan_color[])[1]
+    return numbers_to_colors(
+        [value], c.colormap[], c.scale[], c.colorrange_scaled[],
+        lowclip(c)[], highclip(c)[], c.nan_color[], c.color_mapping_type[] == continuous)[1]
 end
 
 function assemble_colors(colortype, color, plot)
@@ -363,10 +391,13 @@ end
 
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
-
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
-    return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
-                      cm.nan_color)
+    return lift(
+            cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled,
+            cm.lowclip, cm.highclip, cm.nan_color, cm.color_mapping_type
+        ) do vals, cm, cs, cr, lw, hc, nc, ct
+        return numbers_to_colors(vals, cm, cs, cr, lw, hc, nc, ct == continuous)[1]
+    end
 end
 
 highclip(cmap::ColorMapping) = lift((cm, hc) -> hc isa Automatic ? last(cm) : hc, cmap.colormap, cmap.highclip)

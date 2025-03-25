@@ -6,7 +6,6 @@ import {
 } from "./Shaders.js";
 
 import { deserialize_uniforms } from "./Serialization.js";
-import { IntType } from "./THREE.js";
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -39,11 +38,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
         /// Linessegments
         ////////////////////////////////////////////////////////////////////////
 
-        return `precision mediump int;
-            precision highp float;
+        return `precision highp float;
+            precision highp int;
 
             ${attribute_decl}
-
 
             out vec3 f_quad_sdf;
             out vec2 f_truncation;              // invalid / not needed
@@ -63,6 +61,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -88,6 +87,37 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2)
+            {
+                float d1, d2;
+                for (int i = 0; i < int(num_clip_planes); i++) {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        return;
+                    }
+
+                    // one outside - shorten segment
+                    else if (d1 < 0.0)
+                    {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                    }
+                    else if (d2 < 0.0)
+                    {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                    }
+                }
+
+                return;
+            }
+
 
             ////////////////////////////////////////////////////////////////////////
             // Main
@@ -105,16 +135,29 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
+                // color at line start/end for interpolation
+                f_color1 = color_start;
+                f_color2 = color_end;
+
                 // restrict to visible area (see other shader)
                 vec3 p1, p2;
                 {
                     vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+
                     vec4 v1 = _p2 - _p1;
 
-                    if (_p1.w < 0.0)
+                    if (_p1.w < 0.0) {
                         _p1 = _p1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * v1;
-                    if (_p2.w < 0.0)
+                        f_color1 = f_color1 + (-_p1.w - _p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+                    if (_p2.w < 0.0) {
                         _p2 = _p2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
+                    }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(_p1, _p2);
 
                     p1 = screen_space(_p1);
                     p2 = screen_space(_p2);
@@ -144,7 +187,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(2 * gl_InstanceID);
+                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -157,7 +200,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
 
                 // linecaps
                 f_capmode = ivec2(linecap);
@@ -183,9 +225,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = 0.0;
                 f_linelength = segment_length;
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -198,8 +238,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
         /// Lines
         ////////////////////////////////////////////////////////////////////////
 
-        return `precision mediump int;
-            precision highp float;
+        return `precision highp float;
+            precision highp int;
 
             ${attribute_decl}
 
@@ -221,6 +261,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
+            uniform vec4 clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -335,11 +376,40 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             vec2 normal_vector(in vec3 v) { return vec2(-v.y, v.x); }
             float sign_no_zero(float value) { return value >= 0.0 ? 1.0 : -1.0; }
 
+            void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
+            {
+                float d1, d2;
+                for(int i = 0; i < int(num_clip_planes); i++)
+                {
+                    // distance from clip planes with negative clipped
+                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+
+                    // both outside - clip everything
+                    if (d1 < 0.0 && d2 < 0.0) {
+                        p2 = p1;
+                        isvalid[1] = false;
+                        isvalid[2] = false;
+                        return;
+                    // one outside - shorten segment
+                    } else if (d1 < 0.0) {
+                        // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+                        p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
+                        f_color1 = f_color1 - d1 * (f_color2 - f_color1) / (d2 - d1);
+                        isvalid[0] = false;
+                    } else if (d2 < 0.0) {
+                        p2       = p2       - d2 * (p1 - p2)             / (d1 - d2);
+                        f_color2 = f_color2 - d2 * (f_color1 - f_color2) / (d1 - d2);
+                        isvalid[3] = false;
+                    }
+                }
+
+                return;
+            }
 
             ////////////////////////////////////////////////////////////////////////
             // Main
             ////////////////////////////////////////////////////////////////////////
-
 
             void main() {
                 bool is_end = position.x == 1.0;
@@ -354,6 +424,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 bool[4] isvalid = bool[4](true, true, true, true);
+
+                // color at start/end of segment
+                f_color1 = color_start;
+                f_color2 = color_end;
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -382,11 +456,17 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         // where (-) gives us the result for the near clipping plane as p.z
                         // and p.w share the same sign and p.z/p.w = -1.0 is the near plane.
                         clip_p1 = clip_p1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * v1;
+                        f_color1 = f_color1 + (-clip_p1.w - clip_p1.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
                     if (clip_p2.w < 0.0) {
                         isvalid[3] = false;
                         clip_p2 = clip_p2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * v1;
+                        f_color2 = f_color2 + (-clip_p2.w - clip_p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
                     }
+
+                    // Shorten segments to fit clip planes
+                    // returns true if segments are fully clipped
+                    process_clip_planes(clip_p1, clip_p2, isvalid);
 
                     // transform clip -> screen space, applying xyz / w normalization (which
                     // is now save as all vertices are in front of the camera)
@@ -559,7 +639,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = uint(gl_InstanceID);
+                f_instance_id = lineindex_start;
 
                 f_cumulative_length = lastlen_start;
 
@@ -573,7 +653,6 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
                 // Varying vertex data
                 ////////////////////////////////////////////////////////////////////
-
 
                 vec3 offset;
                 int x = int(is_end);
@@ -629,9 +708,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_linestart = shape_factor * halfwidth * extrusion[0];
                 f_linelength = max(1.0, segment_length - shape_factor * halfwidth * (extrusion[0] - extrusion[1]));
 
-                // for color sampling
-                f_color1 = color_start;
-                f_color2 = color_end;
+                // for thin lines
                 f_alpha_weight = min(1.0, width / AA_RADIUS);
 
                 // clip space position
@@ -655,7 +732,7 @@ function lines_fragment_shader(uniforms, attributes) {
     // uncomment for debug rendering
     // #define DEBUG
 
-    precision mediump int;
+    precision highp int;
     precision highp float;
     precision mediump sampler2D;
     precision mediump sampler3D;
@@ -776,12 +853,16 @@ function lines_fragment_shader(uniforms, attributes) {
         return -10.0;
     }
 
+    vec2 encode_uint_to_float(uint value) {
+        float lower = float(value & 0xFFFFu) / 65535.0;
+        float upper = float(value >> 16u) / 65535.0;
+        return vec2(lower, upper);
+    }
+
     vec4 pack_int(uint id, uint index) {
         vec4 unpack;
-        unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-        unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-        unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-        unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+        unpack.rg = encode_uint_to_float(id);
+        unpack.ba = encode_uint_to_float(index);
         return unpack;
     }
 

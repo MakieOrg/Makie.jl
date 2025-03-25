@@ -12,11 +12,30 @@ end
 plotfunc(::Plot{F}) where F = F
 plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
 plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
-plotfunc(f::Function) = f
+function plotfunc(f::Function)
+    if endswith(string(nameof(f)), "!")
+        name = Symbol(string(nameof(f))[begin:end-1])
+        return getproperty(parentmodule(f), name)
+    else
+        return f
+    end
+end
+
+symbol_to_plot(x::Symbol) = symbol_to_plot(Val(x))
+function symbol_to_plot(::Val{Sym}) where {Sym}
+    return nothing
+end
+
+
+function plotfunc!(x)
+    F = plotfunc(x)::Function
+    name = Symbol(nameof(F), :!)
+    return getproperty(parentmodule(F), name)
+end
 
 func2type(x::T) where T = func2type(T)
 func2type(x::Type{<: AbstractPlot}) = x
-func2type(f::Function) = Plot{f}
+func2type(f::Function) = Plot{plotfunc(f)}
 
 plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
@@ -59,7 +78,7 @@ theme(x::AbstractPlot, key; default=nothing) = deepcopy(get(x.attributes, key, d
 
 Attributes(x::AbstractPlot) = x.attributes
 
-default_theme(scene, T) = Attributes()
+function default_theme end
 
 """
 # Plot Recipes in `Makie`
@@ -175,6 +194,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
         $(MakieCore).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        $(MakieCore).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
@@ -196,17 +216,58 @@ attribute_names(_) = nothing
 
 Base.@kwdef struct AttributeMetadata
     docstring::Union{Nothing,String}
+    default_value::Any
     default_expr::String # stringified expression, just needed for docs purposes
 end
 
 update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
     am2.docstring === nothing ? am1.docstring : am2.docstring,
+    am2.default_value,
     am2.default_expr # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
 )
 
 struct DocumentedAttributes
     d::Dict{Symbol,AttributeMetadata}
-    closure::Function
+end
+
+struct Inherit
+    key::Symbol
+    fallback::Any
+end
+
+function lookup_default(meta::AttributeMetadata, theme)
+    default = meta.default_value
+    if default isa Inherit
+        if haskey(theme, default.key)
+            to_value(theme[default.key]) # only use value of theme entry
+        else
+            if isnothing(default.fallback)
+                error("Inherited key $(default.key) not found in theme with no fallback given.")
+            else
+                return default.fallback
+            end
+        end
+    else
+        return default
+    end
+end
+
+function get_default_expr(default)
+    if default isa Expr && default.head === :macrocall && default.args[1] === Symbol("@inherit")
+        if length(default.args) ∉ (3, 4)
+            error("@inherit works with 1 or 2 arguments, expression was $default")
+        end
+        if !(default.args[3] isa Symbol)
+            error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
+        end
+        key = default.args[3]
+        _default = get(default.args, 4, :(nothing))
+        # first check scene theme
+        # then default value
+        return :($(MakieCore.Inherit)($(QuoteNode(key)), $(esc(_default))))
+    else
+        return esc(default)
+    end
 end
 
 macro DocumentedAttributes(expr::Expr)
@@ -243,40 +304,20 @@ macro DocumentedAttributes(expr::Expr)
             if !(sym isa Symbol)
                 error("$sym should be a symbol")
             end
-
-            push!(metadata_exprs, quote
-                am = AttributeMetadata(; docstring = $docs, default_expr = $(_default_expr_string(default)))
-                if haskey(d, $(QuoteNode(sym)))
-                    d[$(QuoteNode(sym))] = update_metadata(d[$(QuoteNode(sym))], am)
-                else
-                    d[$(QuoteNode(sym))] = am
-                end
-            end)
-
-            if default isa Expr && default.head === :macrocall && default.args[1] === Symbol("@inherit")
-                if length(default.args) ∉ (3, 4)
-                    error("@inherit works with 1 or 2 arguments, expression was $d")
-                end
-                if !(default.args[3] isa Symbol)
-                    error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
-                end
-                key = default.args[3]
-                _default = get(default.args, 4, :(error("Inherited key $($(QuoteNode(key))) not found in theme with no fallback given.")))
-                # first check scene theme
-                # then default value
-                d = :(
-                    dict[$(QuoteNode(sym))] = if haskey(thm, $(QuoteNode(key)))
-                        to_value(thm[$(QuoteNode(key))]) # only use value of theme entry
-                    else
-                        $(esc(_default))
-                    end
+            qsym = QuoteNode(sym)
+            metadata = quote
+                am = AttributeMetadata(;
+                    docstring = $docs,
+                    default_value = $(get_default_expr(default)),
+                    default_expr = $(default_expr_string(default))
                 )
-                push!(closure_exprs, d)
-            else
-                push!(closure_exprs, :(
-                    dict[$(QuoteNode(sym))] = $(esc(default))
-                ))
+                if haskey(d, $(qsym))
+                    d[$(qsym)] = update_metadata(d[$(qsym)], am)
+                else
+                    d[$(qsym)] = am
+                end
             end
+            push!(metadata_exprs, metadata)
         elseif is_mixin_line
             # this intermediate variable is needed to evaluate each mixin only once
             # and is inserted at the start of the final code block
@@ -288,14 +329,6 @@ macro DocumentedAttributes(expr::Expr)
                     error("Mixin was not a DocumentedAttributes but $($gsym)")
                 end
             end)
-
-            # the actual runtime values of the mixed in defaults
-            # are computed using the closure stored in the DocumentedAttributes
-            closure_exp = quote
-                # `scene` and `dict` here are defined below where this exp is interpolated into
-                merge!(dict, $gsym.closure(scene))
-            end
-            push!(closure_exprs, closure_exp)
 
             # docstrings and default expressions of the mixed in
             # DocumentedAttributes are inserted
@@ -317,13 +350,7 @@ macro DocumentedAttributes(expr::Expr)
         $(mixin_exprs...)
         d = Dict{Symbol,AttributeMetadata}()
         $(metadata_exprs...)
-        closure = function (scene)
-            thm = theme(scene)
-            dict = Dict{Symbol,Any}()
-            $(closure_exprs...)
-            return dict
-        end
-        DocumentedAttributes(d, closure)
+        DocumentedAttributes(d)
     end
 end
 
@@ -379,6 +406,51 @@ end
 
 function types_for_plot_arguments end
 
+documented_attributes(_) = nothing
+
+function attribute_names(T::Type{<:Plot})
+    attr = documented_attributes(T)
+    isnothing(attr) && return nothing
+    return keys(attr.d)
+end
+
+function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
+    thm = theme(scene)
+    metas = documented_attributes(T).d
+    psym = plotsym(T)
+    if haskey(thm, psym)
+        overwrite = thm[psym]
+        if haskey(overwrite, attribute)
+            return to_value(overwrite[attribute])
+        end
+    end
+    if haskey(metas, attribute)
+        return lookup_default(metas[attribute], thm)
+    else
+        return nothing
+    end
+end
+
+function default_theme(scene, T::Type{<: Plot})
+    metas = documented_attributes(T)
+    attr = Attributes()
+    isnothing(metas) && return attr
+    thm = theme(scene)
+    _attr = attr.attributes
+    for (k, meta) in metas.d
+        _attr[k] = lookup_default(meta, thm)
+    end
+    return attr
+end
+
+function extract_docstring(str)
+    if VERSION >= v"1.11" && str isa Base.Docs.DocStr
+        return only(str.text::Core.SimpleVector)
+    else
+        return str
+    end
+end
+
 function create_recipe_expr(Tsym, args, attrblock)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
@@ -408,7 +480,7 @@ function create_recipe_expr(Tsym, args, attrblock)
         Core.@__doc__ $(esc(docs_placeholder)) = nothing
         binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
         user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
-            _docstring = @doc($docs_placeholder)
+            _docstring = extract_docstring(@doc($docs_placeholder))
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
@@ -431,25 +503,20 @@ function create_recipe_expr(Tsym, args, attrblock)
         $(MakieCore).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(MakieCore).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
+        $(MakieCore).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
+
         function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
             _create_plot($funcname, kwdict, args...)
         end
         function ($funcname!)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
-             _create_plot!($funcname, kwdict, args...)
+            _create_plot!($funcname, kwdict, args...)
         end
 
-        function $(MakieCore).attribute_names(T::Type{<:$(PlotType)})
-            keys(documented_attributes(T).d)
-        end
-
-        function $(MakieCore).default_theme(scene, T::Type{<:$(PlotType)})
-            Attributes(documented_attributes(T).closure(scene))
-        end
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)),user_docstring)
+        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
         @doc docstring_modified $funcname_sym
         @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
@@ -468,6 +535,8 @@ function create_recipe_expr(Tsym, args, attrblock)
 
     return q
 end
+
+
 
 function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
     io = IOBuffer()
@@ -507,8 +576,8 @@ function rmlines(x::Expr)
   end
 end
 
-_default_expr_string(x) = string(rmlines(x))
-_default_expr_string(x::String) = repr(x)
+default_expr_string(x) = string(rmlines(x))
+default_expr_string(x::String) = repr(x)
 
 function extract_attribute_metadata(arg)
     has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
@@ -540,41 +609,6 @@ function extract_attribute_metadata(arg)
     (docs = docs, symbol = attr_symbol, type = type, default = default)
 end
 
-function make_default_theme_expr(attrs, scenesym::Symbol)
-
-    exprs = map(attrs) do a
-
-        d = a.default
-        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
-            if length(d.args) != 4
-                error("@inherit works with exactly 2 arguments, expression was $d")
-            end
-            if !(d.args[3] isa QuoteNode)
-                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
-            end
-            key, default = d.args[3:4]
-            # first check scene theme
-            # then default value
-            d = quote
-                if haskey(thm, $key)
-                    to_value(thm[$key]) # only use value of theme entry
-                else
-                    $default
-                end
-            end
-        end
-
-        :(attr[$(QuoteNode(a.symbol))] = $d)
-    end
-
-    quote
-        thm = theme($scenesym)
-        attr = Attributes()
-        $(exprs...)
-        attr
-    end
-end
-
 function expand_mixins(attrblock::Expr)
     Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
 end
@@ -596,7 +630,7 @@ function expand_mixin(e::Expr)
 end
 
 """
-    Plot(args::Vararg{<:DataType,N})
+    Plot(args::Vararg{DataType,N})
 
 Returns the Plot type that represents the signature of `args`.
 Example:
@@ -645,8 +679,12 @@ plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!
 deprecated_attributes(_) = ()
 
 struct InvalidAttributeError <: Exception
-    plottype::Type
+    type::Type
+    object_name::String # Generic name like plot, block
     attributes::Set{Symbol}
+end
+function InvalidAttributeError(::Type{PT}, attributes::Set{Symbol}) where {PT <: Plot}
+    return InvalidAttributeError(PT, "plot", attributes)
 end
 
 function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true, cols = displaysize(io)[2])
@@ -693,33 +731,185 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     return
 end
 
-function Base.showerror(io::IO, i::InvalidAttributeError)
-    n = length(i.attributes)
+function _levenshtein_matrix(s1, s2)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L648
+    a, b = collect(s1), collect(s2)
+    m, n = length(a), length(b)
+    d = Matrix{Int}(undef, m + 1, n + 1)
+    d[1:m+1, 1] = 0:m
+    d[1, 1:n+1] = 0:n
+    for i in 1:m
+        for j in 1:n
+            d[i+1, j+1] = min(d[i, j+1] + 1, d[i+1, j] + 1, d[i, j] + (a[i] != b[j]))
+        end
+    end
+    return d
+end
+function _levenshtein(s1, s2)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L648
+    d = _levenshtein_matrix(s1, s2)
+    return d[end]
+end
+function _fuzzyscore(needle, haystack)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L631
+    score = 0.0
+    is, acro = _bestmatch(needle, haystack)
+    score += (acro ? 2 : 1) * length(is)                # Matched characters
+    score -= 2(length(needle) - length(is))             # Missing characters
+    !acro && (score -= _avgdistance(is)/10)             # Contiguous
+    !isempty(is) && (score -= sum(is)/length(is)/100)   # Closer to beginning
+end
+function _matchinds(needle, haystack; acronym::Bool = false)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L602
+    chars = collect(needle)
+    is = Int[]
+    lastc = '\0'
+    for (i, char) in enumerate(haystack)
+        while !isempty(chars) && isspace(first(chars))
+            popfirst!(chars)
+        end
+        isempty(chars) && break
+        if lowercase(char) == lowercase(chars[1]) && (!acronym || !isletter(lastc))
+            push!(is, i)
+            popfirst!(chars)
+        end
+        lastc = char
+    end
+    return is
+end
+function _longer(x, y)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L621
+    return length(x) ≥ length(y) ? (x, true) : (y, false)
+end
+function _bestmatch(needle, haystack)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L623
+    return _longer(
+        _matchinds(needle, haystack, acronym = true),
+        _matchinds(needle, haystack)
+    )
+end
+function _avgdistance(xs)
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L627
+    return isempty(xs) ? 0 : (xs[end] - xs[1] - length(xs) + 1) / length(xs)
+end
+function _levsort(search::String, candidates::Vector{String})
+    # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L666
+    scores = map(candidates) do cand
+        lev = Float64(_levenshtein(search, cand))
+        fuz = -_fuzzyscore(search, cand)
+        return (lev, -fuz)
+    end
+    candidates = candidates[sortperm(scores)]
+    valid = _levenshtein(search, candidates[1]) < 3 # is the first close enough?
+    return candidates[1], valid # Only return one suggestion per search
+end
+function find_nearby_attributes(attributes, candidates)
+    d = Vector{Tuple{String, Bool}}(undef, length(attributes))
+    any_close = false
+    for (i, attr) in enumerate(attributes)
+        candidate, valid = _levsort(String(attr), candidates)
+        any_close = any_close || valid
+        d[i] = (candidate, valid)
+    end
+    return d, any_close
+end
+
+function textdiff(X::String, Y::String)
+    d = _levenshtein_matrix(X, Y)
+    a, b = collect(X), collect(Y)
+    m, n = length(a), length(b)
+
+    # Backtrack to print the differences with style
+    i, j = m, n
+    results = Vector{Tuple{Char, Symbol}}()
+
+    while i > 0 || j > 0
+        if i > 0 && j > 0 && a[i] == b[j]
+            # Characters match, print normally
+            push!(results, (b[j], :normal))
+            i -= 1
+            j -= 1
+        elseif i > 0 && j > 0 && d[i+1, j+1] == d[i, j] + 1
+            # Substitution (different characters between `X` and `Y`)
+            push!(results, (b[j], :orange))  # Highlighting the new character. Not showing the old one
+            i -= 1
+            j -= 1
+        elseif j > 0 && d[i+1, j+1] == d[i+1, j] + 1
+            # Insertion in `Y` (character in `Y` but not in `X`)
+            push!(results, (b[j], :red))  # Highlighting the added character
+            j -= 1
+        elseif i > 0 && d[i+1, j+1] == d[i, j+1] + 1
+            # Deletion in `X` (character in `X` but not in `Y`)
+            i -= 1  # Just move the index for X. Not showing the deletion here.
+        end
+    end
+
+    reverse!(results)
+    io = IOBuffer()
+    cio = IOContext(io, :color => true)
+
+    for (char, clr) in results
+        if clr == :normal
+            print(io, char)
+        else
+            printstyled(cio, char; color = :blue, bold = true) # Ignoring different color choices here
+        end
+    end
+
+    return String(take!(io))
+end
+
+function Base.showerror(io::IO, err::InvalidAttributeError)
+    n = length(err.attributes)
     print(io, "Invalid attribute$(n > 1 ? "s" : "") ")
-    for (j, att) in enumerate(i.attributes)
-        j > 1 && print(io, j == length(i.attributes) ? " and " : ", ")
+    for (j, att) in enumerate(err.attributes)
+        j > 1 && print(io, j == length(err.attributes) ? " and " : ", ")
         printstyled(io, att; color = :red, bold = true)
     end
-    print(io, " for plot type ")
-    printstyled(io, i.plottype; color = :blue, bold = true)
+    print(io, " for $(err.object_name) type ")
+    printstyled(io, err.type; color=:blue, bold=true)
     println(io, ".")
-    nameset = sort(string.(collect(attribute_names(i.plottype))))
+    nameset = sort(string.(collect(attribute_names(err.type))))
+    attrs = string.(collect(err.attributes))
+    possible_cands, any_close = find_nearby_attributes(attrs, nameset)
+    any_close && println(io)
+    if any_close && length(possible_cands) == 1
+        print(io, "Did you mean ", textdiff(attrs[1], possible_cands[1][1]), "?")
+        println(io)
+    elseif any_close
+        print(io, "Did you mean:")
+        for (id, (passed, (suggestion, close))) in enumerate(zip(attrs, possible_cands))
+            close || continue
+            any_next = any(x -> x[2], view(possible_cands, id+1:length(possible_cands)))
+            if (id == length(err.attributes)) || (id < length(err.attributes) && !any_next)
+                print(io, " and")
+            end
+            print(io, " ", textdiff(passed, suggestion))
+            if id < length(err.attributes) && any_next
+                print(io, ",")
+            end
+        end
+        println(io, "?")
+        println(io)
+    end
     println(io)
-    println(io, "The available plot attributes for $(i.plottype) are:")
+    println(io, "The available $(err.object_name) attributes for $(err.type) are:")
     println(io)
     print_columns(io, nameset; cols = displaysize(stderr)[2], rows_first = true)
-    allowlist = attribute_name_allowlist()
-    println(io)
-    println(io)
-    println(io, "Generic attributes are:")
-    println(io)
-    print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    if err.type isa Plot
+        allowlist = attribute_name_allowlist()
+        println(io)
+        println(io)
+        println(io, "Generic attributes are:")
+        println(io)
+        print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
+    end
     println(io)
 end
 
 function attribute_name_allowlist()
     return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
-            :dim_conversions, :cycle)
+            :dim_conversions, :cycle, :clip_planes)
 end
 
 function validate_attribute_keys(plot::P) where {P<:Plot}

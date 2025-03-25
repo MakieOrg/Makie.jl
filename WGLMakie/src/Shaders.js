@@ -1,12 +1,22 @@
 function typedarray_to_vectype(typedArray, ndim) {
-    if (ndim === 1) {
-        return "float";
-    } else if (typedArray instanceof Float32Array) {
-        return "vec" + ndim;
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
     } else if (typedArray instanceof Int32Array) {
-        return "ivec" + ndim;
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
     } else if (typedArray instanceof Uint32Array) {
-        return "uvec" + ndim;
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
     } else {
         return;
     }
@@ -42,7 +52,7 @@ export function uniform_type(obj) {
     } else if (obj instanceof THREE.Texture) {
         return "sampler2D";
     } else {
-        return;
+        return "invalid";
     }
 }
 
@@ -51,7 +61,8 @@ export function uniforms_to_type_declaration(uniform_dict) {
     for (const name in uniform_dict) {
         const uniform = uniform_dict[name];
         const type = uniform_type(uniform);
-        result += `uniform ${type} ${name};\n`;
+        if (type != "invalid")
+            result += `uniform ${type} ${name};\n`;
     }
     return result;
 }

@@ -11,6 +11,8 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     RPR.rprCameraSetSensorSize(camera, res...)
     RPR.rprCameraSetFocusDistance(camera, wd)
     lookat!(camera, p, l, u)
+    far = wd * 10
+    near = wd * 0.001
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
     focal_length = res[2] / (2 * tand(fov / 2)) # fov is vertical
@@ -124,9 +126,17 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.EnvironmentLight)
     env_light = RPR.EnvironmentLight(context)
-    last_img = RPR.Image(context, light.image[])
+    last_img = RPR.Image(context, light.image[]')
     set!(env_light, last_img)
     setintensityscale!(env_light, light.intensity[])
+    # exchange y and z axis to align Makie's and RPR's representations
+    flipmat = Makie.Mat4f(
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 1, 0, 0,
+        0, 0, 0, 1,
+    )
+    transform!(env_light, flipmat)
     on(light.intensity) do i
         setintensityscale!(env_light, i)
     end

@@ -5,8 +5,8 @@ layout: home
 
 hero:
   name: Makie
-  text: 
-  tagline: Interactive data visualizations and plotting in Julia 
+  text:
+  tagline: Interactive data visualizations and plotting in Julia
   image:
     src: logo.svg
     alt: Makie
@@ -65,8 +65,8 @@ colors = Observable(Int[])
 set_theme!(theme_black())
 
 fig, ax, l = lines(points, color = colors,
-    colormap = :inferno, transparency = true, 
-    axis = (; type = Axis3, protrusions = (0, 0, 0, 0), 
+    colormap = :inferno, transparency = true,
+    axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
               viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
 record(fig, "lorenz.mp4", 1:120) do frame
@@ -89,11 +89,12 @@ set_theme!() # hide
 
 ## Installation
 
-First, choose one (or more) of the four backend packages (more info under [What is a backend](@ref)):
+Makie offers four different backends (more info under [What is a backend](@ref)).
+We suggest GLMakie for GPU-accelerated, interactive plots, and CairoMakie for static vector graphics.
 
 - [GLMakie](@ref) (OpenGL based, interactive)
 - [CairoMakie](@ref) (Cairo based, static vector graphics)
-- [WGLMakie](@ref) (WebGL based, runs in the browser)
+- [WGLMakie](@ref) (WebGL based, displays plots in the browser)
 - [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
 
 Then install it using Julia's package manager `Pkg`:

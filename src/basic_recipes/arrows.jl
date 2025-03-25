@@ -51,7 +51,7 @@ function _mantle(origin, extremity, r1, r2, N)
         faces[2i] = GLTriangleFace(mod1(2i+1, 2N), mod1(2i+2, 2N), 2i)
     end
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
 # GeometryBasics.Circle doesn't work with Point3f...
@@ -68,7 +68,7 @@ function _circle(origin, r, normal, N)
     end
     coords[N+1] = origin
 
-    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+    GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
 function convert_arguments(::Type{<: Arrows}, x, y, u, v)
@@ -91,8 +91,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
         fxaa, ssao, transparency, visible, inspectable
     )
 
-    line_c = map((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
-    arrow_c = map((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
+    line_c = lift((a, c)-> a === automatic ? c : a , arrowplot, linecolor, color)
+    arrow_c = lift((a, c)-> a === automatic ? c : a , arrowplot, arrowcolor, color)
     fxaa_bool = lift(fxaa -> fxaa == automatic ? N == 3 : fxaa, arrowplot, fxaa) # automatic == fxaa for 3D
 
     marker_head = lift((ah, q) -> arrow_head(N, ah, q), arrowplot, arrowhead, quality)
@@ -153,7 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) wher
     else
         msize = Observable{Union{Vec3f, Vector{Vec3f}}}()
         markersize = Observable{Union{Vec3f, Vector{Vec3f}}}()
-        map!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
+        lift!(arrowplot, msize, directions, normalize, linewidth, lengthscale, arrowsize) do dirs, n, linewidth, ls, as
             ms = as isa Automatic ? Vec3f(0.2, 0.2, 0.3) : as
             markersize[] = to_3d_scale(ms)
             lw = linewidth isa Automatic ? minimum(ms) * 0.5 : linewidth

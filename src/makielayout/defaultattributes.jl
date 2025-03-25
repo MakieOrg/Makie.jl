@@ -78,7 +78,7 @@ function attributenames(::Type{LegendEntry})
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
         :linepoints, :linewidth, :linecolor, :linestyle, :linecolorrange, :linecolormap,
         :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, :markercolorrange, :markercolormap,
-        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap)
+        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap, :alpha)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)

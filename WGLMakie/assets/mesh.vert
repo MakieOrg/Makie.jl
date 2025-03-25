@@ -1,12 +1,18 @@
+precision highp float;
+precision highp int;
+
 out vec2 frag_uv;
 out vec3 o_normal;
 out vec3 o_camdir;
 
 out vec4 frag_color;
+out float o_clip_distance[8];
 
 uniform mat4 projection;
 uniform mat4 view;
 uniform vec3 eyeposition;
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
@@ -61,11 +67,21 @@ vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
     }
 }
 
+void process_clip_planes(vec3 world_pos) {
+    for (int i = 0; i < num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+}
+
+// TODO: enable
+// vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
+
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
     // normal in world space
     o_normal = get_normalmatrix() * normal;
     // position in clip space (w/ depth)
+    process_clip_planes(position_world.xyz);
     gl_Position = projection * view * position_world; // TODO consider using projectionview directly
     gl_Position.z += gl_Position.w * get_depth_shift();
     // direction to camera
@@ -83,9 +99,8 @@ void main(){
     }
     vec4 position_world = model * vec4(vertex_position, 1);
 
-    render(position_world, get_normals(), view, projection);
-    frag_uv = get_uv();
-    frag_uv = vec2(1.0 - frag_uv.y, frag_uv.x);
+    render(position_world, get_normal(), view, projection);
+    frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
 
     frag_instance_id = uint(gl_VertexID);

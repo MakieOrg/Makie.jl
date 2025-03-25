@@ -130,6 +130,9 @@ from `eyeposition` to `lookat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
 function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+    return lookat_basis(eyePos, lookAt, up) * translationmatrix(-eyePos)
+end
+function lookat_basis(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
     zaxis  = normalize(eyePos-lookAt)
     xaxis  = normalize(cross(up,    zaxis))
     yaxis  = normalize(cross(zaxis, xaxis))
@@ -139,7 +142,7 @@ function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
         T0,       T0,       T0,       T1
-    ) * translationmatrix(-eyePos)
+    )
 end
 
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
@@ -223,8 +226,84 @@ function transformationmatrix(translation, scale, rotation::Quaternion{T}) where
 end
 
 function is_translation_scale_matrix(mat::Mat4{T}) where T
-    return abs(mat[2, 1]) + abs(mat[3, 1]) + abs(mat[1, 2]) + abs(mat[3, 2]) +
-           abs(mat[1, 3]) + abs(mat[2, 3]) < sqrt(eps(T))
+    # Checks that matrix has form: (* being any number)
+    #   *  0  0  *
+    #   0  *  0  *
+    #   0  0  *  *
+    #   0  0  0  1
+    T0 = zero(T)
+    return (mat[2, 1] == T0) && (mat[3, 1] == T0) && (mat[4, 1] == T0) &&
+           (mat[1, 2] == T0) && (mat[3, 2] == T0) && (mat[4, 2] == T0) &&
+           (mat[1, 3] == T0) && (mat[2, 3] == T0) && (mat[4, 3] == T0) &&
+           (mat[4, 4] == one(T))
+end
+
+"""
+    decompose_translation_scale_rotation_matrix(transform::Mat4)
+
+Decomposes a transformation matrix into a translation vector, scale vector and
+rotation Quaternion. Note that this is only valid for a transformation matrix
+created with matching order, i.e.
+`transform = translation_matrix * scale_matrix * rotation_matrix`. The model
+matrix created by `Transformation` is one such matrix.
+"""
+function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        rot = Quaternion{T}(0, 0, 0, 1)
+        return trans, scale, rot
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        R = Diagonal(1 ./ scale) * m33
+
+        # inverse of Mat4(q::Quaternion)
+        xz = 0.5 * (R[1, 3] + R[3, 1])
+        sy = 0.5 * (R[1, 3] - R[3, 1])
+        yz = 0.5 * (R[2, 3] + R[3, 2])
+        sx = 0.5 * (R[3, 2] - R[2, 3])
+        xy = 0.5 * (R[1, 2] + R[2, 1])
+        sz = 0.5 * (R[2, 1] - R[1, 2])
+
+        m = max(abs(xy), abs(xz), abs(yz))
+        if abs(xy) == m
+            q4 = sqrt(0.5 * sx * sy / xy)
+        elseif abs(xz) == m
+            q4 = sqrt(0.5 * sx * sz / xz)
+        else
+            q4 = sqrt(0.5 * sy * sz / yz)
+        end
+
+        q1 = 0.5 * sx / q4
+        q2 = 0.5 * sy / q4
+        q3 = 0.5 * sz / q4
+        rot = Quaternion{T}(q1, q2, q3, q4)
+
+        return trans, scale, rot
+    end
+end
+
+"""
+    decompose_translation_scale_matrix(transform::Mat4)
+
+Like `decompose_translation_scale_rotation_matrix(transform)` but skips the
+extraction of the rotation component. This still works if a rotation is involved
+and requires the same order of operations, i.e.
+`transform = translation_matrix * scale_matrix * rotation_matrix`.
+"""
+function decompose_translation_scale_matrix(model::Mat4{T}) where T
+    trans = Vec3{T}(model[Vec(1,2,3), 4])
+    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+    if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
+        scale = Vec3{T}(diag(m33))
+        return trans, scale
+    else
+        # m33 = Scale * Rotation; Scale * Rotation * Rotation' * Scale' = Scale^2
+        scale = Vec3{T}(sqrt.(diag(m33 * m33')))
+        return trans, scale
+    end
 end
 
 #Calculate rotation between two vectors
@@ -247,7 +326,6 @@ function to_world(scene::SceneLike, point::VecTypes{2})
     cam = camera(scene)
     x = _to_world(
         Point2d(point[1], point[2]),
-        # inv(transformationmatrix(scene)[]) *
         inv(Mat4d(cam.projectionview[])),
         Vec2d(cam.resolution[])
     )
@@ -315,7 +393,7 @@ function project(proj_view::Mat4{T1}, resolution::Vec2, point::Point{N, T2}) whe
     # at this point the visible range is strictly -1..1 so FLoat64 doesn't matter
     p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2{T}(p[1], p[2])
-    return (0.5 .* (p .+ 1) .* (resolution .- 1)) .+ 1
+    return 0.5 .* (p .+ 1) .* resolution
 end
 
 # TODO: consider warning here to discourage risky functions
@@ -338,6 +416,8 @@ end
 function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
     if is_data_space(space)
         return projectionview ? cam.projectionview[] : cam.projection[]
+    elseif space == :eye
+        return cam.projection[]
     elseif is_pixel_space(space)
         return cam.pixel_space[]
     elseif is_relative_space(space)
@@ -351,6 +431,8 @@ end
 
 function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
+        return inv(cam.projectionview[])
+    elseif space == :eye
         return inv(cam.projectionview[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
@@ -369,8 +451,14 @@ function get_space(scene::Scene)
     space === :data ? (:data,) : (:data, space)
 end
 get_space(::AbstractCamera) = :data
-# TODO: Should this be less specialized? ScenePlot? AbstractPlot?
-get_space(plot::Plot) = to_value(get(plot, :space, :data))::Symbol
+function get_space(plot::Plot)
+    space = to_value(get(plot, :space, :data))::Symbol
+    # :data should resolve based on the parent scene/camera
+    if (space == :data) && (parent_scene(plot) !== nothing)
+        return get_space(parent_scene(plot))
+    end
+    return space
+end
 
 is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
 is_space_compatible(a::Symbol, b::Symbol) = a === b

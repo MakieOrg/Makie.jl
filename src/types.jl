@@ -4,6 +4,7 @@ abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
+get_space(::EmptyCamera) = :clip
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0
@@ -15,6 +16,43 @@ struct EmptyCamera <: AbstractCamera end
 end
 
 include("interaction/iodevices.jl")
+
+"""
+    enum TickState
+
+Identifies the source of a tick:
+- `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
+- `UnknownTickState`: A tick from an uncategorized source (e.g. initialization of Events).
+- `PausedRenderTick`: A tick from a paused renderloop.
+- `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
+- `RegularRenderTick`: A tick from a running renderloop where a new image was produced.
+- `OneTimeRenderTick`: A tick from a call to `colorbuffer`, i.e. an image request from `save` or `record`.
+"""
+@enum TickState begin
+    BackendTick
+    UnknownTickState # GLMakie only allows states > UnknownTickState
+    PausedRenderTick
+    SkippedRenderTick
+    RegularRenderTick
+    OneTimeRenderTick
+end
+
+"""
+    struct TickState
+
+Contains information for tick events:
+- `state::TickState`: identifies what caused the tick (see Makie.TickState)
+- `count::Int64`: number of ticks produced since the start of rendering (display or record)
+- `time::Float64`: time that has passed since the first tick in seconds
+- `delta_time`: time that has passed since the last tick in seconds
+"""
+struct Tick
+    state::TickState    # flag for the type of tick event
+    count::Int64        # number of ticks since start
+    time::Float64       # time since scene initialization
+    delta_time::Float64 # time since last tick
+end
+Tick() = Tick(UnknownTickState, 0, 0.0, 0.0)
 
 
 """
@@ -103,6 +141,17 @@ struct Events
     Whether the mouse is inside the window or not.
     """
     entered_window::Observable{Bool}
+
+    """
+    A `tick` is triggered whenever a new frame is requested, i.e. during normal
+    rendering (even if the renderloop is paused) or when an image is produced
+    for `save` or `record`. A Tick contains:
+    - `state` which identifies what caused the tick (see Makie.TickState)
+    - `count` which increments with every tick
+    - `time` which is the total time since the screen has been created
+    - `delta_time` which is the time since the last frame
+    """
+    tick::Observable{Tick}
 end
 
 function Base.show(io::IO, events::Events)
@@ -132,6 +181,7 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
+        Observable(Tick())
     )
 
     connect_states!(events)
@@ -244,11 +294,14 @@ struct Camera
     Direction in which the camera looks.
     """
     view_direction::Observable{Vec3f}
-
     """
     Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
+    """
+    Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
+    """
+    upvector::Observable{Vec3f}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
@@ -269,36 +322,41 @@ struct Transformation <: Transformable
     translation::Observable{Vec3d}
     scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
+    origin::Observable{Vec3d}
     model::Observable{Mat4d}
     parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
 
-    function Transformation(translation, scale, rotation, transform_func)
+    function Transformation(translation, scale, rotation, transform_func, origin = Vec3d(0))
         translation_o = convert(Observable{Vec3d}, translation)
         scale_o = convert(Observable{Vec3d}, scale)
         rotation_o = convert(Observable{Quaternionf}, rotation)
+        origin_o = convert(Observable{Vec3d}, origin)
         parent_model = Observable(Mat4d(I))
-        model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
-            return p * transformationmatrix(t, s, r)
+        model = map(translation_o, scale_o, rotation_o, origin_o, parent_model) do t, s, r, o, p
+            # Order: translation * scale * rotation
+            return p * transformationmatrix(t + o - s .* (r * o), s, r)
         end
         transform_func_o = convert(Observable{Any}, transform_func)
         return new(RefValue{Transformation}(),
-                   translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
+                   translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o)
     end
 end
 
 function Transformation(transform_func=identity;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation, scale, rotation, transform_func)
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0))
+    return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
 function Transformation(parent::Transformable;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
@@ -306,9 +364,21 @@ function Transformation(parent::Transformable;
     trans = Transformation(translation,
                            scale,
                            rotation,
-                           trans)
+                           trans,
+                           origin)
     connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
+end
+
+function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
+    println(io, "Transformation()")
+    println(io, "          parent = ", isassigned(t.parent) ? "Transformation(…)" : "#undef")
+    println(io, "     translation = ", t.translation[])
+    println(io, "           scale = ", t.scale[])
+    println(io, "        rotation = ", t.rotation[])
+    println(io, "          origin = ", t.origin[])
+    println(io, "           model = ", t.model[])
+    println(io, "  transform_func = ", t.transform_func[])
 end
 
 struct ScalarOrVector{T}
@@ -318,7 +388,7 @@ end
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
+Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
     if sv.sv isa Vector
         if length(sv.sv) != n
@@ -371,7 +441,7 @@ Stores information about the glyphs in a string that had a layout calculated for
 """
 struct GlyphCollection
     glyphs::Vector{UInt64}
-    fonts::Vector{FTFont}
+    fonts::ScalarOrVector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
@@ -384,20 +454,37 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts) == n
+        # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
+        return new(
+            glyphs,
+            to_font(fonts),
+            origins,
+            extents,
+            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            to_rotation(rotations),
+            to_color(colors),
+            to_color(strokecolors),
+            to_linewidth(strokewidths)
+        )
     end
+end
+
+function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
+    a.glyphs == b.glyphs &&
+    a.fonts == b.fonts &&
+    a.origins == b.origins &&
+    a.extents == b.extents &&
+    a.scales == b.scales &&
+    a.rotations == b.rotations &&
+    a.colors == b.colors &&
+    a.strokecolors == b.strokecolors &&
+    a.strokewidths == b.strokewidths
 end
 
 

@@ -27,51 +27,38 @@ uniform float isovalue;
 uniform float isorange;
 
 uniform mat4 model, projectionview;
+uniform int _num_clip_planes;
+uniform vec4 clip_planes[8];
 
 const float max_distance = 1.3;
 
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
-}
+float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
 
-vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color)
-{
+vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color) {
     return color;
 }
-
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color)
-{
+vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color) {
     return texelFetch(color_ramp, int(_normalize(intensity, norm.x, norm.y)*textureSize(color_ramp)));
 }
-
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color)
-{
+vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color) {
+    return vec4(0);  // stub method
+}
+vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color) {
+    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
+}
+vec4 color_lookup(vec4 data_color, Nothing color_ramp, Nothing norm, Nothing color) {
+    return data_color;  // stub method
+}
+vec4 color_lookup(float intensity, Nothing color_ramp, Nothing norm, Nothing color) {
     return vec4(0);  // stub method
 }
 
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color)
-{
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
-
-vec4 color_lookup(samplerBuffer colormap, int index)
-{
-    return texelFetch(colormap, index);
-}
-
-vec4 color_lookup(sampler1D colormap, int index)
-{
-    return texelFetch(colormap, index, 0);
-}
-
-vec4 color_lookup(Nothing colormap, int index)
-{
-    return vec4(0);
-}
+vec4 color_lookup(samplerBuffer colormap, int index) { return texelFetch(colormap, index); }
+vec4 color_lookup(sampler1D colormap, int index) { return texelFetch(colormap, index, 0); }
+vec4 color_lookup(Nothing colormap, int index) { return vec4(0); }
 
 vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
@@ -182,7 +169,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples ; ++i) {
         vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a;
+        float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
         if (T <= 0.01)
             break;
@@ -202,7 +189,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     for (i; i < num_samples; ++i) {
         int index = int(texture(volumedata, pos).x) - 1;
         vec4 density = color_lookup(color_map, index);
-        float opacity = step_size*density.a;
+        float opacity = step_size*density.a * absorption;
         Lo += (T*opacity)*density.rgb;
         T *= 1.0 - opacity;
         if (T <= 0.01)
@@ -282,9 +269,9 @@ vec4 isosurface(vec3 front, vec3 dir)
 
 vec4 mip(vec3 front, vec3 dir)
 {
-    vec3 pos = front;
-    int i = 0;
-    float maximum = 0.0;
+    vec3 pos = front + dir;
+    int i = 1;
+    float maximum = texture(volumedata, front).x;
     for (i; i < num_samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
@@ -298,6 +285,33 @@ uniform uint objectid;
 void write2framebuffer(vec4 color, uvec2 id);
 
 const float typemax = 100000000000000000000000000000000000000.0;
+
+
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < _num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
 
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
@@ -342,6 +356,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / num_samples;
 
     float steps = 0.1;

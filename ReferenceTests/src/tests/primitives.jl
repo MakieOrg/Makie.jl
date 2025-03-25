@@ -32,6 +32,9 @@ end
     for (i, p) in enumerate(points)
         lines!(s, (p .+ Point2f(0, i)) .* 100, linewidth = 10)
     end
+    # These are "doesn't break" tests. They should not display anything
+    lines!(s, Point2f[])
+    lines!(s, Point2f[(100, 100)])
     s
 end
 
@@ -102,6 +105,7 @@ end
     f, a, p = lines(loop((-1, -1)), linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(ps, linewidth = 20, linecap = :round, alpha = 0.5)
     lines!(vcat(nan, nan, line((1, 1)), nan), linewidth = 20, linecap = :round, alpha = 0.5)
+    lines!([-1.2, -1.2, 2, 2, 1, 0, -1.2], [-1.2, 2, 2, -1.2, -1.2, -1.2, -1.2], linewidth = 20, alpha = 0.5)
     f
 end
 
@@ -157,8 +161,27 @@ end
     fig
 end
 
-@reference_test "lines issue #3704" begin
-    lines(1:10, sin, color = [fill(0, 9); fill(1, 1)], linewidth = 3, colormap = [:red, :cyan])
+@reference_test "line color interpolation with clipping" begin
+    # Clipping should not change the color interpolation of a line piece, so
+    # these boxes should match in color
+    fig = Figure();
+    ax = Axis(fig[1,1]);
+    ylims!(ax, -0.1, 1.1);
+    lines!(
+        ax, Rect2f(0, 0, 1, 10), color = 1:5, linewidth = 5,
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    );
+    lines!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = 1:5, linewidth = 5);
+
+    ax = Axis(fig[1,2]);
+    ylims!(ax, -0.1, 1.1);
+    cs = [1, 2, 2, 3, 3, 4, 4, 5]
+    linesegments!(
+        ax, Rect2f(0, 0, 1, 10), color = cs, linewidth = 5,
+        clip_planes = [Plane3f(Point3f(0, 1.0, 0), Vec3f(0, -1, 0))]
+    );
+    linesegments!(ax, Rect2f(0.1, 0.0, 0.8, 10.0), color = cs, linewidth = 5);
+    fig
 end
 
 @reference_test "scatters" begin
@@ -204,6 +227,48 @@ end
         end
     end
     s
+end
+
+function make_billboard_rotations_test_fig(marker)
+    r = Rect3f(Point3f(-0.5), Vec3f(1))
+    ps = coordinates(r)
+    phis = collect(range(0, 2pi, length = 8))
+    quats = Makie.to_rotation(phis)
+
+    fig = Figure(size = (500, 800))
+    for (k, transform_marker) in zip(0:1, [true, false])
+        for (i, space, ms) in zip(1:2, [:data, :pixel], [1, 30])
+            for (j, rot, lbl) in zip(1:3, [Billboard(phis), phis, quats], ["Billboard", "angles", "Quaternion"])
+                Label(fig[i+2k, j][1,1], "$space | $lbl | $transform_marker", tellwidth = false)
+                a, p = scatter(fig[i+2k, j][2,1], ps, marker = marker,
+                    strokewidth = 2, strokecolor = :black, color = :yellow,
+                    markersize = ms, markerspace = space, rotation = rot,
+                    transform_marker = transform_marker)
+
+                Makie.rotate!(p, Vec3f(1, 0.5, 0.1), 1.0)
+                a.scene.camera_controls.settings[:center] = false
+                Makie.update_cam!(a.scene, r)
+            end
+        end
+    end
+
+    fig
+end
+
+@reference_test "scatter Billboard and transform_marker for Char markers" begin
+    make_billboard_rotations_test_fig('L')
+end
+@reference_test "scatter Billboard and transform_marker for Rect markers" begin
+    make_billboard_rotations_test_fig(Rect)
+end
+@reference_test "scatter Billboard and transform_marker for Circle markers" begin
+    make_billboard_rotations_test_fig(Circle)
+end
+@reference_test "scatter Billboard and transform_marker for BezierPath markers" begin
+    make_billboard_rotations_test_fig(:utriangle)
+end
+@reference_test "scatter Billboard and transform_marker for image markers" begin
+    make_billboard_rotations_test_fig(Makie.FileIO.load(Makie.assetpath("cow.png")))
 end
 
 @reference_test "scatter with stroke" begin
@@ -554,7 +619,7 @@ end
     campixel!(scene)
     # marker is in front, so it should not be smaller than the background rectangle
     plot_row!(scene, 0, false)
-    # marker is in the background, so one shouldnt see a single pixel of the marker
+    # marker is in the background, so one shouldn't see a single pixel of the marker
     plot_row!(scene, 300, true)
 
     center = Point2f(size(scene) ./ 2)
@@ -575,17 +640,73 @@ end
 end
 
 @reference_test "Surface with NaN points" begin
-    # prepare surface data
-    zs = [x^2 + y^2 for x in range(-2, 0, length=10), y in range(-2, 0, length=10)]
-    ns = copy(zs)
-    ns[4, 3:6] .= NaN
-    # plot surface
-    f, a, p = surface(1..10, 1..10, ns, colormap = [:lightblue, :lightblue])
-    # plot a wireframe so we can see what's going on, and in which cells.
-    m = Makie.surface2mesh(to_value.(p.converted)...)
-    scatter!(a, m.position, color = isnan.(m.normals), depth_shift = -1f-3)
-    wireframe!(a, m, depth_shift = -1f-3, color = :black)
+    # This is supposed to verify a couple of things:
+    # - cells with nan in positions are not drawn
+    # - colors align to cell centers (via color checkerboard)
+    # - all normals are valid and interpolate correctly (lighting)
+    data = [x^2 + y^2 for x in range(-2, 0, length=11), y in range(-2, 0, length=11)]
+    cs = reshape([(:red, :blue)[mod1(i, 2)] for i in eachindex(data)], size(data))
+
+    f = Figure(size = (500, 1000), backgroundcolor = RGBf(0.3, 0.3, 0.3), figure_padding = (0,0,0,0))
+
+    # Test NaN in positions
+    for i in 1:3, j in 1:2
+        if j == 1
+            xs = collect(1.0:11.0)
+            ys = collect(1.0:11.0)
+        else
+            xs = Float32[x for x in 1:11, y in 1:11]
+            ys = Float32[y for x in 1:11, y in 1:11]
+        end
+        zs = copy(data)
+
+        # shift to second row if matrix
+        if i == 1
+            xs[(3:6) .+ (j-1) * 44] .= NaN
+        elseif i == 2
+            ys[(3:6) .+ (j-1) * 44] .= NaN
+        elseif i == 3
+            zs[4, 3:6] .= NaN
+        end
+
+        a, p = surface(f[i, j], xs, ys, zs, color = cs, nan_color = :red, axis = (show_axis = false,))
+        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        # plot a wireframe so we can see what's going on, and in which cells.
+        m = Makie.surface2mesh(to_value.(p.converted)...)
+        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+    end
+
+    # Test NaN in color
+    cs = copy(data)
+    cs[4, 3:6] .= NaN
+    for i in 1:2
+        nan_color = ifelse(i == 1, :transparent, :red)
+        a, p = surface(f[4, i], 1..11, 1..11, data, color = cs, colormap = [:white, :white];
+            nan_color, axis = (show_axis = false,))
+        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        m = Makie.surface2mesh(to_value.(p.converted)...)
+        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+    end
+
+    colgap!(f.layout, 0.0)
+    rowgap!(f.layout, 0.0)
+
     f
+end
+
+@reference_test "Surface invert_normals" begin
+    fig = Figure(size = (400, 200))
+    for (i, invert) in ((1, false), (2, true))
+        surface(
+            fig[1, i],
+            range(-1, 1, length = 21),
+            -cos.(range(-pi, pi, length = 21)),
+            [sin(y) for x in range(-0.5pi, 0.5pi, length = 21), y in range(-0.5pi, 0.5pi, length = 21)],
+            axis = (show_axis = false, ),
+            invert_normals = invert
+        )
+    end
+    fig
 end
 
 @reference_test "barplot with TeX-ed labels" begin
@@ -650,6 +771,16 @@ end
     fig
 end
 
+@reference_test "Voxel uvs" begin
+    texture = FileIO.load(Makie.assetpath("debug_texture.png"))
+    f,a,p = voxels(ones(UInt8, 3,3,3), uv_transform = [I], color = texture)
+    st = Stepper(f)
+    Makie.step!(st)
+    update_cam!(a.scene, 5pi/4, -pi/4)
+    Makie.step!(st)
+    st
+end
+
 @reference_test "Voxel - colors and colormap" begin
     # test direct mapping of ids to colors & upsampling of vector colormap
     fig = Figure(size = (800, 400))
@@ -659,6 +790,7 @@ end
     cs = [:white, :red, :green, :blue, :black, :orange, :cyan, :magenta]
     voxels(fig[1, 1], chunk, color = cs, axis=(show_axis = false,))
     a, p = voxels(fig[1, 2], Float32.(chunk), colormap = [:red, :blue], is_air = x -> x == 0.0, axis=(show_axis = false,))
+    Makie.rotate!(p, Vec3f(1,2,3), 0.8)
     fig
 end
 
@@ -678,8 +810,8 @@ end
 end
 
 @reference_test "Plot transform overwrite" begin
-    # Tests that (primitive) plots can have different transform function to their
-    # parent scene (identity in this case)
+    # Tests that (primitive) plots can have different transform function
+    # (identity) from their parent scene (log10, log10)
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
@@ -702,4 +834,349 @@ end
     meshscatter!(ax, [0.1, 0.9], [0.6, 0.7], markersize = 0.05, color = :red, transformation = Transformation())
 
     fig
+end
+
+@reference_test "uv_transform" begin
+    fig = Figure(size = (400, 400))
+    img = [RGBf(1,0,0) RGBf(0,1,0); RGBf(0,0,1) RGBf(1,1,1)]
+
+    function create_block(f, gl, args...; kwargs...)
+        ax, p = f(gl[1, 1], args..., uv_transform = I; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[1, 2], args..., uv_transform = :rotr90; kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 1], args..., uv_transform = (Vec2f(0.5), Vec2f(0.5)); kwargs...)
+        hidedecorations!(ax)
+        ax, p = f(gl[2, 2], args..., uv_transform = Makie.Mat{2,3,Float32}(-1,0,0,-1,1,1); kwargs...)
+        hidedecorations!(ax)
+    end
+
+    gl = fig[1, 1] = GridLayout()
+    create_block(mesh, gl, Rect2f(0, 0, 1, 1), color = img)
+
+    gl = fig[1, 2] = GridLayout()
+    create_block(surface, gl, 0..1, 0..1, zeros(10, 10), color = img)
+
+    gl = fig[2, 1] = GridLayout()
+    create_block(
+        meshscatter, gl, Point2f[(0,0), (0,1), (1,0), (1,1)], color = img,
+        marker = Makie.uv_normal_mesh(Rect2f(0,0,1,1)), markersize = 1.0)
+
+    gl = fig[2, 2] = GridLayout()
+    create_block(image, gl, 0..1, 0..1, img)
+
+    fig
+end
+
+@testset "per element uv_transform" begin
+    cow = loadasset("cow.png")
+
+    N = 8; M = 10
+    f = Figure(size = (500, 400))
+    a, p = meshscatter(
+        f[1, 1],
+        [Point2f(x, y) for x in 1:M for y in 1:N],
+        color = cow,
+        uv_transform = [
+            Makie.uv_transform(:rotl90) *
+            Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
+            for x in range(0, 1, length = M+1)[1:M]
+            for y in range(0, 1, length = N+1)[1:N]
+        ],
+        markersize = Vec3f(0.9, 0.9, 1),
+        marker = uv_normal_mesh(Rect2f(-0.5, -0.5, 1, 1))
+    )
+    hidedecorations!(a)
+    xlims!(a, 0.3, M+0.7)
+    ylims!(a, 0.3, N+0.7)
+    f
+end
+@reference_test "Scatter with FastPixel" begin
+    f = Figure()
+    row = [(1, :pixel, 20), (2, :data, 0.5)]
+    points3d = decompose(Point3f, Rect3(Point3f(0), Vec3f(1)))
+    column = [(1, points3d, Axis3), (2, points3d, LScene),
+              (3, 1:4, Axis)]
+    for (i, space, msize) in row
+        for (j, data, AT) in column
+            ax = AT(f[i, j])
+            if ax isa Union{Axis,Axis3}
+                ax isa Axis && (ax.aspect = DataAspect())
+                ax.title = "$space"
+            end
+            scatter!(ax, data; markersize=msize, markerspace=space, marker=Makie.FastPixel())
+            scatter!(ax, data;
+                     markersize=msize, markerspace=space, marker=Rect,
+                     strokewidth=2, strokecolor=:red, color=:transparent,)
+        end
+    end
+    f
+end
+
+@reference_test "Reverse image, heatmap and surface axes" begin
+    img = [2 0 0 3; 0 0 0 0; 1 1 0 0; 1 1 0 4]
+
+    f = Figure(size = (600, 400))
+    to_tuple(x) = (first(x), last(x))
+    to_tuple(x::Makie.Interval) = (Makie.leftendpoint(x), Makie.rightendpoint(x))
+
+    for (i, interp) in enumerate((true, false))
+        for (j, plot_func) in enumerate((
+            (fp, x, y, cs, interp) -> image(fp, to_tuple(x), to_tuple(y), cs, colormap = :viridis, interpolate = interp),
+            (fp, x, y, cs, interp) -> heatmap(fp, x, y, cs, colormap = :viridis, interpolate = interp),
+            (fp, x, y, cs, interp) -> surface(fp, x, y, zeros(size(cs)), color = cs, colormap = :viridis, interpolate = interp, shading = NoShading)
+        ))
+
+            gl = GridLayout(f[i, j])
+
+            # Test forwards + backwards for each: Tuple, Interval, Range, Vector
+
+            a, p = plot_func(gl[1, 1], 1:4, (1, 4), img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 1], [1, 2, 3, 4], 4..1, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[1, 2], 4:-1:1, 1..4, img, interp)
+            hidedecorations!(a)
+            a, p = plot_func(gl[2, 2], (4, 1), [4, 3, 2, 1], img, interp)
+            hidedecorations!(a)
+        end
+    end
+
+    f
+end
+
+@reference_test "meshscatter marker conversions" begin
+    fig = Figure(size = (400, 500))
+    Label(fig[0, 1], tellwidth = false, "meshscatter")
+    Label(fig[0, 2], tellwidth = false, "mesh")
+    Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
+    Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
+    Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
+
+    kwargs = (markersize = 1, transform_marker = false, shading = NoShading)
+    kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+
+    # no special transformations, must match
+    limits = (0.8, 3.2, 0.8, 3.2)
+    ax = Axis(fig[1, 1], limits = limits)
+    meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); kwargs...)
+    ax = Axis(fig[1, 2], limits = limits)
+    mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
+
+    # log10 transform, center must match (meshscatter does not transform vertices
+    # because that would destroy performance)
+    ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
+    axis_kwargs = (xscale = log10, yscale = log10, xticks = ticks, yticks = ticks, limits = (0.25, 4, 0.25, 4))
+    ax = Axis(fig[2, 1]; axis_kwargs...)
+    meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); kwargs...)
+    ax = Axis(fig[2, 2]; axis_kwargs...)
+    mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+
+    # f32c can be applied
+    ticks = (1e12 .+ (-1f6:1f6:1f6), string.(-1:1) .* ("f6",))
+    axis_kwargs = (xticks = ticks, yticks = ticks, limits = 1e12 .+ (-1.2e6, 1.2e6, -1.2e6, 1.2e6))
+    ax1 = Axis(fig[3, 1]; axis_kwargs...)
+    meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
+    ax2 = Axis(fig[3, 2]; axis_kwargs...)
+    mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
+    fig
+end
+
+@reference_test "meshscatter marker conversions with model" begin
+    fig = Figure(size = (600, 500))
+    Label(fig[0, 1], tellwidth = false, "meshscatter")
+    Label(fig[0, 2], tellwidth = false, "mesh")
+    Label(fig[0, 3], tellwidth = false, "meshscatter\ntransformable")
+    Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
+    Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
+    Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
+
+    kwargs = (markersize = 1, shading = NoShading)
+    kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+    function transform!(p, x, rotate = true)
+        scale!(p, 0.5, 0.5, 0.5)
+        if rotate
+            Makie.rotate!(p, pi/2)
+            translate!(p, x, 0, 0)
+        else
+            translate!(p, x, x, 0)
+        end
+    end
+
+    # scale shrinks so left should be 2x bigger than rest
+    limits = (-0.2, 2.2, -0.2, 2.2)
+    ax = Axis(fig[1, 1], limits = limits)
+    p1 = meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); transform_marker = false, kwargs...)
+    ax = Axis(fig[1, 2], limits = limits)
+    p2 = mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
+    ax = Axis(fig[1, 3], limits = limits)
+    p3 = meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); transform_marker = true, kwargs...)
+    transform!.((p1, p2, p3), 2)
+
+    # center must match, left 2x bigger than right
+    ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
+    axis_kwargs = (xscale = log10, yscale = log10, xticks = ticks, yticks = ticks, limits = (0.25, 4, 0.25, 4))
+    ax = Axis(fig[2, 1]; axis_kwargs...)
+    p4 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = false, kwargs...)
+    ax = Axis(fig[2, 2]; axis_kwargs...)
+    p5 = mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+    ax = Axis(fig[2, 3]; axis_kwargs...)
+    p6 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = true, kwargs...)
+    transform!.((p4, p5, p6), 0)
+
+    # center must match, left 2x bigger than rest
+    ticks = (1e12 .+ (-10f5:5f5:10f5), string.(-10:5:10) .* ("f5",))
+    axis_kwargs = (xticks = ticks, yticks = ticks, limits = 1e12 .+ (-1.2e6, 1.2e6, -1.2e6, 1.2e6))
+    ax1 = Axis(fig[3, 1]; axis_kwargs...)
+    p7 = meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = false, kwargs...)
+    ax2 = Axis(fig[3, 2]; axis_kwargs...)
+    p8 = mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
+    ax3 = Axis(fig[3, 3]; axis_kwargs...)
+    p9 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
+    transform!.((p7, p8, p9), 5e11, false)
+
+    fig
+end
+
+@reference_test "scatter marker_offset 2D" begin
+    fig = Figure(size = (450, 500))
+    ax = Axis(fig[1, 1])
+    xlims!(ax, -6.5, 6.5); ylims!(ax, -10, 10)
+    ax.xticks[] = (-5:2:5, ["BezierPath", "Circle", "Rect", "Char", "FastPixel", "Image"])
+    ax.yticks[] = ([-7.5, -2.75, 2.25, 7.25], [":pixel", ":data", ":relative", ":clip"])
+    ax.yticklabelrotation[] = pi/2
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rect_corners = Point2f[(-0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0.5, -0.5), (-0.5, -0.5), (NaN, NaN)]
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0), :pixel, 40),   (-5.5, (0, -20), :pixel, 40),
+            (-4, (0, 0), :data, 1.8),     (-0.5, (0, -1), :data, 1.8),
+            (+1, (0, 0), :relative, 0.1), (+4.5, (0, -0.05), :relative, 0.1),
+            (+6, (0, 0), :clip, 0.2),     (+9.5, (0, -0.1), :clip, 0.2),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset)
+        scatter!(ax, Point2f(-5, y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-3, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f(-1, y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 1, y), marker = 'x'; kwargs...)
+        if space in (:data, :pixel)
+            scatter!(ax, Point2f( 3, y), marker = FastPixel(); kwargs...)
+        end
+        scatter!(ax, Point2f( 5, y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        xs = space in (:data, :pixel) ? (-5:2:5) : [-5, -3, -1, 1, 5]
+        transformed = map(Point2f.(xs, y)) do pos
+            pos_ms = Makie.project(ax.scene, :data, space, pos)[Vec(1,2)]
+            rect_ps = [pos_ms .+ markersize .* xy .+ offset for xy in rect_corners]
+            return rect_ps
+        end
+        p = lines!(ax, vcat(transformed...), color = :black, linewidth = 2, space = space)
+    end
+
+    fig
+end
+
+# Above without FastPixel since FastPixel doesn't rotate
+@reference_test "scatter marker_offset 2D with billboarded rotation" begin
+    fig = Figure(size = (450, 500))
+    ax = Axis(fig[1, 1])
+    xlims!(ax, -6.5, 6.5); ylims!(ax, -10, 10)
+    ax.xticks[] = (-5:2.5:5, ["BezierPath", "Circle", "Rect", "Char", "Image"])
+    ax.yticks[] = ([-7.5, -2.75, 2.25, 7.25], [":pixel", ":data", ":relative", ":clip"])
+    ax.yticklabelrotation[] = pi/2
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rotation = 0.3f0
+    rect_corners = [Point2f(cos(a), sin(a)) ./ sqrt(2) for a in (range(0.0, 2pi, length=5) .+ pi/4 .+ rotation)]
+    push!(rect_corners, Point2f(NaN))
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0), :pixel, 40),   (-5.5, (0, -20), :pixel, 40),
+            (-4, (0, 0), :data, 1.8),     (-0.5, (0, -1), :data, 1.8),
+            (+1, (0, 0), :relative, 0.1), (+4.5, (0, -0.05), :relative, 0.1),
+            (+6, (0, 0), :clip, 0.2),     (+9.5, (0, -0.1), :clip, 0.2),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset, rotation = rotation)
+        scatter!(ax, Point2f(-5, y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-2.5, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f( 0, y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 2.5, y), marker = 'x'; kwargs...)
+        scatter!(ax, Point2f( 5, y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        transformed = map(Point2f.(-5:2.5:5, y)) do pos
+            pos_ms = Makie.project(ax.scene, :data, space, pos)[Vec(1,2)]
+            rect_ps = [pos_ms .+ markersize .* xy .+ offset for xy in rect_corners]
+            return rect_ps
+        end
+        p = lines!(ax, vcat(transformed...), color = :black, linewidth = 2, space = space)
+    end
+
+    fig
+end
+
+@reference_test "scatter marker_offset 3D with rotation" begin
+    fig = Figure(size = (500, 400))
+    ax = LScene(fig[1, 1], show_axis = false)
+    update_cam!(ax.scene, Vec3f(12), Vec3f(1, 2, -2))
+    cameracontrols(ax).settings.center[] = false
+
+    img = [RGBf(r, 0.7, b) for r in range(0, 1, length=4), b in range(0, 1, length=4)]
+    rotation = qrotation(Vec3f(1), 0.8)
+    rect_corners = Point2f[(-0.5, -0.5), (-0.5, 0.5), (0.5, 0.5), (0.5, -0.5), (-0.5, -0.5), (NaN, NaN)]
+
+    for (y, offset, space, markersize) in [
+            (-8.5, (0, 0, 0), :pixel, 20),      (-6,   (0, -10, 0), :pixel, 20),
+            (-2,   (0, 0, 0), :data, 1.5),      (1,    (0, -1, 0), :data, 1.5),
+            (+3,   (0, 0, 0), :relative, 0.05), (+4.5, (0, -0.025, 0), :relative, 0.05),
+            (+8,   (0, 0, 0), :clip, 0.1),      (+9,   (0, -0.05, 0), :clip, 0.1),
+        ]
+
+        # Generate scatter plots with different marker types
+        kwargs = (markerspace = space, markersize = markersize, marker_offset = offset, rotation = rotation)
+        scatter!(ax, Point2f(-5,   y), marker = :ltriangle; kwargs...)
+        scatter!(ax, Point2f(-2.5, y), marker = Circle; kwargs...)
+        scatter!(ax, Point2f( 0,   y), marker = Rect; kwargs...)
+        scatter!(ax, Point2f( 2.5, y), marker = 'x'; kwargs...)
+        scatter!(ax, Point2f( 5,   y), marker = img; kwargs...)
+
+        # Generate outlines (transform to markerspace, generate rect based on markersize, add offset)
+        transformed = map(ax.scene.camera.projectionview) do _
+            transformed = map(Point3f.(-5:2.5:5, y, 0)) do pos
+                pos_ms = Makie.project(ax.scene, :data, space, pos) .+ offset
+                rect_ps = [pos_ms .+ rotation * to_ndim(Vec3f, markersize .* xy, 0) for xy in rect_corners]
+
+                return rect_ps
+            end
+            vcat(transformed...)
+        end
+        p = lines!(ax, transformed, color = :black, linewidth = 2, space = space, depth_shift = -5f-2)
+    end
+
+    fig
+end
+
+@reference_test "Scatter fonts" begin
+    scene = Scene(size = (150, 150), camera = campixel!)
+
+    # Just needs to not be Fira Mona here, but good to test the default too
+    @test Makie.to_font(Makie.automatic) == Makie.to_font("TeX Gyre Heros Makie")
+
+    scatter!(scene, (40,  40), marker=Rect, markersize=45, color = :black, strokecolor = :red, strokewidth = 1)
+    scatter!(scene, (40,  40), marker='◇', markersize=45, color = :white)
+    scatter!(scene, (110, 40), marker=Rect, markersize=45, color = :green, strokecolor = :red, strokewidth = 1)
+    text!(scene,    (110, 40), text = "◇", fontsize = 45, align = (:center, :center), color = :white)
+
+    scatter!(scene, (40,  110), marker=Rect, font = "Fira Mono", markersize=45, color = :black, strokecolor = :red, strokewidth = 1)
+    scatter!(scene, (40,  110), marker='◇',  font = "Fira Mono", markersize=45, color = :white)
+    scatter!(scene, (110, 110), marker=Rect, font = "Fira Mono", markersize=45, color = :green, strokecolor = :red, strokewidth = 1)
+    text!(scene,    (110, 110), text = "◇",  font = "Fira Mono", fontsize = 45, align = (:center, :center), color = :white)
+
+    scene
 end

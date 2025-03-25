@@ -61,6 +61,7 @@ end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     # Potentially per instance attributes
+    !plot.visible[] && return nothing
     positions = to_value(plot[1])
     m_mesh = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
     marker = RPR.Shape(context, m_mesh)
@@ -76,29 +77,14 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     end
 
     color = plot.calculated_colors[]
-    if color isa Makie.ColorMapping
-        color_from_num = to_color(color)
+    if color isa AbstractVector{<:Union{Number,Colorant}} || color isa Makie.ColorMapping
+        c_converted = to_color(color)
         object_id = RPR.InputLookupMaterial(matsys)
         object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
-
-        uv = object_id * Vec3f(0, 1/n_instances, 0)
-
-        tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
-
+        uv = object_id * Vec3f(0, 1 / (n_instances-1), 0)
+        tex = RPR.Texture(matsys, reverse(c_converted)'; uv=uv)
         material.color = tex
-    elseif color isa AbstractMatrix{<:Number}
-        color_from_num = to_color(color)
-        object_id = RPR.InputLookupMaterial(matsys)
-        object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
-
-        uv = object_id * Vec3f(0, 1/n_instances, 0)
-
-        tex = RPR.Texture(matsys, color_from_num; uv=uv)
-
-        material.color = tex
-    elseif color isa Colorant
-        material.color = color
-    elseif color isa AbstractMatrix{<: Colorant}
+    elseif color isa Union{Colorant, AbstractMatrix{<:Colorant}}
         material.color = color
     else
         error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
@@ -121,7 +107,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     end
 
     for (instance, position, scale, rotation) in zip(instances, positions, scales, rotations)
-        mat = Makie.transformationmatrix(position, scale, rotation)
+        mat = Makie.transformationmatrix(to_ndim(Point3f, position, 0), scale, rotation)
         transform!(instance, mat)
     end
 
@@ -164,6 +150,7 @@ end
 
 
 function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
+    !plot.visible[] && return nothing
     x = plot[1]
     y = plot[2]
     z = plot[3]
@@ -178,14 +165,14 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     end
 
     positions = lift(grid, x, y, z, Makie.transform_func_obs(plot))
-    r = Tesselation(Rect2f((0, 0), (1, 1)), size(z[]))
+    r = Tessellation(Rect2f((0, 0), (1, 1)), size(z[]))
     # decomposing a rectangle into uv and triangles is what we need to map the z coordinates on
-    # since the xyz data assumes the coordinates to have the same neighouring relations
+    # since the xyz data assumes the coordinates to have the same neighbouring relations
     # like a grid
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
     # with this we can beuild a mesh
-    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
+    mesh = GeometryBasics.Mesh(vec(positions[]), faces, uv = uv)
 
     rpr_mesh = RPR.Shape(context, mesh)
     color = plot.color[]

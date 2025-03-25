@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
 };
@@ -8,14 +11,28 @@ const float max_distance = 1.3;
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-float _normalize(float val, float from, float to)
-{
-    return (val-from) / (to - from);
+uniform vec4 clip_planes[8];
+
+float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
+
+vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
+    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
+}
+vec4 color_lookup(vec4 color, bool color_ramp, bool norm) {
+    return color; // stub method
+}
+vec4 color_lookup(float intensity, bool color_ramp, bool norm) {
+    return vec4(0); // stub method
 }
 
-vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm)
-{
-    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0.0));
+vec4 color_lookup(sampler2D colormap, int index) {
+    return texelFetch(colormap, ivec2(index, 0), 0);
+}
+vec4 color_lookup(bool colormap, vec4 color) {
+    return color; // stub method
+}
+vec4 color_lookup(bool colormap, int index) {
+    return vec4(0); // stub method
 }
 
 vec3 gennormal(vec3 uvw, float d)
@@ -105,7 +122,7 @@ vec4 volume(vec3 front, vec3 dir)
 }
 
 
-vec4 volumergba(vec3 front, vec3 dir)
+vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
     float T = 1.0;
@@ -113,7 +130,7 @@ vec4 volumergba(vec3 front, vec3 dir)
     int i = 0;
     for (i; i < num_samples ; ++i) {
         vec4 density = texture(volumedata, pos);
-        float opacity = step_size * density.a;
+        float opacity = step_size * density.a * absorption;
         T *= 1.0 - opacity;
         if (T <= 0.01)
             break;
@@ -174,9 +191,9 @@ vec4 isosurface(vec3 front, vec3 dir)
 
 vec4 mip(vec3 front, vec3 dir)
 {
-    vec3 pos = front;
-    int i = 0;
-    float maximum = 0.0;
+    vec3 pos = front + dir;
+    int i = 1;
+    float maximum = texture(volumedata, front).x;
     for (i; i < num_samples; ++i, pos += dir){
         float density = texture(volumedata, pos).x;
         if(maximum < density)
@@ -185,9 +202,68 @@ vec4 mip(vec3 front, vec3 dir)
     return color_lookup(maximum, colormap, colorrange);
 }
 
+vec4 additivergba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 integrated_color = vec4(0., 0., 0., 0.);
+    int i = 0;
+    for (i; i < num_samples ; ++i) {
+        vec4 density = texture(volumedata, pos);
+        integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
+        pos += dir;
+    }
+    return integrated_color;
+}
+
+vec4 volumeindexedrgba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    float T = 1.0;
+    vec3 Lo = vec3(0.0);
+    int i = 0;
+    for (i; i < num_samples; ++i) {
+        int index = int(texture(volumedata, pos).x) - 1;
+        vec4 density = color_lookup(colormap, index);
+        float opacity = step_size * density.a * absorption;
+        Lo += (T*opacity)*density.rgb;
+        T *= 1.0 - opacity;
+        if (T <= 0.01)
+            break;
+        pos += dir;
+    }
+    return vec4(Lo, 1.0 - T);
+}
+
 uniform uint objectid;
 
 const float typemax = 100000000000000000000000000000000000000.0;
+
+uniform int num_clip_planes;
+bool process_clip_planes(inout vec3 p1, inout vec3 p2)
+{
+    float d1, d2;
+    for (int i = 0; i < num_clip_planes; i++) {
+        // distance from clip planes with negative clipped
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+
+        // both outside - clip everything
+        if (d1 < 0.0 && d2 < 0.0) {
+            p2 = p1;
+            return true;
+        }
+
+        // one outside - shorten segment
+        else if (d1 < 0.0)
+            // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
+            p1 = p1 - d1 * (p2 - p1) / (d2 - d1);
+        else if (d2 < 0.0)
+            p2 = p2 - d2 * (p1 - p2) / (d1 - d2);
+    }
+
+    return false;
+}
+
 
 bool no_solution(float x){
     return x <= 0.0001 || isinf(x) || isnan(x);
@@ -216,12 +292,16 @@ float min_bigger_0(vec3 v1, vec3 v2){
     return min(x, min(y, z));
 }
 
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
@@ -239,6 +319,11 @@ void main()
     float solution = min_bigger_0(solution_1, solution_0);
 
     vec3 start = back_position + solution * dir;
+
+    // if completely clipped discard this ray tracing attempt
+    if (process_clip_planes(start, back_position))
+        discard;
+
     vec3 step_in_dir = (back_position - start) / float(num_samples);
 
     float steps = 0.1;
@@ -249,10 +334,11 @@ void main()
     else if(algorithm == uint(2))
         color = mip(start, step_in_dir);
     else if(algorithm == uint(3))
-        color = volumergba(start, step_in_dir);
+        color = absorptionrgba(start, step_in_dir);
     else if(algorithm == uint(4))
-        color = vec4(0.0);
-        // color = volumeindexedrgba(start, step_in_dir);
+        color = additivergba(start, step_in_dir);
+    else if(algorithm == uint(5))
+        color = volumeindexedrgba(start, step_in_dir);
     else
         color = contours(start, step_in_dir);
 

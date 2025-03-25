@@ -122,71 +122,79 @@ end
 @testset "VideoStream & screen options" begin
     N = 3
     points = Observable(Point2f[])
-    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(600, 800),))
+    width = 600
+    height = 800
+    f, ax, pl = scatter(points, axis=(type=Axis, aspect=DataAspect(), limits=(0.4, N + 0.6, 0.4, N + 0.6),), figure=(size=(width, height),))
+
     vio = Makie.VideoStream(f; format="mp4", px_per_unit=2.0, backend=CairoMakie)
+    tmp_path = vio.path
+
     @test vio.screen isa CairoMakie.Screen{CairoMakie.IMAGE}
     @test size(vio.screen) == size(f.scene) .* 2
     @test vio.screen.device_scaling_factor == 2.0
 
     Makie.recordframe!(vio)
+
+    html = repr(MIME"text/html"(), vio)
+    @test occursin("width=\"$width\"", html)
+    @test occursin("height=\"$height\"", html)
+
     save("test.mp4", vio)
-    @test isfile("test.mp4") # Make sure no error etc
-    rm("test.mp4")
+    save("test_2.mkv", vio)
+    save("test_3.mp4", vio)
+    # make sure all files are correctly saved:
+    @test all(isfile, ["test.mp4", "test_2.mkv", "test_3.mp4"])
+    @test filesize("test.mp4") == filesize("test_3.mp4") > 3000
+    @test filesize("test.mp4") != filesize("test_2.mkv") > 3000
+    rm.(["test.mp4", "test_2.mkv", "test_3.mp4"])
+    finalize(vio); yield()
+    @test !isfile(tmp_path)
 end
 
+@testset "plotlist no ambiguity (#4038)" begin
+    f = plotlist([Makie.SpecApi.Scatter(1:10)])
+    Makie.colorbuffer(f; backend=CairoMakie)
+    plotlist!([Makie.SpecApi.Scatter(1:10)])
+end
+
+@testset "multicolor line clipping (#4313)" begin
+    fig, ax, p = contour(rand(20,20))
+    xlims!(ax, 0, 10)
+    Makie.colorbuffer(fig; backend=CairoMakie)
+end
 
 excludes = Set([
-    "Colored Mesh",
     "Line GIF",
     "Streamplot animation",
-    "Line changing colour",
     "Axis + Surface",
     "Streamplot 3D",
     "Meshscatter Function",
-    "Hollow pie chart",
     "Record Video",
-    "Image on Geometry (Earth)",
-    "Image on Geometry (Moon)",
+    # "mesh textured and loaded", # bad texture resolution on mesh
     "Comparing contours, image, surfaces and heatmaps",
-    "Textured Mesh",
-    "Simple pie chart",
     "Animated surface and wireframe",
-    "Open pie chart",
-    "image scatter",
     "surface + contour3d",
-    "Orthographic Camera",
-    "Legend",
-    "rotation",
+    "Orthographic Camera", # This renders blank, why?
     "3D Contour with 2D contour slices",
     "Surface with image",
-    "Test heatmap + image overlap",
-    "Text Annotation",
-    "step-2",
-    "FEM polygon 2D.png",
-    "Text rotation",
-    "Image on Surface Sphere",
-    "FEM mesh 2D",
-    "Hbox",
-    "Subscenes",
+    "FEM poly and mesh", # different color due to bad colormap resolution on mesh
+    "Image on Surface Sphere", # bad texture resolution
     "Arrows 3D",
-    "Layouting",
-    # sigh this is actually super close,
-    # but doesn't interpolate the values inside the
-    # triangles, so looks pretty different
-    "FEM polygon 2D",
     "Connected Sphere",
     # markers too big, close otherwise, needs to be assimilated with glmakie
-    "Unicode Marker",
     "Depth Shift",
     "Order Independent Transparency",
-    "heatmap transparent colormap",
     "fast pixel marker",
-    "scatter with glow",
-    "scatter with stroke",
-    "heatmaps & surface",
+    "scatter with glow", # some are missing
+    "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
     "Textured meshscatter", # not yet implemented
-    "Voxel - texture mapping", # not yet implemented
+    "Voxel - texture mapping", # textures not implemented
+    "Voxel uvs", # textures not implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
+    "picking", # Not implemented
+    "MetaMesh (Sponza)", # makes little sense without per pixel depth order
+    "Mesh with 3d volume texture", # Not implemented yet
+    "Volume absorption",
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -195,7 +203,7 @@ functions = [:volume, :volume!, :uv_mesh]
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions=functions)
     recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
-    missing_images, scores = ReferenceTests.record_comparison(recording_dir)
+    missing_images, scores = ReferenceTests.record_comparison(recording_dir, "CairoMakie")
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end
 
@@ -231,4 +239,80 @@ end
     end
 
     @test_throws ArgumentError save(filename, Figure(), pdf_version="foo")
+end
+
+@testset "Tick Events" begin
+    f, a, p = scatter(rand(10));
+    @test events(f).tick[] == Makie.Tick()
+
+    filename = "$(tempname()).png"
+    try
+        save(filename, f)
+        tick = events(f).tick[]
+        @test tick.state == Makie.OneTimeRenderTick
+        @test tick.count == 0
+        @test tick.time == 0.0
+        @test tick.delta_time == 0.0
+    finally
+        rm(filename)
+    end
+
+    filename = "$(tempname()).mp4"
+    try
+        tick_record = Makie.Tick[]
+        record(_ -> push!(tick_record, events(f).tick[]), f, filename, 1:10, framerate = 30)
+        dt = 1.0 / 30.0
+
+        for (i, tick) in enumerate(tick_record)
+            @test tick.state == Makie.OneTimeRenderTick
+            @test tick.count == i-1
+            @test tick.time ≈ dt * (i-1)
+            @test tick.delta_time ≈ dt
+        end
+    finally
+        rm(filename)
+    end
+
+    # test destruction of tick overwrite
+    f, a, p = scatter(rand(10));
+    let
+        io = VideoStream(f)
+        @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+        nothing
+    end
+    tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+    events(f).tick[] = tick
+    @test events(f).tick[] == tick
+end
+
+@testset "line projection" begin
+    # Check #4627
+    f = Figure(size = (600, 450))
+    a, p = stephist(f[1, 1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
+    Makie.update_state_before_display!(f)
+    lp = p.plots[1].plots[1]
+    ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
+    # Points 1, 2, 5, 6 are on the clipping boundary, 7 is a duplicate of 6.
+    # The output may drop 1, 6, 7 and adjust 2, 5 if these points are recognized
+    # as outside. The adjustment of 2, 5 should be negligible.
+    necessary_points = Vec{2, Float32}[[0.0, 89.77272], [275.5, 89.77272], [275.5, 17.95454], [551.0, 17.95454]]
+    @test length(ps) >= 4
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
+    ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
+    ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
+    @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
+    @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    # Check that `reinterpret`ed arrays of points are handled correctly
+    # ref. https://github.com/MakieOrg/Makie.jl/issues/4661
+
+    data = reinterpret(Point2f, rand(Point2f, 10) .=> rand(Point2f, 10))
+
+    f, a, p = lines(data)
+    Makie.update_state_before_display!(f)
+    ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
+    @test length(ps) == length(data) # this should never clip!
+
 end

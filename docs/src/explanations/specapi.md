@@ -150,6 +150,27 @@ S.GridLayout([...],
 )
 ```
 
+Axis links are also supported, but they're not part of Axis, but rather the surrounding `GridLayout`, since when constructing the axis you usually don't yet have the other Axes you want to link them to.
+
+```@figure
+import Makie.SpecApi as S
+axis_matrix = broadcast(1:2, (1:2)') do x, y
+    S.Axis(; title="$x, $y")
+end
+layout = S.GridLayout(
+    axis_matrix;
+    xaxislinks=vec(axis_matrix[1:2, 1]),
+    yaxislinks=vec(axis_matrix[1:2, 2])
+)
+f, _, pl = plot(layout)
+# Change limits to see the links in action
+for ax in f.content[[1, 3]]
+    limits!(ax, 2, 3, 2, 3)
+end
+f
+```
+
+
 ## Using specs in `convert_arguments`
 
 !!! warning
@@ -309,4 +330,49 @@ nothing # hide
 
 ```@raw html
 <video autoplay loop muted playsinline controls src="./interactive_specapi.mp4" />
+```
+
+
+## Accessing created Blocks
+
+You can access created blocks with the `then(f)` syntax:
+
+```julia
+import Makie.SpecApi as S
+ax =  S.Axis(...)
+ax.then() do actual_axis_object
+    return on(events(actual_axis_object).mouseposition) do mp
+        println("mouse: $(mp)")
+    end
+end
+```
+Note, that the callback must be pure, since the objects will get re-used and the callback will be called again.
+To allow `on` or `onany`, one can return an array of `ObserverFunctions` or single one as in the above example.
+```julia
+ax.then() do ax
+    obs1 = on(f1, events(ax).keyboardbutton)
+    obs2 = on(f2, events(ax).mousebutton)
+    obs_array = onany(f3, some_obs1, some_obs2)
+    return [obs1, obs2, obs_array...]
+end
+This allows the SpecApi to clean up the callbacks on re-use.
+Note that things like `hidedecorations!(axis)` is not yet supported, since we will need some better book keeping of what got mutated by that call.
+One of the few functions that's already supported is `linkaxes!`:
+
+```julia
+axes_1 = [S.Axis(title="Axis (1): $(i)") for i in 1:3]
+axes_2 = [S.Axis(title="Axis (2): $(i)") for i in 1:3]
+for ax1 in axes_1
+    for ax2 in axes_2
+        if ax1 != ax2
+            ax1.then() do iax
+                ax2.then() do jax
+                    linkaxes!(iax, jax)
+                    return
+                end
+                return
+            end
+        end
+    end
+end
 ```

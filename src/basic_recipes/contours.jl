@@ -9,6 +9,8 @@ end
 
 Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
+
+`x` and `y` can also be Matrices that define a curvilinear grid, similar to how [`surface`](@ref) works.
 """
 @recipe Contour begin
     """
@@ -200,6 +202,13 @@ function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels,
     return contourlines(T, contours, level_colors, labels)
 end
 
+# Overload for matrix-like x and y lookups for contours
+# Just removes the `to_vector` invocation
+function contourlines(x::AbstractMatrix{<: Real}, y::AbstractMatrix{<: Real}, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+    contours = Contours.contours(x, y, z, convert(Vector{ET}, levels))
+    return contourlines(T, contours, level_colors, labels)
+end
+
 function has_changed(old_args, new_args)
     length(old_args) === length(new_args) || return true
     for (old, new) in zip(old_args, new_args)
@@ -256,7 +265,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         transform_marker = false
     )
 
-    lift(scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
+    lift(plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
@@ -287,7 +296,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return
     end
 
-    bboxes = lift(labels, texts.text; ignore_equal_values=true) do labels, _
+    bboxes = lift(plot, labels, texts.text; ignore_equal_values=true) do labels, _
         labels || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
@@ -298,7 +307,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
     end
 
-    masked_lines = lift(labels, bboxes, points) do labels, bboxes, segments
+    masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
