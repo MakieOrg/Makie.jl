@@ -12,7 +12,13 @@ function cairo_draw(screen::Screen, scene::Scene)
     draw_background(screen, scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
-    sort!(allplots; by=Makie.zvalue2d)
+    
+    # Account for transformation z-value _and_ depth-shift when sorting plots
+    # TODO: make depth shift more reliable by checking the bbox of the scene, 
+    # and using depth shift as a multiplicative factor instead of a subtractive one
+    # since right now the implementation only uses it to disambiguate between plots at
+    # the same z-level.
+    sort!(allplots; by = p -> (Makie.zvalue2d(p) - to_value(get(p, :depth_shift, 0f0)))) 
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
