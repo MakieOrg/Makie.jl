@@ -844,8 +844,6 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 
         "Controls if minor ticks are visible"
         minorticksvisible = false
-        "Additional control to request minor tick calculations for when they are used from the outside."
-        minorticksused = false
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0f0
         "The tick size of minor ticks"

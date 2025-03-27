@@ -267,7 +267,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
         labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
-        minorticksvisible, minorticksused, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
+        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
+    minorticksused = get(attrs, :minorticksused, Observable(false))
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values=true)
     horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
