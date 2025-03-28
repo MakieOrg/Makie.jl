@@ -43,7 +43,8 @@ flat in vec2            f_sprite_scale;
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
+    float aa = fwidth(dist);
+    return smoothstep(threshold1-aa, threshold1+aa, dist);
 }
 
 float aastep(float threshold1, float threshold2, float dist) {

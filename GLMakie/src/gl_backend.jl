@@ -51,8 +51,8 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
             # samplers for signed distance fields; the anisotropic
             # filtering should happen *after* the SDF thresholding, but
             # with the builtin sampler it happens before.
-            anisotropic = 16f0,
-            mipmap = true
+            # anisotropic = 16f0,
+            mipmap = false #true
         )
 
         function callback(distance_field, rectangle)
