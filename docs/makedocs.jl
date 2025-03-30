@@ -189,7 +189,6 @@ pages = [
             "explanations/theming/predefined_themes.md",
         ],
         "explanations/transparency.md",
-        "explanations/render_pipeline.md"
     ],
     "How-Tos" => [
         "how-to/match-figure-size-font-sizes-and-dpi.md",
@@ -200,6 +199,9 @@ pages = [
         "API" => "api.md",
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
+    ],
+    "Dev Docs" => [
+        "devdocs/render_pipeline.md",
     ]
 ]
 
