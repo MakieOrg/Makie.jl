@@ -132,7 +132,7 @@ You may also want to look at "GLMakie/src/postprocessing.jl" and "GLMakie/assets
 As an example we will create a stage that applies a Sepia effect to our figure.
 Lets begin by setting up a pipeline that includes the stage.
 
-```@example RenderPipeline
+```julia
 using Makie
 
 # Create an empty Pipeline
@@ -175,7 +175,7 @@ Each stage will get a framebuffer based on the connected outputs of the pipeline
 The names match the names of the pipeline stage with a `_buffer` postfix.
 What we now need to do is define a constructor for a `<: GLMakie.AbstractRenderStep` object which represents the stage in the `GLRenderPipeline`, and a `run_step()` method that executes the stage.
 
-```@example RenderPipeline
+```julia
 using GLMakie
 
 function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, parent)
@@ -240,8 +240,9 @@ end
 
 With that done we can now use our new pipeline for rendering:
 
-```@example RenderPipeline
+```@figure backend=GLMakie
 using FileIO, GLMakie
+Core.include(@__MODULE__, "sepia_filter.jl") # hide
 
 GLMakie.activate!(render_pipeline = pipeline)
 cow = load(Makie.assetpath("cow.png"))
