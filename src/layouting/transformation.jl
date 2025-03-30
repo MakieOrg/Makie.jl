@@ -244,11 +244,8 @@ function apply_transform_and_model(plot::AbstractPlot, data, output_type = Point
     )
 end
 function apply_transform_and_model(model::Mat4, f, data, space = :data, output_type = Point3d)
-    transformed = promoted = promote_geom(output_type, data)
-    try
-        transformed = apply_transform(f, promoted, space)
-    catch
-    end
+    promoted = promote_geom(output_type, data)
+    transformed = apply_transform(f, promoted, space)
     world = apply_model(model, transformed, space)
     return promote_geom(output_type, world)
 end
