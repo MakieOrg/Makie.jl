@@ -1045,7 +1045,7 @@ end
     x = RNG.randn(100_000)
     y = RNG.randn(100_000)
 
-    f, ax, pl = hexbin(x, y,
+    hexbin(x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
         colorrange = (10, 300),
