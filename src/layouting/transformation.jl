@@ -244,8 +244,11 @@ function apply_transform_and_model(plot::AbstractPlot, data, output_type = Point
     )
 end
 function apply_transform_and_model(model::Mat4, f, data, space = :data, output_type = Point3d)
-    promoted = promote_geom(output_type, data)
-    transformed = apply_transform(f, promoted, space)
+    transformed = promoted = promote_geom(output_type, data)
+    try
+        transformed = apply_transform(f, promoted, space)
+    catch
+    end
     world = apply_model(model, transformed, space)
     return promote_geom(output_type, world)
 end
@@ -370,10 +373,18 @@ function apply_transform(f, data::AbstractArray)
 end
 
 function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2, T}) where T
-    Point2{T}(
-        f[1](point[1]),
-        f[2](point[2]),
-    )
+    p1, p2 = point
+    try
+        p1 = f[1](p1)
+    catch err
+        @warn err
+    end
+    try
+        p2 = f[2](p2)
+    catch err
+        @warn err
+    end
+    Point2{T}(p1, p2)
 end
 # ambiguity fix
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
@@ -386,11 +397,23 @@ end
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
 
 function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3, T}) where T
-    Point3{T}(
-        f[1](point[1]),
-        f[2](point[2]),
-        f[3](point[3]),
-    )
+    p1, p2, p3 = point
+    try
+        p1 = f[1](p1)
+    catch err
+        @warn err
+    end
+    try
+        p2 = f[2](p2)
+    catch err
+        @warn err
+    end
+    try
+        p3 = f[3](p3)
+    catch err
+        @warn err
+    end
+    Point3{T}(p1, p2, p3)
 end
 # ambiguity fix
 apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point

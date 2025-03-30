@@ -64,10 +64,13 @@ get_weight(::Nothing, i) = 1e0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
+    tfx, tfy = transform_func(hb)
+    itfx, itfy = inverse_transform(tfx), inverse_transform(tfy)
 
     points = Observable(Point2f[])
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
+    sqrt3 = sqrt(3)
 
     function calculate_grid(xy, weights, bins, cellsize, threshold)
         empty!(points[])
@@ -75,13 +78,14 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
         isempty(xy) && return
 
-        sqrt3 = sqrt(3)
-
         # enclose data in limits
         _expand((lo, hi)) = prevfloat(lo), nextfloat(hi)
 
-        xmi, xma = _expand(extrema((p[1] for p in xy)))
-        ymi, yma = _expand(extrema((p[2] for p in xy)))
+        xmi, xma = extrema(p[1] for p in xy) |> _expand
+        ymi, yma = extrema(p[2] for p in xy) |> _expand
+
+        xmi, xma = tfx(xmi), tfx(xma)
+        ymi, yma = tfy(ymi), tfy(yma)
 
         x_diff = xma - xmi
         y_diff = yma - ymi
@@ -103,7 +107,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         yweight = xsize / ysize
 
         i = 1
-        for (_x, _y) in xy
+        for (__x, __y) in xy
+            _x, _y = if true
+                tfx(__x), tfy(__y)
+            else
+                __x, __y
+            end
             nx, nxs, dvx = nearest_center(_x, xspacing, xoff)
             ny, nys, dvy = nearest_center(_y, yspacing, yoff)
 
@@ -126,7 +135,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 )
             end
 
-            d[id] = get(d, id, 0) + (get_weight(weights, i))
+            d[id] = get(d, id, 0) + get_weight(weights, i)
             i += 1
         end
 
@@ -134,9 +143,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
+                    _x = xoff + 2ix * xspacing + isodd(iy) * xspacing
                     _y = yoff + iy * yspacing
                     c = get(d, (ix, iy), 0.0)
+                    if true
+                        _x ,_y = itfx(_x), itfy(_y)
+                    end
                     push!(points[], Point2f(_x, _y))
                     push!(count_hex[], c)
                 end
@@ -145,15 +157,22 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             # If we don't plot zero cells, we only have to iterate the sparse entries in the dict
             for ((ix, iy), value) in d
                 if value >= threshold
-                    _x = xoff + 2 * ix * xspacing + (isodd(iy) * xspacing)
+                    _x = xoff + 2ix * xspacing + isodd(iy) * xspacing
                     _y = yoff + iy * yspacing
+                    if true
+                        _x ,_y = itfx(_x), itfy(_y)
+                    end
                     push!(points[], Point2f(_x, _y))
                     push!(count_hex[], value)
                 end
             end
         end
 
-        markersize[] = Vec2f(rx, ry)
+        markersize[] = if true
+            Vec2f(rx, ry)
+        else
+            Vec2f(itfx(rx), itfy(ry))
+        end
         notify(points)
         return notify(count_hex)
     end
@@ -205,11 +224,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 end
 
 function center_value(dv, spacing, offset, is_grid1)
-    if is_grid1
-        offset + spacing * (dv + isodd(dv))
-    else
-        offset + spacing * (dv + iseven(dv))
-    end
+    offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
 end
 
 function nearest_center(val, spacing, offset)

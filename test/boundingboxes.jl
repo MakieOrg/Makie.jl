@@ -215,3 +215,10 @@ end
     sc = scatter!(ax, Point(0, 0), marker=triangle, markerspace=:data)
     data_limits(sc) # doesn't stackoverflow
 end
+
+@testset "issue 4895" begin
+    n = 10_000
+    xs = randn(n)
+    ys = randn(n) .|> exp
+    hexbin(xs, ys; axis = (; yscale=log10))
+end
