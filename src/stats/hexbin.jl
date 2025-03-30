@@ -90,13 +90,13 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         isempty(xy) && return
 
         # enclose data in limits
-        _expand((lo, hi)) = prevfloat(lo), nextfloat(hi)
+        xmi, xma = let (lo, hi) = extrema(p[1] for p in xy)
+            tfx(prevfloat(lo)), tfx(nextfloat(hi))
+        end
 
-        xmi, xma = extrema(p[1] for p in xy) |> _expand
-        ymi, yma = extrema(p[2] for p in xy) |> _expand
-
-        xmi, xma = tfx(xmi), tfx(xma)
-        ymi, yma = tfy(ymi), tfy(yma)
+        ymi, yma = let (lo, hi) = extrema(p[2] for p in xy)
+            tfy(prevfloat(lo)), tfy(nextfloat(hi))
+        end
 
         x_diff = xma - xmi
         y_diff = yma - ymi
@@ -125,11 +125,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
             d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
             d2 = (tx - nxs)^2 + (yweight * (ty - nys))^2
-            is_grid1 = d1 < d2
 
-            # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
-
-            id = if is_grid1
+            id = if (is_grid1 = d1 < d2)
                 (
                     cld(dvx, 2),
                     iseven(dvy) ? dvy : dvy+1
@@ -218,7 +215,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 end
 
 function center_value(dv, spacing, offset, is_grid1)
-    offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
+    return offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
 end
 
 function nearest_center(val, spacing, offset)
