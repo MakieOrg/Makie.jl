@@ -1056,7 +1056,7 @@ end
     )
 end
 
-@eference_test "hexbin logscale" begin
+@reference_test "hexbin logscale" begin
     # https://github.com/MakieOrg/Makie.jl/issues/4895
     x = RNG.randn(100_000)
     y = RNG.randn(100_000) .|> exp
