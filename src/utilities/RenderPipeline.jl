@@ -124,8 +124,7 @@ struct Stage
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
 
-    # const for caching (which does quite a lot actually)
-    attributes::Dict{Symbol, Any} # TODO: rename -> settings?
+    attributes::Dict{Symbol, Any}
 end
 
 """
@@ -175,8 +174,6 @@ struct RenderPipeline
     # (stage_idx, negative input index or positive output index) -> connection format index
     stageio2idx::Dict{Tuple{Int, Int}, Int}
     formats::Vector{BufferFormat} # of connections
-    # TODO: consider adding:
-    # endpoints::Vector{Tuple{Int, Int}}
 end
 
 """
@@ -248,9 +245,7 @@ function Observables.connect!(pipeline::RenderPipeline, src::Union{RenderPipelin
 end
 Observables.connect!(pipeline::RenderPipeline, key::Symbol) = connect!(pipeline, pipeline, key, pipeline, key)
 
-# TODO: Not sure about this... Maybe it should be first/last instead? But what
-#       then it wouldn't really work with e.g. SSAO, which needs color as an
-#       input in step 2.
+
 """
     connect!(pipeline, source, output, target, input)
 

@@ -75,11 +75,6 @@ function destroy!(pipeline::GLRenderPipeline)
 end
 
 
-# TODO: temporary, we should get to the point where this is not needed
-struct EmptyRenderStep <: AbstractRenderStep end
-
-
-
 struct SortPlots <: AbstractRenderStep end
 
 construct(::Val{:ZSort}, screen, framebuffer, inputs, parent) = SortPlots()
@@ -88,7 +83,7 @@ function run_step(screen, glscene, ::SortPlots)
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
-        # TODO, use actual boundingbox
+        # TODO: use actual boundingbox
         # ~7% faster than calling zvalue2d doing the same thing?
         return Makie.transformationmatrix(plot)[][3, 4]
         # return Makie.zvalue2d(plot)
@@ -134,7 +129,7 @@ function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, par
 end
 
 function id2scene(screen, id1)
-    # TODO maybe we should use a different data structure
+    # TODO: maybe we should use a different data structure
     for (id2, scene) in screen.screens
         id1 == id2 && return true, scene
     end
@@ -176,7 +171,6 @@ function run_step(screen, glscene, step::RenderPlots)
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
 
-            # TODO: Can we move this outside the loop?
             if step.for_oit
                 # disable depth buffer writing
                 glDepthMask(GL_FALSE)
@@ -242,7 +236,6 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
-    # TODO: rename in shader
     robj = RenderObject(
         inputs, shader,
         () -> begin
@@ -465,7 +458,6 @@ function run_step(screen, ::Nothing, step::BlitToScreen)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
     glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
 
-    # TODO: Is this an observable? Can this be static?
     # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.screen_framebuffer_id)
 

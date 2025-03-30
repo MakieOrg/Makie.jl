@@ -70,11 +70,6 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     # TODO: check if pipeline is different from the last one before replacing it
     factory = screen.framebuffer_factory
 
-    # TODO: OpengGL ERRORS
-    # Maybe safer to wait on rendertask to finish and replace the GLRenderPipeline
-    # with an empty one while we mess with it?
-    # was_running = renderloop_running(screen)
-    # was_running && stop_renderloop!(screen, close_after_renderloop = false)
     ShaderAbstractions.switch_context!(screen.glscreen)
 
     screen.render_pipeline = GLRenderPipeline()
@@ -152,7 +147,6 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     foreach(i -> destroy!(previous_pipeline.steps[i], keep_alive), needs_cleanup)
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
-    # was_running && start_renderloop!(screen)
 
     return
 end
