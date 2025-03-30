@@ -59,9 +59,9 @@ function draw_volume(screen, main::VolumeTypes, data::Dict)
         volumedata = main => Texture
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
-        color_map = default(Vector{RGBA}, s) => Texture
-        color_norm = color_map === nothing ? nothing : const_lift(extrema2f0, main)
-        color = color_map === nothing ? default(RGBA, s) : nothing
+        color_map = nothing => Texture
+        color_norm = nothing
+        color = nothing => Texture
 
         algorithm = MaximumIntensityProjection
         absorption = 1f0

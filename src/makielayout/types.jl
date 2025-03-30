@@ -964,6 +964,8 @@ end
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
+        "If false, slider only updates value once dragging stops"
+        update_while_dragging = true
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
     end
@@ -1677,6 +1679,8 @@ end
             a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
+        "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
+        clip::Bool = true
         "The background color"
         backgroundcolor = :transparent
         "The x label"
@@ -1810,7 +1814,7 @@ end
         "The color of y spine 3 opposite of the ticks"
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
-        zspinecolor_3 = :black       
+        zspinecolor_3 = :black
         "Controls if the 4. Spines are created to close the outline box"
         front_spines = false
         "The color of x spine 4"

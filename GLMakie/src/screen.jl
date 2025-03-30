@@ -439,6 +439,12 @@ function Screen(;
     return screen
 end
 
+function Makie.px_per_unit(s::Screen)::Float64
+    config = s.config
+    config === nothing && return 1.0
+    return something(config.px_per_unit, 1.0)
+end
+
 function set_screen_visibility!(screen::Screen, visible::Bool)
     if !screen.owns_glscreen
         error(unimplemented_error)

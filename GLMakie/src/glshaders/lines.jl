@@ -29,80 +29,96 @@ gl_color_type_annotation(::Real) = "float"
 gl_color_type_annotation(::Makie.RGB) = "vec3"
 gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
-function generate_indices(positions)
-    valid_obs = Observable(Float32[]) # why does this need to be a float?
+# Observables removed and adjusted to fit Compute Pipeline
+function generate_indices(ps, indices = Cuint[], valid = Float32[])
+    empty!(indices)
+    resize!(valid, length(ps))
 
-    indices_obs = const_lift(positions) do ps
-        valid = valid_obs[]
-        resize!(valid, length(ps))
+    # can't draw a line with less than 2 points so there are no indices to generate
+    # and valid is irrelevant
+    if length(ps) < 2
+        valid .= 0 # just in case random data is problematic
+        return (indices, valid)
+    end
 
-        indices = Cuint[]
-        sizehint!(indices, length(ps)+2)
+    sizehint!(indices, length(ps) + 2)
 
-        # This loop identifies sections of line points A B C D E F bounded by
-        # the start/end of the list ps or by NaN and generates indices for them:
-        # if A == F (loop):      E A B C D E F B 0
-        # if A != F (no loop):   0 A B C D E F 0
-        # where 0 is NaN
-        # It marks vertices as invalid (0) if they are NaN, valid (1) if they
-        # are part of a continuous line section, or as ghost edges (2) used to
-        # cleanly close a loop. The shader detects successive vertices with
-        # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
-        # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
+    # This loop identifies sections of line points A B C D E F bounded by
+    # the start/end of the list ps or by NaN and generates indices for them:
+    # if A == F (loop):      E A B C D E F B 0
+    # if A != F (no loop):   0 A B C D E F 0
+    # where 0 is NaN
+    # It marks vertices as invalid (0) if they are NaN, valid (1) if they
+    # are part of a continuous line section, or as ghost edges (2) used to
+    # cleanly close a loop. The shader detects successive vertices with
+    # 1-2-0 and 0-2-1 validity to avoid drawing ghost segments (E-A from
+    # 0-E-A-B and F-B from E-F-B-0 which would duplicate E-F and A-B)
 
-        last_start_pos = eltype(ps)(NaN)
-        last_start_idx = -1
+    last_start_pos = eltype(ps)(NaN)
+    last_start_idx = -1
 
-        for (i, p) in enumerate(ps)
-            not_nan = isfinite(p)
-            valid[i] = not_nan
+    for (i, p) in enumerate(ps)
+        not_nan = isfinite(p)
+        valid[i] = not_nan
 
-            if not_nan
-                if last_start_idx == -1
-                    # place nan before section of line vertices
-                    # (or duplicate ps[1])
-                    push!(indices, i-1)
-                    last_start_idx = length(indices) + 1
-                    last_start_pos = p
-                end
-                # add line vertex
-                push!(indices, i)
-
-            # case loop (loop index set, loop contains at least 3 segments, start == end)
-            elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-                    (ps[max(1, i-1)] ≈ last_start_pos)
-
-                # add ghost vertices before an after the loop to cleanly connect line
-                indices[last_start_idx-1] = max(1, i-2)
-                push!(indices, indices[last_start_idx+1], i)
-                # mark the ghost vertices
-                valid[i-2] = 2
-                valid[indices[last_start_idx+1]] = 2
-                # not in loop anymore
-                last_start_idx = -1
-
-            # non-looping line end
-            elseif (last_start_idx != -1) # effective "last index not NaN"
-                push!(indices, i)
-                last_start_idx = -1
-            # else: we don't need to push repeated NaNs
+        if not_nan
+            if last_start_idx == -1
+                # place nan before section of line vertices
+                # (or duplicate ps[1])
+                push!(indices, max(1, i-1))
+                last_start_idx = length(indices) + 1
+                last_start_pos = p
             end
-        end
+            # add line vertex
+            push!(indices, i)
 
-        # treat ps[end+1] as NaN to correctly finish the line
-        if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
-                (ps[end] ≈ last_start_pos)
+        # case loop (loop index set, loop contains at least 3 segments, start == end)
+        elseif (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+                (ps[max(1, i-1)] ≈ last_start_pos)
 
-            indices[last_start_idx-1] = length(ps) - 1
-            push!(indices, indices[last_start_idx+1])
-            valid[end-1] = 2
+            # add ghost vertices before an after the loop to cleanly connect line
+            indices[last_start_idx-1] = max(1, i-2)
+            push!(indices, indices[last_start_idx+1], i)
+            # mark the ghost vertices
+            valid[i-2] = 2
             valid[indices[last_start_idx+1]] = 2
-        elseif last_start_idx != -1
-            push!(indices, length(ps))
-        end
+            # not in loop anymore
+            last_start_idx = -1
 
+        # non-looping line end
+        elseif (last_start_idx != -1) # effective "last index not NaN"
+            push!(indices, i)
+            last_start_idx = -1
+        # else: we don't need to push repeated NaNs
+        end
+    end
+
+    # treat ps[end+1] as NaN to correctly finish the line
+    if (last_start_idx != -1) && (length(indices) - last_start_idx > 2) &&
+            (ps[end] ≈ last_start_pos)
+
+        indices[last_start_idx-1] = length(ps) - 1
+        push!(indices, indices[last_start_idx+1])
+        valid[end-1] = 2
+        valid[indices[last_start_idx+1]] = 2
+    elseif last_start_idx != -1
+        push!(indices, length(ps))
+    end
+
+    indices .-= Cuint(1)
+
+    return (indices, valid)
+end
+
+function generate_indices(positions::Observable)
+    valid_obs = Observable(Float32[]) # why does this need to be a float?
+    indices_obs = Observable(Cuint[])
+
+    on(positions, update = true) do ps
+        generate_indices(ps, indices_obs[], valid_obs[])
         notify(valid_obs)
-        return indices .- Cuint(1)
+        notify(indices_obs)
+        return
     end
 
     return indices_obs, valid_obs

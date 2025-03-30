@@ -118,6 +118,8 @@ WARN_ON_LOAD[] = true
 
 function __init__()
     activate!()
+    # trigger OpenGL cleanup to avoid errors in debug mode
+    atexit(GLMakie.closeall)
 end
 
 include("precompiles.jl")
