@@ -373,18 +373,10 @@ function apply_transform(f, data::AbstractArray)
 end
 
 function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2, T}) where T
-    p1, p2 = point
-    try
-        p1 = f[1](p1)
-    catch err
-        @warn err
-    end
-    try
-        p2 = f[2](p2)
-    catch err
-        @warn err
-    end
-    Point2{T}(p1, p2)
+    Point2{T}(
+        f[1](point[1]),
+        f[2](point[2]),
+    )
 end
 # ambiguity fix
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
@@ -397,23 +389,11 @@ end
 apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
 
 function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3, T}) where T
-    p1, p2, p3 = point
-    try
-        p1 = f[1](p1)
-    catch err
-        @warn err
-    end
-    try
-        p2 = f[2](p2)
-    catch err
-        @warn err
-    end
-    try
-        p3 = f[3](p3)
-    catch err
-        @warn err
-    end
-    Point3{T}(p1, p2, p3)
+    Point3{T}(
+        f[1](point[1]),
+        f[2](point[2]),
+        f[3](point[3]),
+    )
 end
 # ambiguity fix
 apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point

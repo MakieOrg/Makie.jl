@@ -1018,8 +1018,8 @@ end
 @reference_test "hexbin threshold" begin
     f = Figure(size = (800, 800))
 
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
@@ -1029,8 +1029,8 @@ end
 end
 
 @reference_test "hexbin scale" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
@@ -1042,8 +1042,8 @@ end
 
 # Scatter needs working highclip/lowclip first
 @reference_test "hexbin colorrange highclip lowclip" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f, ax, pl = hexbin(x, y,
         bins = 40,
@@ -1054,6 +1054,13 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
+end
+
+@testset "hexbin logscale" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/4895
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000) .|> exp
+    hexbin(x, y; axis = (; yscale=log10))
 end
 
 @reference_test "bracket scalar" begin

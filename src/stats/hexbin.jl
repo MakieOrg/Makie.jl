@@ -50,11 +50,22 @@ function data_limits(hb::Hexbin)
     fn(num::Real) = Float64(num)
     fn(tup::Union{Tuple,Vec2}) = Vec2d(tup...)
 
-    ms = 2.0 .* fn(hb.plots[1].markersize[])
-    nw = widths(bb) .+ (ms..., 0.0)
-    no = bb.origin .- ((0.5 .* ms)..., 0.0)
+    ms = 2fn(hb.plots[1].markersize[])
+    ox, oy = bb.origin .- ((0.5 .* ms)..., 0.0)
+    wx, wy = bb.widths .+ (ms..., 0.0)
 
-    return Rect3d(no, nw)
+    # do not extend in order to avoid log-scale DomainError
+    tfx, tfy = transform_func(hb)
+    if tfx isa LogFunctions && ox < 0
+        ox = bb.origin[1]
+        wx = bb.widths[1]
+    end
+    if tfy isa LogFunctions && oy < 0
+        oy = bb.origin[2]
+        wy = bb.widths[2]
+    end
+
+    return Rect3d((ox, oy, 0), (wx, wy, 0))
 end
 boundingbox(p::Hexbin, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
@@ -107,18 +118,13 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         yweight = xsize / ysize
 
         i = 1
-        for (__x, __y) in xy
-            _x, _y = if true
-                tfx(__x), tfy(__y)
-            else
-                __x, __y
-            end
-            nx, nxs, dvx = nearest_center(_x, xspacing, xoff)
-            ny, nys, dvy = nearest_center(_y, yspacing, yoff)
+        for (_x, _y) in xy
+            tx, ty = tfx(_x), tfy(_y)
+            nx, nxs, dvx = nearest_center(tx, xspacing, xoff)
+            ny, nys, dvy = nearest_center(ty, yspacing, yoff)
 
-            d1 = ((_x - nx)^2 + (yweight * (_y - ny))^2)
-            d2 = ((_x - nxs)^2 + (yweight * (_y - nys))^2)
-
+            d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
+            d2 = (tx - nxs)^2 + (yweight * (ty - nys))^2
             is_grid1 = d1 < d2
 
             # _xy = is_grid1 ? (nx, ny) : (nxs, nys)
@@ -139,40 +145,28 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             i += 1
         end
 
+        function add_hex_point(ix, iy, count)
+            x = itfx(xoff + 2ix * xspacing + isodd(iy) * xspacing)
+            y = itfy(yoff + iy * yspacing)
+            push!(points[], Point2f(x, y))
+            push!(count_hex[], count)
+        end
+
         if threshold == 0
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    _x = xoff + 2ix * xspacing + isodd(iy) * xspacing
-                    _y = yoff + iy * yspacing
-                    c = get(d, (ix, iy), 0.0)
-                    if true
-                        _x ,_y = itfx(_x), itfy(_y)
-                    end
-                    push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], c)
+                    add_hex_point(ix, iy, get(d, (ix, iy), 0.0))
                 end
             end
         else
-            # If we don't plot zero cells, we only have to iterate the sparse entries in the dict
+            # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
             for ((ix, iy), value) in d
-                if value >= threshold
-                    _x = xoff + 2ix * xspacing + isodd(iy) * xspacing
-                    _y = yoff + iy * yspacing
-                    if true
-                        _x ,_y = itfx(_x), itfy(_y)
-                    end
-                    push!(points[], Point2f(_x, _y))
-                    push!(count_hex[], value)
-                end
+                value ≥ threshold && add_hex_point(ix, iy, value)
             end
         end
 
-        markersize[] = if true
-            Vec2f(rx, ry)
-        else
-            Vec2f(itfx(rx), itfy(ry))
-        end
+        markersize[] = Vec2f(rx, ry)
         notify(points)
         return notify(count_hex)
     end
