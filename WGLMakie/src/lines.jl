@@ -20,7 +20,8 @@ function create_lines_data(islines, attr)
     end
 
     if !isnothing(attr.scaled_colorrange[])
-        uniforms[:colormap] = Sampler(attr.alpha_colormap[])
+        cm_minfilter = attr.colormapping_type[] === Makie.continuous ? :linear : :nearest
+        uniforms[:colormap] = Sampler(attr.alpha_colormap[], minfilter = cm_minfilter)
         uniforms[:colorrange] = attr.scaled_colorrange[]
         uniforms[:highclip] = attr._highclip[]
         uniforms[:lowclip] = attr._lowclip[]

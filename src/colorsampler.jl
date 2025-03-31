@@ -54,7 +54,14 @@ function interpolated_getindex(cmap::AbstractArray{T}, i01::AbstractFloat) where
     return convert(T, downc * (one(interp_val) - interp_val) + upc * interp_val)
 end
 
-function nearest_getindex(cmap::AbstractArray, i01::AbstractFloat)
+function nearest_getindex(cmap::AbstractArray, value::Real, norm::VecTypes)
+    cmin, cmax = norm
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
+    return nearest_getindex(cmap, i01)
+end
+
+function nearest_getindex(cmap::AbstractArray, i01::Real)
     idx = round(Int, i01 * (length(cmap) - 1)) + 1
     return cmap[idx]
 end
@@ -155,14 +162,16 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primi
     highclip = get_attribute(primitive, :highclip)::RGBAf
     nan_color = get_attribute(primitive, :nan_color, RGBAf(0,0,0,0))::RGBAf
 
-    return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color)
+    return numbers_to_colors(numbers, colormap, colorscale, colorrange, lowclip, highclip, nan_color, true)
 end
 
-function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
-                           colormap, colorscale, colorrange::Vec2,
-                           lowclip::Union{Automatic,RGBAf},
-                           highclip::Union{Automatic,RGBAf},
-                           nan_color::RGBAf)::Union{Array{RGBAf, N},RGBAf} where {N}
+function numbers_to_colors(
+        numbers::Union{AbstractArray{<:Number, N},Number},
+        colormap, colorscale, colorrange::Vec2,
+        lowclip::Union{Automatic,RGBAf}, highclip::Union{Automatic,RGBAf},
+        nan_color::RGBAf, interpolate
+    )::Union{Array{RGBAf, N},RGBAf} where {N}
+
     cmin, cmax = colorrange
     scaled_cmin = apply_scale(colorscale, cmin)
     scaled_cmax = apply_scale(colorscale, cmax)
@@ -176,10 +185,11 @@ function numbers_to_colors(numbers::Union{AbstractArray{<:Number, N},Number},
         elseif highclip !== automatic && scaled_number > scaled_cmax
             return highclip
         end
-        return interpolated_getindex(
-            colormap,
-            scaled_number,
-            (scaled_cmin, scaled_cmax))
+        if interpolate
+            return interpolated_getindex(colormap, scaled_number, (scaled_cmin, scaled_cmax))
+        else
+            return nearest_getindex(colormap, scaled_number, (scaled_cmin, scaled_cmax))
+        end
     end
 end
 
@@ -365,12 +375,15 @@ function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nosp
 end
 
 function to_color(c::ColorMapping)
-    return numbers_to_colors(c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[], lowclip(c)[], highclip(c)[], c.nan_color[])
+    return numbers_to_colors(
+        c.color_scaled[], c.colormap[], identity, c.colorrange_scaled[],
+        lowclip(c)[], highclip(c)[], c.nan_color[], c.color_mapping_type[] == continuous)
 end
 
 function Base.get(c::ColorMapping, value::Number)
-    return numbers_to_colors([value], c.colormap[], c.scale[], c.colorrange_scaled[], lowclip(c)[],
-                             highclip(c)[], c.nan_color[])[1]
+    return numbers_to_colors(
+        [value], c.colormap[], c.scale[], c.colorrange_scaled[],
+        lowclip(c)[], highclip(c)[], c.nan_color[], c.color_mapping_type[] == continuous)[1]
 end
 
 function assemble_colors(colortype, color, plot)
@@ -386,8 +399,12 @@ end
 function assemble_colors(::Number, color, plot)
     plot.colorrange[] isa Automatic && error("Cannot determine a colorrange automatically for single number color value. Pass an explicit colorrange.")
     cm = assemble_colors([color[]], lift(x -> [x], color), plot)
-    return lift((args...)-> numbers_to_colors(args...)[1], cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled, cm.lowclip, cm.highclip,
-                      cm.nan_color)
+    return lift(
+            cm.color_scaled, cm.colormap, identity, cm.colorrange_scaled,
+            cm.lowclip, cm.highclip, cm.nan_color, cm.color_mapping_type
+        ) do vals, cm, cs, cr, lw, hc, nc, ct
+        return numbers_to_colors(vals, cm, cs, cr, lw, hc, nc, ct == continuous)[1]
+    end
 end
 
 highclip(cmap::ColorMapping) = lift((cm, hc) -> hc isa Automatic ? last(cm) : hc, cmap.colormap, cmap.highclip)
