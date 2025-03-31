@@ -641,6 +641,9 @@ function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, outpu
     new_edge = ComputeEdge(f, inputs)
     for input in inputs
         @assert hasparent(input)
+        # Edges can have multiple outputs so multiple inputs of this edge could
+        # come from the same edge
+        any(x -> x === new_edge, input.parent.dependents) && continue
         push!(input.parent.dependents, new_edge)
     end
 
