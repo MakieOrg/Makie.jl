@@ -1024,9 +1024,16 @@ end
     # Implicit shape of a heart: f(x, y) = k
     f = (x,y) -> x^2 + (y - (x^2)^(1/3))^2
     Z = f.(X, Y)
-    
+
     fig = Figure()
-    ax1 = Axis(fig[1,1], title="Default (10 levels)")
+
+    # Add a supertitle
+    supertitle = Label(
+        fig[0, :], "Tricontour level options (no labels)",
+        fontsize=18, font=:bold
+        )
+    
+    ax1 = Axis(fig[1,1], title="Default (10 levels) [no labels]")
     ax2 = Axis(fig[1,3], title="Integer levels (5 levels)")
     ax3 = Axis(fig[2,1], title="Vector of 4 floats as levels")
     ax4 = Axis(fig[2,3], title="Vector with single value as level")
@@ -1035,8 +1042,7 @@ end
     Colorbar(fig[1, 2], tr1.plots[2])
 
     tr2 = tricontour!(
-        ax2, X, Y, Z,
-        levels = 5, labels=true
+        ax2, X, Y, Z, levels = 5
         )
     Colorbar(fig[1, 4], tr2.plots[2])
 
@@ -1045,7 +1051,7 @@ end
         )
     Colorbar(fig[2, 2], tr3.plots[2])
 
-    tr4 = tricontour!( ax4, X, Y, Z, levels = [2.0])
+    tr4 = tricontour!( ax4, X, Y, Z, levels = [2.0] )
     Colorbar(fig[2, 4], tr4.plots[2])
     
     fig
@@ -1064,7 +1070,7 @@ end
     Z = f.(X, Y)
     
     fig = Figure()
-    ax1 = Axis(fig[1,1], title="Default (10 levels)")
+    ax1 = Axis(fig[1,1], title="Default (10 levels) [with labels]")
     ax2 = Axis(fig[1,3], title="Integer levels (5 levels)")
     ax3 = Axis(fig[2,1], title="Vector of 4 floats as levels")
     ax4 = Axis(fig[2,3], title="Vector with single value as level")
@@ -1090,6 +1096,154 @@ end
         )
     Colorbar(fig[2, 4], tr4.plots[2])
     
+    fig
+    
+end
+
+@reference_test "tricontour linestyle format options" begin
+
+    xs = LinRange(-3, 3, 100);
+    ys = LinRange(-3, 3, 100);
+    X = [x for x in xs, y in ys][:];
+    Y = [y for x in xs, y in ys][:];
+
+    levels = collect(-5:10)
+
+    # Contours f(x, y) = k
+    f = (x,y) -> 0.25 * ( 5*x^2 + y^2 -4 ) * ( x^2 + 5*y^2 -4 )
+    Z = f.(X, Y)
+    
+    fig = Figure()
+    ax1 = Axis(fig[1,1], title="Linewidth 2.0 + linecap :round")
+    ax2 = Axis(fig[1,3], title="Linewidth 3.0 + alpha 0.5")
+    ax3 = Axis(fig[2,1], title="Linestyle (:dot, :loose)")
+    ax4 = Axis(fig[2,3], title="Linewidth 2.0 + joinstyle :bevel")
+
+
+    tr1 = tricontour!(
+        ax1, X, Y, Z, levels = levels,
+        linewidth = 2.0, linecap = :round
+        )
+    Colorbar(fig[1, 2], tr1.plots[2])
+
+    tr2 = tricontour!(
+        ax2, X, Y, Z, levels = levels,
+        linewidth = 3, alpha = 0.5
+        )
+    Colorbar(fig[1, 4], tr2.plots[2])
+
+    tr3 = tricontour!(
+        ax3, X, Y, Z, levels = levels,
+        linestyle = (:dot, :loose)
+        )
+    Colorbar(fig[2, 2], tr3.plots[2])
+
+    tr4 = tricontour!(
+        ax4, X, Y, Z, levels = levels,
+        linewidth = 2.0, joinstyle=:bevel
+        )
+
+    fig
+    
+end
+
+@reference_test "tricontour color options" begin
+
+    xs = LinRange(-4, 4, 100);
+    ys = LinRange(-4, 4, 100);
+    X = [x for x in xs, y in ys][:];
+    Y = [y for x in xs, y in ys][:];
+
+    levels = [-0.5, 0, 0.5]
+
+    # Contours f(x, y) = k
+    f = (x,y) -> cos( 20 * ( atan((x-1)/y ) + atan(y, x+1 ) ) )
+    Z = f.(X, Y)
+    
+    fig = Figure()
+    ax1 = Axis(fig[1,1], title="Default")
+    ax2 = Axis(fig[1,3], title="Continuous colormap")
+    ax3 = Axis(fig[2,1], title="Colormap :reds")
+    ax4 = Axis(fig[2,3], title="Color :black")
+
+
+    tr1 = tricontour!(
+        ax1, X, Y, Z, levels = levels,
+        )
+    Colorbar(fig[1, 2], tr1.plots[2])
+
+    tr2 = tricontour!(
+        ax2, X, Y, Z, levels = levels,
+        discretize_colormap = false
+        )
+    Colorbar(fig[1, 4], tr2.plots[2])
+
+    tr3 = tricontour!(
+        ax3, X, Y, Z, levels = levels,
+        colormap = :reds
+        )
+    Colorbar(fig[2, 2], tr3.plots[2])
+
+    tr4 = tricontour!(
+        ax4, X, Y, Z, levels = levels,
+        color = :black
+        )
+
+    fig
+    
+end
+
+@reference_test "tricontour label format options" begin
+
+    xs = LinRange(-4, 4, 100);
+    ys = LinRange(-4, 4, 100);
+    X = [x for x in xs, y in ys][:];
+    Y = [y for x in xs, y in ys][:];
+
+    b = [0.8, 1, 1.1, 1.2, 1.4, 1.6]
+    levels = b.^4
+
+    round.(levels.^(0.25); digits=1)
+
+    # Cassini ovals: f_cassini(x, y, a) = b^4
+    f_cassini = (x, y, a) -> ( x^2 + y^2 )^2 - 2*a^2*( x^2 - y^2) + a^4
+    f = (x, y) -> f_cassini(x, y, 1)
+    Z = f.(X, Y)
+
+    # Inline function for label strings
+    custom_label_formatter = (level::Real) -> begin
+        b = round( level^0.25; digits = 2 )
+        "b= " * string(isinteger(b) ? round(Int, b) : b)
+    end
+    
+    fig = Figure()
+    ax1 = Axis(fig[1,1], title="Default labels")
+    ax2 = Axis(fig[1,3], title="Custom labelformatter")
+    ax3 = Axis(fig[2,1], title="Color blue, labelcolor black α=0.5")
+    ax4 = Axis(fig[2,3], title="Label font and size")
+
+
+    tr1 = tricontour!(
+        ax1, X, Y, Z, levels = levels, labels = true
+        )
+    Colorbar(fig[1, 2], tr1.plots[2])
+
+    tr2 = tricontour!(
+        ax2, X, Y, Z, levels = levels, labels = true,
+        labelformatter = custom_label_formatter
+        )
+    Colorbar(fig[1, 4], tr2.plots[2])
+
+    tr3 = tricontour!(
+        ax3, X, Y, Z, levels = levels, labels = true,
+        color = :blue, labelcolor = (:black, 0.5)
+        )
+
+    tr4 = tricontour!(
+        ax4, X, Y, Z, levels = levels, labels = true,
+        labelfont = :bold_italic, labelsize = :8
+        )
+    Colorbar(fig[2, 4], tr4.plots[2])
     fig
     
 end
@@ -1129,8 +1283,7 @@ end
     
     Colorbar(f[1,2] ,tr.plots[2])
     ax.title[]= L"f(x,y) = (sin(x) - 3)^2 + (cos(y) - 3)^2 - 10"
-    f
-    
+
     f
 end
 
