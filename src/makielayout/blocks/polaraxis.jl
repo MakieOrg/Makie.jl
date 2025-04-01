@@ -563,11 +563,10 @@ end
 function draw_axis!(po::PolarAxis)
     rtick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     rtick_align = Observable{Point2f}()
-    rtick_offset = Observable{Point2f}()
+    rticklabeloffset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
-    LSType = typeof(GeometryBasics.LineString(Point2f[]))
-    rgridpoints = Observable{Vector{LSType}}()
-    rminorgridpoints = Observable{Vector{LSType}}()
+    rgridpoints = Observable{Vector{Point2f}}()
+    rminorgridpoints = Observable{Vector{Point2f}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic
@@ -597,11 +596,11 @@ function draw_axis!(po::PolarAxis)
 
         # For grid lines
         thetas = LinRange(thetalims..., sample_density)
-        rgridpoints[] = GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius])
+        rgridpoints[] = convert_arguments(Lines, GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rtickradius]))[1]
 
         _rminortickvalues = get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
         _rminortickvalues .= (_rminortickvalues .- target_r0) .* rmaxinv
-        rminorgridpoints[] = GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
+        rminorgridpoints[] = convert_arguments(Lines, GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues]))[1]
 
         return
     end
@@ -610,11 +609,13 @@ function draw_axis!(po::PolarAxis)
     onany(
             po.blockscene,
             po.direction, po.target_theta_0, po.rtickangle, po.target_thetalims, po.rticklabelpad,
-            po.rticklabelrotation
-        ) do dir, theta_0, rtickangle, thetalims, pad, rot
+            po.rticklabelrotation,
+            po.rticksvisible, po.rtickalign, po.rticksize
+        ) do dir, theta_0, rtickangle, thetalims, pad, rot, tvis, talign, tlength
         angle = mod(dir * (default_rtickangle(rtickangle, dir, thetalims) + theta_0), 0..2pi)
         s, c = sincos(angle - pi/2)
-        rtick_offset[] = Point2f(pad * c, pad * s)
+        rtickoffset = ifelse(tvis, (1-talign) * tlength, 0)
+        rticklabeloffset[] = Float32(pad + rtickoffset) * Point2f(c, s)
         if rot === automatic
             rot = (thetalims[2] - thetalims[1]) > 1.9pi ? (:horizontal) : (:aligned)
         end
@@ -640,15 +641,16 @@ function draw_axis!(po::PolarAxis)
 
     thetatick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
     thetatick_align = Observable(Point2f[])
-    thetatick_offset = Observable(Point2f[])
+    thetaticklabeloffset = Observable(Point2f[])
     thetagridpoints = Observable{Vector{Point2f}}()
     thetaminorgridpoints = Observable{Vector{Point2f}}()
 
     onany(
             po.blockscene,
             po.thetaticks, po.thetaminorticks, po.thetatickformat, po.thetaticklabelpad,
-            po.direction, po.target_theta_0, po.target_rlims, po.target_thetalims, po.target_r0
-        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, r0
+            po.direction, po.target_theta_0, po.target_rlims, po.target_thetalims, po.target_r0,
+            po.thetaticksvisible, po.thetatickalign, po.thetaticksize
+        ) do thetaticks, thetaminorticks, thetatickformat, px_pad, dir, theta_0, rlims, thetalims, r0, tvis, talign, tlength
 
         _thetatickvalues, _thetaticklabels = get_ticks(thetaticks, identity, thetatickformat, thetalims...)
 
@@ -662,14 +664,15 @@ function draw_axis!(po::PolarAxis)
 
         # Text
         resize!(thetatick_align.val, length(_thetatickvalues))
-        resize!(thetatick_offset.val, length(_thetatickvalues))
+        resize!(thetaticklabeloffset.val, length(_thetatickvalues))
         for (i, angle) in enumerate(_thetatickvalues)
             s, c = sincos(dir * (angle + theta_0))
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
             thetatick_align.val[i] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
-            thetatick_offset.val[i] = Point2f(px_pad * c, px_pad * s)
+            thetatickoffset = ifelse(tvis, (1-talign) * tlength, 0)
+            thetaticklabeloffset.val[i] = (thetatickoffset + px_pad) * Point2f(c, s)
         end
-        foreach(notify, (thetatick_align, thetatick_offset))
+        foreach(notify, (thetatick_align, thetaticklabeloffset))
 
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(1, _thetatickvalues))
 
@@ -829,10 +832,9 @@ function draw_axis!(po::PolarAxis)
         strokecolor = rstrokecolor,
         align = rtick_align,
         rotation = rtick_rotation,
-        visible = po.rticklabelsvisible
+        visible = po.rticklabelsvisible,
+        offset = rticklabeloffset
     )
-    # OPT: skip glyphcollection update on offset changes
-    rticklabelplot.plots[1].plots[1].offset = rtick_offset
 
 
     thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
@@ -847,9 +849,9 @@ function draw_axis!(po::PolarAxis)
         strokewidth = po.thetaticklabelstrokewidth,
         strokecolor = thetastrokecolor,
         align = thetatick_align[],
-        visible = po.thetaticklabelsvisible
+        offset = thetaticklabeloffset,
+        visible = po.thetaticklabelsvisible,
     )
-    thetaticklabelplot.plots[1].plots[1].offset = thetatick_offset
 
     # Hack to deal with synchronous update problems
     on(po.blockscene, thetatick_align) do align
@@ -860,12 +862,49 @@ function draw_axis!(po::PolarAxis)
         return
     end
 
+    # ticks
+
+    # ((r, theta), lbl) -> (r, theta) -> theta
+    rtickpos = map(ps -> last.(ps), po.blockscene, rtick_pos_lbl)
+    rtickrotation = map(po.blockscene, po.target_theta_0, rtickpos) do theta_0, ps
+        return last.(ps) .+ (theta_0)
+    end
+    rtickplot = scatter!(
+        po.overlay, rtickpos,
+        marker = Rect,
+        markersize = map((w, l) -> Vec2f(w, l), po.blockscene, po.rtickwidth, po.rticksize),
+        color = po.rtickcolor,
+        rotation = rtickrotation,
+        marker_offset = map(po.blockscene, rtickrotation, po.rtickalign, po.rtickwidth, po.rticksize) do angles, align, w, l
+            return [rotmatrix2d(angle) * (align - 0.5) * Vec2f(0, l) for angle in angles]
+        end,
+        visible = po.rticksvisible
+    )
+
+    thetatickpos = map(ps -> last.(ps), po.blockscene, thetatick_pos_lbl)
+    thetatickrotation = map(po.blockscene, po.target_theta_0, thetatickpos) do theta_0, ps
+        return last.(ps) .+ (theta_0 + pi/2)
+    end
+    thetatickplot = scatter!(
+        po.overlay, thetatickpos,
+        marker = Rect,
+        markersize = map((w, l) -> Vec2f(w, l), po.blockscene, po.thetatickwidth, po.thetaticksize),
+        color = po.thetatickcolor,
+        rotation = thetatickrotation,
+        marker_offset = map(po.blockscene, thetatickrotation, po.thetatickalign, po.thetatickwidth, po.thetaticksize) do angles, align, w, l
+            return [rotmatrix2d(angle) * (align - 0.5) * Vec2f(0, l) for angle in angles]
+        end,
+        visible = po.thetaticksvisible
+    )
+
+    # minor ticks
+
     # updates and z order
     notify(po.target_thetalims)
 
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
     translate!(spineplot, 0, 0, 9001)
-    translate!.((rticklabelplot, thetaticklabelplot), 0, 0, 9002)
+    translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot), 0, 0, 9002)
     on(po.blockscene, po.gridz) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
