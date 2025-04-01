@@ -21,55 +21,45 @@ end
 _hexbin_xfact() = 2
 _hexbin_yfact() = 4 / 3
 
-function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
+function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
-    x_diff = xma - xmi
-    y_diff = yma - ymi
-
-    xspacing, yspacing = (x_diff, y_diff) ./ (bins .- 1)
-    return xspacing, yspacing, xmi, ymi, bins...
+    return r.widths ./ (bins .- 1), r.origin, bins
 end
 
-function _spacings_offsets_nbins(bins, cellsize::Real, xmi, xma, ymi, yma)
-    return _spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
-end
-function _spacings_offsets_nbins(bins::Int, cellsize::Nothing, xmi, xma, ymi, yma)
-    return _spacings_offsets_nbins((bins, bins), cellsize, xmi, xma, ymi, yma)
-end
+_spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d) =
+    _spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), r)
+_spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
+    _spacings_offsets_nbins((bins, bins), cellsize, r)
 
-function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma, ymi, yma)
-    x_diff = xma - xmi
-    y_diff = yma - ymi
+function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
     xspacing = cellsizes[1] / _hexbin_xfact()
     yspacing = cellsizes[2] / _hexbin_yfact()
-    (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
-    return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
-           ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
+    (nx, restx), (ny, resty) = fldmod.(r.widths, (xspacing, yspacing))
+    xoff = r.origin[1] - (restx > 0 ? (xspacing - restx) / 2 : 0)
+    yoff = r.origin[2] - (resty > 0 ? (yspacing - resty) / 2 : 0)
+    return (xspacing, yspacing), (xoff, yoff), (Int(nx) + (restx > 0), Int(ny) + (resty > 0))
 end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
 
 function data_limits(hb::Hexbin)
-    bb = Rect3d(hb.plots[1][1][])
+    bb = Rect2d(hb.plots[1][1][])
     fn(num::Real) = Float64(num)
     fn(tup::Union{Tuple,Vec2}) = Vec2d(tup...)
 
-    ms = 2fn(hb.plots[1].markersize[])
-    ox, oy = bb.origin .- ((0.5 .* ms)..., 0.0)
-    wx, wy = bb.widths .+ (ms..., 0.0)
+    ms = 2 * fn(hb.plots[1].markersize[])
+    origin = collect(bb.origin .- 0.5 * ms)
+    width = collect(bb.widths .+ ms)
 
-    # do not extend in order to avoid log-scale DomainError
-    tfx, tfy = transform_func(hb)
-    if tfx isa LogFunctions && ox < 0
-        ox = bb.origin[1]
-        wx = bb.widths[1]
+    tf = transform_func(hb)
+    for dim in 1:length(origin)
+        # reset to origin (do not extend) in order to avoid logscale DomainError on negative values
+        if !can_handle_negative_domain(tf, dim) && origin[dim] < 0
+            origin[dim] = bb.origin[dim]
+            width[dim] = bb.widths[dim]
+        end
     end
-    if tfy isa LogFunctions && oy < 0
-        oy = bb.origin[2]
-        wy = bb.widths[2]
-    end
-
-    return Rect3d((ox, oy, 0), (wx, wy, 0))
+    return Rect3d(origin, width)
 end
 boundingbox(p::Hexbin, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
@@ -79,8 +69,8 @@ get_weight(::Nothing, i) = 1e0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
-    tfx, tfy = tf = transform_func(hb)
-    itfx, itfy = inverse_transform(tf)
+    tf = transform_func(hb)
+    itf = inverse_transform(tf)
 
     points = Observable(Point2f[])
     count_hex = Observable(Float64[])
@@ -88,9 +78,9 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     sqrt3 = sqrt(3)
 
     function add_hex_point(ix, iy, (xoff, yoff, xspacing, yspacing), count)
-        x = itfx(xoff + 2ix * xspacing + isodd(iy) * xspacing)
-        y = itfy(yoff + iy * yspacing)
-        push!(points[], Point2f(x, y))
+        x = xoff + (2 * ix + isodd(iy)) * xspacing
+        y = yoff + iy * yspacing
+        push!(points[], apply_transform(itf, (x, y)) |> Point2f)
         push!(count_hex[], count)
     end
 
@@ -101,19 +91,15 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         isempty(xy) && return
 
         # enclose data in limits
-        xmi, xma = let (lo, hi) = extrema(p -> p[1], xy)
-            tfx(prevfloat(lo)), tfx(nextfloat(hi))
+        rect = let (lox, hix) = extrema(p -> p[1], xy),
+                   (loy, hiy) = extrema(p -> p[2], xy)
+            origin = Point(lox, loy)
+            width = Point(hix - lox, hiy - loy)
+            apply_transform(tf, Rect2d(origin, width))
         end
 
-        ymi, yma = let (lo, hi) = extrema(p -> p[2], xy)
-            tfy(prevfloat(lo)), tfy(nextfloat(hi))
-        end
-
-        x_diff = xma - xmi
-        y_diff = yma - ymi
-
-        xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
-            _spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
+        (xspacing, yspacing), (xoff, yoff), (nbinsx, nbinsy) =
+            _spacings_offsets_nbins(bins, cellsize, rect)
 
         xsize = xspacing * _hexbin_xfact()
         rx = xsize / sqrt3
@@ -129,8 +115,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         yweight = xsize / ysize
 
         i = 1
-        for (_x, _y) in xy
-            tx, ty = tfx(_x), tfy(_y)
+        for _xy in xy
+            tx, ty = apply_transform(tf, _xy)
             nx, nxs, dvx = _nearest_center(tx, xspacing, xoff)
             ny, nys, dvy = _nearest_center(ty, yspacing, yoff)
 
