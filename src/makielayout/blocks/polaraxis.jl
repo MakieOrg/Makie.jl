@@ -50,13 +50,15 @@ function initialize_block!(po::PolarAxis; palette=nothing)
             rticklabelplot.plots[1].font,
             rticklabelplot.visible,
             po.rticklabelpad,
+            po.rticksvisible, po.rticksize, po.rtickalign,
             thetaticklabelplot.plots[1].text,
             thetaticklabelplot.plots[1].fontsize,
             thetaticklabelplot.plots[1].font,
             thetaticklabelplot.visible,
             po.thetaticklabelpad,
+            po.thetaticksvisible, po.thetaticksize, po.thetatickalign,
             po.overlay.viewport
-        ) do _, _, _, rvisible, rpad, _, _, _, tvisible, tpad, area
+        ) do _, _, _, rvisible, rpad, rtvis, rtsize, rtalign, _, _, _, tvisible, tpad, ttvis, ttsize, ttalign, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
@@ -76,8 +78,11 @@ function initialize_block!(po::PolarAxis; palette=nothing)
 
         max_width, max_height = max_widths
 
+        full_rpad = 2rpad + ifelse(rtvis, (1 - rtalign) * rtsize, 0)
+        full_tpad = 2tpad + ifelse(ttvis, (1 - ttalign) * ttsize, 0)
+
         space_from_center = 0.5 .* widths(area)
-        space_for_ticks = 2max(rpad, tpad) .+ (max_width, max_height)
+        space_for_ticks = max(full_rpad, full_tpad) .+ (max_width, max_height)
         space_for_axis = space_from_center .- space_for_ticks
 
         # divide by width only because aspect ratios
