@@ -904,7 +904,7 @@ function draw_axis!(po::PolarAxis)
 
     # minor ticks
 
-    rminortickpos = map(ls -> last.(coordinates.(ls)), po.blockscene, rminorgridpoints)
+    rminortickpos = map(ls -> first.(coordinates.(ls)), po.blockscene, rminorgridpoints)
     rminortickrotation = map(po.blockscene, po.target_theta_0, rminortickpos) do theta_0, ps
         return last.(ps) .+ (theta_0)
     end
