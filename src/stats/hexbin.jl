@@ -117,7 +117,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xsize = xspacing * 2
         rx = xsize / sqrt3
 
-        d = Dict{Tuple{Int,Int}, Float64}()
+        bin_map = Dict{Tuple{Int,Int}, Float64}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
@@ -145,7 +145,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 )
             end
 
-            d[id] = get(d, id, 0.0) + get_weight(weights, i)
+            bin_map[id] = get(bin_map, id, 0.0) + get_weight(weights, i)
             i += 1
         end
 
@@ -155,12 +155,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    add_hex_point(ix, iy, off_sp, get(d, (ix, iy), 0.0))
+                    add_hex_point(ix, iy, off_sp, get(bin_map, (ix, iy), 0.0))
                 end
             end
         else
             # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
-            for ((ix, iy), value) in d
+            for ((ix, iy), value) in bin_map
                 value ≥ threshold && add_hex_point(ix, iy, off_sp, value)
             end
         end
