@@ -392,7 +392,6 @@ function _resolve!(computed::Computed)
     return computed.value[]
 end
 
-
 function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
