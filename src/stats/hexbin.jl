@@ -18,10 +18,10 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 end
 
 # hardcoded scale factors
-@inline _hexbin_xsize_fact() = 2
-@inline _hexbin_ysize_fact() = 4 / 3
-@inline _hexbin_xmarker_fact() = sqrt(3)
-@inline _hexbin_ymarker_fact() = 2
+@inline _hexbin_xsize_fact() = Float64(2)
+@inline _hexbin_ysize_fact() = Float64(4 / 3)
+@inline _hexbin_xmarker_fact() = Float64(1 / sqrt(3))
+@inline _hexbin_ymarker_fact() = Float64(1 / 2)
 
 function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
@@ -29,7 +29,7 @@ function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rec
 end
 
 _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d) =
-    _spacings_offsets_nbins(bins, (cellsize, cellsize * _hexbin_ymarker_fact() / _hexbin_xmarker_fact()), r)
+    _spacings_offsets_nbins(bins, (cellsize, cellsize * _hexbin_xmarker_fact() / _hexbin_ymarker_fact()), r)
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
     _spacings_offsets_nbins((bins, bins), cellsize, r)
 
@@ -81,7 +81,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     function add_hex_point(ix, iy, (xoff, yoff, xspacing, yspacing), count)
         x = xoff + (2 * ix + isodd(iy)) * xspacing
         y = yoff + iy * yspacing
-        push!(points[], apply_transform(itf, (x, y)) |> Point2f)
+        push!(points[], apply_transform(itf, Point2f(x, y)))
         push!(count_hex[], count)
     end
 
@@ -94,8 +94,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         # enclose data in limits
         rect = let (lox, hix) = extrema(p -> p[1], xy),
                    (loy, hiy) = extrema(p -> p[2], xy)
-            origin = Point(lox, loy)
-            width = Point(hix - lox, hiy - loy)
+            origin = Point(prevfloat(lox), prevfloat(loy))
+            width = Point(nextfloat(hix), nextfloat(hiy)) - origin
             apply_transform(tf, Rect2d(origin, width))
         end
 
@@ -103,10 +103,10 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             _spacings_offsets_nbins(bins, cellsize, rect)
 
         xsize = xspacing * _hexbin_xsize_fact()
-        rx = xsize / _hexbin_xmarker_fact()
+        rx = xsize * _hexbin_xmarker_fact()
 
         ysize = yspacing * _hexbin_ysize_fact()
-        ry = ysize / _hexbin_ymarker_fact()
+        ry = ysize * _hexbin_ymarker_fact()
 
         bin_map = Dict{Tuple{Int,Int}, Float64}()
 
@@ -116,6 +116,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         yweight = xsize / ysize
 
         i = 1
+        tfx, tfy = tf
         for _xy in xy
             tx, ty = apply_transform(tf, _xy)
             nx, nxs, dvx = _nearest_center(tx, xspacing, xoff)
@@ -127,12 +128,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             id = if (is_grid1 = d1 < d2)
                 (
                     cld(dvx, 2),
-                    iseven(dvy) ? dvy : dvy+1
+                    iseven(dvy) ? dvy : dvy + 1
                 )
             else
                 (
                     fld(dvx, 2),
-                    iseven(dvy) ? dvy+1 : dvy,
+                    iseven(dvy) ? dvy + 1 : dvy
                 )
             end
 
