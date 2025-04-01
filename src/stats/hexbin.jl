@@ -145,7 +145,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                 )
             end
 
-            d[id] = get(d, id, 0) + get_weight(weights, i)
+            d[id] = get(d, id, 0.0) + get_weight(weights, i)
             i += 1
         end
 
