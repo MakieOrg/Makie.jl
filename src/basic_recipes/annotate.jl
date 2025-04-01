@@ -1,20 +1,38 @@
 struct ConnectionLine end
-struct ConnectionArc
-
-end
 
 @recipe(Annotate) do scene
     Theme(
         color = :black,
         text = "Some text",
         connection = ConnectionLine(),
-        shrink = (5.0, 5.0),
+        shrink = (5.0, 10.0),
         clipstart = automatic,
         align = (:left, :bottom),
         arrow = automatic,
     )
 end
 
+function closest_point_on_rectangle(r::Rect2, p)
+    x1, y1 = r.origin
+    x2, y2 = x1 + r.widths[1], y1 + r.widths[2]
+    px, py = p
+
+    clamped_x = clamp(px, x1, x2)
+    clamped_y = clamp(py, y1, y2)
+
+    if px in (x1, x2) || py in (y1, y2)
+        return Point2(clamped_x, clamped_y)
+    end
+
+    candidates = [
+        Point2(clamped_x, y1),
+        Point2(clamped_x, y2),
+        Point2(x1, clamped_y),
+        Point2(x2, clamped_y)
+    ]
+    
+    return argmin(c -> norm(c - p), candidates)
+end
 
 function Makie.plot!(p::Annotate)
     scene = Makie.get_scene(p)
@@ -27,7 +45,15 @@ function Makie.plot!(p::Annotate)
         return Makie.project.(Ref(scene), (Point2d(p1), Point2d(p2)))
     end
 
-    base_path = lift(p, points, p.connection) do (p1, p2), conn
+    glyphcolls = txt.plots[1][1]
+    text_bb = lift(p, glyphcolls, scene.camera.projectionview) do glyphcolls, _
+        point = Makie.project(scene, (Point2d(p[1][])))
+        Rect2f(unchecked_boundingbox(only(glyphcolls), Point3f(point..., 0), Makie.to_rotation(0)))
+    end
+
+    base_path = lift(p, points, text_bb, p.connection) do (_, p2), text_bb, conn
+        # p1 = closest_point_on_rectangle(text_bb, p2)
+        p1 = text_bb.origin .+ 0.5 .* text_bb.widths
         path = connection_path(conn, p1, p2)
         start = path.commands[1]
         if !(start isa MoveTo)
@@ -75,47 +101,54 @@ function connection_path(::ConnectionLine, p1, p2)
     ])
 end
 
-function connection_path(::ConnectionArc, p1, p2)
-    len = Makie.norm(p2 - p1)
-    arc = EllipticalArc(
-        p1...,
-        p2...,
-        len/1.3,
-        len/1.3,
-        0,
-        false,
-        false,
-    )
-    BezierPath([
-        MoveTo(p1),
-        arc,
-    ])
-end
-
 function shrink_path(path, shrink)
-    shrink == (0, 0) && return path
     start::MoveTo = path.commands[1]
+    stop = endpoint(path.commands[end])
 
     if length(path.commands) < 2
         return path
     end
 
-    for i in 2:length(path.commands)
-        p_prev = endpoint(path.commands[i-1])
-        intersects, moveto, newcommand = circle_intersection(start.p, shrink[1], p_prev, path.commands[i])
-        if !intersects # should mean that the command is contained in the circle because we start at its center
-            continue
-        else
-            path = BezierPath([
-                moveto;
-                newcommand;
-                @view(path.commands[i+1:end])
-            ])
-            break
+    if shrink[1] > 0
+        for i in 2:length(path.commands)
+            p_prev = endpoint(path.commands[i-1])
+            intersects, moveto, newcommand = circle_intersection(start.p, shrink[1], p_prev, path.commands[i])
+            if !intersects # should mean that the command is contained in the circle because we start at its center
+                continue
+            else
+                path = BezierPath([
+                    moveto;
+                    newcommand;
+                    @view(path.commands[i+1:end])
+                ])
+                break
+            end
+        end
+    end
+
+    if shrink[2] > 0
+        for i in length(path.commands):-1:2
+            p_prev = endpoint(path.commands[i-1])
+            p_end, reversed = reversed_command(p_prev, path.commands[i])
+            intersects, moveto, newcommand = circle_intersection(stop, shrink[2], p_end, reversed)
+            if !intersects
+                continue
+            else
+                _, new_reversed = reversed_command(moveto.p, newcommand)
+                path = BezierPath([
+                    @view(path.commands[1:i-1]);
+                    new_reversed
+                ])
+                break
+            end
         end
     end
 
     return path
+end
+
+function reversed_command(p_prev, l::LineTo)
+    return l.p, LineTo(p_prev)
 end
 
 function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
@@ -283,23 +316,16 @@ end
 
 function annotation_arrow_plotspecs(::Automatic, path::BezierPath; color)
     p = endpoint(path.commands[end])
-    dir = path_direction(endpoint(path.commands[end-1]), path.commands[end])
+    markersize = 10
+    dir = path_direction(endpoint(path.commands[end-1]), path.commands[end], markersize)
     rotation = atan(dir[2], dir[1])
+    shortened_path = shrink_path(path, (0, markersize))
     [
-        PlotSpec(:Lines, replace_nonfreetype_commands(path); color, space = :pixel),
-        PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-0.8, 0), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize = 10),
+        PlotSpec(:Lines, shortened_path; color, space = :pixel),
+        PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
     ]
 end
 
-function path_direction(p, l::LineTo)
+function path_direction(p, l::LineTo, _)
     return normalize(l.p - p)
-end
-
-function path_direction(p, a::EllipticalArc)
-    # Compute tangent vector at angle a1
-    dx = -a.r1 * sin(a.a1) * cos(a.angle) - a.r2 * cos(a.a1) * sin(a.angle)
-    dy = -a.r1 * sin(a.a1) * sin(a.angle) + a.r2 * cos(a.a1) * cos(a.angle)
-
-    # Normalize the vector
-    return normalize(Point2d(-dy, dx))
 end
