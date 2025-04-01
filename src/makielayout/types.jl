@@ -2032,6 +2032,8 @@ end
 
         "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
         rticks = LinearTicks(4)
+        "If set to true and theta range is below 2pi, mirrors r ticks to the other side in a PolarAxis."
+        rticksmirrored = false
 
         "The size of the rtick marks."
         rticksize::Float64 = 5f0
@@ -2092,6 +2094,8 @@ end
 
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
         thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        "If set to true and rmin > 0, mirrors theta ticks to the other side of the PolarAxis."
+        thetaticksmirrored = false
 
         "The size of the theta tick marks."
         thetaticksize::Float64 = 5f0
