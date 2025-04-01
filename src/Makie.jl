@@ -123,6 +123,7 @@ end
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
+include("utilities/RenderPipeline.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/Plane.jl")

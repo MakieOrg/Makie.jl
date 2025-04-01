@@ -199,6 +199,9 @@ pages = [
         "API" => "api.md",
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
+    ],
+    "Dev Docs" => [
+        "devdocs/render_pipeline.md",
     ]
 ]
 
