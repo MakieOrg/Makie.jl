@@ -1,9 +1,10 @@
 struct ConnectionLine end
+struct ConnectionCorner end
 
 @recipe(Annotate) do scene
     Theme(
         color = :black,
-        text = "Some text",
+        text = "Label",
         connection = ConnectionLine(),
         shrink = (5.0, 10.0),
         clipstart = automatic,
@@ -53,7 +54,7 @@ function Makie.plot!(p::Annotate)
 
     base_path = lift(p, points, text_bb, p.connection) do (_, p2), text_bb, conn
         # p1 = closest_point_on_rectangle(text_bb, p2)
-        p1 = text_bb.origin .+ 0.5 .* text_bb.widths
+        p1 = startpoint(conn, text_bb, p2)
         path = connection_path(conn, p1, p2)
         start = path.commands[1]
         if !(start isa MoveTo)
@@ -91,6 +92,24 @@ function Makie.plot!(p::Annotate)
     return p
 end
 
+startpoint(::ConnectionLine, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths
+
+function startpoint(::ConnectionCorner, text_bb, p2)
+    l = left(text_bb)
+    r = right(text_bb)
+    b = bottom(text_bb)
+    t = top(text_bb)
+    dir = p2 - (text_bb.origin + 0.5 * text_bb.widths)
+    if abs(dir[1]) < abs(dir[2])
+        x = dir[1] > 0 ? r : l
+        y = (t + b) / 2
+    else
+        x = (l + r) / 2
+        y = dir[2] > 0 ? t : b
+    end
+    return Point2d(x, y)
+end
+
 Makie.data_limits(p::Annotate) = Rect3f(Rect2f([p[1][], p[2][]]))
 Makie.boundingbox(p::Annotate, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
@@ -99,6 +118,23 @@ function connection_path(::ConnectionLine, p1, p2)
         MoveTo(p1),
         LineTo(p2),
     ])
+end
+
+function connection_path(::ConnectionCorner, p1, p2)
+    dir = p2 - p1
+    if abs(dir[1]) > abs(dir[2])
+        BezierPath([
+            MoveTo(p1),
+            LineTo(p1[1], p2[2]),
+            LineTo(p2),
+        ])
+    else
+        BezierPath([
+            MoveTo(p1),
+            LineTo(p2[1], p1[2]),
+            LineTo(p2),
+        ])
+    end
 end
 
 function shrink_path(path, shrink)
@@ -328,4 +364,30 @@ end
 
 function path_direction(p, l::LineTo, _)
     return normalize(l.p - p)
+end
+
+struct PolyArrow end
+
+function annotation_arrow_plotspecs(::PolyArrow, path::BezierPath; color)
+    @assert length(path.commands) == 2
+    p1 = (path.commands[1]::MoveTo).p
+    p2 = (path.commands[2]::LineTo).p
+    
+    dir = p2 - p1
+    len = norm(dir)
+    w = len / 1.68
+
+    vl = normalize(dir)
+    vw = Vec2(-vl[2], vl[1])
+
+    points = [
+        p1 + w/2 * vw,
+        p2,
+        p1 - w/2 * vw,
+    ]
+
+    [
+        PlotSpec(:Poly, points; color, space = :pixel),
+        PlotSpec(:Text, (p1 + p2) / 2; text = "arrow", align = (:center, :center), rotation = mod(atan(dir[2], dir[1]), pi), space = :pixel)
+    ]
 end
