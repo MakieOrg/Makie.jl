@@ -75,8 +75,8 @@ get_weight(::Nothing, i) = 1e0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
-    tfx, tfy = transform_func(hb)
-    itfx, itfy = inverse_transform(tfx), inverse_transform(tfy)
+    tfx, tfy = tf = transform_func(hb)
+    itfx, itfy = inverse_transform(tf)
 
     points = Observable(Point2f[])
     count_hex = Observable(Float64[])
@@ -181,11 +181,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
             # a singular colorrange error down the line.
             if mi == ma
-                if ma == 0
-                    (0, 1)
-                else
-                    (0, ma)
-                end
+                (0, ma == 0 ? 1 : ma)
             else
                 (mi, ma)
             end
