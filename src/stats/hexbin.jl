@@ -17,7 +17,11 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
     MakieCore.mixin_colormap_attributes()...
 end
 
-function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
+# hardcoded scale factors
+_hexbin_xfact() = 2
+_hexbin_yfact() = 4 / 3
+
+function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xma, ymi, yma)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
     x_diff = xma - xmi
     y_diff = yma - ymi
@@ -26,22 +30,18 @@ function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xm
     return xspacing, yspacing, xmi, ymi, bins...
 end
 
-# hardcoded scale factors
-xfact() = 2
-yfact() = 4 / 3
-
-function spacings_offsets_nbins(bins, cellsize::Real, xmi, xma, ymi, yma)
-    return spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
+function _spacings_offsets_nbins(bins, cellsize::Real, xmi, xma, ymi, yma)
+    return _spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
 end
-function spacings_offsets_nbins(bins::Int, cellsize::Nothing, xmi, xma, ymi, yma)
-    return spacings_offsets_nbins((bins, bins), cellsize, xmi, xma, ymi, yma)
+function _spacings_offsets_nbins(bins::Int, cellsize::Nothing, xmi, xma, ymi, yma)
+    return _spacings_offsets_nbins((bins, bins), cellsize, xmi, xma, ymi, yma)
 end
 
-function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma, ymi, yma)
+function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
-    xspacing = cellsizes[1] / xfact()
-    yspacing = cellsizes[2] / yfact()
+    xspacing = cellsizes[1] / _hexbin_xfact()
+    yspacing = cellsizes[2] / _hexbin_yfact()
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
            ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
@@ -113,12 +113,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         y_diff = yma - ymi
 
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
-            spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
+            _spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
 
-        xsize = xspacing * xfact()
+        xsize = xspacing * _hexbin_xfact()
         rx = xsize / sqrt3
 
-        ysize = yspacing * yfact()
+        ysize = yspacing * _hexbin_yfact()
         ry = ysize / 2
 
         bin_map = Dict{Tuple{Int,Int}, Float64}()
@@ -131,8 +131,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         i = 1
         for (_x, _y) in xy
             tx, ty = tfx(_x), tfy(_y)
-            nx, nxs, dvx = nearest_center(tx, xspacing, xoff)
-            ny, nys, dvy = nearest_center(ty, yspacing, yoff)
+            nx, nxs, dvx = _nearest_center(tx, xspacing, xoff)
+            ny, nys, dvy = _nearest_center(ty, yspacing, yoff)
 
             d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
             d2 = (tx - nxs)^2 + (yweight * (ty - nys))^2
@@ -216,11 +216,11 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     strokecolor=hb.strokecolor)
 end
 
-function center_value(dv, spacing, offset, is_grid1)
+function _center_value(dv, spacing, offset, is_grid1)
     return offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
 end
 
-function nearest_center(val, spacing, offset)
+function _nearest_center(val, spacing, offset)
     dv = Int(fld(val - offset, spacing))
     rounded = offset + spacing * (dv + isodd(dv))
     rounded_scaled = offset + spacing * (dv + iseven(dv))
