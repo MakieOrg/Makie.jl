@@ -419,7 +419,7 @@ end
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
-    meshscatter!(a, ps, markersize = 0.15, transparency = false)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false, transform_marker = false)
     f
 end
 
