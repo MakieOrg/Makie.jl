@@ -170,6 +170,10 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
     return true, MoveTo(Point2d(ix, iy)), command
 end
 
+function circle_intersection(center::Point2, r, p1::Point2, command::EllipticalArc)
+    return false, nothing, nothing # TODO: implement
+end
+
 function clip_path_from_start(path::BezierPath, bbox::Rect2)
     
     if length(path.commands) < 2
@@ -198,6 +202,10 @@ function bbox_containment(bbox::Rect2, p_prev::Point2, comm::LineTo)
     return p_prev in bbox && comm.p in bbox
 end
 
+function bbox_containment(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
+    return false # TODO: implement
+end
+
 function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::LineTo)
     intersects, pt = line_rectangle_intersection(p_prev, comm.p, bbox)
     if intersects
@@ -205,6 +213,10 @@ function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::LineTo)
     else
         return intersects, nothing, nothing
     end
+end
+
+function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
+    return false, nothing, nothing # TODO: implement
 end
 
 function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
@@ -274,11 +286,20 @@ function annotation_arrow_plotspecs(::Automatic, path::BezierPath; color)
     dir = path_direction(endpoint(path.commands[end-1]), path.commands[end])
     rotation = atan(dir[2], dir[1])
     [
-        PlotSpec(:Lines, path; color, space = :pixel),
+        PlotSpec(:Lines, replace_nonfreetype_commands(path); color, space = :pixel),
         PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-0.8, 0), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize = 10),
     ]
 end
 
 function path_direction(p, l::LineTo)
     return normalize(l.p - p)
+end
+
+function path_direction(p, a::EllipticalArc)
+    # Compute tangent vector at angle a1
+    dx = -a.r1 * sin(a.a1) * cos(a.angle) - a.r2 * cos(a.a1) * sin(a.angle)
+    dy = -a.r1 * sin(a.a1) * sin(a.angle) + a.r2 * cos(a.a1) * cos(a.angle)
+
+    # Normalize the vector
+    return normalize(Point2d(-dy, dx))
 end
