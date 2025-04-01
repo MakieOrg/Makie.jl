@@ -38,7 +38,7 @@ function Makie.plot!(p::Annotate)
             end
         end
         stop = endpoint(path.commands[end])
-        if stop != p2
+        if !(stop ≈ p2)
             error("Connection path did not stop with p2 = $p2 but with $(stop)")
         end
         return path
@@ -57,12 +57,12 @@ function Makie.plot!(p::Annotate)
         shrink_path(base_path, shrink)
     end
 
-    plotspec = lift(shrunk_path, p.arrow) do path, arrowspec
-        annotation_arrow_plotspec(arrowspec, path)
+    plotspec = lift(shrunk_path, p.arrow, p.color) do path, arrowspec, color
+        annotation_arrow_plotspecs(arrowspec, path; color)
     end
 
-    plot!(p, plotspec)
-    # lines!(p, shrunk_path, space = :pixel, color = p.color)
+    plotlist!(p, plotspec)
+    return p
 end
 
 Makie.data_limits(p::Annotate) = Rect3f(Rect2f([p[1][], p[2][]]))
@@ -75,7 +75,7 @@ function connection_path(::ConnectionLine, p1, p2)
     ])
 end
 
-function connection_path(conn::ConnectionArc, p1, p2)
+function connection_path(::ConnectionArc, p1, p2)
     len = Makie.norm(p2 - p1)
     arc = EllipticalArc(
         p1...,
@@ -269,6 +269,16 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-function annotation_arrow_plotspec(::Automatic, path::BezierPath)
-    SpecApi.Lines(path)
+function annotation_arrow_plotspecs(::Automatic, path::BezierPath; color)
+    p = endpoint(path.commands[end])
+    dir = path_direction(endpoint(path.commands[end-1]), path.commands[end])
+    rotation = atan(dir[2], dir[1])
+    [
+        PlotSpec(:Lines, path; color, space = :pixel),
+        PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-0.8, 0), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize = 10),
+    ]
+end
+
+function path_direction(p, l::LineTo)
+    return normalize(l.p - p)
 end
