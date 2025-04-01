@@ -18,8 +18,10 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 end
 
 # hardcoded scale factors
-_hexbin_xfact() = 2
-_hexbin_yfact() = 4 / 3
+@inline _hexbin_xsize_fact() = 2
+@inline _hexbin_ysize_fact() = 4 / 3
+@inline _hexbin_xmarker_fact() = sqrt(3)
+@inline _hexbin_ymarker_fact() = 2
 
 function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
@@ -27,13 +29,13 @@ function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rec
 end
 
 _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d) =
-    _spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), r)
+    _spacings_offsets_nbins(bins, (cellsize, cellsize * _hexbin_ymarker_fact() / _hexbin_xmarker_fact()), r)
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
     _spacings_offsets_nbins((bins, bins), cellsize, r)
 
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
-    xspacing = cellsizes[1] / _hexbin_xfact()
-    yspacing = cellsizes[2] / _hexbin_yfact()
+    xspacing = cellsizes[1] / _hexbin_xsize_fact()
+    yspacing = cellsizes[2] / _hexbin_ysize_fact()
     (nx, restx), (ny, resty) = fldmod.(r.widths, (xspacing, yspacing))
     xoff = r.origin[1] - (restx > 0 ? (xspacing - restx) / 2 : 0)
     yoff = r.origin[2] - (resty > 0 ? (yspacing - resty) / 2 : 0)
@@ -75,7 +77,6 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     points = Observable(Point2f[])
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
-    sqrt3 = sqrt(3)
 
     function add_hex_point(ix, iy, (xoff, yoff, xspacing, yspacing), count)
         x = xoff + (2 * ix + isodd(iy)) * xspacing
@@ -101,11 +102,11 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         (xspacing, yspacing), (xoff, yoff), (nbinsx, nbinsy) =
             _spacings_offsets_nbins(bins, cellsize, rect)
 
-        xsize = xspacing * _hexbin_xfact()
-        rx = xsize / sqrt3
+        xsize = xspacing * _hexbin_xsize_fact()
+        rx = xsize / _hexbin_xmarker_fact()
 
-        ysize = yspacing * _hexbin_yfact()
-        ry = ysize / 2
+        ysize = yspacing * _hexbin_ysize_fact()
+        ry = ysize / _hexbin_ymarker_fact()
 
         bin_map = Dict{Tuple{Int,Int}, Float64}()
 
