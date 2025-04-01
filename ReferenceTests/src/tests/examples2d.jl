@@ -1287,6 +1287,38 @@ end
     f
 end
 
+
+@reference_test "tricontour observables are updated" begin
+
+# Set up
+npoints = 500  # Number of random points
+x = 4 .* RNG.rand(npoints) .- 2 # Random x in [-2, 2]
+y = 4 .* RNG.rand(npoints) .- 2 # Random y in [-2, 2]
+
+# Function to compute z values with parameter `a`
+a = Observable(0.0)
+z = @lift ($a .* y - x .^ 2) .* ($a .* x - y .^ 2)
+
+# Create a reactive title using `lift`
+b = @lift round($a; digits=2)
+title_text = @lift "( $($b) * y - x^2) .* ( $($b)*x - y^2)"
+
+
+# Set up figure
+fig = Figure()
+ax = Axis(fig[1, 1], xlabel = "x", ylabel = "y",title = title_text)
+scatter!(ax, x, y, alpha=0.3)
+levels = collect(-5:1:10)
+contour_plot = tricontour!(ax, x, y, z, levels= levels, labels=true)
+Colorbar(fig[1,2], contour_plot.plots[2])
+
+# Update observable parameter 
+a[] = 2.0
+
+fig
+end
+
+
 @reference_test "trimspine" begin
     with_theme(Axis = (limits = (0.5, 5.5, 0.3, 3.4), spinewidth = 8, topspinevisible = false, rightspinevisible = false)) do
         f = Figure(size = (800, 800))
