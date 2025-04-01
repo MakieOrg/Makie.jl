@@ -571,7 +571,7 @@ function draw_axis!(po::PolarAxis)
     rticklabeloffset = Observable{Point2f}()
     rtick_rotation = Observable{Float32}()
     rgridpoints = Observable{Vector{Point2f}}()
-    rminorgridpoints = Observable{Vector{Point2f}}()
+    rminorgridpoints = Observable{Vector{LineString{2, Float32}}}()
 
     function default_rtickangle(rtickangle, direction, thetalims)
         if rtickangle === automatic
@@ -605,7 +605,7 @@ function draw_axis!(po::PolarAxis)
 
         _rminortickvalues = get_minor_tickvalues(rminorticks, identity, _rtickvalues, rlims...)
         _rminortickvalues .= (_rminortickvalues .- target_r0) .* rmaxinv
-        rminorgridpoints[] = convert_arguments(Lines, GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues]))[1]
+        rminorgridpoints[] = GeometryBasics.LineString.([Point2f.(r, thetas) for r in _rminortickvalues])
 
         return
     end
@@ -904,12 +904,44 @@ function draw_axis!(po::PolarAxis)
 
     # minor ticks
 
+    rminortickpos = map(ls -> last.(coordinates.(ls)), po.blockscene, rminorgridpoints)
+    rminortickrotation = map(po.blockscene, po.target_theta_0, rminortickpos) do theta_0, ps
+        return last.(ps) .+ (theta_0)
+    end
+    rminortickplot = scatter!(
+        po.overlay, rminortickpos,
+        marker = Rect,
+        markersize = map((w, l) -> Vec2f(w, l), po.blockscene, po.rminortickwidth, po.rminorticksize),
+        color = po.rminortickcolor,
+        rotation = rminortickrotation,
+        marker_offset = map(po.blockscene, rminortickrotation, po.rminortickalign, po.rminortickwidth, po.rminorticksize) do angles, align, w, l
+            return [rotmatrix2d(angle) * (align - 0.5) * Vec2f(0, l) for angle in angles]
+        end,
+        visible = po.rminorticksvisible
+    )
+
+    thetaminortickpos = map(ps -> ps[2:2:end], po.blockscene, thetaminorgridpoints)
+    thetaminortickrotation = map(po.blockscene, po.target_theta_0, thetaminortickpos) do theta_0, ps
+        return last.(ps) .+ (theta_0 + pi/2)
+    end
+    thetaminortickplot = scatter!(
+        po.overlay, thetaminortickpos,
+        marker = Rect,
+        markersize = map((w, l) -> Vec2f(w, l), po.blockscene, po.thetaminortickwidth, po.thetaminorticksize),
+        color = po.thetaminortickcolor,
+        rotation = thetaminortickrotation,
+        marker_offset = map(po.blockscene, thetaminortickrotation, po.thetaminortickalign, po.thetaminortickwidth, po.thetaminorticksize) do angles, align, w, l
+            return [rotmatrix2d(angle) * (align - 0.5) * Vec2f(0, l) for angle in angles]
+        end,
+        visible = po.thetaminorticksvisible
+    )
+
     # updates and z order
     notify(po.target_thetalims)
 
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
     translate!(spineplot, 0, 0, 9001)
-    translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot), 0, 0, 9002)
+    translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot), 0, 0, 9002)
     on(po.blockscene, po.gridz) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
