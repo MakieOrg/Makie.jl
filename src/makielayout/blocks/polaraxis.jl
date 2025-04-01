@@ -677,9 +677,9 @@ function draw_axis!(po::PolarAxis)
             thetatickoffset = ifelse(tvis, (1-talign) * tlength, 0)
             thetaticklabeloffset.val[i] = (thetatickoffset + px_pad) * Point2f(c, s)
         end
-        foreach(notify, (thetatick_align, thetaticklabeloffset))
 
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(1, _thetatickvalues))
+        foreach(notify, (thetatick_align, thetaticklabeloffset))
 
         # Grid lines
         rmin = (rlims[1] - r0) / (rlims[2] - r0)
