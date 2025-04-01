@@ -31,7 +31,7 @@ Base.size(sampler::Sampler) = size(sampler.values)
 Like getindex, but accepts values between 0..1 and interpolates those to the full range.
 You can use `norm`, to change the range of 0..1 to whatever you want.
 """
-function interpolated_getindex(cmap::AbstractArray, value::Number, norm::VecTypes)
+function interpolated_getindex(cmap::AbstractArray, value::Real, norm::VecTypes)
     cmin, cmax = norm
     cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
     i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
@@ -64,6 +64,13 @@ end
 function nearest_getindex(cmap::AbstractArray, i01::Real)
     idx = round(Int, i01 * (length(cmap) - 1)) + 1
     return cmap[idx]
+end
+
+function nearest_getindex(cmap::AbstractArray, value::Real, norm::VecTypes{2})
+    cmin, cmax = norm
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
+    return nearest_getindex(cmap, i01)
 end
 
 """

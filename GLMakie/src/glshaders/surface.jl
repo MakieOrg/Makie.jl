@@ -14,26 +14,26 @@ end
 
 @nospecialize
 # surface(::Matrix, ::Matrix, ::Matrix)
-function draw_surface(screen, main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
-    @gen_defaults! data begin
-        position_x = main[1] => (Texture, "x position, must be a `Matrix{Float}`")
-        position_y = main[2] => (Texture, "y position, must be a `Matrix{Float}`")
-        position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
-        scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
-    end
-    return draw_surface(screen, position_z, data)
-end
+# function draw_surface(screen, main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
+#     @gen_defaults! data begin
+#         position_x = main[1] => (Texture, "x position, must be a `Matrix{Float}`")
+#         position_y = main[2] => (Texture, "y position, must be a `Matrix{Float}`")
+#         position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
+#         scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
+#     end
+#     return draw_surface(screen, position_z, data)
+# end
 
-# surface(Vector or Range, Vector or Range, ::Matrix)
-function draw_surface(screen, main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
-    @gen_defaults! data begin
-        position_x = main[1] => (Texture, "x position, must be a `Vector{Float}`")
-        position_y = main[2] => (Texture, "y position, must be a `Vector{Float}`")
-        position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
-        scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
-    end
-    return draw_surface(screen, position_z, data)
-end
+# # surface(Vector or Range, Vector or Range, ::Matrix)
+# function draw_surface(screen, main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, data::Dict) where T <: AbstractFloat
+#     @gen_defaults! data begin
+#         position_x = main[1] => (Texture, "x position, must be a `Vector{Float}`")
+#         position_y = main[2] => (Texture, "y position, must be a `Vector{Float}`")
+#         position_z = main[3] => (Texture, "z position, must be a `Matrix{Float}`")
+#         scale = Vec3f(0) => "scale must be 0, for a surfacemesh"
+#     end
+#     return draw_surface(screen, position_z, data)
+# end
 
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))

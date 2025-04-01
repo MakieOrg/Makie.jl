@@ -8,12 +8,13 @@ import {
     delete_three_scene,
     find_plots,
     deserialize_scene,
-    TEXTURE_ATLAS,
     on_next_insert,
     scene_cache,
     plot_cache,
     find_scene,
 } from "./Serialization.js";
+
+import { TEXTURE_ATLAS } from "./ThreeHelper.js";
 
 import { events2unitless } from "./Camera.js";
 
