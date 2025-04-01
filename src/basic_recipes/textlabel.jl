@@ -235,7 +235,8 @@ end
 function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
 
-    transformed_shape = Observable(PolyElements[])
+    # Coerce poly to generate the correct mesh type
+    transformed_shape = Observable(PolyElements[Point3f[]])
 
     # FXAA generates artifacts if:
     # mesh has fxaa = true and text/lines has false
@@ -277,7 +278,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     # CairoMakie would consider clip space w/ depth_shift for z ordering we could
     # rely on that instead.
     scene = Makie.parent_scene(plot)
-    pixel_pos = Observable(Point2f[])
+    pixel_pos = Observable(Point3f[])
     pixel_z = Observable(0.0)
     onany(
             plot, plot[1],
@@ -290,8 +291,16 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         transformed = apply_transform_and_model(plot, positions)
         # Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
         px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
-        pixel_pos[] = Point2f.(px_pos)
-        pixel_z[] = draw_on_top ? 0 : px_pos[1][3] # See <1>
+        N = length(px_pos)
+        if draw_on_top
+            pixel_pos[] = [Point3f(p[1], p[2], (i-N) * 0.02) for (i, p) in enumerate(px_pos)]
+            pixel_z[] = 0
+        else
+            # help CairoMakie a bit by moving the minimum z to translate
+            mini = minimum(last, px_pos)
+            pixel_pos[] = [Point3f(p[1], p[2], p[3] - mini) for p in px_pos]
+            pixel_z[] = mini # See <1>
+        end
         return Consume(false)
     end
 
@@ -338,7 +347,6 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
 
     native_tp = tp.plots[1]
 
-    # TODO: vector
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.pad, plot.keep_aspect,
@@ -348,7 +356,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
             native_tp.space, native_tp.markerspace
         ) do limits, pad, keep_aspect, positions, glyph_collections, z, offset, sw, gw, args...
 
-        pos = [to_ndim(Point3f, p, z) + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
+        pos = [p + to_ndim(Point3f, sv_getindex(offset, i), z) for (i, p) in enumerate(positions)]
         return text_boundingbox_transforms(
             native_tp, pos, glyph_collections,
             limits, to_lrbt_padding(pad) .+ to_lrbt_padding(sw + gw), keep_aspect
@@ -361,6 +369,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     ) do shape, cornerradius, cornervertices, transformations
 
         elements = Vector{PolyElements}(undef, length(transformations))
+        zmin = maximum(last, transformations)
 
         for i in eachindex(transformations)
             translation, scale, z = transformations[i]
@@ -376,18 +385,18 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
                 element = Point2f[scale .* p .+ translation[Vec(1,2)] for p in verts]
             end
 
-            elements[i] = element
+            elements[i] = [to_ndim(Point3f, p, 0) + Point3f(0,0,z-zmin) for p in coordinates(element)]
         end
 
         return elements
     end
 
-    onany(plot, plot.draw_on_top, translation_scale_z, update = true) do draw_on_top, transforms
+    onany(plot, plot.draw_on_top, translation_scale_z, update = true) do draw_on_top, transformations
         # TODO: Because CairoMakie only considers transformations in its depth sorting
         #       we are forced to rely on translate!() for it here. This means we can't
         #       do per-element z sorting. <1>
-        z = transforms[1][3]
-        translate!(pp, 0, 0, (draw_on_top ? 10_000 : z) - 0.01)
+        zmin = maximum(last, transformations)
+        translate!(pp, 0, 0, (draw_on_top ? 10_000 : zmin) - 0.01)
         return Consume(false)
     end
 
