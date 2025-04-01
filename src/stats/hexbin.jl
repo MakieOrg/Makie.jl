@@ -18,28 +18,27 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 end
 
 # hardcoded scale factors
-@inline _hexbin_xsize_fact() = Float64(2)
-@inline _hexbin_ysize_fact() = Float64(4 / 3)
-@inline _hexbin_xmarker_fact() = Float64(1 / sqrt(3))
-@inline _hexbin_ymarker_fact() = Float64(1 / 2)
+@inline _hexbin_size_fact() = Float64(2), Float64(4 / 3)
+@inline _hexbin_marker_fact() = Float64(1 / sqrt(3)), Float64(1 / 2)
 
 function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
     return r.widths ./ (bins .- 1), r.origin, bins
 end
 
-_spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d) =
-    _spacings_offsets_nbins(bins, (cellsize, cellsize * _hexbin_xmarker_fact() / _hexbin_ymarker_fact()), r)
+function _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d)
+    xfact, yfact = _hexbin_marker_fact()
+    _spacings_offsets_nbins(bins, (cellsize, cellsize * xfact / yfact), r)
+end
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
     _spacings_offsets_nbins((bins, bins), cellsize, r)
 
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
-    xspacing = cellsizes[1] / _hexbin_xsize_fact()
-    yspacing = cellsizes[2] / _hexbin_ysize_fact()
-    (nx, restx), (ny, resty) = fldmod.(r.widths, (xspacing, yspacing))
+    spacing = cellsizes ./ _hexbin_size_fact()
+    (nx, restx), (ny, resty) = fldmod.(r.widths, spacing)
     xoff = r.origin[1] - (restx > 0 ? (xspacing - restx) / 2 : 0)
     yoff = r.origin[2] - (resty > 0 ? (yspacing - resty) / 2 : 0)
-    return (xspacing, yspacing), (xoff, yoff), (Int(nx) + (restx > 0), Int(ny) + (resty > 0))
+    return spacing, (xoff, yoff), (Int(nx) + (restx > 0), Int(ny) + (resty > 0))
 end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -78,7 +77,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function add_hex_point(ix, iy, (xoff, yoff, xspacing, yspacing), count)
+    function add_hex_point(ix, iy, (xspacing, yspacing), (xoff, yoff), count)
         x = xoff + (2 * ix + isodd(iy)) * xspacing
         y = yoff + iy * yspacing
         push!(points[], apply_transform(itf, Point2f(x, y)))
@@ -99,28 +98,23 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             apply_transform(tf, Rect2d(origin, width))
         end
 
-        (xspacing, yspacing), (xoff, yoff), (nbinsx, nbinsy) =
+        spacing, offset, (nbinsx, nbinsy) =
             _spacings_offsets_nbins(bins, cellsize, rect)
 
-        xsize = xspacing * _hexbin_xsize_fact()
-        rx = xsize * _hexbin_xmarker_fact()
-
-        ysize = yspacing * _hexbin_ysize_fact()
-        ry = ysize * _hexbin_ymarker_fact()
+        size = spacing .* _hexbin_size_fact()
+        msize = size .* _hexbin_marker_fact()
 
         bin_map = Dict{Tuple{Int,Int}, Float64}()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
         # cells is wrong
-        yweight = xsize / ysize
+        yweight = size[1] / size[2]
 
         i = 1
-        tfx, tfy = tf
         for _xy in xy
-            tx, ty = apply_transform(tf, _xy)
-            nx, nxs, dvx = _nearest_center(tx, xspacing, xoff)
-            ny, nys, dvy = _nearest_center(ty, yspacing, yoff)
+            tx, ty = txy = apply_transform(tf, _xy)
+            (nx, ny), (nxs, nys), (dvx, dvy) = _nearest_center(txy, spacing, offset)
 
             d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
             d2 = (tx - nxs)^2 + (yweight * (ty - nys))^2
@@ -141,23 +135,21 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             i += 1
         end
 
-        off_sp = (xoff, yoff, xspacing, yspacing)
-
         if threshold == 0
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    add_hex_point(ix, iy, off_sp, get(bin_map, (ix, iy), 0.0))
+                    add_hex_point(ix, iy, spacing, offset, get(bin_map, (ix, iy), 0.0))
                 end
             end
         else
             # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
             for ((ix, iy), value) in bin_map
-                value ≥ threshold && add_hex_point(ix, iy, off_sp, value)
+                value ≥ threshold && add_hex_point(ix, iy, spacing, offset, value)
             end
         end
 
-        markersize[] = Vec2f(rx, ry)
+        markersize[] = Vec2f(msize)
         notify(points)
         return notify(count_hex)
     end
@@ -204,13 +196,9 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     strokecolor=hb.strokecolor)
 end
 
-function _center_value(dv, spacing, offset, is_grid1)
-    return offset + spacing * (dv + is_grid1 ? isodd(dv) : iseven(dv))
-end
-
 function _nearest_center(val, spacing, offset)
-    dv = Int(fld(val - offset, spacing))
-    rounded = offset + spacing * (dv + isodd(dv))
-    rounded_scaled = offset + spacing * (dv + iseven(dv))
+    dv = @. Int(fld(val - offset, spacing))
+    rounded = @. offset + spacing * (dv + isodd(dv))
+    rounded_scaled = @. offset + spacing * (dv + iseven(dv))
     return rounded, rounded_scaled, dv
 end
