@@ -36,8 +36,8 @@ _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
     (nx, restx), (ny, resty) = fldmod.(r.widths, spacing)
-    xoff = r.origin[1] - (restx > 0 ? (xspacing - restx) / 2 : 0)
-    yoff = r.origin[2] - (resty > 0 ? (yspacing - resty) / 2 : 0)
+    xoff = r.origin[1] - (restx > 0 ? (spacing[1] - restx) / 2 : 0)
+    yoff = r.origin[2] - (resty > 0 ? (spacing[2] - resty) / 2 : 0)
     return spacing, (xoff, yoff), (Int(nx) + (restx > 0), Int(ny) + (resty > 0))
 end
 
