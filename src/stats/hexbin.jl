@@ -35,10 +35,12 @@ _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
 
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
-    (nx, restx), (ny, resty) = fldmod.(r.widths, spacing)
-    xoff = r.origin[1] - (restx > 0 ? (spacing[1] - restx) / 2 : 0)
-    yoff = r.origin[2] - (resty > 0 ? (spacing[2] - resty) / 2 : 0)
-    return spacing, (xoff, yoff), (Int(nx) + (restx > 0), Int(ny) + (resty > 0))
+    nbins, rest = fld.(r.widths, spacing), mod.(r.widths, spacing)
+    offset = collect(r.origin)
+    for dim in eachindex(rest)
+        rest[dim] > 0 && (offset[dim] -= (spacing[dim] - rest[dim]) / 2)
+    end
+    return spacing, offset, @. Int(nbins) + (rest > 0)
 end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
@@ -53,7 +55,7 @@ function data_limits(hb::Hexbin)
     width = collect(bb.widths .+ ms)
 
     tf = transform_func(hb)
-    for dim in 1:length(origin)
+    for dim in eachindex(origin)
         # reset to origin (do not extend) in order to avoid logscale DomainError on negative values
         if !can_handle_negative_domain(tf, dim) && origin[dim] < 0
             origin[dim] = bb.origin[dim]
