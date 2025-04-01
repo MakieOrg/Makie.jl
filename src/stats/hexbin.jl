@@ -26,6 +26,10 @@ function spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, xmi, xm
     return xspacing, yspacing, xmi, ymi, bins...
 end
 
+# hardcoded scale factors
+xfact() = 2
+yfact() = 4 / 3
+
 function spacings_offsets_nbins(bins, cellsize::Real, xmi, xma, ymi, yma)
     return spacings_offsets_nbins(bins, (cellsize, cellsize * 2 / sqrt(3)), xmi, xma, ymi, yma)
 end
@@ -36,8 +40,8 @@ end
 function spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, xmi, xma, ymi, yma)
     x_diff = xma - xmi
     y_diff = yma - ymi
-    xspacing = cellsizes[1] / 2
-    yspacing = cellsizes[2] * 3 / 4
+    xspacing = cellsizes[1] / xfact()
+    yspacing = cellsizes[2] / yfact()
     (nx, restx), (ny, resty) = fldmod.((x_diff, y_diff), (xspacing, yspacing))
     return xspacing, yspacing, xmi - (restx > 0 ? (xspacing - restx) / 2 : 0),
            ymi - (resty > 0 ? (yspacing - resty) / 2 : 0), Int(nx) + (restx > 0), Int(ny) + (resty > 0)
@@ -111,11 +115,11 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         xspacing, yspacing, xoff, yoff, nbinsx, nbinsy =
             spacings_offsets_nbins(bins, cellsize, xmi, xma, ymi, yma)
 
-        ysize = yspacing / 3 * 4
-        ry = ysize / 2
-
-        xsize = xspacing * 2
+        xsize = xspacing * xfact()
         rx = xsize / sqrt3
+
+        ysize = yspacing * yfact()
+        ry = ysize / 2
 
         bin_map = Dict{Tuple{Int,Int}, Float64}()
 
