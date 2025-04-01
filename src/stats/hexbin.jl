@@ -83,6 +83,13 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     markersize = Observable(Vec2f(1, 1))
     sqrt3 = sqrt(3)
 
+    function add_hex_point(ix, iy, (xoff, yoff, xspacing, yspacing), count)
+        x = itfx(xoff + 2ix * xspacing + isodd(iy) * xspacing)
+        y = itfy(yoff + iy * yspacing)
+        push!(points[], Point2f(x, y))
+        push!(count_hex[], count)
+    end
+
     function calculate_grid(xy, weights, bins, cellsize, threshold)
         empty!(points[])
         empty!(count_hex[])
@@ -142,24 +149,19 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             i += 1
         end
 
-        function add_hex_point(ix, iy, count)
-            x = itfx(xoff + 2ix * xspacing + isodd(iy) * xspacing)
-            y = itfy(yoff + iy * yspacing)
-            push!(points[], Point2f(x, y))
-            push!(count_hex[], count)
-        end
+        off_sp = (xoff, yoff, xspacing, yspacing)
 
         if threshold == 0
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    add_hex_point(ix, iy, get(d, (ix, iy), 0.0))
+                    add_hex_point(ix, iy, off_sp, get(d, (ix, iy), 0.0))
                 end
             end
         else
             # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
             for ((ix, iy), value) in d
-                value ≥ threshold && add_hex_point(ix, iy, value)
+                value ≥ threshold && add_hex_point(ix, iy, off_sp, value)
             end
         end
 
