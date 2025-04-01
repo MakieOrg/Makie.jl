@@ -687,8 +687,11 @@ end
         Axis(f[row, col], yscale = scale, title = string(scale),
             yminorticksvisible = i != 6, yminorgridvisible = true,
             xminorticksvisible = i != 6, xminorgridvisible = true,
-            yminortickwidth = 4.0, xminortickwidth = 4.0,
-            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminortickwidth = 3.0, xminortickwidth = 3.0,
+            yminorticksize = 8.0, xminorticksize = 8.0,
+            yminorgridwidth = 3.0, xminorgridwidth = 3.0,
+            yminortickcolor = :red, xminortickcolor = :red,
+            yminorgridcolor = :lightgreen, xminorgridcolor = :lightgreen,
             yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
