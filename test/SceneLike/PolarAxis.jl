@@ -3,7 +3,7 @@
         f = Figure()
         angles = [
             7pi/4+0.01, 0,      pi/4-0.01,
-            pi/4+0.01, pi/2,  3pi/4-0.01,
+            pi/4+0.01, pi/2,   3pi/4-0.01,
             3pi/4+0.01, pi,    5pi/4-0.01,
             5pi/4+0.01, 3pi/2, 7pi/4-0.01,
         ]
@@ -33,11 +33,14 @@
         po.rticklabelrotation[] = v
         s, c = sincos(po.theta_0[] - pi/2)
         @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+        s, c = sincos(po.theta_0[] - pi/2 - v)
         scale = 1 / max(abs(s), abs(c))
         @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         @test rticklabelplot.rotation[] ≈ v
 
         # horizontal
+        s, c = sincos(po.theta_0[] - pi/2)
+        scale = 1 / max(abs(s), abs(c))
         po.rticklabelrotation[] = :horizontal
         @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
         @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
