@@ -12,7 +12,7 @@ using CairoMakie
 using FileIO
 
 f, a, p = image(rotr90(load(assetpath("cow.png"))))
-textlabel!(a, Point2f(200, 150), text = "cow", fontsize = 20)
+textlabel!(a, Point2f(200, 150), text = "Cow", fontsize = 20)
 f
 ```
 
@@ -26,7 +26,7 @@ f, a, p = scatter(
 )
 textlabel!(
     a, loc[1:5004:end, :], text = ["A$i" for i in axes(loc[1:5004:end, :], 1)],
-    offset = (0, -20), align = (:center, :top)
+    offset = (0, -20), text_align = (:center, :top)
 )
 
 xlims!(a, -140, 150)
@@ -46,7 +46,7 @@ ps = Point2f[
 f,a,p = textlabel(
     ps,
     ["A", "B", "C", "D",  "E", "F", "G"],
-    fontsize = 20, pad = 10,
+    fontsize = 20, padding = 10,
     shape = Circle(Point2f(0), 1f0),
     shape_limits = Rect2f(-1, -1, 2, 2),
     keep_aspect = true

@@ -164,7 +164,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     p = textlabel!(
         p, p[1], p.text, shape = shape,
 
-        pad = textpadding, justification = p.justification, align = text_align,
+        padding = textpadding, justification = p.justification, text_align = text_align,
         offset = text_offset, fontsize = p.fontsize, font = p.font,
 
         draw_on_top = false,
@@ -174,10 +174,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         text_strokecolor = p.strokecolor,
 
         background_color = p.backgroundcolor,
-        background_strokewidth = p.outline_linewidth,
-        background_strokecolor = p.outline_color,
-        background_linestyle = p.outline_linestyle,
-        background_miter_limit = pi/18,
+        strokewidth = p.outline_linewidth,
+        strokecolor = p.outline_color,
+        linestyle = p.outline_linestyle,
+        miter_limit = pi/18,
 
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,

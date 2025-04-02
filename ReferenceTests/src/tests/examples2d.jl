@@ -701,7 +701,7 @@ end
     ax = Axis(f[1, 1])
     textlabel!(ax,
         [1, 2, 3], [1, 1, 1], ["Label $i" for i in 1:3],
-        background_color = :white, align = (:left, :bottom)
+        background_color = :white, text_align = (:left, :bottom)
     )
     textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
     textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
@@ -709,34 +709,36 @@ end
         text_rotation = pi/8,
         word_wrap_width = 8,
         cornerradius = 10,
-        cornersegments = 2,
+        cornervertices = 2,
         justification = :center,
-        align = (:center, :center)
+        text_align = (:center, :center)
     )
+    textlabel!(ax, Point2f(1.5, 0), text=rich("A ", rich("title", color = :red, font = :bold_italic)), fontsize=20,)
+    textlabel!(ax, Point2f(2.5, 0), text= L"\sum_a^b{xy} + \mathscr{L}", fontsize=10,)
 
     textlabel!(
         ax, (1, -1), "Circle",
         shape = Circle(Point2f(0.5), 0.5),
-        pad = Vec4f(5),
+        padding = Vec4f(5),
         keep_aspect = true
     )
 
     textlabel!(
         ax, 2, -1, text = "~ ~ ~ ~ ~ ~\nStylized Label\n~ ~ ~ ~ ~ ~",
         background_color = RGBf(0.7, 0.8, 1),
-        background_strokecolor = RGBf(0, 0.1, 0.4),
-        background_strokewidth = 3,
-        background_linestyle = :dash,
-        background_joinstyle = :round,
-        background_stroke_alpha = 0.8,
-        background_alpha = 0.5,
+        strokecolor = RGBf(0, 0.1, 0.4),
+        strokewidth = 3,
+        linestyle = :dash,
+        joinstyle = :round,
+        stroke_alpha = 0.8,
+        alpha = 0.5,
         text_color = RGBf(1, 0.2, 0),
         font = "Noto Sans",
         text_strokecolor = RGBf(0.7, 0, 0.1),
         text_strokewidth = 2,
-        glowcolor = RGBAf(0.8, 1, 0.3),
-        glowwidth = 2,
-        align = (:center, :center),
+        text_glowcolor = RGBAf(0.8, 1, 0.3),
+        text_glowwidth = 2,
+        text_align = (:center, :center),
         fontsize = 20,
         justification = :center,
         lineheight = 0.7,
@@ -745,12 +747,12 @@ end
 
         shape = Circle(Point2f(0), 1),
         shape_limits = Rect2f(-1, -1, 2, 2),
-        pad = Vec4f(10),
+        padding = Vec4f(10),
     )
 
     textlabel!(
         ax, (3, -1), "Below",
-        cornerradius = 10, fontsize = 20, align = (:center, :center),
+        cornerradius = 10, fontsize = 20, text_align = (:center, :center),
         draw_on_top = false
     )
 
@@ -767,7 +769,7 @@ end
 
     textlabel!(ax,
         ["-x -x", "+z\n+z", "-y -y"], position = [(-65, 0, 0), (0, 0, 45), (0, -90, 0)],
-        background_color = :lightgray, align = (:center, :center),
+        background_color = :lightgray, text_align = (:center, :center),
         draw_on_top = false
     )
 

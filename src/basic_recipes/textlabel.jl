@@ -21,9 +21,9 @@ Plots the given text(s) with a background(s) at the given position(s).
     """
     background_color = :white
     "Sets the color of the outline around the background"
-    background_strokecolor = :black
+    strokecolor = :black
     "Sets the width of the outline."
-    background_strokewidth = 1
+    strokewidth = 1
     """
     Sets the dash pattern of the outline. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
@@ -31,23 +31,23 @@ Plots the given text(s) with a background(s) at the given position(s).
 
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
-    background_linestyle = nothing
+    linestyle = nothing
     """
     Controls the rendering of outline corners. Options are `:miter` for sharp corners,
     `:bevel` for "cut off" corners, and `:round` for rounded corners. If the corner angle
     is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
     """
-    background_joinstyle = @inherit joinstyle
+    joinstyle = @inherit joinstyle
     "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
-    background_miter_limit = @inherit miter_limit
+    miter_limit = @inherit miter_limit
     "Controls whether the background renders with fxaa (anti-aliasing, GLMakie only). This is set to `false` by default to prevent artifacts around text."
-    background_fxaa = false
+    fxaa = false
     "Controls whether the background reacts to light."
-    background_shading = NoShading
+    shading = NoShading
     "Sets the alpha value (opaqueness) of the background outline."
-    background_stroke_alpha = 1.0
+    stroke_alpha = 1.0
     "Sets the alpha value (opaqueness) of the background."
-    background_alpha = 1.0
+    alpha = 1.0
 
     # Text
     "Sets the color of the text. One can set one color per glyph by passing a `Vector{<:Colorant}` or one colorant for the whole text."
@@ -63,18 +63,18 @@ Plots the given text(s) with a background(s) at the given position(s).
     "Sets the width of the outline around text."
     text_strokewidth = 0
     "Sets the color of the glow effect around text."
-    glowcolor = (:black, 0.0)
+    text_glowcolor = (:black, 0.0)
     "Sets the size of a glow effect around text."
-    glowwidth = 0.0
+    text_glowwidth = 0.0
 
     "Sets the alignment of the string with respect to `position`. Uses `:left, :center, :right, :top, :bottom, :baseline` or fractions."
-    align = (:center, :center)
+    text_align = (:center, :center)
     "Rotates the text around the given position. This affects the size of the textlabel but not its rotation"
     text_rotation = 0.0
     # "The fontsize in units depending on `markerspace`."
     "The fontsize in pixel units."
     fontsize = @inherit fontsize
-    "Sets the alignment of text with respect to its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
+    "Sets the alignment of text with respect to its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `text_align`."
     justification = automatic
     "The lineheight multiplier."
     lineheight = 1.0
@@ -135,7 +135,7 @@ Plots the given text(s) with a background(s) at the given position(s).
     shape_limits = Rect2f(0, 0, 1, 1)
     # TODO: Generalize markerspace
     "Sets the padding between the text bounding box and background shape."
-    pad = Vec4f(2)
+    padding = 4
     "Controls whether the aspect ratio of the background shape is kept during rescaling"
     keep_aspect = false
     "Sets the corner radius when given a Rect2 background shape."
@@ -204,8 +204,8 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes
 end
 
 
-function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, pad, keep_aspect)
-    (l, r, b, t) = pad
+function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, padding, keep_aspect)
+    (l, r, b, t) = padding
 
     cam = Ref(camera(parent_scene(plot)))
     transformed = apply_transform_and_model(plot, positions)
@@ -249,19 +249,19 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         plot, transformed_shape,
         color = plot.background_color,
         # hide pixelated mesh behind outline of the same color by default
-        strokecolor = plot.background_strokecolor,
-        strokewidth = plot.background_strokewidth,
-        linestyle = plot.background_linestyle,
-        joinstyle = plot.background_joinstyle,
-        miter_limit = plot.background_miter_limit,
-        shading = plot.background_shading,
-        # stroke_alpha = plot.background_stroke_alpha, # TODO: doesn't exist in poly
-        alpha = plot.background_alpha,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
+        linestyle = plot.linestyle,
+        joinstyle = plot.joinstyle,
+        miter_limit = plot.miter_limit,
+        shading = plot.shading,
+        # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
+        alpha = plot.alpha,
         stroke_depth_shift = plot.depth_shift,
         # move poly slightly behind - this is unnecessary atm because we also
         # translate!(). Maybe useful when generalizing to 3D though
         depth_shift = map(x -> x + 1f-7, plot, plot.depth_shift),
-        fxaa = plot.background_fxaa,
+        fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
         overdraw = plot.overdraw,
@@ -313,12 +313,12 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         rotation = plot.text_rotation,
         font = plot.font,
         fonts = plot.fonts,
-        align = plot.align,
+        align = plot.text_align,
         fontsize = plot.fontsize,
         justification = plot.justification,
         lineheight = plot.lineheight,
-        glowcolor = plot.glowcolor,
-        glowwidth = plot.glowwidth,
+        glowcolor = plot.text_glowcolor,
+        glowwidth = plot.text_glowwidth,
         offset = plot.offset,
         word_wrap_width = plot.word_wrap_width,
         depth_shift = plot.depth_shift,
@@ -349,17 +349,17 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
 
     translation_scale_z = map(
             plot,
-            plot.shape_limits, plot.pad, plot.keep_aspect,
+            plot.shape_limits, plot.padding, plot.keep_aspect,
             pixel_pos, native_tp.converted[1], pixel_z, plot.offset,
             # these are difficult because they are not in markerspace but always pixel space...
             native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, pad, keep_aspect, positions, glyph_collections, z, offset, sw, gw, args...
+        ) do limits, padding, keep_aspect, positions, glyph_collections, z, offset, sw, gw, args...
 
         pos = [p + to_ndim(Point3f, sv_getindex(offset, i), z) for (i, p) in enumerate(positions)]
         return text_boundingbox_transforms(
             native_tp, pos, glyph_collections,
-            limits, to_lrbt_padding(pad) .+ to_lrbt_padding(sw + gw), keep_aspect
+            limits, to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw), keep_aspect
         )
     end
 
