@@ -21,23 +21,23 @@ end
 @inline _hexbin_size_fact() = Float64(2), Float64(4 / 3)
 @inline _hexbin_msize_fact() = Float64(1 / sqrt(3)), Float64(1 / 2)
 
-function _spacings_offsets_nbins(bins::NTuple{2,Int}, cellsize::Nothing, r::Rect2d)
+function _spacings_offsets_nbins(bins::NTuple{2,Int}, cellsize::Nothing, lims::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
-    return r.widths ./ (bins .- 1), r.origin, bins
+    return lims.widths ./ (bins .- 1), lims.origin, bins
 end
 
-_spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
-    _spacings_offsets_nbins((bins, bins), cellsize, r)
+_spacings_offsets_nbins(bins::Int, cellsize::Nothing, lims::Rect2d) =
+    _spacings_offsets_nbins((bins, bins), cellsize, lims)
 
-function _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d)
+function _spacings_offsets_nbins(bins, cellsize::Real, lims::Rect2d)
     mx, my = _hexbin_msize_fact()
-    return _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), r)
+    return _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), lims)
 end
 
-function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
+function _spacings_offsets_nbins(bins, cellsizes::NTuple{2,<:Real}, lims::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
-    nbins, rest = fld.(r.widths, spacing), mod.(r.widths, spacing)
-    offset = collect(r.origin)
+    nbins, rest = fld.(lims.widths, spacing), mod.(lims.widths, spacing)
+    offset = collect(lims.origin)
     for dim in eachindex(rest)
         rest[dim] > 0 && (offset[dim] -= (spacing[dim] - rest[dim]) / 2)
     end
@@ -73,7 +73,6 @@ get_weight(weights, i) = Float64(weights[i])
 get_weight(::Union{Nothing,StatsBase.UnitWeights}, _) = 1.0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
-    xy = hb[1]
     tf = transform_func(hb)
     itf = inverse_transform(tf)
 
@@ -94,14 +93,14 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         isempty(xy) && return
 
         # enclose data in limits
-        rect = let (lox, hix) = extrema(p -> p[1], xy),
+        lims = let (lox, hix) = extrema(p -> p[1], xy),
                    (loy, hiy) = extrema(p -> p[2], xy)
             origin = Point(prevfloat(lox), prevfloat(loy))
             width = Point(nextfloat(hix), nextfloat(hiy)) - origin
             apply_transform(tf, Rect2d(origin, width))
         end
 
-        spacing, offset, (nbinsx, nbinsy) = _spacings_offsets_nbins(bins, cellsize, rect)
+        spacing, offset, (nbinsx, nbinsy) = _spacings_offsets_nbins(bins, cellsize, lims)
 
         size = spacing .* _hexbin_size_fact()
         msize = size .* _hexbin_msize_fact()
@@ -157,7 +156,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         notify(points)
         return notify(count_hex)
     end
-    onany(calculate_grid, xy, hb.weights, hb.bins, hb.cellsize, hb.threshold)
+    onany(calculate_grid, hb[1], hb.weights, hb.bins, hb.cellsize, hb.threshold)
 
     notify(hb.bins)  # trigger once
 
