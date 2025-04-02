@@ -10,6 +10,7 @@ struct ConnectionCorner end
         clipstart = automatic,
         align = (:left, :bottom),
         arrow = automatic,
+        maxiter = 100,
     )
 end
 
@@ -35,61 +36,271 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.plot!(p::Annotate)
+function Makie.convert_arguments(::Type{<:Annotate}, x::Int, y::Int)
+    return ([Vec4d(x, y, NaN, NaN)],)
+end
+
+function Makie.convert_arguments(::Type{<:Annotate}, v::AbstractVector{<:VecTypes{2}})
+    return (Vec4d.(getindex.(v, 1), getindex.(v, 2), NaN, NaN),)
+end
+
+function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{Vec4d}}})
     scene = Makie.get_scene(p)
 
-    txt = text!(p, p[1], text = p.text, align = p.align)
-
-    points = lift(p, scene.camera.projectionview, p.model, Makie.transform_func(p),
-          scene.viewport, p[1], p[2]) do _, _, _, _, p1, p2
-
-        return Makie.project.(Ref(scene), (Point2d(p1), Point2d(p2)))
+    textpositions = lift(p[1]) do vecs
+        Point2d.(getindex.(vecs, 1), getindex.(vecs, 2))
     end
+
+    txt = text!(p, textpositions, text = p.text, align = (:center, :center), offset = zeros(Vec2d, length(textpositions[])))
+
+    # points = lift(p, scene.camera.projectionview, p.model, Makie.transform_func(p),
+    #       scene.viewport, p[1], p[2]) do _, _, _, _, p1, p2
+
+    #     return Makie.project.(Ref(scene), (Point2d(p1), Point2d(p2)))
+    # end
+
+    screenpoints = Ref{Vector{Point2f}}()
 
     glyphcolls = txt.plots[1][1]
-    text_bb = lift(p, glyphcolls, scene.camera.projectionview) do glyphcolls, _
-        point = Makie.project(scene, (Point2d(p[1][])))
-        Rect2f(unchecked_boundingbox(only(glyphcolls), Point3f(point..., 0), Makie.to_rotation(0)))
+    text_bbs = lift(p, glyphcolls, scene.camera.projectionview) do glyphcolls, _
+        points = Makie.project.(Ref(scene), textpositions[])
+        screenpoints[] = points
+        [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
-    base_path = lift(p, points, text_bb, p.connection) do (_, p2), text_bb, conn
-        # p1 = closest_point_on_rectangle(text_bb, p2)
-        p1 = startpoint(conn, text_bb, p2)
-        path = connection_path(conn, p1, p2)
-        start = path.commands[1]
-        if !(start isa MoveTo)
-            error("Connection path should start with MoveTo, started with $(start)")
-        else
-            if start.p != p1
-                error("Connection path did not start with p1 = $p1 but with $(start.p)")
+    on(text_bbs; update = true) do text_bbs
+        calculate_best_offsets!(txt.offset[], screenpoints[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter = p.maxiter[])
+        notify(txt.offset)
+    end
+
+    # base_path = lift(p, points, text_bb, p.connection) do (_, p2), text_bb, conn
+    #     # p1 = closest_point_on_rectangle(text_bb, p2)
+    #     p1 = startpoint(conn, text_bb, p2)
+    #     path = connection_path(conn, p1, p2)
+    #     start = path.commands[1]
+    #     if !(start isa MoveTo)
+    #         error("Connection path should start with MoveTo, started with $(start)")
+    #     else
+    #         if start.p != p1
+    #             error("Connection path did not start with p1 = $p1 but with $(start.p)")
+    #         end
+    #     end
+    #     stop = endpoint(path.commands[end])
+    #     if !(stop ≈ p2)
+    #         error("Connection path did not stop with p2 = $p2 but with $(stop)")
+    #     end
+    #     return path
+    # end
+
+    # clipped_path = lift(base_path, p.clipstart) do path, clipstart
+    #     clipstart = if clipstart === automatic
+    #         Rect2f(boundingbox(txt.plots[1], :pixel))
+    #     else
+    #         clipstart
+    #     end
+    #     clip_path_from_start(path, clipstart)
+    # end
+
+    # shrunk_path = lift(clipped_path, p.shrink) do base_path, shrink
+    #     shrink_path(base_path, shrink)
+    # end
+
+    # plotspec = lift(shrunk_path, p.arrow, p.color) do path, arrowspec, color
+    #     annotation_arrow_plotspecs(arrowspec, path; color)
+    # end
+
+    # plotlist!(p, plotspec)
+    return p
+end
+
+function distance_point_outside_rect(p::Point2, rect::Rect2)
+    px, py = p
+    ((rl, rb), (rr, rt)) = extrema(rect)
+
+    dx = if px <= rl
+        px - rl
+    elseif px >= rr
+        px - rr
+    else
+       zero(px)
+    end
+
+    dy = if py < rb
+        py - rb
+    elseif py > rt
+        py - rt
+    else
+        zero(py)
+    end
+
+    return Vec2d(dx, dy)
+end
+
+function distance_point_inside_rect(p::Point2, rect::Rect2)
+    px, py = p
+    ((rl, rb), (rr, rt)) = extrema(rect)
+
+    dx = if px <= rl || px >= rr
+        zero(px)
+    else
+        argmin(abs, (px - rl, px - rr))
+    end
+
+    dy = if py <= rb || py >= rt
+        zero(py)
+    else
+        argmin(abs, (py - rb, py - rt))
+    end
+
+    return Vec2d(dx, dy)
+end
+
+function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+        repel_strength=0.25,
+        attract_strength=0.25,
+        maxiter::Int
+    )
+    # Initialize velocities and forces for the offsets
+    velocities = zeros(Vec2d, length(offsets))
+    forces = zeros(Vec2d, length(offsets))
+    damping = 0.9
+    threshold = 1e-2
+
+    padding = Vec2d(4, 4)
+    # padding = Vec2d(0, 0)
+    padded_bbs = map(text_bbs) do bb
+        Rect2(bb.origin .- padding, bb.widths .+ 2padding)
+    end
+    offset_bbs = copy(padded_bbs)
+
+    # offsets .= 30 .* randn.(Vec2d)
+
+    for iter in 1:maxiter
+        # println()
+        # @show iter
+        offset_bbs .= padded_bbs .+ offsets
+
+        # Compute repulsive forces between bounding boxes
+        for i in 1:length(offset_bbs)
+            for j in i+1:length(offset_bbs)
+                bb1 = offset_bbs[i]
+                bb2 = offset_bbs[j]
+                overlap = repel_strength * rect_overlap(bb1, bb2)
+                # @show i, j, overlap
+                offsets[i] -= overlap
+                offsets[j] += overlap
             end
         end
-        stop = endpoint(path.commands[end])
-        if !(stop ≈ p2)
-            error("Connection path did not stop with p2 = $p2 but with $(stop)")
-        end
-        return path
-    end
+        # @show offsets
 
-    clipped_path = lift(base_path, p.clipstart) do path, clipstart
-        clipstart = if clipstart === automatic
-            Rect2f(boundingbox(txt.plots[1], :pixel))
+        # Compute attractive forces towards their own text positions
+        for i in 1:length(text_bbs)
+            bb = offset_bbs[i]
+            target_pos = textpositions[i]
+            # println(i)
+            # @show target_pos
+            # @show bb
+            diff = distance_point_outside_rect(target_pos, bb)
+            # @show diff
+            # println()
+            offsets[i] += attract_strength * diff
+        end
+
+        # Compute repulsive forces from their own text positions
+        for i in 1:length(text_bbs)
+            for j in 1:length(textpositions)
+                bb = offset_bbs[i]
+                target_pos = textpositions[j]
+                # println(i)
+                # @show target_pos
+                # @show bb
+                diff = distance_point_inside_rect(target_pos, bb)
+                # @show diff
+                # println()
+                offsets[i] += repel_strength * diff
+            end
+        end
+        # @show offsets
+
+        # # Ensure bounding boxes do not overlap with any text positions
+        # for i in 1:length(text_bbs)
+        #     bb = text_bbs[i] + offsets[i]
+        #     for target_pos in textpositions
+        #         direction = normalize(center(bb) - target_pos .+ 1e-6) # Push text position out of the bounding box
+        #         distance = minimum(abs, [left(bb) - target_pos[1], right(bb) - target_pos[1], bottom(bb) - target_pos[2], top(bb) - target_pos[2]])
+        #         force = (repel_strength / distance) * direction
+        #         forces[i] += force
+        #     end
+        # end
+
+        # # Compute forces to keep bounding boxes inside the viewport
+        # for i in 1:length(text_bbs)
+        #     bb = text_bbs[i] + offsets[i]
+        #     border_force_x = if left(bb) < left(bbox)
+        #         left(bbox) - left(bb)
+        #     elseif right(bb) > right(bbox)
+        #         right(bbox) - right(bb)
+        #     else
+        #         0.0
+        #     end
+
+        #     border_force_y = if bottom(bb) < bottom(bbox)
+        #         bottom(bbox) - bottom(bb)
+        #     elseif top(bb) > top(bbox)
+        #         top(bbox) - top(bb)
+        #     else
+        #         0.0
+        #     end
+
+        #     border_force = Vec2d(border_force_x, border_force_y)
+        #     forces[i] += border_force
+        # end
+
+        # forces .= (x -> clamp.(x, -10, 10)).(forces)
+
+        # # Update velocities and offsets
+        # for i in 1:length(offsets)
+        #     velocities[i] = damping * (velocities[i] + forces[i])
+        #     offsets[i] += velocities[i]
+        # end
+
+        # # Check for convergence
+        # if maximum(norm.(forces)) < threshold
+        #     break
+        # end
+    end
+    return
+end
+
+function interval_overlap(al, ar, bl, br)
+    a_is_left = al < bl
+    (ll, lr, rl, rr) = a_is_left ? (al, ar, bl, br) : (bl, br, al, ar)
+    vl = if lr <= rl # l completely left of r
+        zero(al)
+    elseif lr < rr # l intersects r partially
+        lr - rl
+    else # r contained in l
+        if rl - ll > lr - rr # r is further left
+            rr - rl
         else
-            clipstart
+            -(rr - rl)
         end
-        clip_path_from_start(path, clipstart)
     end
+    a_is_left ? vl : -vl
+end
 
-    shrunk_path = lift(clipped_path, p.shrink) do base_path, shrink
-        shrink_path(base_path, shrink)
+function rect_overlap(r1, r2)
+    (r1l, r1b), (r1r, r1t) = extrema(r1)
+    (r2l, r2b), (r2r, r2t) = extrema(r2)
+    
+    x = interval_overlap(r1l, r1r, r2l, r2r)
+    y = interval_overlap(r1b, r1t, r2b, r2t)
+
+    if x == 0 || y == 0
+        return Vec2d(0, 0)
+    else
+        return Vec2d(x, y)
     end
-
-    plotspec = lift(shrunk_path, p.arrow, p.color) do path, arrowspec, color
-        annotation_arrow_plotspecs(arrowspec, path; color)
-    end
-
-    plotlist!(p, plotspec)
-    return p
 end
 
 startpoint(::ConnectionLine, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths
@@ -110,7 +321,7 @@ function startpoint(::ConnectionCorner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotate) = Rect3f(Rect2f([p[1][], p[2][]]))
+Makie.data_limits(p::Annotate) = Rect3f(Rect2f(Vec2f.(p[1][])))
 Makie.boundingbox(p::Annotate, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
 function connection_path(::ConnectionLine, p1, p2)
