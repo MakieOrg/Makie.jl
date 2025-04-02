@@ -644,6 +644,7 @@ function draw_axis!(po::PolarAxis)
             rtick_align[] = Point2f((0.0, 0.5, 1.0, 0.5)[N+1], (0.5, 0.0, 0.5, 1.0)[N+1])
         elseif rot isa Real
             rtick_rotation[] = rot
+            s, c = sincos(angle - rot)
             scale = 1 / max(abs(s), abs(c))
             rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
