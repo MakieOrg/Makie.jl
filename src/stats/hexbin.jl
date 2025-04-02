@@ -34,7 +34,7 @@ function _spacings_offsets_nbins(bins, cellsize::Real, lims::Rect2d)
     return _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), lims)
 end
 
-function _spacings_offsets_nbins(bins, cellsizes::NTuple{2,<:Real}, lims::Rect2d)
+function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, lims::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
     nbins, rest = fld.(lims.widths, spacing), mod.(lims.widths, spacing)
     offset = collect(lims.origin)
