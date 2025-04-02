@@ -209,11 +209,10 @@ function register_position_transforms!(attr)
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
-            output = Vector{Point3f}(undef, length(positions[]))
-            @inbounds for i in eachindex(output)
-                p4d = to_ndim(Point4d, to_ndim(Point3d, positions[][i], 0), 1)
+            output = map(positions[]) do point
+                p4d = to_ndim(Point4d, to_ndim(Point3d, point, 0), 1)
                 p4d = model[] * p4d
-                output[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)])
+                return f32_convert(f32c[], p4d[Vec(1, 2, 3)])
             end
             m = isnothing(last) ? Mat4f(I) : nothing
             return (output, m)
@@ -228,21 +227,17 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     PTrait = conversion_trait(P, map(to_value, input_args)...)
 
     if all(arg -> arg isa Computed, input_args)
-
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
             return sym
         end
-
     elseif !any(arg -> arg isa Computed, input_args)
-
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
             return sym
         end
-
     else
         error("args should be either all Computed or all other things. $input_args")
     end
@@ -265,8 +260,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 
     register_computation!(attr, [:dim_converted],
                           [MakieCore.argument_names(P, 10)...]) do args, changed, last
-        new_args = convert_arguments(P, args[1][]...)
-        return new_args
+        return convert_arguments(P, args[1][]...)
     end
 
 
@@ -600,7 +594,7 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
         [attribute, :positions],
         [output_name],
     ) do (vec, positions), changed, last
-        all(changed) || return nothing
+        any(changed) || return nothing
         if !(vec[] isa AbstractVector)
             !isnothing(last) && vec[] == last[1][] && return nothing
             return (vec[],)

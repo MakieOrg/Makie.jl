@@ -235,7 +235,10 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
     push!(uniforms, :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :visible, :fxaa)
     push!(input2glname, :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes)
 
-    register_computation!(attr, [inputs; uniforms;], [:gl_renderobject]) do args, changed, last
+    merged_inputs = [inputs; uniforms;]
+    @assert allunique(merged_inputs) "Duplicate robj inputs detected in $merged_inputs."
+
+    register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
         if isnothing(last)
             # Generate complex defaults
             # TODO: Should we add an initializer in ComputePipeline to extract this?
@@ -745,7 +748,7 @@ function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, un
     add_camera_attributes!(data, screen, camera, args.space[])
     add_color_attributes_lines!(data, args.synched_color[], args.alpha_colormap[], args.scaled_colorrange[])
 
-    if isnothing(get(data, :intensity, nothing))
+    if !isnothing(get(data, :intensity, nothing))
         input2glname[:synched_color] = :intensity
     end
 

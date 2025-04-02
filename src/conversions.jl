@@ -1461,6 +1461,8 @@ end
 
 to_font(fonts::Attributes, x) = to_font(x)
 
+to_font(::Automatic) = defaultfont()
+
 
 """
     rotation accepts:

@@ -485,6 +485,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
+    "Sets the font used for character markers. Can be a `String` specifying the (partial) name of a font or the file path of a font file"
+    font = @inherit markerfont
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
     """
