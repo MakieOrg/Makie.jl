@@ -260,7 +260,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         stroke_depth_shift = plot.depth_shift,
         # move poly slightly behind - this is unnecessary atm because we also
         # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 1f-7, plot, plot.depth_shift),
+        depth_shift = map(x -> x + 2f-7, plot, plot.depth_shift),
         fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
@@ -341,7 +341,8 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     # translate!() to order these plots. (This does not work in 3D with
     # space = :data)
     onany(plot, plot.draw_on_top, pixel_z, update = true) do draw_on_top, z
-        translate!(tp, 0, 0, draw_on_top ? 10_000 : z + 0.01)
+        translate!(tp, 0, 0, ifelse(draw_on_top, 10_000, z + 0.01))
+        translate!(pp, 0, 0, ifelse(draw_on_top, 10_000, z) - 0.01)
         return Consume(false)
     end
 
@@ -365,11 +366,10 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
 
     map!(
         plot, transformed_shape,
-        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z
-    ) do shape, cornerradius, cornervertices, transformations
+        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z, pixel_z
+    ) do shape, cornerradius, cornervertices, transformations, zmin
 
         elements = Vector{PolyElements}(undef, length(transformations))
-        zmin = maximum(last, transformations)
 
         for i in eachindex(transformations)
             translation, scale, z = transformations[i]
@@ -389,15 +389,6 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         end
 
         return elements
-    end
-
-    onany(plot, plot.draw_on_top, translation_scale_z, update = true) do draw_on_top, transformations
-        # TODO: Because CairoMakie only considers transformations in its depth sorting
-        #       we are forced to rely on translate!() for it here. This means we can't
-        #       do per-element z sorting. <1>
-        zmin = maximum(last, transformations)
-        translate!(pp, 0, 0, (draw_on_top ? 10_000 : zmin) - 0.01)
-        return Consume(false)
     end
 
     return plot
