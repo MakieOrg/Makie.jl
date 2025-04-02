@@ -1225,3 +1225,12 @@ end
 
     scene
 end
+
+@reference_test "Subpixel Scatter" begin
+    scene = Scene(size = (100, 100), camera = campixel!)
+    scatter!(scene, [(x, y) for x in  0:50  for y in  0:50 ], markersize=0.0, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in  0:50  for y in 51:100], markersize=0.4, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in 51:100 for y in  0:50 ], markersize=0.7, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in 51:100 for y in 51:100], markersize=1.0, color = :black, marker = Rect)
+    scene
+end
