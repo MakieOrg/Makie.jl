@@ -31,7 +31,7 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
-    "DataInspector", "DataInspector 2", # getting the right frames to render is hard
+    # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
 ])
 
 Makie.inline!(Makie.automatic)

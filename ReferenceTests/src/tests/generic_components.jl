@@ -466,8 +466,10 @@ end
         # remove tooltip so we don't select it
         e.mouseposition[] = (289, 139)
         colorbuffer(scene) # force update of picking buffer
+        sleep(0.5) # wait on WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
+        sleep(0.5) # wait on WGLMakie
         Makie.step!(st)
     end
 
@@ -492,9 +494,12 @@ end
     mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
     for mp in mps
         e.mouseposition[] = (1, 1)
+        sleep(0.5) # wait on WGLMakie
         colorbuffer(f) # force update of picking buffer
+        sleep(0.5) # wait on WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
+        sleep(0.5) # wait on WGLMakie
         Makie.step!(st)
     end
 
