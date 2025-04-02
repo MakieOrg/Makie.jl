@@ -19,7 +19,7 @@ end
 
 # hardcoded scale factors
 @inline _hexbin_size_fact() = Float64(2), Float64(4 / 3)
-@inline _hexbin_marker_fact() = Float64(1 / sqrt(3)), Float64(1 / 2)
+@inline _hexbin_msize_fact() = Float64(1 / sqrt(3)), Float64(1 / 2)
 
 function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
@@ -27,8 +27,8 @@ function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rec
 end
 
 function _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d)
-    xfact, yfact = _hexbin_marker_fact()
-    _spacings_offsets_nbins(bins, (cellsize, cellsize * xfact / yfact), r)
+    mx, my = _hexbin_msize_fact()
+    _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), r)
 end
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
     _spacings_offsets_nbins((bins, bins), cellsize, r)
@@ -64,11 +64,11 @@ function data_limits(hb::Hexbin)
     end
     return Rect3d(origin, width)
 end
-boundingbox(p::Hexbin, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
+boundingbox(p::Hexbin, space::Symbol = :data) =
+    apply_transform_and_model(p, data_limits(p))
 
 get_weight(weights, i) = Float64(weights[i])
-get_weight(::StatsBase.UnitWeights, i) = 1e0
-get_weight(::Nothing, i) = 1e0
+get_weight(::Union{Nothing,StatsBase.UnitWeights}, _) = 1.0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     xy = hb[1]
@@ -79,10 +79,9 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     count_hex = Observable(Float64[])
     markersize = Observable(Vec2f(1, 1))
 
-    function add_hex_point(ix, iy, (xspacing, yspacing), (xoff, yoff), count)
-        x = xoff + (2 * ix + isodd(iy)) * xspacing
-        y = yoff + iy * yspacing
-        push!(points[], apply_transform(itf, Point2f(x, y)))
+    function add_hex_point((ix, iy), spacing, offset, count)
+        pt = Point2f(offset .+ (2 * ix + isodd(iy), iy) .* spacing)
+        push!(points[], apply_transform(itf, pt))
         push!(count_hex[], count)
     end
 
@@ -100,18 +99,17 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             apply_transform(tf, Rect2d(origin, width))
         end
 
-        spacing, offset, (nbinsx, nbinsy) =
-            _spacings_offsets_nbins(bins, cellsize, rect)
+        spacing, offset, (nbinsx, nbinsy) = _spacings_offsets_nbins(bins, cellsize, rect)
 
         size = spacing .* _hexbin_size_fact()
-        msize = size .* _hexbin_marker_fact()
-
-        bin_map = Dict{Tuple{Int,Int}, Float64}()
+        msize = size .* _hexbin_msize_fact()
 
         # for the distance measurement, the y dimension must be weighted relative to the x
         # dimension according to the different sizes in each, otherwise the attribution to hexagonal
         # cells is wrong
         yweight = size[1] / size[2]
+
+        bin_map = Dict{NTuple{2,Int}, Float64}()
 
         i = 1
         for _xy in xy
@@ -141,13 +139,15 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    add_hex_point(ix, iy, spacing, offset, get(bin_map, (ix, iy), 0.0))
+                    let xy = (ix, iy)
+                        add_hex_point(xy, spacing, offset, get(bin_map, xy, 0.0))
+                    end
                 end
             end
         else
             # if we don't plot zero cells, we only have to iterate the sparse entries in the dict
-            for ((ix, iy), value) in bin_map
-                value ≥ threshold && add_hex_point(ix, iy, spacing, offset, value)
+            for (xy, value) in bin_map
+                value ≥ threshold && add_hex_point(xy, spacing, offset, value)
             end
         end
 
