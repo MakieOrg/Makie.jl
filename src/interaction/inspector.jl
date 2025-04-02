@@ -231,7 +231,7 @@ returning a label. See Makie documentation for more detail.
 - `indicator_color = :red`: Color of the selection indicator.
 - `indicator_linewidth = 2`: Linewidth of the selection indicator.
 - `indicator_linestyle = nothing`: Linestyle of the selection indicator
-- `enable_indicators = true)`: Enables or disables indicators
+- `enable_indicators = true`: Enables or disables indicators
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the
     tooltip is always in front.
 - `apply_tooltip_offset = true`: Enables or disables offsetting tooltips based
