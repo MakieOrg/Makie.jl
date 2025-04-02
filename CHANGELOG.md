@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 - Adjusted `DataInspector` tooltips for `spy` to be heatmap-like and `datashader` to show the number of binned markers [#4810](https://github.com/MakieOrg/Makie.jl/pull/4810)
+- Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
+- Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
 
 ## [0.22.2] - 2025-02-26
 
