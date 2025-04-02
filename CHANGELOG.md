@@ -4,6 +4,7 @@
 
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
+- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 
 ## [0.22.2] - 2025-02-26
 
