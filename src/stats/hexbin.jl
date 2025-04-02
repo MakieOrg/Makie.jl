@@ -4,7 +4,7 @@
 Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe Hexbin begin
-    "If an `Int`, sets the number of bins in x and y direction. If a `Tuple{Int, Int}`, sets the number of bins for x and y separately."
+    "If an `Int`, sets the number of bins in x and y direction. If a `NTuple{2, Int}`, sets the number of bins for x and y separately."
     bins=20
     "Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`."
     weights=nothing
@@ -17,21 +17,22 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
     MakieCore.mixin_colormap_attributes()...
 end
 
-# hardcoded scale factors
+# xy hardcoded scale factors
 @inline _hexbin_size_fact() = Float64(2), Float64(4 / 3)
 @inline _hexbin_msize_fact() = Float64(1 / sqrt(3)), Float64(1 / 2)
 
-function _spacings_offsets_nbins(bins::Tuple{Int,Int}, cellsize::Nothing, r::Rect2d)
+function _spacings_offsets_nbins(bins::NTuple{2,Int}, cellsize::Nothing, r::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
     return r.widths ./ (bins .- 1), r.origin, bins
 end
 
-function _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d)
-    mx, my = _hexbin_msize_fact()
-    _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), r)
-end
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, r::Rect2d) =
     _spacings_offsets_nbins((bins, bins), cellsize, r)
+
+function _spacings_offsets_nbins(bins, cellsize::Real, r::Rect2d)
+    mx, my = _hexbin_msize_fact()
+    return _spacings_offsets_nbins(bins, (cellsize, cellsize * mx / my), r)
+end
 
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, r::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
@@ -56,7 +57,8 @@ function data_limits(hb::Hexbin)
 
     tf = transform_func(hb)
     for dim in eachindex(origin)
-        # reset to origin (do not extend) in order to avoid logscale DomainError on negative values
+        # reset to origin (do not extend limits) in order to
+        # avoid logscale DomainError on negative values.
         if !can_handle_negative_domain(tf, dim) && origin[dim] < 0
             origin[dim] = bb.origin[dim]
             width[dim] = bb.widths[dim]
@@ -157,8 +159,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     end
     onany(calculate_grid, xy, hb.weights, hb.bins, hb.cellsize, hb.threshold)
 
-    # trigger once
-    notify(hb.bins)
+    notify(hb.bins)  # trigger once
 
     replace_automatic!(hb, :colorrange) do
         if isempty(count_hex[])
