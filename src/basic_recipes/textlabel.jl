@@ -335,6 +335,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,
         clip_planes = plot.clip_planes,
+        transformation = Transformation(), # already processed in pos calculation
     )
 
     # since CairoMakie consider translation/model in render order we should use
