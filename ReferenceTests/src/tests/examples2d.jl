@@ -1218,7 +1218,7 @@ end
     
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Default labels")
-    ax2 = Axis(fig[1,3], title="Custom labelformatter")
+    ax2 = Axis(fig[1,3], title="Custom labelformatter, inline")
     ax3 = Axis(fig[2,1], title="Color blue, labelcolor black α=0.5")
     ax4 = Axis(fig[2,3], title="Label font and size")
 
@@ -1230,7 +1230,8 @@ end
 
     tr2 = tricontour!(
         ax2, X, Y, Z, levels = levels, labels = true,
-        labelformatter = custom_label_formatter
+        labelformatter = custom_label_formatter,
+        inline=false, alpha=0.3
         )
     Colorbar(fig[1, 4], tr2.plots[2])
 
@@ -1301,7 +1302,7 @@ z = @lift ($a .* y - x .^ 2) .* ($a .* x - y .^ 2)
 
 # Create a reactive title using `lift`
 b = @lift round($a; digits=2)
-title_text = @lift "( $($b) * y - x^2) .* ( $($b)*x - y^2)"
+title_text = @lift "( $($b) * y - x^2 ) * ( $($b)*x - y^2 )"
 
 
 # Set up figure

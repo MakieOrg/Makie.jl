@@ -13,6 +13,10 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If `true`, adds text labels to the contour lines.
     """
     labels = false
+    """
+    If `true`, lines are partially deleted when text labels are added to the contour lines.
+    """
+    inline = true    
     "The font of the contour labels."
     labelfont = @inherit font
     "Color of the contour labels, if `nothing` it matches `color` by default."
@@ -176,6 +180,7 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     lev_pos = Observable(Tuple{Float32,NTuple{3,Point3f}}[])
 
     labels = c.attributes[:labels]
+    inline = c.attributes[:inline]
 
     function calculate_points(triangulation, zs, levels::Vector{Float32})  
         empty!(points[])
@@ -226,10 +231,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         labels[] && notify(lev_pos)
         return
     end
-
-    # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
-    # TODO: handle single contour such as levels = [0.0]
-    # TODO: trim contour lines where labels are placed
 
     # Prepare color arguments
     color_args_computed = (
@@ -317,8 +318,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         notify(texts.rotation)
     end
 
-    bboxes = lift(c, labels, texts.text; ignore_equal_values=true) do labels, _
-        labels || return
+    bboxes = lift(c, labels, inline, texts.text; ignore_equal_values=true) do labels, inline, _
+        (labels && inline) || return
         return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
             px_pos = project(scene, apply_transform(transform_func(c), pt, space))
@@ -328,8 +329,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
         end
     end
     
-    masked_lines = lift(c, labels, bboxes, points) do labels, bboxes, segments
-        labels || return segments
+    masked_lines = lift(c, labels, inline, bboxes, points) do labels, inline, bboxes, segments
+        (labels && inline) || return segments
 
         # Skip masking if bboxes is empty
         isempty(bboxes) && return segments
@@ -362,6 +363,10 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # Plot countour lines
     lines!(c, atr, masked_lines)
     return c
+    # TODO: refactor contour.jl, contourf.jl, tricontour.jl. tricontourf.jl and move common functions to an utils file.
+    # TODO: implement `inline` boolean parameter for labels of contour lines
+    # TODO: add other methods to select placement of labels
+
 end
 
 
