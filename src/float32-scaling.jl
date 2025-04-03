@@ -392,3 +392,41 @@ function apply_transform_and_f32_conversion(
         return f32_convert(float32convert, transformed, dim, space)
     end
 end
+
+
+#=
+If markerspace == :data in Scatter, we consider markersize, marker_offset
+and quad_offset to be given in the pre-float32convert coordinate system.
+Therefore we need to apply float32convert.scale (offset is already
+applied in positions). Since this is only a multiplication (whose result
+is in float safe units) we can apply it on the GPU
+
+The same goes for MeshScatter based on `space == :data`. Here only
+markersize is affected
+
+Note that if `transform_marker = true` the model matrix should apply to
+marker attributes. When the model matrix is not float safe it gets merged
+into float32convert if possible. This is the difference between "old_f32c"
+(no model) and "new_f32c" (maybe with model scale + trans) here.
+
+Merging is only possible without rotation in model. If there is rotation
+the model matrix should be applied on the CPU, but isn't yet. This will
+require shader rewrites if it's not too niche to ignore.
+=#
+function add_f32c_scale!(uniforms, scene::Scene, plot::Plot, f32c)
+    if !isnothing(scene.float32convert)
+        uniforms[:f32c_scale] = lift(plot,
+            f32c, scene.float32convert.scaling,
+            plot.transform_marker, get(plot, :markerspace, plot.space)
+        ) do new_f32c, old_f32c, transform_marker, markerspace
+            if markerspace == :data
+                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+            else
+                return Vec3f(1)
+            end
+        end
+    else
+        uniforms[:f32c_scale] = Vec3f(1)
+    end
+    return
+end

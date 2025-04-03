@@ -156,7 +156,8 @@ pages = [
         "tutorials/layout-tutorial.md",
         "tutorials/scenes.md",
         "tutorials/wrap-existing-recipe.md",
-	"tutorials/inset-plot-tutorial.md",
+        "tutorials/pixel-perfect-rendering.md",
+        "tutorials/inset-plot-tutorial.md",
     ],
     "Explanations" => [
         "Backends" => [
