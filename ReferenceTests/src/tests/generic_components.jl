@@ -427,7 +427,7 @@ end
 
 
 @testset "Tranformations and space" begin
-    transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :identity]
+    transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :nothing]
     spaces = [:data, :pixel, :relative, :clip]
 
     t = Transformation(
@@ -445,8 +445,8 @@ end
     for (i, transform) in enumerate(transforms)
         for (j, space, scale) in zip(eachindex(spaces), spaces, [1, 20, 0.2, 0.2])
             a = LScene(f[i, j], show_axis = false, scenekw = (camera = cam2d!, transformation = t))
-            linesegments!(a, grid, transformation = :identity, color = :lightgray)
-            text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :identity)
+            linesegments!(a, grid, transformation = :nothing, color = :lightgray)
+            text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :nothing)
             scatter!(a,
                 [scale * Point2f(cos(x), sin(x)) for x in range(0.2, 1.3, length = 11)],
                 transformation = transform, space = space

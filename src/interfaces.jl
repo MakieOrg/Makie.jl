@@ -400,7 +400,7 @@ function handle_transformation!(plot, parent)
         elseif t_user === :nothing
 
         else
-            error("$t_user is not a valid input for `transformation`. Defaulting to `:automatic`.")
+            @error("$t_user is not a valid input for `transformation`. Defaulting to `:automatic`.")
             if is_space_compatible(plot, parent)
                 obsfunc = connect!(transformation(parent), transformation(plot))
                 append!(plot.deregister_callbacks, obsfunc)
