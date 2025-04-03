@@ -379,7 +379,7 @@ function handle_transformation!(plot, parent)
         plot.transformation = Transformation()
 
         # Derive transformation based on space compatibility / use parent transform
-        if t_user in (automatic, :auto, :automatic, :inherit)
+        if t_user in (:automatic, :inherit)
 
             if is_space_compatible(plot, parent) || (t_user === :inherit)
                 obsfunc = connect!(transformation(parent), transformation(plot))
@@ -387,17 +387,17 @@ function handle_transformation!(plot, parent)
             end
 
         # Connect only transform_func
-        elseif t_user in (:inherit_transform_func, :inherit_transform_function)
+        elseif t_user === :inherit_transform_func
             obsfunc = connect!(transformation(parent), transformation(plot), connect_model = false)
             append!(plot.deregister_callbacks, obsfunc)
 
         # Connect only model
-        elseif t_user == :inherit_model
+        elseif t_user === :inherit_model
             obsfunc = connect!(transformation(parent), transformation(plot), connect_func = false)
             append!(plot.deregister_callbacks, obsfunc)
 
         # Keep child transform disconnected
-        elseif t_user in (nothing, identity, :nothing, :identity)
+        elseif t_user === :nothing
 
         else
             @error("$t_user is not a valid input for `transformation`. Defaulting to `automatic`.")

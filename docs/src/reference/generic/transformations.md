@@ -39,7 +39,7 @@ To accumulate transformation you need to add `Accum` as the first argument, e.g.
 
 The `transform_func` is a function that gets applied to the input data of a plot after `convert_arguments()` (type normalization) and dim_converts (handling of units and categorical value).
 It is typically managed by an Axis.
-For example, if you set `ax.xscale[] = log`, the underlying `ax.scene` will have it's transformation function set to `(log, indentity)` which will propagate to the plots inside the axis/scene.
+For example, if you set `ax.xscale[] = log`, the underlying `ax.scene` will have it's transformation function set to `(log, identity)` which will propagate to the plots inside the axis/scene.
 
 ```julia
 using Makie
@@ -86,7 +86,7 @@ For all of these the coordinate spaces of the parent and child are ignored.
 - `:inherit`: Inherit both `model` and `transform_func`
 - `:inherit_model`: Only inherit `model`
 - `:inherit_transform_func`: Only inherit `transform_func`
-- `:identity, :nothing`: Inherit neither, making the new `Transformation` an identity transformation
+- `:nothing`: Inherit neither making the new `Transformation` an identity transformation
 
 The `transformation` attribute also accepts inputs to the `transform!()` function.
 This allows you to prepare a plot with an initial model transformation.
