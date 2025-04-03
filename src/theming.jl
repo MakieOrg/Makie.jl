@@ -45,6 +45,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     markercolor = :black,
     markerstrokecolor = :black,
     markerstrokewidth = 0,
+    markerfont = "TeX Gyre Heros Makie",
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,

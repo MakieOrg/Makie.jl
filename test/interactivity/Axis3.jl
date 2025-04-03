@@ -1,5 +1,9 @@
 # TODO: test more
 @testset "Axis Interactions - Axis3" begin
+
+    Makie.PICK_TRACKING[] = true
+    init = Makie._PICK_COUNTER[]
+
     f = Figure(size = (400, 400))
     a = Axis3(f[1, 1])
     p = scatter!(a, Rect3f(Point3f(1,2,3), Vec3f(1,2,3)))
@@ -66,4 +70,6 @@
     e.mouseposition[] = (200, 200)
     e.scroll[] = (0.0, -4.0)
     @test a.targetlimits[] ≈ Rect3f(Point3f(0.95, 1.9, 2.85), Vec3f(1.1, 2.2, 3.3))
+
+    @test init == Makie._PICK_COUNTER[]
 end

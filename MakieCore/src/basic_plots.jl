@@ -63,8 +63,8 @@ function mixin_generic_plot_attributes()
         overdraw = false
         "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
         ssao = false
-        "sets whether this plot should be seen by `DataInspector`."
-        inspectable = true
+        "Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene."
+        inspectable = @inherit inspectable
         "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
         depth_shift = 0.0f0
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
@@ -484,6 +484,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
+    "Sets the font used for character markers. Can be a `String` specifying the (partial) name of a font or the file path of a font file"
+    font = @inherit markerfont
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
