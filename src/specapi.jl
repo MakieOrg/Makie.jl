@@ -595,13 +595,14 @@ function diff_plotlist!(
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
+        # Forward kw arguments from Plotlist
+        if !isnothing(plotlist)
+            merge!(plotspec.kwargs, plotlist.kw)
+        end
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-            # Forward kw arguments from Plotlist
-            if !isnothing(plotlist)
-                merge!(plotspec.kwargs, plotlist.kw)
-            end
+
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
             # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
