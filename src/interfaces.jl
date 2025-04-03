@@ -360,12 +360,12 @@ function plot!(::Plot{F, Args}) where {F, Args}
 end
 
 function handle_transformation!(plot, parent)
-    t_user = to_value(pop!(attributes(plot), :transformation, automatic))
+    t_user = to_value(pop!(attributes(plot), :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation
     if t_user isa Tuple{Symbol, <: Real} || t_user isa Union{Attributes, AbstractDict, NamedTuple}
         transform_op = t_user
-        t_user = automatic
+        t_user = :automatic
     elseif t_user isa Tuple # Allow (t_user, transform_op)
         t_user, transform_op = t_user
     else
@@ -400,7 +400,7 @@ function handle_transformation!(plot, parent)
         elseif t_user === :nothing
 
         else
-            @error("$t_user is not a valid input for `transformation`. Defaulting to `automatic`.")
+            error("$t_user is not a valid input for `transformation`. Defaulting to `:automatic`.")
             if is_space_compatible(plot, parent)
                 obsfunc = connect!(transformation(parent), transformation(plot))
                 append!(plot.deregister_callbacks, obsfunc)

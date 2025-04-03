@@ -15,7 +15,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
 """
 function generic_plot_attributes!(attr)
-    attr[:transformation] = automatic
+    attr[:transformation] = :automatic
     attr[:model] = automatic
     attr[:visible] = true
     attr[:transparency] = false
@@ -33,7 +33,7 @@ end
 
 function generic_plot_attributes(attr)
     return (
-        transformation = automatic,
+        transformation = :automatic,
         model = automatic,
         visible = attr[:visible],
         transparency = attr[:transparency],
@@ -51,7 +51,7 @@ end
 
 function mixin_generic_plot_attributes()
     @DocumentedAttributes begin
-        transformation = automatic
+        transformation = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
         "Controls whether the plot will be rendered or not."

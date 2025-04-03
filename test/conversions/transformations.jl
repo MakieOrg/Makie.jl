@@ -377,7 +377,7 @@ end
         scale!(scene, Vec2f(2))
         @test p.transformation.model[] ≈ Makie.scalematrix(Vec3f(2,2,1)) * T atol = 1e-6
 
-        p = scatter!(scene, rand(10), transformation = (nothing, (translation = Vec3f(1,2,3),)))
+        p = scatter!(scene, rand(10), transformation = (:nothing, (translation = Vec3f(1,2,3),)))
         @test p.transformation.model[] == Makie.translationmatrix(Vec3f(1,2,3))
     end
 end
