@@ -685,10 +685,13 @@ end
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
-            yminorticksvisible = true, yminorgridvisible = true,
-            xminorticksvisible = true, xminorgridvisible = true,
-            yminortickwidth = 4.0, xminortickwidth = 4.0,
-            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticksvisible = i != 6, yminorgridvisible = true,
+            xminorticksvisible = i != 6, xminorgridvisible = true,
+            yminortickwidth = 3.0, xminortickwidth = 3.0,
+            yminorticksize = 8.0, xminorticksize = 8.0,
+            yminorgridwidth = 3.0, xminorgridwidth = 3.0,
+            yminortickcolor = :red, xminortickcolor = :red,
+            yminorgridcolor = :lightgreen, xminorgridcolor = :lightgreen,
             yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
@@ -890,6 +893,28 @@ end
     # and now, we plot!
     fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
     ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
+@reference_test "filled contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
 
     fig
 end

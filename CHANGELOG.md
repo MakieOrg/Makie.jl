@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+- Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
+- Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
+- Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
+- Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
+- Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
+
+## [0.22.2] - 2025-02-26
+
+- Added support for curvilinear grids in `contourf` (contour filled), where `x` and `y` are matrices (`contour` lines were added in [0.22.0]) [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
 - Updated WGLMakie's threejs version from 0.157 to 0.173, fixing some threejs bugs [#4809](https://github.com/MakieOrg/Makie.jl/pull/4809).
 - Moved Axis3 clip planes slightly outside to avoid clipping objects on the border with 0 margin [#4742](https://github.com/MakieOrg/Makie.jl/pull/4742)
 - Fixed an issue with transformations not propagating to child plots when their spaces only match indirectly. [#4723](https://github.com/MakieOrg/Makie.jl/pull/4723)
@@ -25,6 +34,11 @@
 - Reverted change to `poly` which disallowed 3D geometries from being plotted [#4738](https://github.com/MakieOrg/Makie.jl/pull/4738)
 - Enabled autocompletion on Block types, e.g. `?Axis.xti...` [#4786](https://github.com/MakieOrg/Makie.jl/pull/4786)
 - Added `dpi` metadata to all rendered png files, where `px_per_unit = 1` means 96dpi, `px_per_unit = 2` means 192dpi, and so on. This gives frontends a chance to show plain Makie png images with the correct scaling [#4812](https://github.com/MakieOrg/Makie.jl/pull/4812).
+- Fixed issue with voxels not working correctly with `rotate!()` [#4824](https://github.com/MakieOrg/Makie.jl/pull/4824)
+- Fixed issue with tick event not triggering in WGLMakie [#4818](https://github.com/MakieOrg/Makie.jl/pull/4818)
+- Improved performance of some Blocks, mainly `Textbox` and `Menu` [#4821](https://github.com/MakieOrg/Makie.jl/pull/4821)
+- Fixed issue with `PolarAxis` not considering tick visibility in protrusion calculations. [#4823](https://github.com/MakieOrg/Makie.jl/pull/4823)
+- Fixed some plots failing to create Legend entries due to missing attributes [#4826](https://github.com/MakieOrg/Makie.jl/pull/4826)
 
 ## [0.22.1] - 2025-01-17
 
@@ -749,7 +763,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...HEAD
+[0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
 [0.21.18]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.17...v0.21.18
