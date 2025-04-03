@@ -451,6 +451,10 @@ end
     # blocking = true forces immediately resolution of DataInspector updates
     di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
         textpadding = (2,2,2,2), blocking = true)
+    # force indicator plots to be created for WGLMakie
+    Makie.get_indicator_plot(di, a.scene, LineSegments)
+    Makie.get_indicator_plot(di, a.scene, Lines)
+    Makie.get_indicator_plot(di, a.scene, Scatter)
     scene
 
     st = Makie.Stepper(scene)
@@ -466,10 +470,8 @@ end
         # remove tooltip so we don't select it
         e.mouseposition[] = (289, 139)
         colorbuffer(scene) # force update of picking buffer
-        sleep(0.5) # wait on WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.5) # wait on WGLMakie
         Makie.step!(st)
     end
 
@@ -487,6 +489,10 @@ end
     e = events(f)
     e.window_open[] = true # Prevent the hover event Channel from getting closed
     di = DataInspector(f, blocking = true)
+    # force indicator plots to be created for WGLMakie
+    Makie.get_indicator_plot(di, a.scene, LineSegments)
+    Makie.get_indicator_plot(di, a.scene, Lines)
+    Makie.get_indicator_plot(di, a.scene, Scatter)
     f
 
     st = Makie.Stepper(f)
@@ -494,12 +500,9 @@ end
     mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
     for mp in mps
         e.mouseposition[] = (1, 1)
-        sleep(0.5) # wait on WGLMakie
         colorbuffer(f) # force update of picking buffer
-        sleep(0.5) # wait on WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.5) # wait on WGLMakie
         Makie.step!(st)
     end
 
