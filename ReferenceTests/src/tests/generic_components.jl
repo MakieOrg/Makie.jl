@@ -473,7 +473,7 @@ end
         sleep(0.15) # wait for WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.2) # wait for WGLMakie
+        sleep(0.15) # wait for WGLMakie
         Makie.step!(st)
     end
 
@@ -500,13 +500,13 @@ end
     st = Makie.Stepper(f)
 
     mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
-    for mp in mps
+    for (i, mp) in enumerate(mps)
         e.mouseposition[] = (1, 1)
         colorbuffer(f) # force update of picking buffer
         sleep(0.15) # wait for WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.2) # wait for WGLMakie
+        sleep(0.2 + (i==2)) # wait for WGLMakie, datashader extra slow
         Makie.step!(st)
     end
 
