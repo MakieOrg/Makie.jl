@@ -98,6 +98,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     or as a `Triangulation` from DelaunayTriangulation.jl.
     """
     triangulation = DelaunayTriangulation()
+
     MakieCore.mixin_generic_plot_attributes()...
     
 end
@@ -134,12 +135,13 @@ end
 function compute_contour_colormap(levels, cmap, discretize_colormap)
 
     if !discretize_colormap || length(levels)==1
+        # continuous colormap
         return cgrad(cmap)
     end
 
     levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-
     _cmap = to_colormap(cmap)
+    # Discrete colormap
     return cgrad(_cmap, levels_scaled; categorical=true)
 end
 
@@ -149,12 +151,8 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     # FIXME: This uses _get_isoband_levels, from contourf.jl. 
     # This should be moved to an utils.jl file
     # Same issue is found in tricontourf.jl
-    if typeof(c.levels[]) <: Integer
-        c.levels[] += 1
-    end
-    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode      
-        return _get_isoband_levels(Val(mode), levels, vec(zs))
-    end
+
+    c.attributes[:_computed_levels] = lift(get_computed_levels, c, c.levels, zs, c.mode)       
 
     colorrange = lift(c, c._computed_levels, zs) do computed_levels, zs
         if length(computed_levels) == 1
@@ -182,15 +180,15 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     labels = c.attributes[:labels]
     inline = c.attributes[:inline]
 
-    function calculate_points(triangulation, zs, levels::Vector{Float32})  
+    function calculate_points(triangulation, zs, levels::Vector{Float32}, labels)  
         empty!(points[])
         empty!(colors[])
         empty!(lev_pos[])
         levels = copy(levels)
 
-        # adjust outer levels to be inclusive
-        levels[1] = prevfloat(levels[1])
-        levels[end] = nextfloat(levels[end])
+        # # adjust outer levels to be inclusive
+        # levels[1] = prevfloat(levels[1])
+        # levels[end] = nextfloat(levels[end])
 
 
         xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
@@ -201,7 +199,6 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     
         # contour_lines may contain multiple lines per level, each in a vector
         # Convert to a flat vector of points separated by NaNs
-        
         for (fc, lc) in zip(contour_lines, levels)
             pointvecs = map(fc.polylines) do vecs
                 map(Point2f, vecs)
@@ -242,12 +239,12 @@ function Makie.plot!(c::Tricontour{<:Tuple{<:DelTri.Triangulation, <:AbstractVec
     process_color_args!(atr, c, colors; color_args_computed...)
 
     # Compute contours
-    onany(calculate_points, c, tri, zs, c._computed_levels)
+    onany(calculate_points, c, tri, zs, c._computed_levels, labels)
     
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_points(tri[], zs[], c._computed_levels[])
-    @extract c (labelsize, labelfont, labelcolor, labelformatter)
+    calculate_points(tri[], zs[], c._computed_levels[], labels[])
+    @extract c (labelsize, labelfont, labelcolor, labelformatter, labels)
 
     texts = text!(
         c,
@@ -419,4 +416,21 @@ function label_info(lev, vertices)
         lev,
         map(p -> to_ndim(Point3f, p, lev), Tuple(pts))
     )
+end
+
+function get_computed_levels(levels::Integer, zs, mode)
+    """ Returns a vector with n levels for contours, where levels = n"""
+    lev = _get_isoband_levels(Val(mode), levels + 1, vec(zs))
+    return lev[2:end-1]
+end
+
+function get_computed_levels(levels::AbstractFloat, zs, mode)
+    """ Returns a vector with n levels for contours, where levels = n"""
+    return  get_computed_levels([levels], zs, mode)
+end
+
+function get_computed_levels(levels::AbstractVector{<:Real}, zs, mode)
+    # non integer levels
+    lev = _get_isoband_levels(Val(mode), levels, vec(zs))
+    return lev
 end
