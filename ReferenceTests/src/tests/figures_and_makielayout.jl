@@ -470,6 +470,14 @@ end
     fig
 end
 
+@reference_test "Categorical Colorbar with nan_color" begin
+    arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
+    fig = Figure(size = (300, 200))
+    a, hm = heatmap(fig[1,1], arr; colormap=Makie.Categorical(:Paired_8), colorrange=(1,3), lowclip=:black)
+    Colorbar(fig[1,2], hm)
+    fig
+end
+
 @reference_test "datashader" begin
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
     # Dont use the full dataset, since WGLMakie seems to time out if it's too big
