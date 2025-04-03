@@ -53,6 +53,8 @@ end
             marker = Rect3f(Point3f(0), Vec3f(2)),
             markersize = 0.1
         )
+        @test p.transform_marker[] == true
+
         bb = boundingbox(p)
         @test bb.origin ≈ Point3f(1)
         @test bb.widths ≈ Vec3f(4 + 0.2)
@@ -65,17 +67,17 @@ end
         scale!(p, 0.5, 0.25, 0.5)
         bb = boundingbox(p)
         @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(1) + Point3f(1, 0.5, 2)
-        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
+        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* (4f0 .+ 0.2f0)
 
         Makie.rotate!(p, pi/2)
         bb = boundingbox(p)
-        @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5, 1, 1) + Point3f(1, 0.5, 2)
-        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
-
-        p.transform_marker = true
-        bb = boundingbox(p)
         @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5-0.2, 1, 1) + Point3f(1, 0.5, 2)
         @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* (4f0 .+ 0.2f0)
+
+        p.transform_marker = false
+        bb = boundingbox(p)
+        @test bb.origin ≈ Vec3f(0.5, 0.25, 0.5) .* Point3f(-5, 1, 1) + Point3f(1, 0.5, 2)
+        @test bb.widths ≈ Vec3f(0.5, 0.25, 0.5) .* 4f0 .+ 0.2f0
 
         # Testing path with per element markersize and/or rotations
         fig, ax, p = meshscatter(
