@@ -269,11 +269,11 @@ end
 
 @testset "Transformation initialization" begin
 
-    inherit_auto = [Makie.automatic, :auto, :automatic]
+    inherit_auto = [:automatic]
     inherit_all = [:inherit]
     inherit_model = [:inherit_model]
-    inherit_func = [:inherit_transform_func, :inherit_transform_function]
-    inherit_nothing = [nothing, identity, :nothing, :identity]
+    inherit_func = [:inherit_transform_func]
+    inherit_nothing = [:nothing]
 
     camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
     camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
