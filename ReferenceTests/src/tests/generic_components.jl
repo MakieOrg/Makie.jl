@@ -452,9 +452,9 @@ end
     di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
         textpadding = (2,2,2,2), blocking = true)
     # force indicator plots to be created for WGLMakie
-    Makie.get_indicator_plot(di, a.scene, LineSegments)
-    Makie.get_indicator_plot(di, a.scene, Lines)
-    Makie.get_indicator_plot(di, a.scene, Scatter)
+    Makie.get_indicator_plot(di, scene, Lines)
+    Makie.get_indicator_plot(di, scene, LineSegments)
+    Makie.get_indicator_plot(di, scene, Scatter)
     scene
 
     st = Makie.Stepper(scene)
