@@ -39,7 +39,7 @@ function assemble_scatter_robj(attr)
         :lowclip => attr._lowclip[],
         :nan_color => attr.nan_color[],
 
-        :rotation => attr.rotation[],
+        :rotation => attr._rotation[],
 
         :marker_offset => Vec3f(0),
         :markersize => attr.quad_scale[],
@@ -68,7 +68,7 @@ function assemble_scatter_robj(attr)
         :strokecolor => attr.strokecolor[],
         :glowwidth => attr.glowwidth[],
         :glowcolor => attr.glowcolor[],
-        :billboard => attr.rotation[] isa Billboard,
+        :billboard => attr.billboard[],
         :depth_shift => attr.depth_shift[],
         :transform_marker => false,
     )
