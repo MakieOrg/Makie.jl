@@ -600,3 +600,11 @@ end
     Toggle(f[2,1], orientation=:vertical)
     Toggle(f[3,1], orientation=pi/4)
 end
+
+@testset "Textbox set! & unsafe_set!" begin
+    f = Figure()
+    tb = Textbox(f[1,1], validator = isequal("hi"))
+    @test isnothing(Makie.set!(tb, "hi"))
+    @test_throws ErrorException Makie.set!(tb, "there")
+    @test isnothing(Makie.unsafe_set!(tb, "there"))
+end

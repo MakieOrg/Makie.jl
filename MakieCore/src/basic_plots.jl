@@ -534,8 +534,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
-    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
-    transform_marker = false
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is false, `scale!`, `rotate!` and `translate!()` will not affect the scattered mesh.)"
+    transform_marker = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -802,4 +802,6 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = automatic
 end
