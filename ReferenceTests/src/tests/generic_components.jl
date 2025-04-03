@@ -473,7 +473,7 @@ end
         sleep(0.15) # wait for WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.15) # wait for WGLMakie
+        sleep(0.2) # wait for WGLMakie
         Makie.step!(st)
     end
 
@@ -506,7 +506,7 @@ end
         sleep(0.15) # wait for WGLMakie
         @test isempty(di.temp_plots) # verify cleanup
         e.mouseposition[] = mp
-        sleep(0.15) # wait for WGLMakie
+        sleep(0.2) # wait for WGLMakie
         Makie.step!(st)
     end
 
