@@ -242,7 +242,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     end
 
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
-        args = map(getindex, input_args)
+        args = map(getindex, values(input_args))
         expanded_args = expand_dimensions(PTrait, args...)
         if isnothing(expanded_args)
             return (args,)
@@ -251,17 +251,33 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         end
     end
 
-    converts = get!(() -> DimConversions(), user_kw, :dim_conversions)
-    register_computation!(attr, [:expanded_args], [:dim_converted]) do input_args, changed, last
-        args = input_args[1][]
-        return (args,)
+    dim_converts = get!(() -> DimConversions(), user_kw, :dim_conversions)
+    expanded_args = attr[:expanded_args][]
+    if length(expanded_args) in (2, 3)
+        inputs = Symbol[]
+        for (i, arg) in enumerate(expanded_args)
+            update_dim_conversion!(dim_converts, i, arg)
+            obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
+            converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
+            add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+            push!(inputs, Symbol(:dim_convert_, i))
+        end
+        register_computation!(attr, [:expanded_args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
+            last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last[1][]
+            result = ntuple(length(converts)) do i
+                return convert_dim_value(converts[i][], attr, expanded[][i], last_vals[i])
+            end
+            return (result,)
+        end
+    else
+        register_computation!(attr, [:expanded_args], [:dim_converted]) do args, changed, last
+            return (args.expanded_args[],)
+        end
     end
 
-    register_computation!(attr, [:dim_converted],
-                          [MakieCore.argument_names(P, 10)...]) do args, changed, last
-        return convert_arguments(P, args[1][]...)
+    register_computation!(attr, [:dim_converted], [MakieCore.argument_names(P, 10)...]) do args, changed, last
+        return convert_arguments(P, args.dim_converted[]...)
     end
-
 
     add_input!(attr, :transform_func, identity)
     # Hack-fix variable type

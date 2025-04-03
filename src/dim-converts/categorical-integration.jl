@@ -116,8 +116,7 @@ function convert_categorical(conversion::CategoricalConversion, value::Integer)
     return conversion.category_to_int[][value]
 end
 
-function convert_dim_observable(conversion::CategoricalConversion, values_obs::Observable, deregister)
-    prev_values = []
+function convert_dim_value(conversion::CategoricalConversion, attr, values, prev_values)
     # This is a bit tricky...
     # We need to recalculate the categories on each values_obs update,
     # but we also need to update the cat->int mapping each time the categories get recalculated
@@ -125,29 +124,24 @@ function convert_dim_observable(conversion::CategoricalConversion, values_obs::O
     # but we don't want to recalculate cat->int two times, when value changes + category_to_int
     # so we introduce a placeholder observable that gets triggered when an update is needed
     # outside of category_to_int updating
-    update_needed = Observable(nothing)
-    f = on(values_obs; update=true) do values
-        new_values = unique!(Any[get_values(values)...])
-        if new_values != prev_values
-            dict_setindex!(conversion.sets, values_obs.id, new_values)
-            prev_values = new_values
-            recalculate_categories!(conversion)
-            notify(conversion.category_to_int)
-        else
-            # If values doesn't introduce new categories,
-            # it still may need updating (["a", "a", "b"] -> ["a", "b"])
-            # If we'd really clever, we'd also track prev_values not as a set
-            notify(update_needed)
-        end
-        return
+    unwrapped_values = get_values(values)
+    new_values = unique!(Any[v for v in unwrapped_values])
+    if new_values != prev_values
+        dict_setindex!(conversion.sets, string(objectid(attr)), new_values)
+        recalculate_categories!(conversion)
+        # Others need to be updated too
+        # This will also call this `convert_dim_value` again
+        # But will then not trigger a new recalc of categories, since last == prev
+        # Would be nice, to get out of that to not do `Any[v for v in unwrapped_values]` with a `==`
+        notify(conversion.category_to_int)
+    else
+        # TODO, what do if no change?
     end
-    push!(deregister, f)
     # So now we update when either category_to_int changes, or
     # when values changes and an update is needed
-    return map(update_needed, conversion.category_to_int) do _, categories
-        return convert_categorical.(Ref(conversion), get_values(values_obs[]))
-    end
+    return convert_categorical.(Ref(conversion), unwrapped_values)
 end
+
 
 function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax)
     scale != identity && error("Scale $(scale) not supported for categorical conversion")

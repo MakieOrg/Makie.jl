@@ -86,6 +86,20 @@ function convert_dim_observable(conversion::DateTimeConversion, values::Observab
     return result
 end
 
+function convert_dim_value(conversion::DateTimeConversion, attr, values, previous_values)
+    T = conversion.type[]
+    eltype = MakieCore.get_element_type(values)
+    if T <: Automatic
+        new_type = eltype
+        conversion.type[] = new_type
+    elseif T != eltype
+        if !(T <: Time && eltype <: Unitful.Quantity)
+            error("Plotting unit $(eltype) into axis with type $(T) not supported.")
+        end
+    end
+    return date_to_number.(T, values)
+end
+
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
 
     if scale != identity
