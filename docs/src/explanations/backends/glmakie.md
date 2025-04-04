@@ -80,6 +80,8 @@ do:
    - `ShaderAbstractions.native_context_alive(::MyWindow)` (check if the window
      OpenGL context is still valid)
    - `GLMakie.framebuffer_size(::MyWindow)` (get the size of the windows framebuffer)
+   - `GLMakie.destroy!(::MyWindow)` ('destroy' the window, this should be a no-op
+     unless you want GLMakie to really close the window)
    - `GLMakie.connect_screen(::Scene, Screen{MyWindow})` (connect input signals
      for e.g. the keyboard and mouse; you may want to implement the individual
      connection methods instead).
