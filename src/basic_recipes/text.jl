@@ -447,13 +447,13 @@ function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
 end
 
 function max_y_ascender(glyph_infos::Vector{GlyphInfo})::Float32
-    maximum(glyph_infos; init = 0.0f0) do ginfo
+    maximum(glyph_infos; init = -floatmax(Float32)) do ginfo
         return ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
     end
 end
 
 function min_y_descender(glyph_infos::Vector{GlyphInfo})::Float32
-    return minimum(glyph_infos; init = 0.0f0) do ginfo
+    return minimum(glyph_infos; init = floatmax(Float32)) do ginfo
         return ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
     end
 end
