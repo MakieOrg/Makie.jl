@@ -93,6 +93,7 @@
 ## [0.21.18] - 2024-12-12
 
 - Allow for user defined recipes to be used in SpecApi [#4655](https://github.com/MakieOrg/Makie.jl/pull/4655).
+- Fix text layouting with empty lines [#4269](https://github.com/MakieOrg/Makie.jl/pull/4269).
 
 ## [0.21.17] - 2024-12-05
 
