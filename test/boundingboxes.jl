@@ -9,7 +9,7 @@ end
 
     fig, ax, p = hexbin(ps)
     ms = to_ndim(Vec3f, Vec2f(p.plots[1].markersize[]), 0)
-    @test data_limits(p) ≈ Rect3f(-ms, Vec3f(1, 1, 0) .+ 2ms)
+    @test boundingbox(p) ≈ Rect3f(-ms, Vec3f(1, 1, 0) .+ 2ms)
 
     fig, ax, p = errorbars(ps, [0.5, 0.5])
     @test data_limits(p) ≈ Rect3f(-Point3f(0, 0.5, 0), Vec3f(1, 2, 0))
