@@ -159,7 +159,12 @@ function initialize_block!(cb::Colorbar)
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
-                return convert(Vector{Float64}, sort!(unique(values)))
+                # First we find all unique values,
+                # then we throw out NaNs that are rendered independently anyway
+                # then we clamp the remaining values to the limits,
+                # remove remaining duplicates and sort
+                vals = sort(unique(clamp.(filter(!isnan, unique(values)), limits...)))
+                return convert(Vector{Float64}, vals)
             else
                 return convert(Vector{Float64}, LinRange(limits..., n))
             end
@@ -247,13 +252,15 @@ function initialize_block!(cb::Colorbar)
     end
     heatmap!(blockscene,
         xrange, yrange, continuous_pixels;
-        colormap=colormap,
-        visible=show_cats,
-        inspectable=false
+        colormap = colormap,
+        colorrange = limits,
+        visible = show_cats,
+        inspectable = false
     )
     image!(blockscene,
         lift(extrema, xrange), lift(extrema, yrange), continuous_pixels;
         colormap = colormap,
+        colorrange = limits,
         visible = show_continuous,
         inspectable = false
     )

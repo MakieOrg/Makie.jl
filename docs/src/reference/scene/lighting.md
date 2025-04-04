@@ -150,7 +150,7 @@ ps = [
     for theta in range(-20, 20, length = 21) for phi in range(60, 340, length=30)
 ]
 faces = [QuadFace(30j + i, 30j + mod1(i+1, 30), 30*(j+1) + mod1(i+1, 30), 30*(j+1) + i) for j in 0:19 for i in 1:29]
-marker_mesh = GeometryBasics.Mesh(meta(ps, normals = ps), decompose(GLTriangleFace, faces))
+marker_mesh = GeometryBasics.mesh(ps, faces, normal = ps)
 
 lights = [PointLight(RGBf(10, 4, 2), Point3f(0, 0, 0), 5)]
 
@@ -201,7 +201,7 @@ function to_mesh(l::RectLight)
     positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
     faces = GLTriangleFace[(1,2,3), (2,3,4)]
     normals = [n,n,n,n]
-    return GeometryBasics.Mesh(meta(positions, normals = normals), faces)
+    return GeometryBasics.Mesh(positions, faces, normal = normals)
 end
 
 fig = Figure(backgroundcolor = :black)

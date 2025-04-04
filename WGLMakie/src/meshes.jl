@@ -26,12 +26,25 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
 
     if color[] isa Colorant
         uniforms[uniform_color_name] = color
+    elseif color[] isa ShaderAbstractions.Sampler
+        uniforms[uniform_color_name] = to_value(color)
     elseif color[] isa AbstractVector
         buffers[:color] = Buffer(color)
     elseif color[] isa Makie.AbstractPattern
         uniforms[:pattern] = true
-        uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
-    elseif color[] isa AbstractMatrix
+        img = convert_texture(map(Makie.to_image, plot, color))
+        uniforms[uniform_color_name] = Sampler(img; x_repeat = :repeat, minfilter=minfilter)
+        # different default with Patterns (no swapping and flipping of axes)
+        # also includes px to uv coordinate transform so we can use linear
+        # interpolation (no jitter) and related pattern to (0,0,0) in world space
+        scene = Makie.parent_scene(plot)
+        uniforms[:uv_transform] = map(plot,
+                plot.attributes[:uv_transform], scene.camera.projectionview,
+                scene.camera.resolution, plot.model, color # TODO float32convert
+            ) do uvt, pv, res, model, pattern
+            return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
+        end
+    elseif color[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
         uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
     elseif color[] isa Makie.ColorMapping
         if color[].color_scaled[] isa AbstractVector
@@ -40,11 +53,14 @@ function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_co
             color_scaled = convert_texture(color[].color_scaled)
             uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
         end
-        uniforms[:colormap] = Sampler(color[].colormap)
+        cm_minfilter = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        uniforms[:colormap] = Sampler(color[].colormap, minfilter = cm_minfilter)
         uniforms[:colorrange] = color[].colorrange_scaled
         uniforms[:highclip] = Makie.highclip(color[])
         uniforms[:lowclip] = Makie.lowclip(color[])
         uniforms[:nan_color] = color[].nan_color
+    else
+        error("Color type not supported: $(typeof(color[]))")
     end
     get!(uniforms, :color, false)
     get!(uniforms, uniform_color_name, false)
@@ -94,23 +110,24 @@ function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
     get!(uniforms, :PICKING_INDEX_FROM_UV, false)
     pos = pop!(per_vertex, :positions)
     faces = pop!(per_vertex, :faces)
-    mesh = GeometryBasics.Mesh(meta(pos; per_vertex...), faces)
+    mesh = GeometryBasics.Mesh(pos, faces; per_vertex...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
-    mattributes = GeometryBasics.attributes
     get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
-    data = mattributes(mesh_signal[])
-
+    data = GeometryBasics.vertex_attributes(mesh_signal[])
+    if plot.color[] isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
+    end
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
+    for (key, default) in (:uv => Vec2f(0), :normal => Vec3f(0))
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else

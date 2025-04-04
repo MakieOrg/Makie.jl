@@ -256,7 +256,7 @@ function find_font_for_char(glyph, font::NativeFont)
     FreeTypeAbstraction.glyph_index(font, glyph) != 0 && return font
     # it seems that linebreaks are not found which messes up font metrics
     # if another font is selected just for those chars
-    glyph in ('\n', '\r', '\t') && return font
+    glyph in ('\n', '\r', '\t', UInt32(0)) && return font
     for afont in alternativefonts()
         if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
             return afont
@@ -266,14 +266,7 @@ function find_font_for_char(glyph, font::NativeFont)
 end
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
-    if FreeTypeAbstraction.glyph_index(font, glyph) == 0
-        for afont in alternativefonts()
-            if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
-                font = afont
-            end
-        end
-    end
-    return insert_glyph!(atlas, glyph, font)
+    return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
 end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
@@ -509,7 +502,7 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     return markersize .* factor
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2, markeroffset::Vec2)::Vec2f
+function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2)::Vec2f
     # - wh = widths(bbox(bp)) is the untouched size of the given bezierpath
     # - full_pixel_size_in_atlas is the size of the signed distance field in the
     #   texture atlas. This includes glyph padding
@@ -533,24 +526,25 @@ function offset_bezierpath(atlas::TextureAtlas, bp::BezierPath, markersize::Vec2
     return markersize * (origin(bb) .+ 0.5f0 * widths(bb) .- 0.5f0 .* scaled_size)
 end
 
-function offset_bezierpath(atlas::TextureAtlas, bp, scale, offset)
-    return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)), Vec2d.(_bcast(offset)))
+function offset_bezierpath(atlas::TextureAtlas, bp, scale)
+    return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)))
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: BezierPath
-    return offset_bezierpath(atlas, marker, markersize, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: BezierPath
+    return offset_bezierpath(atlas, marker, markersize)
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize, markeroffset) where T <: Char
-    return rescale_marker(atlas, marker, font, markeroffset)
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: Char
+    return rescale_marker(atlas, marker, font, offset_marker(markersize))
 end
 
-offset_marker(atlas, marker, font, markersize, markeroffset) = markeroffset
+offset_marker(atlas, marker, font, markersize) = offset_marker(markersize)
+offset_marker(markersize) = Vec2f.(_bcast(-0.5 .* markersize))
 
-function marker_attributes(atlas::TextureAtlas, marker, markersize, font, marker_offset, plot_object)
+function marker_attributes(atlas::TextureAtlas, marker, markersize, font, plot_object)
     atlas_obs = Observable(atlas) # for map to work
     scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize, marker_offset;
+    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize;
                       ignore_equal_values=true)
 
     return scale, quad_offset

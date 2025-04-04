@@ -93,6 +93,7 @@ mutable struct Scene <: AbstractScene
     cycler::Cycler
 
     conversions::DimConversions
+    isclosed::Bool
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -131,12 +132,20 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
             Cycler(),
-            DimConversions()
+            DimConversions(),
+            false
         )
+        on(scene, events.window_open) do open
+            if !open
+                scene.isclosed = true
+            end
+        end
         finalizer(free, scene)
         return scene
     end
 end
+
+isclosed(scene::Scene) = scene.isclosed
 
 # on & map versions that deregister when scene closes!
 function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
@@ -427,6 +436,8 @@ function delete_scene!(scene::Scene)
 end
 
 function free(scene::Scene)
+    # Errors should be handled at a lower level because otherwise
+    # some of the cleanup will be incomplete.
     empty!(scene; free=true)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
@@ -439,6 +450,7 @@ function free(scene::Scene)
     return
 end
 
+# Note: called from scene finalizer if free = true
 function Base.empty!(scene::Scene; free=false)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
@@ -484,15 +496,18 @@ function Base.push!(scene::Scene, @nospecialize(plot::Plot))
     end
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
     @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
+# Note: can be called from scene finalizer
 function free(plot::AbstractPlot)
     for f in plot.deregister_callbacks
         Observables.off(f)
@@ -504,6 +519,7 @@ function free(plot::AbstractPlot)
     return
 end
 
+# Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
     # TODO, if we want to delete a subplot of a plot,
@@ -537,7 +553,6 @@ end
 #     insert!(screen, scene, plot)
 #     return
 # end
-
 
 function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
@@ -615,9 +630,7 @@ end
 update_cam!(x, bb::AbstractCamera, rect) = update_cam!(get_scene(x), bb, rect)
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
-function not_in_data_space(p)
-    !is_data_space(to_value(get(p, :space, :data)))
-end
+not_in_data_space(p) = !is_data_space(p)
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
@@ -631,6 +644,7 @@ end
 parent_scene(x) = parent_scene(get_scene(x))
 parent_scene(x::Plot) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
+parent_scene(::Nothing) = nothing
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 

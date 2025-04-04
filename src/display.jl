@@ -244,7 +244,7 @@ function Base.show(io::IO, m::MIME"text/markdown", fig::FigureLike)
     throw(MethodError(show, io, m, fig))
 end
 
-function Base.show(io::IO, m::MIME, figlike::FigureLike)
+function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backend(), update=true)
     if ALWAYS_INLINE_PLOTS[] == false && m isa MIME_TO_TRICK_VSCODE
         # We use this mime to display the figure in a window here.
         # See declaration of MIME_TO_TRICK_VSCODE for more info
@@ -252,9 +252,8 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike)
         return () # this is a diagnostic vscode mime, so we can just return nothing
     end
     scene = get_scene(figlike)
-    backend = current_backend()
     # get current screen the scene is already displayed on, or create a new screen
-    update_state_before_display!(figlike)
+    update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible=>false), io, m)
     backend_show(screen, io, m, scene)
     return screen
@@ -481,10 +480,14 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
     end
 end
 
+px_per_unit(screen::MakieScreen)::Float64 = 1.0 # fallback for backends who don't have upscaling
+
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
     img = colorbuffer(screen)
-    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+    px_per_unit = Makie.px_per_unit(screen)::Float64
+    dpi = px_per_unit * 96 # attach dpi metadata corresponding to 1 unit == 1 CSS pixel
+    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img; dpi)
     return
 end
 

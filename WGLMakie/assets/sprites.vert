@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 uniform mat4 projection;
 uniform mat4 view;
 uniform int num_clip_planes;
@@ -71,20 +74,25 @@ void main(){
     // get_pos() returns the position of the scatter marker
     // get_position() returns the (relative) position of the current quad vertex
 
-    vec2 bbox_radius = 0.5 * get_markersize();
-    vec2 sprite_bbox_centre = get_quad_offset() + bbox_radius;
-    f_sprite_scale = get_markersize();
+    vec3 f32c_scale = get_f32c_scale();
+    vec2 markersize = f32c_scale.xy * get_markersize();
+    vec2 quad_offset = f32c_scale.xy * get_quad_offset();
+    vec3 marker_offset = f32c_scale * tovec3(get_marker_offset());
+
+    vec2 bbox_radius = 0.5 * markersize;
+    vec2 sprite_bbox_centre = quad_offset + bbox_radius;
+    f_sprite_scale = markersize;
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
 
     vec4 position_world = model * vec4(tovec3(get_pos()), 1);
     process_clip_planes(position_world.xyz);
-    
+
     // Compute centre of billboard in clipping coordinates
     // Always transform text/scatter position argument
     vec4 data_point = get_preprojection() * position_world;
     // maybe transform marker_offset + glyph offsets
-    data_point = vec4(data_point.xyz / data_point.w + mat3(trans) * tovec3(get_marker_offset()), 1);
+    data_point = vec4(data_point.xyz / data_point.w + mat3(trans) * marker_offset, 1);
     data_point = pview * data_point;
 
     // Compute transform for the offset vectors from the central point
@@ -128,7 +136,7 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = min(abs(get_markersize().x), abs(get_markersize().y));
+    float sprite_from_u_scale = min(abs(markersize.x), abs(markersize.y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
 

@@ -107,7 +107,7 @@ for them to be applied. For updating `eyeposition`, `lookat` and/or upvector
 
 The camera position and orientation can also be adjusted via the functions
 
-- `translate_cam!(scene, v)` will translate the camera by the given world/plot space vector `v`.
+- `translate_cam!(scene, v)` will translate the camera by the given vector `v`.
 - `rotate_cam!(scene, angles)` will rotate the camera around its axes with the corresponding angles. The first angle will rotate around the cameras "right" that is the screens horizontal axis, the second around the up vector/vertical axis or `Vec3d(0, 0, +-1)` if `fixed_axis = true`, and the third will rotate around the view direction i.e. the axis out of the screen. The rotation respects the current `rotation_center` of the camera.
 - `zoom!(scene, zoom_step)` will change the zoom level of the scene without translating or rotating the scene. `zoom_step` applies multiplicatively to `cam.zoom_mult` which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
 """
@@ -296,9 +296,9 @@ function on_pulse(scene, cam::Camera3D, timestep)
     )
 
     if !ispressed(scene, right_key | left_key | up_key | down_key | backward_key | forward_key |
-        tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key | 
+        tilt_up_key | tilt_down_key | pan_left_key | pan_right_key | roll_counterclockwise_key |
         roll_clockwise_key | zoom_out_key | zoom_in_key | increase_fov_key | decrease_fov_key)
-        
+
         return
     end
 
@@ -444,7 +444,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             if ispressed(scene, reposition_button[], event.button) && is_mouseinside(scene)
                 plt, _, p = ray_assisted_pick(scene)
                 p3d = to_ndim(Point3d, p, 0.0)
-                if !isnan(p3d) && to_value(get(plt, :space, :data)) == :data && parent_scene(plt) == scene
+                if !isnan(p3d) && is_data_space(plt) && parent_scene(plt) == scene
                     # if translation/rotation happens with on-click reposition,
                     # try uncommenting this
                     # dragging[] = (false, false)

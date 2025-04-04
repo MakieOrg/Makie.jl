@@ -10,6 +10,7 @@ function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2
 end
 
 function process_axis_event(ax, event)
+    ax.scene.visible[] || return Consume(false)
     for (active, interaction) in values(ax.interactions)
         if active
             maybe_consume = process_interaction(interaction, event, ax)
@@ -326,6 +327,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
+        minorticksused = ax.xminorgridvisible,
         )
 
     ax.xaxis = xaxis
@@ -340,6 +342,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
+        minorticksused = ax.yminorgridvisible,
         )
 
     ax.yaxis = yaxis
@@ -835,7 +838,7 @@ function getlimits(la::Axis, dim)
         # only use plots with autolimits = true
         to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
         # only if they use data coordinates
-        is_data_space(to_value(get(plot, :space, :data))) || return true
+        is_data_space(plot) || return true
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
@@ -975,9 +978,13 @@ yautolimits(ax::Axis) = autolimits(ax, 2)
 
 Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
+function linkaxes!(axes::Vector{<:Axis})
+    linkxaxes!(axes)
+    linkyaxes!(axes)
+end
+
 function linkaxes!(a::Axis, others...)
-    linkxaxes!(a, others...)
-    linkyaxes!(a, others...)
+    linkaxes!([a, others...])
 end
 
 function adjustlimits!(la)
@@ -1029,26 +1036,28 @@ function adjustlimits!(la)
     return
 end
 
-function linkaxes!(dir::Union{Val{:x}, Val{:y}}, a::Axis, others...)
-    axes = Axis[a; others...]
+linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
 
+function linkaxes!(dir::Symbol, axes::Vector{Axis})
     all_links = Set{Axis}(axes)
     for ax in axes
-        links = dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks
+        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
         for ax in links
             push!(all_links, ax)
         end
     end
-
+    links_changed = false
     for ax in all_links
-        links = (dir isa Val{:x} ? ax.xaxislinks : ax.yaxislinks)
+        links = dir === :x ? ax.xaxislinks : ax.yaxislinks
         for linked_ax in all_links
-            if linked_ax !== ax && linked_ax ∉ links
+            if linked_ax !== ax && !(linked_ax in links)
+                links_changed = true
                 push!(links, linked_ax)
             end
         end
     end
-    reset_limits!(a)
+    reset_limits!(first(axes))
+    return
 end
 
 """
@@ -1056,14 +1065,16 @@ end
 
 Link the x axes of all given `Axis` so that they stay synchronized.
 """
-linkxaxes!(a::Axis, others...) = linkaxes!(Val(:x), a, others...)
+linkxaxes!(axes::Vector{Axis}) = linkaxes!(:x, axes)
+linkxaxes!(a::Axis, others...) = linkaxes!(:x, [a, others...])
 
 """
     linkyaxes!(a::Axis, others...)
 
 Link the y axes of all given `Axis` so that they stay synchronized.
 """
-linkyaxes!(a::Axis, others...) = linkaxes!(Val(:y), a, others...)
+linkyaxes!(axes::Vector{Axis}) = linkaxes!(:y, axes)
+linkyaxes!(a::Axis, others...) = linkaxes!(:y, [a, others...])
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
@@ -1504,6 +1515,134 @@ function attribute_examples(::Type{Axis})
                     """
             )
         ],
+        :backgroundcolor => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    ax1 = Axis(f[1, 1])
+                    ax2 = Axis(f[1, 2], backgroundcolor = :gray80)
+
+                    f
+                """
+            )
+        ],
+        :xautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), title = "xautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[2, 1], xautolimitmargin = (0.05, 0.05), title = "xautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[3, 1], xautolimitmargin = (0, 0.2), title = "xautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :yautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], yautolimitmargin = (0, 0), title = "yautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[1, 2], yautolimitmargin = (0.05, 0.05), title = "yautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[1, 3], yautolimitmargin = (0, 0.2), title = "yautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :xticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xticklabelpad = 0, title = "xticklabelpad = 0")
+                    Axis(f[1, 2], xticklabelpad = 5, title = "xticklabelpad = 5")
+                    Axis(f[1, 3], xticklabelpad = 15, title = "xticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], yticklabelpad = 0, title = "yticklabelpad = 0")
+                    Axis(f[2, 1], yticklabelpad = 5, title = "yticklabelpad = 5")
+                    Axis(f[3, 1], yticklabelpad = 15, title = "yticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :xticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xticklabelspace = 0.0, title = "xticklabelspace = 0.0")
+                    Axis(f[1, 2], xlabel = "X Label", xticklabelspace = 30.0, title = "xticklabelspace = 30.0")
+                    Axis(f[1, 3], xlabel = "X Label", xticklabelspace = Makie.automatic, title = "xticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", yticklabelspace = 0.0, title = "yticklabelspace = 0.0")
+                    Axis(f[2, 1], ylabel = "Y Label", yticklabelspace = 30.0, title = "yticklabelspace = 30.0")
+                    Axis(f[3, 1], ylabel = "Y Label", yticklabelspace = Makie.automatic, title = "yticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :xlabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xlabelpadding = 0, title = "xlabelpadding = 0")
+                    Axis(f[1, 2], xlabel = "X Label", xlabelpadding = 5, title = "xlabelpadding = 5")
+                    Axis(f[1, 3], xlabel = "X Label", xlabelpadding = 10, title = "xlabelpadding = 10")
+
+                    f
+                """
+            )
+        ],
+        :ylabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", ylabelpadding = 0, title = "ylabelpadding = 0")
+                    Axis(f[2, 1], ylabel = "Y Label", ylabelpadding = 5, title = "ylabelpadding = 5")
+                    Axis(f[3, 1], ylabel = "Y Label", ylabelpadding = 10, title = "ylabelpadding = 10")
+
+                    f
+                """
+            )
+        ],
         :title => [
             Example(
                 code = """
@@ -1850,13 +1989,16 @@ function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffe
     if update
         update_state_before_display!(ax)
     end
+    root_scene = root(ax.scene)
+    img = colorbuffer(root_scene; update=false, colorbuffer_kws...)
+    scale_factor = first(size(img) ./ reverse(size(root_scene)))
     bb = if include_decorations
         bb = axis_bounds_with_decoration(ax)
-        Rect2{Int}(round.(Int, minimum(bb)) .+ 1, round.(Int, widths(bb)))
+        Rect2{Int}(round.(Int, minimum(bb) .* scale_factor) .+ 1, round.(Int, widths(bb) .* scale_factor))
     else
-        viewport(ax.scene)[]
+        vp = viewport(ax.scene)[]
+        mini, wh = minimum(vp), widths(vp)
+        Rect2(round.(Int, mini .* scale_factor), round.(Int, wh .* scale_factor))
     end
-
-    img = colorbuffer(root(ax.scene); update=false, colorbuffer_kws...)
     return get_sub_picture(img, JuliaNative, bb)
 end

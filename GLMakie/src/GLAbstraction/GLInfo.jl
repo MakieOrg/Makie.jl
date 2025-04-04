@@ -97,3 +97,11 @@ function getProgramInfo(p::GLProgram)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_BUFFER_MODE)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_VARYINGS)
 end
+
+const FAILED_FREE_COUNTER = Threads.Atomic{Int}(0)
+function verify_free(obj::T, name = T) where T
+    if obj.id != 0
+        FAILED_FREE_COUNTER[] += 1
+        Core.println(Core.stderr, "Error: ", name, " has not been freed.")
+    end
+end

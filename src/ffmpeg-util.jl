@@ -21,14 +21,14 @@
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
-you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+  applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
-means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
-means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
+  means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
+  means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
-    !!! warning
+!!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.
@@ -200,7 +200,7 @@ end
 
 function next_tick!(controller::TickController)
     controller.tick[] = Tick(
-        OneTimeRenderTick, 
+        OneTimeRenderTick,
         controller.frame_counter,
         controller.frame_counter * controller.frame_time,
         controller.frame_time
@@ -260,7 +260,12 @@ function VideoStream(fig::FigureLike;
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, scene, config, GLNative)
-    _xdim, _ydim = size(screen)
+    # Use colorbuffer to get the actual dimensions for the backend,
+    # since the backend might have a different size from the Monitor scaling.
+    # In case of WGLMakie, this isn't easy to find out otherwise,
+    # So for now we just use colorbuffer until we have a reliable pixel_size(screen) function.
+    first_frame = colorbuffer(screen)
+    _ydim, _xdim = size(first_frame)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)

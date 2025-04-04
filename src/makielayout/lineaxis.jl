@@ -134,6 +134,9 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     end
 end
 
+max_auto_ticklabel_spacing!(ax) = nothing
+
+
 function update_ticklabel_node(
         closure_args,
         ticklabel_annotation_obs::Observable,
@@ -265,6 +268,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         labelfont, ticklabelfont, ticklabelcolor,
         labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
+    minorticksused = get(attrs, :minorticksused, Observable(false))
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values=true)
     horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
@@ -318,6 +322,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
     onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == automatic
             idealspace
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            max(idealspace, actual_ticklabelspace[])
         else
             space
         end
@@ -433,8 +440,10 @@ function LineAxis(parent::Scene, attrs::Attributes)
     minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
-    onany(parent, tickvalues, minorticks) do tickvalues, minorticks
-        minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+    onany(parent, tickvalues, minorticks, minorticksvisible, minorticksused) do tickvalues, minorticks, visible, used
+        if visible || used
+            minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+        end
         return
     end
 

@@ -101,13 +101,6 @@ function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/post
     return screen
 end
 
-function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", scene::Scene)
-    Makie.push_screen!(scene, screen)
-    cairo_draw(screen, scene)
-    Cairo.write_to_png(screen.surface, io)
-    return screen
-end
-
 # Disabling mimes and showable
 
 const DISABLED_MIMES = Set{String}()

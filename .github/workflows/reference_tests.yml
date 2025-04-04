@@ -60,7 +60,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -112,7 +112,7 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -156,11 +156,16 @@ jobs:
         with:
           name: ReferenceImages_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/reference_images/
+      - name: Upload test Electron logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Electron_Logs_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
