@@ -23,7 +23,7 @@ end
 
 function _spacings_offsets_nbins(bins::NTuple{2,Int}, cellsize::Nothing, lims::Rect2d)
     any(<(2), bins) && error("Minimum number of bins in one direction is 2, got $bins.")
-    return lims.widths ./ (bins .- 1), lims.origin, bins
+    return widths(lims) ./ (bins .- 1), origin(lims), bins
 end
 
 _spacings_offsets_nbins(bins::Int, cellsize::Nothing, lims::Rect2d) =
@@ -36,8 +36,9 @@ end
 
 function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real,<:Real}, lims::Rect2d)
     spacing = cellsizes ./ _hexbin_size_fact()
-    nbins, rest = fld.(lims.widths, spacing), mod.(lims.widths, spacing)
-    offset = collect(lims.origin)
+    nbins = fld.(widths(lims), spacing)
+    rest = mod.(widths(lims), spacing)
+    offset = collect(origin(lims))
     for dim in eachindex(rest)
         rest[dim] > 0 && (offset[dim] -= (spacing[dim] - rest[dim]) / 2)
     end
@@ -52,19 +53,19 @@ function data_limits(hb::Hexbin)
     fn(tup::Union{Tuple,Vec2}) = Vec2d(tup...)
 
     ms = 2 * fn(hb.plots[1].markersize[])
-    origin = collect(bb.origin .- 0.5 * ms)
-    width = collect(bb.widths .+ ms)
+    _origin = collect(origin(bb) .- 0.5 * ms)
+    width = collect(widths(bb) .+ ms)
 
     tf = transform_func(hb)
-    for dim in eachindex(origin)
+    for dim in eachindex(_origin)
         # reset to origin (do not extend limits) in order to
         # avoid logscale DomainError on negative values.
-        if !can_handle_negative_domain(tf, dim) && origin[dim] < 0
-            origin[dim] = bb.origin[dim]
-            width[dim] = bb.widths[dim]
+        if !can_handle_negative_domain(tf, dim) && _origin[dim] < 0
+            _origin[dim] = origin(bb)[dim]
+            width[dim] = widths(bb)[dim]
         end
     end
-    return Rect3d(origin, width)
+    return Rect3d(_origin, width)
 end
 boundingbox(p::Hexbin, space::Symbol = :data) =
     apply_transform_and_model(p, data_limits(p))
@@ -93,12 +94,11 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         isempty(xy) && return
 
         # enclose data in limits
-        lims = let (lox, hix) = extrema(p -> p[1], xy),
-                   (loy, hiy) = extrema(p -> p[2], xy)
-            origin = Point(prevfloat(lox), prevfloat(loy))
-            width = Point(nextfloat(hix), nextfloat(hiy)) - origin
-            apply_transform(tf, Rect2d(origin, width))
-        end
+        lox, hix = extrema(p -> p[1], xy)
+        loy, hiy = extrema(p -> p[2], xy)
+        _origin = Point(prevfloat(lox), prevfloat(loy))
+        width = Point(nextfloat(hix), nextfloat(hiy)) - _origin
+        lims = apply_transform(tf, Rect2d(_origin, width))
 
         spacing, offset, (nbinsx, nbinsy) = _spacings_offsets_nbins(bins, cellsize, lims)
 
@@ -120,16 +120,10 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
             d2 = (tx - nxs)^2 + (yweight * (ty - nys))^2
 
-            id = if (is_grid1 = d1 < d2)
-                (
-                    cld(dvx, 2),
-                    iseven(dvy) ? dvy : dvy + 1
-                )
+            id = if d1 < d2
+                (cld(dvx, 2), ifelse(iseven(dvy), dvy, dvy + 1))
             else
-                (
-                    fld(dvx, 2),
-                    iseven(dvy) ? dvy + 1 : dvy
-                )
+                (fld(dvx, 2), ifelse(iseven(dvy), dvy + 1, dvy))
             end
 
             bin_map[id] = get(bin_map, id, 0.0) + get_weight(weights, i)
@@ -140,9 +134,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             for iy in 0:nbinsy-1
                 _nx = isodd(iy) ? fld(nbinsx, 2) : cld(nbinsx, 2)
                 for ix in 0:_nx-1
-                    let xy = (ix, iy)
-                        add_hex_point(xy, spacing, offset, get(bin_map, xy, 0.0))
-                    end
+                    add_hex_point((ix, iy), spacing, offset, get(bin_map, (ix, iy), 0.0))
                 end
             end
         else
@@ -169,7 +161,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
             # a singular colorrange error down the line.
             if mi == ma
-                (0, ma == 0 ? 1 : ma)
+                (0, ifelse(ma == 0, 1, ma))
             else
                 (mi, ma)
             end
