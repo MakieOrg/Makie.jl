@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
 - Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
 - Added inheritance options for the `transformation` keyword argument: `:inherit, :inherit_model, :inherit_transform_func, :nothing` (See docs on `transformations` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
 - Fixed GLMakie embedding support for window destruction [#4848](https://github.com/MakieOrg/Makie.jl/pull/4848).
