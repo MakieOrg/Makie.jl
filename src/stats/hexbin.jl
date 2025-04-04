@@ -48,7 +48,16 @@ end
 conversion_trait(::Type{<:Hexbin}) = PointBased()
 
 data_limits(hb::Hexbin) = Rect3d(hb[1][])
-boundingbox(p::Hexbin, space::Symbol = :data) = apply_model(p.model[], Rect3d(p.plots[1][1][]), space)
+function boundingbox(hb::Hexbin, space::Symbol = :data)
+    bb = Rect3d(hb.plots[1][1][])
+    fn(num::Real) = Float64(num)
+    fn(tup::Union{Tuple,Vec2}) = Vec2d(tup...)
+
+    ms = 2.0 .* fn(hb.plots[1].markersize[])
+    nw = widths(bb) .+ (ms..., 0.0)
+    no = bb.origin .- ((0.5 .* ms)..., 0.0)
+    return apply_model(hb.model[], Rect3d(no, nw), space)
+end
 
 get_weight(weights, i) = Float64(weights[i])
 get_weight(::Union{Nothing,StatsBase.UnitWeights}, _) = 1.0
