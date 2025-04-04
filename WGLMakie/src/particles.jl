@@ -152,6 +152,8 @@ instead of uploading this texture 10x in every plot.
 struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
     dims::NTuple{2, Int}
 end
+Base.size(x::NoDataTextureAtlas) = x.dims
+Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
@@ -174,7 +176,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     marker = nothing
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
-        font = get(attributes, :font, Observable(Makie.defaultfont()))
+        font = map(Makie.to_font, pop!(attributes, :font))
         marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
             marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
@@ -273,6 +275,8 @@ function create_shader(scene::Scene, plot::Scatter)
     f32c, model = Makie.patch_model(plot)
     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
+    Makie.add_f32c_scale!(attributes, scene, plot, f32c)
+
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = model
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -338,5 +342,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :glowwidth => plot.glowwidth,
         :glowcolor => plot.glowcolor,
     )
+
+    Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
+
     return scatter_shader(scene, uniforms, plot_attributes)
 end

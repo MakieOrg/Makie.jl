@@ -484,6 +484,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
+    "Sets the font used for character markers. Can be a `String` specifying the (partial) name of a font or the file path of a font file"
+    font = @inherit markerfont
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
@@ -533,8 +535,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
-    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
-    transform_marker = false
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is false, `scale!`, `rotate!` and `translate!()` will not affect the scattered mesh.)"
+    transform_marker = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -801,4 +803,6 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = automatic
 end
