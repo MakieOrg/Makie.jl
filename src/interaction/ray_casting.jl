@@ -311,7 +311,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
         p4d = inv(plot.model[]) * to_ndim(Point4d, inv_f32_convert(plot, Point3d(pos)), 1)
         p3d = p4d[Vec(1, 2, 3)] / p4d[4]
         itf = inverse_transform(transform_func(plot))
-        out = Makie.apply_transform(itf, p3d, plot.space[])
+        out = Makie.apply_transform(itf, p3d)
         return out
     end
 end
