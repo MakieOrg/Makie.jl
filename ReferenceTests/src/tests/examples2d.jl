@@ -846,6 +846,23 @@ end
     f
 end
 
+@reference_test "tricontourf alpha transparency" begin
+    dxy = 1.0;
+    x = [0.0, dxy, 0.0, -dxy, 0.0, dxy/2, -dxy/2, dxy/2, -dxy/2];
+    y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
+    @. f1(x,y) = x^2 + y^2;
+    z = f1(x,y);
+    
+    f = Figure()
+    ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
+    ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
+    hlines!(ax1, [-0.5, 0.0, 0.5])
+    hlines!(ax2, [-0.5, 0.0, 0.5])
+    tricontourf!(ax1, x, y, z, levels = 3)
+    tricontourf!(ax2, x, y, z, levels = 3, alpha=0.5)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
