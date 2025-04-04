@@ -151,6 +151,12 @@ end
     linesegments!(ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
+    poly!(ax, [Polygon(decompose(Point2f, Rect2f(150, 0, 100, 100))), Polygon(decompose(Point2f, Circle(Point2f(350, 200), 50)))],
+        color=:gray, strokewidth=10, strokecolor=:red)
+    # single objects
+    poly!(ax, Circle(Point2f(50, 350), 50), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Rect2f(0, 150, 100, 100), color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, Polygon(decompose(Point2f, Rect2f(150, 300, 100, 100))), color=:gray, strokewidth=10, strokecolor=:red)
     fig
 end
 
@@ -386,7 +392,7 @@ end
     rs = 8
     rs_inner = sqrt.(vs_inner ./ vs) * rs
 
-    lp = Makie.LinePattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, background_color=:transparent)
+    lp = Makie.Pattern(; direction=Makie.Vec2f(1, -1), width=2, tilesize=(12, 12), linecolor=:darkgrey, backgroundcolor=:transparent)
     # draw the inner pie twice since `color` can not be vector of `LinePattern` currently
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=Makie.wong_colors(0.4)[eachindex(vs)])
     pie!(ax, 20, 0, vs; radius=rs_inner, inner_radius=0, kw..., color=lp)
@@ -679,10 +685,13 @@ end
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
-            yminorticksvisible = true, yminorgridvisible = true,
-            xminorticksvisible = true, xminorgridvisible = true,
-            yminortickwidth = 4.0, xminortickwidth = 4.0,
-            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticksvisible = i != 6, yminorgridvisible = true,
+            xminorticksvisible = i != 6, xminorgridvisible = true,
+            yminortickwidth = 3.0, xminortickwidth = 3.0,
+            yminorticksize = 8.0, xminorticksize = 8.0,
+            yminorgridwidth = 3.0, xminorgridwidth = 3.0,
+            yminortickcolor = :red, xminortickcolor = :red,
+            yminorgridcolor = :lightgreen, xminorgridcolor = :lightgreen,
             yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
@@ -709,8 +718,8 @@ end
     # Test depth (this part is expected to fail in CairoMakie)
     p = tooltip!(ax, -5, -4, "test line\ntest line", backgroundcolor = :lightblue)
     translate!(p, 0, 0, 100)
-    mesh!(ax, 
-        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4], 
+    mesh!(ax,
+        Point3f.([-7, -7, -3, -3], [-4, -2, -4, -2], [99, 99, 101, 101]), [1 2 3; 2 3 4],
         shading = NoShading, color = :orange)
     fig
 end
@@ -865,6 +874,51 @@ end
     f
 end
 
+@reference_test "contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
+    ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
+@reference_test "filled contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
+
+    fig
+end
+
 @reference_test "contour labels 3D" begin
     fig = Figure()
     Axis3(fig[1, 1])
@@ -876,14 +930,6 @@ end
     contour3d!(-zs; levels = -levels, labels = true, color = :blue)
     contour3d!(+zs; levels = +levels, labels = true, color = :red, labelcolor = :black)
     fig
-end
-
-@reference_test "marker offset in data space" begin
-    f = Figure()
-    ax = Axis(f[1, 1]; xticks=0:1, yticks=0:10)
-    scatter!(ax, fill(0, 10), 0:9, marker=Rect, marker_offset=Vec2f(0,0), transform_marker=true, markerspace=:data, markersize=Vec2f.(1, LinRange(0.1, 1, 10)))
-    lines!(ax, Rect(0, 0, 1, 10), color=:red)
-    f
 end
 
 @reference_test "trimspine" begin
@@ -975,8 +1021,8 @@ end
 @reference_test "hexbin threshold" begin
     f = Figure(size = (800, 800))
 
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
@@ -986,8 +1032,8 @@ end
 end
 
 @reference_test "hexbin scale" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
@@ -999,10 +1045,10 @@ end
 
 # Scatter needs working highclip/lowclip first
 @reference_test "hexbin colorrange highclip lowclip" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
-    f, ax, pl = hexbin(x, y,
+    hexbin(x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
         colorrange = (10, 300),
@@ -1011,6 +1057,14 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
+end
+
+@reference_test "hexbin logscale" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/4895
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000) .|> exp
+
+    hexbin(x, y; axis = (; yscale=log10))
 end
 
 @reference_test "bracket scalar" begin
@@ -1446,6 +1500,18 @@ end
     fig
 end
 
+@reference_test "Voronoiplot with empty polygons and automatic color generation" begin
+    points = [0.153071 0.210363 0.447987 0.765468 -0.681145 1.88393 -1.05474 -0.52126 1.102 0.675978 1.75767 1.19744;
+        -0.16884 -0.492721 -1.30937 0.573229 -2.39049 -0.249817 -1.15057 -0.480175 0.226354 1.18442 1.66382 -1.23949];
+    tri = triangulate(points)
+    xmin, xmax, ymin, ymax = -1 / 2, 1 / 2, -1.0, 1.0
+    clip_points = ((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax))
+    clip_vertices = (1, 2, 3, 4, 1)
+    clip_polygon = (clip_points, clip_vertices)
+    clipped_vorn = voronoi(tri, clip=true, clip_polygon=clip_polygon)
+    voronoiplot(clipped_vorn)
+end
+
 function ppu_test_plot(resolution, px_per_unit, scalefactor)
     fig, ax, pl = scatter(1:4, markersize=100, color=1:4, figure=(; size=resolution), axis=(; titlesize=50, title="ppu: $px_per_unit, sf: $scalefactor"))
     DataInspector(ax)
@@ -1825,4 +1891,49 @@ end
     vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
 
     f
+end
+
+@reference_test "Color Patterns" begin
+    f = Figure()
+    a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
+
+    pattern = Makie.Pattern('x', width = 0.7, linecolor = (:red, 0.5), backgroundcolor = (:blue, 0.5))
+    mesh!(a, Circle(Point2f(0, 3), 1f0), color = pattern, shading = NoShading)
+
+    r = range(0, 2pi, length=21)[1:end-1]
+    img = [RGBf(0.5 + 0.5 * sin(x), 0.2, 0.5 + 0.5 * cos(y)) for x in r, y in r]
+    mesh!(a, Circle(Point2f(3, 3), 1f0), color = Makie.Pattern(img), shading = NoShading)
+
+    surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
+    meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
+        color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
+end
+
+@reference_test "Color patterns in recipes" begin
+    pattern = Makie.Pattern('x', linecolor = :darkgreen, backgroundcolor = RGBf(0.7, 0.8, 0.5))
+
+    f = Figure(size = (500, 400))
+    a = Axis(f[1, 1])
+    xlims!(-0.25, 6.6)
+
+    vs = [1, 2, 2, 3, 3, 3]
+    hist!(a, 0.5 .* vs, color = pattern, bins = 3, gap = 0.2, direction = :x)
+    density!(a, vs, color = pattern)
+    poly!(a, [0, 0, 1, 1], [2, 3, 3, 2], color = pattern)
+    band!(a, [2, 3, 4], [2.5, 3, 2], [3.5, 3.5, 3], color = pattern)
+    barplot!(a, [5, 6], [3, 2], color = pattern)
+    pie!(a, 4, 1, vs, radius = 0.5, color = pattern) # TODO: per element
+    hspan!(a, 4, 4.5, color = pattern)
+
+    st = Stepper(f)
+    Makie.step!(st)
+    translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
+    Makie.step!(st)
+    st
 end

@@ -100,7 +100,7 @@ for metric_target in metric_targets
 
         finally
             rmprocs(i_proc)
-        end    
+        end
     end
     append!(results, df, cols = :union)
 end

@@ -9,7 +9,7 @@ end
 @testset "shader cache" begin
     GLMakie.closeall()
     screen = display(GLMakie.Screen(visible = false), Figure())
-    cache = screen.shader_cache
+    cache = screen.shader_cache;
     # Postprocessing shaders
     @test length(cache.shader_cache) == 5
     @test length(cache.template_cache) == 5
@@ -17,33 +17,33 @@ end
 
     # Shaders for scatter + linesegments + poly etc (axis)
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
+    @test length(cache.shader_cache) == 18
+    @test length(cache.template_cache) == 18
+    @test length(cache.program_cache) == 11
 
     # Same for linesegments
     display(screen, linesegments(1:4))
-    @test length(cache.shader_cache) == 16
-    @test length(cache.template_cache) == 16
-    @test length(cache.program_cache) == 10
-
-    # Lines hasn't been compiled so one new program should be added
-    display(screen, lines(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
     @test length(cache.program_cache) == 11
+
+    # heatmap hasn't been compiled so one new program should be added
+    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    @test length(cache.shader_cache) == 20
+    @test length(cache.template_cache) == 20
+    @test length(cache.program_cache) == 12
 
     # For second time no new shaders should be added
-    display(screen, lines(1:4))
-    @test length(cache.shader_cache) == 18
-    @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 11
+    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    @test length(cache.shader_cache) == 20
+    @test length(cache.template_cache) == 20
+    @test length(cache.program_cache) == 12
 end
 
 @testset "unit tests" begin
@@ -190,7 +190,7 @@ end
 
     empty!(ax)
 
-    tex_atlas = GLMakie.get_texture!(GLMakie.gl_texture_atlas())
+    tex_atlas = GLMakie.get_texture!(screen.glscreen, GLMakie.gl_texture_atlas())
     for robj in robjs
         for (k, v) in robj.uniforms
             if (v isa GLMakie.GPUArray) && (v !== tex_atlas)
@@ -485,4 +485,27 @@ end
 
     @test robj.uniforms[:resolution][]     == screen.px_per_unit[] * cam.resolution[]
     @test robj.uniforms[:projectionview][] == cam.projectionview[]
+end
+
+@testset "Empty vertex indices" begin
+    # #4782 fixed some segfaults with rendering on mac related to out-of-bounds
+    # vertex indices. One issue was that an empty set of indices would still
+    # upload one random index to the GPU (per comment this is necessary on some
+    # systems) and still issue a draw call (which should be discarded by the
+    # Graphics API due to the drawn primitive).
+    scene = Scene()
+    p = lines!(scene, Point2f[])
+    screen = display(scene, visible = false)
+    robj = screen.cache[objectid(p)]
+    indexbuffer = robj.vertexarray.indices
+    @test isempty(indexbuffer)
+    @test length(indexbuffer) == 0 # skip condition for draw call
+
+    real_bytesize = let GL = GLMakie.GLAbstraction.ModernGL
+        GLMakie.GLAbstraction.bind(indexbuffer)
+        value = Ref{GL.GLint}(0)
+        GL.glGetBufferParameteriv(indexbuffer.buffertype, GL.GL_BUFFER_SIZE, value)
+        value[]
+    end
+    @test real_bytesize[] == sizeof(eltype(indexbuffer))
 end

@@ -2,8 +2,7 @@ function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
 
-rgbf_convert(x::AbstractMatrix{<:RGB}) = convert(Matrix{RGBf}, x)
-rgbf_convert(x::AbstractMatrix{<:RGBA}) = convert(Matrix{RGBAf}, x)
+rgbaf_convert(x::AbstractMatrix{<:Union{RGB,RGBA}}) = convert(Matrix{RGBAf}, x)
 
 function get_frames(video::AbstractString)
     mktempdir() do folder
@@ -25,8 +24,8 @@ end
 
 function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{<:Union{RGB,RGBA}})
 
-    a = rgbf_convert(a)
-    b = rgbf_convert(b)
+    a = rgbaf_convert(a)
+    b = rgbaf_convert(b)
 
     if size(a) != size(b)
         @warn "images don't have the same size, difference will be Inf"

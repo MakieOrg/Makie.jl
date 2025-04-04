@@ -27,8 +27,11 @@ end
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    isnothing(screen.scene) && return
+
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
+    GLAbstraction.require_context(nw)
 
     function sortby(x)
         robj = x[3]
@@ -46,9 +49,9 @@ function render_frame(screen::Screen; resize_buffers=true)
     # render order here may introduce artifacts because of that.
 
     fb = screen.framebuffer
-    if resize_buffers && !isnothing(screen.scene)
+    if resize_buffers
         ppu = screen.px_per_unit[]
-        resize!(fb, round.(Int, ppu .* size(screen.scene))...)
+        resize!(fb, round.(Int, ppu .* size(screen.scene::Scene))...)
     end
 
     # prepare stencil (for sub-scenes)
@@ -100,6 +103,8 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
+
+    GLAbstraction.require_context(nw)
 
     return
 end
