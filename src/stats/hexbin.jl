@@ -56,7 +56,7 @@ function boundingbox(hb::Hexbin, space::Symbol = :data)
     ms = 2.0 .* fn(hb.plots[1].markersize[])
     nw = widths(bb) .+ (ms..., 0.0)
     no = bb.origin .- ((0.5 .* ms)..., 0.0)
-    return apply_model(hb.model[], Rect3d(no, nw), space)
+    return apply_model(hb.model[], Rect3d(no, nw))
 end
 
 get_weight(weights, i) = Float64(weights[i])
@@ -176,7 +176,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     markerspace=:data,
                     strokewidth=hb.strokewidth,
                     strokecolor=hb.strokecolor,
-                    transformation = Transformation(hb, transform_func = identity))
+                    transformation = :inherit_model)
 end
 
 function _nearest_center(val, spacing, offset)
