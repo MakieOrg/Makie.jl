@@ -5,8 +5,8 @@ struct Plane{N, T}
     distance::T
 
     function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
-        # Functions using Plane assume `normal` to be normalized. 
-        # `normalize()` turns 0 vectors into NaN vectors which we don't want, 
+        # Functions using Plane assume `normal` to be normalized.
+        # `normalize()` turns 0 vectors into NaN vectors which we don't want,
         # so we explicitly handle normalization here
         n = norm(normal)
         ϵ = 100 * max(eps.(normal)...)
@@ -198,7 +198,7 @@ function to_model_space(model::Mat4, planes::Vector{<: Plane3})
 end
 
 function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractArray, space::Symbol)
-    if space == :data && !isempty(clip_planes)
+    if Makie.is_data_space(space) && !isempty(clip_planes)
         indices = sizehint!(UInt32[], length(positions))
         for i in eachindex(positions)
             if is_visible(clip_planes, to_ndim(Point3f, positions[i], 0))
