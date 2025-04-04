@@ -337,9 +337,6 @@ apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
 
-can_handle_negative_domain(f::Tuple, dim::Int) = !(f[dim] isa LogFunctions)
-can_handle_negative_domain(f, dim::Int) = can_handle_negative_domain(ntuple(_ -> f, Val(dim)), dim)
-
 struct PointTrans{N, F}
     f::F
     function PointTrans{N}(f::F) where {N, F}
