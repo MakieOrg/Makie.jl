@@ -419,7 +419,7 @@ end
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
-    meshscatter!(a, ps, markersize = 0.15, transparency = false)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false, transform_marker = false)
     f
 end
 
@@ -467,6 +467,14 @@ end
     fig, ax, plt = contourf(x, y, z; levels = l)
     cb = Colorbar(fig[1, 2], plt; tellheight = false)
 
+    fig
+end
+
+@reference_test "Categorical Colorbar with nan_color" begin
+    arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
+    fig = Figure(size = (300, 200))
+    a, hm = heatmap(fig[1,1], arr; colormap=Makie.Categorical(:Paired_8), colorrange=(1,3), lowclip=:black)
+    Colorbar(fig[1,2], hm)
     fig
 end
 
