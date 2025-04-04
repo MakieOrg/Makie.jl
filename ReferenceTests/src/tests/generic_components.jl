@@ -441,17 +441,22 @@ end
         [Point2f(x, y) for y in -1:6 for x in (-1, 6)]
     )
 
-    f = Figure(size = (400, 500))
+    f = Figure(size = (450, 550))
     for (i, transform) in enumerate(transforms)
+        Label(f[i, 0], [":automatic", ":inherit", "transform_func", "model", ":nothing"][i], rotation = pi/2, tellheight = false)
         for (j, space, scale) in zip(eachindex(spaces), spaces, [1, 20, 0.2, 0.2])
             a = LScene(f[i, j], show_axis = false, scenekw = (camera = cam2d!, transformation = t))
             linesegments!(a, grid, transformation = :nothing, color = :lightgray)
-            text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :nothing)
+            # text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :nothing)
             scatter!(a,
                 [scale * Point2f(cos(x), sin(x)) for x in range(0.2, 1.3, length = 11)],
                 transformation = transform, space = space
             )
         end
     end
+    for (j, space) in enumerate(spaces)
+        Label(f[0, j], ":space", tellwidth = false)
+    end
+
     f
 end
