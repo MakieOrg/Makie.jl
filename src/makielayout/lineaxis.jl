@@ -268,6 +268,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         labelfont, ticklabelfont, ticklabelcolor,
         labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
+    minorticksused = get(attrs, :minorticksused, Observable(false))
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values=true)
     horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
@@ -439,8 +440,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
-    onany(parent, tickvalues, minorticks, minorticksvisible) do tickvalues, minorticks, visible
-        if visible
+    onany(parent, tickvalues, minorticks, minorticksvisible, minorticksused) do tickvalues, minorticks, visible, used
+        if visible || used
             minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
         end
         return
