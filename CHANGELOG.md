@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
+- Adjusted `DataInspector` tooltips for `spy` to be heatmap-like and `datashader` to show the number of binned markers [#4810](https://github.com/MakieOrg/Makie.jl/pull/4810)
 - Add `unsafe_set!(::Textbox, ::String)` [#4417](https://github.com/MakieOrg/Makie.jl/pull/4417)
 - Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
