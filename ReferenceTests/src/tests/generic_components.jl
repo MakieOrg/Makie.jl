@@ -426,7 +426,7 @@
 end
 
 
-@testset "Tranformations and space" begin
+@reference_test "Tranformations and space" begin
     transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :nothing]
     spaces = [:data, :pixel, :relative, :clip]
 
