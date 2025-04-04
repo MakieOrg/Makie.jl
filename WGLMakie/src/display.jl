@@ -66,6 +66,16 @@ mutable struct Screen <: Makie.MakieScreen
     end
 end
 
+function Makie.px_per_unit(s::Screen)::Float64
+    return something(s.config.px_per_unit, 1.0)
+end
+
+function Screen(; config...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(config))
+    return Screen(nothing, config)
+end
+
+
 function scene_already_displayed(screen::Screen, scene=screen.scene)
     scene === nothing && return false
     screen.scene === scene || return false
@@ -87,13 +97,14 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         if isready(screen.plot_initialized)
             # plot_initialized contains already an item
             # This should not happen, but lets check anyways, so it errors and doesn't hang forever
-            error("Plot inititalized multiple times?")
+            error("Plot initialized multiple times?")
         end
         if initialized == true
             put!(screen.plot_initialized, true)
             mark_as_displayed!(screen, scene)
+            connect_post_init_events(screen, scene)
         else
-            # Will be an eror from WGLMakie.js
+            # Will be an error from WGLMakie.js
             put!(screen.plot_initialized, initialized)
         end
         return
@@ -168,8 +179,11 @@ end
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    session = get_screen_session(screen)
-    return !isnothing(session) && isopen(session)
+    # This function is used as the source of truth for dynamically setting
+    # window_open[] = false (as opposed to using close()), so it can't just
+    # rely on window_open. Check the session too.
+    return !isnothing(screen.scene) && screen.scene.events.window_open[] &&
+        !isnothing(screen.session) && isopen(screen.session)
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)
@@ -196,8 +210,11 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-# TODO implement
-Base.close(screen::Screen) = nothing
+function Base.close(screen::Screen)
+    Makie.stop!(screen.tick_clock)
+    events(screen.scene).window_open[] = false
+    return
+end
 
 function Base.size(screen::Screen)
     return size(screen.scene)
@@ -230,7 +247,7 @@ function get_screen_session(screen::Screen; timeout=100,
     success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
     # Throw error if error message specified
     if success !== :success
-        throw_error("Timed out waiting $(timeout)s for session to get initilize")
+        throw_error("Timed out waiting $(timeout)s for session to get initialize")
         return nothing
     end
     value = fetch(screen.plot_initialized)
@@ -316,7 +333,7 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
         scene_ser = serialize_scene(scene)
         parent = scene.parent
         parent_uuid = js_uuid(parent)
-        err = "Cant find scene js_uuid(scene) == $(parent_uuid)"
+        err = "Cannot find scene js_uuid(scene) == $(parent_uuid)"
         evaljs_value(session, js"""
         $(WGL).then(WGL=> {
             const parent = WGL.find_scene($(parent_uuid));
@@ -333,18 +350,24 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
+    @assert !haskey(plot, :__wgl_session)
     plot_data = serialize_plots(scene, Plot[plot])
     plot_sub = Session(session)
     Bonito.init_session(plot_sub)
-    plot.__wgl_session = plot_sub
+    # serialize + evaljs via sub session, so we can keep track of those observables
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
     Bonito.evaljs_value(plot_sub, js; timeout=50)
+    @assert !haskey(plot.attributes, :__wgl_session)
+    plot.attributes[:__wgl_session] = plot_sub
     return
 end
 
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::PlotList))
+    return nothing
+end
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
@@ -370,8 +393,11 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
                             session::Union{Nothing,Session})
     main_session = get_screen_session(screen)
     isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
-    isready(main_session) || return
-    Bonito.evaljs(main_session, js"""
+    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+    root = Bonito.root_session(main_session)
+    isready(root) || return nothing
+
+    Bonito.evaljs(root, js"""
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
@@ -391,7 +417,9 @@ end
 function delete_js_objects!(screen::Screen, scene::Scene)
     session = get_screen_session(screen)
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
-    isready(session) || return
+    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+    root = Bonito.root_session(session)
+    isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
         if haskey(plot, :__wgl_session)
@@ -399,7 +427,8 @@ function delete_js_objects!(screen::Screen, scene::Scene)
             close(wgl_session)
         end
     end
-    Bonito.evaljs(session, js"""
+
+    Bonito.evaljs(root, js"""
     $(WGL).then(WGL=> {
         WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
     })""")

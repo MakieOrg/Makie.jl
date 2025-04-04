@@ -62,7 +62,7 @@ GLMakie has experimental support for displaying multiple independent figures (or
 ## Embedding
 
 There's experimental support for embedding GLMakie by creating a custom 'window'
-type (analagous to the GLFW OS-level window) and grabbing GLMakie's framebuffers
+type (analogous to the GLFW OS-level window) and grabbing GLMakie's framebuffers
 to display in your own GUI. Here's a high-level overview of what you'd need to
 do:
 
@@ -80,6 +80,8 @@ do:
    - `ShaderAbstractions.native_context_alive(::MyWindow)` (check if the window
      OpenGL context is still valid)
    - `GLMakie.framebuffer_size(::MyWindow)` (get the size of the windows framebuffer)
+   - `GLMakie.destroy!(::MyWindow)` ('destroy' the window, this should be a no-op
+     unless you want GLMakie to really close the window)
    - `GLMakie.connect_screen(::Scene, Screen{MyWindow})` (connect input signals
      for e.g. the keyboard and mouse; you may want to implement the individual
      connection methods instead).
@@ -91,7 +93,7 @@ do:
    calling `GLMakie.render_frame(screen)` whenever necessary (you can use
    `GLMakie.requires_update(screen)`).
 1. `display(screen, f)` will only draw the figure to a framebuffer. You can get
-   the color texture attachement of the framebuffer with
+   the color texture attachment of the framebuffer with
    `screen.framebuffer.buffers[:color]`, and display that color texture as an
    image in your chosen GUI framework.
 1. If interactivity is desired, you will need to pass input events from the

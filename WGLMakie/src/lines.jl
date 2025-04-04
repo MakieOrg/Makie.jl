@@ -25,7 +25,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
     color = plot.calculated_colors
     if color[] isa Makie.ColorMapping
-        uniforms[:colormap] = Sampler(color[].colormap)
+        cm_minfilter = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        uniforms[:colormap] = Sampler(color[].colormap, minfilter = cm_minfilter)
         uniforms[:colorrange] = color[].colorrange_scaled
         uniforms[:highclip] = Makie.highclip(color[])
         uniforms[:lowclip] = Makie.lowclip(color[])
@@ -41,7 +42,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
     # This is mostly NaN handling. The shader only draws a segment if each
     # involved point are not NaN, i.e. p1 -- p2 is only drawn if all of
-    # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to dublicate p2 to
+    # (p0, p1, p2, p3) are not NaN. So if p3 is NaN we need to duplicate p2 to
     # make the p1 -- p2 segment draw, which is what indices does.
     indices = Observable(UInt32[])
     points_transformed = lift(
@@ -76,12 +77,12 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                             # (nan, i-2, j, i+1) the segment (i-2, j) will not
                             # be drawn (which we want as that segment would overlap)
 
-                            # tweak dublicated vertices to be loop vertices
+                            # tweak duplicated vertices to be loop vertices
                             push!(indices[], indices[][loop_start_idx+1])
                             indices[][loop_start_idx-1] = i-2
                             # nan is inserted at bottom (and not necessary for start/end)
 
-                        else # no loop, dublicate end point
+                        else # no loop, duplicate end point
                             push!(indices[], i-1)
                         end
                     end
@@ -90,7 +91,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 else
 
                     if was_nan
-                        # line section start - dublicate point
+                        # line section start - duplicate point
                         push!(indices[], i)
                         # first point in a potential loop
                         loop_start_idx = length(indices[])+1
@@ -102,7 +103,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 push!(indices[], i)
             end
 
-            # Finish line (insert dublicate end point or close loop)
+            # Finish line (insert duplicate end point or close loop)
             if !was_nan
                 if loop_start_idx != -1 && (loop_start_idx + 2 < length(indices[])) &&
                     (transformed_points[indices[][loop_start_idx]] ≈ transformed_points[end])
@@ -145,9 +146,9 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
                 prev = scale .* Point2f(clip) ./ clip[4]
 
                 # calculate cumulative pixel scale length
-                output[1] = 0f0   # dublicated point
+                output[1] = 0f0   # duplicated point
                 output[2] = 0f0   # start of first line segment
-                output[end] = 0f0 # dublicated end point
+                output[end] = 0f0 # duplicated end point
                 i = 3           # end of first line segment, start of second
                 while i < length(ps)
                     if isfinite(ps[i])
@@ -187,7 +188,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
             uniforms[Symbol("$(name)_end")] = attr
         else
             # TODO: to js?
-            # dublicates per vertex attributes to match positional dublication
+            # duplicates per vertex attributes to match positional duplication
             # min(idxs, end) avoids update order issues here
             attributes[name] = lift(plot, indices, attr) do idxs, vals
                 serialize_buffer_attribute(vals[min.(idxs, end)])

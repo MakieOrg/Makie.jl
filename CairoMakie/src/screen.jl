@@ -175,6 +175,31 @@ mutable struct Screen{SurfaceRenderType} <: Makie.MakieScreen
     antialias::Int # cairo_antialias_t
     visible::Bool
     config::ScreenConfig
+
+    function Screen()
+        return new{IMAGE}()
+    end
+    function Screen{SurfaceRenderType}(
+            scene::Scene,
+            surface::Cairo.CairoSurface,
+            context::Cairo.CairoContext,
+            device_scaling_factor::Float64,
+            antialias::Int,
+            visible::Bool,
+            config::ScreenConfig
+        ) where {SurfaceRenderType}
+
+        return new{SurfaceRenderType}(
+            scene,
+            surface,
+            context,
+            device_scaling_factor,
+            antialias,
+            visible,
+            config,
+        )
+    end
+
 end
 
 function Base.empty!(screen::Screen)
@@ -192,6 +217,7 @@ end
 Base.close(screen::Screen) = empty!(screen)
 
 function destroy!(screen::Screen)
+    isdefined(screen, :surface) || return
     Cairo.destroy(screen.surface)
     Cairo.destroy(screen.context)
 end
@@ -200,7 +226,10 @@ function Base.isopen(screen::Screen)
     return !(screen.surface.ptr == C_NULL || screen.context.ptr == C_NULL)
 end
 
-Base.size(screen::Screen) = round.(Int, (screen.surface.width, screen.surface.height))
+function Base.size(screen::Screen)
+    isdefined(screen, :surface) || return (0, 0)
+    round.(Int, (screen.surface.width, screen.surface.height))
+end
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
 Base.insert!(screen::Screen, scene::Scene, plot) = nothing
@@ -267,12 +296,17 @@ function Makie.apply_screen_config!(
         destroy!(old_screen)
     end
     apply_config!(screen, config)
+    screen.scene = scene
     return screen
 end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     # No mime as an argument implies we want an image based surface
     Makie.apply_screen_config!(screen, config, scene, nothing, MIME"image/png"())
+end
+
+function Makie.px_per_unit(s::Screen)::Float64
+    return s.config.px_per_unit
 end
 
 function Screen(scene::Scene; screen_config...)

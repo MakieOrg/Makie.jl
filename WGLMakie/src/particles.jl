@@ -70,10 +70,40 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[k] = lift_convert(k, v, plot)
     end
 
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uv_transform = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
+        # why transpose?
+        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
+        if M === nothing
+            return T
+        elseif M isa Mat
+            return T * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+        elseif M isa Vector
+            return [T * Mat3f(m[1], m[2], 0, m[3], m[4], 0, m[5], m[6], 1) for m in M]
+        end
+    end
+
+    if to_value(uv_transform) isa Vector
+        per_instance[:uv_transform] = Buffer(uv_transform)
+    else
+        uniform_dict[:uv_transform] = uv_transform
+    end
+
     handle_color!(plot, uniform_dict, per_instance)
     # handle_color_getter!(uniform_dict, per_instance)
     instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
     uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
+    uniform_dict[:transform_marker] = get(plot, :transform_marker, false)
+
+    # See GLMakie/drawing_primtives.jl
+    if isnothing(scene.float32convert)
+        uniform_dict[:f32c_scale] = Vec3f(1)
+    else
+        uniform_dict[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
+            return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+        end
+    end
 
     if haskey(uniform_dict, :color) && haskey(per_instance, :color)
         to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
@@ -82,6 +112,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f(0)
+    end
+    if !hasproperty(instance, :normal)
+        uniform_dict[:normal] = Vec3f(0)
     end
 
     uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -103,26 +136,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     uniform_dict[:model] = model
 
-    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
-    uv_transform = map(plot, plot[:uv_transform]) do x
-        M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
-        # why transpose?
-        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
-        if M === nothing
-            return T
-        elseif M isa Mat
-            return T * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
-        elseif M isa Vector
-            return [T * Mat3f(m[1], m[2], 0, m[3], m[4], 0, m[5], m[6], 1) for m in M]
-        end
-    end
-
-    if to_value(uv_transform) isa Vector
-        per_instance[:uv_transform] = Buffer(uv_transform)
-    else
-        uniform_dict[:uv_transform] = uv_transform
-    end
-
     return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
@@ -139,6 +152,8 @@ instead of uploading this texture 10x in every plot.
 struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
     dims::NTuple{2, Int}
 end
+Base.size(x::NoDataTextureAtlas) = x.dims
+Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
@@ -161,7 +176,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     marker = nothing
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
-        font = get(attributes, :font, Observable(Makie.defaultfont()))
+        font = map(Makie.to_font, pop!(attributes, :font))
         marker = lift(plot, attributes[:marker]) do marker
             marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
             marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
@@ -170,7 +185,7 @@ function scatter_shader(scene::Scene, attributes, plot)
 
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
-        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, attributes[:quad_offset], plot)
+        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
@@ -260,9 +275,8 @@ function create_shader(scene::Scene, plot::Scatter)
     f32c, model = Makie.patch_model(plot)
     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
 
-    quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
-    attributes[:marker_offset] = Vec3f(0)
-    attributes[:quad_offset] = quad_offset
+    Makie.add_f32c_scale!(attributes, scene, plot, f32c)
+
     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
     attributes[:model] = model
     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
@@ -328,5 +342,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :glowwidth => plot.glowwidth,
         :glowcolor => plot.glowcolor,
     )
+
+    Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
+
     return scatter_shader(scene, uniforms, plot_attributes)
 end

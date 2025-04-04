@@ -20,7 +20,7 @@ function initialize_block!(tbox::Textbox)
 
     tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator) do str, validator
+    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
 
@@ -73,6 +73,7 @@ function initialize_block!(tbox::Textbox)
         charbbs(textplot)
     end
 
+    cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
 
         textplot = t.blockscene.plots[1]
@@ -86,20 +87,29 @@ function initialize_block!(tbox::Textbox)
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
-            cursorindex[] = length(bbs)
-            return
+            ci = cursorindex[] = length(bbs)
         end
 
-        if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+        line_ps = if 0 < ci < length(bbs)
+            leftline(bbs[ci+1])
         elseif ci == 0
-            [leftline(bbs[1])...]
+            leftline(bbs[1])
         else
-            [leftline(bbs[ci])...] .+ Point2f(hadvances[ci], 0)
+            leftline(bbs[ci]) .+ (Point2f(hadvances[ci], 0),)
         end
+
+        # could this be done statically as
+        # max_height = font.height / font.units_per_EM * fontsize
+        max_height = abs(line_ps[1][2] - line_ps[2][2])
+        if !(cursorsize[][2] ≈ max_height)
+            cursorsize[] = Vec2f(1, max_height)
+        end
+
+        return 0.5 * (line_ps[1] + line_ps[2])
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
+    cursor = scatter!(scene, cursorpoints, marker = Rect, color = tbox.cursorcolor,
+        markersize = cursorsize, inspectable = false)
 
     on(cursorpoints) do cpts
         typeof(tbox.width[]) <: Number || return
@@ -137,9 +147,11 @@ function initialize_block!(tbox::Textbox)
     onmouseleftdown(mouseevents) do state
         focus!(tbox)
 
-        if tbox.displayed_string[] == tbox.placeholder[] || tbox.displayed_string[] == " "
+        if tbox.displayed_string[] == tbox.placeholder[]
             tbox.displayed_string[] = " "
             cursorindex[] = 0
+            return Consume(true)
+        elseif tbox.displayed_string[] == " "
             return Consume(true)
         end
 
@@ -344,10 +356,18 @@ end
 Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
 function set!(tb::Textbox, string::String)
-    if !validate_textbox(string, tb.validator[])
+    if validate_textbox(string, tb.validator[])
+        unsafe_set!(tb, string)
+    else
         error("Invalid string \"$(string)\" for textbox.")
     end
+end
 
+"""
+    unsafe_set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, ignoring the possibility that it might not pass the validator function.
+"""
+function unsafe_set!(tb::Textbox, string::String)
     tb.displayed_string = string
     tb.stored_string = string
     nothing

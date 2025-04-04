@@ -156,23 +156,22 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     z = plot[3]
 
     function grid(x, y, z, trans)
-        space = to_value(get(plot, :space, :data))
         g = map(CartesianIndices(z)) do i
             p = Point3f(Makie.get_dim(x, i, 1, size(z)), Makie.get_dim(y, i, 2, size(z)), z[i])
-            return Makie.apply_transform(trans, p, space)
+            return Makie.apply_transform(trans, p)
         end
         return vec(g)
     end
 
     positions = lift(grid, x, y, z, Makie.transform_func_obs(plot))
-    r = Tesselation(Rect2f((0, 0), (1, 1)), size(z[]))
+    r = Tessellation(Rect2f((0, 0), (1, 1)), size(z[]))
     # decomposing a rectangle into uv and triangles is what we need to map the z coordinates on
-    # since the xyz data assumes the coordinates to have the same neighouring relations
+    # since the xyz data assumes the coordinates to have the same neighbouring relations
     # like a grid
     faces = decompose(GLTriangleFace, r)
     uv = decompose_uv(r)
     # with this we can beuild a mesh
-    mesh = GeometryBasics.Mesh(meta(vec(positions[]), uv=uv), faces)
+    mesh = GeometryBasics.Mesh(vec(positions[]), faces, uv = uv)
 
     rpr_mesh = RPR.Shape(context, mesh)
     color = plot.color[]

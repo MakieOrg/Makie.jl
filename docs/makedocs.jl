@@ -1,7 +1,7 @@
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
-pkg"dev .. ../MakieCore ../CairoMakie ../GLMakie ../WGLMakie ../RPRMakie"
+Pkg.instantiate()
 Pkg.precompile()
 
 using CairoMakie
@@ -137,13 +137,17 @@ pages = [
             "reference/plots/voxels.md",
             "reference/plots/vspan.md",
             "reference/plots/waterfall.md",
-            "reference/plots/wireframe.md",  
+            "reference/plots/wireframe.md",
+        ],
+        "Generic Concepts" => [
+            "reference/generic/clip_planes.md",
+            "reference/generic/transformations.md",
+            "reference/generic/space.md",
         ],
         "Scene" => [
             "reference/scene/lighting.md",
             "reference/scene/matcap.md",
             "reference/scene/SSAO.md",
-            "reference/scene/clip_planes.md",
         ]
     ],
     "Tutorials" => [
@@ -152,6 +156,8 @@ pages = [
         "tutorials/layout-tutorial.md",
         "tutorials/scenes.md",
         "tutorials/wrap-existing-recipe.md",
+        "tutorials/pixel-perfect-rendering.md",
+        "tutorials/inset-plot-tutorial.md",
     ],
     "Explanations" => [
         "Backends" => [

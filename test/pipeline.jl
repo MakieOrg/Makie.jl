@@ -148,7 +148,10 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie.MakieCore: InvalidAttributeError
+import Makie.MakieCore:
+    InvalidAttributeError,
+    attribute_names
+import Makie: _attribute_docs
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -163,6 +166,22 @@ import Makie.MakieCore: InvalidAttributeError
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
+import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
+
+@testset "attribute suggestions" begin
+    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
+    suggestions = find_nearby_attributes(attrs, triplot_attrs)
+    @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
+
+    @test textdiff("clr", "color") == "c\e[34m\e[1mo\e[22m\e[39ml\e[34m\e[1mo\e[22m\e[39mr"
+    @test textdiff("clor", "color") == "c\e[34m\e[1mo\e[22m\e[39mlor"
+    @test textdiff("", "color") == "\e[34m\e[1mc\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m\e[34m\e[1mr\e[22m\e[39m"
+    @test textdiff("colorcolor", "color") == "color"
+    @test textdiff("cloourm", "color") == "co\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39mr"
+    @test textdiff("ssoa", "ssao") == "ss\e[34m\e[1ma\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m"
+end 
 
 @recipe(TestRecipe, x, y) do scene
     Attributes()
@@ -175,4 +194,40 @@ end
 @testset "recipe attribute checking" begin
     @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
     @test testrecipe(1:4, 1:4, color=:red) isa Makie.FigureAxisPlot
+end
+
+@testset "validated attributes for blocks" begin
+    err = InvalidAttributeError(Lines, Set{Symbol}())
+    @test err.object_name == "plot"
+
+    err = InvalidAttributeError(Axis, Set{Symbol}())
+    @test err.object_name == "block"
+    @test attribute_names(Axis3) == keys(_attribute_docs(Axis3))
+
+    fig = Figure()
+    @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Axis3(fig[1, 1], does_not_exist = 123, does_not_exist2 = 123)
+    @test_throws InvalidAttributeError lines(1:10, axis = (does_not_exist = 123,))
+    @test_throws InvalidAttributeError Colorbar(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Label(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Box(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Slider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError SliderGrid(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError IntervalSlider(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Button(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Toggle(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Menu(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Legend(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError LScene(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError Textbox(fig[1, 1], does_not_exist = 123)
+    @test_throws InvalidAttributeError PolarAxis(fig[1, 1], does_not_exist = 123)
+
+    @test Axis(fig[1, 1], palette = nothing) isa Axis # just checking that it doesn't error
+    @test Menu(fig[1, 2], default = nothing) isa Menu
+    @test Legend(fig[1, 3], entrygroups = []) isa Legend
+    @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
+    @test :palette in attribute_names(Axis)
+    @test :default in attribute_names(Menu)
+    @test :entrygroups in attribute_names(Legend)
+    @test :palette in attribute_names(PolarAxis)
 end

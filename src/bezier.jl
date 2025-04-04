@@ -28,7 +28,7 @@ LineTo(x, y) = LineTo(Point2d(x, y))
     CurveTo(cx1::Real, cy1::Real, cx2::Real, cy2::Real, px::Real, py::Real)
 
 A path command for use within a `BezierPath` which continues the current subpath with a cubic
-bezier curve to point `p`, with the first control point `c1` and the second control point `c2`. 
+bezier curve to point `p`, with the first control point `c1` and the second control point `c2`.
 """
 struct CurveTo
     c1::Point2d
@@ -357,7 +357,11 @@ bp = BezierPath(str, fit = true)
 scatter(1:10, marker = bp, markersize = 20)
 ```
 """
-function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+@noconstprop function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = false, flipx = false, keep_aspect = true)
+    BezierPath(svg, fit, bbox, flipy, flipx, keep_aspect)
+end
+
+@noconstprop function BezierPath(svg::AbstractString, fit::Bool, bbox, flipy::Bool, flipx::Bool, keep_aspect::Bool)
     commands = parse_bezier_commands(svg)
     p = BezierPath(commands)
     if flipy
@@ -377,7 +381,6 @@ function BezierPath(svg::AbstractString; fit = false, bbox = nothing, flipy = fa
 end
 
 function parse_bezier_commands(svg)
-
     # args = [e.match for e in eachmatch(r"([a-zA-Z])|(\-?\d*\.?\d+)", svg)]
     args = [e.match for e in eachmatch(r"(?:0(?=\d))|(?:[a-zA-Z])|(?:\-?\d*\.?\d+)", svg)]
 
@@ -541,7 +544,7 @@ Usually, four arcs can be constructed between two points given these ellipse par
 One of them is chosen using two boolean flags:
 
 If `largearc === true`, the arc will be longer than 180 degrees.
-If `sweepflag === true`, the arc will sweep through increasing angles.  
+If `sweepflag === true`, the arc will sweep through increasing angles.
 """
 function EllipticalArc(x1, y1, x2, y2, rx, ry, ϕ, largearc::Bool, sweepflag::Bool)
     # https://www.w3.org/TR/SVG11/implnote.html#ArcImplementationNotes
@@ -642,7 +645,7 @@ function render_path(path, bitmap_size_px = 256)
     # freetype has no ClosePath and EllipticalArc, so those need to be replaced
     path_replaced = replace_nonfreetype_commands(path)
 
-    # Minimal size that becomes integer when mutliplying by 64 (target size for
+    # Minimal size that becomes integer when multiplying by 64 (target size for
     # atlas). This adds padding to avoid blurring/scaling factors from rounding
     # during sdf generation
     path_size = widths(bbox(path)) / maximum(widths(bbox(path)))

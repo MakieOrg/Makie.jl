@@ -12,9 +12,7 @@ function cairo_draw(screen::Screen, scene::Scene)
     draw_background(screen, scene)
 
     allplots = Makie.collect_atomic_plots(scene; is_atomic_plot = is_cairomakie_atomic_plot)
-    zvals = Makie.zvalue2d.(allplots)
-    permute!(allplots, sortperm(zvals))
-
+    sort!(allplots; by=Makie.zvalue2d)
     # If the backend is not a vector surface (i.e., PNG/ARGB),
     # then there is no point in rasterizing twice.
     should_rasterize = is_vector_backend(screen.surface)
@@ -28,8 +26,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = Makie.parent_scene(p)
-        pparent.visible[] || continue
+        pparent = Makie.parent_scene(p)::Scene
+        pparent.visible[]::Bool || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
@@ -120,7 +118,7 @@ function draw_background(screen::Screen, scene::Scene, root_h)
         bg = scene.backgroundcolor[]
         Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = viewport(scene)[]
-        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up, 
+        # Makie has (0,0) at bottom left, Cairo at top left. Makie extends up,
         # Cairo down. Negative height breaks other backgrounds
         x, y = origin(r); w, h = widths(r)
         Cairo.rectangle(cr, x, root_h - y - h, w, h) # background
@@ -154,7 +152,7 @@ end
 function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, scale::Number = 1) where RT
     # you can provide `p.rasterize = scale::Int` or `p.rasterize = true`, both of which are numbers
 
-    # Extract scene width in device indepentent units
+    # Extract scene width in device independent units
     w, h = size(scene)
     # Create a new Screen which renders directly to an image surface,
     # specifically for the plot's parent scene.

@@ -190,9 +190,9 @@ gpu_setindex!(t) = error("gpu_setindex! not implemented for: $(typeof(t)). This 
 max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happens, when you call setindex! on an array, without implementing the GPUArray interface")
 
 
-function (::Type{GPUArrayType})(data::Observable; kw...) where GPUArrayType <: GPUArray
-    gpu_mem = GPUArrayType(data[]; kw...)
-    # TODO merge these and handle update tracking during contruction
+function (::Type{GPUArrayType})(context, data::Observable; kw...) where GPUArrayType <: GPUArray
+    gpu_mem = GPUArrayType(context, data[]; kw...)
+    # TODO merge these and handle update tracking during construction
     obs2 = on(new_data -> update!(gpu_mem, new_data), data)
     if GPUArrayType <: TextureBuffer
         push!(gpu_mem.buffer.observers, obs2)

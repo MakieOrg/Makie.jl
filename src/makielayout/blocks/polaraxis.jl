@@ -1,5 +1,5 @@
 ################################################################################
-### Main Block Intialization
+### Main Block Initialization
 ################################################################################
 
 function initialize_block!(po::PolarAxis; palette=nothing)
@@ -48,24 +48,30 @@ function initialize_block!(po::PolarAxis; palette=nothing)
             rticklabelplot.plots[1].text,
             rticklabelplot.plots[1].fontsize,
             rticklabelplot.plots[1].font,
+            rticklabelplot.visible,
             po.rticklabelpad,
             thetaticklabelplot.plots[1].text,
             thetaticklabelplot.plots[1].fontsize,
             thetaticklabelplot.plots[1].font,
+            thetaticklabelplot.visible,
             po.thetaticklabelpad,
             po.overlay.viewport
-        ) do _, _, _, rpad, _, _, _, tpad, area
+        ) do _, _, _, rvisible, rpad, _, _, _, tvisible, tpad, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
-        for gc in thetaticklabelplot.plots[1].plots[1][1][]
-            bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+        if tvisible
+            for gc in thetaticklabelplot.plots[1].plots[1][1][]
+                bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+                max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+            end
         end
-        for gc in rticklabelplot.plots[1].plots[1][1][]
-            bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-            max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+        if rvisible
+            for gc in rticklabelplot.plots[1].plots[1][1][]
+                bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
+                max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
+            end
         end
 
         max_width, max_height = max_widths

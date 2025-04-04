@@ -11,7 +11,7 @@ import {
     Plane,
     Ray,
     MathUtils,
-} from "./THREE.js";
+} from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 
 // OrbitControls performs orbiting, dollying (zooming), and panning.
 // Unlike TrackballControls, it maintains the "up" direction object.up (+Y by default).

@@ -1,3 +1,6 @@
+precision highp float;
+precision highp int;
+
 in vec2 frag_uv;
 in vec4 frag_color;
 
@@ -48,11 +51,14 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
     return frag_color;  // color not in uniform
 }
 
+vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     if (get_pattern()) {
-        vec2 size = vec2(textureSize(color, 0));
-        vec2 pos = gl_FragCoord.xy;
-        return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+        // TODO: per instance
+        mat3 t = get_uv_transform();
+        vec2 pos = apply_uv_transform(t, gl_FragCoord.xy);
+        // vec2 pos = vec2(gl_FragCoord.xy) / vec2(textureSize(color, 0));
+        return texture(color, pos);
     } else {
         return texture(color, uv);
     }
@@ -100,12 +106,17 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
 }
 
 flat in uint frag_instance_id;
+
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
@@ -143,7 +154,7 @@ void main()
             fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
         } else
             fragment_color = pack_int(object_id, frag_instance_id);
-        
+
         return;
     }
 

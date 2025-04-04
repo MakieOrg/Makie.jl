@@ -4,6 +4,7 @@ abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
+get_space(::EmptyCamera) = :clip
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0
@@ -21,7 +22,7 @@ include("interaction/iodevices.jl")
 
 Identifies the source of a tick:
 - `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
-- `UnknownTickState`: A tick from an uncategorized source (e.g. intialization of Events).
+- `UnknownTickState`: A tick from an uncategorized source (e.g. initialization of Events).
 - `PausedRenderTick`: A tick from a paused renderloop.
 - `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
 - `RegularRenderTick`: A tick from a running renderloop where a new image was produced.
@@ -321,36 +322,41 @@ struct Transformation <: Transformable
     translation::Observable{Vec3d}
     scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
+    origin::Observable{Vec3d}
     model::Observable{Mat4d}
     parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
 
-    function Transformation(translation, scale, rotation, transform_func)
+    function Transformation(translation, scale, rotation, transform_func, origin = Vec3d(0))
         translation_o = convert(Observable{Vec3d}, translation)
         scale_o = convert(Observable{Vec3d}, scale)
         rotation_o = convert(Observable{Quaternionf}, rotation)
+        origin_o = convert(Observable{Vec3d}, origin)
         parent_model = Observable(Mat4d(I))
-        model = map(translation_o, scale_o, rotation_o, parent_model) do t, s, r, p
-            return p * transformationmatrix(t, s, r)
+        model = map(translation_o, scale_o, rotation_o, origin_o, parent_model) do t, s, r, o, p
+            # Order: translation * scale * rotation
+            return p * transformationmatrix(t + o - s .* (r * o), s, r)
         end
         transform_func_o = convert(Observable{Any}, transform_func)
         return new(RefValue{Transformation}(),
-                   translation_o, scale_o, rotation_o, model, parent_model, transform_func_o)
+                   translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o)
     end
 end
 
 function Transformation(transform_func=identity;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1))
-    return Transformation(translation, scale, rotation, transform_func)
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0))
+    return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
 function Transformation(parent::Transformable;
                         scale=Vec3d(1),
                         translation=Vec3d(0),
                         rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0),
                         transform_func=nothing)
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
@@ -358,9 +364,21 @@ function Transformation(parent::Transformable;
     trans = Transformation(translation,
                            scale,
                            rotation,
-                           trans)
+                           trans,
+                           origin)
     connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
+end
+
+function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
+    println(io, "Transformation()")
+    println(io, "          parent = ", isassigned(t.parent) ? "Transformation(…)" : "#undef")
+    println(io, "     translation = ", t.translation[])
+    println(io, "           scale = ", t.scale[])
+    println(io, "        rotation = ", t.rotation[])
+    println(io, "          origin = ", t.origin[])
+    println(io, "           model = ", t.model[])
+    println(io, "  transform_func = ", t.transform_func[])
 end
 
 struct ScalarOrVector{T}
