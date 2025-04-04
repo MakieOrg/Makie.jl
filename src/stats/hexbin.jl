@@ -47,35 +47,14 @@ end
 
 conversion_trait(::Type{<:Hexbin}) = PointBased()
 
-function data_limits(hb::Hexbin)
-    bb = Rect2d(hb.plots[1][1][])
-    fn(num::Real) = Float64(num)
-    fn(tup::Union{Tuple,Vec2}) = Vec2d(tup...)
-
-    ms = 2 * fn(hb.plots[1].markersize[])
-    _origin = collect(origin(bb) .- 0.5 * ms)
-    width = collect(widths(bb) .+ ms)
-
-    tf = transform_func(hb)
-    for dim in eachindex(_origin)
-        # reset to origin (do not extend limits) in order to
-        # avoid logscale DomainError on negative values.
-        if !can_handle_negative_domain(tf, dim) && _origin[dim] < 0
-            _origin[dim] = origin(bb)[dim]
-            width[dim] = widths(bb)[dim]
-        end
-    end
-    return Rect3d(_origin, width)
-end
-boundingbox(p::Hexbin, space::Symbol = :data) =
-    apply_transform_and_model(p, data_limits(p))
+data_limits(hb::Hexbin) = Rect3d(hb[1][])
+boundingbox(p::Hexbin, space::Symbol = :data) = apply_model(p.model[], Rect3d(p.plots[1][1][]), space)
 
 get_weight(weights, i) = Float64(weights[i])
 get_weight(::Union{Nothing,StatsBase.UnitWeights}, _) = 1.0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
     tf = transform_func(hb)
-    itf = inverse_transform(tf)
 
     points = Observable(Point2f[])
     count_hex = Observable(Float64[])
@@ -83,7 +62,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
     function add_hex_point((ix, iy), spacing, offset, count)
         pt = Point2f(offset .+ (2 * ix + isodd(iy), iy) .* spacing)
-        push!(points[], apply_transform(itf, pt))
+        push!(points[], pt)
         push!(count_hex[], count)
     end
 
@@ -187,7 +166,8 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
                     markersize=markersize,
                     markerspace=:data,
                     strokewidth=hb.strokewidth,
-                    strokecolor=hb.strokecolor)
+                    strokecolor=hb.strokecolor,
+                    transformation = Transformation(hb, transform_func = identity))
 end
 
 function _nearest_center(val, spacing, offset)
