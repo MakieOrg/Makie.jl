@@ -124,7 +124,7 @@ We're separating this state from convert_arguments, to better apply `dim_convert
 """
 expand_dimensions(trait, args...) = nothing
 
-expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
+expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are n dimensional points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
 expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
     (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))

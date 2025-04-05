@@ -156,7 +156,7 @@ function update_ticklabel_node(
     else
         Point2f(flipped ? ticklabelgap : -ticklabelgap, 0f0)
     end
-    # re-use already allocated array
+    # reuse already allocated array
     result = ticklabel_annotation_obs[]
     empty!(result)
     for i in 1:min(length(tickstrings), length(tickpositions))
@@ -171,7 +171,7 @@ end
 
 function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
     result = tick_obs[]
-    empty!(result) # re-use allocated array
+    empty!(result) # reuse allocated array
     sign::Int = flipped[] ? -1 : 1
     if horizontal[]
         for tp in tickpositions
