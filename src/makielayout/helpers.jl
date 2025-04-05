@@ -107,7 +107,7 @@ Sets the autolimit margins to zero on all given sides.
 
 Example:
 
-```
+```julia
 tightlimits!(laxis, Bottom())
 ```
 """
@@ -313,7 +313,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslider!(scene, "Voltage:", 0:10; format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
@@ -372,7 +372,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
