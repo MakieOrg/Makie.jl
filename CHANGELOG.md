@@ -18,6 +18,7 @@
 - Fixed an error with Colorbar for categorical colormaps, where they displayed values out of colorrange and NaN. [#4894](https://github.com/MakieOrg/Makie.jl/pull/4894)
 - Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
+- Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
 
 ## [0.22.2] - 2025-02-26
 
@@ -92,6 +93,7 @@
 ## [0.21.18] - 2024-12-12
 
 - Allow for user defined recipes to be used in SpecApi [#4655](https://github.com/MakieOrg/Makie.jl/pull/4655).
+- Fix text layouting with empty lines [#4269](https://github.com/MakieOrg/Makie.jl/pull/4269).
 
 ## [0.21.17] - 2024-12-05
 
