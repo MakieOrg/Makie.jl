@@ -227,7 +227,7 @@ framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
 # The size of the window in Makie's own units
 makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
 
-# The size of the window in Makie, device indepentent units
+# The size of the window in Makie, device independent units
 scene_size(screen::Screen) = size(screen.scene)
 
 Makie.isvisible(screen::Screen) = screen.config.visible
@@ -260,7 +260,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
 
-    if isnothing(window)
+    if owns_glscreen
         windowhints = [
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
@@ -387,7 +387,7 @@ function singleton_screen(debugging::Bool)
     end
 
     @debug("new singleton screen")
-    # reuse=false, because we "manually" re-use the singleton screen!
+    # reuse=false, because we "manually" reuse the singleton screen!
     screen = empty_screen(debugging; reuse=false)
     push!(SINGLETON_SCREEN, screen)
     return reopen!(screen)
@@ -710,8 +710,10 @@ function destroy!(screen::Screen)
     window = screen.glscreen
     if GLAbstraction.context_alive(window)
         close(screen; reuse=false)
-        GLFW.SetWindowRefreshCallback(window, nothing)
-        GLFW.SetWindowContentScaleCallback(window, nothing)
+        if screen.owns_glscreen
+            GLFW.SetWindowRefreshCallback(window, nothing)
+            GLFW.SetWindowContentScaleCallback(window, nothing)
+        end
     else
         stop_renderloop!(screen; close_after_renderloop=false)
         empty!(screen)
@@ -740,7 +742,7 @@ end
     close(screen::Screen; reuse=true)
 
 Closes screen and empties it.
-Doesn't destroy the screen and instead frees it to be re-used again, if `reuse=true`.
+Doesn't destroy the screen and instead frees it to be reused again, if `reuse=true`.
 """
 function Base.close(screen::Screen; reuse=true)
     @debug("Close screen!")
@@ -764,8 +766,11 @@ function Base.close(screen::Screen; reuse=true)
         push!(SCREEN_REUSE_POOL, screen)
     end
 
-    GLFW.SetWindowShouldClose(screen.glscreen, true)
-    GLFW.PollEvents()
+    if screen.owns_glscreen
+        GLFW.SetWindowShouldClose(screen.glscreen, true)
+        GLFW.PollEvents()
+    end
+
     # Somehow, on osx, we need to hide the screen a second time!
     set_screen_visibility!(screen, false)
     return

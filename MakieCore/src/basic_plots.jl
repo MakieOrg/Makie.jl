@@ -15,7 +15,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
 """
 function generic_plot_attributes!(attr)
-    attr[:transformation] = automatic
+    attr[:transformation] = :automatic
     attr[:model] = automatic
     attr[:visible] = true
     attr[:transparency] = false
@@ -33,8 +33,8 @@ end
 
 function generic_plot_attributes(attr)
     return (
-        transformation = attr[:transformation],
-        model = attr[:model],
+        transformation = :automatic,
+        model = automatic,
         visible = attr[:visible],
         transparency = attr[:transparency],
         overdraw = attr[:overdraw],
@@ -46,13 +46,12 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes =  attr[:clip_planes]
-
     )
 end
 
 function mixin_generic_plot_attributes()
     @DocumentedAttributes begin
-        transformation = automatic
+        transformation = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
         "Controls whether the plot will be rendered or not."
@@ -535,8 +534,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
-    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
-    transform_marker = false
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is false, `scale!`, `rotate!` and `translate!()` will not affect the scattered mesh.)"
+    transform_marker = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -803,4 +802,6 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = automatic
 end

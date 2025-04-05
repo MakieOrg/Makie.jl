@@ -156,7 +156,7 @@ function update_ticklabel_node(
     else
         Point2f(flipped ? ticklabelgap : -ticklabelgap, 0f0)
     end
-    # re-use already allocated array
+    # reuse already allocated array
     result = ticklabel_annotation_obs[]
     empty!(result)
     for i in 1:min(length(tickstrings), length(tickpositions))
@@ -171,7 +171,7 @@ end
 
 function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
     result = tick_obs[]
-    empty!(result) # re-use allocated array
+    empty!(result) # reuse allocated array
     sign::Int = flipped[] ? -1 : 1
     if horizontal[]
         for tp in tickpositions
@@ -268,6 +268,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         labelfont, ticklabelfont, ticklabelcolor,
         labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
+    minorticksused = get(attrs, :minorticksused, Observable(false))
 
     pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values=true)
     horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
@@ -439,8 +440,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     minortickvalues = Observable(Float64[]; ignore_equal_values=true)
     minortickpositions = Observable(Point2f[]; ignore_equal_values=true)
 
-    onany(parent, tickvalues, minorticks, minorticksvisible) do tickvalues, minorticks, visible
-        if visible
+    onany(parent, tickvalues, minorticks, minorticksvisible, minorticksused) do tickvalues, minorticks, visible, used
+        if visible || used
             minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
         end
         return

@@ -194,7 +194,7 @@ end
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
     points = decompose(PT, rect)
-    push!(points, PT(NaN)) # use to seperate linesegments
+    push!(points, PT(NaN)) # use to separate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -582,7 +582,7 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
-    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # we convert to UV mesh as default, because otherwise the uv information gets lost
     # - we can still drop them, but we can't add them later on
     m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
         geom; pointtype = Point{N, float_type(T)},
