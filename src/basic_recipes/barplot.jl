@@ -67,7 +67,7 @@ function bar_rectangle(x, y, width, fillto, in_y_direction, transform_func)
     # Do not repack as Rect because the representation with widths can cause float
     # precision issues for vertices.
     ps = apply_transform(transform_func, coordinates(rect))
-    return map(p -> clamp.(p, -1e35, 1e35), ps)
+    return map(p -> clamp.(p, -1e32, 1e32), ps)
 end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
