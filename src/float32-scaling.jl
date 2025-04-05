@@ -104,7 +104,13 @@ function patch_model(@nospecialize(plot), f32c::Float32Convert, model::Observabl
     f32c_obs  = Observable{LinearScaling}(f32c.scaling[], ignore_equal_values = true)
     model_obs = Observable{Mat4f}(Mat4f(I), ignore_equal_values = true)
 
-    onany(plot, f32c.scaling, model, update = true) do f32c, model
+    onany(plot, f32c.scaling, model, plot.space, update = true) do f32c, model, space
+        if !is_data_space(space)
+            f32c_obs[] = LinearScaling(Vec3d(1), Vec3d(0))
+            model_obs[] = Mat4f(model)
+            return
+        end
+
         # Neutral f32c can mean that data and model cancel each other and we
         # still have Float32 preicsion issues in between.
 

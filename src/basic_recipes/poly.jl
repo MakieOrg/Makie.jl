@@ -108,12 +108,13 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=identity) where {T}
-    points = convert(Vector{Point2{float_type(T)}}, polygon)
-    points_transformed = apply_transform(transform_func, points)
+function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func=identity) where {N, T}
+    points2d = convert(Vector{Point2{float_type(T)}}, polygon)
+    points_transformed = apply_transform(transform_func, points2d)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{2, float_type(T), GLTriangleFace}
+    points = convert(Vector{Point{N, float_type(T)}}, polygon)
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
@@ -127,21 +128,24 @@ to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_lines(meshes::AbstractVector)
-    line = Point2d[]
+    get_dim(::AbstractVector{<: VecTypes{N}}) where N = N
+    get_dim(::Any) = 3
+    N = mapreduce(get_dim, max, meshes, init = 2)
+    line = Point{N, Float64}[]
     for (i, mesh) in enumerate(meshes)
-        points = to_lines(mesh)
+        points = to_ndim.(Point{N, Float64}, to_lines(mesh), 0)
         append!(line, points)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
-            push!(line, Point2d(NaN))
+            push!(line, Point{N, Float64}(NaN))
         end
     end
     return line
 end
 
-function to_lines(polygon::AbstractVector{<: VecTypes})
-    result = Point2d.(polygon)
+function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
+    result = Point{N, Float64}.(polygon)
     if !isempty(result) && !(result[1] ≈ result[end])
         push!(result, polygon[1])
     end
