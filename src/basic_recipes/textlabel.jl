@@ -93,7 +93,6 @@ Plots the given text(s) with a background(s) at the given position(s).
     text_fxaa = false
 
     # Generic
-    transformation = automatic
     "Controls whether the plot will be rendered or not."
     visible = true
     "Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency."
@@ -204,12 +203,8 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes
 end
 
 
-function text_boundingbox_transforms(plot, positions, glyph_collections::Vector, limits, padding, keep_aspect)
+function text_boundingbox_transforms(plot, ms_positions, glyph_collections::Vector, limits, padding, keep_aspect)
     (l, r, b, t) = padding
-
-    cam = Ref(camera(parent_scene(plot)))
-    transformed = apply_transform_and_model(plot, positions)
-    ms_positions = Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
     rotations = to_rotation(plot.rotation[])
 
     transformations = Vector{Tuple{Vec2d, Vec2d, Float64}}(undef, length(glyph_collections))
@@ -271,7 +266,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,
         clip_planes = plot.clip_planes,
-        transformation = Transformation(), # already processed in bbox calculation
+        transformation = :nothing, # already processed in bbox calculation
     )
 
     # Transforming to pixel space so we can use translate!() for z ordering. If
@@ -291,10 +286,10 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         transformed = apply_transform_and_model(plot, positions)
         # Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
         px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
-        N = length(px_pos)
         if draw_on_top
+            N = length(px_pos)
             pixel_pos[] = [Point3f(p[1], p[2], (i-N) * 0.02) for (i, p) in enumerate(px_pos)]
-            pixel_z[] = 0
+            pixel_z[] = 10_000
         else
             # help CairoMakie a bit by moving the minimum z to translate
             mini = minimum(last, px_pos)
@@ -335,15 +330,15 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,
         clip_planes = plot.clip_planes,
-        transformation = Transformation(), # already processed in pos calculation
+        transformation = :nothing, # already processed in pos calculation
     )
 
     # since CairoMakie consider translation/model in render order we should use
     # translate!() to order these plots. (This does not work in 3D with
     # space = :data)
     onany(plot, plot.draw_on_top, pixel_z, update = true) do draw_on_top, z
-        translate!(tp, 0, 0, ifelse(draw_on_top, 10_000, z + 0.01))
-        translate!(pp, 0, 0, ifelse(draw_on_top, 10_000, z) - 0.01)
+        translate!(tp, 0, 0, z)
+        translate!(pp, 0, 0, z - 0.01)
         return Consume(false)
     end
 
@@ -352,13 +347,13 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, native_tp.converted[1], pixel_z, plot.offset,
+            pixel_pos, native_tp.converted[1], plot.offset,
             # these are difficult because they are not in markerspace but always pixel space...
             native_tp.strokewidth, native_tp.glowwidth,
             native_tp.space, native_tp.markerspace
-        ) do limits, padding, keep_aspect, positions, glyph_collections, z, offset, sw, gw, args...
+        ) do limits, padding, keep_aspect, positions, glyph_collections, offset, sw, gw, args...
 
-        pos = [p + to_ndim(Point3f, sv_getindex(offset, i), z) for (i, p) in enumerate(positions)]
+        pos = [p + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
         return text_boundingbox_transforms(
             native_tp, pos, glyph_collections,
             limits, to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw), keep_aspect
@@ -367,8 +362,8 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
 
     map!(
         plot, transformed_shape,
-        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z, pixel_z
-    ) do shape, cornerradius, cornervertices, transformations, zmin
+        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z
+    ) do shape, cornerradius, cornervertices, transformations
 
         elements = Vector{PolyElements}(undef, length(transformations))
 
@@ -386,7 +381,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
                 element = Point2f[scale .* p .+ translation[Vec(1,2)] for p in verts]
             end
 
-            elements[i] = [to_ndim(Point3f, p, 0) + Point3f(0,0,z-zmin) for p in coordinates(element)]
+            elements[i] = [to_ndim(Point3f, p, 0) + Point3f(0,0,z) for p in coordinates(element)]
         end
 
         return elements
