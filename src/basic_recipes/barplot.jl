@@ -3,38 +3,6 @@ bar_label_formatter(label::String) = label
 bar_label_formatter(label::LaTeXString) = label
 
 """
-    bar_default_fillto(tf, ys, offset)::(ys, offset)
-
-Returns the default y-positions and offset positions for the given transform `tf`.
-
-In order to customize this for your own transformation type, you can dispatch on
-`tf`.
-
-Returns a Tuple of new y positions and offset arrays.
-
-## Arguments
-- `tf`: `plot.transformation.transform_func[]`.
-- `ys`: The y-values passed to `barplot`.
-- `offset`: The `offset` parameter passed to `barplot`.
-"""
-function bar_default_fillto(tf, ys, offset, in_y_direction)
-    return ys, offset
-end
-
-# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
-function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
-    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
-    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
-        # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
-        # use the minimal non-zero y divided by 2 as lower bound for log scale
-        smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
-        return clamp.(ys, smart_fillto, Inf), smart_fillto
-    else
-        return ys, offset
-    end
-end
-
-"""
     barplot(positions, heights; kwargs...)
 
 Plots a barplot.
@@ -88,13 +56,18 @@ end
 
 conversion_trait(::Type{<: BarPlot}) = PointBased()
 
-function bar_rectangle(x, y, width, fillto, in_y_direction)
+function bar_rectangle(x, y, width, fillto, in_y_direction, transform_func)
     # y could be smaller than fillto...
     ymin = min(fillto, y)
     ymax = max(fillto, y)
     w = abs(width)
     rect = Rectd(x - (w / 2f0), ymin, w, ymax - ymin)
-    return in_y_direction ? rect : flip(rect)
+    rect = in_y_direction ? rect : flip(rect)
+    # Transform coordinates of bar rectangle and clamp result to a workable value range.
+    # Do not repack as Rect because the representation with widths can cause float
+    # precision issues for vertices.
+    ps = apply_transform(transform_func, coordinates(rect))
+    return map(p -> clamp.(p, -1e32, 1e32), ps)
 end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
@@ -162,7 +135,7 @@ function stack_grouped_from_to(i_stack, y, grp)
         to[inds] .= fromto.to
     end
 
-    (from = from, to = to)
+    return (from = from, to = to)
 end
 
 function calculate_bar_label_align(label_align, label_rotation::Real, in_y_direction::Bool, flip::Bool)
@@ -293,7 +266,7 @@ function Makie.plot!(p::BarPlot)
 
         if stack === automatic
             if fillto === automatic
-                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
+                fillto = offset
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -322,7 +295,7 @@ function Makie.plot!(p::BarPlot)
             labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
 
-        return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
+        return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction, Ref(transformation))
     end
 
     bars = lift(calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
@@ -333,9 +306,49 @@ function Makie.plot!(p::BarPlot)
         strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
         inspectable = p.inspectable, transparency = p.transparency, space = p.space,
         highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
+        transformation = :inherit_model
     )
 
     if !isnothing(p.bar_labels[])
         text!(p, labels; align=label_aligns, offset=label_offsets, color=label_colors, font=p.label_font, fontsize=p.label_size, rotation=p.label_rotation)
+    end
+end
+
+data_limits(p::BarPlot) = update_boundingbox(Rect3d(p[1][]), Vec3d(NaN, 0, NaN))
+function boundingbox(p::BarPlot, space::Symbol = :data)
+    # plot construction will error check this
+    in_y_direction = p.direction[] == :y
+    transformation = transform_func(p)
+    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+    is_log = transformation isa Tuple && in_y_direction && transformation[2] isa _logT || (!in_y_direction && transformation[1] isa _logT)
+
+    if !is_log
+        bb_transformed = boundingbox(p.plots[1])
+        return bb_transformed
+    else
+        # use the minimal non-zero y divided by 2 as lower bound for log scale
+        ps = p[1][]
+        dim = ifelse(in_y_direction, 2, 1)
+        smart_min = minimum(p -> p[dim] <= 0 ? oftype(p[dim], Inf) : p[dim], ps) / 2
+
+        # get transformed fillto
+        mini = to_ndim(Point3d, minimum(ps), 0)
+        mini = ntuple(i -> ifelse(i == dim, smart_min, mini[i]), 3)
+        smart_min_transformed = apply_transform_and_model(p, mini)[dim]
+
+        # Since Rect represents maximum as rect.origin + rect.widths it will
+        # have float precision issues if maximum ≲ eps(maximum) * widths. To
+        # avoid this we need to explicitly calculate the bounds:
+        rect_verts = p.plots[1][1][]
+        mini_transformed = Point3d(Inf)
+        maxi_transformed = Point3d(-Inf)
+        for verts in rect_verts
+            low, high = extrema(verts)
+            mini_transformed = min.(mini_transformed, to_ndim(Point3d, low, 0))
+            maxi_transformed = max.(maxi_transformed, to_ndim(Point3d, high, 0))
+        end
+        # With smart_min_transformed it should be resolvable
+        mini_transformed = ntuple(i -> ifelse(i == dim, smart_min_transformed, mini_transformed[i]), 3)
+        return apply_model(p.model[], Rect3d(mini_transformed, maxi_transformed .- mini_transformed))
     end
 end
