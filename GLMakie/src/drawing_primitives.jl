@@ -554,7 +554,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             end
             transform_func = transform_func_obs(plot)
             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-                transformed = apply_transform(f, ps, space)
+                transformed = apply_transform(f, ps)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
@@ -859,20 +859,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
                     return (x, y)
                 elseif Makie.is_translation_scale_matrix(model)
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
+                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y)), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y)), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
+                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), Point2d), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), Point2d), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end

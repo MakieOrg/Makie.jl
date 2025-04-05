@@ -260,7 +260,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     owns_glscreen = isnothing(window)
     initial_resolution = (10, 10)
 
-    if isnothing(window)
+    if owns_glscreen
         windowhints = [
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
@@ -710,8 +710,10 @@ function destroy!(screen::Screen)
     window = screen.glscreen
     if GLAbstraction.context_alive(window)
         close(screen; reuse=false)
-        GLFW.SetWindowRefreshCallback(window, nothing)
-        GLFW.SetWindowContentScaleCallback(window, nothing)
+        if screen.owns_glscreen
+            GLFW.SetWindowRefreshCallback(window, nothing)
+            GLFW.SetWindowContentScaleCallback(window, nothing)
+        end
     else
         stop_renderloop!(screen; close_after_renderloop=false)
         empty!(screen)
@@ -764,8 +766,11 @@ function Base.close(screen::Screen; reuse=true)
         push!(SCREEN_REUSE_POOL, screen)
     end
 
-    GLFW.SetWindowShouldClose(screen.glscreen, true)
-    GLFW.PollEvents()
+    if screen.owns_glscreen
+        GLFW.SetWindowShouldClose(screen.glscreen, true)
+        GLFW.PollEvents()
+    end
+
     # Somehow, on osx, we need to hide the screen a second time!
     set_screen_visibility!(screen, false)
     return

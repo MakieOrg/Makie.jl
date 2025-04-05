@@ -846,6 +846,23 @@ end
     f
 end
 
+@reference_test "tricontourf alpha transparency" begin
+    dxy = 1.0;
+    x = [0.0, dxy, 0.0, -dxy, 0.0, dxy/2, -dxy/2, dxy/2, -dxy/2];
+    y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
+    @. f1(x,y) = x^2 + y^2;
+    z = f1(x,y);
+    
+    f = Figure()
+    ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
+    ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
+    hlines!(ax1, [-0.5, 0.0, 0.5])
+    hlines!(ax2, [-0.5, 0.0, 0.5])
+    tricontourf!(ax1, x, y, z, levels = 3)
+    tricontourf!(ax2, x, y, z, levels = 3, alpha=0.5)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
@@ -1021,8 +1038,8 @@ end
 @reference_test "hexbin threshold" begin
     f = Figure(size = (800, 800))
 
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
@@ -1032,8 +1049,8 @@ end
 end
 
 @reference_test "hexbin scale" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
@@ -1045,10 +1062,10 @@ end
 
 # Scatter needs working highclip/lowclip first
 @reference_test "hexbin colorrange highclip lowclip" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
-    f, ax, pl = hexbin(x, y,
+    hexbin(x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
         colorrange = (10, 300),
@@ -1057,6 +1074,14 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
+end
+
+@reference_test "hexbin logscale" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/4895
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000) .|> exp
+
+    hexbin(x, y; axis = (; yscale=log10))
 end
 
 @reference_test "bracket scalar" begin
