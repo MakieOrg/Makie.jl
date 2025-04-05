@@ -195,13 +195,15 @@ function mixin_shading_attributes()
 end
 
 """
-    `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
-trait version of calculated_attributes
+    calculated_attributes!(trait::Type{<: AbstractPlot}, plot)
+
+trait version of `calculated_attributes`
 """
 calculated_attributes!(trait, plot) = nothing
 
 """
-    `calculated_attributes!(plot::AbstractPlot)`
+    calculated_attributes!(plot::AbstractPlot)
+
 Fill in values that can only be calculated when we have all other attributes filled
 """
 calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)

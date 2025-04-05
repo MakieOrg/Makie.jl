@@ -663,7 +663,7 @@ function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
 end
 
 """
-    `plottype(plot_args...)`
+    plottype(plot_args...)
 
 Any custom argument combination that has a preferred way to be plotted should overload this.
 e.g.:
