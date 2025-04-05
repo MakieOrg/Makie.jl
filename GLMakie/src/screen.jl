@@ -227,7 +227,7 @@ framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
 # The size of the window in Makie's own units
 makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
 
-# The size of the window in Makie, device indepentent units
+# The size of the window in Makie, device independent units
 scene_size(screen::Screen) = size(screen.scene)
 
 Makie.isvisible(screen::Screen) = screen.config.visible
@@ -387,7 +387,7 @@ function singleton_screen(debugging::Bool)
     end
 
     @debug("new singleton screen")
-    # reuse=false, because we "manually" re-use the singleton screen!
+    # reuse=false, because we "manually" reuse the singleton screen!
     screen = empty_screen(debugging; reuse=false)
     push!(SINGLETON_SCREEN, screen)
     return reopen!(screen)

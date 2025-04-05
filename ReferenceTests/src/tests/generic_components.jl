@@ -425,7 +425,7 @@
     scene2
 end
 
-@reference_test "Tranformations and space" begin
+@reference_test "Transformations and space" begin
     transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :nothing]
     spaces = [:data, :pixel, :relative, :clip]
 
