@@ -63,17 +63,11 @@ function bar_rectangle(x, y, width, fillto, in_y_direction, transform_func)
     w = abs(width)
     rect = Rectd(x - (w / 2f0), ymin, w, ymax - ymin)
     rect = in_y_direction ? rect : flip(rect)
-
-    # To deal with log transforms we explicitly transform here and "fix" ±Inf
-    # results by clamping them to numeric values. Since Rect2f is represented
-    # with widths we need to make sure that origin + widths is still resolvable
-    # with enough precision to correctly align rects. This is done by
-    # max_resolvable requiring at ~100 eps precision at each vertex.
-    ps = coordinates(rect)
-    ps = apply_transform(transform_func, ps)
-    max_resolvable = 0.01 ./ max.(mapreduce(p -> eps.(p), finite_max, ps), eps(Float64))
-    ps = map(p -> clamp.(p, -max_resolvable, max_resolvable), ps)
-    return Rect2d(ps)
+    # Transform coordinates of bar rectangle and clamp result to a workable value range.
+    # Do not repack as Rect because the representation with widths can cause float
+    # precision issues for vertices.
+    ps = apply_transform(transform_func, coordinates(rect))
+    return map(p -> clamp.(p, -1e35, 1e35), ps)
 end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
@@ -328,24 +322,33 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
     _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
     is_log = transformation isa Tuple && in_y_direction && transformation[2] isa _logT || (!in_y_direction && transformation[1] isa _logT)
 
-    bb_transformed = boundingbox(p.plots[1])
     if !is_log
+        bb_transformed = boundingbox(p.plots[1])
         return bb_transformed
     else
         # use the minimal non-zero y divided by 2 as lower bound for log scale
         ps = p[1][]
         dim = ifelse(in_y_direction, 2, 1)
-        smart_fillto = minimum(p -> p[dim] <= 0 ? oftype(p[dim], Inf) : p[dim], ps) / 2
+        smart_min = minimum(p -> p[dim] <= 0 ? oftype(p[dim], Inf) : p[dim], ps) / 2
 
         # get transformed fillto
         mini = to_ndim(Point3d, minimum(ps), 0)
-        mini = ntuple(i -> ifelse(i == dim, smart_fillto, mini[i]), 3)
-        fillto_transformed = apply_transform_and_model(p, mini)[2]
+        mini = ntuple(i -> ifelse(i == dim, smart_min, mini[i]), 3)
+        smart_min_transformed = apply_transform_and_model(p, mini)[dim]
 
-        # replace matching origin in the transformed rect (do not adjust and transform
-        # data_limits as those don't include bar widths)
-        mini, maxi = extrema(bb_transformed)
-        mini = ntuple(i -> ifelse(i == dim, fillto_transformed, mini[i]), 3)
-        return Rect3d(mini, maxi .- mini)
+        # Since Rect represents maximum as rect.origin + rect.widths it will
+        # have float precision issues if maximum ≲ eps(maximum) * widths. To
+        # avoid this we need to explicitly calculate the bounds:
+        rect_verts = p.plots[1][1][]
+        mini_transformed = Point3d(Inf)
+        maxi_transformed = Point3d(-Inf)
+        for verts in rect_verts
+            low, high = extrema(verts)
+            mini_transformed = min.(mini_transformed, to_ndim(Point3d, low, 0))
+            maxi_transformed = max.(maxi_transformed, to_ndim(Point3d, high, 0))
+        end
+        # With smart_min_transformed it should be resolvable
+        mini_transformed = ntuple(i -> ifelse(i == dim, smart_min_transformed, mini_transformed[i]), 3)
+        return apply_model(p.model[], Rect3d(mini_transformed, maxi_transformed .- mini_transformed))
     end
 end
