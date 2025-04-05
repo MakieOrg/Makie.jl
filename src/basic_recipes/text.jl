@@ -446,15 +446,27 @@ function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
     end
 end
 
+
+# Characters can be completely above or below the baseline, so minimum/maximum
+# should not initialize with 0. It should also not be ±Inf or ±floatmax() as that
+# results in incorrect limits
 function max_y_ascender(glyph_infos::Vector{GlyphInfo})::Float32
-    return maximum(glyph_infos) do ginfo
-        return ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
+    if isempty(glyph_infos)
+        return 0f0
+    else
+        return maximum(glyph_infos) do ginfo
+            return ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
+        end
     end
 end
 
 function min_y_descender(glyph_infos::Vector{GlyphInfo})::Float32
-    return minimum(glyph_infos) do ginfo
-        return ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
+    if isempty(glyph_infos)
+        return 0f0
+    else
+        return minimum(glyph_infos) do ginfo
+            return ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
+        end
     end
 end
 
@@ -463,6 +475,7 @@ function apply_alignment_and_justification!(lines, ju, al)
     max_xs = map(max_x_advance, lines)
     max_x = maximum(max_xs)
 
+    # TODO: Should we check the next line if the first/last is empty?
     top_y = max_y_ascender(lines[1])
     bottom_y = min_y_descender(lines[end])
 
