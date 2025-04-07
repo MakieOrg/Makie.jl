@@ -359,27 +359,68 @@ function plot!(::Plot{F, Args}) where {F, Args}
     end
 end
 
+function handle_transformation!(plot, parent)
+    t_user = to_value(pop!(attributes(plot), :transformation, :automatic))
+
+    # Handle passing transform!() inputs through transformation
+    if t_user isa Tuple{Symbol, <: Real} || t_user isa Union{Attributes, AbstractDict, NamedTuple}
+        transform_op = t_user
+        t_user = :automatic
+    elseif t_user isa Tuple # Allow (t_user, transform_op)
+        t_user, transform_op = t_user
+    else
+        transform_op = nothing
+    end
+
+    # Use given transformation
+    if t_user isa Transformation
+        plot.transformation = t_user
+    else
+        plot.transformation = Transformation()
+
+        # Derive transformation based on space compatibility / use parent transform
+        if t_user in (:automatic, :inherit)
+
+            if is_space_compatible(plot, parent) || (t_user === :inherit)
+                obsfunc = connect!(transformation(parent), transformation(plot))
+                append!(plot.deregister_callbacks, obsfunc)
+            end
+
+        # Connect only transform_func
+        elseif t_user === :inherit_transform_func
+            obsfunc = connect!(transformation(parent), transformation(plot), connect_model = false)
+            append!(plot.deregister_callbacks, obsfunc)
+
+        # Connect only model
+        elseif t_user === :inherit_model
+            obsfunc = connect!(transformation(parent), transformation(plot), connect_func = false)
+            append!(plot.deregister_callbacks, obsfunc)
+
+        # Keep child transform disconnected
+        elseif t_user === :nothing
+
+        else
+            @error("$t_user is not a valid input for `transformation`. Defaulting to `:automatic`.")
+            if is_space_compatible(plot, parent)
+                obsfunc = connect!(transformation(parent), transformation(plot))
+                append!(plot.deregister_callbacks, obsfunc)
+            end
+        end
+    end
+
+    if !isnothing(transform_op)
+        transform!(plot.transformation, transform_op)
+    end
+
+    plot.model = transformationmatrix(plot)
+    return
+end
+
 function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
     scene = parent_scene(parent)
     apply_theme!(scene, plot)
-    t_user = to_value(get(attributes(plot), :transformation, automatic))
-    if t_user isa Transformation
-        plot.transformation = t_user
-    else
-        if t_user isa Union{Nothing, Automatic}
-            plot.transformation = Transformation()
-        else
-            t = Transformation()
-            transform!(t, t_user)
-            plot.transformation = t
-        end
-        if is_space_compatible(plot, parent)
-            obsfunc = connect!(transformation(parent), transformation(plot))
-            append!(plot.deregister_callbacks, obsfunc)
-        end
-    end
-    plot.model = transformationmatrix(plot)
+    handle_transformation!(plot, parent)
     calculated_attributes!(Plot{F}, plot)
     default_shading!(plot, parent_scene(parent))
 

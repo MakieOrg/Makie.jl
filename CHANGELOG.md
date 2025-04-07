@@ -2,9 +2,24 @@
 
 ## [Unreleased]
 
+- Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
+- Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
+- Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
+- Added inheritance options for the `transformation` keyword argument: `:inherit, :inherit_model, :inherit_transform_func, :nothing` (See docs on `transformations` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
+- Fixed GLMakie embedding support for window destruction [#4848](https://github.com/MakieOrg/Makie.jl/pull/4848).
+- Adjusted `DataInspector` tooltips for `spy` to be heatmap-like and `datashader` to show the number of binned markers [#4810](https://github.com/MakieOrg/Makie.jl/pull/4810)
+- Added `unsafe_set!(::Textbox, ::String)` [#4417](https://github.com/MakieOrg/Makie.jl/pull/4417)
+- Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
+- Fixed the computed `colorrange` being out of order with `colorscale = -` or similar colorscale functions that break sorting [#4884](https://github.com/MakieOrg/Makie.jl/pull/4884)
+- Added `transform_marker` to arrows [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
+- Reverted change in `meshscatter` transformation behavior by using `transform_marker = true` as the default [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
+- Fixed an error with Colorbar for categorical colormaps, where they displayed values out of colorrange and NaN. [#4894](https://github.com/MakieOrg/Makie.jl/pull/4894)
+- Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
+- Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
+- Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
 
 ## [0.22.2] - 2025-02-26
 
@@ -79,6 +94,7 @@
 ## [0.21.18] - 2024-12-12
 
 - Allow for user defined recipes to be used in SpecApi [#4655](https://github.com/MakieOrg/Makie.jl/pull/4655).
+- Fix text layouting with empty lines [#4269](https://github.com/MakieOrg/Makie.jl/pull/4269).
 
 ## [0.21.17] - 2024-12-05
 

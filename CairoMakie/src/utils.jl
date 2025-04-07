@@ -8,7 +8,7 @@ using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
 
 function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(transform_func, point, space)
+    point = Makie.apply_transform(transform_func, point)
     _project_position(scene, space, point, model, yflip)
 end
 
@@ -95,6 +95,24 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     return p_0_to_1 .* res
 end
 
+# Scatter has already applied f32convert and model, which the function above
+# would reapply. This one avoids that.
+function scatter_project_position(scene::Scene, markerspace, point::VecTypes, yflip::Bool)
+    res = scene.camera.resolution[]
+    p4d = to_ndim(Vec4d, to_ndim(Vec3d, point, 0.0), 1.0)
+    clip = Makie.space_to_clip(scene.camera, markerspace) * p4d
+    @inbounds begin
+        # between -1 and 1
+        p = clip[Vec(1,2)] ./ clip[4]
+        # flip y to match cairo
+        p_yflip = Vec2d(p[1], (1.0 - 2.0 * yflip) * p[2])
+        # normalize to between 0 and 1
+        p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
+    end
+    # multiply with scene resolution for final position
+    return p_0_to_1 .* res
+end
+
 function project_position(@nospecialize(scenelike), space, point, model, yflip::Bool = true)
     scene = Makie.get_scene(scenelike)
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
@@ -104,9 +122,9 @@ function project_marker(scene, markerspace, origin, scale, rotation, model, bill
     scale3 = to_ndim(Vec2d, scale, first(scale))
     model33 = model[Vec(1,2,3), Vec(1,2,3)]
     origin3 = to_ndim(Point3d, origin, 0)
-    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, Mat4d(I), billboard)
+    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, billboard)
 end
-function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, id = Mat4d(I), billboard = false)
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
     # the CairoMatrix is found by transforming the right and up vector
     # of the marker into screen space and then subtracting the projected
     # origin. The resulting vectors give the directions in which the character
@@ -115,15 +133,15 @@ function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation
     xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
     yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
 
-    proj_pos = _project_position(scene, markerspace, origin, id, true)
+    proj_pos = scatter_project_position(scene, markerspace, origin, true)
 
     if billboard && Makie.is_data_space(markerspace)
         p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
-        xproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, id, true)
-        yproj = _project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, id, true)
+        xproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, true)
+        yproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, true)
     else
-        xproj = _project_position(scene, markerspace, origin + xvec, id, true)
-        yproj = _project_position(scene, markerspace, origin + yvec, id, true)
+        xproj = scatter_project_position(scene, markerspace, origin + xvec, true)
+        yproj = scatter_project_position(scene, markerspace, origin + yvec, true)
     end
 
     xdiff = xproj - proj_pos
@@ -226,7 +244,7 @@ function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.V
     # Standard transform from input space to clip space
     # Note that this is type unstable, so there is a function barrier in place.
     space = (plot.space[])::Symbol
-    points = Makie.apply_transform(transform_func(plot), positions, space)
+    points = Makie.apply_transform(transform_func(plot), positions)
 
     return project_transformed_line_points(scene, plot, points, colors, linewidths)
 end
