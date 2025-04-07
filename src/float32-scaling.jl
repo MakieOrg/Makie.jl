@@ -37,10 +37,10 @@ end
 
 # TODO: Should this apply in world space? Should we split world space into world64 and world32?
 @inline function f32_convert(ls::LinearScaling, data, space::Symbol)
-    return space in (:data, :transformed) ? f32_convert(ls, data) : f32_convert(nothing, data)
+    return Makie.is_data_space(space) ? f32_convert(ls, data) : f32_convert(nothing, data)
 end
 @inline function f32_convert(ls::LinearScaling, data, dim::Integer, space::Symbol)
-    return space in (:data, :transformed) ? f32_convert(ls, data, dim) : f32_convert(nothing, data, dim)
+    return Makie.is_data_space(space) ? f32_convert(ls, data, dim) : f32_convert(nothing, data, dim)
 end
 
 
@@ -65,8 +65,7 @@ function f32_convert_matrix(ls::LinearScaling)
     return transformationmatrix(translation, scale)
 end
 function f32_convert_matrix(ls::LinearScaling, space::Symbol)
-    # maybe :world?
-    return space in (:data, :transformed) ? f32_convert_matrix(ls) : Mat4d(I)
+    return is_data_space(space) ? f32_convert_matrix(ls) : Mat4d(I)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
@@ -315,7 +314,7 @@ end
 function apply_transform_and_f32_conversion(
         float32convert::Nothing, transform_func, model::Mat4d, data, space::Symbol
     )
-    return f32_convert(nothing, apply_transform(transform_func, data, space))
+    return f32_convert(nothing, apply_transform(transform_func, data))
 end
 
 function apply_transform_and_f32_conversion(
@@ -329,18 +328,18 @@ function apply_transform_and_f32_conversion(
     trans, scale = decompose_translation_scale_matrix(model)
     if is_float_safe(scale, trans) && is_identity_transform(float32convert)
         # model applied on GPU, float32convert skippable
-        transformed = apply_transform(transform_func, data, space)
+        transformed = apply_transform(transform_func, data)
         return f32_convert(nothing, transformed)
 
     elseif is_translation_scale_matrix(model)
         # translation and scale of model have been moved to f32convert, so just apply that
-        transformed = apply_transform(transform_func, data, space)
+        transformed = apply_transform(transform_func, data)
         return f32_convert(float32convert, to_ndim.(Point3d, transformed, 0), space)
 
     else
         # model contains rotation which stops us from applying f32convert
         # before model
-        transformed = apply_transform_and_model(model, transform_func, data, space)
+        transformed = apply_transform_and_model(model, transform_func, data)
         return f32_convert(float32convert, transformed)
     end
 end
@@ -349,13 +348,12 @@ function apply_transform_and_f32_conversion(
         float32convert::Nothing,
         transform_func, model::Mat4d, data, dim::Integer, space::Symbol
     )
-    tf = space == :data ? transform_func : identity
     if dim == 1
-        return Float32[apply_transform(tf, Point2(x, 0))[1] for x in data]
+        return Float32[apply_transform(transform_func, Point2(x, 0))[1] for x in data]
     elseif dim == 2
-        return Float32[apply_transform(tf, Point2(0, x))[2] for x in data]
+        return Float32[apply_transform(transform_func, Point2(0, x))[2] for x in data]
     elseif dim == 3
-        return Float32[apply_transform(tf, Point3(0, 0, x))[3] for x in data]
+        return Float32[apply_transform(transform_func, Point3(0, 0, x))[3] for x in data]
     else
         error("The transform_func and float32 conversion can only be applied along dimensions 1, 2 or 3, not $dim")
     end
@@ -379,19 +377,57 @@ function apply_transform_and_f32_conversion(
     trans, scale = decompose_translation_scale_matrix(model)
     if is_float_safe(scale, trans) && is_identity_transform(float32convert)
         # model applied on GPU, float32convert skippable
-        transformed = apply_transform(transform_func, dimpoints, space)
+        transformed = apply_transform(transform_func, dimpoints)
         return [Float32(p[dim]) for p in transformed]
 
     elseif is_translation_scale_matrix(model)
         # translation and scale of model have been moved to f32convert, so just apply that
-        transformed = apply_transform(transform_func, dimpoints, space)
+        transformed = apply_transform(transform_func, dimpoints)
         return f32_convert(float32convert, transformed, dim, space)
 
     else
         # model contains rotation which stops us from applying f32convert before model
         # also stops us from separating dimensions
         @error("Cannot correctly transform 1D data when a model matrix with rotation needs to be applied on the CPU.")
-        transformed = apply_transform_and_model(model, transform_func, dimpoints, space)
+        transformed = apply_transform_and_model(model, transform_func, dimpoints)
         return f32_convert(float32convert, transformed, dim, space)
     end
+end
+
+
+#=
+If markerspace == :data in Scatter, we consider markersize, marker_offset
+and quad_offset to be given in the pre-float32convert coordinate system.
+Therefore we need to apply float32convert.scale (offset is already
+applied in positions). Since this is only a multiplication (whose result
+is in float safe units) we can apply it on the GPU
+
+The same goes for MeshScatter based on `space == :data`. Here only
+markersize is affected
+
+Note that if `transform_marker = true` the model matrix should apply to
+marker attributes. When the model matrix is not float safe it gets merged
+into float32convert if possible. This is the difference between "old_f32c"
+(no model) and "new_f32c" (maybe with model scale + trans) here.
+
+Merging is only possible without rotation in model. If there is rotation
+the model matrix should be applied on the CPU, but isn't yet. This will
+require shader rewrites if it's not too niche to ignore.
+=#
+function add_f32c_scale!(uniforms, scene::Scene, plot::Plot, f32c)
+    if !isnothing(scene.float32convert)
+        uniforms[:f32c_scale] = lift(plot,
+            f32c, scene.float32convert.scaling,
+            plot.transform_marker, get(plot, :markerspace, plot.space)
+        ) do new_f32c, old_f32c, transform_marker, markerspace
+            if markerspace == :data
+                return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
+            else
+                return Vec3f(1)
+            end
+        end
+    else
+        uniforms[:f32c_scale] = Vec3f(1)
+    end
+    return
 end

@@ -250,6 +250,7 @@ end
 
 end
 
+# TODO: move?
 @testset "Coordinate Systems" begin
     funcs = [Makie.is_data_space, Makie.is_pixel_space, Makie.is_relative_space, Makie.is_clip_space]
     spaces = [:data, :pixel, :relative, :clip]
@@ -266,56 +267,117 @@ end
     end
 end
 
-@testset "Space dependent transforms" begin
-    t1 = sqrt
-    t2 = (sqrt, log)
-    t3 = (sqrt, log, log10)
+@testset "Transformation initialization" begin
 
-    p2 = Point(2.0, 5.0)
-    p3 = Point(2.0, 5.0, 4.0)
+    inherit_auto = [:automatic]
+    inherit_all = [:inherit]
+    inherit_model = [:inherit_model]
+    inherit_func = [:inherit_transform_func]
+    inherit_nothing = [:nothing]
 
-    spaces_and_desired_transforms = Dict(
-        :data => (x,y) -> y, # uses changes
-        :clip => (x,y) -> x, # no change
-        :relative => (x,y) -> x, # no change
-        :pixel => (x,y) -> x, # no transformation
-    )
-    for (space, desired_transform) in spaces_and_desired_transforms
-        @test apply_transform(identity, p2, space) == p2
-        @test apply_transform(identity, p3, space) == p3
-
-        @test apply_transform(t1, p2, space) == desired_transform(p2, Point(sqrt(2.0), sqrt(5.0)))
-        @test apply_transform(t1, p3, space) == desired_transform(p3, Point(sqrt(2.0), sqrt(5.0), sqrt(4.0)))
-
-        @test apply_transform(t2, p2, space) == desired_transform(p2, Point2(sqrt(2.0), log(5.0)))
-        @test apply_transform(t2, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), 4.0))
-
-        @test apply_transform(t3, p3, space) == desired_transform(p3, Point3(sqrt(2.0), log(5.0), log10(4.0)))
-    end
-end
-
-@testset "space dependent inheritance" begin
     camfuncs = [identity, campixel!, cam_relative!, cam2d!, cam3d!, old_cam3d!]
     camtypes = [EmptyCamera, Makie.PixelCamera, Makie.RelativeCamera, Camera2D, Camera3D, Makie.OldCamera3D]
     spaces = [:clip, :pixel, :relative, :data, :data, :data]
 
-    for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
-        scene = Scene()
-        camfunc(scene)
-        @test scene.camera_controls isa CamType
-        @test Makie.get_space(scene.camera_controls) == camspace
-        translate!(scene, 0,0,1)
+    @testset "explicit value" begin
+        for cam in camfuncs
+            T = Transformation()
+            # Sanity checks
+            @test T.model[] == Makie.Mat4d(I)
+            @test T.transform_func[] == identity
 
-        # these should only inherit if the camera results in the same space
-        for space in [:clip, :pixel, :relative]
-            p = scatter!(scene, Point2f(0), space = space)
-            @test isassigned(p.transformation.parent) == (space === camspace)
-            @test p.transformation.model[][3, 4] == ifelse(space === camspace, 1.0, 0.0)
+            scene = Scene(camera = cam)
+            p = scatter!(scene, rand(10), transformation = T)
+            @test p.transformation == T
+            @test p.transformation === T
+
+            T = Transformation((log10, log10), scale = Makie.Vec3d(2))
+            @test T.model[] == Makie.scalematrix(Makie.Vec3d(2))
+            @test T.transform_func[] == (log10, log10)
+
+            p = scatter!(scene, rand(10), transformation = T)
+            @test p.transformation == T
+            @test p.transformation === T
         end
+    end
 
-        # data is camera space so transformations should always inherit
-        p = scatter!(scene, Point2f(0), space = :data)
-        @test isassigned(p.transformation.parent)
-        @test p.transformation.model[][3, 4] == 1.0
+    @testset "explicit inheritance" begin
+        # camera should not influence results (two with different space should be enough)
+        for cam in [cam2d!, campixel!]
+            scene = Scene(camera = cam)
+            translate!(scene, Vec3f(5))
+            scene.transformation.transform_func[] = (log10, log10)
+
+            # Sanity check - otherwise inheriting and not inheriting are the same
+            @test scene.transformation.transform_func[] != identity
+            @test scene.transformation.model[] != Makie.Mat4d(I)
+
+            for (aliases, results) in [
+                    inherit_all     => (true,  true,  true),
+                    inherit_model   => (true,  false, true),
+                    inherit_func    => (true,  true,  false),
+                    inherit_nothing => (false, false, false)
+                ]
+                for transformation in aliases
+                    p = scatter!(scene, rand(10), transformation = transformation)
+                    @test results[1] == (isassigned(p.transformation.parent) && (p.transformation.parent[] == scene.transformation))
+                    @test results[2] == (p.transformation.transform_func[] == scene.transformation.transform_func[])
+                    @test results[3] == (p.transformation.model[] == scene.transformation.model[])
+                end
+            end
+
+        end
+    end
+
+    @testset "space dependent inheritance" begin
+        for (camfunc, camspace, CamType) in zip(camfuncs, spaces, camtypes)
+            scene = Scene()
+            camfunc(scene)
+            @test scene.camera_controls isa CamType
+            @test Makie.get_space(scene.camera_controls) == camspace
+            translate!(scene, 0,0,1)
+
+            # these should only inherit if the camera results in the same space
+            for space in [:clip, :pixel, :relative]
+                for transformation in inherit_auto
+                    p = scatter!(scene, Point2f(0), space = space, transformation = transformation)
+                    @test isassigned(p.transformation.parent) == (space === camspace)
+                    @test p.transformation.model[][3, 4] == ifelse(space === camspace, 1.0, 0.0)
+                end
+            end
+
+            # data is camera space so transformations should always inherit
+            for transformation in inherit_auto
+                p = scatter!(scene, Point2f(0), space = :data, transformation = transformation)
+                @test isassigned(p.transformation.parent)
+                @test p.transformation.model[][3, 4] == 1.0
+            end
+        end
+    end
+
+    @testset "transform!() args" begin
+        scene = Scene()
+        p = scatter!(scene, rand(10), transformation = (:xy, 2))
+        @test p.transformation.model[] == Makie.translationmatrix(Vec3f(0, 0, 2))
+
+        p = scatter!(scene, rand(10), transformation = (:yz, 3))
+        @test p.transformation.model[] == Makie.Mat4d(0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 1)
+
+        p = scatter!(scene, rand(10), transformation = (:xz, 4))
+        @test p.transformation.model[] ≈ Makie.Mat4d(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 4, 0, 1) atol = 1e-6
+
+        p = scatter!(scene, rand(10), transformation = (scale = Vec3f(2, 3, 4),))
+        @test p.transformation.model[] == Makie.scalematrix(Vec3f(2, 3, 4))
+
+        t = (translation = Vec3f(1,2,3), scale = Vec3f(2, 3, 4), rotation = Quaternionf(0.5, 0.6, 0.7, 0.8))
+        p = scatter!(scene, rand(10), transformation = t)
+        T = Makie.transformationmatrix(values(t)...)
+        @test p.transformation.model[] ≈ T atol = 1e-6
+
+        scale!(scene, Vec2f(2))
+        @test p.transformation.model[] ≈ Makie.scalematrix(Vec3f(2,2,1)) * T atol = 1e-6
+
+        p = scatter!(scene, rand(10), transformation = (:nothing, (translation = Vec3f(1,2,3),)))
+        @test p.transformation.model[] == Makie.translationmatrix(Vec3f(1,2,3))
     end
 end

@@ -17,10 +17,14 @@ ys = 0.5 .* sin.(xs)
 lowerrors = fill(0.1, length(xs))
 higherrors = LinRange(0.1, 0.4, length(xs))
 
-errorbars!(xs, ys, higherrors, color = :red) # same low and high error
+errorbars!(xs, ys, higherrors; color = :red, label="data") # same low and high error
 
 # plot position scatters so low and high errors can be discriminated
-scatter!(xs, ys, markersize = 3, color = :black)
+scatter!(xs, ys; markersize = 3, color = :black, label="data")
+
+# the `label=` must be the same for merge to work
+# without merge, two separate legend items will appear
+axislegend(merge=true)
 
 f
 ```

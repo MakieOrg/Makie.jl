@@ -15,7 +15,7 @@ default_theme(scene) = generic_plot_attributes!(Attributes())
 - `clip_planes::Vector{Plane3f} = Plane3f[]`: allows you to specify up to 8 planes behind which plot objects get clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene.
 """
 function generic_plot_attributes!(attr)
-    attr[:transformation] = automatic
+    attr[:transformation] = :automatic
     attr[:model] = automatic
     attr[:visible] = true
     attr[:transparency] = false
@@ -33,8 +33,8 @@ end
 
 function generic_plot_attributes(attr)
     return (
-        transformation = attr[:transformation],
-        model = attr[:model],
+        transformation = :automatic,
+        model = automatic,
         visible = attr[:visible],
         transparency = attr[:transparency],
         overdraw = attr[:overdraw],
@@ -46,13 +46,12 @@ function generic_plot_attributes(attr)
         inspector_clear = attr[:inspector_clear],
         inspector_hover = attr[:inspector_hover],
         clip_planes =  attr[:clip_planes]
-
     )
 end
 
 function mixin_generic_plot_attributes()
     @DocumentedAttributes begin
-        transformation = automatic
+        transformation = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
         "Controls whether the plot will be rendered or not."
@@ -63,8 +62,8 @@ function mixin_generic_plot_attributes()
         overdraw = false
         "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
         ssao = false
-        "sets whether this plot should be seen by `DataInspector`."
-        inspectable = true
+        "Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene."
+        inspectable = @inherit inspectable
         "adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `0 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
         depth_shift = 0.0f0
         "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
@@ -196,13 +195,15 @@ function mixin_shading_attributes()
 end
 
 """
-    `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
-trait version of calculated_attributes
+    calculated_attributes!(trait::Type{<: AbstractPlot}, plot)
+
+trait version of `calculated_attributes`
 """
 calculated_attributes!(trait, plot) = nothing
 
 """
-    `calculated_attributes!(plot::AbstractPlot)`
+    calculated_attributes!(plot::AbstractPlot)
+
 Fill in values that can only be calculated when we have all other attributes filled
 """
 calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
@@ -484,6 +485,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     marker_offset = Vec3f(0)
     "Controls whether the model matrix (without translation) applies to the marker itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the marker."
     transform_marker = false
+    "Sets the font used for character markers. Can be a `String` specifying the (partial) name of a font or the file path of a font file"
+    font = @inherit markerfont
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
@@ -533,8 +536,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     can be changed by passing a tuple `(op3, op2, op1)`.
     """
     uv_transform = automatic
-    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is true, `scale!`, `rotate!` and `translate!()` will affect the scattered mesh.)"
-    transform_marker = false
+    "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is false, `scale!`, `rotate!` and `translate!()` will not affect the scattered mesh.)"
+    transform_marker = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -614,15 +617,27 @@ Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
 being an invisible "air" voxel. Passing a chunk with matching type will directly
 set those values. Note that color handling is specialized for the internal
 representation and may behave a bit differently than usual.
+
+Note that `voxels` is currently considered experimental and may still see breaking
+changes in patch releases.
 """
 @recipe Voxels begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
     is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     """
-    Defines a map from voxel ids (and optionally sides) to uv coordinates. These uv coordinates
-    are then used to sample a 2D texture passed through `color` for texture mapping.
+    Deprecated - use uv_transform
     """
     uvmap = nothing
+    """
+    To use texture mapping `uv_transform` needs to be defined and `color` needs to be an image.
+    The `uv_transform` can be given as a `Vector` where each index maps to a `UInt8` voxel id (skipping 0),
+    or as a `Matrix` where the second index maps to a side following the order `(-x, -y, -z, +x, +y, +z)`.
+    Each element acts as a `Mat{2, 3, Float32}` which is applied to `Vec3f(uv, 1)`, where uv's are generated to run from 0..1 for each voxel.
+    The result is then used to sample the texture.
+    UV transforms have a bunch of shorthands you can use, for example `(Point2f(x, y), Vec2f(xscale, yscale))`.
+    They are listed in `?Makie.uv_transform`.
+    """
+    uv_transform = nothing
     "Controls whether the texture map is sampled with interpolation (i.e. smoothly) or not (i.e. pixelated)."
     interpolate = false
     """
@@ -789,4 +804,6 @@ or other array-like output.
     linewidth = automatic
     """Sets the color of the arrow head. Will copy `color` if set to `automatic`."""
     arrowcolor = automatic
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = automatic
 end

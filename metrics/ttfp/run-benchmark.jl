@@ -1,6 +1,6 @@
 #= TODOs
 1) Use one GH-Action job in the end to merge all results and comment in one go (instead of merging with existing comment)
-2) Improve analysis of benchmark resutls to account for the variance in the benchmarks.
+2) Improve analysis of benchmark results to account for the variance in the benchmarks.
 3) Upload raw benchmark data as artifacts to e.g. create plots from It
 =#
 
@@ -43,7 +43,7 @@ end
 
 function make_project_folder(name)
     result = "$name-benchmark.json"
-    isfile(result) && rm(result) # remove old benchmark resutls
+    isfile(result) && rm(result) # remove old benchmark results
     project = joinpath(@__DIR__, "benchmark-projects", name)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force=true, recursive=true)
