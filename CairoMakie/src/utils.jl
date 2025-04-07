@@ -527,7 +527,7 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 # handle patterns
 function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo y-coordinate are fliped
+    # the Cairo y-coordinate are flipped
     bitmappattern = reverse!(Makie.to_image(color); dims=2)
     # Cairo wants pre-multiplied alpha - ARGB32 doesn't do that on its own
     bitmappattern = map(bitmappattern) do c
