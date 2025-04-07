@@ -203,7 +203,7 @@ given commit or pr with the respective test from the given `source_version` and
 uploads the result to `target_version`.
 
 This is useful for breaking pull requests, where new or changed tests from master
-(previous version) should be added to the new, breaking verison. E.g.:
+(previous version) should be added to the new, breaking version. E.g.:
 ```
 update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22.0", pr = 4477)
 ```
