@@ -19,6 +19,7 @@
 - Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
 - Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
+- Added support for logarithmic units [#4853](https://github.com/MakieOrg/Makie.jl/pull/4853)
 
 ## [0.22.2] - 2025-02-26
 
