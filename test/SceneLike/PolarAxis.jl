@@ -1,62 +1,119 @@
 @testset "PolarAxis" begin
     @testset "rtick rotations" begin
         f = Figure()
-        angles = [
-            7pi/4+0.01, 0,      pi/4-0.01,
-            pi/4+0.01, pi/2,   3pi/4-0.01,
-            3pi/4+0.01, pi,    5pi/4-0.01,
-            5pi/4+0.01, 3pi/2, 7pi/4-0.01,
-        ]
         po = PolarAxis(
-            f[1, 1], thetalimits = (0, pi/4), rticklabelrotation = Makie.automatic,
+            f[1, 1], thetalimits = (0, pi/4), rlimits = (1, 2.0),
+            rticklabelrotation = Makie.automatic,
             rticklabelpad = 10f0
         )
         rticklabelplot = po.overlay.plots[8].plots[1]
 
         # Mostly for verification that we got the right plot
-        @test po.overlay.plots[8][1][] == [("0.0", Point2f(0.0, 0.0)), ("2.5", Point2f(0.25, 0.0)), ("5.0", Point2f(0.5, 0.0)), ("7.5", Point2f(0.75, 0.0)), ("10.0", Point2f(1.0, 0.0))]
+        @test po.overlay.plots[8][1][] == [
+            ("1.00", Point2f(0.5, 0.0)),
+            ("1.25", Point2f(0.625, 0.0)),
+            ("1.50", Point2f(0.75, 0.0)),
+            ("1.75", Point2f(0.875, 0.0)),
+            ("2.00", Point2f(1.0, 0.0))]
+        f
+
+        angles = [
+            7pi/4 + 1e-5,  0,     pi/4 - 1e-5,
+             pi/4 + 1e-5,  pi/2, 3pi/4 - 1e-5,
+            3pi/4 + 1e-5,  pi,   5pi/4 - 1e-5,
+            5pi/4 + 1e-5, 3pi/2, 7pi/4 - 1e-5,
+        ]
 
         # automatic
-        for i in 1:4
-            align = (Vec2f(0.5, 1.0), Vec2f(0.0, 0.5), Vec2f(0.5, 0.0), Vec2f(1.0, 0.5))[i]
-            for j in 1:3
-                po.theta_0[] = angles[j + 3(i-1)]
-                s, c = sincos(angles[j + 3(i-1)] - pi/2)
-                @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
-                @test rticklabelplot.align[] ≈ align
-                @test isapprox(mod(rticklabelplot.rotation[], -pi..pi), (-pi/4+0.01, 0, pi/4-0.01)[j], atol = 1e-3)
+        for dir in [1, -1], mirror in [false, true]
+            @testset "direction = $dir and rticksmirrored = $mirror" begin
+                po.direction[] = dir
+                po.rticksmirrored[] = mirror
+                # are ticks shifted to the thetamax side?
+                tick_side_shift = ifelse(xor(dir == -1, mirror), pi/4, 0.0)
+
+                for labelrotation in (Makie.automatic, :aligned)
+                    @testset "rticklabelrotation = $labelrotation" begin
+                        po.rticklabelrotation[] = labelrotation
+
+                        # theta_0 is picked such that ticks are drawn at the selected angle, i.e.
+                        # relative to the (cos(angle), sin(angle)) direction
+
+                        for i in 1:4, j in 1:3
+                            angle = angles[j + 3(i-1)]
+                            # set theta_0 so that rticks are relative to picked angle
+                            po.theta_0[] = dir * angle - tick_side_shift
+
+                            # tick offset
+                            # mirror = false: axis on counterclockwise side, ticks on clockwise side
+                            # mirror = true: axis on cw side, ticks on ccw
+                            s, c = sincos(angle + ifelse(mirror, pi/2, -pi/2))
+                            @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+
+                            # tick rotation:
+                            # synched with picked angle
+                            tick_rotations = (-pi/4+1e-5, 0.0, pi/4-1e-5)
+                            @test mod(rticklabelplot.rotation[], -pi..pi) ≈ tick_rotations[j] atol = 1e-6
+
+                            # tick align:
+                            # if ticks are mirrored we draw them on the other side of the angle-direction,
+                            # which mirrors/180° rotates alignment. Equivalent by shifting index 2 along
+                            align = (Vec2f(0.5, 1.0), Vec2f(0.0, 0.5), Vec2f(0.5, 0.0), Vec2f(1.0, 0.5))[mod1(i + 2*mirror, 4)]
+                            @test rticklabelplot.align[] ≈ align
+                        end
+                    end
+                end
+
+                @testset "rticklabelrotation = value" begin
+                    po.theta_0[] = 2pi * rand()
+
+                    v = 2pi * rand()
+                    po.rticklabelrotation[] = v
+                    @test rticklabelplot.rotation[] ≈ v
+
+                    # Where are the tick labels actually drawn
+                    label_angle = po.direction[] * (po.theta_0[] + tick_side_shift)
+                    # clockwise or counterclockwise side of r line?
+                    offset_dir_angle = label_angle + ifelse(mirror, pi/2, -pi/2)
+                    s, c = sincos(offset_dir_angle)
+                    @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+
+                    s, c = sincos(offset_dir_angle - v)
+                    scale = 1 / max(abs(s), abs(c))
+                    @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+                end
+
+                @testset "rticklabelrotation = :horizontal" begin
+                    po.theta_0[] = 2pi * rand()
+                    po.rticklabelrotation[] = :horizontal
+                    @test rticklabelplot.rotation[] ≈ 0f0
+
+                    # Same offset and alignment except rotation is strictly 0
+                    label_angle = po.direction[] * (po.theta_0[] + tick_side_shift)
+                    offset_dir_angle = label_angle + ifelse(mirror, pi/2, -pi/2)
+                    s, c = sincos(offset_dir_angle)
+                    @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+                    scale = 1 / max(abs(s), abs(c))
+                    @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+                end
+
+                @testset "rticklabelrotation = :radial" begin
+                    po.theta_0[] = 2pi * rand()
+                    po.rticklabelrotation[] = :radial
+
+                    # always (:left, :center) aligned, which is (0, 0.5)
+                    @test rticklabelplot.align[] ≈ Point2f(0, 0.5)
+
+                    # Same offset
+                    label_angle = po.direction[] * (po.theta_0[] + tick_side_shift)
+                    offset_dir_angle = label_angle + ifelse(mirror, pi/2, -pi/2)
+                    s, c = sincos(offset_dir_angle)
+                    @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
+
+                    @test mod(rticklabelplot.rotation[], -pi..pi) ≈ mod(offset_dir_angle, -pi..pi) atol = 1e-6
+                end
             end
         end
-
-        # value
-        v = 2pi * rand()
-        po.rticklabelrotation[] = v
-        s, c = sincos(po.theta_0[] - pi/2)
-        @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
-        s, c = sincos(po.theta_0[] - pi/2 - v)
-        scale = 1 / max(abs(s), abs(c))
-        @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
-        @test rticklabelplot.rotation[] ≈ v
-
-        # horizontal
-        s, c = sincos(po.theta_0[] - pi/2)
-        scale = 1 / max(abs(s), abs(c))
-        po.rticklabelrotation[] = :horizontal
-        @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
-        @test rticklabelplot.align[] ≈ Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
-        @test rticklabelplot.rotation[] ≈ 0f0
-
-        # radial
-        po.rticklabelrotation[] = :radial
-        @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
-        @test rticklabelplot.align[] ≈ Vec2f(0, 0.5)
-        @test rticklabelplot.rotation[] ≈ po.theta_0[] - pi/2
-
-        # aligned
-        po.rticklabelrotation[] = :aligned
-        @test rticklabelplot.plots[1].offset[] ≈ 10f0 * Vec2f(c, s)
-        @test rticklabelplot.align[] ≈ Vec2f(1, 0.5)
-        @test rticklabelplot.rotation[] ≈ po.theta_0[] - 3pi/2
     end
 
 
