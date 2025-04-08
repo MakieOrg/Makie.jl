@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.3] - 2025-04-08
+
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
 - Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
 - Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
@@ -776,7 +778,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...HEAD
+[0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
 [0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0
