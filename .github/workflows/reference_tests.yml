@@ -27,7 +27,7 @@ jobs:
           - '1.6'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -76,7 +76,7 @@ jobs:
           - '1.6'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -126,7 +126,7 @@ jobs:
           - '1.6'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -171,7 +171,7 @@ jobs:
 
   consolidation:
     name: Merge artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:
