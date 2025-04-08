@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Use the `bar_default_fillto` method from [#3004](https://github.com/MakieOrg/Makie.jl/pull/3004) in stacked barplots as well, to stop the first member of the stack from disappearing in log scale [#4670](https://github.com/MakieOrg/Makie.jl/pull/4849).
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
 - Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
 - Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
