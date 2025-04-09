@@ -228,36 +228,40 @@ function initialize_block!(leg::Legend; entrygroups)
             eevents = []
             eshades = []
             ehalfshades = []
-            for (i, e) in enumerate(entries)
+            for (i, entry) in enumerate(entries)
                 # fill missing entry attributes with those carried by the legend
-                merge!(e.attributes, preset_attrs)
+                merge!(entry.attributes, preset_attrs)
 
-                isnothing(e.label[]) && continue
+                isnothing(entry.label[]) && continue
 
                 # create the label
-                justification = map(leg.labeljustification, e.labelhalign) do lj, lha
+                justification = map(leg.labeljustification, entry.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
-                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
+                      Label(scene; text = entry.label, fontsize = entry.labelsize,
+                        font = entry.labelfont, justification = justification,
+                        color = entry.labelcolor,
+                        halign = entry.labelhalign, valign = entry.labelvalign))
 
                 # create the patch rectangle
-                rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
-                           width=lift(x -> x[1], blockscene, e.patchsize), height=lift(x -> x[2], blockscene, e.patchsize))
+                rect = Box(scene; color = entry.patchcolor,
+                    strokecolor = entry.patchstrokecolor, strokewidth = entry.patchstrokewidth,
+                    width = lift(x -> x[1], blockscene, entry.patchsize),
+                    height = lift(x -> x[2], blockscene, entry.patchsize))
                 push!(erects, rect)
                 translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
-                for element in e.elements
+                for element in entry.elements
                     append!(symbolplots,
-                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
+                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, entry.attributes))
                 end
                 push!(eplots, symbolplots)
 
                 # listen to visibilty attributes of plot elements to toggle shades below
-                visibilities = get_plot_visibilities(e)
+                visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
                 halfshade_visible = Observable{Bool}(false)
                 onany(visibilities...) do vis...
@@ -275,18 +279,18 @@ function initialize_block!(leg::Legend; entrygroups)
                 push!(ehalfshades, halfshade)
 
                 # add mouseevent to hide/show elements
-                has_plots = any(el -> !isnothing(el.plots), e.elements)
+                has_plots = any(el -> !isnothing(el.plots), entry.elements)
                 events = if has_plots
                     events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
                     onmouseleftclick(events) do _
                         # determine number of currently visible plot elements
-                        visibilities = [ v[] for v in get_plot_visibilities(e) if !isnothing(v) ]
+                        visibilities = [ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ]
                         n_visible = sum(s -> Int64(s), visibilities, init = 0)
                         n_total = length(visibilities)
                         n_total == 0 && return Consume(true)
                         # if not all attached plots have the same state we sync them first
                         sync = !(n_visible == 0 || n_visible == n_total)
-                        toggle_visibility!(e, sync)
+                        toggle_visibility!(entry, sync)
                         return Consume(true)
                     end
                     events
