@@ -572,20 +572,9 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
     )]
 end
 
-
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
         plots = plot,
-        color = choose_scalar(plot.color, legend[:markercolor]),
-        marker = choose_scalar(plot.marker, legend[:marker]),
-        markersize = choose_scalar(plot.markersize, legend[:markersize]),
-        strokewidth = choose_scalar(plot.strokewidth, legend[:markerstrokewidth]),
-        strokecolor = choose_scalar(plot.strokecolor, legend[:markerstrokecolor]),
-    )]
-end
-
-function legendelements(plot::Scatter, legend)
-    LegendElement[MarkerElement(
         color = extract_color(plot, legend[:markercolor]),
         marker = choose_scalar(plot.marker, legend[:marker]),
         markersize = choose_scalar(plot.markersize, legend[:markersize]),
@@ -629,6 +618,7 @@ end
 function legendelements(plot::Union{Poly, Density}, legend)
     color = Makie.extract_color(plot, legend[:polycolor])
     LegendElement[Makie.PolyElement(
+        plots = plot,
         color = color,
         strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
         strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
