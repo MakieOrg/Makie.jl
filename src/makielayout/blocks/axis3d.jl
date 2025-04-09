@@ -355,11 +355,12 @@ function getlimits(ax::Axis3, dim)
     dim in (1, 2, 3) || error("Dimension $dim not allowed. Only 1, 2 or 3.")
 
     filtered_plots = filter(ax.scene.plots) do p
-        to_value(get(p, :visible, true)) &&
-        is_data_space(to_value(get(p, :space, :data))) &&
-        ifelse(dim == 1, to_value(get(p, :xautolimits, true)), true) &&
-        ifelse(dim == 2, to_value(get(p, :yautolimits, true)), true) &&
-        ifelse(dim == 3, to_value(get(p, :zautolimits, true)), true)
+        attr = p.attributes
+        to_value(get(attr, :visible, true)) &&
+        is_data_space(p) &&
+        ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
+        ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
+        ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
     end
 
     bboxes = Makie.data_limits.(filtered_plots)

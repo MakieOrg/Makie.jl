@@ -555,8 +555,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
     draw_glyph_collection(
         scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model, space, markerspace, offset, primitive.transformation, transform_marker,
-        clip_planes
+        model::Mat4d, space::Symbol, markerspace::Symbol, offset,
+        primitive.transformation::Makie.Transformation,
+        transform_marker, clip_planes::Vector{Plane3f}
     )
 
     nothing
@@ -564,7 +565,7 @@ end
 
 function draw_glyph_collection(
         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model::Mat, space, markerspace, offset, transformation, transform_marker,
+        model, space, markerspace, offset, transformation, transform_marker,
         clip_planes
     )
 
@@ -594,13 +595,15 @@ function draw_glyph_collection(
 
     model = _deref(_model)
     model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
-    id = Mat4f(I)
+    if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
+        model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
+    end
 
     glyph_pos = let
         # TODO: f32convert may run into issues here if markerspace is :data or
         #       :transformed (repeated application in glyphpos etc)
         transform_func = transformation.transform_func[]
-        transformed = apply_transform(transform_func, position, space)
+        transformed = apply_transform(transform_func, position)
         p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
 
         Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
@@ -637,7 +640,7 @@ function draw_glyph_collection(
         end
 
         scale2 = scale isa Number ? Vec2d(scale, scale) : scale
-        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33, id)
+        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
 
         Cairo.save(ctx)
         set_font_matrix(ctx, mat)
@@ -742,7 +745,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
-    space = to_value(get(primitive, :space, :data))
+    space = primitive.space[]
     xy = project_position(primitive, space, Point2(first.(imsize)), model)
     xymax = project_position(primitive, space, Point2(last.(imsize)), model)
     w, h = xymax .- xy
@@ -793,10 +796,10 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     else
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
-        space = to_value(get(primitive, :space, :data))
+        space = primitive.space[]
         xys = let
             ps = [Point2(x, y) for x in xs, y in ys]
-            transformed = apply_transform(transform_func(primitive), ps, space)
+            transformed = apply_transform(transform_func(primitive), ps)
             T = eltype(transformed)
 
             planes = if Makie.is_data_space(space)
@@ -840,7 +843,7 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
 
         if alpha(colors[i, j]) == 1
             # To avoid gaps between heatmap cells we pad cells.
-            # For 3D compatability (and rotation, inversion/mirror) we pad cells
+            # For 3D compatibility (and rotation, inversion/mirror) we pad cells
             # using directional vectors, not along x/y directions.
             v1 = normalize(p2 - p1)
             v2 = normalize(p4 - p1)
@@ -885,7 +888,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
-    space = to_value(get(plot, :space, :data))::Symbol
+    space = plot.space[]::Symbol
     transform_func = Makie.transform_func(plot)
     model = plot.model[]::Mat4d
     vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
@@ -1252,12 +1255,12 @@ function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
     model = plot.model[]::Mat4d
     f32_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
     tf = Makie.transform_func(plot)
-    return _transform_to_world(f32_model, tf, space, pos)
+    return _transform_to_world(f32_model, tf, pos)
 end
 
-function _transform_to_world(f32_model, tf, space, pos)
+function _transform_to_world(f32_model, tf, pos)
     return map(pos) do p
-        transformed = Makie.apply_transform(tf, p, space)
+        transformed = Makie.apply_transform(tf, p)
         p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         p4d = f32_model * p4d
         return p4d[Vec(1,2,3)] / p4d[4]
@@ -1327,7 +1330,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     transformed_pos = _transform_to_world(scene, primitive, pos)
 
     # Face culling
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive.space[])
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
         valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
         transformed_pos = transformed_pos[valid]
         colors = colors[valid]

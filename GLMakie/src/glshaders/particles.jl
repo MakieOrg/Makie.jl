@@ -158,6 +158,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
+        f32c_scale   = Vec3f(1)
         transparency = false
         shader       = GLVisualizeShader(
             screen,
@@ -262,6 +263,7 @@ function draw_scatter(screen, (marker, position), data)
         stroke_width    = 0f0
         glow_width      = 0f0
         uv_offset_width = Vec4f(0) => GLBuffer
+        f32c_scale      = Vec3f(1)
 
         distancefield   = nothing => Texture
         indices         = const_lift(length, position) => to_index_buffer

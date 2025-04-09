@@ -8,16 +8,16 @@ function handle_color_getter!(uniform_dict, per_instance)
     if color isa AbstractArray{<:Real}
         uniform_dict[:color_getter] = """
             vec4 get_color(){
-                vec2 norm = get_colorrange();
+                vec2 norm = get_scaled_colorrange();
                 float cmin = norm.x;
                 float cmax = norm.y;
                 float value = color;
                 if (value <= cmax && value >= cmin) {
                     // in value range, continue!
                 } else if (value < cmin) {
-                    return get_lowclip();
+                    return get_lowclip_color();
                 } else if (value > cmax) {
-                    return get_highclip();
+                    return get_highclip_color();
                 } else {
                     // isnan is broken (of course) -.-
                     // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -26,9 +26,9 @@ function handle_color_getter!(uniform_dict, per_instance)
                 float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
                 // 1/0 corresponds to the corner of the colormap, so to properly interpolate
                 // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-                float stepsize = 1.0 / float(textureSize(colormap, 0));
+                float stepsize = 1.0 / float(textureSize(alpha_colormap, 0));
                 i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-                return texture(colormap, vec2(i01, 0.0));
+                return texture(alpha_colormap, vec2(i01, 0.0));
             }
         """
     end
@@ -144,7 +144,8 @@ instead of uploading this texture 10x in every plot.
 struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
     dims::NTuple{2, Int}
 end
-Base.show(io::IO, x::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
+Base.size(x::NoDataTextureAtlas) = x.dims
+Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
     tex = Dict(:type => "Sampler", :data => "texture_atlas",
@@ -295,6 +296,10 @@ const IGNORE_KEYS = Set([
     # TODO add model here since we generally need to apply patch_model?
 ])
 
+value_or_first(x::AbstractArray) = first(x)
+value_or_first(x::StaticVector) = x
+value_or_first(x::Mat) = x
+value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
@@ -347,5 +352,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :glowwidth => plot.glowwidth,
         :glowcolor => plot.glowcolor,
     )
+
+    Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
+
     return scatter_shader(scene, uniforms, plot_attributes)
 end

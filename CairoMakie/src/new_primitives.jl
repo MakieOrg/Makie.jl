@@ -19,7 +19,7 @@ end
 
 function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
     Makie.register_computation!(plot.args[1]::Makie.ComputeGraph,
-            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :_lowclip, :_highclip],
+            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color],
             [:cairo_colors]
         ) do inputs, changed, cached
         (color, colorrange, colormap, nan_color, lowclip, highclip) = inputs
@@ -146,8 +146,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
             [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
             [:cairo_indices]
         ) do (transformed, model, space, clip_planes), changed, outputs
-            indices = unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[])
-            return (indices,)
+            return (unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[]),)
         end
     end
 
@@ -180,6 +179,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
         )
 end
 
+is_approx_zero(x) = isapprox(x, 0)
+is_approx_zero(v::VecTypes) = any(x -> isapprox(x, 0), v)
+
 function draw_atomic_scatter(
         scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
@@ -191,7 +193,7 @@ function draw_atomic_scatter(
 
         isnan(pos) && return
         isnan(rotation) && return # matches GLMakie
-        isnan(markersize) && return
+        (isnan(markersize) || is_approx_zero(markersize)) && return
 
         p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1) # to markerspace
         o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ size_model * to_ndim(Vec3d, mo, 0)

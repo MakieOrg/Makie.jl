@@ -39,9 +39,9 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     if (value <= cmax && value >= cmin) {
         // in value range, continue!
     } else if (value < cmin) {
-        return get_lowclip();
+        return get_lowclip_color();
     } else if (value > cmax) {
-        return get_highclip();
+        return get_highclip_color();
     } else {
         // isnan is broken (of course) -.-
         // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -101,7 +101,7 @@ void main(){
 
     process_clip_planes(position_world.xyz);
     o_normal = normalize(N);
-    frag_color = vertex_color(get_color(), get_colorrange(), colormap);
+    frag_color = get_color();
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     // direction to camera
     o_camdir = position_world.xyz / position_world.w - eyeposition;

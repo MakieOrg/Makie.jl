@@ -166,9 +166,9 @@ end
 
 function register_position_transforms!(attr)
     haskey(attr.outputs, :positions) || return
-    register_computation!(attr, [:positions, :transform_func, :space],
-                        [:positions_transformed]) do (positions, func, space), changed, last
-        return (apply_transform(func[], positions[], space[]),)
+    register_computation!(attr, [:positions, :transform_func],
+                        [:positions_transformed]) do (positions, func), changed, last
+        return (apply_transform(func[], positions[]),)
     end
 
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c

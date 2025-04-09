@@ -459,7 +459,8 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        pos = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), gl_attributes[:position])
+        f32c = pop!(gl_attributes, :f32c)
+        pos = apply_transform_and_f32_conversion(plot, f32c, gl_attributes[:position])
         space = plot.space
         markerspace = plot.markerspace
         offset = pop!(gl_attributes, :offset, Vec2f(0))
@@ -524,6 +525,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
             Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
         end
+
+        Makie.add_f32c_scale!(gl_attributes, scene, plot, f32c)
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end

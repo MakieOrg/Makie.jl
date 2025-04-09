@@ -174,7 +174,7 @@ To sum up, we have two factors that affect the rendered output of a Makie `Figur
 
 If we display a `Figure(size = (600, 450))` in a web context, by Makie's convention the image will be annotated with `width = "600px" height = "450px"`. But how many pixels does the actual bitmap have, i.e., how sharp is the image?
 
-This is controlled by the `px_per_unit` setting. This is `2` by default when rendering out bitmaps because many modern screens map 2x2 screen pixels to 1x1 CSS pixels (for example Apple's "retina displays"). If you want to be able to zoom in more and still have good resolution, you need to increase the `px_per_unit` value so images have even more pixels.
+This is controlled by the `px_per_unit` setting when rendering a figure as bitmap or saving a figure via `save`. This is `2` by default when rendering out bitmaps because many modern screens map 2x2 screen pixels to 1x1 CSS pixels (for example Apple's "retina displays"). If you want to be able to zoom in more and still have good resolution, you need to increase the `px_per_unit` value so images have even more pixels.
 
 Here are two images that show how `size` and `px_per_unit` affect the visual appearance of your plots. You can remember two simple heuristics:
 

@@ -1,7 +1,5 @@
 
 """
-VolumeSlices
-
     volumeslices(x, y, z, v)
 
 Draws heatmap slices of the volume v

@@ -215,6 +215,20 @@ end
     arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize=0.02, linecolor=:green, arrowcolor=:darkblue)
 end
 
+@reference_test "Arrows 3D marker_transform" begin
+    f = Figure()
+    a = Axis3(f[1,1])
+    r = range(-1, 1, length = 5)
+    arrows!(a, Point3f[(1, 0, 0), (0,0,0)], Point3f[(0,0,0.1), (1,0,0)], color = :gray)
+    arrows!(a, Point3f[(-1, 1, 0), (0,0,0)], Point3f[(0,0,0.1), (-1,1,0)], color = :lightblue,
+        transform_marker = false)
+    arrows!(a, Point3f[(1, -1, 0), (0,0,0)], Point3f[(0,0,0.1), (1,-1,0)], color = :yellow,
+        transform_marker = true)
+    mesh!(a, Rect2f(-1,-1,2,2), color = (:red, 0.5), transparency = true)
+    f
+end
+
+
 @reference_test "Image on Surface Sphere" begin
     n = 20
     θ = [0;(0.5:n - 0.5) / n;1]

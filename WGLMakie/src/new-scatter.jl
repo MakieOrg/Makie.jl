@@ -89,14 +89,16 @@ function assemble_particle_robj!(attr, data)
     color_norm = needs_mapping ? Vec2f(attr.scaled_colorrange[]) : false
 
     data[:positions_transformed_f32c] = attr.positions_transformed_f32c[]
-    data[:colormap] = needs_mapping ? Sampler(attr.alpha_colormap[]) : false
+    data[:alpha_colormap] = needs_mapping ? Sampler(attr.alpha_colormap[]) : false
+
     data[:color] = attr.scaled_color[]
-    data[:colorrange] = color_norm
-    data[:highclip] = attr.highclip_color[]
-    data[:lowclip] = attr.lowclip_color[]
+    data[:scaled_colorrange] = color_norm
+    data[:highclip_color] = attr.highclip_color[]
+    data[:lowclip_color] = attr.lowclip_color[]
     data[:nan_color] = attr.nan_color[]
 
     data[:rotation] = attr.rotation[]
+    data[:f32c_scale] = attr.f32c_scale[]
 
     # Camera will be set in JS
     data[:model] = Mat4f(I)
@@ -154,7 +156,8 @@ const SCATTER_INPUTS = [
     :highclip_color,
     :lowclip_color,
     :visible,
-    :transform_marker
+    :transform_marker,
+    :f32c_scale,
 ]
 
 function scatter_program(attr, changed, last)
@@ -204,9 +207,10 @@ function scatter_program(attr, changed, last)
     end
 end
 
-function create_shader(::Scene, plot::Scatter)
+function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     register_computation!(scatter_program, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
     on(attr.onchange) do _
         attr[:wgl_renderobject][]
@@ -217,9 +221,6 @@ end
 
 function meshscatter_program(args, changed, last)
     r = Dict(
-        :quad_scale => :markersize,
-        :sdf_uv => :uv_offset_width,
-        :sdf_marker_shape => :shape_type,
         :model_f32c => :model,
     )
     if isnothing(last)
