@@ -1,11 +1,71 @@
 using Makie: register_computation!
 
+function serialize_three(scene::Scene, plot::Makie.ComputePlots)
+    program = create_shader(scene, plot)
+    mesh = serialize_three(plot, program)
+    mesh[:plot_type] = "Mesh"
+    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:visible] = Observable(plot.visible[])
+    mesh[:uuid] = js_uuid(plot)
+    mesh[:updater] = plot.args[1][:wgl_update_obs][]
+
+    mesh[:overdraw] = Observable(plot.overdraw[])
+    mesh[:transparency] = Observable(plot.transparency[])
+
+    mesh[:space] = Observable(plot.space[])
+    if haskey(plot, :markerspace)
+        mesh[:markerspace] = Observable(plot.markerspace[])
+        mesh[:cam_space] = plot.markerspace[]
+    else
+        mesh[:cam_space] = plot.space[]
+    end
+
+    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
+    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
+
+    delete!(mesh, :uniform_updater)
+    return mesh
+end
+
+function backend_colors!(attr)
+    register_computation!(attr, [:scaled_color, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
+        filter = interpolate[] ? :linear : :nearest
+        if color[] isa AbstractMatrix
+            # TODO, don't construct a sampler every time
+            return (Sampler(color[], minfilter=filter), false)
+        elseif color[] isa Union{Real, Colorant}
+            return (color[], false)
+        elseif color[] isa Makie.AbstractPattern
+            color[] isa Makie.AbstractPattern
+            img = Makie.to_image(color[])
+            sampler = Sampler(img; x_repeat = :repeat, minfilter=filter)
+            return (sampler, true)
+        else
+            # Not a uniform color
+            return (false, false)
+        end
+    end
+    register_computation!(attr, [:scaled_color], [:vertex_color]) do (color,), changed, last
+        if color[] isa AbstractVector
+            return (Buffer(color[]),)
+        else
+            return (false,)
+        end
+    end
+end
+
+
 function plot_updates(args, changed, name_map)
     new_values = []
     for (name, value) in pairs(args)
         if changed[name]
             name = get(name_map, name, name)
-            push!(new_values, [name, serialize_three(value[])])
+            _val = if value[] isa Sampler
+                [Int32[size(value[].data)...], serialize_three(value[].data)]
+            else
+                serialize_three(value[])
+            end
+            push!(new_values, [name, _val])
         end
     end
     return new_values
@@ -25,7 +85,6 @@ end
 
 
 function assemble_particle_robj!(attr, data)
-    @show attr.scaled_colorrange[]
     needs_mapping = !(attr.scaled_colorrange[] isa Nothing)
     color_norm = needs_mapping ? Vec2f(attr.scaled_colorrange[]) : false
 
@@ -176,13 +235,14 @@ function meshscatter_program(args, changed, last)
             :light_direction => Vec3f(1),
             :light_color => Vec3f(1),
             :PICKING_INDEX_FROM_UV => false,
-            :shading => args.shading[] != NoShading,
+            :shading => args.shading[] == false || args.shading[] != NoShading,
             :backlight => args.backlight[],
             :interpolate_in_fragment_shader => false,
             :markersize => args.markersize[],
             :f32c_scale => args.f32c_scale[],
             :uv => Vec2f(0)
         )
+
         per_instance, uniforms = assemble_particle_robj!(args, data)
         program = InstancedProgram(
             WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
@@ -205,7 +265,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
 
-
     inputs = [
         # Special
         :space,
@@ -227,116 +286,46 @@ end
 
 
 function add_uv_mesh!(attr)
-    register_computation!(attr, [:data_limits], [:data_limit_points]) do (rect,), changed, last
-        return (decompose(Point2f, Rect2f(rect[])),)
-    end
-    register_computation!(
-        attr, [:data_limit_points, :f32c, :transform_func, :space], [:data_limit_points_transformed]
-    ) do (points, f32c, func, space), changed, last
-        return (apply_transform(func[], points[], space[]),)
-    end
-end
-
-function create_image_mesh(attr)
-    i = Vec(1, 2, 3)
-    M = convert_attribute(:rotl90, Makie.Key{:uv_transform}(), Makie.Key{:image}())
-    uv_transform = Mat3f(0, 1, 0, 1, 0, 0, 0, 0, 1) * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
-    colorrange = attr.scaled_colorrange[]
-    interp = attr.interpolate[] ? :linear : :nearest
-    uniforms = Dict(
-        :color => false,
-        :uniform_color => Sampler(attr.image[], minfilter=interp),
-        :colorrange => colorrange === nothing ? Vec2f(0,1) : Vec2f(colorrange),
-        :colormap => Sampler(attr.colormap[]),
-        :highclip => attr.highclip_color[],
-        :lowclip => attr.lowclip_color[],
-        :nan_color => attr.nan_color[],
-        :pattern => false,
-
-        :normal => Vec3f(0),
-        :shading => false,
-        :diffuse => Vec3f(0),
-        :specular => Vec3f(0),
-        :shininess => 0.0f0,
-        :backlight => 0.0f0,
-        :model => Mat4f(attr.model[]),
-        :PICKING_INDEX_FROM_UV => true,
-        :uv_transform => uv_transform,
-        :depth_shift => attr.depth_shift[],
-        :normalmatrix => Mat3f(transpose(inv(attr.model[][i, i]))),
-        :shading => false,
-        :ambient => Vec3f(1),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
-        :interpolate_in_fragment_shader => true
-    )
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
-    uniforms[:picking] = false
-    uniforms[:object_id] = UInt32(0)
-    rect = Rect2f(0, 0, 1, 1)
-    faces = decompose(GLTriangleFace, rect)
-    uv = decompose_uv(rect)
-
-    mesh = GeometryBasics.Mesh(attr.data_limit_points_transformed[], faces; uv=uv)
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
-end
-
-
-const IMAGE_INPUTS = [
-    :data_limit_points_transformed,
-    :image,
-    :interpolate,
-    :colormap,
-    :scaled_colorrange,
-    :model,
-    :transparency,
-    :depth_shift,
-    :nan_color,
-    :highclip_color,
-    :lowclip_color,
-    :visible,
-]
-
-function create_shader(::Scene, plot::Heatmap)
-    attr = plot.args[1]
-    add_uv_mesh!(attr)
-    register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict(
-            :image => :uniform_color,
-            :scaled_colorrange => :colorrange,
-            :highclip_color => :highclip,
-            :lowclip_color => :lowclip,
-            :data_limit_points_transformed => :position,
-        )
-        if isnothing(last)
-            program = create_image_mesh(args)
-            return (program, Observable{Any}([]))
-        else
-            updater = last[2][]
-            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-            return nothing
+    if !haskey(attr, :positions)
+        register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, last
+            return (decompose(Point2f, Rect2f(rect[])),)
         end
+        Makie.register_position_transforms!(attr)
     end
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
+    # These are constant so we just add them as inputs
+    rect = Rect2f(0, 0, 1, 1)
+    Makie.add_input!(attr, :faces, decompose(GLTriangleFace, rect))
+    Makie.add_input!(attr, :texturecoordinates, decompose_uv(rect))
+    Makie.add_input!(attr, :normals, nothing)
+    for name in [:diffuse, :specular]
+        Makie.add_input!(attr, name, Vec3f(0))
     end
-    return attr[:wgl_renderobject][]
+
+    Makie.add_input!(attr, :shininess, 0f0)
+    Makie.add_input!(attr, :backlight, 0f0)
+    Makie.add_input!(attr, :shading, false)
+    Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
 end
 
 function create_shader(::Scene, plot::Image)
     attr = plot.args[1]
     add_uv_mesh!(attr)
-    register_computation!(attr, IMAGE_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict(
-            :image => :uniform_color,
-            :scaled_colorrange => :colorrange,
-            :highclip_color => :highclip,
-            :lowclip_color => :lowclip,
-            :data_limit_points_transformed => :position,
-        )
+    backend_colors!(attr)
+    Makie.register_world_normalmatrix!(attr)
+    inputs = [
+        # Special
+        :space,
+        # Needs explicit handling
+        :alpha_colormap, :uniform_color, :vertex_color, :scaled_colorrange, :color_mapping_type, :pattern, :interpolate,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :pattern_uv_transform, :fetch_pixel, :shading,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+    ]
+    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        r = Dict()
         if isnothing(last)
-            program = create_image_mesh(args)
+            program = _create_mesh(args)
             return (program, Observable{Any}([]))
         else
             updater = last[2][]
@@ -352,107 +341,74 @@ function create_shader(::Scene, plot::Image)
 end
 
 
-function serialize_three(scene::Scene, plot::Makie.ComputePlots)
-    program = create_shader(scene, plot)
-    mesh = serialize_three(plot, program)
-    mesh[:plot_type] = "Mesh"
-    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = Observable(plot.visible[])
-    mesh[:uuid] = js_uuid(plot)
-    mesh[:updater] = plot.args[1][:wgl_update_obs][]
-
-    mesh[:overdraw] = Observable(plot.overdraw[])
-    mesh[:transparency] = Observable(plot.transparency[])
-
-    mesh[:space] = Observable(plot.space[])
-    if haskey(plot, :markerspace)
-        mesh[:markerspace] = Observable(plot.markerspace[])
-        mesh[:cam_space] = plot.markerspace[]
-    else
-        mesh[:cam_space] = plot.space[]
-    end
-
-    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
-    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
-
-    delete!(mesh, :uniform_updater)
-    return mesh
-end
-
-
-const MESH_INPUTS = [
-    # Special
-    :space,
-    # Needs explicit handling
-    :alpha_colormap, :scaled_color, :scaled_colorrange,
-    :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
-    :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-    :pattern_uv_transform, :fetch_pixel, :shading,
-    :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-]
-
+to_3x3(mat::Mat{3, 3}) = mat
 function to_3x3(mat::Mat{2, 3})::Mat{3, 3}
     return Mat3f(mat[1, 1], mat[1, 2], 0, mat[2, 1], mat[2, 2], 0, 0, 0, 1)
+end
+
+function handle_color!(data, attr)
+    colorrange = attr.scaled_colorrange[]
+    uses_mapping = !isnothing(colorrange)
+    data[:vertex_color] = attr.vertex_color[]
+    data[:uniform_color] = attr.uniform_color[]
+    data[:pattern] = attr.pattern[]
+
+    if uses_mapping
+        cmap_minfilter = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        data[:scaled_colorrange] = Vec2f(colorrange)
+        data[:alpha_colormap] = Sampler(attr.alpha_colormap[], minfilter=cmap_minfilter)
+    else
+        data[:scaled_colorrange] = false
+        data[:alpha_colormap] = false
+    end
+    data[:highclip_color] = attr.highclip_color[]
+    data[:lowclip_color] = attr.lowclip_color[]
+    data[:nan_color] = attr.nan_color[]
 end
 
 function _create_mesh(attr)
     i = Vec(1, 2, 3)
     uv_transform = to_3x3(attr.pattern_uv_transform[])
-    colorrange = attr.scaled_colorrange[]
-    uniform_color = if attr.scaled_color[] isa AbstractMatrix
-        Sampler(attr.scaled_color[])
-    else
-        false
-    end
-    color = if attr.scaled_color[] isa AbstractVector
-        Buffer(attr.scaled_color[])
-    elseif attr.scaled_color[] isa AbstractMatrix
-        false
-    else
-        attr.scaled_color[]
-    end
-    uniforms = Dict(
-        :color => color,
-        :uniform_color => uniform_color,
-        :colorrange => colorrange === nothing ? false : Vec2f(colorrange),
-        :colormap => colorrange === nothing ? false : Sampler(attr.alpha_colormap[]),
+    shading = attr.shading[] isa Bool ? attr.shading[] : attr.shading[] != NoShading
+    data = Dict(
 
-        :highclip => attr.highclip_color[],
-        :lowclip => attr.lowclip_color[],
-        :nan_color => attr.nan_color[],
-        :pattern => false,
-
-        :shading => attr.shading[] != NoShading,
+        :shading => shading,
         :diffuse => attr.diffuse[],
         :specular => attr.specular[],
         :shininess => attr.shininess[],
         :backlight => attr.backlight[],
+        :ambient => Vec3f(1),
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
+
         :model => Mat4f(attr.model_f32c[]),
         :PICKING_INDEX_FROM_UV => true,
         :uv_transform => Mat3f(I),
         :depth_shift => attr.depth_shift[],
         :normalmatrix => Mat3f(transpose(inv(attr.model_f32c[][i, i]))),
-        :ambient => Vec3f(1),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
         :interpolate_in_fragment_shader => true
     )
+    handle_color!(data, attr)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
-    uniforms[:picking] = false
-    uniforms[:object_id] = UInt32(0)
-    meshattr = Dict{Symbol, Any}()
+    data[:picking] = false
+    data[:object_id] = UInt32(0)
+
+    uniforms = filter(x-> !(x[2] isa Buffer), data)
+    buffers = filter(x-> x[2] isa Buffer, data)
+
     if !isnothing(attr.normals[])
-        meshattr[:normal] = attr.normals[]
+        buffers[:normal] = attr.normals[]
     else
-        meshattr[:normal] = fill(Vec3f(0), length(attr.positions_transformed_f32c[]))
+        uniforms[:normal] = Vec3f(0)
     end
     if !isnothing(attr.texturecoordinates[])
-        meshattr[:uv] = attr.texturecoordinates[]
+        buffers[:uv] = attr.texturecoordinates[]
     else
-        meshattr[:uv] = fill(Vec2f(0), length(attr.positions_transformed_f32c[]))
+        uniforms[:uv] = Vec2f(0)
     end
-    mesh = GeometryBasics.Mesh(attr.positions_transformed_f32c[], attr.faces[]; meshattr...)
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
+
+    vbo = VertexArray(; positions_transformed_f32c=attr.positions_transformed_f32c[], faces=attr.faces[], buffers...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), vbo, uniforms)
 end
 
 
@@ -460,14 +416,19 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     attr = plot.args[1]
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
-    register_computation!(attr, MESH_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict(
-            :image => :uniform_color,
-            :scaled_colorrange => :colorrange,
-            :highclip_color => :highclip,
-            :lowclip_color => :lowclip,
-            :positions_transformed_f32c => :position,
-        )
+    backend_colors!(attr)
+    inputs = [
+        # Special
+        :space,
+        # Needs explicit handling
+        :alpha_colormap, :uniform_color, :vertex_color, :scaled_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :pattern_uv_transform, :fetch_pixel, :shading,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+    ]
+    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        r = Dict()
         if isnothing(last)
             program = _create_mesh(args)
             return (program, Observable{Any}([]))

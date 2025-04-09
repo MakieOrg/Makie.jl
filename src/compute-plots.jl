@@ -8,7 +8,7 @@ using ComputePipeline
 # Sketching usage with scatter
 
 const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter}
-
+Base.haskey(x::ComputePlots, key) = haskey(x.args[1], key)
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
 
@@ -120,7 +120,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
         return (alpha_colormap, raw_colormap, color_mapping)
     end
-
+    register_computation!(attr, [:raw_colormap], [:color_mapping_type]) do (color,), changed, last
+        return (colormapping_type(color[]),)
+    end
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
@@ -160,8 +162,6 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             return (Vec2d(colorrange[]),)
         end
     end
-
-
 end
 
 function register_position_transforms!(attr)

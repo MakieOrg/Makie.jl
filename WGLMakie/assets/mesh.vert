@@ -16,12 +16,9 @@ uniform vec4 clip_planes[8];
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
-
 vec4 tovec4(float v){return vec4(v, 0.0, 0.0, 0.0);}
 vec4 tovec4(vec3 v){return vec4(v, 1.0);}
 vec4 tovec4(vec4 v){return v;}
-
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
@@ -29,9 +26,9 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     if (value <= cmax && value >= cmin) {
         // in value range, continue!
     } else if (value < cmin) {
-        return get_lowclip();
+        return get_lowclip_color();
     } else if (value > cmax) {
-        return get_highclip();
+        return get_highclip_color();
     } else {
         // isnan is broken (of course) -.-
         // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -45,21 +42,21 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     return texture(color_map, vec2(i01, 0.0));
 }
 
-vec4 vertex_color(vec3 color, bool colorrange, bool colormap){
+vec4 get_color(vec3 color, bool colorrange, bool colormap){
     return vec4(color, 1.0);
 }
-vec4 vertex_color(vec4 color, bool colorrange, bool colormap){
+vec4 get_color(vec4 color, bool colorrange, bool colormap){
     return color;
 }
-vec4 vertex_color(bool color, bool colorrange, bool colormap){
+vec4 get_color(bool color, bool colorrange, bool colormap){
     // color sampling happens in fragment shader
     return vec4(0.0, 0.0, 0.0, 0.0);
 }
-vec4 vertex_color(bool value, vec2 colorrange, sampler2D colormap){
+vec4 get_color(bool value, vec2 colorrange, sampler2D colormap){
     // color sampling happens in fragment shader
     return vec4(0.0, 0.0, 0.0, 0.0);
 }
-vec4 vertex_color(float value, vec2 colorrange, sampler2D colormap){
+vec4 get_color(float value, vec2 colorrange, sampler2D colormap){
     if (get_interpolate_in_fragment_shader()) {
         return vec4(value, 0.0, 0.0, 0.0);
     } else {
@@ -93,7 +90,7 @@ flat out uint frag_instance_id;
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = tovec3(get_position());
+    vec3 vertex_position = tovec3(get_positions_transformed_f32c());
     if (isnan(vertex_position.z)) {
         vertex_position.z = 0.0;
     }
@@ -101,7 +98,7 @@ void main(){
 
     render(position_world, get_normal(), view, projection);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
-    frag_color = vertex_color(get_color(), get_colorrange(), colormap);
+    frag_color = get_color(get_vertex_color(), get_scaled_colorrange(), alpha_colormap);
 
     frag_instance_id = uint(gl_VertexID);
 }

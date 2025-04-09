@@ -64,17 +64,15 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     }
 }
 
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
-
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
     if (value <= cmax && value >= cmin) {
         // in value range, continue!
     } else if (value < cmin) {
-        return get_lowclip();
+        return get_lowclip_color();
     } else if (value > cmax) {
-        return get_highclip();
+        return get_highclip_color();
     } else {
         // isnan is broken (of course) -.-
         // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -135,11 +133,13 @@ uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
 
 void main()
 {
-    for (int i = 0; i < num_clip_planes; i++)
-        if (o_clip_distance[i] < 0.0)
+    for (int i = 0; i < num_clip_planes; i++) {
+        if (o_clip_distance[i] < 0.0) {
             discard;
+        }
+    }
 
-    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
+    vec4 real_color = get_color(uniform_color, frag_uv, get_scaled_colorrange(), alpha_colormap);
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
@@ -150,11 +150,11 @@ void main()
     }
 
     if (picking && (real_color.a > 0.1)) {
-        if (get_PICKING_INDEX_FROM_UV()) {
+        if (PICKING_INDEX_FROM_UV) {
             fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
-        } else
+        } else {
             fragment_color = pack_int(object_id, frag_instance_id);
-
+        }
         return;
     }
 
