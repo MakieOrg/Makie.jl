@@ -24,14 +24,16 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Lines)
     indices = line2segments(points)
     radius = [plot.linewidth[] / 1000]
     curve = RPR.Curve(context, points, indices, radius, [Vec2f(0.0)], [length(indices) ÷ 4])
-    material = RPR.MaterialNode(matsys, RPR.RPR_MATERIAL_NODE_DIFFUSE)
-    set!(material, RPR.RPR_MATERIAL_INPUT_COLOR, to_color(plot.color[]))
+    material = extract_material(matsys, plot)
+    material.color = to_color(plot.color[])
     set!(curve, material)
     return curve
 end
 
 function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
-    points = decompose(Point3f, to_value(plot[1]))
+    arg1 = to_value(plot[1])
+    isempty(arg1) && return nothing
+    points = decompose(Point3f, arg1)
     segments = TupleView{2,2}(RPR.rpr_int(0):RPR.rpr_int(length(points) - 1))
     indices = RPR.rpr_int[]
 
@@ -57,7 +59,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
 
     curve = RPR.Curve(context, points, indices, radius, Vec2f.(0.0, LinRange(0, 1, nsegments)),
                       fill(1, nsegments))
-    material = RPR.DiffuseMaterial(matsys)
+    material = extract_material(matsys, plot)
     color = to_color(plot.color[])
 
     function set_color!(colorvec)
@@ -78,6 +80,6 @@ function to_rpr_object(context, matsys, scene, plot::Makie.LineSegments)
     else
         material.color = to_color(color)
     end
-    set!(curve, material.node)
+    set!(curve, material)
     return curve
 end

@@ -37,33 +37,6 @@ function SSAO(; radius=nothing, bias=nothing, blur=nothing)
     return SSAO(_radius, _bias, _blur)
 end
 
-abstract type AbstractLight end
-
-"""
-A positional point light, shining at a certain color.
-Color values can be bigger than 1 for brighter lights.
-"""
-struct PointLight <: AbstractLight
-    position::Observable{Vec3f}
-    radiance::Observable{RGBf}
-end
-
-"""
-An environment Light, that uses a spherical environment map to provide lighting.
-See: https://en.wikipedia.org/wiki/Reflection_mapping
-"""
-struct EnvironmentLight <: AbstractLight
-    intensity::Observable{Float32}
-    image::Observable{Matrix{RGBf}}
-end
-
-"""
-A simple, one color ambient light.
-"""
-struct AmbientLight <: AbstractLight
-    color::Observable{RGBf}
-end
-
 """
     Scene TODO document this
 
@@ -81,10 +54,10 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     "The current pixel area of the Scene."
-    px_area::Observable{Rect2i}
+    viewport::Observable{Rect2i}
 
     "Whether the scene should be cleared."
-    clear::Bool
+    clear::Observable{Bool}
 
     "The `Camera` associated with the Scene."
     camera::Camera
@@ -95,8 +68,11 @@ mutable struct Scene <: AbstractScene
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "A transformation rescaling data to a Float32-save range."
+    float32convert::Union{Nothing, Float32Convert}
+
     "The plots contained in the Scene."
-    plots::Vector{AbstractPlot}
+    plots::Vector{Plot}
 
     theme::Attributes
 
@@ -113,11 +89,17 @@ mutable struct Scene <: AbstractScene
     visible::Observable{Bool}
     ssao::SSAO
     lights::Vector{AbstractLight}
+    deregister_callbacks::Vector{Observables.ObserverFunction}
+    cycler::Cycler
+
+    conversions::DimConversions
+    isclosed::Bool
+
     function Scene(
             parent::Union{Nothing, Scene},
             events::Events,
-            px_area::Observable{Rect2i},
-            clear::Bool,
+            viewport::Observable{Rect2i},
+            clear::Observable{Bool},
             camera::Camera,
             camera_controls::AbstractCamera,
             transformation::Transformation,
@@ -128,16 +110,18 @@ mutable struct Scene <: AbstractScene
             backgroundcolor::Observable{RGBAf},
             visible::Observable{Bool},
             ssao::SSAO,
-            lights::Vector{AbstractLight}
+            lights::Vector;
+            deregister_callbacks=Observables.ObserverFunction[]
         )
         scene = new(
             parent,
             events,
-            px_area,
+            viewport,
             clear,
             camera,
             camera_controls,
             transformation,
+            nothing,
             plots,
             theme,
             children,
@@ -145,14 +129,58 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            lights
+            convert(Vector{AbstractLight}, lights),
+            deregister_callbacks,
+            Cycler(),
+            DimConversions(),
+            false
         )
-        finalizer(empty!, scene)
+        on(scene, events.window_open) do open
+            if !open
+                scene.isclosed = true
+            end
+        end
+        finalizer(free, scene)
         return scene
     end
 end
 
+isclosed(scene::Scene) = scene.isclosed
+
+# on & map versions that deregister when scene closes!
+function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observable::Observable); update=false, priority=0)
+    to_deregister = on(f, observable; update=update, priority=priority)::Observables.ObserverFunction
+    push!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
+    return to_deregister
+end
+
+function Observables.onany(@nospecialize(f), @nospecialize(scene::Union{Plot,Scene}), @nospecialize(observables...); update=false, priority=0)
+    to_deregister = onany(f, observables...; priority=priority, update=update)
+    append!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
+    return to_deregister
+end
+
+@inline function Base.map!(f, @nospecialize(scene::Union{Plot,Scene}), result::AbstractObservable, os...;
+                           update::Bool=true, priority = 0)
+    # note: the @inline prevents de-specialization due to the splatting
+    callback = Observables.MapCallback(f, result, os)
+    for o in os
+        o isa AbstractObservable && on(callback, scene, o, priority = priority)
+    end
+    update && callback(nothing)
+    return result
+end
+
+@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::AbstractObservable, args...;
+                          ignore_equal_values=false, priority = 0) where {F}
+    # note: the @inline prevents de-specialization due to the splatting
+    obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
+    map!(f, scene, obs, arg1, args...; update=false, priority = priority)
+    return obs
+end
+
 get_scene(scene::Scene) = scene
+get_scene(plot::AbstractPlot) = parent_scene(plot)
 
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
@@ -180,9 +208,9 @@ function Base.show(io::IO, scene::Scene)
 end
 
 function Scene(;
-        px_area::Union{Observable{Rect2i}, Nothing} = nothing,
+        viewport::Union{Observable{Rect2i}, Nothing} = nothing,
         events::Events = Events(),
-        clear::Union{Automatic, Bool} = automatic,
+        clear::Union{Automatic, Observable{Bool}, Bool} = automatic,
         transform_func=identity,
         camera::Union{Function, Camera, Nothing} = nothing,
         camera_controls::AbstractCamera = EmptyCamera(),
@@ -195,112 +223,135 @@ function Scene(;
         ssao = SSAO(),
         lights = automatic,
         theme = Attributes(),
+        deregister_callbacks=Observables.ObserverFunction[],
         theme_kw...
     )
 
-    m_theme = merge_without_obs!(current_default_theme(; theme_kw...), theme)
+    global_theme = merge_without_obs!(copy(theme), current_default_theme())
+    m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values=true)
 
-    wasnothing = isnothing(px_area)
+    wasnothing = isnothing(viewport)
     if wasnothing
-        px_area = Observable(Recti(0, 0, m_theme.resolution[]); ignore_equal_values=true)
+        sz = if haskey(m_theme, :resolution)
+            @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
+            m_theme.resolution[]
+        else
+            m_theme.size[]
+        end
+        viewport = Observable(Recti(0, 0, sz); ignore_equal_values=true)
     end
 
-    cam = camera isa Camera ? camera : Camera(px_area)
+    cam = camera isa Camera ? camera : Camera(viewport)
+    _lights = lights isa Automatic ? AbstractLight[] : lights
+
+    # if we have an opaque background, automatically set clear to true!
+    if clear isa Automatic
+        clear = Observable(alpha(bg[]) == 1 ? true : false)
+    else
+        clear = convert(Observable{Bool}, clear)
+    end
+    scene = Scene(
+        parent, events, viewport, clear, cam, camera_controls,
+        transformation, plots, m_theme,
+        children, current_screens, bg, visible, ssao, _lights;
+        deregister_callbacks=deregister_callbacks
+    )
+    camera isa Function && camera(scene)
+
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
-                px_area[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && viewport[] != w_area
+                viewport[] = w_area
             end
             return Consume(false)
         end
     end
 
-    _lights = lights isa Automatic ? AbstractLight[] : lights
-
-    # if we have an opaque background, automatically set clear to true!
-    if clear isa Automatic
-        clear = alpha(bg[]) == 1 ? true : false
-    end
-    scene = Scene(
-        parent, events, px_area, clear, cam, camera_controls,
-        transformation, plots, m_theme,
-        children, current_screens, bg, visible, ssao, _lights
-    )
-    if camera isa Function
-        cam = camera(scene)
-    end
-
     if lights isa Automatic
-        lightposition = to_value(get(m_theme, :lightposition, nothing))
-        if !isnothing(lightposition)
-            position = if lightposition === :eyeposition
-                scene.camera.eyeposition
-            elseif lightposition isa Vec3
-                m_theme.lightposition
-            else
-                error("Wrong lightposition type, use `:eyeposition` or `Vec3f(...)`")
+        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
+
+        if haskey(m_theme, :lights)
+            copyto!(scene.lights, m_theme.lights[])
+        else
+            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
+            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
+            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
+
+            if haskey(m_theme, :ambient)
+                push!(scene.lights, AmbientLight(m_theme[:ambient][]))
             end
-            push!(scene.lights, PointLight(position, RGBf(1, 1, 1)))
-        end
-        ambient = to_value(get(m_theme, :ambient, nothing))
-        if !isnothing(ambient)
-            push!(scene.lights, AmbientLight(ambient))
+
+            push!(scene.lights, DirectionalLight(
+                m_theme[:light_color][], m_theme[:light_direction],
+                to_value(get(m_theme, :camera_relative_light, false))
+            ))
         end
     end
 
     return scene
 end
 
-function get_one_light(scene::Scene, Typ)
-    indices = findall(x-> x isa Typ, scene.lights)
-    isempty(indices) && return nothing
-    if length(indices) > 1
-        @warn("Only one light supported by backend right now. Using only first light")
-    end
-    return scene.lights[indices[1]]
-end
-
-get_point_light(scene::Scene) = get_one_light(scene, PointLight)
-get_ambient_light(scene::Scene) = get_one_light(scene, AmbientLight)
-
+get_directional_light(scene::Scene) = get_one_light(scene.lights, DirectionalLight)
+get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
+get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
+default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)
 
 function Scene(
         parent::Scene;
         events=parent.events,
-        px_area=nothing,
+        viewport=nothing,
         clear=false,
         camera=nothing,
+        visible=parent.visible,
         camera_controls=parent.camera_controls,
         transformation=Transformation(parent),
-        current_screens=parent.current_screens,
         kw...
     )
-    if isnothing(px_area)
-        px_area = lift(zero_origin, parent.px_area; ignore_equal_values=true)
-    else
-        px_area = lift(pixelarea(parent), convert(Observable, px_area); ignore_equal_values=true) do p, a
-            # make coordinates relative to parent
-            rect = Rect2i(minimum(p) .+ minimum(a), widths(a))
-            return rect
-        end
-    end
+
     if camera !== parent.camera
         camera_controls = EmptyCamera()
     end
+    child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values=true)
+    deregister_callbacks = Observables.ObserverFunction[]
+    _visible = Observable(true)
+    if visible isa Observable
+        listener = on(visible; update=true) do v
+            _visible[] = v
+        end
+        push!(deregister_callbacks, listener)
+    elseif visible isa Bool
+        _visible[] = visible
+    else
+        error("Unsupported typer visible: $(typeof(visible))")
+    end
     child = Scene(;
         events=events,
-        px_area=px_area,
-        clear=clear,
+        viewport=child_px_area,
+        clear=convert(Observable{Bool}, clear),
         camera=camera,
+        visible=_visible,
         camera_controls=camera_controls,
         parent=parent,
         transformation=transformation,
-        current_screens=current_screens,
+        current_screens=copy(parent.current_screens),
         theme=theme(parent),
+        deregister_callbacks=deregister_callbacks,
         kw...
     )
+    # if !isnothing(listener)
+    #     push!(child.deregister_callbacks, listener)
+    # end
+    if isnothing(viewport)
+        map!(identity, child, child_px_area, parent.viewport)
+    elseif viewport isa Rect2
+        child_px_area[] = Rect2i(viewport)
+    else
+        if !(viewport isa Observable)
+            error("viewport must be an Observable{Rect2} or a Rect2")
+        end
+    end
     push!(parent.children, child)
     child.parent = parent
     return child
@@ -308,7 +359,7 @@ end
 
 # legacy constructor
 function Scene(parent::Scene, area; kw...)
-    return Scene(parent; px_area=area, kw...)
+    return Scene(parent; viewport=area, kw...)
 end
 
 # Base overloads for Scene
@@ -325,34 +376,23 @@ function root(scene::Scene)
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
-GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
+GeometryBasics.widths(scene::Scene) = widths(to_value(viewport(scene)))
 
 Base.size(scene::Scene) = Tuple(widths(scene))
 Base.size(x::Scene, i) = size(x)[i]
+
 function Base.resize!(scene::Scene, xy::Tuple{Number,Number})
     resize!(scene, Recti(0, 0, xy))
 end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2)
-    pixelarea(scene)[] = rect
-end
-
-"""
-    getscreen(scene::Scene)
-
-Gets the current screen a scene is associated with.
-Returns nothing if not yet displayed on a screen.
-"""
-function getscreen(scene::Scene)
-    if isempty(scene.current_screens)
-        isroot(scene) && return nothing # stop search
-        return getscreen(parent(scene)) # screen could be in parent
+    viewport(scene)[] = rect
+    if isroot(scene)
+        for screen in scene.current_screens
+            resize!(screen, widths(rect)...)
+        end
     end
-    # TODO, when would we actually want to get a specific screen?
-    return last(scene.current_screens)
 end
-
-getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
@@ -364,7 +404,7 @@ struct OldAxis end
 zero_origin(area) = Recti(0, 0, widths(area))
 
 function child(scene::Scene; camera, attributes...)
-    return Scene(scene, lift(zero_origin, pixelarea(scene)); camera=camera, attributes...)
+    return Scene(scene; camera=camera, attributes...)
 end
 
 """
@@ -389,95 +429,152 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
-function Base.empty!(scene::Scene)
-    events(scene).window_open[] = false
-    # clear all child scenes
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
-    # clear plots of this scenes
-    for plot in reverse(scene.plots)
-        for screen in scene.current_screens
-            delete!(screen, scene, plot)
-        end
-    end
-    empty!(scene.plots)
-    empty!(scene.theme)
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
+function delete_scene!(scene::Scene)
+    @warn "deprecated in favor of empty!(scene)"
+    empty!(scene)
     return nothing
 end
 
-function _empty_recursion(scene::Scene)
-    # empty all children
-    foreach(_empty_recursion, scene.children)
-    empty!(scene.children)
-
-    # remove scene (and all its plots) from the rendering
-    for screen in scene.current_screens
+function free(scene::Scene)
+    # Errors should be handled at a lower level because otherwise
+    # some of the cleanup will be incomplete.
+    empty!(scene; free=true)
+    for field in [:backgroundcolor, :viewport, :visible]
+        Observables.clear(getfield(scene, field))
+    end
+    for screen in copy(scene.current_screens)
         delete!(screen, scene)
     end
-    empty!(scene.plots)
-
-    # clean up some onsverables (there are probably more...)
-    disconnect!(scene.camera)
-    scene.camera_controls = EmptyCamera()
-
-    # top level scene.px_area needs to remain for GridLayout?
-    off.(scene.px_area.inputs)
-    empty!(scene.px_area.listeners)
-    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
-        obs = getfield(scene.transformation, fieldname)
-        if isdefined(obs, :inputs)
-            off.(obs.inputs)
-        end
-        empty!(obs.listeners)
-    end
+    empty!(scene.current_screens)
+    scene.parent = nothing
     return
 end
 
-Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
+# Note: called from scene finalizer if free = true
+function Base.empty!(scene::Scene; free=false)
+    foreach(empty!, copy(scene.children))
+    # clear plots of this scene
+    for plot in copy(scene.plots)
+        delete!(scene, plot)
+    end
 
-function Base.push!(scene::Scene, plot::AbstractPlot)
+    # clear all child scenes
+    if !isnothing(scene.parent)
+        filter!(x-> x !== scene, scene.parent.children)
+    end
+
+    empty!(scene.children)
+    empty!(scene.plots)
+    empty!(scene.theme)
+    # conditional, since in free we dont want this!
+    free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+
+    disconnect!(scene.camera)
+    scene.camera_controls = EmptyCamera()
+
+    for fieldname in (:rotation, :translation, :scale, :transform_func, :model)
+        Observables.clear(getfield(scene.transformation, fieldname))
+    end
+    for obsfunc in scene.deregister_callbacks
+        Observables.off(obsfunc)
+    end
+    empty!(scene.deregister_callbacks)
+    return nothing
+end
+
+function Base.push!(plot::Plot, subplot)
+    MakieCore.validate_attribute_keys(subplot)
+    subplot.parent = plot
+    push!(plot.plots, subplot)
+end
+
+function Base.push!(scene::Scene, @nospecialize(plot::Plot))
+    MakieCore.validate_attribute_keys(plot)
     push!(scene.plots, plot)
-    plot isa Combined || (plot.parent[] = scene)
     for screen in scene.current_screens
-        insert!(screen, scene, plot)
+        Base.invokelatest(insert!, screen, scene, plot)
     end
 end
 
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene, ::AbstractPlot)
-    @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+    @debug "Deleting plots not implemented for backend: $(typeof(screen))"
 end
+
+# Note: can be called from scene finalizer - @debug may cause segfaults when active
 function Base.delete!(screen::MakieScreen, ::Scene)
     # This may not be necessary for every backed
     @debug "Deleting scenes not implemented for backend: $(typeof(screen))"
 end
 
-function Base.delete!(scene::Scene, plot::AbstractPlot)
-    len = length(scene.plots)
-    filter!(x -> x !== plot, scene.plots)
-    if length(scene.plots) == len
-        error("$(typeof(plot)) not in scene!")
+# Note: can be called from scene finalizer
+function free(plot::AbstractPlot)
+    for f in plot.deregister_callbacks
+        Observables.off(f)
     end
+    foreach(free, plot.plots)
+    # empty!(plot.plots)
+    empty!(plot.deregister_callbacks)
+    free(plot.transformation)
+    return
+end
+
+# Note: can be called from scene finalizer
+function Base.delete!(scene::Scene, plot::AbstractPlot)
+    filter!(x -> x !== plot, scene.plots)
+    # TODO, if we want to delete a subplot of a plot,
+    # It won't be in scene.plots directly, but will still be deleted
+    # by delete!(screen, scene, plot)
+    # Should we check here if the plot is in the scene as a subplot?
+    # on the other hand, delete!(Dict(:a=>1), :b) also doesn't error...
+
+    # if length(scene.plots) == len
+    #     error("$(typeof(plot)) not in scene!")
+    # end
     for screen in scene.current_screens
         delete!(screen, scene, plot)
     end
+    free(plot)
 end
 
-function Base.push!(scene::Scene, child::Scene)
-    push!(scene.children, child)
-    disconnect!(child.camera)
-    observables = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
-        return lift(getfield(scene.camera, field)) do val
-            getfield(child.camera, field)[] = val
-            getfield(child.camera, field)[] = val
-            return
+supports_move_to(::MakieScreen) = false
+
+function supports_move_to(plot::Plot)
+    scene = get_scene(plot)
+    return all(scene.current_screens) do screen
+        return supports_move_to(screen)
+    end
+end
+
+# function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+#     # TODO, move without deleting!
+#     # Will be easier with Observable refactor
+#     delete!(screen, scene, plot)
+#     insert!(screen, scene, plot)
+#     return
+# end
+
+function move_to!(plot::Plot, scene::Scene)
+    if plot.parent === scene
+        return
+    end
+
+    if is_space_compatible(plot, scene)
+        obsfunc = connect!(transformation(scene), transformation(plot))
+        append!(plot.deregister_callbacks, obsfunc)
+    end
+    for screen in root(scene).current_screens
+        if supports_move_to(screen)
+            move_to!(screen, plot, scene)
         end
     end
-    cameracontrols!(child, observables)
-    child.parent = scene
-    return scene
+    current_parent = parent_scene(plot)
+    filter!(x -> x !== plot, current_parent.plots)
+    push!(scene.plots, plot)
+    plot.parent = scene
+    return
 end
+
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events
@@ -498,9 +595,14 @@ end
 cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 cameracontrols!(x, cam) = cameracontrols!(get_scene(x), cam)
 
-pixelarea(x) = pixelarea(get_scene(x))
-pixelarea(scene::Scene) = scene.px_area
-pixelarea(scene::SceneLike) = pixelarea(scene.parent)
+viewport(x) = viewport(get_scene(x))
+"""
+    viewport(scene::Scene)
+
+Gets the viewport of the scene in device independent units as an `Observable{Rect2{Int}}`.
+"""
+viewport(scene::Scene) = scene.viewport
+viewport(scene::SceneLike) = viewport(scene.parent)
 
 plots(x) = plots(get_scene(x))
 plots(scene::SceneLike) = scene.plots
@@ -517,21 +619,8 @@ function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     list
 end
 
-"""
-Flattens all the combined plots and returns a Vector of Atomic plots
-"""
-function flatten_combined(plots::Vector, flat=AbstractPlot[])
-    for elem in plots
-        if (elem isa Combined)
-            flatten_combined(elem.plots, flat)
-        else
-            push!(flat, elem)
-        end
-    end
-    flat
-end
 
-function insertplots!(screen::AbstractDisplay, scene::Scene)
+function insertplots!(@nospecialize(screen::AbstractDisplay), scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -541,28 +630,26 @@ end
 update_cam!(x, bb::AbstractCamera, rect) = update_cam!(get_scene(x), bb, rect)
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
-function not_in_data_space(p)
-    !is_data_space(to_value(get(p, :space, :data)))
-end
+not_in_data_space(p) = !is_data_space(p)
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
-    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
-    padd = w .* padding
-    bb = Rect3f(minimum(bb) .- padd, w .+ 2padd)
+    pad = w .* padding
+    bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
     scene
 end
 
 parent_scene(x) = parent_scene(get_scene(x))
-parent_scene(x::Combined) = parent_scene(parent(x))
+parent_scene(x::Plot) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
+parent_scene(::Nothing) = nothing
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
 
 function is2d(scene::SceneLike)
-    lims = data_limits(scene)
+    lims = boundingbox(scene)
     lims === nothing && return nothing
     return is2d(lims)
 end
@@ -594,3 +681,44 @@ struct FigureAxisPlot
 end
 
 const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
+"""
+    is_atomic_plot(plot::Plot)
+
+Defines what Makie considers an atomic plot, used in `collect_atomic_plots`.
+Backends may have a different definition of what is considered an atomic plot,
+but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
+"""
+is_atomic_plot(plot::Plot) = isempty(plot.plots)
+
+"""
+    collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+    collect_atomic_plots(x::Plot, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
+
+Collects all plots in the provided `<: ScenePlot` and returns a vector of all plots
+which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
+"""
+function collect_atomic_plots(xplot::Plot, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    if is_atomic_plot(xplot)
+        # Atomic plot!
+        push!(plots, xplot)
+    else
+        for elem in xplot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
+    end
+    return plots
+end
+
+function collect_atomic_plots(array, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    for elem in array
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+    end
+    plots
+end
+
+function collect_atomic_plots(scene::Scene, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.plots, plots; is_atomic_plot=is_atomic_plot)
+    collect_atomic_plots(scene.children, plots; is_atomic_plot=is_atomic_plot)
+    plots
+end

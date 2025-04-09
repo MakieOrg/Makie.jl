@@ -14,23 +14,42 @@ uniform bool interpolate_in_fragment_shader = false;
 
 in vec3 normals;
 
-uniform vec3 lightposition;
 uniform mat4 projection, view, model;
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+uniform int num_clip_planes;
+uniform vec4 clip_planes[8];
+
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 uniform uint objectid;
+
 flat out uvec2 o_id;
-uniform vec2 uv_scale;
-out vec2 o_uv;
+flat out int o_InstanceID;
+out vec3 o_uv;
 out vec4 o_color;
+
 
 vec3 to_3d(vec2 v){return vec3(v, 0);}
 vec3 to_3d(vec3 v){return v;}
 
 vec2 to_2d(float v){return vec2(v, 0);}
 vec2 to_2d(vec2 v){return v;}
+
+{{uv_transform_type}} uv_transform;
+
+vec3 apply_uv_transform(Nothing t1, vec2 uv){
+    return vec3(uv, 0.0);
+}
+vec3 apply_uv_transform(Nothing t1, vec3 uv) {
+    return uv;
+}
+vec3 apply_uv_transform(mat3x2 transform, vec3 uv){
+    return uv;
+}
+vec3 apply_uv_transform(mat3x2 transform, vec2 uv) {
+    return vec3(transform * vec3(uv, 1.0), 0.0);
+}
 
 vec4 to_color(vec3 c, Nothing color_map, Nothing color_norm){
     return vec4(c, 1);
@@ -56,12 +75,13 @@ vec4 to_color(Nothing c, Nothing cm, Nothing cn) {
     return vec4(0.0);
 }
 
+
 void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);
-    vec2 tex_uv = to_2d(texturecoordinates);
-    o_uv = vec2(1.0 - tex_uv.y, tex_uv.x) * uv_scale;
+    o_uv = apply_uv_transform(uv_transform, texturecoordinates);
     o_color = to_color(vertex_color, color_map, color_norm);
+    o_InstanceID = 0;
     vec3 v = to_3d(vertices);
-    render(model * vec4(v, 1), normals, view, projection, lightposition);
+    render(model * vec4(v, 1), normals, view, projection);
 }

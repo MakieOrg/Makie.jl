@@ -46,7 +46,7 @@ Base.iterate(g::Grid, i=1) = i <= length(g) ? (g[i], i + 1) : nothing
 
 GLAbstraction.isa_gl_struct(x::Grid) = true
 GLAbstraction.toglsltype_string(t::Grid{N,T}) where {N,T} = "uniform Grid$(N)D"
-function GLAbstraction.gl_convert_struct(g::Grid{N,T}, uniform_name::Symbol) where {N,T}
+function GLAbstraction.gl_convert_struct(::GLAbstraction.GLContext, g::Grid{N,T}, uniform_name::Symbol) where {N,T}
     return Dict{Symbol,Any}(
         Symbol("$uniform_name.start") => Vec{N,Float32}(minimum.(g.dims)),
         Symbol("$uniform_name.stop") => Vec{N,Float32}(maximum.(g.dims)),
@@ -54,7 +54,7 @@ function GLAbstraction.gl_convert_struct(g::Grid{N,T}, uniform_name::Symbol) whe
         Symbol("$uniform_name.dims") => Vec{N,Cint}(map(length, g.dims))
     )
 end
-function GLAbstraction.gl_convert_struct(g::Grid{1,T}, uniform_name::Symbol) where T
+function GLAbstraction.gl_convert_struct(::GLAbstraction.GLContext, g::Grid{1,T}, uniform_name::Symbol) where T
     x = g.dims[1]
     return Dict{Symbol,Any}(
         Symbol("$uniform_name.start") => Float32(minimum(x)),
@@ -84,8 +84,8 @@ struct GLVisualizeShader <: AbstractLazyShader
     end
 end
 
-function GLAbstraction.gl_convert(shader::GLVisualizeShader, data)
-    GLAbstraction.gl_convert(shader.screen.shader_cache, shader, data)
+function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, data)
+    GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
 end
 
 function assemble_shader(data)
@@ -105,7 +105,7 @@ function assemble_shader(data)
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
 
-    robj = RenderObject(data, shader, pre, shader.screen.glscreen)
+    robj = RenderObject(data, shader, pre, nothing, shader.screen.glscreen)
 
     post = if haskey(data, :instances)
         GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)
@@ -124,26 +124,28 @@ end
 """
 Converts index arrays to the OpenGL equivalent.
 """
-to_index_buffer(x::GLBuffer) = x
-to_index_buffer(x::TOrSignal{Int}) = x
-to_index_buffer(x::VecOrSignal{UnitRange{Int}}) = x
-to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
+to_index_buffer(::GLAbstraction.GLContext, x::GLBuffer) = x
+to_index_buffer(::GLAbstraction.GLContext, x::TOrSignal{Int}) = x
+to_index_buffer(::GLAbstraction.GLContext, x::VecOrSignal{UnitRange{Int}}) = x
+to_index_buffer(::GLAbstraction.GLContext, x::TOrSignal{UnitRange{Int}}) = x
 """
 For integers, we transform it to 0 based indices
 """
-to_index_buffer(x::AbstractVector{I}) where {I <: Integer} = indexbuffer(Cuint.(x .- 1))
-function to_index_buffer(x::Observable{<: AbstractVector{I}}) where I <: Integer
-    indexbuffer(lift(x -> Cuint.(x .- 1), x))
+function to_index_buffer(ctx::GLAbstraction.GLContext, x::AbstractVector{I}) where {I <: Integer}
+    return indexbuffer(ctx, Cuint.(x .- 1))
+end
+function to_index_buffer(ctx::GLAbstraction.GLContext, x::Observable{<: AbstractVector{I}}) where I <: Integer
+    return indexbuffer(ctx, lift(x -> Cuint.(x .- 1), x))
 end
 
 """
 If already GLuint, we assume its 0 based (bad heuristic, should better be solved with some Index type)
 """
-function to_index_buffer(x::VectorTypes{I}) where I <: Union{GLuint,LineFace{GLIndex}}
-    indexbuffer(x)
+function to_index_buffer(ctx::GLAbstraction.GLContext, x::VectorTypes{I}) where I <: Union{GLuint,LineFace{GLIndex}}
+    indexbuffer(ctx, x)
 end
 
-to_index_buffer(x) = error(
+to_index_buffer(ctx, x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
@@ -176,7 +178,7 @@ function output_buffer_writes(screen::Screen, transparency = false)
         """
         fragment_color = color;
         fragment_position = o_view_pos;
-        fragment_normal_occlusion.xyz = o_normal;
+        fragment_normal_occlusion.xyz = o_view_normal;
         """
     else
         "fragment_color = color;"

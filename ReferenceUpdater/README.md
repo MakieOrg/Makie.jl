@@ -15,7 +15,7 @@ E.g., to see the results after running `]test WGLMakie` you can run:
 
 ```julia
 using ReferenceUpdater
-ReferenceUpdater.serve_update_page_from_dir("Makie/WGLMakie/test/recorded_reference_images/refimages")
+ReferenceUpdater.serve_update_page_from_dir("Makie/WGLMakie/test/reference_images/")
 ```
 `ReferenceUpdater` is an unregistered package which is located in the Makie monorepo.  To add it, run `Pkg.dev(joinpath(dirname(dirname(pathof(Makie))), "ReferenceUpdater"))`, assuming that you've `dev`'ed Makie.
 You should be given a choice of different backend workflow runs.

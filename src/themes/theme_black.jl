@@ -16,7 +16,7 @@ function theme_black()
         ),
         Legend = (
             framecolor = :white,
-            bgcolor = :black,
+            backgroundcolor = :black,
         ),
         Axis3 = (
             xgridcolor = RGBAf(1, 1, 1, 0.16),
@@ -31,6 +31,9 @@ function theme_black()
             xspinecolor_3 = :white,
             yspinecolor_3 = :white,
             zspinecolor_3 = :white,
+            xspinecolor_4 = :white,
+            yspinecolor_4 = :white,
+            zspinecolor_4 = :white,
             xticklabelpad = 3,
             yticklabelpad = 3,
             zticklabelpad = 6,

@@ -170,6 +170,11 @@ module Mouse
         middle = 2
         right = 1 # Conform to GLFW
         none = -1 # for convenience
+        button_4 = 3
+        button_5 = 4
+        button_6 = 5
+        button_7 = 6
+        button_8 = 7
     end
 
     """

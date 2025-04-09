@@ -3,7 +3,6 @@
 *.jl.mem
 src/.cache
 src/logo.png
-*.bundled.js
 
 **/._*
 Manifest.toml
@@ -11,9 +10,9 @@ Manifest.toml
 
 \.DS_Store
 
-WGLMakie/test/recorded_reference_images/
-GLMakie/test/recorded_reference_images/
-CairoMakie/test/recorded_reference_images/
+WGLMakie/test/reference_images/
+GLMakie/test/reference_images/
+CairoMakie/test/reference_images/
 RPRMakie/test/recorded/
 
 CairoMakie/src/display.svg
@@ -26,3 +25,4 @@ docs/documentation/news.md
 metrics/ttfp/current-pr-project/
 metrics/ttfp/benchmark-projects/*
 *benchmark.json
+WGLMakie/test/electron.log

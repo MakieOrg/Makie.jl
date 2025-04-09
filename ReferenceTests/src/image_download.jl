@@ -5,10 +5,10 @@ function last_major_version()
     return "v" * string(VersionNumber(version.major, version.minor))
 end
 
-function download_refimages(tag=last_major_version(); name="refimages")
-    url = "https://github.com/MakieOrg/Makie.jl/releases/download/$(tag)/$(name).tar"
-    images_tar = basedir("$(name).tar")
-    images = basedir(name)
+function download_refimages(tag=last_major_version())
+    url = "https://github.com/MakieOrg/Makie.jl/releases/download/$(tag)/reference_images.tar"
+    images_tar = basedir("reference_images.tar")
+    images = basedir("reference_images")
     if isfile(images_tar)
         if Bool(parse(Int, get(ENV, "REUSE_IMAGES_TAR", "0")))
             @info "$images_tar already exists, skipping download as requested"

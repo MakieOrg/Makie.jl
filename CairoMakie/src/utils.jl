@@ -2,16 +2,87 @@
 #                             Projection utilities                             #
 ################################################################################
 
-function project_position(scene, transform_func::T, space, point, model, yflip::Bool = true) where T
+
+using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
+    broadcast_foreach_index, is_clipped, is_visible
+
+function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(transform_func, point, space)
+    point = Makie.apply_transform(transform_func, point)
     _project_position(scene, space, point, model, yflip)
 end
 
-function _project_position(scene, space, point, model, yflip)
+
+function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
+    return project_position(scene, space, ps, eachindex(ps), model, yflip)
+end
+
+function cairo_viewport_matrix(res::VecTypes{2}, yflip = true)
+    px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+    px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+    return Makie.transformationmatrix(px_offset, px_scale)
+end
+
+function build_combined_transformation_matrix(
+        scene::Scene, space::Symbol, model::Mat4, yflip = true
+    )
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+end
+
+function project_position(
+        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes},
+        indices::Union{Vector{<:Integer}, Base.OneTo}, model::Mat4,
+        yflip::Bool = true
+    )
+    # much faster to calculate the combined projection-transformation matrix
+    # once than dot-ing `project_position` because it skips all the repeated mat * mat
+    transform = build_combined_transformation_matrix(scene, space, model, yflip)
+    # skip z with Vec(1,2,4), i.e. calculate only (x, y, w)
+    return project_position(Point2f, transform[Vec(1,2,4), Vec(1,2,3,4)], ps, indices)
+end
+
+# Assumes (transform * ps[i])[end] to be w component, always
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractVector{<: VecTypes},
+        indices::Vector{<:Integer}
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = Vector{PT}(undef, length(indices))
+    dims = Vec(ntuple(identity, N))
+
+    @inbounds for (i_out, i_in) in enumerate(indices)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
+        px_pos = transform * p4d
+        output[i_out] = px_pos[dims] / px_pos[end]
+    end
+
+    return output
+end
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractArray{<: VecTypes},
+        indices::Base.OneTo
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = similar(ps, PT)
+    dims = Vec(ntuple(identity, N))
+
+    @inbounds for i in indices
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
+        px_pos = transform * p4d
+        output[i] = px_pos[dims] / px_pos[end]
+    end
+
+    return output
+end
+
+function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, yflip::Bool) where {N, T1 <: Real}
+    T = promote_type(Float32, T1) # always Float, at least Float32
     res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f, to_ndim(Vec3f, point, 0f0), 1f0)
-    clip = Makie.space_to_clip(scene.camera, space) * model * p4d
+    p4d = to_ndim(Vec4{T}, to_ndim(Vec3{T}, point, 0), 1)
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    clip = Makie.space_to_clip(scene.camera, space) * f32convert * model * p4d
     @inbounds begin
         # between -1 and 1
         p = (clip ./ clip[4])[Vec(1, 2)]
@@ -24,48 +95,385 @@ function _project_position(scene, space, point, model, yflip)
     return p_0_to_1 .* res
 end
 
-function project_position(scene, space, point, model, yflip::Bool = true)
-    project_position(scene, scene.transformation.transform_func[], space, point, model, yflip)
-end
-
-function project_scale(scene::Scene, space, s::Number, model = Mat4f(I))
-    project_scale(scene, space, Vec2f(s), model)
-end
-
-function project_scale(scene::Scene, space, s, model = Mat4f(I))
-    p4d = model * to_ndim(Vec4f, s, 0f0)
-    if is_data_space(space)
-        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
-        return p .* scene.camera.resolution[] .* 0.5
-    elseif is_pixel_space(space)
-        return p4d[Vec(1, 2)]
-    elseif is_relative_space(space)
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
-    else # clip
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
+# Scatter has already applied f32convert and model, which the function above
+# would reapply. This one avoids that.
+function scatter_project_position(scene::Scene, markerspace, point::VecTypes, yflip::Bool)
+    res = scene.camera.resolution[]
+    p4d = to_ndim(Vec4d, to_ndim(Vec3d, point, 0.0), 1.0)
+    clip = Makie.space_to_clip(scene.camera, markerspace) * p4d
+    @inbounds begin
+        # between -1 and 1
+        p = clip[Vec(1,2)] ./ clip[4]
+        # flip y to match cairo
+        p_yflip = Vec2d(p[1], (1.0 - 2.0 * yflip) * p[2])
+        # normalize to between 0 and 1
+        p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
     end
+    # multiply with scene resolution for final position
+    return p_0_to_1 .* res
 end
 
-function project_rect(scene, space, rect::Rect, model)
-    mini = project_position(scene, space, minimum(rect), model)
-    maxi = project_position(scene, space, maximum(rect), model)
+function project_position(@nospecialize(scenelike), space, point, model, yflip::Bool = true)
+    scene = Makie.get_scene(scenelike)
+    project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
+end
+
+function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
+    scale3 = to_ndim(Vec2d, scale, first(scale))
+    model33 = model[Vec(1,2,3), Vec(1,2,3)]
+    origin3 = to_ndim(Point3d, origin, 0)
+    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, billboard)
+end
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
+    # the CairoMatrix is found by transforming the right and up vector
+    # of the marker into screen space and then subtracting the projected
+    # origin. The resulting vectors give the directions in which the character
+    # needs to be stretched in order to match the 3D projection
+
+    xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
+    yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
+
+    proj_pos = scatter_project_position(scene, markerspace, origin, true)
+
+    if billboard && Makie.is_data_space(markerspace)
+        p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
+        xproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, true)
+        yproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, true)
+    else
+        xproj = scatter_project_position(scene, markerspace, origin + xvec, true)
+        yproj = scatter_project_position(scene, markerspace, origin + yvec, true)
+    end
+
+    xdiff = xproj - proj_pos
+    ydiff = yproj - proj_pos
+
+    mat = Cairo.CairoMatrix(
+        xdiff[1], xdiff[2],
+        ydiff[1], ydiff[2],
+        0, 0,
+    )
+
+    return proj_pos, mat, Mat2f(xdiff..., ydiff...)
+end
+
+function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
+    mini = project_position(scenelike, space, minimum(rect), model)
+    maxi = project_position(scenelike, space, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
 
-function project_polygon(scene, space, poly::P, model) where P <: Polygon
-    ext = decompose(Point2f, poly.exterior)
-    interiors = decompose.(Point2f, poly.interiors)
-    Polygon(
-        Point2f.(project_position.(Ref(scene), space, ext, Ref(model))),
-        [Point2f.(project_position.(Ref(scene), space, interior, Ref(model))) for interior in interiors],
-    )
+function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, model::Mat4) where {PT <: VecTypes{2}}
+    if isempty(clip_planes) || !Makie.is_data_space(space)
+        return ps
+    end
+
+    planes = to_model_space(model, clip_planes)
+    last_distance = Makie.min_clip_distance(planes, first(ps))
+    last_point = first(ps)
+    output = sizehint!(PT[], length(ps))
+
+    for p in ps
+        d = Makie.min_clip_distance(planes, p)
+        if (last_distance < 0) && (d >= 0) # clipped -> unclipped
+            # point between last and this on clip plane
+            clip_point = - last_distance * (p - last_point) / (d - last_distance) + last_point
+            push!(output, clip_point, p)
+        elseif (last_distance >= 0) && (d < 0) # unclipped -> clipped
+            clip_point = - last_distance * (p - last_point) / (d - last_distance) + last_point
+            push!(output, clip_point)
+        elseif (last_distance >= 0) && (d >= 0) # unclipped -> unclipped
+            push!(output, p)
+        end
+        last_point = p
+        last_distance = d
+    end
+
+    return output
 end
 
-function project_multipolygon(scene, space, multipoly::MP, model) where MP <: MultiPolygon
-    return MultiPolygon(project_polygon.(Ref(scene), Ref(space), multipoly.polygons, Ref(model)))
+function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, model::Mat4)
+    if !Makie.is_data_space(space) || isempty(clip_planes)
+        return shape
+    end
+
+    xy = origin(shape)
+    w, h = widths(shape)
+    ps = Vec2f[xy, xy + Vec2f(w, 0), xy + Vec2f(w, h), xy + Vec2f(0, h)]
+    if any(p -> Makie.is_clipped(clip_planes, p), ps)
+        push!(ps, xy)
+        ps = clip_poly(clip_planes, ps, space, model)
+        commands = Makie.PathCommand[MoveTo(ps[1]), LineTo.(ps[2:end])..., ClosePath()]
+        return BezierPath(commands::Vector{Makie.PathCommand})
+    else
+        return shape
+    end
+end
+
+function clip_shape(clip_planes::Vector{Plane3f}, shape::BezierPath, space::Symbol, model::Mat4)
+    return shape
+end
+
+function project_polygon(@nospecialize(scenelike), space, poly::Polygon{N, T}, clip_planes, model) where {N, T}
+    PT = Point{N, Makie.float_type(T)}
+    ext = decompose(PT, poly.exterior)
+    project(p) = PT(project_position(scenelike, space, p, model))
+
+    ext_proj = PT[project(p) for p in clip_poly(clip_planes, ext, space, model)]
+    interiors_proj = Vector{PT}[
+        PT[project(p) for p in clip_poly(clip_planes, decompose(PT, points), space, model)]
+        for points in poly.interiors]
+
+    return Polygon(ext_proj, interiors_proj)
+end
+
+function project_multipolygon(@nospecialize(scenelike), space, multipoly::MP, clip_planes, model) where MP <: MultiPolygon
+    return MultiPolygon(project_polygon.(Ref(scenelike), Ref(space), multipoly.polygons, Ref(clip_planes), Ref(model)))
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
+
+function clip2screen(p, res)
+    s = Vec2f(0.5f0, -0.5f0) .* p[Vec(1, 2)] / p[4].+ 0.5f0
+    return res .* s
+end
+
+
+
+function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+
+    # Standard transform from input space to clip space
+    # Note that this is type unstable, so there is a function barrier in place.
+    space = (plot.space[])::Symbol
+    points = Makie.apply_transform(transform_func(plot), positions)
+
+    return project_transformed_line_points(scene, plot, points, colors, linewidths)
+end
+
+function project_transformed_line_points(scene, plot::T, points::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+    # Note that here, `points` has already had `transform_func` applied.
+    # If colors are defined per point they need to be interpolated like positions
+    # at clip planes
+    per_point_colors = colors isa AbstractArray
+    per_point_linewidths = (T <: Lines) && (linewidths isa AbstractArray)
+
+    space = (plot.space[])::Symbol
+    model = (plot.model[])::Mat4d
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    clip_points = map(points) do point
+        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
+    end
+
+    # yflip and clip -> screen/pixel coords
+    res = scene.camera.resolution[]
+
+    # clip planes in clip space
+    clip_planes = if Makie.is_data_space(space)
+        Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])::Vector{Plane3f}
+    else
+        Makie.Plane3f[]
+    end
+
+    # Fix lines with points far outside the clipped region not drawing at all
+    # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1
+    #      directly and calculating intersections directly (1D)
+    push!(clip_planes,
+        Plane3f(Vec3f(-1, 0, 0), -1f0), Plane3f(Vec3f(+1, 0, 0), -1f0),
+        Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
+    )
+
+
+    # outputs
+    screen_points = sizehint!(Vec2f[], length(clip_points))
+    color_output = sizehint!(eltype(colors)[], length(clip_points))
+    skipped_color = RGBAf(1,0,1,1) # for debug purposes, should not show
+    linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
+
+    # Handling one segment per iteration
+    if plot isa Lines
+
+        last_is_nan = true
+        for i in 1:length(clip_points)-1
+            hidden = false
+            disconnect1 = false
+            disconnect2 = false
+
+            if per_point_colors
+                c1 = colors[i]
+                c2 = colors[i+1]
+            end
+
+            p1 = clip_points[i]
+            p2 = clip_points[i+1]
+            v = p2 - p1
+
+            # Handle near/far clipping
+            if p1[4] <= 0.0
+                disconnect1 = true
+                p1 = p1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * v
+                if per_point_colors
+                    c1 = c1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * (c2 - c1)
+                end
+            end
+            if p2[4] <= 0.0
+                disconnect2 = true
+                p2 = p2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * v
+                if per_point_colors
+                    c2 = c2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * (c2 - c1)
+                end
+            end
+
+            for plane in clip_planes
+                d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
+                d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
+
+                if (d1 < 0.0) && (d2 < 0.0)
+                    # start and end clipped by one plane -> not visible
+                    hidden = true
+                    break;
+                elseif (d1 < 0.0)
+                    # p1 clipped, move it towards p2 until unclipped
+                    disconnect1 = true
+                    p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
+                    if per_point_colors
+                        c1 = c1 - d1 * (c2 - c1) / (d2 - d1)
+                    end
+                elseif (d2 < 0.0)
+                    # p2 clipped, move it towards p1 until unclipped
+                    disconnect2 = true
+                    p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
+                    if per_point_colors
+                        c2 = c2 - d2 * (c1 - c2) / (d1 - d2)
+                    end
+                end
+            end
+
+            if hidden && !last_is_nan
+                # if segment hidden make sure the line separates
+                last_is_nan = true
+                push!(screen_points, Vec2f(NaN))
+                if per_point_linewidths
+                    push!(linewidth_output, linewidths[i])
+                end
+                if per_point_colors
+                    push!(color_output, c1)
+                end
+            elseif !hidden
+                # if not hidden, always push the first element to 1:end-1 line points
+
+                # if the start of the segment is disconnected (moved), make sure the
+                # line separates before it
+                if disconnect1 && !last_is_nan
+                    push!(screen_points, Vec2f(NaN))
+                    if per_point_linewidths
+                        push!(linewidth_output, linewidths[i])
+                    end
+                    if per_point_colors
+                        push!(color_output, c1)
+                    end
+                end
+
+                last_is_nan = false
+                push!(screen_points, clip2screen(p1, res))
+                if per_point_linewidths
+                    push!(linewidth_output, linewidths[i])
+                end
+                if per_point_colors
+                    push!(color_output, c1)
+                end
+
+                # if the end of the segment is disconnected (moved), add the adjusted
+                # point and separate it from from the next segment
+                if disconnect2
+                    last_is_nan = true
+                    push!(screen_points, clip2screen(p2, res), Vec2f(NaN))
+                    if per_point_linewidths
+                        push!(linewidth_output, linewidths[i+1], linewidths[i+1])
+                    end
+                    if per_point_colors
+                        push!(color_output, c2, c2) # relevant, irrelevant
+                    end
+                end
+            end
+        end
+
+        # If last_is_nan == true, the last segment is either hidden or the moved
+        # end point has been added. If it is false we're missing the last regular
+        # clip_points
+        if !last_is_nan
+            push!(screen_points, clip2screen(clip_points[end], res))
+            if per_point_linewidths
+                    push!(linewidth_output, linewidths[end])
+            end
+            if per_point_colors
+                push!(color_output, colors[end])
+            end
+        end
+
+    else  # LineSegments
+
+        for i in 1:2:length(clip_points)-1
+            if per_point_colors
+                c1 = colors[i]
+                c2 = colors[i+1]
+            end
+
+            p1 = clip_points[i]
+            p2 = clip_points[i+1]
+            v = p2 - p1
+
+            # Handle near/far clipping
+            if p1[4] <= 0.0
+                p1 = p1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * v
+                if per_point_colors
+                    c1 = c1 + (-p1[4] - p1[3]) / (v[3] + v[4]) * (c2 - c1)
+                end
+            end
+            if p2[4] <= 0.0
+                p2 = p2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * v
+                if per_point_colors
+                    c2 = c2 + (-p2[4] - p2[3]) / (v[3] + v[4]) * (c2 - c1)
+                end
+            end
+
+            for plane in clip_planes
+                d1 = dot(plane.normal, Vec3f(p1)) - plane.distance * p1[4]
+                d2 = dot(plane.normal, Vec3f(p2)) - plane.distance * p2[4]
+
+                if (d1 < 0.0) && (d2 < 0.0)
+                    # start and end clipped by one plane -> not visible
+                    # to keep index order we just set p1 and p2 to NaN and insert anyway
+                    p1 = Vec4f(NaN)
+                    p2 = Vec4f(NaN)
+                    break;
+                elseif (d1 < 0.0)
+                    # p1 clipped, move it towards p2 until unclipped
+                    p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
+                    if per_point_colors
+                        c1 = c1 - d1 * (c2 - c1) / (d2 - d1)
+                    end
+                elseif (d2 < 0.0)
+                    # p2 clipped, move it towards p1 until unclipped
+                    p2 = p2 - d2 * (p1 - p2) / (d1 - d2)
+                    if per_point_colors
+                        c2 = c2 - d2 * (c1 - c2) / (d1 - d2)
+                    end
+                end
+            end
+
+            # no need to disconnected segments, just insert adjusted points
+            push!(screen_points, clip2screen(p1, res), clip2screen(p2, res))
+            if per_point_colors
+                push!(color_output, c1, c2)
+            end
+        end
+
+    end
+
+    return screen_points, ifelse(per_point_colors, color_output, colors),
+        ifelse(per_point_linewidths, linewidth_output, linewidths)
+end
+
 
 ########################################
 #          Rotation handling           #
@@ -117,22 +525,46 @@ end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
-########################################
-#        Common color utilities        #
-########################################
-
-function to_cairo_color(colors::AbstractVector{<: Number}, plot_object)
-    return numbers_to_colors(colors, plot_object)
-end
-
-function to_cairo_color(color::Makie.AbstractPattern, plot_object)
-    cairopattern = Cairo.CairoPattern(color)
+# handle patterns
+function Cairo.CairoPattern(color::Makie.AbstractPattern)
+    # the Cairo y-coordinate are flipped
+    bitmappattern = reverse!(Makie.to_image(color); dims=2)
+    # Cairo wants pre-multiplied alpha - ARGB32 doesn't do that on its own
+    bitmappattern = map(bitmappattern) do c
+        a = alpha(c)
+        return ARGB32(a * red(c), a * green(c), a * blue(c), a)
+    end
+    cairoimage = Cairo.CairoImageSurface(bitmappattern)
+    cairopattern = Cairo.CairoPattern(cairoimage)
     Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     return cairopattern
 end
 
+function align_pattern(pattern::Cairo.CairoPattern, scene, model)
+    o = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
+    T = Mat{2, 3, Float32}(1,0, 0,1, -o[1], -o[2])
+    pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
+    return
+end
+
+########################################
+#        Common color utilities        #
+########################################
+
+function to_cairo_color(colors::Union{AbstractVector,Number}, plot_object)
+    cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
+    return to_color(to_value(cmap))
+end
+
+function to_cairo_color(color::Makie.AbstractPattern, plot)
+    cairopattern = Cairo.CairoPattern(color)
+    # This should be reset after drawing
+    align_pattern(cairopattern, Makie.parent_scene(plot), plot.model[])
+    return cairopattern
+end
+
 function to_cairo_color(color, plot_object)
-    return to_color(color)
+    return to_color((color, to_value(plot_object.alpha)))
 end
 
 function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
@@ -144,43 +576,26 @@ function set_source(ctx::Cairo.CairoContext, color::Colorant)
 end
 
 ########################################
+#        Marker conversion API         #
+########################################
+
+"""
+    cairo_scatter_marker(marker)
+
+Convert a Makie marker to a Cairo-compatible marker.  This defaults to calling
+`Makie.to_spritemarker`, but can be overridden for specific markers that can
+be directly rendered to vector formats using Cairo.
+"""
+cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
+
+########################################
 #     Image/heatmap -> ARGBSurface     #
 ########################################
 
-function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    to_cairo_image(to_rgba_image(img, attributes), attributes)
-end
 
-function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    Makie.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+to_cairo_image(img::AbstractMatrix{<: Colorant}) =  to_cairo_image(to_uint32_color.(img))
 
-    nan_color = Makie.to_color(nan_color)
-    lowclip = isnothing(lowclip) ? lowclip : Makie.to_color(lowclip)
-    highclip = isnothing(highclip) ? highclip : Makie.to_color(highclip)
-
-    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
-end
-
-to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf.(img)
-
-function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
-    vmin, vmax = colorrange
-    if isnan(pixel)
-        RGBAf(nan_color)
-    elseif pixel < vmin && !isnothing(lowclip)
-        RGBAf(lowclip)
-    elseif pixel > vmax && !isnothing(highclip)
-        RGBAf(highclip)
-    else
-        RGBAf(Makie.interpolated_getindex(colormap, pixel, colorrange))
-    end
-end
-
-function to_cairo_image(img::AbstractMatrix{<: Colorant}, attributes)
-    to_cairo_image(to_uint32_color.(img), attributes)
-end
-
-function to_cairo_image(img::Matrix{UInt32}, attributes)
+function to_cairo_image(img::Matrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y
     return Cairo.CairoARGBSurface(permutedims(img))
@@ -223,11 +638,9 @@ function get_color_attr(attributes, attribute)::Union{Nothing, RGBAf}
     return color_or_nothing(to_value(get(attributes, attribute, nothing)))
 end
 
-function per_face_colors(
-        color, colormap, colorrange, matcap, faces, normals, uv,
-        lowclip=nothing, highclip=nothing, nan_color=nothing
-    )
-    if matcap !== nothing
+function per_face_colors(_color, matcap, faces, normals, uv)
+    color = to_color(_color)
+    if !isnothing(matcap)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
         cvec = map(normals) do n
@@ -238,38 +651,25 @@ function per_face_colors(
         return FaceIterator(cvec, faces)
     elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractArray
-        if color isa AbstractVector{<: Colorant}
-            return FaceIterator(color, faces)
-        elseif color isa AbstractArray{<: Number}
-            low, high = extrema(colorrange)
-            cvec = map(color[:]) do c
-                if isnan(c) && nan_color !== nothing
-                    return nan_color
-                elseif c < low && lowclip !== nothing
-                    return lowclip
-                elseif c > high && highclip !== nothing
-                    return highclip
-                else
-                    Makie.interpolated_getindex(colormap, c, colorrange)
-                end
-            end
-            return FaceIterator(cvec, faces)
-        elseif color isa Makie.AbstractPattern
-            # let next level extend and fill with CairoPattern
-            return color
-        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
-            wsize = reverse(size(color))
-            wh = wsize .- 1
-            cvec = map(uv) do uv
-                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
-                return color[end - (y - 1), x]
-            end
-            # TODO This is wrong and doesn't actually interpolate
-            # Inside the triangle sampling the color image
-            return FaceIterator(cvec, faces)
+    elseif color isa AbstractVector{<: Colorant}
+        return FaceIterator{:PerVert}(color, faces)
+    elseif color isa Makie.AbstractPattern
+        return Cairo.CairoPattern(color)
+    elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
+        wsize = size(color)
+        wh = wsize .- 1
+        # nearest
+        cvec = map(uv) do uv
+            x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wsize)
+            return color[x, y]
         end
+        # TODO This is wrong and doesn't actually interpolate
+        # Inside the triangle sampling the color image
+        return FaceIterator(cvec, faces)
+    elseif color isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
     end
+
     error("Unsupported Color type: $(typeof(color))")
 end
 
@@ -277,23 +677,19 @@ function mesh_pattern_set_corner_color(pattern, id, c::Colorant)
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
 end
 
-# not piracy
-function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo y-coordinate are fliped
-    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
-    cairoimage = Cairo.CairoImageSurface(bitmappattern)
-    cairopattern = Cairo.CairoPattern(cairoimage)
-    return cairopattern
-end
+################################################################################
+#                                Font handling                                 #
+################################################################################
+
 
 """
 Finds a font that can represent the unicode character!
 Returns Makie.defaultfont() if not representable!
 """
 function best_font(c::Char, font = Makie.defaultfont())
-    if Makie.FreeType.FT_Get_Char_Index(font, c) == 0
+    if Base.@lock font.lock Makie.FreeType.FT_Get_Char_Index(font, c) == 0
         for afont in Makie.alternativefonts()
-            if Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
+            if Base.@lock afont.lock Makie.FreeType.FT_Get_Char_Index(afont, c) != 0
                 return afont
             end
         end

@@ -9,14 +9,15 @@ u = range(0; stop=2π, length=150)
 v = range(0; stop=2π, length=150)
 radiance = 500
 lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1)),
+          AmbientLight(RGBf(0.5, 0.5, 0.5))]
 
-fig = Figure(; resolution=(1500, 1000))
+fig = Figure(; size=(1500, 1000))
 ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
-screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
+screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Northstar, resource=RPR.RPR_CREATION_FLAGS_ENABLE_GPU0)
 material = RPR.UberMaterial(screen.matsys)
 
-surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1), specular=0.5,
+surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); diffuse=Vec3f(1), specular=0.5,
          colormap=:balance, material=material)
 
 function Input(fig, val::RGB)
@@ -59,7 +60,7 @@ labels = []
 inputs = []
 refresh = Observable(nothing)
 for (key, (obs, input)) in pairs(sliders)
-    push!(labels, Label(fig, string(key); align=:left))
+    push!(labels, Label(fig, string(key); justification=:left))
     push!(inputs, input)
     on(obs) do value
         @show key value
@@ -77,14 +78,16 @@ cam.lookat[] = Vec3f(0, 0, -1)
 cam.upvector[] = Vec3f(0, 0, 1)
 cam.fov[] = 30
 
-display(fig)
-
-context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+GLMakie.activate!(inline=false)
+display(fig; inline=false, backend=GLMakie)
+RPRMakie.activate!(iterations=1, plugin=RPR.Northstar, resource=RPR.GPU0)
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh);
+nothing
 
 # Change light parameters interactively
-begin
-    lights[1].intensity[] = 1.5
-    lights[2].radiance[] = RGBf(1000, 1000, 1000)
-    lights[2].position[] = Vec3f(3, 10, 10)
-    notify(refresh)
-end
+# begin
+#     lights[1].intensity[] = 1.5
+#     lights[2].radiance[] = RGBf(1000, 1000, 1000)
+#     lights[2].position[] = Vec3f(3, 10, 10)
+#     notify(refresh)
+# end

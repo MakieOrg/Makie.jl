@@ -31,21 +31,16 @@ function openurl(url::String)
     @warn("Can't find a way to open a browser, open $(url) manually!")
 end
 
-function display_path(type::String)
-    if !(type in ("svg", "png", "pdf", "eps"))
-        error("Only \"svg\", \"png\", \"eps\" and \"pdf\" are allowed for `type`. Found: $(type)")
-    end
-    return abspath(joinpath(@__DIR__, "display." * type))
-end
-
 function Base.display(screen::Screen, scene::Scene; connect=false)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false)
-    path = display_path("png")
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false, screen_config...)
+    config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(screen_config))
+    screen = Makie.apply_screen_config!(screen, config, scene)
+    path = joinpath(mktempdir(), "display.png")
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, path)
@@ -76,17 +71,17 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
         svg = replace(svg, id => "surface$i")
     end
 
-    # salt svg ids with the first 8 characters of the base64 encoded
-    # sha512 hash to avoid collisions across svgs when embedding them on
-    # websites. the hash and therefore the salt will always be the same for the same file
+    # salt svg ids with the 8 hex characters of the crc32 checksum to avoid collisions
+    # across svgs when embedding them on websites.
+    # the hash and therefore the salt will always be the same for the same file
     # so the output is deterministic
-    salt = String(Base64.base64encode(SHA.sha512(svg)))[1:8]
+    salt = repr(CRC32c.crc32c(svg))[end-7:end]
 
-    ids = sort(unique(collect(m[1] for m in eachmatch(r"id\s*=\s*\"([^\"]*)\"", svg))))
-
-    for id in ids
-        svg = replace(svg, id => "$id-$salt")
-    end
+    # matches:
+    # id="someid"
+    # xlink:href="someid" (but not xlink:href="data:someothercontent" which is how image data is attached)
+    # url(#someid)
+    svg = replace(svg, r"((?:(?:id|xlink:href)=\"(?!data:)[^\"]+)|url\(#[^)]+)" => SubstitutionString("\\1-$salt"))
 
     print(io, svg)
     return screen
@@ -106,17 +101,11 @@ function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/post
     return screen
 end
 
-function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", scene::Scene)
-    Makie.push_screen!(scene, screen)
-    cairo_draw(screen, scene)
-    Cairo.write_to_png(screen.surface, io)
-    return screen
-end
-
 # Disabling mimes and showable
 
 const DISABLED_MIMES = Set{String}()
 const SUPPORTED_MIMES = Set([
+    map(x->string(x()), Makie.WEB_MIMES)...,
     "image/svg+xml",
     "application/pdf",
     "application/postscript",

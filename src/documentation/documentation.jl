@@ -172,7 +172,7 @@ end
 """
     to_func(Typ)
 
-Maps the input of a Type name to its cooresponding function.
+Maps the input of a Type name to its corresponding function.
 """
 function to_func(Typ::Type{<: AbstractPlot{F}}) where F
     F
@@ -184,9 +184,9 @@ to_func(func::Function) = func
 """
     to_type(func)
 
-Maps the input of a function name to its cooresponding Type.
+Maps the input of a function name to its corresponding Type.
 """
-to_type(func::Function) = Combined{func}
+to_type(func::Function) = Plot{func}
 
 to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
 

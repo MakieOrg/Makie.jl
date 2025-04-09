@@ -1,16 +1,16 @@
-
-function setup!(screen)
+function setup!(screen::Screen)
     glEnable(GL_SCISSOR_TEST)
-    if isopen(screen)
-        glScissor(0, 0, size(screen)...)
+    if isopen(screen) && !isnothing(screen.scene)
+        ppu = screen.px_per_unit[]
+        glScissor(0, 0, round.(Int, size(screen.scene) .* ppu)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
             if scene.visible[]
-                a = pixelarea(scene)[]
-                rt = (minimum(a)..., widths(a)...)
+                a = viewport(scene)[]
+                rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
                 glViewport(rt...)
-                if scene.clear
+                if scene.clear[]
                     c = scene.backgroundcolor[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
@@ -23,22 +23,26 @@ function setup!(screen)
     return
 end
 
-const selection_queries = Function[]
-
 """
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen; resize_buffers=true)
+    isnothing(screen.scene) && return
+
     nw = to_native(screen)
     ShaderAbstractions.switch_context!(nw)
+    GLAbstraction.require_context(nw)
+
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
         # TODO, use actual boundingbox
-        return Makie.zvalue2d(plot)
+        # ~7% faster than calling zvalue2d doing the same thing?
+        return Makie.transformationmatrix(plot)[][3, 4]
+        # return Makie.zvalue2d(plot)
     end
-    zvals = sortby.(screen.renderlist)
-    permute!(screen.renderlist, sortperm(zvals))
+
+    sort!(screen.renderlist; by=sortby)
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
@@ -46,10 +50,9 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     fb = screen.framebuffer
     if resize_buffers
-        wh = Int.(framebuffer_size(nw))
-        resize!(fb, wh)
+        ppu = screen.px_per_unit[]
+        resize!(fb, round.(Int, ppu .* size(screen.scene::Scene))...)
     end
-    w, h = size(fb)
 
     # prepare stencil (for sub-scenes)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id)
@@ -101,6 +104,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
 
+    GLAbstraction.require_context(nw)
+
     return
 end
 
@@ -121,8 +126,9 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             found, scene = id2scene(screen, screenid)
             found || continue
             scene.visible[] || continue
-            a = pixelarea(scene)[]
-            glViewport(minimum(a)..., widths(a)...)
+            ppu = screen.px_per_unit[]
+            a = viewport(scene)[]
+            glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             render(elem)
         end
     catch e

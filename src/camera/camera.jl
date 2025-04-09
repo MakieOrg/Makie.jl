@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(7) do i
+    Camera(ntuple(10) do i
         getfield(x, i)
     end...)
 end
@@ -19,6 +19,7 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
     println(io, "  eyeposition: ", camera.eyeposition[])
+    println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
@@ -67,24 +68,27 @@ function Observables.on(f, camera::Camera, observables::AbstractObservable...; p
     return f
 end
 
-function Camera(px_area)
-    pixel_space = lift(px_area) do window_size
-        nearclip = -10_000f0
-        farclip = 10_000f0
-        w, h = Float32.(widths(window_size))
-        return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+function Camera(viewport)
+    pixel_space = lift(viewport) do window_size
+        nearclip = -10_000.0
+        farclip = 10_000.0
+        w, h = Float64.(widths(window_size))
+        return orthographicprojection(0.0, w, 0.0, h, nearclip, farclip)
     end
-    view = Observable(Mat4f(I))
-    proj = Observable(Mat4f(I))
+    view = Observable(Mat4d(I))
+    proj = Observable(Mat4d(I))
     proj_view = map(*, proj, view)
     return Camera(
         pixel_space,
         view,
         proj,
         proj_view,
-        lift(a-> Vec2f(widths(a)), px_area),
+        lift(a-> Vec2f(widths(a)), viewport),
+        Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
-        ObserverFunction[]
+        Observable(Vec3f(0, 1, 0)),
+        ObserverFunction[],
+        Dict{Symbol, Observable}()
     )
 end
 
@@ -100,7 +104,7 @@ end
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
 function is_mouseinside(scene::Scene, target)
     scene === target && return false
-    Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
+    Vec(scene.events.mouseposition[]) in viewport(scene)[] || return false
     for child in r.children
         is_mouseinside(child, target) && return true
     end
@@ -114,7 +118,7 @@ Returns true if the current mouseposition is inside the given scene.
 """
 is_mouseinside(x) = is_mouseinside(get_scene(x))
 function is_mouseinside(scene::Scene)
-    return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
+    return scene.visible[] && in(Vec(scene.events.mouseposition[]), viewport(scene)[])
     # Check that mouse is not inside any other screen
     # for child in scene.children
     #     is_mouseinside(child) && return false

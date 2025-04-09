@@ -28,14 +28,15 @@ in vec3 vertices;
 in vec3 normals;
 {{texturecoordinates_type}} texturecoordinates;
 
-uniform vec3 lightposition;
 uniform mat4 view, model, projection;
+uniform bool scale_primitive;
 uniform uint objectid;
 uniform int len;
 
 flat out uvec2 o_id;
+flat out int o_InstanceID;
 out vec4 o_color;
-out vec2 o_uv;
+out vec3 o_uv;
 
 {{position_type}} position;
 
@@ -62,6 +63,8 @@ vec3 _scale(samplerBuffer scale, int index);
 vec3 _scale(vec3          scale, int index);
 vec3 _scale(vec2          scale, int index);
 
+uniform vec3 f32c_scale;
+
 {{color_type}} color;
 {{color_map_type}} color_map;
 {{intensity_type}} intensity;
@@ -86,27 +89,51 @@ vec4 get_particle_color(Nothing color, samplerBuffer intensity, sampler1D color_
     // always look up color in vertex_shader (mesh.frag can switch)
     return get_color_from_cmap(texelFetch(intensity, index).x, color_map, color_norm);
 }
-
-vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+// image should be defined instead
+vec4 get_particle_color(Nothing color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
     return vec4(0);
 }
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
 
-vec2 get_uv(Nothing x){return vec2(0.0);}
-vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
+{{uv_transform_type}} uv_transform;
+vec2 apply_uv_transform(Nothing t1, int i, vec2 uv){ return uv; }
+vec2 apply_uv_transform(mat3x2 transform, int i, vec2 uv){ return transform * vec3(uv, 1); }
+vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3x2 transform;
+    transform[0] = texelFetch(transforms, 3 * index + 0).xy;
+    transform[1] = texelFetch(transforms, 3 * index + 1).xy;
+    transform[2] = texelFetch(transforms, 3 * index + 2).xy;
+    return transform * vec3(uv, 1);
+}
+
+vec3 get_uv(int index, Nothing uv){ return vec3(0.0); }
+vec3 get_uv(int index, vec2 uv){
+    return vec3(apply_uv_transform(uv_transform, index, uv), 0.0);
+}
+vec3 get_uv(int index, vec3 uv) {
+    return uv;
+}
+
 
 void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
-    vec3 V = vertices * s;
-    vec3 N = normals;
+    vec3 V = s * vertices;
+    vec3 N = normals / s; // see issue #3702
     vec3 pos;
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
     o_color = o_color * to_color(vertex_color);
-    o_uv = get_uv(texturecoordinates);
+    o_uv = get_uv(index, texturecoordinates);
+    o_InstanceID = index;
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+    V = f32c_scale * V;
+    N = N / f32c_scale;
+    if (scale_primitive)
+        render(model * vec4(pos + V, 1), N, view, projection);
+    else
+        render(model * vec4(pos, 1) +  vec4(V, 0), N, view, projection);
 }

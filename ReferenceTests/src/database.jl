@@ -17,6 +17,7 @@ const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
 const COUNTER = Ref(0)
+const SKIPPED_NAMES = Set{String}() # names skipped due to title exclusion or function exclusion
 
 """
     @reference_test(name, code)
@@ -32,19 +33,30 @@ macro reference_test(name, code)
         @testset $(title) begin
             if $skip
                 @test_broken false
+                mark_skipped!($title)
             else
+                t1 = time()
                 if $title in $REGISTERED_TESTS
                     error("title must be unique. Duplicate title: $(title)")
                 end
                 println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
-                Makie.set_theme!(resolution=(500, 500))
+                Makie.set_theme!(; size=(500, 500),
+                                CairoMakie=(; px_per_unit=1),
+                                GLMakie=(; scalefactor=1, px_per_unit=1),
+                                WGLMakie=(; scalefactor=1, px_per_unit=1))
                 ReferenceTests.RNG.seed_rng!()
                 result = let
                     $(esc(code))
                 end
                 @test save_result(joinpath(RECORDING_DIR[], $title), result)
                 push!($REGISTERED_TESTS, $title)
+                elapsed = round(time() - t1; digits=5)
+                total = Sys.total_memory()
+                mem = round((total - Sys.free_memory()) / 10^9; digits=3)
+                # TODO, write to file and create an overview in the end, similar to the benchmark results!
+                println("Used $(mem)gb of $(round(total / 10^9; digits=3))gb RAM, time: $(elapsed)s")
             end
+            GC.gc(true)# Run GC, to catch accumulating memory early on (used RAM)
         end
     end
 end
@@ -75,29 +87,37 @@ end
 function mark_broken_tests(title_excludes = []; functions=[])
     empty!(SKIP_TITLES)
     empty!(SKIP_FUNCTIONS)
+    empty!(SKIPPED_NAMES)
     union!(SKIP_TITLES, title_excludes)
     union!(SKIP_FUNCTIONS, functions)
 end
 
-macro include_reference_tests(path)
+mark_skipped!(name::String) = push!(SKIPPED_NAMES, name)
+
+macro include_reference_tests(backend::Symbol, path, paths...)
     toplevel_folder = dirname(string(__source__.file))
     return esc(quote
         using ReferenceTests: @reference_test
-        name = splitext(basename($(path)))[1]
-        include_path = isdir($path) ? $path : joinpath(@__DIR__, "tests", $path)
-        recording_dir = joinpath($toplevel_folder, "recorded_reference_images", name)
+        include_paths = map([$path, $(paths...)]) do p
+            isdir(p) ? p : joinpath(@__DIR__, "tests", p)
+        end
+        recording_dir = joinpath($toplevel_folder, "reference_images")
         if isdir(recording_dir)
             rm(recording_dir; force=true, recursive=true)
         end
-        ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded")
-        mkpath(joinpath(recording_dir, "recorded"))
-        @testset "$name" begin
+        # prefix the recordings with the backend name so that each backend has its own versions
+        ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded", $(string(backend)))
+        mkpath(ReferenceTests.RECORDING_DIR[])
+        @testset "Reference tests $($(string(backend)))" begin
             empty!(ReferenceTests.REGISTERED_TESTS)
-            include(include_path)
+            for include_path in include_paths
+                include(include_path)
+            end
         end
         recorded_files = collect(ReferenceTests.REGISTERED_TESTS)
         recording_dir = recording_dir
         empty!(ReferenceTests.REGISTERED_TESTS)
+        ReferenceTests.COUNTER[] = 0
         (recorded_files, recording_dir)
     end)
 end

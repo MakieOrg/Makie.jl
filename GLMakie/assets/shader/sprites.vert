@@ -31,7 +31,7 @@ ivec2 ind2sub(ivec2 dim, int linearindex);
 ivec3 ind2sub(ivec3 dim, int linearindex);
 
 {{scale_type}}   scale; // so in the case of distinct x,y,z, there's no chance to unify them under one variable
-
+uniform vec3 f32c_scale;
 
 {{marker_offset_type}} marker_offset;
 {{quad_offset_type}} quad_offset;
@@ -72,14 +72,15 @@ vec4 _color(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
 
-uniform mat4 preprojection;
 uniform mat4 model;
 uniform uint objectid;
 uniform int len;
+uniform bool scale_primitive;
 
 out uvec2 g_id;
 out int   g_primitive_index;
-out vec3  g_position;
+out vec3  g_world_position;
+out vec3  g_marker_offset;
 out vec4  g_offset_width;
 out vec4  g_uv_texture_bbox;
 out vec4  g_rotation;
@@ -95,10 +96,10 @@ void main(){
     g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
-    vec4 p = preprojection * model * vec4(pos, 1);
-    g_position        = p.xyz / p.w + mat3(model) * marker_offset;
-    g_offset_width.xy = quad_offset.xy;
-    g_offset_width.zw = scale.xy;
+    g_world_position  = vec3(model * vec4(pos, 1));
+    g_marker_offset   = scale_primitive ? mat3(model) * (f32c_scale * marker_offset) : f32c_scale * marker_offset;
+    g_offset_width.xy = f32c_scale.xy * quad_offset.xy;
+    g_offset_width.zw = f32c_scale.xy * scale.xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;

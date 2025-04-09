@@ -27,13 +27,19 @@ mutable struct RamStepper
 end
 
 function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, visible=false, connect=false, screen_kw...)
-    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
+    config = Dict{Symbol,Any}(screen_kw)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
     display(screen, figlike; connect=connect)
     return RamStepper(figlike, screen, Matrix{RGBf}[], format)
 end
 
 function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_kw...)
-    screen = getscreen(backend, get_scene(figlike), JuliaNative; visible=visible, start_renderloop=false, screen_kw...)
+    config = Dict{Symbol,Any}(screen_kw)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
     display(screen, figlike; connect=connect)
     return FolderStepper(figlike, screen, path, format, step)
 end
@@ -139,7 +145,7 @@ end
 """
 function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike; format=format, kw_args...)
+    io = Record(func, figlike; format=format, visible=true, kw_args...)
     save(path, io)
 end
 
@@ -173,11 +179,18 @@ function Record(func, figlike, iter; kw_args...)
 end
 
 function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
+    scene = vs.screen.scene
+    if !(scene isa Scene)
+        error("Expected Screen to hold a reference to a Scene but got $(repr(scene))")
+    end
+    w, h = size(scene)
     mktempdir() do dir
         path = save(joinpath(dir, "video.mp4"), vs)
+        # <video> only supports infinite looping, so we loop forever even when a finite number is requested
+        loopoption = vs.options.loop ≥ 0 ? "loop" : ""
         print(
             io,
-            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
+            """<video autoplay controls $loopoption width="$w" height="$h"><source src="data:video/x-m4v;base64,""",
             base64encode(open(read, path)),
             """" type="video/mp4"></video>"""
         )

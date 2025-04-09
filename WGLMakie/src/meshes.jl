@@ -1,45 +1,133 @@
-function vertexbuffer(x, trans, space)
+function vertexbuffer(x, f32c, transform_func, model, space)
     pos = decompose(Point, x)
-    return apply_transform(trans,  pos, space)
+    transformed = apply_transform_and_f32_conversion(f32c, transform_func, model, pos, space)
+    return transformed
 end
 
-function vertexbuffer(x::Observable, p)
-    return Buffer(lift(vertexbuffer, x, transform_func_obs(p), get(p, :space, :data)))
+function vertexbuffer(x::Observable, @nospecialize(plot), f32c::Observable)
+    return Buffer(lift(vertexbuffer, plot, x, f32c, transform_func_obs(plot), plot.model, plot.space))
 end
 
 facebuffer(x) = faces(x)
 facebuffer(x::AbstractArray{<:GLTriangleFace}) = x
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 
-
-function array2color(colors, cmap, crange)
-    cmap = RGBAf.(Colors.color.(to_colormap(cmap)), 1.0)
-    return Makie.interpolated_getindex.((cmap,), colors, (crange,))
-end
-
-function array2color(colors::AbstractArray{<:Colorant}, cmap, crange)
-    return RGBAf.(colors)
-end
-
 function converted_attribute(plot::AbstractPlot, key::Symbol)
-    return lift(plot[key]) do value
+    return lift(plot, plot[key]) do value
         return convert_attribute(value, Key{key}(), Key{plotkey(plot)}())
     end
+end
+
+function handle_color!(plot, uniforms, buffers, uniform_color_name = :uniform_color; permute_tex=true)
+    color = plot.calculated_colors
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
+
+    convert_texture(x) = permute_tex ? lift(permutedims, plot, x) : x
+
+    if color[] isa Colorant
+        uniforms[uniform_color_name] = color
+    elseif color[] isa ShaderAbstractions.Sampler
+        uniforms[uniform_color_name] = to_value(color)
+    elseif color[] isa AbstractVector
+        buffers[:color] = Buffer(color)
+    elseif color[] isa Makie.AbstractPattern
+        uniforms[:pattern] = true
+        img = convert_texture(map(Makie.to_image, plot, color))
+        uniforms[uniform_color_name] = Sampler(img; x_repeat = :repeat, minfilter=minfilter)
+        # different default with Patterns (no swapping and flipping of axes)
+        # also includes px to uv coordinate transform so we can use linear
+        # interpolation (no jitter) and related pattern to (0,0,0) in world space
+        scene = Makie.parent_scene(plot)
+        uniforms[:uv_transform] = map(plot,
+                plot.attributes[:uv_transform], scene.camera.projectionview,
+                scene.camera.resolution, plot.model, color # TODO float32convert
+            ) do uvt, pv, res, model, pattern
+            return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
+        end
+    elseif color[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
+        uniforms[uniform_color_name] = Sampler(convert_texture(color); minfilter=minfilter)
+    elseif color[] isa Makie.ColorMapping
+        if color[].color_scaled[] isa AbstractVector
+            buffers[:color] = Buffer(color[].color_scaled)
+        else
+            color_scaled = convert_texture(color[].color_scaled)
+            uniforms[uniform_color_name] = Sampler(color_scaled; minfilter=minfilter)
+        end
+        cm_minfilter = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        uniforms[:colormap] = Sampler(color[].colormap, minfilter = cm_minfilter)
+        uniforms[:colorrange] = color[].colorrange_scaled
+        uniforms[:highclip] = Makie.highclip(color[])
+        uniforms[:lowclip] = Makie.lowclip(color[])
+        uniforms[:nan_color] = color[].nan_color
+    else
+        error("Color type not supported: $(typeof(color[]))")
+    end
+    get!(uniforms, :color, false)
+    get!(uniforms, uniform_color_name, false)
+    get!(uniforms, :colormap, false)
+    get!(uniforms, :colorrange, false)
+    get!(uniforms, :pattern, false)
+    get!(uniforms, :highclip, RGBAf(0, 0, 0, 0))
+    get!(uniforms, :lowclip, RGBAf(0, 0, 0, 0))
+    get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
+    return
+end
+
+lift_or(f, p, x) = f(x)
+lift_or(f, @nospecialize(p), x::Observable) = lift(f, p, x)
+
+function draw_mesh(mscene::Scene, per_vertex, plot, uniforms; permute_tex=true)
+    filter!(kv -> !(kv[2] isa Function), uniforms)
+    handle_color!(plot, uniforms, per_vertex; permute_tex=permute_tex)
+
+    get!(uniforms, :ambient, Vec3f(1))
+    get!(uniforms, :light_direction, Vec3f(1))
+    get!(uniforms, :light_color, Vec3f(1))
+
+    uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
+
+    get!(uniforms, :shading, to_value(get(plot, :shading, NoShading)) != NoShading)
+
+    uniforms[:normalmatrix] = map(uniforms[:model]) do m
+        i = Vec(1, 2, 3)
+        return Mat3f(transpose(inv(m[i, i])))
+    end
+
+
+    for key in (:diffuse, :specular, :shininess, :backlight, :depth_shift)
+        if !haskey(uniforms, key)
+            uniforms[key] = lift_or(x -> convert_attribute(x, Key{key}()), plot, plot[key])
+        end
+    end
+    if haskey(uniforms, :color) && haskey(per_vertex, :color)
+        to_value(uniforms[:color]) isa Bool && delete!(uniforms, :color)
+        to_value(per_vertex[:color]) isa Bool && delete!(per_vertex, :color)
+    end
+
+    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
+    uniforms[:picking] = false
+    uniforms[:object_id] = UInt32(0)
+    get!(uniforms, :PICKING_INDEX_FROM_UV, false)
+    pos = pop!(per_vertex, :positions)
+    faces = pop!(per_vertex, :faces)
+    mesh = GeometryBasics.Mesh(pos, faces; per_vertex...)
+    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh, uniforms)
 end
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
-    mattributes = GeometryBasics.attributes
-    get_attribute(mesh, key) = lift(x -> getproperty(x, key), mesh)
-    data = mattributes(mesh_signal[])
-
+    get_attribute(mesh, key) = lift(x -> getproperty(x, key), plot, mesh)
+    data = GeometryBasics.vertex_attributes(mesh_signal[])
+    if plot.color[] isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
+    end
     uniforms = Dict{Symbol,Any}()
     attributes = Dict{Symbol,Any}()
 
     uniforms[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, true)
 
-    for (key, default) in (:uv => Vec2f(0), :normals => Vec3f(0))
+    for (key, default) in (:uv => Vec2f(0), :normal => Vec3f(0))
         if haskey(data, key)
             attributes[key] = Buffer(get_attribute(mesh_signal, key))
         else
@@ -47,86 +135,22 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         end
     end
 
-    if haskey(data, :attributes) && data[:attributes] isa AbstractVector
-        attr = get_attribute(mesh_signal, :attributes)
-        attr_id = get_attribute(mesh_signal, :attribute_id)
-        color = lift((c, id) -> c[Int.(id) .+ 1], attr_id)
-        attributes[:color] = Buffer(color)
-        uniforms[:uniform_color] = false
-    else
-        color_signal = converted_attribute(plot, :color)
-        color = color_signal[]
-        mesh_color = color_signal[]
-        uniforms[:uniform_color] = Observable(false) # this is the default
-
-        if color isa Colorant && haskey(data, :color)
-            color_signal = get_attribute(mesh_signal, :color)
-            color = color_signal[]
-        end
-
-        if color isa AbstractArray
-            if color isa AbstractVector
-                attributes[:color] = Buffer(color_signal) # per vertex colors
-            else
-                uniforms[:uniform_color] = Sampler(color_signal) # Texture
-                uniforms[:color] = false
-                if color isa Makie.AbstractPattern
-                    uniforms[:pattern] = true
-                    # add texture coordinates
-                    uv = Buffer(lift(decompose_uv, mesh_signal))
-                    delete!(uniforms, :uv)
-                    attributes[:uv] = uv
-                end
-            end
-            if eltype(color_signal[]) <: Number
-                uniforms[:colorrange] = converted_attribute(plot, :colorrange)
-                uniforms[:colormap] = Sampler(converted_attribute(plot, :colormap))
-            end
-        elseif color isa Colorant && !haskey(attributes, :color)
-            uniforms[:uniform_color] = color_signal
+    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
+    uniforms[:uv_transform] = map(plot, plot[:uv_transform]) do x
+        M = convert_attribute(x, Key{:uv_transform}(), Key{:mesh}())
+        if M === nothing
+            return Mat3f(I)
         else
-            error("Unsupported color type: $(typeof(color))")
+            return Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
         end
-    end
-    if !haskey(attributes, :color)
-        get!(uniforms, :color, false) # make sure we have a color attribute, if not in instance attributes
-    end
-
-    uniforms[:shading] = plot.shading
-
-    for key in (:diffuse, :specular, :shininess, :backlight)
-        uniforms[key] = lift(x-> convert_attribute(x, Key{key}()), plot[key])
     end
 
     faces = facebuffer(mesh_signal)
-    positions = vertexbuffer(mesh_signal, plot)
-    instance = GeometryBasics.Mesh(GeometryBasics.meta(positions; attributes...), faces)
+    f32c, model = Makie.patch_model(plot)
+    uniforms[:model] = model
+    positions = vertexbuffer(mesh_signal, plot, f32c)
+    attributes[:faces] = faces
+    attributes[:positions] = positions
 
-    get!(uniforms, :colorrange, true)
-    get!(uniforms, :colormap, true)
-    get!(uniforms, :pattern, false)
-    get!(uniforms, :model, plot.model)
-    get!(uniforms, :lightposition, Vec3f(1))
-    get!(uniforms, :ambient, Vec3f(1))
-
-    for key in (:nan_color, :highclip, :lowclip)
-        if haskey(plot, key)
-            uniforms[key] = converted_attribute(plot, key)
-        else
-            uniforms[key] = RGBAf(0, 0, 0, 0)
-        end
-    end
-
-    uniforms[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
-
-    uniforms[:normalmatrix] = map(scene.camera.view, plot.model) do v, m
-        i = Vec(1, 2, 3)
-        return transpose(inv(v[i, i] * m[i, i]))
-    end
-
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
-    uniforms[:picking] = false
-    uniforms[:object_id] = UInt32(0)
-
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance, uniforms)
+    return draw_mesh(scene, attributes, plot, uniforms; permute_tex=false)
 end

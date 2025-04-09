@@ -7,7 +7,7 @@ x = Observable(range(-2, 1, length = 400))
 y = Observable(range(-1, 1, length = 300))
 
 fig, ax, img = heatmap(x, y, mandelbrot, colormap = Reverse(:deep),
-    figure = (resolution = (400, 300),))
+    figure = (size = (400, 300),))
 hidedecorations!(ax)
 
 record(fig, "mandelbrot.mp4", 1:200) do frame

@@ -107,7 +107,7 @@ Sets the autolimit margins to zero on all given sides.
 
 Example:
 
-```
+```julia
 tightlimits!(laxis, Bottom())
 ```
 """
@@ -137,34 +137,36 @@ function tightlimits!(la::Axis, ::Top)
     autolimits!(la)
 end
 
-GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> Rect2f(x), pixelarea(scene)), kwargs...)
+function GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...)
+    return GridLayout(args...; bbox=lift(Rect2f, viewport(scene)), kwargs...)
+end
 
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
     rightspinecolor, bottomspinecolor)
 
-    bottomline = lift(rect, spinewidth) do r, sw
+    bottomline = lift(scene, rect, spinewidth) do r, sw
         y = bottom(r)
         p1 = Point2(left(r) - 0.5sw, y)
         p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
-    leftline = lift(rect, spinewidth) do r, sw
+    leftline = lift(scene, rect, spinewidth) do r, sw
         x = left(r)
         p1 = Point2(x, bottom(r) - 0.5sw)
         p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
-    topline = lift(rect, spinewidth) do r, sw
+    topline = lift(scene, rect, spinewidth) do r, sw
         y = top(r)
         p1 = Point2(left(r) - 0.5sw, y)
         p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
-    rightline = lift(rect, spinewidth) do r, sw
+    rightline = lift(scene, rect, spinewidth) do r, sw
         x = right(r)
         p1 = Point2(x, bottom(r) - 0.5sw)
         p2 = Point2(x, top(r) + 0.5sw)
@@ -301,7 +303,7 @@ Returns a `NamedTuple`:
 
 `(slider = slider, label = label, valuelabel = valuelabel, layout = layout)`
 
-Specify a format function for the value label with the `format` keyword or pass a format string used by `Formatting.format`.
+Specify a format function for the value label with the `format` keyword or pass a format string used by `Format.format`.
 The slider is forwarded the keywords from `sliderkw`.
 The label is forwarded the keywords from `labelkw`.
 The value label is forwarded the keywords from `valuekw`.
@@ -311,7 +313,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslider!(scene, "Voltage:", 0:10; format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
@@ -320,7 +322,7 @@ function labelslider!(scene, label, range; format = string,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
     slider = Slider(scene; range = range, sliderkw...)
     label = Label(scene, label; labelkw...)
-    valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); valuekw...)
+    valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
 
     Base.depwarn("labelslider! is deprecated and will be removed in the future. Use SliderGrid instead." , :labelslider!, force = true)
@@ -360,7 +362,7 @@ Returns a `NamedTuple`:
 
 `(sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)`
 
-Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Formatting.format`.
+Specify format functions for the value labels with the `formats` keyword or pass format strings used by `Format.format`.
 The sliders are forwarded the keywords from `sliderkw`.
 The labels are forwarded the keywords from `labelkw`.
 The value labels are forwarded the keywords from `valuekw`.
@@ -370,7 +372,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
@@ -383,7 +385,8 @@ function labelslidergrid!(scene, labels, ranges; formats = [string], value_colum
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = Slider(scene; range = range, sliderkw...)
         label = Label(scene, label; halign = :left, labelkw...)
-        valuelabel = Label(scene, lift(x -> apply_format(x, format), slider.value); halign = :right, valuekw...)
+        valuelabel = Label(scene, lift(x -> apply_format(x, format), scene, slider.value); halign=:right,
+                           valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -425,7 +428,7 @@ function apply_format(value, format)
 end
 
 function apply_format(value, formatstring::String)
-    Formatting.format(formatstring, value)
+    Format.format(formatstring, value)
 end
 
 Makie.get_scene(ax::Axis) = ax.scene

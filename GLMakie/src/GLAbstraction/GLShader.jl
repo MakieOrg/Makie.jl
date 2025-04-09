@@ -103,73 +103,71 @@ function ShaderCache(context)
     )
 end
 
+function free(cache::ShaderCache)
+    with_context(cache.context) do
+        for (k, v) in cache.shader_cache
+            for (k2, shader) in v
+                free(shader)
+            end
+        end
+        for program in values(cache.program_cache)
+            free(program)
+        end
+    end
+    return
+end
 
 abstract type AbstractLazyShader end
+
 struct LazyShader <: AbstractLazyShader
     shader_cache::ShaderCache
-    paths::Tuple
+    paths::Vector{ShaderSource}
     kw_args::Dict{Symbol, Any}
-    function LazyShader(cache::ShaderCache, paths...; kw_args...)
+    function LazyShader(cache::ShaderCache, paths::ShaderSource...; kw_args...)
         args = Dict{Symbol, Any}(kw_args)
         get!(args, :view, Dict{String, String}())
-        new(cache, paths, args)
+        new(cache, [paths...], args)
     end
 end
 
-gl_convert(shader::GLProgram, data) = shader
+gl_convert(::GLContext, shader::GLProgram, data) = shader
 
-
-# TODO remove this silly constructor
-function compile_shader(source::Vector{UInt8}, typ, name)
-    shaderid = createshader(typ)
-    glShaderSource(shaderid, source)
+function compile_shader(context, source::ShaderSource, template_src::String)
+    name = source.name
+    shaderid = createshader(source.typ)
+    glShaderSource(shaderid, template_src)
     glCompileShader(shaderid)
     if !GLAbstraction.iscompiled(shaderid)
-        GLAbstraction.print_with_lines(String(source))
+        GLAbstraction.print_with_lines(template_src)
         @warn("shader $(name) didn't compile. \n$(GLAbstraction.getinfolog(shaderid))")
     end
-    return Shader(name, source, typ, shaderid)
+    return Shader(context, name, Vector{UInt8}(template_src), source.typ, shaderid)
 end
 
-function compile_shader(path, source_str::AbstractString)
-    typ = shadertype(splitext(path)[2])
-    source = Vector{UInt8}(source_str)
-    name = Symbol(path)
-    return compile_shader(source, typ, name)
-end
 
-function get_shader!(cache::ShaderCache, path, template_replacement)
+function get_shader!(cache::ShaderCache, src::ShaderSource, template_replacement)
     # this should always be in here, since we already have the template keys
-    shader_dict = cache.shader_cache[path]
+    shader_dict = cache.shader_cache[src.name]
     return get!(shader_dict, template_replacement) do
-        template_source = read(path, String)
-        source = mustache_replace(template_replacement, template_source)
+        templated_source = mustache_replace(template_replacement, src.source)
         ShaderAbstractions.switch_context!(cache.context)
-        return compile_shader(path, source)
+        return compile_shader(cache.context, src, templated_source)
     end::Shader
 end
 
-function get_template!(cache::ShaderCache, path, view, attributes)
-    return get!(cache.template_cache, path) do
-        _, ext = splitext(path)
-
-        typ = shadertype(ext)
-        template_source = read(path, String)
-        source, replacements = template2source(
-            template_source, view, attributes
-        )
-        s = compile_shader(path, source)
+function get_template!(cache::ShaderCache, src::ShaderSource, view, attributes)
+    return get!(cache.template_cache, src.name) do
+        templated_source, replacements = template2source(src.source, view, attributes)
+        shader = compile_shader(cache.context, src, templated_source)
         template_keys = collect(keys(replacements))
         template_replacements = collect(values(replacements))
         # can't yet be in here, since we didn't even have template keys
-        cache.shader_cache[path] = Dict(template_replacements => s)
-
+        cache.shader_cache[src.name] = Dict(template_replacements => shader)
         return template_keys
     end
 end
 
-
-function compile_program(shaders, fragdatalocation)
+function compile_program(shaders::Vector{Shader}, fragdatalocation)
     # Remove old shaders
     program = createprogram()
     #attach new ones
@@ -195,7 +193,7 @@ function compile_program(shaders, fragdatalocation)
     # generate the link locations
     nametypedict = uniform_name_type(program)
     uniformlocationdict = uniformlocations(nametypedict, program)
-    GLProgram(program, shaders, nametypedict, uniformlocationdict)
+    return GLProgram(program, shaders, nametypedict, uniformlocationdict)
 end
 
 function get_view(kw_dict)
@@ -206,59 +204,38 @@ function get_view(kw_dict)
     _view
 end
 
-gl_convert(lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
-function gl_convert(lazyshader::LazyShader, data)
-    gl_convert(lazyshader.shader_cache, lazyshader, data)
+gl_convert(::GLContext, lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
+function gl_convert(ctx::GLContext, lazyshader::LazyShader, data)
+    gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
 end
-function gl_convert(cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+
+function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+    require_context(cache.context, ctx)
     kw_dict = lazyshader.kw_args
     paths = lazyshader.paths
-    if all(x-> isa(x, Shader), paths)
-        fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
-        ShaderAbstractions.switch_context!(cache.context)
-        return compile_program([paths...], fragdatalocation)
-    end
+
     v = get_view(kw_dict)
     fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
 
-    # Tuple(Source, ShaderType)
-    if all(paths) do x
-            isa(x, Tuple) && length(x) == 2 &&
-            isa(first(x), AbstractString) &&
-            isa(last(x), GLenum)
-        end
-        # we don't cache view & templates for shader strings!
-        shaders = map(paths) do source_typ
-            source, typ = source_typ
-            src, _ = template2source(source, v, data)
-            ShaderAbstractions.switch_context!(cache.context)
-            compile_shader(Vector{UInt8}(src), typ, :from_string)
-        end
-        ShaderAbstractions.switch_context!(cache.context)
-        return compile_program([shaders...], fragdatalocation)
-    end
-    if !all(x -> isa(x, AbstractString), paths)
-        error("Please supply only paths or tuples of (source, typ) for Lazy Shader
-            Found: $paths"
-        )
-    end
     template_keys = Vector{Vector{String}}(undef, length(paths))
     replacements = Vector{Vector{String}}(undef, length(paths))
-    for (i, path) in enumerate(paths)
-        template = get_template!(cache, path, v, data)
+
+    for (i, shader_source) in enumerate(paths)
+        template = get_template!(cache, shader_source, v, data)
         template_keys[i] = template
         replacements[i] = String[mustache2replacement(t, v, data) for t in template]
     end
-    program = get!(cache.program_cache, (paths, replacements)) do
+
+    return get!(cache.program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program
         shaders = Vector{Shader}(undef, length(paths))
-        for (i, path) in enumerate(paths)
+        for (i, shader_source) in enumerate(paths)
             tr = Dict(zip(template_keys[i], replacements[i]))
-            shaders[i] = get_shader!(cache, path, tr)
+            shaders[i] = get_shader!(cache, shader_source, tr)
         end
         ShaderAbstractions.switch_context!(cache.context)
-        compile_program(shaders, fragdatalocation)
+        return compile_program(shaders, fragdatalocation)
     end
 end
 
@@ -346,7 +323,6 @@ function mustache2replacement(mustache_key, view, attributes)
 end
 
 # Takes a shader template and renders the template and returns shader source
-template2source(source::Vector{UInt8}, view, attributes::Dict{Symbol, Any}) = template2source(String(source), attributes, view)
 function template2source(source::AbstractString, view, attributes::Dict{Symbol, Any})
     replacements = Dict{String, String}()
     source = mustache_replace(source) do mustache_key

@@ -1,7 +1,10 @@
 abstract type AbstractCamera end
+abstract type Block end
+abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
+get_space(::EmptyCamera) = :clip
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0
@@ -14,18 +17,55 @@ end
 
 include("interaction/iodevices.jl")
 
+"""
+    enum TickState
+
+Identifies the source of a tick:
+- `BackendTick`: A tick used for backend purposes which is not present in `event.tick`.
+- `UnknownTickState`: A tick from an uncategorized source (e.g. initialization of Events).
+- `PausedRenderTick`: A tick from a paused renderloop.
+- `SkippedRenderTick`: A tick from a running renderloop where the previous image was reused.
+- `RegularRenderTick`: A tick from a running renderloop where a new image was produced.
+- `OneTimeRenderTick`: A tick from a call to `colorbuffer`, i.e. an image request from `save` or `record`.
+"""
+@enum TickState begin
+    BackendTick
+    UnknownTickState # GLMakie only allows states > UnknownTickState
+    PausedRenderTick
+    SkippedRenderTick
+    RegularRenderTick
+    OneTimeRenderTick
+end
+
+"""
+    struct TickState
+
+Contains information for tick events:
+- `state::TickState`: identifies what caused the tick (see Makie.TickState)
+- `count::Int64`: number of ticks produced since the start of rendering (display or record)
+- `time::Float64`: time that has passed since the first tick in seconds
+- `delta_time`: time that has passed since the last tick in seconds
+"""
+struct Tick
+    state::TickState    # flag for the type of tick event
+    count::Int64        # number of ticks since start
+    time::Float64       # time since scene initialization
+    delta_time::Float64 # time since last tick
+end
+Tick() = Tick(UnknownTickState, 0, 0.0, 0.0)
+
 
 """
 This struct provides accessible `Observable`s to monitor the events
 associated with a Scene.
 
-Functions that act on a `Observable` must return `Consume()` if the function
+Functions that act on an `Observable` must return `Consume()` if the function
 consumes an event. When an event is consumed it does
-not trigger other observer functions. The order in which functions are exectued
+not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
-```
+```julia
 on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
@@ -101,6 +141,17 @@ struct Events
     Whether the mouse is inside the window or not.
     """
     entered_window::Observable{Bool}
+
+    """
+    A `tick` is triggered whenever a new frame is requested, i.e. during normal
+    rendering (even if the renderloop is paused) or when an image is produced
+    for `save` or `record`. A Tick contains:
+    - `state` which identifies what caused the tick (see Makie.TickState)
+    - `count` which increments with every tick
+    - `time` which is the total time since the screen has been created
+    - `delta_time` which is the time since the last frame
+    """
+    tick::Observable{Tick}
 end
 
 function Base.show(io::IO, events::Events)
@@ -130,6 +181,7 @@ function Events()
         Observable(String[]),
         Observable(false),
         Observable(false),
+        Observable(Tick())
     )
 
     connect_states!(events)
@@ -194,33 +246,44 @@ function Base.empty!(events::Events)
     return
 end
 
+abstract type BooleanOperator end
+
+"""
+    IsPressedInputType
+
+Union containing possible input types for `ispressed`.
+"""
+const IsPressedInputType = Union{Bool,BooleanOperator,Mouse.Button,Keyboard.Button,Set,Vector,Tuple}
 
 """
     Camera(pixel_area)
 
 Struct to hold all relevant matrices and additional parameters, to let backends
 apply camera based transformations.
+
+## Fields
+$(TYPEDFIELDS)
 """
 struct Camera
     """
     projection used to convert pixel to device units
     """
-    pixel_space::Observable{Mat4f}
+    pixel_space::Observable{Mat4d}
 
     """
     View matrix is usually used to rotate, scale and translate the scene
     """
-    view::Observable{Mat4f}
+    view::Observable{Mat4d}
 
     """
     Projection matrix is used for any perspective transformation
     """
-    projection::Observable{Mat4f}
+    projection::Observable{Mat4d}
 
     """
     just projection * view
     """
-    projectionview::Observable{Mat4f}
+    projectionview::Observable{Mat4d}
 
     """
     resolution of the canvas this camera draws to
@@ -228,15 +291,25 @@ struct Camera
     resolution::Observable{Vec2f}
 
     """
-    Eye position of the camera, sued for e.g. ray tracing.
+    Direction in which the camera looks.
+    """
+    view_direction::Observable{Vec3f}
+    """
+    Eye position of the camera, used for e.g. ray tracing.
     """
     eyeposition::Observable{Vec3f}
+    """
+    Up direction of the current camera (e.g. Vec3f(0, 1, 0) for 2d)
+    """
+    upvector::Observable{Vec3f}
 
     """
     To make camera interactive, steering observables are connected to the different matrices.
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}
+
+    calculated_values::Dict{Symbol, Observable}
 end
 
 """
@@ -246,45 +319,67 @@ $(TYPEDFIELDS)
 """
 struct Transformation <: Transformable
     parent::RefValue{Transformation}
-    translation::Observable{Vec3f}
-    scale::Observable{Vec3f}
+    translation::Observable{Vec3d}
+    scale::Observable{Vec3d}
     rotation::Observable{Quaternionf}
-    model::Observable{Mat4f}
+    origin::Observable{Vec3d}
+    model::Observable{Mat4d}
+    parent_model::Observable{Mat4d}
     # data conversion observable, for e.g. log / log10 etc
     transform_func::Observable{Any}
-    function Transformation(translation, scale, rotation, model, transform_func)
-        return new(
-            RefValue{Transformation}(),
-            translation, scale, rotation, model, transform_func
-        )
+
+    function Transformation(translation, scale, rotation, transform_func, origin = Vec3d(0))
+        translation_o = convert(Observable{Vec3d}, translation)
+        scale_o = convert(Observable{Vec3d}, scale)
+        rotation_o = convert(Observable{Quaternionf}, rotation)
+        origin_o = convert(Observable{Vec3d}, origin)
+        parent_model = Observable(Mat4d(I))
+        model = map(translation_o, scale_o, rotation_o, origin_o, parent_model) do t, s, r, o, p
+            # Order: translation * scale * rotation
+            return p * transformationmatrix(t + o - s .* (r * o), s, r)
+        end
+        transform_func_o = convert(Observable{Any}, transform_func)
+        return new(RefValue{Transformation}(),
+                   translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o)
     end
 end
 
-"""
-`PlotSpec{P<:AbstractPlot}(args...; kwargs...)`
-
-Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
-as well as plot type `P` of a basic plot.
-"""
-struct PlotSpec{P<:AbstractPlot}
-    args::Tuple
-    kwargs::NamedTuple
-    PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
+function Transformation(transform_func=identity;
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0))
+    return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
-PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
+function Transformation(parent::Transformable;
+                        scale=Vec3d(1),
+                        translation=Vec3d(0),
+                        rotation=Quaternionf(0, 0, 0, 1),
+                        origin=Vec3d(0),
+                        transform_func=nothing)
+    connect_func = isnothing(transform_func)
+    trans = isnothing(transform_func) ? identity : transform_func
 
-Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
-Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
+    trans = Transformation(translation,
+                           scale,
+                           rotation,
+                           trans,
+                           origin)
+    connect!(transformation(parent), trans; connect_func=connect_func)
+    return trans
+end
 
-to_plotspec(::Type{P}, args; kwargs...) where {P} =
-    PlotSpec{P}(args...; kwargs...)
-
-to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
-    PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
-
-plottype(::PlotSpec{P}) where {P} = P
-
+function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
+    println(io, "Transformation()")
+    println(io, "          parent = ", isassigned(t.parent) ? "Transformation(…)" : "#undef")
+    println(io, "     translation = ", t.translation[])
+    println(io, "           scale = ", t.scale[])
+    println(io, "        rotation = ", t.rotation[])
+    println(io, "          origin = ", t.origin[])
+    println(io, "           model = ", t.model[])
+    println(io, "  transform_func = ", t.transform_func[])
+end
 
 struct ScalarOrVector{T}
     sv::Union{T, Vector{T}}
@@ -293,7 +388,7 @@ end
 Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
 Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
 Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
-
+Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
     if sv.sv isa Vector
         if length(sv.sv) != n
@@ -346,7 +441,7 @@ Stores information about the glyphs in a string that had a layout calculated for
 """
 struct GlyphCollection
     glyphs::Vector{UInt64}
-    fonts::Vector{FTFont}
+    fonts::ScalarOrVector{FTFont}
     origins::Vector{Point3f}
     extents::Vector{GlyphExtent}
     scales::ScalarOrVector{Vec2f}
@@ -359,22 +454,106 @@ struct GlyphCollection
             colors, strokecolors, strokewidths)
 
         n = length(glyphs)
-        @assert length(fonts) == n
+        # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
         @assert attr_broadcast_length(scales) in (n, 1)
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
-
-        rotations = convert_attribute(rotations, key"rotation"())
-        fonts = [convert_attribute(f, key"font"()) for f in fonts]
-        colors = convert_attribute(colors, key"color"())
-        strokecolors = convert_attribute(strokecolors, key"color"())
-        strokewidths = Float32.(strokewidths)
-        new(glyphs, fonts, origins, extents, scales, rotations, colors, strokecolors, strokewidths)
+        @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
+        return new(
+            glyphs,
+            to_font(fonts),
+            origins,
+            extents,
+            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            to_rotation(rotations),
+            to_color(colors),
+            to_color(strokecolors),
+            to_linewidth(strokewidths)
+        )
     end
+end
+
+function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
+    a.glyphs == b.glyphs &&
+    a.fonts == b.fonts &&
+    a.origins == b.origins &&
+    a.extents == b.extents &&
+    a.scales == b.scales &&
+    a.rotations == b.rotations &&
+    a.colors == b.colors &&
+    a.strokecolors == b.strokecolors &&
+    a.strokewidths == b.strokewidths
 end
 
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
+
+const LogFunctions = Union{typeof(log10), typeof(log2), typeof(log)}
+
+"""
+    ReversibleScale
+
+Custom scale struct, taking a forward and inverse arbitrary scale function.
+
+## Fields
+$(TYPEDFIELDS)
+"""
+struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: Function
+    """
+    forward transformation (e.g. `log10`)
+    """
+    forward::F
+    """
+    inverse transformation (e.g. `exp10` for `log10` such that inverse ∘ forward ≡ identity)
+    """
+    inverse::I
+    """
+    default limits (optional)
+    """
+    limits::NTuple{2,Float32}
+    """
+    valid limits interval (optional)
+    """
+    interval::T
+    name::Symbol
+    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32), name=Symbol(forward))
+        inverse isa Automatic && (inverse = inverse_transform(forward))
+        isnothing(inverse) && throw(ArgumentError(
+            "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."
+        ))
+        interval isa AbstractInterval || (interval = OpenInterval(Float32.(interval)...))
+
+        lft, rgt = limits = Tuple(Float32.(limits))
+
+        Id = inverse ∘ forward
+        lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
+        rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
+
+        return new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, limits, interval, name)
+    end
+end
+
+(s::ReversibleScale)(args...) = s.forward(args...) # functor
+Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
+
+
+struct Cycler
+    counters::IdDict{Type,Int}
+end
+
+Cycler() = Cycler(IdDict{Type,Int}())
+
+
+# Float32 conversions
+struct LinearScaling
+    scale::Vec{3, Float64}
+    offset::Vec{3, Float64}
+end
+struct Float32Convert
+    scaling::Observable{LinearScaling}
+    resolution::Float32
+end

@@ -12,15 +12,16 @@ end
 conversion_trait(::Type{<: Bezier}) = PointBased()
 
 function calculated_attributes!(::Type{<: Bezier}, plot)
-    color_and_colormap!(plot)
     pos = plot[1][]
     # extend one color per linesegment to be one (the same) color per vertex
     # taken from @edljk  in PR #77
-    if haskey(plot, :color) && isa(plot[:color][], AbstractVector) && iseven(length(pos)) && (length(pos) ÷ 2) == length(plot[:color][])
-        plot[:color] = lift(plot[:color]) do cols
+    if haskey(plot, :color) && isa(plot.color[], AbstractVector) && iseven(length(pos)) && (length(pos) ÷ 2) == length(plot.color[])
+        plot[:color] = lift(plot.color) do cols
             map(i-> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
         end
     end
+    color_and_colormap!(plot)
+    return
 end
 
 # used in the pipeline too (for poly)

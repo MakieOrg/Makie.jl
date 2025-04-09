@@ -1,63 +1,32 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
+const RangeLike = Union{AbstractVector,ClosedInterval,Tuple{Real,Real}}
 
-# if no plot type based conversion is defined, we try using a trait
-function convert_arguments(T::PlotFunc, args...; kw...)
-    ct = conversion_trait(T)
-    try
-        convert_arguments(ct, args...; kw...)
-    catch e
-        if e isa MethodError
-            try
-                convert_arguments_individually(T, args...)
-            catch ee
-                if ee isa MethodError
-                    error(
-                        """
-                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
-
-                        The signature that could not be converted was:
-                        $(join("::" .* string.(typeof.(args)), ", "))
-
-                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://docs.makie.org/stable/documentation/recipes/index.html).
-
-                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
-                        """
-                    )
-                else
-                    rethrow(ee)
-                end
-            end
-        else
-            rethrow(e)
-        end
+function convert_arguments(CT::ConversionTrait, args...)
+    expanded = expand_dimensions(CT, args...)
+    if !isnothing(expanded)
+        return convert_arguments(CT, expanded...)
     end
+    return args
 end
 
-# in case no trait matches we try to convert each individual argument
-# and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments_individually(T::PlotFunc, args...)
-    # convert each single argument until it doesn't change type anymore
-    single_converted = recursively_convert_argument.(args)
-    # if the type of args hasn't changed this function call didn't help and we error
-    if typeof(single_converted) == typeof(args)
-        throw(MethodError(convert_arguments, (T, args...)))
-    end
-    # otherwise we try converting our newly single-converted args again because
-    # now a normal conversion method might work again
-    convert_arguments(T, single_converted...)
-end
+function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+    # landing here means, that there is no matching `convert_arguments` method for the plot type
+    # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions
+    CT = conversion_trait(T, args...)
 
-function recursively_convert_argument(x)
-    newx = convert_single_argument(x)
-    if typeof(newx) == typeof(x)
-        x
-    else
-        recursively_convert_argument(newx)
+    # Try single argument convert after
+    arguments_converted = map(convert_single_argument, args)
+    if arguments_converted !== args
+        # This changed something, so we start back with convert_arguments
+        return convert_arguments(T, arguments_converted...; kw...)
     end
+    # next we try to convert the arguments with the conversion trait
+    trait_converted = convert_arguments(CT, args...; kw...)
+    trait_converted !== args && return convert_arguments(T, trait_converted...; kw...)
+    # else we give up!
+    return args
 end
 
 ################################################################################
@@ -65,17 +34,29 @@ end
 ################################################################################
 
 # if no specific conversion is defined, we don't convert
-convert_single_argument(x) = x
+convert_single_argument(@nospecialize(x)) = x
 
-# replace missings with NaNs
+# replace `missing`s with `NaN`s
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
+    return float_convert(a)
 end
 
 # same for points
-function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
-    [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
+function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N, PT}}}) where {N, PT}
+    T = float_type(PT)
+    return Point{N,T}[ismissing(x) ? Point{N,T}(NaN) : Point{N,T}(x) for x in a]
 end
+
+function convert_single_argument(a::AbstractArray{Any})
+    isempty(a) && return a
+    return convert_single_argument([x for x in a])
+end
+
+# Leave concretely typed vectors alone (AbstractArray{<:Union{Missing, <:Real}} also dispatches for `Vector{Float32}`)
+convert_single_argument(a::AbstractArray{T}) where {T<:Real} = a
+convert_single_argument(a::AbstractArray{<:Point{N, T}}) where {N, T} = a
+convert_single_argument(a::OffsetArray{<:Point}) = OffsetArrays.no_offset_view(a)
+
 
 ################################################################################
 #                                  PointBased                                  #
@@ -85,19 +66,31 @@ end
 Wrap a single point or equivalent object in a single-element array.
 """
 function convert_arguments(::PointBased, x::Real, y::Real)
-    ([Point2f(x, y)],)
+    T = float_type(x, y)
+    return ([Point{2, T}(x, y)],)
 end
 
 function convert_arguments(::PointBased, x::Real, y::Real, z::Real)
-    ([Point3f(x, y, z)],)
+    T = float_type(x, y, z)
+    return ([Point{3, T}(x, y, z)],)
 end
 
-function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
-    ([convert(Point{N, Float32}, position)],)
+function convert_arguments(::PointBased, position::VecTypes{N, T}) where {N, T <: Real}
+    _T = @isdefined(T) ? T : Float64
+    return ([Point{N,float_type(_T)}(position)],)
 end
 
-function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (elconvert(Point{N, Float32}, positions),)
+function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T <: Real}
+    # VecTypes{N, T} will have T undefined if tuple has different number types
+    _T = @isdefined(T) ? T : Float64
+    if !(N in (2, 3))
+        throw(ArgumentError("Only 2D and 3D points are supported."))
+    end
+    return (elconvert(Point{N, float_type(_T)}, positions),)
+end
+
+function convert_arguments(T::PointBased, positions::OffsetVector)
+   return convert_arguments(T, OffsetArrays.no_offset_view(positions))
 end
 
 function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
@@ -109,9 +102,21 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (vec(Point3f.(x, y', z)),)
+function convert_arguments(::PointBased, x::RealArray, y::RealVector, z::RealMatrix)
+    T = float_type(x, y, z)
+    (vec(Point{3, T}.(x, y', z)),)
 end
+
+function convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector)
+    T = float_type(x, y, z)
+    return (Point{3,T}.(x, y, z),)
+end
+
+
+function convert_arguments(p::PointBased, x::AbstractInterval, y::AbstractInterval, z::RealMatrix)
+    return convert_arguments(p, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+end
+
 """
     convert_arguments(P, x, y, z)::(Vector)
 
@@ -119,7 +124,15 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f.(x, y, z),)
+function convert_arguments(::PointBased, x::RealArray, y::RealMatrix, z::RealMatrix)
+    T = float_type(x, y, z)
+    (vec(Point{3, T}.(x, y, z)),)
+end
+
+
+function convert_arguments(::PointBased, x::RealVector, y::RealVector)
+    return (Point{2,float_type(x, y)}.(x, y),)
+end
 
 """
     convert_arguments(P, x)::(Vector)
@@ -127,24 +140,14 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
+function convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {Dim, T}
+    return convert_arguments(p, decompose(Point{Dim, float_type(T)}, x))
+end
 
-function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
+function convert_arguments(::PointBased, pos::RealMatrix)
     (to_vertices(pos),)
 end
 
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f.(x, y),)
-
-convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f.(x, y, z),)
-
-"""
-    convert_arguments(P, y)::Vector
-Takes vector `y` and generates a range from 1 to the length of `y`, for plotting on
-an arbitrary `x` axis.
-
-`P` is the plot Type (it is optional).
-"""
-convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, keys(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -154,7 +157,6 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f.(x, y),)
 convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
@@ -166,33 +168,33 @@ Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::PointBased, x::Rect2)
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f, x)[[1, 2, 4, 3]])
+function convert_arguments(P::PointBased, x::Rect2{T}) where T
+    return convert_arguments(P, decompose(Point2{float_type(T)}, x))
 end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
-    return convert_arguments(P, decompose(Point3f, mesh))
+    return convert_arguments(P, coordinates(mesh))
 end
 
-function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
-    # TODO FaceView should be natively supported by backends!
-    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:Point}
+#     # TODO FaceView should be natively supported by backends!
+#     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
+# end
+
+function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
+    return (decompose(Point3{float_type(T)}, rect),)
 end
 
-function convert_arguments(P::PointBased, rect::Rect3)
-    return (decompose(Point3f, rect),)
-end
-
-function convert_arguments(P::Type{<: LineSegments}, rect::Rect3)
-    f = decompose(LineFace{Int}, rect)
-    p = connect(decompose(Point3f, rect), f)
+function convert_arguments(P::Type{<: LineSegments}, rect::Rect3{T}) where {T}
+    f = GeometryBasics.remove_duplicates(decompose(LineFace{Int}, rect))
+    p = connect(decompose(Point3{float_type(T)}, rect), f)
     return convert_arguments(P, p)
 end
 
-function convert_arguments(::Type{<: Lines}, rect::Rect3)
-    points = unique(decompose(Point3f, rect))
-    push!(points, Point3f(NaN)) # use to seperate linesegments
+function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
+    PT = Point3{float_type(T)}
+    points = decompose(PT, rect)
+    push!(points, PT(NaN)) # use to separate linesegments
     return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
 end
 """
@@ -210,11 +212,14 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
-    arr = copy(convert_arguments(PB, linestring[1])[1])
-    for ls in 2:length(linestring)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1])
+function convert_arguments(PB::PointBased, linestring::Union{AbstractVector{<:LineString{N, T}}, MultiLineString{N, T}, AbstractVector{<:MultiLineString{N,T}}}) where {N, T}
+    T_out = float_type(T)
+    arr = Point{N, T_out}[]; n = length(linestring)
+    for idx in 1:n
+        append!(arr, convert_arguments(PB, linestring[idx])[1])
+        if idx != n # don't add NaN at the end
+            push!(arr, Point{N, T_out}(NaN))
+        end
     end
     return (arr,)
 end
@@ -226,15 +231,17 @@ end
 Takes an input `Polygon` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, pol::Polygon)
-    arr = copy(convert_arguments(PB, pol.exterior)[1])
-    push!(arr, arr[1]) # close exterior
-    if !isempty(pol.interiors)
-        push!(arr, Point2f(NaN))
-        for interior in pol.interiors
-            inter = convert_arguments(PB, interior)[1]
-            append!(arr, inter)
-            # close interior + separate!
-            push!(arr, inter[1], Point2f(NaN))
+    converted = convert_arguments(PB, pol.exterior)[1] # this should always be a Tuple{<: Vector{Point}}
+    arr = copy(converted)
+    if !isempty(arr) && arr[1] != arr[end]
+        push!(arr, arr[1]) # close exterior
+    end
+    for interior in pol.interiors
+        push!(arr, Point2(NaN))
+        inter = convert_arguments(PB, interior)[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, inter)
+        if !isempty(inter) && inter[1] != inter[end]
+            push!(arr, inter[1]) # close interior
         end
     end
     return (arr,)
@@ -246,23 +253,27 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
-    arr = copy(convert_arguments(PB, mp[1])[1])
-    for p in 2:length(mp)
-        push!(arr, Point2f(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1])
+function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon{N, T}}, MultiPolygon{N, T}}) where {N, T}
+    arr = Point{N,float_type(T)}[]
+    n = length(mp)
+    for idx in 1:n
+        converted = convert_arguments(PB, mp[idx])[1] # this should always be a Tuple{<: Vector{Point}}
+        append!(arr, converted)
+        if idx != n # don't add NaN at the end
+            push!(arr, Point{N, float_type(T)}(NaN))
+        end
     end
     return (arr,)
 end
 
 function convert_arguments(::PointBased, b::BezierPath)
     b2 = replace_nonfreetype_commands(b)
-    points = Point2f[]
-    last_point = Point2f(NaN)
+    points = Point2d[]
+    last_point = Point2d(NaN)
     last_moveto = false
 
     function poly3(t, p0, p1, p2, p3)
-        Point2f((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
+        Point2d((1-t)^3 .* p0 .+ t*p1*(3*(1-t)^2) + p2*(3*(1-t)*t^2) .+ p3*t^3)
     end
 
     for command in b2.commands
@@ -271,7 +282,7 @@ function convert_arguments(::PointBased, b::BezierPath)
             last_moveto = true
         elseif command isa LineTo
             if last_moveto
-                isempty(points) || push!(points, Point2f(NaN, NaN))
+                isempty(points) || push!(points, Point2d(NaN, NaN))
                 push!(points, last_point)
             end
             push!(points, command.p)
@@ -279,7 +290,7 @@ function convert_arguments(::PointBased, b::BezierPath)
             last_moveto = false
         elseif command isa CurveTo
             if last_moveto
-                isempty(points) || push!(points, Point2f(NaN, NaN))
+                isempty(points) || push!(points, Point2d(NaN, NaN))
                 push!(points, last_point)
             end
             last_moveto = false
@@ -294,80 +305,127 @@ end
 
 
 ################################################################################
-#                                 SurfaceLike                                  #
+#                                  GridBased                                   #
 ################################################################################
 
-function edges(v::AbstractVector)
+function edges(v::AbstractVector{T}) where T
+    T_out = float_type(T)
     l = length(v)
     if l == 1
-        return [v[1] - 0.5, v[1] + 0.5]
+        return T_out[v[1] - 0.5, v[1] + 0.5]
     else
         # Equivalent to
         # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
         # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders = T_out[0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
         borders[1] = 2borders[1] - borders[2]
         borders[end] = 2borders[end] - borders[end-1]
         return borders
     end
 end
 
-function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+function adjust_axes(::CellGrid, x::RealVector, y::RealVector, z::AbstractMatrix)
     x̂, ŷ = map((x, y), size(z)) do v, sz
         return length(v) == sz ? edges(v) : v
     end
     return x̂, ŷ, z
 end
 
-adjust_axes(::SurfaceLike, x, y, z) = x, y, z
+adjust_axes(::VertexGrid, x, y, z) = x, y, z
+
 
 """
-    convert_arguments(SL::SurfaceLike, x::VecOrMat, y::VecOrMat, z::Matrix)
+    convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
 
-If `SL` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
+If `ct` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
 whether they represent edges or centers of the heatmap bins.
 If they are centers, convert to edges. Convert eltypes to `Float32` and return
 outputs as a `Tuple`.
 """
-function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return map(el32convert, adjust_axes(SL, x, y, z))
-end
-function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return map(el32convert, adjust_axes(SL, x, y, z))
+function convert_arguments(ct::GridBased, x::AbstractVecOrMat{<:Real}, y::AbstractVecOrMat{<:Real},
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    nx, ny, nz = adjust_axes(ct, x, y, z)
+    return (float_convert(nx), float_convert(ny), el32convert(nz))
 end
 
-convert_arguments(sl::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = convert_arguments(sl, x, y, zeros(size(y)))
+convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
-    convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
+    convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
 
-Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the closed range to
-linspaces with size(z, 1/2)
-`P` is the plot Type (it is optional).
+Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
+with size(z, 1/2).
 """
-function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<: Union{Real, Colorant}})
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
-"""
-    convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
-
-Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
-and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(sl::SurfaceLike, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(sl, 0f0 .. n, 0f0 .. m, el32convert(data))
+function convert_arguments(::VertexGrid, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
 
-function convert_arguments(ds::DiscreteSurface, data::AbstractMatrix)
-    n, m = Float32.(size(data))
-    convert_arguments(ds, edges(1:n), edges(1:m), el32convert(data))
+function to_endpoints(x::Tuple{<:Real,<:Real})
+    T = float_type(x...)
+    return EndPoints(T.(x))
+end
+to_endpoints(x::Interval) = to_endpoints(endpoints(x))
+to_endpoints(x::EndPoints) = x
+
+to_endpoints(x::AbstractVector, side, trait) = throw_range_error(x, side, trait)
+to_endpoints(x::Union{Tuple, EndPoints, Interval}, side, trait) = to_endpoints(x)
+
+function throw_range_error(value::T, side, trait) where {T}
+    error(
+        "Encountered `$T` with value $value on side $side in `convert_arguments` for the `$trait`
+        conversion. Using `$T` to specify one dimension of `$trait` is deprecated because `$trait`
+        sides always need exactly two values, start and stop. Use interval notation `start .. stop`,
+        a two-element tuple `(start, stop)` or `Makie.EndPoints(start, stop)` instead."
+    )
 end
 
-function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractVector{<:Number})
+function convert_arguments(::GridBased, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (to_endpoints(x), to_endpoints(y), el32convert(z))
+end
+
+function convert_arguments(::CellGrid, x::EndPoints, y::EndPoints,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+    return (x, y, el32convert(z))
+end
+
+function get_step(x::EndPoints, n)
+    # length 1 step should be 1
+    x[1] == x[2] && n == 1 && return 1
+    return step(range(x...; length = n))
+end
+
+function convert_arguments(::CellGrid, x::EndPointsLike, y::EndPointsLike,
+                           z::AbstractMatrix{<:Union{Real,Colorant}})
+
+    xe = to_endpoints(x)
+    ye = to_endpoints(y)
+    xstep = get_step(xe, size(z, 1)) / 2.0
+    ystep = get_step(ye, size(z, 2)) / 2.0
+
+    Tx = typeof(xe[1])
+    Ty = typeof(ye[1])
+    # heatmaps are centered on the edges, so we need to adjust the range
+    # This is done in conversions, since it's also how we calculate the boundingbox (heatmapplot.x, heatmap.y)
+    # We need the endpoint type here, since convert_arguments((0, 1), (0, 1), z), which only subtracts the step
+    # Will end in a stackoverflow, since convert_arguments gets called every time the `args_in != args_out`.
+    # If we return a different type with no conversion overload, it stops that recursion
+    return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
+end
+
+function convert_arguments(::ImageLike, xs::RangeLike, ys::RangeLike,
+                           data::AbstractMatrix{<:Union{Real,Colorant}})
+    x = to_endpoints(xs, "x", ImageLike)
+    y = to_endpoints(ys, "y", ImageLike)
+    return (x, y, el32convert(data))
+end
+
+function convert_arguments(ct::GridBased, x::RealVector, y::RealVector, z::RealVector)
     if !(length(x) == length(y) == length(z))
         error("x, y and z need to have the same length. Lengths are $(length.((x, y, z)))")
     end
@@ -389,9 +447,8 @@ function convert_arguments(SL::SurfaceLike, x::AbstractVector{<:Number}, y::Abst
         j = searchsortedfirst(y_centers, yi)
         @inbounds zs[i, j] = zi
     end
-    convert_arguments(SL, x_centers, y_centers, zs)
+    return convert_arguments(ct, x_centers, y_centers, zs)
 end
-
 
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
@@ -400,75 +457,45 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(sl::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(ct::Union{GridBased, ImageLike}, x::AbstractVector, y::AbstractVector, f::Function)
     if !applicable(f, x[1], y[1])
-        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+        error("You need to pass a function with signature f(x::$(eltype(x)), y::$(eltype(y))). Found: $f")
     end
-    T = typeof(f(x[1], y[1]))
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    return convert_arguments(sl, x, y, z)
+    return convert_arguments(ct, x, y, f.(x, y'))
 end
 
 ################################################################################
 #                                  VolumeLike                                  #
 ################################################################################
 
-"""
-    convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
-
-Takes an array of `{T, 3} where T`, converts the dimesions `n`, `m` and `k` into `ClosedInterval`,
-and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
-    n, m, k = Float32.(size(data))
-    return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike,
+                           data::RealArray{3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
 
-function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
-    return (x, y, z, el32convert(data))
+# TODO: Consider using RGB(A){N0f8} for all of these
+# RGBA/Vec4 is the native data type for :absorptionrgba, :additive
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Union{VecTypes{3}, VecTypes{4}, RGB, RGBA}, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), el32convert(data))
 end
-"""
-    convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
-
-Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and puts everything in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
-    (x, y, z, el32convert(i))
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.Color, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBf.(data))
 end
-
-
-"""
-    convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
-
-Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on the volume
-spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
-    if !applicable(f, x[1], y[1], z[1])
-        error("You need to pass a function with signature f(x, y, z). Found: $f")
-    end
-    _x, _y, _z = ntuple(Val(3)) do i
-        A = (x, y, z)[i]
-        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
-    end
-    return (x, y, z, el32convert.(f.(_x, _y, _z)))
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::Array{<: Colors.TransparentColor, 3})
+    return (to_endpoints(x, "x", VolumeLike), to_endpoints(y, "y", VolumeLike),
+            to_endpoints(z, "z", VolumeLike), RGBAf.(data))
 end
 
 ################################################################################
 #                                <:Lines                                       #
 ################################################################################
 
-function convert_arguments(::Type{<: Lines}, x::Rect2)
-    # TODO fix the order of decompose
-    points = decompose(Point2f, x)
-    return (points[[1, 2, 4, 3, 1]],)
+function convert_arguments(::Type{<: Lines}, x::Rect2{T}) where T
+    points = decompose(Point2{float_type(T)}, x)
+    return (points[[1, 2, 3, 4, 1]],)
 end
 
 ################################################################################
@@ -480,26 +507,13 @@ Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
 function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
-    (elconvert(Point{N, Float32}, reinterpret(Point{N, T}, positions)),)
+    return (float_convert(reinterpret(Point{N,T}, positions)),)
 end
 
-function convert_arguments(::Type{<: LineSegments}, x::Rect2)
-    # TODO fix the order of decompose
-    points = decompose(Point2f, x)
-    return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
+function convert_arguments(::Type{<: LineSegments}, x::Rect2{T}) where T
+    points = decompose(Point2{float_type(T)}, x)
+    return (points[[1, 2, 2, 3, 3, 4, 4, 1]],)
 end
-
-################################################################################
-#                                    <:Text                                    #
-################################################################################
-
-"""
-    convert_arguments(x)::(String)
-
-Takes an input `AbstractString` `x` and converts it to a string.
-"""
-# convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
-
 
 ################################################################################
 #                                    <:Mesh                                    #
@@ -515,7 +529,7 @@ function convert_arguments(
         T::Type{<:Mesh},
         x::RealVector, y::RealVector, z::RealVector
     )
-    convert_arguments(T, Point3f.(x, y, z))
+    convert_arguments(T, Point3{float_type(x, y, z)}.(x, y, z))
 end
 """
     convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
@@ -532,36 +546,49 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
-    # Make sure we have normals!
-    if !hasproperty(mesh, :normals)
-        n = normals(mesh)
-        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
-        if n !== nothing
-            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f, n))
-        end
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) where {N, T}
+    n = nothing
+    if !hasproperty(mesh, :normal)
+        n = normals(coordinates(mesh), faces(mesh), normaltype = Vec3f)
     end
-    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
+
+    mesh = GeometryBasics.mesh(mesh, facetype = GLTriangleFace, pointtype = Point{N, float_type(T)}, normal = n)
+    mesh = GeometryBasics.expand_faceviews(mesh) # TODO: can we do this (more) in-place?
+
+    return (mesh,)
 end
 
 function convert_arguments(
-        MT::Type{<:Mesh},
+        ::Type{<:Mesh},
         meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
+    # TODO: clear faceviews
     return (meshes,)
 end
 
-function convert_arguments(
-        MT::Type{<:Mesh},
-        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
-    )
-    return convert_arguments(MT, triangle_mesh(xyz))
+function convert_arguments(MT::Type{<:Mesh}, xyz::AbstractPolygon)
+    m = GeometryBasics.mesh(xyz; pointtype=float_type(xyz), facetype=GLTriangleFace)
+    return convert_arguments(MT, m)
 end
 
-function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
-    # we convert to UV mesh as default, because otherwise the uv informations get lost
+# TODO GeometryBasics can't deal with this directly for Integer Points?
+function convert_arguments(
+        MT::Type{<:Mesh},
+        xyz::AbstractVector{<: Point{2}}
+    )
+    ps = float_convert(xyz)
+    m = GeometryBasics.mesh(ps; pointtype=eltype(ps), facetype=GLTriangleFace)
+    return convert_arguments(MT, m)
+end
+
+function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
+    # we convert to UV mesh as default, because otherwise the uv information gets lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.uv_normal_mesh(geom),)
+    m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
+        geom; pointtype = Point{N, float_type(T)},
+        uvtype = Vec2f, normaltype = Vec3f, facetype = GLTriangleFace
+    ))
+    return (m,)
 end
 
 """
@@ -575,14 +602,14 @@ function convert_arguments(
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    return convert_arguments(T, Point3f.(x, y, z), indices)
+    return convert_arguments(T, Point3{float_type(x, y, z)}.(x, y, z), indices)
 end
 
 """
     convert_arguments(Mesh, vertices, indices)::GLNormalMesh
 
 Takes `vertices` and `indices`, and creates a triangle mesh out of those.
-See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
+See `to_vertices` and `to_triangles` for more information about
 accepted types.
 """
 function convert_arguments(
@@ -590,49 +617,89 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
-    (m,)
+    vs = to_vertices(vertices)
+    fs = to_triangles(indices)
+    if eltype(vs) <: Point{3}
+        ns = Vec3f.(normals(vs, fs))
+        m = GeometryBasics.Mesh(vs, fs; normal = ns)
+    else
+        # TODO, we don't need to add normals here, but maybe nice for type stability?
+        m = GeometryBasics.Mesh(vs, fs; normal = fill(Vec3f(0, 0, 1), length(vs)))
+    end
+    return (m,)
 end
+
 
 ################################################################################
 #                             Function Conversions                             #
 ################################################################################
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
+
+# Allow the user to pass a function to `arrows` which determines the direction
+# and magnitude of the arrows.  The function must accept `Point2f` as input.
+# and return Point2f or Vec2f or some array like structure as output.
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, f::Function)
+    points = Point2{float_type(x, y)}.(x, y')
+    f_out = Vec2{float_type(x, y)}.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
-    x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
+function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::RealVector,
+                           f::Function)
+    points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
+    f_out = Vec3{float_type(x, y, z)}.(f.(points))
+    return (vec(points), vec(f_out))
 end
 
-# The following `tryrange` code was copied from Plots.jl
-# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
-
-# try some intervals over which the function may be defined
-function tryrange(F::AbstractArray, vec)
-    rets = [tryrange(f, vec) for f in F] # get the preferred for each
-    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
-    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
-    rets[1]
+# Note: AbstractRange must be linear
+is_regularly_spaced(x::AbstractRange) = true
+function is_regularly_spaced(x::AbstractVector)
+    delta = x[2] - x[1]
+    return all(i -> x[i] - x[i-1] ≈ delta, 3:length(x))
 end
 
-function tryrange(F, vec)
-    for v in vec
-        try
-            tmp = F(v)
-            return v
-        catch
-        end
+"""
+    convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
+
+Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on the volume
+spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
+
+`P` is the plot Type (it is optional).
+"""
+function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVector, f::Function)
+    if !applicable(f, x[1], y[1], z[1])
+        error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
-    error("$F is not a Function, or is not defined at any of the values $vec")
+    # Verify grid regularity
+    is_regularly_spaced(x) || throw_range_error(x, "x", VolumeLike)
+    is_regularly_spaced(y) || throw_range_error(y, "y", VolumeLike)
+    is_regularly_spaced(z) || throw_range_error(z, "z", VolumeLike)
+
+    _x, _y, _z = ntuple(Val(3)) do i
+        A = (x, y, z)[i]
+        return reshape(A, ntuple(j -> j != i ? 1 : length(A), Val(3)))
+    end
+
+    return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
+end
+
+function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
+    return convert_arguments(P, r, map(f, r))
+end
+
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
+    return convert_arguments(P, x, y)
+end
+
+function convert_arguments(P::Type{<:Union{Band,Rangebars}}, i::AbstractInterval, f::Function)
+    # f() returns interval for these plottypes
+    x, y = PlotUtils.adapted_grid(x -> mean(f(x)), endpoints(i))
+    return convert_arguments(P, x, f.(x))
 end
 
 # OffsetArrays conversions
-function convert_arguments(sl::SurfaceLike, wm::OffsetArray)
+function convert_arguments(sl::GridBased, wm::OffsetArray)
   x1, y1 = wm.offsets .+ 1
   nx, ny = size(wm)
   x = range(x1, length = nx)
@@ -645,28 +712,75 @@ end
 #                               Helper Functions                               #
 ################################################################################
 
-to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
+to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
-Converts the elemen array type to `T1` without making a copy if the element type matches
+Converts the element array type to `T1` without making a copy if the element type matches
 """
-elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
-float32type(x::Type) = Float32
-float32type(::Type{<: RGB}) = RGB{Float32}
+function elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N}
+    return convert(AbstractArray{T1, N}, x)
+end
+
+function elconvert(::Type{T}, x::AbstractArray{<: Union{Missing, <:Real}}) where {T}
+    return map(x) do elem
+        return (ismissing(elem) ? T(NaN) : convert(T, elem))
+    end
+end
+
+float_type(args::Type) = error("Type $(args) not supported")
+float_type(a, rest...) = float_type(typeof(a), map(typeof, rest)...)
+float_type(a::AbstractArray, rest...) = float_type(float_type(a), map(float_type, rest)...)
+float_type(a::AbstractPolygon, rest...) = float_type(float_type(a), map(float_type, rest)...)
+float_type(a::Type, rest::Type...) = promote_type(map(float_type, (a, rest...))...)
+float_type(::Type{Float64}) = Float64
+float_type(::Type{Float32}) = Float32
+float_type(::Type{Bool}) = Float32
+float_type(::Type{<:Real}) = Float64
+float_type(::Type{<:Union{Int8,UInt8,Int16,UInt16}}) = Float32
+float_type(::Type{<:Union{Float16}}) = Float32
+float_type(::Type{Point{N,T}}) where {N,T} = Point{N,float_type(T)}
+float_type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float_type(T)}
+float_type(::Type{NTuple{N, T}}) where {N,T} = Point{N,float_type(T)}
+float_type(::Type{Tuple{T1, T2}}) where {T1,T2} = Point2{promote_type(float_type(T1), float_type(T2))}
+float_type(::Type{Tuple{T1, T2, T3}}) where {T1,T2,T3} = Point3{promote_type(float_type(T1), float_type(T2), float_type(T3))}
+float_type(::Type{Union{Missing, T}}) where {T} = float_type(T)
+float_type(::Type{Union{Nothing,T}}) where {T} = float_type(T)
+float_type(::Type{ClosedInterval{T}}) where {T} = ClosedInterval{T}
+float_type(::Type{ClosedInterval}) = ClosedInterval{Float32}
+float_type(::AbstractArray{T}) where {T} = float_type(T)
+float_type(::AbstractPolygon{N, T}) where {N, T} = Point{N, float_type(T)}
+
+float_convert(x) = convert(float_type(x), x)
+float_convert(x::AbstractArray{Float32}) = x
+float_convert(x::AbstractArray{Float64}) = x
+float_convert(x::AbstractArray) = elconvert(float_type(x), x)
+float_convert(x::Observable) = lift(float_convert, x)
+float_convert(x::AbstractArray{<:Union{Missing, T}}) where {T<:Real} = elconvert(float_type(T), x)
+
+float32type(::Type{<:Real}) = Float32
+float32type(::Type{Point{N,T}}) where {N,T} = Point{N,float32type(T)}
+float32type(::Type{Vec{N,T}}) where {N,T} = Vec{N,float32type(T)}
+
+# We may want to always use UInt8 for colors?
+float32type(::Type{<:RGB{N0f8}}) = RGB{N0f8}
+float32type(::Type{<:RGBA{N0f8}}) = RGBA{N0f8}
+float32type(::Type{<:RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
-float32type(x::AbstractArray{T}) where T = float32type(T)
-float32type(x::T) where T = float32type(T)
+float32type(::AbstractArray{T}) where T = float32type(T)
+float32type(::T) where {T} = float32type(T)
+
+el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
+el32convert(x::AbstractArray{T}) where {T<:Real} = elconvert(float32type(T), x)
+el32convert(x::AbstractArray{<:Union{Missing,T}}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{Float32}) = x
 el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
+el32convert(x::Mat{X, Y, T}) where {X, Y, T} = Mat{X, Y, Float32}(x)
 
-function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
-    return map(x) do elem
-        return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
-    end::Array{Float32, N}
-end
+
 """
     to_triangles(indices)
 
@@ -705,7 +819,7 @@ Converts a representation of vertices `v` to its canonical representation as a
 
 - An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
 
-- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case exta dimensions will
+- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case extra dimensions will
   be either truncated or padded with zeros as required,
 
 - An `AbstractMatrix`"
@@ -713,49 +827,76 @@ Converts a representation of vertices `v` to its canonical representation as a
   - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
 """
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
-    vert3f0 = T != Float32 ? Point3f.(verts) : verts
-    return reinterpret(Point3f, vert3f0)
+    T_out = float_type(T)
+    vert3 = T != T_out ? map(Point3{T_out}, verts) : verts
+    return reinterpret(Point3{T_out}, vert3)
 end
 
-function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(to_ndim.(Point3f, verts, 0.0))
+function to_vertices(verts::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+    return map(Point{N, float_type(T)}, verts)
 end
 
-function to_vertices(verts::AbstractMatrix{<: Number})
+function to_vertices(verts::AbstractMatrix{T}) where {T<:Real}
+    T_out = float_type(T)
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val(1))
+        to_vertices(verts, T_out, Val(1), Val(size(verts, 1)))
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val(2))
+        to_vertices(verts, T_out, Val(2), Val(size(verts, 2)))
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
-    N = size(verts, 1)
-    if T == Float32 && N == 3
-        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{1}, ::Val{N}) where {T <: Real, Tout, N}
+    if T == Tout && N == 3
+        return reinterpret(Point{N, T}, elconvert(T, vec(verts)))
     else
-        let N = Val(N), lverts = verts
-            broadcast(1:size(verts, 2), N) do vidx, n
-                to_ndim(Point3f, ntuple(i-> lverts[i, vidx], n), 0.0)
-            end
-        end
+        return Point{N,Tout}[ntuple(j -> Tout(verts[j, i]), N) for i in 1:size(verts, 2)]
     end
 end
 
-function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
-    let N = Val(size(verts, 2)), lverts = verts
-        broadcast(1:size(verts, 1), N) do vidx, n
-            to_ndim(Point3f, ntuple(i-> lverts[vidx, i], n), 0.0)
+function to_vertices(verts::AbstractMatrix{T}, ::Type{Tout}, ::Val{2}, ::Val{N}) where {T<:Real, Tout, N}
+    return Point{N, Tout}[ntuple(j-> Tout(verts[i, j]), N) for i in 1:size(verts, 1)]
+end
+
+
+################################################################################
+### Unused?
+################################################################################
+
+# The following `tryrange` code was copied from Plots.jl
+# https://github.com/MakieOrg/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+
+# try some intervals over which the function may be defined
+function tryrange(F::AbstractArray, vec)
+    rets = [tryrange(f, vec) for f in F] # get the preferred for each
+    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
+    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
+    rets[1]
+end
+
+function tryrange(F, vec)
+    for v in vec
+        try
+            tmp = F(v)
+            return v
+        catch
         end
     end
+    error("$F is not a Function, or is not defined at any of the values $vec")
 end
+
+
+
 
 
 ################################################################################
 #                            Attribute conversions                             #
 ################################################################################
+
+
+
+
 
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
@@ -765,7 +906,6 @@ convert_attribute(x, key::Key) = x
 convert_attribute(color, ::key"color") = to_color(color)
 
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
-convert_attribute(rotation, ::key"rotation") = to_rotation(rotation)
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
@@ -781,6 +921,7 @@ struct Palette
    Palette(colors) = new(to_color.(colors), zero(Int))
 end
 Palette(name::Union{String, Symbol}, n = 8) = Palette(categorical_colors(name, n))
+
 function to_color(p::Palette)
     N = length(p.colors)
     p.i[] = p.i[] == N ? 1 : p.i[] + 1
@@ -790,6 +931,8 @@ end
 to_color(c::Nothing) = c # for when color is not used
 to_color(c::Real) = Float32(c)
 to_color(c::Colorant) = convert(RGBA{Float32}, c)
+to_color(c::VecTypes{3}) = RGBAf(c[1], c[2], c[3], 1)
+to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
@@ -800,11 +943,11 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
-convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
-convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
-convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
-convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
-convert_attribute(r, ::key"rotations") = to_rotation(r)
+convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
+convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
+convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
+convert_attribute(r::StaticVector, ::key"rotation") = to_rotation(r)
+convert_attribute(r, ::key"rotation") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = to_3d_scale(c)
@@ -817,6 +960,151 @@ to_3d_scale(x::Number) = Vec3f(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f, x, 1)
 to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
+convert_attribute(o, ::key"marker_offset", ::key"scatter") = to_3d_offset(o)
+# Is it reasonable to go from offset -> (offset, 0, 0)?
+to_3d_offset(x::VecTypes) = to_ndim(Vec3f, x, 0)
+to_3d_offset(x::AbstractVector) = to_3d_offset.(x)
+
+
+## UV Transforms
+
+# defaults that place a cow image the same way as the image
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+# convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(0, 1, 1, 0, 0, 0)
+
+# defaults matching master
+# Note - defaults with Patterns should be identity (handled in backends)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"meshscatter") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Float32}(0, 1, -1, 0, 1, 0)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
+
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))
+convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat{3, 3}, k::key"uv_transform") = convert_attribute(Mat3f(x), k)
+convert_attribute(x::Mat{2, 3}, k::key"uv_transform") = convert_attribute(Mat{2, 3, Float32}(x), k)
+convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
+convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
+convert_attribute(x::Nothing, ::key"uv_transform") = x
+
+function convert_attribute(angle::Real, ::key"uv_transform")
+    # To rotate an image with uvs in the 0..1 range we need to translate,
+    # rotate, translate back.
+    # For patterns and in terms of what's actually happening to the uvs we
+    # should not translate at all.
+    error(
+        "Creating a uv_transform from a rotation angle is not implemented directly because one usually " *
+        "needs to translate as well to deal with the 0..1 value range. Use :rotr90, :rotl90, :rot180, " *
+        "Makie.uv_transform(angle) or multi-step expression (tuple) instead."
+    )
+end
+
+"""
+    uv_transform(args::Tuple)
+    uv_transform(args...)
+
+Returns a 3x3 uv transformation matrix combining all the given arguments. This
+lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
+like matrices `(op3, op2, op1)`.
+
+Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
+`uv_transform(translation, scale)` as a special case.
+"""
+function uv_transform(packed::Tuple)
+    combine(a::Mat3f, b::Mat3f) = a * b
+    # The arrays have already been copied by uv_transform(array)
+    combine(a::Array, b::Mat3f) = a .= a .* Ref(b)
+    combine(a::Mat3f, b::Array) = b .= Ref(a) .* b
+    combine(a::Array, b::Array) = a .= a .* b
+
+    return mapfoldl(uv_transform, combine, packed)
+end
+uv_transform(packed...) = uv_transform(packed)
+
+"""
+    uv_transform(::UniformScaling)
+    uv_transform(::typeof(identity))
+
+Returns a 3x3 identity matrix When passing `I` or `identity`.
+"""
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
+
+# repeated for packed uv_transforms
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+uv_transform(x::Array) = uv_transform.(x)
+uv_transform(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+
+# prefer scale as single argument since it may be useful for patterns
+# while just translation is mostly useless
+"""
+    uv_transform(scale::VecTypes{2})
+    uv_transform(translation::VecTypes{2}, scale::VecTypes{2})
+    uv_transform(angle::Real)
+
+Creates a 3x3 uv transformation matrix based on the given translation and scale
+or rotation angle (around z axis).
+"""
+uv_transform(x::Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}) = uv_transform(x[1], x[2])
+uv_transform(scale::VecTypes{2, <: Real}) = uv_transform(Vec2f(0), scale)
+function uv_transform(translation::VecTypes{2, <: Real}, scale::VecTypes{2, <: Real})
+    return Mat3f(
+        scale[1], 0, 0,
+        0, scale[2], 0,
+        translation[1], translation[2], 1
+    )
+end
+function uv_transform(angle::Real)
+    return Mat3f(
+         cos(angle), sin(angle), 0,
+        -sin(angle), cos(angle), 0,
+        0, 0, 1
+    )
+end
+
+"""
+    uv_transform(action::Symbol)
+
+Creates a 3x3 uv transformation matrix from a given named action. They assume
+`0 < uv < 1` and thus may not work correctly with Patterns. The actions include
+- `:rotr90` corresponding to `rotr90(texture)`
+- `:rotl90` corresponding to `rotl90(texture)`
+- `:rot180` corresponding to `rot180(texture)`
+- `:swap_xy, :transpose` which corresponds to transposing the texture
+- `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
+- `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+- `:identity` corresponding to no change/identity
+"""
+function uv_transform(action::Symbol)
+    # TODO: do some explicitly named operations
+    if action === :rotr90
+        return Mat3f(0,1,0, -1,0,0, 1,0,1)
+    elseif action === :rotl90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action === :rot180
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:swap_xy, :transpose)
+        return Mat3f(0,1,0, 1,0,0, 0,0,1)
+    elseif action in (:flip_x, :invert_x)
+        return Mat3f(-1,0,0, 0,1,0, 1,0,1)
+    elseif action in (:flip_y, :invert_y)
+        return Mat3f(1,0,0, 0,-1,0, 0,1,1)
+    elseif action in (:flip_xy, :invert_xy)
+        return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
+    elseif action in (:meshscatter, :mesh, :image, :surface)
+        M = convert_attribute(automatic, key"uv_transform"(), Key{action}())
+        return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
+    # elseif action == :surface
+        # return Mat3f(I)
+    elseif action === :identity
+        return Mat3f(I)
+    else
+        error("Transformation :$action not recognized.")
+    end
+end
 
 convert_attribute(x, ::key"uv_offset_width") = Vec4f(x)
 convert_attribute(x::AbstractVector{Vec4f}, ::key"uv_offset_width") = x
@@ -828,42 +1116,75 @@ convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 
-convert_attribute(x::Nothing, ::key"linestyle") = x
+####
+## Line style conversions
+####
 
-#     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
-#
-# [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
-convert_attribute(A::AbstractVector, ::key"linestyle") = A
-
-# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
-convert_attribute(ls::Union{Symbol,AbstractString}, ::key"linestyle") = line_pattern(ls, :normal)
-
-function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::key"linestyle")
-    line_pattern(ls[1], ls[2])
+convert_attribute(style, ::key"linestyle") = to_linestyle(style)
+to_linestyle(::Nothing) = nothing
+# add deprecation for old conversion
+function convert_attribute(style::AbstractVector, ::key"linestyle")
+    @warn "Using a `Vector{<:Real}` as a linestyle attribute is deprecated. Wrap it in a `Linestyle`."
+    return to_linestyle(Linestyle(style))
 end
 
-function line_pattern(linestyle, gaps)
+"""
+    Linestyle(value::Vector{<:Real})
+
+A type that can be used as value for the `linestyle` keyword argument
+of plotting functions to arbitrarily customize the linestyle.
+
+The `value` is a vector specifying the boundaries of the dashes in the line.
+Values 1 and 2 demarcate the first dash, values 2 and 3 the first gap, and so on.
+This means that usually, a pattern should have an odd number of values so that there's
+always a gap after a dash.
+
+Here's an example in ASCII code. If we specify `[0, 3, 6, 11, 16]` then we get the following
+pattern:
+
+```
+#  0  3   6   11   16  3  6   11
+#   ---   -----     ---   -----
+```
+"""
+struct Linestyle
+    value::Vector{Float32}
+end
+
+to_linestyle(style::Linestyle) = Float32[x - style.value[1] for x in style.value]
+
+# TODO only use NTuple{2, <: Real} and not any other container
+const GapType = Union{Real, Symbol, Tuple, AbstractVector}
+
+# A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
+to_linestyle(ls::Union{Symbol, AbstractString}) = line_pattern(ls, :normal)
+
+function to_linestyle(ls::Tuple{<:Union{Symbol, AbstractString}, <: GapType})
+    return line_pattern(ls[1], ls[2])
+end
+
+function line_pattern(linestyle::Symbol, gaps::GapType)
     pattern = line_diff_pattern(linestyle, gaps)
-    isnothing(pattern) ? pattern : float.([0.0; cumsum(pattern)])
+    return isnothing(pattern) ? pattern : Float32[0.0; cumsum(pattern)]
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
 
-function line_diff_pattern(ls::Symbol, gaps = :normal)
+function line_diff_pattern(ls::Symbol, gaps::GapType = :normal)
     if ls === :solid
-        nothing
+        return nothing
     elseif ls === :dash
-        line_diff_pattern("-", gaps)
+        return line_diff_pattern("-", gaps)
     elseif ls === :dot
-        line_diff_pattern(".", gaps)
+        return line_diff_pattern(".", gaps)
     elseif ls === :dashdot
-        line_diff_pattern("-.", gaps)
+        return line_diff_pattern("-.", gaps)
     elseif ls === :dashdotdot
-        line_diff_pattern("-..", gaps)
+        return line_diff_pattern("-..", gaps)
     else
         error(
             """
-            Unkown line style: $ls. Available linestyles are:
+            Unknown line style: $ls. Available linestyles are:
             :solid, :dash, :dot, :dashdot, :dashdotdot
             or a sequence of numbers enumerating the next transparent/opaque region.
             This sequence of numbers must be cumulative; 1 unit corresponds to 1 line width.
@@ -872,7 +1193,7 @@ function line_diff_pattern(ls::Symbol, gaps = :normal)
     end
 end
 
-function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
+function line_diff_pattern(ls_str::AbstractString, gaps::GapType = :normal)
     dot = 1
     dash = 3
     check_line_pattern(ls_str)
@@ -907,37 +1228,159 @@ function check_line_pattern(ls_str)
     nothing
 end
 
-function convert_gaps(gaps)
-  error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be `∈ ([:normal, :dense, :loose])`, a real number or a collection of two real numbers."
-  if gaps isa Symbol
-      gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
-      dot_gaps  = (normal = 2, dense = 1, loose = 4)
-      dash_gaps = (normal = 3, dense = 2, loose = 6)
+function convert_gaps(gaps::GapType)
+    error_msg = "You provided the gaps modifier $gaps when specifying the linestyle. The modifier must be one of the symbols `:normal`, `:dense` or `:loose`, a real number or a tuple of two real numbers."
+    if gaps isa Symbol
+        gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
+        dot_gaps  = (normal = 2, dense = 1, loose = 4)
+        dash_gaps = (normal = 3, dense = 2, loose = 6)
 
-      dot_gap  = getproperty(dot_gaps, gaps)
-      dash_gap = getproperty(dash_gaps, gaps)
-  elseif gaps isa Real
-      dot_gap = gaps
-      dash_gap = gaps
-  elseif length(gaps) == 2 && eltype(gaps) <: Real
-      dot_gap, dash_gap = gaps
-  else
-      throw(ArgumentError(error_msg))
-  end
-  (dot_gap = dot_gap, dash_gap = dash_gap)
+        dot_gap  = getproperty(dot_gaps, gaps)
+        dash_gap = getproperty(dash_gaps, gaps)
+    elseif gaps isa Real
+        dot_gap = gaps
+        dash_gap = gaps
+    elseif length(gaps) == 2 && eltype(gaps) <: Real
+        dot_gap, dash_gap = gaps
+    else
+        throw(ArgumentError(error_msg))
+    end
+    return (dot_gap = dot_gap, dash_gap = dash_gap)
 end
+
+function convert_attribute(value::Symbol, ::key"linecap")
+    # TODO: make this an enum?
+    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    return get(vals, value) do
+        error("$value is not a valid cap style. It must be one of $(keys(vals)).")
+    end
+end
+
+function convert_attribute(value::Symbol, ::key"joinstyle")
+    # TODO: make this an enum?
+    # 0 and 2 are shared between this and linecap. 1 has no equivalent here
+    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
+    return get(vals, value) do
+        error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
+    end
+end
+
+"""
+    miter_distance_to_angle(distance[, directed = false])
+
+Calculates the inner angle between two joined line segments corresponding to the
+distance between the line point (corner at linewidth → 0) and the outer corner.
+The distance is given in units of linewidth. If `directed = true` the distance
+in line direction is used instead.
+
+With respect to miter limits, a linejoin gets truncated if the corner distance
+exceeds a given limit or analogously the angle falls below a certain limit. This
+function calculates the angle given a distance.
+"""
+function miter_distance_to_angle(distance, directed = false)
+    if directed
+        distance < 0.0 && error("The directed distance cannot be negative.")
+        return 2.0 * atan(0.5 / distance)
+    else # Cairo style
+        distance < 0.5 && error("The undirected distance cannot be smaller than 0.5 as the outer corner is always at least half a linewidth away from the line point.")
+        return 2.0 * asin(0.5 / distance)
+    end
+end
+
+"""
+    miter_angle_to_distance(angle, directed = false)
+
+Calculates the inverse of `miter_distance_to_angle` with an angle given in radians.
+"""
+function miter_angle_to_distance(angle, directed = false)
+    0.0 < angle < pi || error("Angle must be between 0 and pi.")
+    return directed ? 0.5 / tan(0.5 * angle) : 0.5 / sin(0.5 * angle)
+end
+
 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 """
-    Text align, e.g.:
+    to_align(align[, error_prefix])
+
+Converts the given align to a `Vec2f`. Can convert `VecTypes{2}` and two
+component `Tuple`s with `Real` and `Symbol` elements.
+
+To specify a custom error message you can add an `error_prefix` or use
+`halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
-to_align(x::Tuple{Symbol, Symbol}) = Vec2f(alignment2num.(x))
-to_align(x::Vec2f) = x
+to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
+to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
+
+function to_align(v, error_prefix::String)
+    try
+        return to_align(v)
+    catch
+        error(error_prefix)
+    end
+end
+
+"""
+    halign2num(align[, error_msg])
+
+Attempts to convert a horizontal align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+halign2num(v::Real, error_msg = "") = Float32(v)
+function halign2num(v::Symbol, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    if v === :left
+        return 0.0f0
+    elseif v === :center
+        return 0.5f0
+    elseif v === :right
+        return 1.0f0
+    else
+        error(error_msg)
+    end
+end
+function halign2num(v, error_msg = "Invalid halign $v. Valid values are <:Real, :left, :center and :right.")
+    error(error_msg)
+end
+
+"""
+    valign2num(align[, error_msg])
+
+Attempts to convert a vertical align to a Float32 and errors with `error_msg`
+if it fails to do so.
+"""
+valign2num(v::Real, error_msg = "") = Float32(v)
+function valign2num(v::Symbol, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    if v === :top
+        return 1f0
+    elseif v === :bottom
+        return 0f0
+    elseif v === :center
+        return 0.5f0
+    else
+        error(error_msg)
+    end
+end
+function valign2num(v, error_msg = "Invalid valign $v. Valid values are <:Real, :bottom, :top, and :center.")
+    error(error_msg)
+end
+
+"""
+    angle2align(angle::Real)
+
+Converts a given angle to an alignment by projecting the resulting direction on
+a unit square and scaling the result to a 0..1 range appropriate for alignments.
+"""
+function angle2align(angle::Real)
+    s, c = sincos(angle)
+    scale = 1 / max(abs(s), abs(c))
+    return Vec2f(0.5scale * c + 0.5, 0.5scale * s + 0.5)
+end
+
 
 const FONT_CACHE = Dict{String, NativeFont}()
+const FONT_CACHE_LOCK = Base.ReentrantLock()
 
 function load_font(filepath)
     font = FreeTypeAbstraction.try_load(filepath)
@@ -956,28 +1399,30 @@ A font can either be specified by a file path, such as "folder/with/fonts/font.o
 or by a (partial) name such as "Helvetica", "Helvetica Bold" etc.
 """
 function to_font(str::String)
-    get!(FONT_CACHE, str) do
-        # load default fonts without font search to avoid latency
-        if str == "default" || str == "TeX Gyre Heros Makie"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
-        elseif str == "TeX Gyre Heros Makie Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
-        elseif str == "TeX Gyre Heros Makie Bold Italic"
-            return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
-        # load fonts directly if they are given as font paths
-        elseif isfile(str)
-            return load_font(str)
+    lock(FONT_CACHE_LOCK) do
+        return get!(FONT_CACHE, str) do
+            # load default fonts without font search to avoid latency
+            if str == "default" || str == "TeX Gyre Heros Makie"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Bold.otf"))
+            elseif str == "TeX Gyre Heros Makie Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-Italic.otf"))
+            elseif str == "TeX Gyre Heros Makie Bold Italic"
+                return load_font(assetpath("fonts", "TeXGyreHerosMakie-BoldItalic.otf"))
+            # load fonts directly if they are given as font paths
+            elseif isfile(str)
+                return load_font(str)
+            end
+            # for all other cases, search for the best match on the system
+            fontpath = assetpath("fonts")
+            font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
+            if font === nothing
+                @warn("Could not find font $str, using TeX Gyre Heros Makie")
+                return to_font("TeX Gyre Heros Makie")
+            end
+            return font
         end
-        # for all other cases, search for the best match on the system
-        fontpath = assetpath("fonts")
-        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
-        if font === nothing
-            @warn("Could not find font $str, using TeX Gyre Heros Makie")
-            return to_font("TeX Gyre Heros Makie")
-        end
-        return font
     end
 end
 to_font(x::Vector{String}) = to_font.(x)
@@ -996,6 +1441,8 @@ function to_font(fonts::Attributes, s::Symbol)
 end
 
 to_font(fonts::Attributes, x) = to_font(x)
+
+to_font(::Automatic) = defaultfont()
 
 
 """
@@ -1066,7 +1513,7 @@ function available_gradients()
 end
 
 
-to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continous resampling.")
+to_colormap(cm, categories::Integer) = error("`to_colormap(cm, categories)` is deprecated. Use `Makie.categorical_colors(cm, categories)` for categorical colors, and `resample_cmap(cmap, ncolors)` for continuous resampling.")
 
 """
     categorical_colors(colormaplike, categories::Integer)
@@ -1119,7 +1566,7 @@ to_colormap(cs::ColorScheme) = to_colormap(cs.colors)
 """
     to_colormap(b::AbstractVector)
 
-An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
+An `AbstractVector{T}` with any object that `to_color` accepts.
 """
 to_colormap(cm::AbstractVector)::Vector{RGBAf} = map(to_color, cm)
 to_colormap(cm::AbstractVector{<: Colorant}) = convert(Vector{RGBAf}, cm)
@@ -1191,42 +1638,263 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
     end, k)
 end
 
-const DEFAULT_MARKER_MAP = Dict{Symbol, BezierPath}()
+#=
+The below is the output from:
+```julia
+# The bezier markers should not look out of place when used together with text
+# where both markers and text are given the same size, i.e. the marker and fontsizes
+# should correspond approximately in a visual sense.
+
+# All the basic bezier shapes are approximately built in a 1 by 1 square centered
+# around the origin, with slight deviations to match them better to each other.
+
+# An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
+# shapes are just used as is, they look much too large in comparison.
+# To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
+size_factor = 0.75
+DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
+DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
+DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
+DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
+DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
+DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
+DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
+DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
+DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
+DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
+DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
+DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
+DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
+DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
+```
+We have to write this out to make sure we rotate/scale don't generate slightly different values between Julia versions.
+This would create different hashes, making the caching in the texture atlas fail!
+See: https://github.com/MakieOrg/Makie.jl/pull/3394
+=#
+
+const DEFAULT_MARKER_MAP = Dict(:+ => BezierPath([Makie.MoveTo([0.1245, 0.375]),
+                                                  Makie.LineTo([0.1245, 0.1245]),
+                                                  Makie.LineTo([0.375, 0.1245]),
+                                                  Makie.LineTo([0.375, -0.12449999999999999]),
+                                                  Makie.LineTo([0.1245, -0.1245]),
+                                                  Makie.LineTo([0.12450000000000003, -0.375]),
+                                                  Makie.LineTo([-0.12449999999999997, -0.375]),
+                                                  Makie.LineTo([-0.12449999999999999, -0.12450000000000003]),
+                                                  Makie.LineTo([-0.375, -0.12450000000000006]),
+                                                  Makie.LineTo([-0.375, 0.12449999999999994]),
+                                                  Makie.LineTo([-0.12450000000000003, 0.12449999999999999]),
+                                                  Makie.LineTo([-0.12450000000000007, 0.37499999999999994]),
+                                                  Makie.ClosePath()]),
+                                :diamond => BezierPath([Makie.MoveTo([0.4464931614186469,
+                                                                      -5.564531862779532e-17]),
+                                                        Makie.LineTo([2.10398220755128e-17,
+                                                                      0.4464931614186469]),
+                                                        Makie.LineTo([-0.4464931614186469,
+                                                                      5.564531862779532e-17]),
+                                                        Makie.LineTo([-2.10398220755128e-17,
+                                                                      -0.4464931614186469]),
+                                                        Makie.ClosePath()]),
+                                :star4 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.13258251920342445,
+                                                                    0.13258251920342445]),
+                                                      Makie.LineTo([-0.44999999999999996,
+                                                                    5.5109108366332553e-17]),
+                                                      Makie.LineTo([-0.13258251920342445,
+                                                                    -0.13258251920342445]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.13258251920342445,
+                                                                    -0.13258251920342445]),
+                                                      Makie.LineTo([0.44999999999999996,
+                                                                    -1.1021821673266511e-16]),
+                                                      Makie.LineTo([0.13258251920342445, 0.13258251920342445]),
+                                                      Makie.ClosePath()]),
+                                :star8 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.09471414797008038, 0.2286601772904396]),
+                                                      Makie.LineTo([-0.31819804608821867,
+                                                                    0.31819804608821867]),
+                                                      Makie.LineTo([-0.2286601772904396, 0.09471414797008038]),
+                                                      Makie.LineTo([-0.44999999999999996,
+                                                                    5.5109108366332553e-17]),
+                                                      Makie.LineTo([-0.2286601772904396,
+                                                                    -0.09471414797008038]),
+                                                      Makie.LineTo([-0.31819804608821867,
+                                                                    -0.31819804608821867]),
+                                                      Makie.LineTo([-0.09471414797008038,
+                                                                    -0.2286601772904396]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.09471414797008038, -0.2286601772904396]),
+                                                      Makie.LineTo([0.31819804608821867,
+                                                                    -0.31819804608821867]),
+                                                      Makie.LineTo([0.2286601772904396, -0.09471414797008038]),
+                                                      Makie.LineTo([0.44999999999999996,
+                                                                    -1.1021821673266511e-16]),
+                                                      Makie.LineTo([0.2286601772904396, 0.09471414797008038]),
+                                                      Makie.LineTo([0.31819804608821867, 0.31819804608821867]),
+                                                      Makie.LineTo([0.09471414797008038, 0.2286601772904396]),
+                                                      Makie.ClosePath()]),
+                                :star6 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.11249999999999999, 0.1948557123541832]),
+                                                      Makie.LineTo([-0.3897114247083664, 0.22499999999999998]),
+                                                      Makie.LineTo([-0.22499999999999998,
+                                                                    2.7554554183166277e-17]),
+                                                      Makie.LineTo([-0.3897114247083664,
+                                                                    -0.22499999999999998]),
+                                                      Makie.LineTo([-0.11249999999999999,
+                                                                    -0.1948557123541832]),
+                                                      Makie.LineTo([-8.266365659379842e-17,
+                                                                    -0.44999999999999996]),
+                                                      Makie.LineTo([0.11249999999999999, -0.1948557123541832]),
+                                                      Makie.LineTo([0.3897114247083664, -0.22499999999999998]),
+                                                      Makie.LineTo([0.22499999999999998,
+                                                                    -5.5109108366332553e-17]),
+                                                      Makie.LineTo([0.3897114247083664, 0.22499999999999998]),
+                                                      Makie.LineTo([0.11249999999999999, 0.1948557123541832]),
+                                                      Makie.ClosePath()]),
+                                :rtriangle => BezierPath([Makie.MoveTo([0.485, -8.909305463796994e-17]),
+                                                          Makie.LineTo([-0.24249999999999994, 0.36375]),
+                                                          Makie.LineTo([-0.2425000000000001,
+                                                                        -0.36374999999999996]),
+                                                          Makie.ClosePath()]),
+                                :x => BezierPath([Makie.MoveTo([-0.1771302486872301, 0.35319983720268056]),
+                                                  Makie.LineTo([1.39759596452057e-17, 0.17606958851545035]),
+                                                  Makie.LineTo([0.17713024868723018, 0.3531998372026805]),
+                                                  Makie.LineTo([0.3531998372026805, 0.17713024868723012]),
+                                                  Makie.LineTo([0.17606958851545035, -1.025465786723834e-17]),
+                                                  Makie.LineTo([0.3531998372026805, -0.17713024868723015]),
+                                                  Makie.LineTo([0.17713024868723015, -0.3531998372026805]),
+                                                  Makie.LineTo([1.1151998010815531e-17, -0.17606958851545035]),
+                                                  Makie.LineTo([-0.17713024868723015, -0.3531998372026805]),
+                                                  Makie.LineTo([-0.35319983720268044, -0.17713024868723018]),
+                                                  Makie.LineTo([-0.17606958851545035,
+                                                                -1.4873299788782892e-17]),
+                                                  Makie.LineTo([-0.3531998372026805, 0.1771302486872301]),
+                                                  Makie.ClosePath()]),
+                                :circle => BezierPath([Makie.MoveTo([0.3525, 0.0]),
+                                                       EllipticalArc([0.0, 0.0], 0.3525, 0.3525, 0.0, 0.0,
+                                                                     6.283185307179586), Makie.ClosePath()]),
+                                :pentagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                         Makie.LineTo([-0.35664620250463486,
+                                                                       0.11588137596845627]),
+                                                         Makie.LineTo([-0.22041946649551392,
+                                                                       -0.30338137596845627]),
+                                                         Makie.LineTo([0.22041946649551392,
+                                                                       -0.30338137596845627]),
+                                                         Makie.LineTo([0.35664620250463486,
+                                                                       0.11588137596845627]),
+                                                         Makie.ClosePath()]),
+                                :vline => BezierPath([Makie.MoveTo([0.063143668438509, -0.315718342192545]),
+                                                      Makie.LineTo([0.063143668438509, 0.315718342192545]),
+                                                      Makie.LineTo([-0.063143668438509, 0.315718342192545]),
+                                                      Makie.LineTo([-0.063143668438509, -0.315718342192545]),
+                                                      Makie.ClosePath()]),
+                                :cross => BezierPath([Makie.MoveTo([0.1245, 0.375]),
+                                                      Makie.LineTo([0.1245, 0.1245]),
+                                                      Makie.LineTo([0.375, 0.1245]),
+                                                      Makie.LineTo([0.375, -0.12449999999999999]),
+                                                      Makie.LineTo([0.1245, -0.1245]),
+                                                      Makie.LineTo([0.12450000000000003, -0.375]),
+                                                      Makie.LineTo([-0.12449999999999997, -0.375]),
+                                                      Makie.LineTo([-0.12449999999999999,
+                                                                    -0.12450000000000003]),
+                                                      Makie.LineTo([-0.375, -0.12450000000000006]),
+                                                      Makie.LineTo([-0.375, 0.12449999999999994]),
+                                                      Makie.LineTo([-0.12450000000000003,
+                                                                    0.12449999999999999]),
+                                                      Makie.LineTo([-0.12450000000000007,
+                                                                    0.37499999999999994]),
+                                                      Makie.ClosePath()]),
+                                :xcross => BezierPath([Makie.MoveTo([-0.1771302486872301,
+                                                                     0.35319983720268056]),
+                                                       Makie.LineTo([1.39759596452057e-17,
+                                                                     0.17606958851545035]),
+                                                       Makie.LineTo([0.17713024868723018, 0.3531998372026805]),
+                                                       Makie.LineTo([0.3531998372026805, 0.17713024868723012]),
+                                                       Makie.LineTo([0.17606958851545035,
+                                                                     -1.025465786723834e-17]),
+                                                       Makie.LineTo([0.3531998372026805,
+                                                                     -0.17713024868723015]),
+                                                       Makie.LineTo([0.17713024868723015,
+                                                                     -0.3531998372026805]),
+                                                       Makie.LineTo([1.1151998010815531e-17,
+                                                                     -0.17606958851545035]),
+                                                       Makie.LineTo([-0.17713024868723015,
+                                                                     -0.3531998372026805]),
+                                                       Makie.LineTo([-0.35319983720268044,
+                                                                     -0.17713024868723018]),
+                                                       Makie.LineTo([-0.17606958851545035,
+                                                                     -1.4873299788782892e-17]),
+                                                       Makie.LineTo([-0.3531998372026805, 0.1771302486872301]),
+                                                       Makie.ClosePath()]),
+                                :rect => BezierPath([Makie.MoveTo([0.315718342192545, -0.315718342192545]),
+                                                     Makie.LineTo([0.315718342192545, 0.315718342192545]),
+                                                     Makie.LineTo([-0.315718342192545, 0.315718342192545]),
+                                                     Makie.LineTo([-0.315718342192545, -0.315718342192545]),
+                                                     Makie.ClosePath()]),
+                                :ltriangle => BezierPath([Makie.MoveTo([-0.485, 2.969768487932331e-17]),
+                                                          Makie.LineTo([0.2425, -0.36375]),
+                                                          Makie.LineTo([0.24250000000000005, 0.36375]),
+                                                          Makie.ClosePath()]),
+                                :dtriangle => BezierPath([Makie.MoveTo([-0.0, -0.485]),
+                                                          Makie.LineTo([0.36375, 0.24250000000000002]),
+                                                          Makie.LineTo([-0.36375, 0.24250000000000002]),
+                                                          Makie.ClosePath()]),
+                                :utriangle => BezierPath([Makie.MoveTo([0.0, 0.485]),
+                                                          Makie.LineTo([-0.36375, -0.24250000000000002]),
+                                                          Makie.LineTo([0.36375, -0.24250000000000002]),
+                                                          Makie.ClosePath()]),
+                                :star5 => BezierPath([Makie.MoveTo([2.7554554183166277e-17,
+                                                                    0.44999999999999996]),
+                                                      Makie.LineTo([-0.12343490123748782,
+                                                                    0.16989357054233553]),
+                                                      Makie.LineTo([-0.4279754430055618, 0.13905765116214752]),
+                                                      Makie.LineTo([-0.19972187340259556,
+                                                                    -0.06489357054233552]),
+                                                      Makie.LineTo([-0.2645033597946167, -0.3640576511621475]),
+                                                      Makie.LineTo([-3.8576373077105933e-17,
+                                                                    -0.21000000000000002]),
+                                                      Makie.LineTo([0.2645033597946167, -0.3640576511621475]),
+                                                      Makie.LineTo([0.19972187340259556,
+                                                                    -0.06489357054233552]),
+                                                      Makie.LineTo([0.4279754430055618, 0.13905765116214752]),
+                                                      Makie.LineTo([0.12343490123748782, 0.16989357054233553]),
+                                                      Makie.ClosePath()]),
+                                :octagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                        Makie.LineTo([-0.2651650384068489,
+                                                                      0.2651650384068489]),
+                                                        Makie.LineTo([-0.375, 4.5924256971943795e-17]),
+                                                        Makie.LineTo([-0.2651650384068489,
+                                                                      -0.2651650384068489]),
+                                                        Makie.LineTo([-6.888638049483202e-17, -0.375]),
+                                                        Makie.LineTo([0.2651650384068489,
+                                                                      -0.2651650384068489]),
+                                                        Makie.LineTo([0.375, -9.184851394388759e-17]),
+                                                        Makie.LineTo([0.2651650384068489, 0.2651650384068489]),
+                                                        Makie.ClosePath()]),
+                                :hline => BezierPath([Makie.MoveTo([0.315718342192545, -0.063143668438509]),
+                                                      Makie.LineTo([0.315718342192545, 0.063143668438509]),
+                                                      Makie.LineTo([-0.315718342192545, 0.063143668438509]),
+                                                      Makie.LineTo([-0.315718342192545, -0.063143668438509]),
+                                                      Makie.ClosePath()]),
+                                :hexagon => BezierPath([Makie.MoveTo([2.2962128485971897e-17, 0.375]),
+                                                        Makie.LineTo([-0.32475952059030533, 0.1875]),
+                                                        Makie.LineTo([-0.32475952059030533, -0.1875]),
+                                                        Makie.LineTo([-6.888638049483202e-17, -0.375]),
+                                                        Makie.LineTo([0.32475952059030533, -0.1875]),
+                                                        Makie.LineTo([0.32475952059030533, 0.1875]),
+                                                        Makie.ClosePath()]))
 
 function default_marker_map()
-    # The bezier markers should not look out of place when used together with text
-    # where both markers and text are given the same size, i.e. the marker and fontsizes
-    # should correspond approximately in a visual sense.
-
-    # All the basic bezier shapes are approximately built in a 1 by 1 square centered
-    # around the origin, with slight deviations to match them better to each other.
-
-    # An 'x' of DejaVu sans is only about 55pt high at 100pt font size, so if the marker
-    # shapes are just used as is, they look much too large in comparison.
-    # To me, a factor of 0.75 looks ok compared to both uppercase and lowercase letters of Dejavu.
-    if isempty(DEFAULT_MARKER_MAP)
-        size_factor = 0.75
-        DEFAULT_MARKER_MAP[:rect] = scale(BezierSquare, size_factor)
-        DEFAULT_MARKER_MAP[:diamond] = scale(rotate(BezierSquare, pi/4), size_factor)
-        DEFAULT_MARKER_MAP[:hexagon] = scale(bezier_ngon(6, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:cross] = scale(BezierCross, size_factor)
-        DEFAULT_MARKER_MAP[:xcross] = scale(BezierX, size_factor)
-        DEFAULT_MARKER_MAP[:utriangle] = scale(BezierUTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:dtriangle] = scale(BezierDTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:ltriangle] = scale(BezierLTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:rtriangle] = scale(BezierRTriangle, size_factor)
-        DEFAULT_MARKER_MAP[:pentagon] = scale(bezier_ngon(5, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:octagon] = scale(bezier_ngon(8, 0.5, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star4] = scale(bezier_star(4, 0.25, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star5] = scale(bezier_star(5, 0.28, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star6] = scale(bezier_star(6, 0.30, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:star8] = scale(bezier_star(8, 0.33, 0.6, pi/2), size_factor)
-        DEFAULT_MARKER_MAP[:vline] = scale(scale(BezierSquare, (0.2, 1.0)), size_factor)
-        DEFAULT_MARKER_MAP[:hline] = scale(scale(BezierSquare, (1.0, 0.2)), size_factor)
-        DEFAULT_MARKER_MAP[:+] = scale(BezierCross, size_factor)
-        DEFAULT_MARKER_MAP[:x] = scale(BezierX, size_factor)
-        DEFAULT_MARKER_MAP[:circle] = scale(BezierCircle, size_factor)
-    end
     return DEFAULT_MARKER_MAP
 end
 
@@ -1251,13 +1919,16 @@ Use
 scatter(..., marker=FastPixel())
 ```
 
-For significant faster plotting times for large amount of points.
+For significantly faster plotting times for large amount of points.
 Note, that this will draw markers always as 1 pixel.
 """
-struct FastPixel end
+struct FastPixel
+    marker_type::Cint
+end
+FastPixel() = FastPixel(1)
 
 """
-Vector of anything that is accepted as a single marker will give each point it's own marker.
+Vector of anything that is accepted as a single marker will give each point its own marker.
 Note that it needs to be a uniform vector with the same element type!
 """
 to_spritemarker(marker::AbstractVector) = map(to_spritemarker, marker)
@@ -1270,6 +1941,7 @@ to_spritemarker(x::Rect) = x
 to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = BezierPath(b)
 to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
+to_spritemarker(x::Shape) = x
 
 function to_spritemarker(str::String)
     error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
@@ -1299,7 +1971,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(default_marker_map(), marker)
         return to_spritemarker(default_marker_map()[marker])
     else
-        @warn("Unsupported marker: $marker, using ● instead")
+        @warn("Unsupported marker: $marker, using ● instead. Available options can be printed with `available_marker_symbols()`")
         return '●'
     end
 end
@@ -1310,6 +1982,8 @@ end
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
+convert_attribute(value, ::key"absorption", ::key"volume") = Float32(value)
+convert_attribute(value, ::key"gap", ::key"voxels") = ifelse(value <= 0.01, 0f0, Float32(value))
 
 function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
     if value === :Sphere
@@ -1320,8 +1994,45 @@ function convert_attribute(value::Symbol, ::key"marker", ::key"meshscatter")
 end
 
 function convert_attribute(value::AbstractGeometry, ::key"marker", ::key"meshscatter")
-    return normal_mesh(value)
+    return GeometryBasics.expand_faceviews(normal_mesh(value))
 end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+
+convert_attribute(value, ::key"backlight") = Float32(value)
+
+
+# SAMPLER overloads
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
+    return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
+                                      x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
+                                      z_repeat=s.repeat[min(3, N)],
+                                      anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
+end
+
+function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
+    T32 = float32type(T)
+    T32 === T && return x
+    data = el32convert(x.data)
+    return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
+                                       x.repeat,
+                                       x.anisotropic,
+                                       x.color_swizzel,
+                                       ShaderAbstractions.ArrayUpdater(data, x.updates.update))
+end
+
+to_color(sampler::ShaderAbstractions.Sampler) = el32convert(sampler)
+
+assemble_colors(::ShaderAbstractions.Sampler, color, plot) = Observable(el32convert(color[]))
+
+# BUFFER OVERLOAD
+
+GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T}) where {T} = vec
+
+# Used in Label, maybe useful elsewhere?
+to_lrbt_padding(x::Real) = Vec4f(x)
+to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
+to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)

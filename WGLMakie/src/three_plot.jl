@@ -3,23 +3,12 @@
 # We use objectid to find objects on the js side
 js_uuid(object) = string(objectid(object))
 
-function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
-    push!(scene_uuids, js_uuid(scene))
-    for plot in scene.plots
-        append!(plot_uuids, (js_uuid(p) for p in Makie.flatten_plots(plot)))
-    end
-    for child in scene.children
-        all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
-    end
-    return scene_uuids, plot_uuids
-end
-
-function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSourceContext)
-    uuids = js_uuid.(Makie.flatten_plots(plot))
+function Bonito.print_js_code(io::IO, plot::AbstractPlot, context::Bonito.JSSourceContext)
+    uuids = js_uuid.(Makie.collect_atomic_plots(plot))
     # This is a bit more complicated then it has to be, since evaljs / on_document_load
     # isn't guaranteed to run after plot initialization in an App... So, if we don't find any plots,
     # we have to check again after inserting new plots
-    JSServe.print_js_code(io, js"""(new Promise(resolve => {
+    Bonito.print_js_code(io, js"""(new Promise(resolve => {
         $(WGL).then(WGL=> {
             const find = ()=> {
                 const plots = WGL.find_plots($(uuids))
@@ -34,33 +23,74 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context::JSServe.JSSo
     }))""", context)
 end
 
-function JSServe.print_js_code(io::IO, scene::Scene, context::JSServe.JSSourceContext)
-    JSServe.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
+function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceContext)
+    Bonito.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
-function three_display(session::Session, scene::Scene; screen_config...)
-    config = Makie.merge_screen_config(ScreenConfig, screen_config)::ScreenConfig
+function three_display(screen::Screen, session::Session, scene::Scene)
+    config = screen.config
     scene_serialized = serialize_scene(scene)
-
     window_open = scene.events.window_open
     width, height = size(scene)
-    canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
-    canvas = DOM.um("canvas"; tabindex="0")
-    wrapper = DOM.div(canvas)
+    canvas_width = lift(x -> [round.(Int, widths(x))...], scene, viewport(scene))
+    canvas = DOM.m("canvas";
+        tabindex="0", style="display: block",
+        # Pass JupyterLab specific attributes to prevent it from capturing keyboard shortcuts
+        # and to suppress the JupyterLab context menu in Makie plots, see:
+        # https://jupyterlab.readthedocs.io/en/4.2.x/extension/notebook.html#keyboard-interaction-model
+        # https://jupyterlab.readthedocs.io/en/4.2.x/extension/extension_points.html#context-menu
+        dataLmSuppressShortcuts=true, dataJpSuppressContextMenu=nothing,
+    )
+    wrapper = DOM.div(canvas; style="width: 100%; height: 100%")
     comm = Observable(Dict{String,Any}())
-    done_init = Observable(false)
+    done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    ta = JSServe.Retain(TEXTURE_ATLAS)
+    ta = Bonito.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        // well.... not nice, but can't deal with the `Promise` in all the other functions
-        window.WGLMakie = WGL
-        WGL.create_scene($wrapper, $canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(config.framerate), $(ta))
-        $(done_init).notify(true)
+        try {
+            const wrapper = $wrapper
+            const canvas = $canvas
+            if (wrapper == null || canvas == null) {
+                return
+            }
+            const renderer = WGL.create_scene(
+                wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
+            )
+            const gl = renderer.getContext()
+            const err = gl.getError()
+            if (err != gl.NO_ERROR) {
+                throw new Error("WebGL error: " + WGL.wglerror(gl, err))
+            }
+            $(done_init).notify(true)
+        } catch (e) {
+            Bonito.Connection.send_error("error initializing scene", e)
+            $(done_init).notify(e)
+            return
+        }
     })
     """)
+    on(session, done_init) do val
+        window_open[] = true
+    end
+    connect_scene_events!(screen, scene, comm)
+    return wrapper, done_init
+end
 
-    connect_scene_events!(scene, comm)
-    three = ThreeDisplay(session)
-    return three, wrapper, done_init
+Makie.supports_move_to(::Screen) = true
+
+function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
+    session = get_screen_session(screen)
+    # Make sure target scene is serialized
+    insert_scene!(session, screen, scene)
+    return evaljs(session, js"""
+    $(scene).then(scene=> {
+        $(plot).then(meshes=> {
+            meshes.forEach(m => {
+                m.plot_object.move_to(scene)
+            })
+        })
+    })
+    """)
 end

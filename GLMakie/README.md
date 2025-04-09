@@ -26,7 +26,7 @@ You can find instructions to set that up in:
 https://nextjournal.com/sdanisch/GLMakie-nogpu
 And for a headless github action:
 
-https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/glmakie.yaml
+https://github.com/MakieOrg/Makie.jl/blob/master/.github/workflows/reference_tests.yml
 If none of these work for you, there is also a Cairo and WebGL backend
 for Makie which you can use:
 

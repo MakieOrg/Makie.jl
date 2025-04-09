@@ -1,5 +1,5 @@
 @reference_test "heatmap_with_labels" begin
-    fig = Figure(resolution = (600, 600))
+    fig = Figure(size = (600, 600))
     ax = fig[1, 1] = Axis(fig)
     values = RNG.rand(10, 10)
 
@@ -14,9 +14,10 @@
     fig
 end
 
-@reference_test "data space" begin
+@reference_test "2D text" begin
+    f = Figure()
     pos = [Point2f(0, 0), Point2f(10, 10)]
-    fig = text(
+    text(f[1, 1],
         ["0 is the ORIGIN of this", "10 says hi"],
         position = pos,
         axis = (aspect = DataAspect(),),
@@ -24,11 +25,39 @@ end
         align = (:center, :center),
         fontsize = 2)
     scatter!(pos)
+
+    text(f[2, 1],
+        ". This is an annotation!",
+        position=(300, 200),
+        align=(:center,  :center),
+        fontsize=60,
+        font="Blackchancery"
+    )
+
+    f
+end
+
+@reference_test "Text rotation" begin
+    fig = Figure()
+    ax = fig[1, 1] = Axis(fig)
+    pos = (500, 500)
+    posis = Point2f[]
+    for r in range(0, stop=2pi, length=20)
+        p = pos .+ (sin(r) * 100.0, cos(r) * 100)
+        push!(posis, p)
+        text!(ax, "test",
+            position=p,
+            fontsize=50,
+            rotation=1.5pi - r,
+            align=(:center, :center)
+        )
+    end
+    scatter!(ax, posis, markersize=10)
     fig
 end
 
 @reference_test "single_strings_single_positions" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
     scatter!(scene, points, marker = :circle, markersize = 10px)
@@ -51,7 +80,7 @@ end
 
 
 @reference_test "multi_strings_multi_positions" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     angles = (-pi/6, 0.0, pi/6)
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3 for angle in angles]
@@ -66,8 +95,7 @@ end
             for valign in (:top, :center, :bottom)
             for rotation in angles]
 
-    scatter!(scene, points, marker = :circle, markersize = 10px)
-
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     text!(scene, points, text = strings, align = aligns, rotation = rotations,
         color = [(:black, alpha) for alpha in LinRange(0.3, 0.7, length(points))])
@@ -76,10 +104,10 @@ end
 end
 
 @reference_test "single_strings_single_positions_justification" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (800, 800))
 
     points = [Point(x, y) .* 200 for x in 1:3 for y in 1:3]
-    scatter!(scene, points, marker = :circle, markersize = 10px)
+    scatter!(scene, points, marker = :circle, markersize = 10px, color=:black)
 
     symbols = (:left, :center, :right)
 
@@ -91,7 +119,7 @@ end
             align = (halign, :center),
             justification = justification)
 
-        bb = boundingbox(t)
+        bb = boundingbox(t, :pixel)
         wireframe!(scene, bb, color = (:red, 0.2))
     end
 
@@ -108,53 +136,47 @@ end
     scene
 end
 
-@reference_test "multi_boundingboxes" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+@reference_test "single and multi boundingboxes" begin
+    scene = Scene(camera = campixel!, size = (600, 600))
 
     t1 = text!(scene,
         fill("makie", 4),
-        position = [(200, 200) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
+        position = [(150, 150) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
         fontsize = 30,
         markerspace = :data
     )
 
-    wireframe!(scene, boundingbox(t1), color = (:blue, 0.3))
+    wireframe!(scene, boundingbox(t1, :data), color = (:blue, 0.3))
 
     t2 = text!(scene,
         fill("makie", 4),
-        position = [(200, 600) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
+        position = [(150, 450) .+ 60 * Point2f(cos(a), sin(a)) for a in pi/4:pi/2:7pi/4],
         rotation = pi/4:pi/2:7pi/4,
         align = (:left, :center),
         fontsize = 30,
         markerspace = :pixel
     )
 
-    wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
-
-    scene
-end
-
-@reference_test "single_boundingboxes" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    wireframe!(scene, boundingbox(t2, :pixel), color = (:red, 0.3))
 
     for a in pi/4:pi/2:7pi/4
 
         t = text!(scene,
             "makie",
-            position = (200, 200) .+ 60 * Point2f(cos(a), sin(a)),
+            position = (450, 150) .+ 60 * Point2f(cos(a), sin(a)),
             rotation = a,
             align = (:left, :center),
             fontsize = 30,
             markerspace = :data
         )
 
-        wireframe!(scene, boundingbox(t), color = (:blue, 0.3))
+        wireframe!(scene, boundingbox(t, :data), color = (:blue, 0.3))
 
         t2 = text!(scene,
             "makie",
-            position = (200, 600) .+ 60 * Point2f(cos(a), sin(a)),
+            position = (450, 450) .+ 60 * Point2f(cos(a), sin(a)),
             rotation = a,
             align = (:left, :center),
             fontsize = 30,
@@ -162,57 +184,65 @@ end
         )
 
         # these boundingboxes should be invisible because they only enclose the anchor
-        wireframe!(scene, boundingbox(t2), color = (:red, 0.3))
+        wireframe!(scene, boundingbox(t2, :pixel), color = (:red, 0.3))
 
     end
+
     scene
 end
 
-@reference_test "text_in_3d_axis" begin
+@reference_test "3D text" begin
+    f = Figure(size = (600, 600))
     text(
+        f[1, 1],
         fill("Makie", 7),
         rotation = [i / 7 * 1.5pi for i in 1:7],
         position = [Point3f(0, 0, i/2) for i in 1:7],
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         fontsize = 1,
-        markerspace = :data
+        markerspace = :data,
+        axis=(; type=LScene)
     )
+
+    positions = RNG.rand(Point3f, 10)
+    meshscatter(f[1, 2], positions, color=:white)
+    text!(
+        fill("Annotation", 10),
+        position = positions,
+        align = (:center, :center),
+        fontsize = 16,
+        markerspace = :pixel,
+        overdraw=false)
+
+    p1 = Point3f(0,0,0)
+    p2 = Point3f(1,0,0)
+    meshscatter(f[2, 1], [p1, p2]; markersize=0.3, color=[:purple, :yellow])
+    text!(p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
+    text!(p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
+
+    f
 end
 
 @reference_test "empty_lines" begin
-    scene = Scene(camera = campixel!, resolution = (800, 800))
+    scene = Scene(camera = campixel!, size = (200, 200))
 
     t1 = text!(scene, "Line1\nLine 2\n\nLine4",
-        position = (200, 400), align = (:center, :center), markerspace = :data)
+        position = (50, 100), align = (:center, :center), markerspace = :data)
 
-    wireframe!(scene, boundingbox(t1), color = (:red, 0.3))
+    wireframe!(scene, boundingbox(t1, :data), color = (:red, 0.3))
 
     t2 = text!(scene, "\nLine 2\nLine 3\n\n\nLine6\n\n",
-        position = (400, 400), align = (:center, :center), markerspace = :data)
+        position = (150, 100), align = (:center, :center), markerspace = :data)
 
-    wireframe!(scene, boundingbox(t2), color = (:blue, 0.3))
+    wireframe!(scene, boundingbox(t2, :data), color = (:blue, 0.3))
 
     scene
 end
 
 
-@reference_test "3D screenspace annotations" begin
-    positions = RNG.rand(Point3f, 10)
-    fig, ax, p = meshscatter(positions, color=:white)
-    text!(
-        fill("Annotation", 10),
-        position = positions,
-        align = (:center, :center),
-        fontsize = 20,
-        markerspace = :pixel,
-        overdraw=false)
-    fig
-end
-
-
 @reference_test "Text offset" begin
-    f = Figure(resolution = (1000, 1000))
+    f = Figure(size = (1000, 1000))
     barplot(f[1, 1], 3:5)
     text!(1, 3, text = "bar 1", offset = (0, 10), align = (:center, :baseline))
     text!([(2, 4), (3, 5)], text = ["bar 2", "bar 3"],
@@ -261,31 +291,23 @@ end
     f
 end
 
-@reference_test "latex hlines in axis" begin
-    text(1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50, rotation = pi/4,
-        align = (:center, :center))
+# TODO: merge
+@reference_test "latex (axis, scene, bbox)" begin
+    f = Figure(size = (500, 300))
+
+    text(f[1, 1], 1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50,
+        rotation = pi/4, align = (:center, :center))
+
+    s = LScene(f[1, 2], scenekw = (camera = campixel!,), show_axis = false)
+    text!(s, L"\sqrt{2}", position = (100, 50), rotation = pi/2, fontsize = 20,
+        markerspace = :data)
+
+    t = text!(s, L"\int_0^5x^2+2ab", position = Point2f(50, 150), rotation = 0.0,
+        fontsize = 20, markerspace = :data)
+    wireframe!(s, boundingbox(t, :data), color=:black)
+    f
 end
 
-@reference_test "latex simple" begin
-    s = Scene(camera = campixel!)
-    t = text!(s,
-        L"\sqrt{2}",
-        position = (50, 50),
-        rotation = pi/2,
-        markerspace = :data)
-    s
-end
-
-@reference_test "latex bb" begin
-    s = Scene(camera = campixel!)
-    t = text!(s,
-        L"\int_0^5x^2+2ab",
-        position = Point2f(50, 50),
-        rotation = 0.0,
-        markerspace = :data)
-    wireframe!(s, boundingbox(t))
-    s
-end
 
 @reference_test "latex updates" begin
     s = Scene(camera = campixel!)
@@ -349,7 +371,7 @@ end
 @reference_test "Word Wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
-    fig = Figure(resolution=(600, 500))
+    fig = Figure(size=(600, 500))
     ax = Axis(fig[1, 1])
     text!(ax, 0, 0, text = latexstring(L"$1$ " * lorem_ipsum), word_wrap_width=250, fontsize = 12, align = (:left, :bottom), justification = :left, color = :black)
     text!(ax, 0, 0, text = lorem_ipsum, word_wrap_width=250, fontsize = 12, align = (:left, :top), justification = :right, color = :black)
@@ -369,3 +391,31 @@ end
     fig
 end
 
+# test #3232
+@reference_test "texture atlas update" begin
+    scene = Scene(size = (250, 100))
+    campixel!(scene)
+    p = text!(scene, "test", fontsize = 85)
+    st = Stepper(scene)
+    Makie.step!(st)
+    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    Makie.step!(st)
+    st
+end
+
+# test #3315
+@reference_test "text with empty lines" begin
+    text(
+        0,0, 
+        text=rich(
+            rich("test", font = :bold), 
+            """
+            
+            more
+
+            """
+        ); 
+        markerspace = :data, 
+        axis = (; aspect = DataAspect())
+    )
+end

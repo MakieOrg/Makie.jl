@@ -69,7 +69,7 @@ function getAttributesInfo(p::GLProgram)
     @show activeAttr = glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES)
     # get location and type for each attrib
     for i=0:activeAttr-1
-        @show name, typ, siz = glGetActiveAttrib(program,    i)
+        @show name, typ, size = glGetActiveAttrib(program, i)
         @show loc = glGetAttribLocation(program, name)
     end
 end
@@ -96,4 +96,12 @@ function getProgramInfo(p::GLProgram)
     @show info = glGetProgramiv(program, GL_ACTIVE_ATOMIC_COUNTER_BUFFERS)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_BUFFER_MODE)
     @show info = glGetProgramiv(program, GL_TRANSFORM_FEEDBACK_VARYINGS)
+end
+
+const FAILED_FREE_COUNTER = Threads.Atomic{Int}(0)
+function verify_free(obj::T, name = T) where T
+    if obj.id != 0
+        FAILED_FREE_COUNTER[] += 1
+        Core.println(Core.stderr, "Error: ", name, " has not been freed.")
+    end
 end

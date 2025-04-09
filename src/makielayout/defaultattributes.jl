@@ -10,7 +10,31 @@ function inherit(::Nothing, attr::Symbol, default_value)
     default_value
 end
 
-function default_attributes(::Type{LineAxis})
+inherit(scene, attr::NTuple{1, <: Symbol}, default_value) = inherit(scene, attr[begin], default_value)
+
+
+function inherit(scene, attr::NTuple{N, <: Symbol}, default_value) where N
+    current_dict = scene.theme
+    for i in 1:(N-1)
+        if haskey(current_dict, attr[i])
+            current_dict = current_dict[attr[i]]
+        else
+            break
+        end
+    end
+
+    if haskey(current_dict, attr[N])
+        return lift(identity, current_dict[attr[N]])
+    else
+        return inherit(scene.parent, attr, default_value)
+    end
+end
+
+function inherit(::Nothing, attr::NTuple{N, Symbol}, default_value::T) where {N, T}
+    default_value
+end
+
+function generic_plot_attributes(::Type{LineAxis})
     Attributes(
         endpoints = (Point2f(0, 0), Point2f(100, 0)),
         trimspine = false,
@@ -52,9 +76,9 @@ end
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :linewidth, :linecolor, :linestyle,
-        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor,
-        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor)
+        :linepoints, :linewidth, :linecolor, :linestyle, :linecolorrange, :linecolormap,
+        :markerpoints, :markersize, :markerstrokewidth, :markercolor, :markerstrokecolor, :markercolorrange, :markercolormap,
+        :polypoints, :polystrokewidth, :polycolor, :polystrokecolor, :polycolorrange, :polycolormap, :alpha)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)

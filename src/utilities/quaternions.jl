@@ -34,7 +34,9 @@ end
 Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
 Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 Base.getindex(x::Quaternion, i::Integer) = x.data[i]
-Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
+function Base.isapprox(x::Quaternion, y::Quaternion; kwargs...)
+    return all(isapprox.(x.data, y.data; kwargs...))
+end
 
 function qrotation(axis::StaticVector{3}, theta::Number)
     u = normalize(axis)
@@ -81,6 +83,16 @@ function Base.:(*)(quat::Quaternion{T}, vec::P) where {T, P <: StaticVector{3}}
         (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]
     )
 end
+
+function Base.:(*)(quat::Quaternion, bb::Rect3{T}) where {T}
+    points = corners(bb)
+    bb = Rect3{T}()
+    for i in eachindex(points)
+        bb = update_boundingbox(bb, Point3{T}(quat * points[i]))
+    end
+    return bb
+end
+
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])
 
 function Base.:(*)(q::Quaternion, w::Quaternion)
@@ -124,7 +136,7 @@ end
 
 function orthogonal(v::T) where T <: StaticVector{3}
     x, y, z = abs.(v)
-    other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
+    other = x < y ? (x < z ? GeometryBasics.unit(T, 1) : GeometryBasics.unit(T, 3)) : (y < z ? GeometryBasics.unit(T, 2) : GeometryBasics.unit(T, 3))
     return cross(v, other)
 end
 
@@ -142,4 +154,23 @@ end
 function quaternion_to_2d_angle(quat::Quaternion)
     # this assumes that the quaternion was calculated from a simple 2d rotation as well
     return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
+end
+
+Base.isinf(q::Quaternion) = any(isinf, q.data)
+Base.isnan(q::Quaternion) = any(isnan, q.data)
+Base.isfinite(q::Quaternion) = all(isfinite, q.data)
+Base.abs2(q::Quaternion) = mapreduce(*, +, q.data, q.data)
+function Base.inv(q::Quaternion)
+    if isinf(q)
+        return quat(
+            flipsign(-zero(q[1]), q[1]),
+            flipsign(-zero(q[2]), q[2]),
+            flipsign(-zero(q[3]), q[3]),
+            copysign(zero(q[4]), q[4]),
+        )
+    end
+    a = max(abs(q[4]), abs(q[1]), abs(q[2]), abs(q[3]))
+    p = q / a
+    iq = conj(p) / (a * abs2(p))
+    return iq
 end
