@@ -63,7 +63,6 @@ function initialize_block!(leg::Legend; entrygroups)
     entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [Box[]]
-    entryevents = [Optional{MouseEventHandle}[]]
     entryshades = [Box[]]
     entryhalfshades = [Box[]]
 
@@ -174,6 +173,9 @@ function initialize_block!(leg::Legend; entrygroups)
     halfshade_color = LinePattern(direction=Vec2f(1), width=hatch_width/2,
             tilesize=(hatch_width,hatch_width), linecolor=shade_color)
 
+    # For cleaning up visible listeners on relayouting
+    entry_observer_funcs = Observable[]
+
     on(blockscene, entry_groups) do entry_groups
         # first delete all existing labels and patches
 
@@ -197,15 +199,13 @@ function initialize_block!(leg::Legend; entrygroups)
         end
         empty!(entryplots)
 
-        for events in entryevents
-            clear!.(events)
-        end
-        empty!(entryevents)
-
         [delete!.(eshades) for eshades in entryshades]
         empty!(entryshades)
         [delete!.(ehalfshades) for ehalfshades in entryhalfshades]
         empty!(entryhalfshades)
+
+        foreach(off, entry_observer_funcs)
+        empty!(entry_observer_funcs)
 
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
@@ -222,11 +222,13 @@ function initialize_block!(leg::Legend; entrygroups)
                     fontsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
+            # e for entry
             etexts = []
             erects = []
             eplots = []
             eshades = []
             ehalfshades = []
+
             for (i, entry) in enumerate(entries)
                 # fill missing entry attributes with those carried by the legend
                 merge!(entry.attributes, preset_attrs)
@@ -263,13 +265,15 @@ function initialize_block!(leg::Legend; entrygroups)
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
                 halfshade_visible = Observable{Bool}(false)
-                onany(visibilities...) do vis...
+                obsfunc = onany(visibilities...) do vis...
                     mode = shade_visible_mode(vis)
                     shade_vis = mode === :show
                     shade_visible[] != shade_vis && (shade_visible[] = shade_vis)
                     halfshade_vis = mode === :halfshow
                     halfshade_visible[] != halfshade_vis && (halfshade_visible[] = halfshade_vis)
+                    return
                 end
+                push!(entry_observer_funcs, obsfunc)
 
                 # create a shade on top of label and marker to indicate hidden plots
                 shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0)
