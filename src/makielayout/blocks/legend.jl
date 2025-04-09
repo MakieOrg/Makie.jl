@@ -298,10 +298,6 @@ function initialize_block!(leg::Legend; entrygroups)
 
         if (event.action == Mouse.release) && in(mpos, legend_area[])
 
-            if !(event.button == Mouse.left || event.button == Mouse.right)
-                return Consume(true)
-            end
-
             if event.button == Mouse.left
 
                 # Find hovered entry
@@ -318,9 +314,9 @@ function initialize_block!(leg::Legend; entrygroups)
                             n_total = length(visibilities)
                             n_total == 0 && return Consume(true)
 
-                            # if not all attached plots have the same state we sync them first
-                            sync = !(n_visible == 0 || n_visible == n_total)
-                            toggle_visibility!(entry, sync)
+                            # if not all attached plots have the same state we set all to visible
+                            sync_to_visible = n_visible != n_total
+                            toggle_visibility!(entry, sync_to_visible)
 
                             return Consume(true)
                         end
@@ -330,16 +326,36 @@ function initialize_block!(leg::Legend; entrygroups)
 
             elseif event.button == Mouse.right
 
-                # Set all to visible
+                # Toggle all
                 for (_, entries) in entry_groups[]
                     for e in entries
                         toggle_visibility!(e)
                     end
                 end
 
-                return Consume(true)
+            elseif event.button == Mouse.middle
+
+                # Same as left click, but effectively or-ed for every entry
+                sync_to_visible = false
+                for (title, entries) in entry_groups[]
+                    for entry in entries
+                        visibilities = to_value.(get_plot_visibilities(entry))
+                        n_visible = sum(s -> Int64(s), visibilities, init = 0)
+                        n_total = length(visibilities)
+                        sync_to_visible = n_visible != n_total
+                    end
+                    sync_to_visible && break
+                end
+
+                for (_, entries) in entry_groups[]
+                    for e in entries
+                        toggle_visibility!(e, sync_to_visible)
+                    end
+                end
 
             end
+
+            return Consume(true)
 
         end
 
@@ -907,7 +923,7 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function toggle_visibility!(entry::LegendEntry, sync=false)
+function toggle_visibility!(entry::LegendEntry, sync = false)
     for el in entry.elements
         if (el !== nothing) && (el.plots !== nothing)
             for plot in el.plots
