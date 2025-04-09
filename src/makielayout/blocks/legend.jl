@@ -314,8 +314,8 @@ function initialize_block!(leg::Legend; entrygroups)
     onmouserightclick(events) do event
         visibilities = Bool[]
         for (_, entries) in entry_groups[]
-            for e in entries
-                foreach(v -> !isnothing(v) && push!(visibilities, v[]), visibilities)
+            for entry in entries
+                append!(visibilities, Bool[ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ])
             end
         end
         n_visible = sum(s -> Int64(s), visibilities, init = 0)
