@@ -909,22 +909,27 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
 end
 
 function toggle_visibility!(entry::LegendEntry, sync=false)
-    for el in entry.elements
-        isnothing(el) && continue
-        for plot in el.plots
-            !hasproperty(plot, :visible) && continue
-            plot.visible[] = sync ? true : !plot.visible[]
+    if entry.elements !== nothing
+        for el in entry.elements
+            isnothing(el) && continue
+            for plot in el.plots
+                !hasproperty(plot, :visible) && continue
+                plot.visible[] = sync ? true : !plot.visible[]
+            end
         end
     end
+    return
 end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    for element in entry.elements
-        isnothing(element) && continue
-        for plot in element.plots
-            !hasproperty(plot, :visible) && continue
-            push!(visibilities, plot.visible)
+    if entry.elements !== nothing
+        for element in entry.elements
+            isnothing(element) && continue
+            for plot in element.plots
+                !hasproperty(plot, :visible) && continue
+                push!(visibilities, plot.visible)
+            end
         end
     end
     return visibilities
