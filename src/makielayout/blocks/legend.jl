@@ -261,6 +261,8 @@ function initialize_block!(leg::Legend; entrygroups)
                 end
                 push!(eplots, symbolplots)
 
+                # TODO: Should this be connected to scene/blockscene for cleanup?
+                #       Probably not plots since plot deletion needs to trigger relayout anyway
                 # listen to visibilty attributes of plot elements to toggle shades below
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
@@ -293,7 +295,7 @@ function initialize_block!(leg::Legend; entrygroups)
     end
 
     # Process hide/show events
-    on(events(blockscene).mousebutton, priority = 1) do event
+    on(scene, events(blockscene).mousebutton, priority = 1) do event
         mpos = Makie.events(blockscene).mouseposition[]
 
         if (event.action == Mouse.release) && in(mpos, legend_area[])
