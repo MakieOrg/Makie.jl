@@ -207,6 +207,25 @@ function initialize_block!(leg::Legend; entrygroups)
         foreach(off, entry_observer_funcs)
         empty!(entry_observer_funcs)
 
+        # Check that every <: LegendElement has plots, i.e works with
+        # show/hide interaction
+        bad_types = Set{Type}()
+        for (title, entries) in entry_groups
+            for entry in entries
+                for element in entry.elements
+                    if !hasfield(typeof(element), :plots)
+                        push!(bad_types, typeof(element))
+                    end
+                end
+            end
+        end
+        if !isempty(bad_types)
+            @warn "LegendElements should now keep track of the plots they respresent in a `plots` field. " *
+                    "This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to " *
+                    "toggle visibility of the associated plots. The `plots` field is missing in: $bad_types"
+        end
+
+
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
         # TODO: Fix
@@ -230,6 +249,7 @@ function initialize_block!(leg::Legend; entrygroups)
             ehalfshades = []
 
             for (i, entry) in enumerate(entries)
+
                 # fill missing entry attributes with those carried by the legend
                 merge!(entry.attributes, preset_attrs)
 
@@ -927,7 +947,7 @@ end
 
 function toggle_visibility!(entry::LegendEntry, sync = false)
     for el in entry.elements
-        if (el !== nothing) && (el.plots !== nothing)
+        if (el !== nothing) && hasfield(typeof(el), :plots) && (el.plots !== nothing)
             for plot in el.plots
                 !hasproperty(plot, :visible) && continue
                 plot.visible[] = sync ? true : !plot.visible[]
@@ -940,8 +960,7 @@ end
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
     for element in entry.elements
-        isnothing(element) && continue
-        if element.plots !== nothing
+        if (element !== nothing) && hasfield(typeof(element), :plots) && (element.plots !== nothing)
             for plot in element.plots
                 !hasproperty(plot, :visible) && continue
                 push!(visibilities, plot.visible)
