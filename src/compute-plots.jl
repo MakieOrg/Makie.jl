@@ -122,7 +122,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     end
 
     for key in (:lowclip, :highclip)
-        sym = Symbol(:_, key)
+        sym = Symbol(key, :_color)
         register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
             if input[] === automatic
                 (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
@@ -130,28 +130,6 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
                 (to_color(input[]),)
             end
         end
-    end
-
-    register_computation!(
-        attr, [colorname, :colorrange], [:_colorrange]
-    ) do (color, colorrange), changed, last
-        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
-        crange = if colorrange[] === automatic
-            Vec2d(distinct_extrema_nan(color[]))
-        else
-            Vec2d(colorrange[])
-        end
-        if !isnothing(last) && last[1][] == crange
-            return nothing
-        else
-            return (crange,)
-        end
-    end
-
-    register_computation!(attr, [:_colorrange, :colorscale],
-                          [:scaled_colorrange]) do (colorrange, colorscale), changed, last
-        isnothing(colorrange[]) && return nothing
-        return (Vec2f(apply_scale(colorscale[], colorrange[])),)
     end
 
     register_computation!(
@@ -169,13 +147,21 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         else
             add_alpha(color[], alpha[])
         end
+        return (val, isnothing(last) ? color[] isa AbstractPattern : nothing)
+    end
 
-        if !isnothing(last) && last[1][] == val
-            return nothing
+    register_computation!(attr, [:colorrange, :scaled_color], [:scaled_colorrange]) do (colorrange, color), changed, last
+
+        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
+
+        if colorrange[] === automatic
+            return (Vec2d(distinct_extrema_nan(color[])),)
         else
-            return (val, isnothing(last) ? color[] isa AbstractPattern : nothing)
+            return (Vec2d(colorrange[]),)
         end
     end
+
+
 end
 
 function register_position_transforms!(attr)
@@ -243,11 +229,11 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
 
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
         args = map(getindex, values(input_args))
-        expanded_args = expand_dimensions(PTrait, args...)
-        if isnothing(expanded_args)
+        args_exp = expand_dimensions(PTrait, args...)
+        if isnothing(args_exp)
             return (args,)
         else
-            return (expanded_args,)
+            return (args_exp,)
         end
     end
 
@@ -697,8 +683,6 @@ function register_mesh_decomposition!(attr)
             return (color[], )
         end
     end
-
-
 end
 
 function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
@@ -706,8 +690,8 @@ function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
     add_attributes!(Mesh, attr, user_kw)
     register_arguments!(Mesh, attr, user_kw, args...)
     register_mesh_decomposition!(attr)
-    register_position_transforms!(attr)
     register_colormapping!(attr, :mesh_color)
+    register_position_transforms!(attr)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions[]),)
     end
@@ -805,3 +789,22 @@ end
 
 #     return bb_ref[]
 # end
+
+# This one plays nice with out system, only needs model
+function register_world_normalmatrix!(attr, modelname = :model_f32c)
+    register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
+        return (Mat3f(transpose(inv(m[][Vec(1,2,3), Vec(1,2,3)]))), )
+    end
+end
+
+# This one does not, requires the who-knows-when-it-updates view matrix...
+function add_view_normalmatrix!(data, attr, modelname = :model_f32c)
+    model = Observable(Mat3f)
+    register_computation!(attr, [modelname], Symbol[]) do (model,), _, __
+        model[] = model[Vec(1,2,3), Vec(1,2,3)]
+        return nothing
+    end
+    data[:view_normalmatrix] = map(data[:view], model) do v, m
+        return Mat3f(transpose(inv(v[Vec(1,2,3), Vec(1,2,3)] * m)))
+    end
+end

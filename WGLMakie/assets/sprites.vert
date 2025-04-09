@@ -80,7 +80,7 @@ void main(){
     mat4 pview = projection * view;
     mat4 trans = get_transform_marker() ? model : mat4(1.0);
 
-    vec4 position_world = model * vec4(tovec3(get_pos()), 1);
+    vec4 position_world = model * vec4(tovec3(get_positions_transformed_f32c()), 1);
     process_clip_planes(position_world.xyz);
 
     // Compute centre of billboard in clipping coordinates

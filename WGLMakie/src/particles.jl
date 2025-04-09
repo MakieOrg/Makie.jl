@@ -35,14 +35,6 @@ function handle_color_getter!(uniform_dict, per_instance)
     return
 end
 
-const IGNORE_KEYS = Set([
-    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
-    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :light_direction, :light_color,
-    :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label, :axis_cyclerr, :dim_conversions, :material, :clip_planes
-    # TODO add model here since we generally need to apply patch_model?
-])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -166,9 +158,42 @@ function serialize_three(fta::NoDataTextureAtlas)
     return tex
 end
 
+
+# function create_shader(scene::Scene, plot::Scatter)
+#     # Potentially per instance attributes
+#     # create new dict so we don't automatically convert to observables
+#     # Which is the case for Dict{Symbol, Observable}
+#     attributes = Dict{Symbol, Any}()
+#     for (k, v) in plot.attributes.attributes
+#         attributes[k] = v
+#     end
+#     space = get(attributes, :space, :data)
+#     attributes[:preprojection] = Mat4f(I) # calculate this in JS
+#     f32c, model = Makie.patch_model(plot)
+#     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
+
+#     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
+#     attributes[:marker_offset] = Vec3f(0)
+#     attributes[:quad_offset] = quad_offset
+#     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
+#     attributes[:model] = model
+#     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
+
+#     delete!(attributes, :uv_offset_width)
+#     filter!(kv -> !(kv[2] isa Function), attributes)
+#     return scatter_shader(scene, attributes, plot)
+# end
+
+value_or_first(x::AbstractArray) = first(x)
+value_or_first(x::StaticVector) = x
+value_or_first(x::Mat) = x
+value_or_first(x) = x
+
+
+
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
-    per_instance_keys = (:pos, :rotation, :markersize, :color, :intensity,
+    per_instance_keys = (:positions_transformed_f32c, :rotation, :markersize, :color, :intensity,
                          :uv_offset_width, :quad_offset, :marker_offset)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
@@ -261,35 +286,15 @@ function scatter_shader(scene::Scene, attributes, plot)
                             instance, VertexArray(; per_instance...), uniform_dict)
 end
 
-# function create_shader(scene::Scene, plot::Scatter)
-#     # Potentially per instance attributes
-#     # create new dict so we don't automatically convert to observables
-#     # Which is the case for Dict{Symbol, Observable}
-#     attributes = Dict{Symbol, Any}()
-#     for (k, v) in plot.attributes.attributes
-#         attributes[k] = v
-#     end
-#     space = get(attributes, :space, :data)
-#     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-#     f32c, model = Makie.patch_model(plot)
-#     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
+const IGNORE_KEYS = Set([
+    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
+    :light_direction, :light_color,
+    :cycle, :label, :inspector_clear, :inspector_hover,
+    :inspector_label, :axis_cyclerr, :dim_conversions, :material, :clip_planes
+    # TODO add model here since we generally need to apply patch_model?
+])
 
-#     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
-#     attributes[:marker_offset] = Vec3f(0)
-#     attributes[:quad_offset] = quad_offset
-#     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-#     attributes[:model] = model
-#     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
-
-#     delete!(attributes, :uv_offset_width)
-#     filter!(kv -> !(kv[2] isa Function), attributes)
-#     return scatter_shader(scene, attributes, plot)
-# end
-
-value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticVector) = x
-value_or_first(x::Mat) = x
-value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
@@ -330,7 +335,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :model => model,
         :shape_type => Observable(Cint(3)),
         :rotation => uniform_rotation,
-        :pos => positions,
+        :positions_transformed_f32c => positions,
         :marker_offset => char_offset,
         :quad_offset => quad_offset,
         :markersize => scale,

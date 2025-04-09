@@ -24361,17 +24361,6 @@ function wglerror(gl, error) {
             return "Unknown error";
     }
 }
-function handleSource(string, errorLine) {
-    const lines = string.split("\n");
-    const lines2 = [];
-    const from = Math.max(errorLine - 6, 0);
-    const to = Math.min(errorLine + 6, lines.length);
-    for(let i = from; i < to; i++){
-        const line = i + 1;
-        lines2.push(`${line === errorLine ? ">" : " "} ${line}: ${lines[i]}`);
-    }
-    return lines2.join("\n");
-}
 function getShaderErrors(gl, shader, type) {
     const status = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
     const errors = gl.getShaderInfoLog(shader).trim();
@@ -24379,7 +24368,7 @@ function getShaderErrors(gl, shader, type) {
     const errorMatches = /ERROR: 0:(\d+)/.exec(errors);
     if (errorMatches) {
         const errorLine = parseInt(errorMatches[1]);
-        return type.toUpperCase() + "\n\n" + errors + "\n\n" + handleSource(gl.getShaderSource(shader), errorLine);
+        return type.toUpperCase() + "\n\n" + errors + "\n\n" + "In line: " + errorLine + "\n\n" + "Source:\n" + gl.getShaderSource(shader);
     } else {
         return errors;
     }
@@ -24595,6 +24584,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
     const three_scene = deserialize_scene(scenes, screen);
+    console.log(three_scene);
     screen.root_scene = three_scene;
     start_renderloop(three_scene);
     canvas_width.on((w_h)=>{

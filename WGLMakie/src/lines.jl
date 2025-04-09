@@ -23,24 +23,24 @@ function create_lines_data(islines, attr)
         cm_minfilter = attr.colormapping_type[] === Makie.continuous ? :linear : :nearest
         uniforms[:colormap] = Sampler(attr.alpha_colormap[], minfilter = cm_minfilter)
         uniforms[:colorrange] = attr.scaled_colorrange[]
-        uniforms[:highclip] = attr._highclip[]
-        uniforms[:lowclip] = attr._lowclip[]
+        uniforms[:highclip] = attr.highclip_color[]
+        uniforms[:lowclip] = attr.lowclip_color[]
         uniforms[:nan_color] = attr.nan_color[]
-        color = attr.synched_color[]
+        color = islines ? attr.scaled_color[] : attr.synched_color[]
     else
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)
         end
         uniforms[:colormap] = false
         uniforms[:colorrange] = false
-        color = attr.synched_color[]
+        color = islines ? attr.scaled_color[] : attr.synched_color[]
     end
 
     attributes = Dict{Symbol,Any}(
         :linepoint => serialize_buffer_attribute(attr.positions_transformed_f32c[]),
     )
 
-    for (name, vals) in [:color => color, :linewidth => attr.synched_linewidth[]]
+    for (name, vals) in [:color => color, :linewidth => islines ? attr.linewidth[] : attr.synched_linewidth[]]
         if Makie.is_scalar_attribute(to_value(vals))
             uniforms[name] = vals
         else
@@ -83,8 +83,8 @@ const LINE_INPUTS = [
     :transparency,
     :visible,
     :model_f32c,
-    :_lowclip,
-    :_highclip,
+    :lowclip_color,
+    :highclip_color,
     :nan_color,
     :depth_shift,
 ]
@@ -96,8 +96,8 @@ function create_lines_robj(islines, args, changed, last)
         :synched_color => :color,
         :synched_linewidth => :linewidth,
         :positions_transformed_f32c => :linepoint,
-        :_highclip => :highclip,
-        :_lowclip => :lowclip,
+        :highclip_color => :highclip,
+        :lowclip_color => :lowclip,
         :data_limit_points_transformed => :position,
         :model_f32c => :model,
     )
@@ -122,6 +122,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     if islines
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
+        replace!(inputs, :synched_color => :scaled_color)
+        replace!(inputs, :synched_linewidth => :linewidth)
     end
 
     register_computation!(

@@ -91,25 +91,30 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
     screen.plot_initialized = Channel{Any}(1)
     screen.session = session
     Makie.push_screen!(scene, screen)
-    canvas, on_init = three_display(screen, session, scene)
-    screen.canvas = canvas
-    on(session, on_init) do initialized
-        if isready(screen.plot_initialized)
-            # plot_initialized contains already an item
-            # This should not happen, but lets check anyways, so it errors and doesn't hang forever
-            error("Plot initialized multiple times?")
+    try
+        canvas, on_init = three_display(screen, session, scene)
+        screen.canvas = canvas
+        on(session, on_init) do initialized
+            if isready(screen.plot_initialized)
+                # plot_initialized contains already an item
+                # This should not happen, but lets check anyways, so it errors and doesn't hang forever
+                error("Plot initialized multiple times?")
+            end
+            if initialized == true
+                put!(screen.plot_initialized, true)
+                mark_as_displayed!(screen, scene)
+                connect_post_init_events(screen, scene)
+            else
+                # Will be an error from WGLMakie.js
+                put!(screen.plot_initialized, initialized)
+            end
+            return
         end
-        if initialized == true
-            put!(screen.plot_initialized, true)
-            mark_as_displayed!(screen, scene)
-            connect_post_init_events(screen, scene)
-        else
-            # Will be an error from WGLMakie.js
-            put!(screen.plot_initialized, initialized)
-        end
-        return
+        return canvas
+    catch e
+        put!(screen.plot_initialized, e)
+        rethrow(e)
     end
-    return canvas
 end
 
 function Bonito.jsrender(session::Session, scene::Scene)
@@ -244,7 +249,9 @@ function get_screen_session(screen::Screen; timeout=100,
         throw_error("Timed out waiting for session to get ready")
         return nothing
     end
-    success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
+    success = Bonito.wait_for(timeout=timeout) do
+        isready(screen.plot_initialized)
+    end
     # Throw error if error message specified
     if success !== :success
         throw_error("Timed out waiting $(timeout)s for session to get initialize")

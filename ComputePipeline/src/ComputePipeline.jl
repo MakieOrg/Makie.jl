@@ -581,6 +581,14 @@ end
 ```
 """
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    if any(x-> getfield(f, x) isa Core.Box, propertynames(f))
+        boxed = [x => getfield(f, x) for x in propertynames(f) if getfield(f, x) isa Core.Box]
+        boxed_str = map(boxed) do (k, v)
+            box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
+            return "$(k)::Core.Box($(box))"
+        end
+        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
+    end
     if any(k -> haskey(attr.outputs, k), outputs)
         existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
         if length(existing) == 0

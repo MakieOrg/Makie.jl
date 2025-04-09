@@ -421,6 +421,11 @@ function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::Abstra
 end
 
 function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
+    ps, faces, uv, normal = surface2components(xs, ys, zs, transform_func, space)
+    GeometryBasics.Mesh(ps, faces; uv=uv, normal = normal)
+end
+
+function surface2components(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
     # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
@@ -435,7 +440,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(ps, faces; uv=uv, normal = nan_aware_normals(ps, faces))
+    return ps, faces, uv, nan_aware_normals(ps, faces)
 end
 
 

@@ -90,20 +90,20 @@ function get_lastlen(points::Vector{Point2f}, pvm::Mat4, res::Vec2f, islines::Bo
     return output
 end
 
-function add_computation!(attr, scene, ::Val{:heatmap_transform})
-    xy_convert(x::AbstractArray, n) = copy(x)
-    xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
+_xy_convert(x::AbstractArray, n) = copy(x)
+_xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
+function add_computation!(attr, scene, ::Val{:heatmap_transform})
     # TODO: consider just using a grid of points?
     register_computation!(attr,
             [:x, :y, :image, :transform_func, :space],
             [:x_transformed, :y_transformed]
         ) do (x, y, img, func, space), changed, last
 
-        x1d = xy_convert(x[], size(img[], 1))
+        x1d = _xy_convert(x[], size(img[], 1))
         xps = apply_transform(func[], Point2.(x1d, 0), space[])
 
-        y1d = xy_convert(y[], size(img[], 2))
+        y1d = _xy_convert(y[], size(img[], 2))
         yps = apply_transform(func[], Point2.(0, y1d), space[])
 
         return (xps, yps)
@@ -153,9 +153,11 @@ end
 # Note: VERY similar to heatmap, but heatmap shader currently only allows 1D x, y
 #       Could consider updating shader to accept matrix x, y and not always draw
 #       rects but that might be a larger chunk of work...
+
+_surf_xy_convert(x::AbstractArray, y::AbstractMatrix) = Point2.(x, y)
+_surf_xy_convert(x::AbstractArray, y::AbstractVector) = Point2.(x, y')
 function add_computation!(attr, scene, ::Val{:surface_transform})
-    xy_convert(x::AbstractArray, y::AbstractMatrix) = Point2.(x, y)
-    xy_convert(x::AbstractArray, y::AbstractVector) = Point2.(x, y')
+
 
     # TODO: Shouldn't this include transforming z?
     # TODO: If we're always creating a Matrix of Points the backends should just
@@ -164,7 +166,7 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
             [:x, :y, :transform_func, :space],
             [:xy_transformed]
         ) do (x, y, func, space), changed, last
-        return (apply_transform(func[], xy_convert(x[], y[]), space[]), )
+        return (apply_transform(func[], _surf_xy_convert(x[], y[]), space[]), )
     end
 
     register_computation!(attr,

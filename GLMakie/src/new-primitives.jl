@@ -166,25 +166,6 @@ function generate_clip_planes!(attr, scene, target_space::Symbol = :world, model
     return
 end
 
-# This one plays nice with out system, only needs model
-function register_world_normalmatrix!(attr, modelname = :model_f32c)
-    register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
-        return (Mat3f(transpose(inv(m[][Vec(1,2,3), Vec(1,2,3)]))), )
-    end
-end
-
-# This one does not, requires the who-knows-when-it-updates view matrix...
-function add_view_normalmatrix!(data, attr, modelname = :model_f32c)
-    model = Observable(Mat3f)
-    register_computation!(attr, [modelname], Symbol[]) do (model,), _, __
-        model[] = m[Vec(1,2,3), Vec(1,2,3)]
-        return nothing
-    end
-    data[:view_normalmatrix] = map(data[:view], model) do v, m
-        return Mat3f(transpose(inv(v[Vec(1,2,3), Vec(1,2,3)] * m)))
-    end
-end
-
 # TODO: handle these on the scene level once and reuse them
 function add_light_attributes!(screen, scene, data, attr)
     haskey(attr, :shading) || return
@@ -243,13 +224,13 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
             # Generate complex defaults
             # TODO: Should we add an initializer in ComputePipeline to extract this?
             # That would simplify this code and remove attr, uniforms from the enclosed variables here
-            robj = constructor(screen, scene, attr, args, uniforms, input2glname)
+            _robj = constructor(screen, scene, attr, args, uniforms, input2glname)
         else
-            robj = last[1][]
-            update_robjs!(robj, args, changed, input2glname)
+            _robj = last[1][]
+            update_robjs!(_robj, args, changed, input2glname)
         end
         screen.requires_update = true
-        return (robj,)
+        return (_robj,)
     end
 
     robj = attr[:gl_renderobject][]
@@ -382,7 +363,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         uniforms = [
             :positions_transformed_f32c,
             :gl_markerspace, :quad_scale, :model_f32c,
-            :_lowclip, :_highclip, :nan_color, :gl_indices, :gl_len
+            :lowclip_color, :highclip_color, :nan_color, :gl_indices, :gl_len
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
         ]
 
@@ -393,7 +374,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         uniforms = [
             :positions_transformed_f32c,
             :sdf_uv, :quad_scale, :quad_offset,
-            :image, :_lowclip, :_highclip, :nan_color,
+            :image, :lowclip_color, :highclip_color, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
             :gl_indices, :gl_len, :marker_offset
@@ -412,7 +393,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position,
-        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :alpha_colormap => :color_map,
+        :scaled_colorrange => :color_norm,
         :scaled_color => :color,
         :sdf_marker_shape => :shape,
         :sdf_uv => :uv_offset_width,
@@ -421,7 +403,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
         :gl_indices => :indices, :gl_len => :len
     )
 
@@ -482,7 +464,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    register_world_normalmatrix!(attr)
+    Makie.register_world_normalmatrix!(attr)
 
     register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
         return (length(pos[]), Int32(length(pos[])))
@@ -497,7 +479,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     ]
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
-        :_lowclip, :_highclip, :nan_color, :matcap,
+        :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :gl_len, :transform_marker
@@ -507,7 +489,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :positions_transformed_f32c => :position, :markersize => :scale,
         :packed_uv_transform => :uv_transform,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :scaled_color => :color, :_lowclip => :lowclip, :_highclip => :highclip,
+        :scaled_color => :color, :lowclip_color => :lowclip, :highclip_color => :highclip,
         :model_f32c => :model, :gl_len => :len, :transform_marker => :scale_primitive,
     )
 
@@ -710,7 +692,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :_lowclip, :_highclip, :nan_color, :debug
+        :lowclip_color, :highclip_color, :nan_color, :debug
     ]
 
     input2glname = Dict(
@@ -720,7 +702,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
     robj = register_robj!(assemble_lines_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -793,7 +775,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c, :indices,
         :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
-        :_lowclip, :_highclip, :nan_color, :debug
+        :lowclip_color, :highclip_color, :nan_color, :debug
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -801,7 +783,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :synched_linewidth => :thickness, :model_f32c => :model,
         :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
         :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
     robj = register_robj!(assemble_linesegments_robj, screen, scene, plot, inputs, uniforms, input2glname)
@@ -870,14 +852,14 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
     ]
     uniforms = [
         :positions_transformed_f32c,
-        :_lowclip, :_highclip, :nan_color,
+        :lowclip_color, :highclip_color, :nan_color,
         :model_f32c, :uv_transform,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertices,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
     )
 
@@ -957,14 +939,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
     uniforms = [
-        :_lowclip, :_highclip, :nan_color,
+        :lowclip_color, :highclip_color, :nan_color,
         :model_f32c, :instances,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :x_transformed_f32c => :position_x, :y_transformed_f32c => :position_y,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image,
         :model_f32c => :model,
     )
@@ -1014,8 +996,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr, scene)
     Makie.add_computation!(attr, scene, Val(:surface_transform))
-    register_world_normalmatrix!(attr)
-
+    Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
 
     register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
@@ -1035,7 +1016,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     ]
     uniforms = [
         :x_transformed_f32c, :y_transformed_f32c, :z_converted,
-        :_lowclip, :_highclip, :nan_color, :matcap,
+        :lowclip_color, :highclip_color, :nan_color, :matcap,
         :model_f32c, :instances,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :invert_normals, :pattern_uv_transform, :fetch_pixel
@@ -1046,7 +1027,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :z_converted => :position_z,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :image,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
         :model_f32c => :model,
         :pattern_uv_transform => :uv_transform
     )
@@ -1140,7 +1121,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
 
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr, scene)
-    register_world_normalmatrix!(attr)
+    Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
 
     # TODO: normalmatrices, lighting, poly plot!() overwrite for vector of meshes
@@ -1153,7 +1134,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     ]
     uniforms = [
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :_lowclip, :_highclip, :nan_color, :model_f32c, :matcap,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :pattern_uv_transform, :fetch_pixel
     ]
@@ -1161,7 +1142,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertices,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :_lowclip => :lowclip, :_highclip => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
         :pattern_uv_transform => :uv_transform
     )
@@ -1320,7 +1301,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     uniforms = [
         :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
-        # :_lowclip, :_highclip, :nan_color,
+        # :lowclip_color, :highclip_color, :nan_color,
         :volume_model,
     ]
 

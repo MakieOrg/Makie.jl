@@ -93,10 +93,11 @@ void main(){
     vertex_position = get_f32c_scale() * vertex_position;
     N = N / get_f32c_scale();
     vec4 position_world;
-    if (get_transform_marker())
-        position_world = model * vec4(to_vec3(get_offset()) + vertex_position, 1);
-    else
-        position_world = model * to_vec4(to_vec3(get_offset())) + vec4(vertex_position, 0);
+    if (get_transform_marker()) {
+        position_world = model * vec4(to_vec3(get_positions_transformed_f32c()) + vertex_position, 1);
+    } else {
+        position_world = model * to_vec4(to_vec3(get_positions_transformed_f32c())) + vec4(vertex_position, 0);
+    }
 
     process_clip_planes(position_world.xyz);
     o_normal = normalize(N);
