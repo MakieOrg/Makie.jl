@@ -273,7 +273,7 @@ function initialize_block!(leg::Legend; entrygroups)
                     halfshade_visible[] != halfshade_vis && (halfshade_visible[] = halfshade_vis)
                     return
                 end
-                push!(entry_observer_funcs, obsfunc)
+                append!(entry_observer_funcs, obsfunc)
 
                 # create a shade on top of label and marker to indicate hidden plots
                 shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0)
