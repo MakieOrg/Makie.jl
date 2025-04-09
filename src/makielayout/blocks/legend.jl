@@ -331,20 +331,13 @@ function initialize_block!(leg::Legend; entrygroups)
 
             elseif event.button == Mouse.right
 
-                visibilities = Bool[]
-                for (_, entries) in entry_groups[]
-                    for entry in entries
-                        append!(visibilities, Bool[ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ])
-                    end
-                end
-                n_visible = sum(s -> Int64(s), visibilities, init = 0)
-                n_total = length(visibilities)
-                n_visible == n_total && return Consume(true)
+                # Set all to visible
                 for (_, entries) in entry_groups[]
                     for e in entries
                         toggle_visibility!(e, true)
                     end
                 end
+
                 return Consume(true)
 
             end
