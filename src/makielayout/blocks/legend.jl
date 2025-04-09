@@ -281,7 +281,7 @@ function initialize_block!(leg::Legend; entrygroups)
                     onmouseleftclick(events) do _
                         # determine number of currently visible plot elements
                         visibilities = [ v[] for v in get_plot_visibilities(e) if !isnothing(v) ]
-                        n_visible = sum(s -> Int64(s), visibilities)
+                        n_visible = sum(s -> Int64(s), visibilities, init = 0)
                         n_total = length(visibilities)
                         n_total == 0 && return Consume(true)
                         # if not all attached plots have the same state we sync them first
@@ -314,7 +314,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 foreach(v -> !isnothing(v) && push!(visibilities, v[]), visibilities)
             end
         end
-        n_visible = sum(s -> Int64(s), visibilities)
+        n_visible = sum(s -> Int64(s), visibilities, init = 0)
         n_total = length(visibilities)
         n_visible == n_total && return Consume(true)
         for (_, entries) in entry_groups[]
