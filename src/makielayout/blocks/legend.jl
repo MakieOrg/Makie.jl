@@ -225,7 +225,6 @@ function initialize_block!(leg::Legend; entrygroups)
             etexts = []
             erects = []
             eplots = []
-            eevents = []
             eshades = []
             ehalfshades = []
             for (i, entry) in enumerate(entries)
@@ -277,56 +276,77 @@ function initialize_block!(leg::Legend; entrygroups)
                 push!(eshades, shade)
                 halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0)
                 push!(ehalfshades, halfshade)
-
-                # add mouseevent to hide/show elements
-                has_plots = any(el -> !isnothing(el.plots), entry.elements)
-                events = if has_plots
-                    events = addmouseevents!(blockscene, shade.layoutobservables.computedbbox)
-                    onmouseleftclick(events) do _
-                        # determine number of currently visible plot elements
-                        visibilities = [ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ]
-                        n_visible = sum(s -> Int64(s), visibilities, init = 0)
-                        n_total = length(visibilities)
-                        n_total == 0 && return Consume(true)
-                        # if not all attached plots have the same state we sync them first
-                        sync = !(n_visible == 0 || n_visible == n_total)
-                        toggle_visibility!(entry, sync)
-                        return Consume(true)
-                    end
-                    events
-                else
-                    nothing
-                end
-                push!(eevents, events)
             end
             push!(entrytexts, etexts)
             push!(entryrects, erects)
             push!(entryplots, eplots)
-            push!(entryevents, eevents)
             push!(entryshades, eshades)
             push!(entryhalfshades, ehalfshades)
         end
         relayout()
     end
 
-    # reset visibilities of all plot eleemnts with a right click
-    events = addmouseevents!(blockscene, leg.layoutobservables.computedbbox)
-    onmouserightclick(events) do event
-        visibilities = Bool[]
-        for (_, entries) in entry_groups[]
-            for entry in entries
-                append!(visibilities, Bool[ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ])
+    # Process hide/show events
+    on(events(blockscene).mousebutton, priority = 1) do event
+        mpos = Makie.events(blockscene).mouseposition[]
+
+        if (event.action == Mouse.release) && in(mpos, legend_area[])
+
+            if !(event.button == Mouse.left || event.button == Mouse.right)
+                return Consume(true)
             end
-        end
-        n_visible = sum(s -> Int64(s), visibilities, init = 0)
-        n_total = length(visibilities)
-        n_visible == n_total && return Consume(true)
-        for (_, entries) in entry_groups[]
-            for e in entries
-                toggle_visibility!(e, true)
+
+            if event.button == Mouse.left
+
+                # Find hovered entry
+                for ((title, entries), shades) in zip(entry_groups[], entryshades)
+                    for (entry, shade) in zip(entries, shades)
+
+                        # shade and halfshade are Box()es covering the visual representation
+                        # and label of the entry
+                        bbox = shade.layoutobservables.computedbbox[]
+                        if hasfield(typeof(entry), :elements) && (entry.elements !== nothing) &&
+                                any(!isnothing, entry.elements) && (mpos in bbox)
+
+                            # determine number of currently visible plot elements
+                            visibilities = [ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ]
+                            n_visible = sum(s -> Int64(s), visibilities, init = 0)
+                            n_total = length(visibilities)
+                            n_total == 0 && return Consume(true)
+
+                            # if not all attached plots have the same state we sync them first
+                            sync = !(n_visible == 0 || n_visible == n_total)
+                            toggle_visibility!(entry, sync)
+
+                            return Consume(true)
+                        end
+
+                    end
+                end
+
+            elseif event.button == Mouse.right
+
+                visibilities = Bool[]
+                for (_, entries) in entry_groups[]
+                    for entry in entries
+                        append!(visibilities, Bool[ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ])
+                    end
+                end
+                n_visible = sum(s -> Int64(s), visibilities, init = 0)
+                n_total = length(visibilities)
+                n_visible == n_total && return Consume(true)
+                for (_, entries) in entry_groups[]
+                    for e in entries
+                        toggle_visibility!(e, true)
+                    end
+                end
+                return Consume(true)
+
             end
+
         end
-        return Consume(true)
+
+        return Consume(false)
     end
 
     # trigger suggestedbbox
