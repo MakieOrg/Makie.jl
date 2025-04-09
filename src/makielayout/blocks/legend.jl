@@ -310,11 +310,10 @@ function initialize_block!(leg::Legend; entrygroups)
 
                         # shade and halfshade are Box()es covering the entry
                         bbox = shade.layoutobservables.computedbbox[]
-                        if hasfield(typeof(entry), :elements) && (entry.elements !== nothing) &&
-                                any(!isnothing, entry.elements) && (mpos in bbox)
+                        if mpos in bbox
 
                             # determine number of currently visible plot elements
-                            visibilities = [ v[] for v in get_plot_visibilities(entry) if !isnothing(v) ]
+                            visibilities = to_value.(get_plot_visibilities(entry))
                             n_visible = sum(s -> Int64(s), visibilities, init = 0)
                             n_total = length(visibilities)
                             n_total == 0 && return Consume(true)
@@ -334,7 +333,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 # Set all to visible
                 for (_, entries) in entry_groups[]
                     for e in entries
-                        toggle_visibility!(e, true)
+                        toggle_visibility!(e)
                     end
                 end
 
@@ -909,9 +908,8 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
 end
 
 function toggle_visibility!(entry::LegendEntry, sync=false)
-    if entry.elements !== nothing
-        for el in entry.elements
-            isnothing(el) && continue
+    for el in entry.elements
+        if (el !== nothing) && (el.plots !== nothing)
             for plot in el.plots
                 !hasproperty(plot, :visible) && continue
                 plot.visible[] = sync ? true : !plot.visible[]
@@ -923,9 +921,9 @@ end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    if entry.elements !== nothing
-        for element in entry.elements
-            isnothing(element) && continue
+    for element in entry.elements
+        isnothing(element) && continue
+        if element.plots !== nothing
             for plot in element.plots
                 !hasproperty(plot, :visible) && continue
                 push!(visibilities, plot.visible)
