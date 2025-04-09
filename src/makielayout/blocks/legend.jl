@@ -184,10 +184,10 @@ function initialize_block!(leg::Legend; entrygroups)
         end
         empty!(titletexts)
 
-        [delete!.(etexts) for etexts in entrytexts]
+        foreach(texts -> foreach(delete!, texts), entrytexts)
         empty!(entrytexts)
 
-        [delete!.(erects) for erects in entrytexts]
+        foreach(rects -> foreach(delete!, rects), entryrects)
         empty!(entryrects)
 
         # delete patch plots
@@ -199,9 +199,9 @@ function initialize_block!(leg::Legend; entrygroups)
         end
         empty!(entryplots)
 
-        [delete!.(eshades) for eshades in entryshades]
+        foreach(shade_rects -> foreach(delete!, shade_rects), entryshades)
         empty!(entryshades)
-        [delete!.(ehalfshades) for ehalfshades in entryhalfshades]
+        foreach(halfshade_rects -> foreach(delete!, halfshade_rects), entryhalfshades)
         empty!(entryhalfshades)
 
         foreach(off, entry_observer_funcs)
@@ -281,12 +281,14 @@ function initialize_block!(leg::Legend; entrygroups)
                 halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0)
                 push!(ehalfshades, halfshade)
             end
+
             push!(entrytexts, etexts)
             push!(entryrects, erects)
             push!(entryplots, eplots)
             push!(entryshades, eshades)
             push!(entryhalfshades, ehalfshades)
         end
+
         relayout()
     end
 
@@ -306,8 +308,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 for ((title, entries), shades) in zip(entry_groups[], entryshades)
                     for (entry, shade) in zip(entries, shades)
 
-                        # shade and halfshade are Box()es covering the visual representation
-                        # and label of the entry
+                        # shade and halfshade are Box()es covering the entry
                         bbox = shade.layoutobservables.computedbbox[]
                         if hasfield(typeof(entry), :elements) && (entry.elements !== nothing) &&
                                 any(!isnothing, entry.elements) && (mpos in bbox)
