@@ -123,7 +123,7 @@ end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
 
-function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
+function Base.show(io::IO, ::MIME"text/plain", attr::Attributes)
 
     io = IOContext(io, :compact => true)
 
@@ -152,7 +152,7 @@ function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
     end
 end
 
-Base.show(io::IO, attr::Attributes) = show(io, MIME"text/plain"(), attr)
+Base.show(io::IO, attr::Attributes) = print(io, "Attributes()")
 theme(x::AbstractPlot) = x.attributes
 isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 

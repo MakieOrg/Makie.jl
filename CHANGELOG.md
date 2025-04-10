@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
+
 ## [0.22.3] - 2025-04-08
 
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
