@@ -33,15 +33,15 @@ Plot a step histogram of `values`.
     """Allows to apply a normalization to the histogram.
     Possible values are:
 
-    *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-    has norm 1 and represents a PDF.
+    * `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
+      has norm 1 and represents a PDF.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
-    count density of input and does not have norm 1. Will not modify the
-    histogram if it already represents a density (`h.isdensity == 1`).
+      count density of input and does not have norm 1. Will not modify the
+      histogram if it already represents a density (`h.isdensity == 1`).
     * `:probability`: Normalize by sum of weights only. Resulting histogram
-    represents the fraction of probability mass for each bin and does not have
-    norm 1.
-    *  `:none`: Do not normalize.
+      represents the fraction of probability mass for each bin and does not have
+      norm 1.
+    * `:none`: Do not normalize.
     """
     normalization = :none
     "Allows to provide statistical weights."

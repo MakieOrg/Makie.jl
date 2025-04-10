@@ -17,7 +17,7 @@
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-    `profile = "high444"`.
+      `profile = "high444"`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
