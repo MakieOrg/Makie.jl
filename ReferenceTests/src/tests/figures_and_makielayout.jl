@@ -221,6 +221,67 @@ end
     f
 end
 
+@reference_test "Legend visibility toggles" begin
+    f = Figure(size = (500, 500))
+
+    ax  = Axis(f[1,1])
+    lb = lines!(ax, 0:4, 0:4, linewidth = 10, color=:blue, label="lines 1")
+    lo = lines!(ax, 0:4, -4:0, linewidth = 10, color=:orange, label="lines 2")
+    sb = scatter!(ax, range(0, 4, length=10), fill(3, 10), markersize = 10, color=:blue, label="scatter 1")
+    so = scatter!(ax, range(0, 4, length=10), fill(2, 10), markersize = 10, color=:orange, label="scatter 2")
+    x = LinRange(0, 4, 100)
+    slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color=:blue, label="band 1")
+    slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color=:orange, label="band 2")
+
+    ax2 = Axis(f[2,1])
+    x = 1:2:20
+    y = 5 * (0.5 .+ sin.(x).^2)
+    bb = barplot!(ax2, x, y; strokewidth = 1, color = :blue, label="barplot 1")
+    bo = barplot!(ax2, x, -y; strokewidth = 1, color = :orange, label="barplot 2")
+
+    l1 = Legend(f[1,2], ax)
+    l2 = Legend(f[2,2],
+        [ PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            PolyElement(plots = [lo, so, slo, bo], color = :orange) ],
+        [ "blue", "orange" ], "Colors" )
+
+    st = Makie.Stepper(f)
+    e = events(f)
+
+    click(e, 450, 440) # turn one off, single dashed
+    Makie.step!(st)
+
+    click(e, 450, 330) # turn another off, two dashed
+    Makie.step!(st)
+
+    click(e, 450, 400, Mouse.right) # invert
+    Makie.step!(st)
+
+    click(e, 450, 380)
+    click(e, 450, 420) # clear one dashed
+    Makie.step!(st)
+
+    click(e, 450, 120) # second legend off
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # swap
+    Makie.step!(st)
+
+    click(e, 450, 140) # turn on
+    Makie.step!(st)
+
+    click(e, 450, 110, Mouse.right)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite privous states)
+    Makie.step!(st)
+
+    st
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
