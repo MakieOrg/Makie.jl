@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+
 ## [0.22.3] - 2025-04-08
 
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
