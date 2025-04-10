@@ -3,14 +3,15 @@ struct ConnectionCorner end
 
 @recipe(Annotate) do scene
     Theme(
+        textcolor = :black,
         color = :black,
         text = "Label",
         connection = ConnectionLine(),
-        shrink = (5.0, 10.0),
+        shrink = (5.0, 7.0),
         clipstart = automatic,
-        align = (:left, :bottom),
-        arrow = automatic,
-        maxiter = 100,
+        align = (:center, :center),
+        style = automatic,
+        maxiter = 300,
     )
 end
 
@@ -36,22 +37,26 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.convert_arguments(::Type{<:Annotate}, x::Int, y::Int)
+function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real)
     return ([Vec4d(x, y, NaN, NaN)],)
+end
+
+function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real, x2::Real, y2::Real)
+    return ([Vec4d(x, y, x2, y2)],)
 end
 
 function Makie.convert_arguments(::Type{<:Annotate}, v::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(getindex.(v, 1), getindex.(v, 2), NaN, NaN),)
 end
 
-function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{Vec4d}}})
+function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     scene = Makie.get_scene(p)
 
     textpositions = lift(p[1]) do vecs
         Point2d.(getindex.(vecs, 1), getindex.(vecs, 2))
     end
 
-    txt = text!(p, textpositions, text = p.text, align = (:center, :center), offset = zeros(Vec2d, length(textpositions[])))
+    txt = text!(p, textpositions; text = p.text, align = p.align, offset = zeros(Vec2d, length(textpositions[])), color = p.textcolor)
 
     # points = lift(p, scene.camera.projectionview, p.model, Makie.transform_func(p),
     #       scene.viewport, p[1], p[2]) do _, _, _, _, p1, p2
@@ -59,57 +64,45 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{Vec4d}}})
     #     return Makie.project.(Ref(scene), (Point2d(p1), Point2d(p2)))
     # end
 
-    screenpoints = Ref{Vector{Point2f}}()
+    screenpoints_target = Ref{Vector{Point2f}}()
+    screenpoints_label = Ref{Vector{Point2f}}()
 
     glyphcolls = txt.plots[1][1]
     text_bbs = lift(p, glyphcolls, scene.camera.projectionview) do glyphcolls, _
         points = Makie.project.(Ref(scene), textpositions[])
-        screenpoints[] = points
+        screenpoints_target[] = points
+        screenpoints_label[] = Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4)))
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
     on(text_bbs; update = true) do text_bbs
-        calculate_best_offsets!(txt.offset[], screenpoints[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter = p.maxiter[])
+        calculate_best_offsets!(txt.offset[], screenpoints_target[], screenpoints_label[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter = p.maxiter[])
         notify(txt.offset)
     end
 
-    # base_path = lift(p, points, text_bb, p.connection) do (_, p2), text_bb, conn
-    #     # p1 = closest_point_on_rectangle(text_bb, p2)
-    #     p1 = startpoint(conn, text_bb, p2)
-    #     path = connection_path(conn, p1, p2)
-    #     start = path.commands[1]
-    #     if !(start isa MoveTo)
-    #         error("Connection path should start with MoveTo, started with $(start)")
-    #     else
-    #         if start.p != p1
-    #             error("Connection path did not start with p1 = $p1 but with $(start.p)")
-    #         end
-    #     end
-    #     stop = endpoint(path.commands[end])
-    #     if !(stop ≈ p2)
-    #         error("Connection path did not stop with p2 = $p2 but with $(stop)")
-    #     end
-    #     return path
-    # end
+    plotspecs = lift(p, text_bbs, p.connection, p.clipstart, p.shrink, p.style, p.color) do text_bbs, conn, clipstart, shrink, style, color
+        specs = PlotSpec[]
+        broadcast_foreach(text_bbs, screenpoints_target[], conn, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
+            offset_bb = text_bb + offset
 
-    # clipped_path = lift(base_path, p.clipstart) do path, clipstart
-    #     clipstart = if clipstart === automatic
-    #         Rect2f(boundingbox(txt.plots[1], :pixel))
-    #     else
-    #         clipstart
-    #     end
-    #     clip_path_from_start(path, clipstart)
-    # end
+            p2 in offset_bb && return
+            p1 = startpoint(conn, offset_bb, p2)
+            path = connection_path(conn, p1, p2)
 
-    # shrunk_path = lift(clipped_path, p.shrink) do base_path, shrink
-    #     shrink_path(base_path, shrink)
-    # end
+            clipstart = if clipstart === automatic
+                offset_bb
+            else
+                clipstart
+            end
+            clipped_path = clip_path_from_start(path, clipstart)
+            shrunk_path = shrink_path(clipped_path, shrink)
 
-    # plotspec = lift(shrunk_path, p.arrow, p.color) do path, arrowspec, color
-    #     annotation_arrow_plotspecs(arrowspec, path; color)
-    # end
+            append!(specs, annotation_style_plotspecs(style, shrunk_path; color))
+        end
+        return specs
+    end
 
-    # plotlist!(p, plotspec)
+    plotlist!(p, plotspecs)
     return p
 end
 
@@ -155,11 +148,18 @@ function distance_point_inside_rect(p::Point2, rect::Rect2)
     return Vec2d(dx, dy)
 end
 
-function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         repel_strength=0.25,
         attract_strength=0.25,
         maxiter::Int
     )
+
+    if all(!isnan, textpositions_offset)
+        offsets .= textpositions_offset .- textpositions
+        return
+    end
+    # TODO: make it so some positions can be fixed and others are not (NaNs)
+
     # Initialize velocities and forces for the offsets
     velocities = zeros(Vec2d, length(offsets))
     forces = zeros(Vec2d, length(offsets))
@@ -361,6 +361,10 @@ function shrink_path(path, shrink)
             p_prev = endpoint(path.commands[i-1])
             intersects, moveto, newcommand = circle_intersection(start.p, shrink[1], p_prev, path.commands[i])
             if !intersects # should mean that the command is contained in the circle because we start at its center
+                if i == length(path.commands)
+                    # path is completely contained
+                    return BezierPath(path.commands[1:1]) # empty BezierPath doesn't work currently because of bbox
+                end
                 continue
             else
                 path = BezierPath([
@@ -379,6 +383,10 @@ function shrink_path(path, shrink)
             p_end, reversed = reversed_command(p_prev, path.commands[i])
             intersects, moveto, newcommand = circle_intersection(stop, shrink[2], p_end, reversed)
             if !intersects
+                if i == 2
+                    # path is completely contained
+                    return BezierPath(path.commands[1:1]) # empty BezierPath doesn't work currently because of bbox
+                end
                 continue
             else
                 _, new_reversed = reversed_command(moveto.p, newcommand)
@@ -561,7 +569,11 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-function annotation_arrow_plotspecs(::Automatic, path::BezierPath; color)
+struct ArrowLineStyle end
+
+annotation_style_plotspecs(::Automatic, path; kwargs...) = annotation_style_plotspecs(LineStyle(), path; kwargs...)
+
+function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath; color)
     p = endpoint(path.commands[end])
     markersize = 10
     dir = path_direction(endpoint(path.commands[end-1]), path.commands[end], markersize)
@@ -577,9 +589,17 @@ function path_direction(p, l::LineTo, _)
     return normalize(l.p - p)
 end
 
-struct PolyArrow end
+struct LineStyle end
 
-function annotation_arrow_plotspecs(::PolyArrow, path::BezierPath; color)
+function annotation_style_plotspecs(::LineStyle, path::BezierPath; color)
+    [
+        PlotSpec(:Lines, path; color, space = :pixel),
+    ]
+end
+
+struct PolyStyle end
+
+function annotation_style_plotspecs(::PolyStyle, path::BezierPath; color)
     @assert length(path.commands) == 2
     p1 = (path.commands[1]::MoveTo).p
     p2 = (path.commands[2]::LineTo).p
@@ -599,6 +619,6 @@ function annotation_arrow_plotspecs(::PolyArrow, path::BezierPath; color)
 
     [
         PlotSpec(:Poly, points; color, space = :pixel),
-        PlotSpec(:Text, (p1 + p2) / 2; text = "arrow", align = (:center, :center), rotation = mod(atan(dir[2], dir[1]), pi), space = :pixel)
+        PlotSpec(:Text, (p1 + p2) / 2; text = "style", align = (:center, :center), rotation = mod(atan(dir[2], dir[1]), pi), space = :pixel)
     ]
 end
