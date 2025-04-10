@@ -147,17 +147,17 @@ function plot!(plot::Voxels)
     # Internal attribute for communicating updates to the backend.
     plot.attributes[:_local_update] = Observable((0:0, 0:0, 0:0))
 
-    # Disconnect automatic mapping
-    # I want to avoid recalculating limits every time the input is updated.
-    # Maybe this can be done with conversion kwargs...?
-    off(plot.args[end], plot.args[end].listeners[1][2])
-
     # If a UInt8 Array is passed we don't do any mapping between plot.args and
     # plot.converted. Instead we just set plot.converted = plot.args in
     # convert_arguments
     if eltype(plot.args[end][]) == UInt8
         plot._limits[] = (1, 255)
         return
+    else
+        # Disconnect automatic mapping
+        # I want to avoid recalculating limits every time the input is updated.
+        # Maybe this can be done with conversion kwargs...?
+        off(plot.args[end], plot.args[end].listeners[1][2])
     end
 
 

@@ -56,6 +56,17 @@ end
     ps = [Point3f(x - 2.5, y - 2.0, z - 1.5) for z in 0:3 for y in 0:4 for x in 0:5]
     @test Makie.voxel_positions(p) ≈ ps
     @test Makie.voxel_colors(p) == cc.colormap[][p.converted[end][][:]]
+
+    # raw UInt8 input updates, issue #4912
+    data = Observable(zeros(UInt8, 4,5,6))
+    f, a, p = voxels(data)
+    @test p.converted[1][] == Vec2f(-2, 2)
+    @test p.converted[2][] == Vec2f(-2.5, 2.5)
+    @test p.converted[3][] == Vec2f(-3, 3)
+    @test p.converted[4][] == p.args[end][]
+    data[] = ones(UInt8, 4,5,6)
+    @test p.args[end][] == data[]
+    @test p.converted[end][] == data[]
 end
 
 # TODO, test all primitives and argument conversions
