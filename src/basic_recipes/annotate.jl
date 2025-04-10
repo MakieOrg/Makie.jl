@@ -11,7 +11,7 @@ struct ConnectionCorner end
         clipstart = automatic,
         align = (:center, :center),
         style = automatic,
-        maxiter = 300,
+        maxiter = 100,
     )
 end
 
@@ -166,7 +166,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
     damping = 0.9
     threshold = 1e-2
 
-    padding = Vec2d(4, 4)
+    padding = Vec2d(4, 2)
     # padding = Vec2d(0, 0)
     padded_bbs = map(text_bbs) do bb
         Rect2(bb.origin .- padding, bb.widths .+ 2padding)
@@ -175,9 +175,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
 
     # offsets .= 30 .* randn.(Vec2d)
 
-    for iter in 1:maxiter
-        # println()
-        # @show iter
+    for _ in 1:maxiter
         offset_bbs .= padded_bbs .+ offsets
 
         # Compute repulsive forces between bounding boxes
@@ -220,54 +218,25 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
                 offsets[i] += repel_strength * diff
             end
         end
-        # @show offsets
-
-        # # Ensure bounding boxes do not overlap with any text positions
-        # for i in 1:length(text_bbs)
-        #     bb = text_bbs[i] + offsets[i]
-        #     for target_pos in textpositions
-        #         direction = normalize(center(bb) - target_pos .+ 1e-6) # Push text position out of the bounding box
-        #         distance = minimum(abs, [left(bb) - target_pos[1], right(bb) - target_pos[1], bottom(bb) - target_pos[2], top(bb) - target_pos[2]])
-        #         force = (repel_strength / distance) * direction
-        #         forces[i] += force
-        #     end
-        # end
-
-        # # Compute forces to keep bounding boxes inside the viewport
-        # for i in 1:length(text_bbs)
-        #     bb = text_bbs[i] + offsets[i]
-        #     border_force_x = if left(bb) < left(bbox)
-        #         left(bbox) - left(bb)
-        #     elseif right(bb) > right(bbox)
-        #         right(bbox) - right(bb)
-        #     else
-        #         0.0
-        #     end
-
-        #     border_force_y = if bottom(bb) < bottom(bbox)
-        #         bottom(bbox) - bottom(bb)
-        #     elseif top(bb) > top(bbox)
-        #         top(bbox) - top(bb)
-        #     else
-        #         0.0
-        #     end
-
-        #     border_force = Vec2d(border_force_x, border_force_y)
-        #     forces[i] += border_force
-        # end
-
-        # forces .= (x -> clamp.(x, -10, 10)).(forces)
-
-        # # Update velocities and offsets
-        # for i in 1:length(offsets)
-        #     velocities[i] = damping * (velocities[i] + forces[i])
-        #     offsets[i] += velocities[i]
-        # end
-
-        # # Check for convergence
-        # if maximum(norm.(forces)) < threshold
-        #     break
-        # end
+       
+        # Keep text boundingboxes inside the axis boundingbox
+        let
+            ((l, b), (r, t)) = extrema(bbox)
+            for i in 1:length(text_bbs)
+                ((pl, pb), (pr, pt)) = extrema(padded_bbs[i])
+                ox, oy = offsets[i]
+                if pl + ox < l
+                    offsets[i] = Vec(l - pl, oy)
+                elseif pr + ox > r
+                    offsets[i] = Vec(r - pr, oy)
+                end
+                if pb + oy < b
+                    offsets[i] = Vec(ox, b - pb)
+                elseif pt + oy > t
+                    offsets[i] = Vec(ox, t - pt)
+                end
+            end
+        end
     end
     return
 end
@@ -574,6 +543,7 @@ struct ArrowLineStyle end
 annotation_style_plotspecs(::Automatic, path; kwargs...) = annotation_style_plotspecs(LineStyle(), path; kwargs...)
 
 function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath; color)
+    length(path.commands) < 2 && return PlotSpec[]
     p = endpoint(path.commands[end])
     markersize = 10
     dir = path_direction(endpoint(path.commands[end-1]), path.commands[end], markersize)
