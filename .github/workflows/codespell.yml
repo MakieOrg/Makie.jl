@@ -13,6 +13,6 @@ jobs:
     - uses: actions/checkout@v4
     - uses: codespell-project/actions-codespell@v2
       with:
-        ignore_words_list: indexin,doubleclick,Heros
+        ignore_words_list: indexin,doubleclick,Heros,OT,jus,bu,te,lins
         skip: '*.js,*.vert,*.ai,*.frag,*.geom'
         only_warn: 1
