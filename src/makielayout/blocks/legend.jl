@@ -364,7 +364,7 @@ function initialize_block!(leg::Legend; entrygroups)
                         visibilities = to_value.(get_plot_visibilities(entry))
                         n_visible = sum(s -> Int64(s), visibilities, init = 0)
                         n_total = length(visibilities)
-                        sync_to_visible = n_visible != n_total
+                        sync_to_visible |= n_visible != n_total
                     end
                     sync_to_visible && break
                 end
