@@ -84,8 +84,16 @@ end
 
 function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
     for c in bezierpath.commands
-        proj_comm = project_command(c, scene, space, model)
-        path_command(ctx, proj_comm)
+        if c isa EllipticalArc
+            bp = Makie.elliptical_arc_to_beziers(c)
+            for bezier in bp.commands
+                proj_comm = project_command(bezier, scene, space, model)
+                path_command(ctx, proj_comm)
+            end
+        else
+            proj_comm = project_command(c, scene, space, model)
+            path_command(ctx, proj_comm)
+        end
     end
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
     Cairo.set_line_width(ctx, linewidth)

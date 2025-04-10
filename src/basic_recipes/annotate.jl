@@ -1,11 +1,14 @@
 struct ConnectionLine end
 struct ConnectionCorner end
+struct ConnectionArc
+    relative_radius::Float64 # 1 would mean that the arc forms a half circle, lower than 1 would mean it gets closer and closer to a line
+end
 
 @recipe(Annotate) do scene
     Theme(
         textcolor = :black,
         color = :black,
-        text = "Label",
+        text = "",
         connection = ConnectionLine(),
         shrink = (5.0, 7.0),
         clipstart = automatic,
@@ -95,9 +98,10 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
                 clipstart
             end
             clipped_path = clip_path_from_start(path, clipstart)
+
             shrunk_path = shrink_path(clipped_path, shrink)
 
-            append!(specs, annotation_style_plotspecs(style, shrunk_path; color))
+            append!(specs, annotation_style_plotspecs(style, shrunk_path, p2; color))
         end
         return specs
     end
@@ -317,6 +321,52 @@ function connection_path(::ConnectionCorner, p1, p2)
     end
 end
 
+function startpoint(::ConnectionArc, text_bb, p2)
+    center(text_bb)
+end
+
+function circle_centers(p1::Point2, p2::Point2, r)
+    d = norm(p2 - p1)
+    if d > 2r
+        return nothing  # No circle possible
+    end
+
+    m = (p1 + p2) / 2
+    h = sqrt(r^2 - (d/2)^2)
+
+    # Perpendicular direction
+    dir = p2 - p1
+    perp = Point2(-dir[2], dir[1]) / d  # Normalized
+
+    c1 = m + h * perp
+    c2 = m - h * perp
+    return c1, c2
+end
+
+
+function arc_center_radius(p1::Point2, p2::Point2, x::Real)
+    xabs = abs(x)
+    chord = p2 - p1
+    mid = Point2((p1[1] + p2[1]) / 2, (p1[2] + p2[2]) / 2)
+    len = norm(chord)
+    height = xabs * len / 2
+    if height == 0
+        error("Height x must be non-zero for a valid arc.")
+    end
+    # Radius from chord length and height
+    r = (len^2) / (8height) + height / 2
+    # Unit perpendicular vector to chord
+    perp = normalize(Point2(-chord[2], chord[1]))
+    # Center lies along perpendicular from midpoint, distance (r - x)
+    center = mid + sign(x) * perp * (r - height)
+    return r, center
+end
+
+function connection_path(ca::ConnectionArc, p1, p2)
+    radius, center = arc_center_radius(p1, p2, ca.relative_radius)
+    BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
+end
+
 function shrink_path(path, shrink)
     start::MoveTo = path.commands[1]
     stop = endpoint(path.commands[end])
@@ -375,6 +425,11 @@ function reversed_command(p_prev, l::LineTo)
     return l.p, LineTo(p_prev)
 end
 
+function reversed_command(p_prev, e::EllipticalArc)
+    # assumed that p_prev is at the start of e, otherwise there's a linesegment additionally but we can't deal with that here
+    return endpoint(e), EllipticalArc(e.c, e.r1, e.r2, e.angle, e.a2, e.a1)
+end
+
 function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
     p2 = command.p
     # Unpack points
@@ -428,7 +483,61 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
 end
 
 function circle_intersection(center::Point2, r, p1::Point2, command::EllipticalArc)
-    return false, nothing, nothing # TODO: implement
+    if command.r1 == command.r2
+        # special case circular arc
+        # Unpack points
+        cx, cy = center
+        px, py = p1
+        r_a = command.r1
+        angle1 = command.a1
+        angle2 = command.a2
+
+        # Translate the arc center to the origin
+        arc_center = command.c
+        arc_center_translated = arc_center - center
+
+        # Compute the distance between the circle center and the arc center
+        d = norm(arc_center_translated)
+
+        # Check if the circle and arc intersect
+        if d > r + r_a || d < abs(r - r_a)
+            return false, nothing, nothing
+        end
+
+        # Compute the intersection points
+        a = (r^2 - r_a^2 + d^2) / (2 * d)
+        h = sqrt(r^2 - a^2)
+        p = center + a * normalize(arc_center_translated)
+        perp = Point2(-arc_center_translated[2], arc_center_translated[1]) / d
+        intersection1 = p + h * perp
+        intersection2 = p - h * perp
+
+        # Check if the intersection points lie on the arc
+        angle_intersection1 = atan(intersection1[2] - arc_center[2], intersection1[1] - arc_center[1])
+        angle_intersection2 = atan(intersection2[2] - arc_center[2], intersection2[1] - arc_center[1])
+
+        between_1 = is_between(angle_intersection1, angle1, angle2)
+        between_2 = is_between(angle_intersection2, angle1, angle2)
+
+        if between_1 && between_2
+            # TODO: which one to pick?
+            return true, MoveTo(intersection1), EllipticalArc(arc_center, r_a, r_a, 0.0, angle_intersection1, angle2)
+        elseif between_1
+            return true, MoveTo(intersection1), EllipticalArc(arc_center, r_a, r_a, 0.0, angle_intersection1, angle2)
+        elseif between_2
+            return true, MoveTo(intersection2), EllipticalArc(arc_center, r_a, r_a, 0.0, angle_intersection2, angle2)
+        end
+        #     return false, nothing, nothing
+        # end
+        return false, nothing, nothing
+    else
+        error("Not implemented for ellipses")
+    end
+end
+
+function is_between(x, a, b)
+    a, b = min(a, b), max(a, b)
+    return a <= x <= b
 end
 
 function clip_path_from_start(path::BezierPath, bbox::Rect2)
@@ -473,7 +582,67 @@ function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::LineTo)
 end
 
 function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
-    return false, nothing, nothing # TODO: implement
+    if comm.r1 == comm.r2
+        # circular arc
+        r = comm.r1
+        # Analytical circular arc intersection with bounding box
+        cx, cy = comm.c
+        r = comm.r1
+        angle1, angle2 = comm.a1, comm.a2
+
+        # Define the four edges of the bounding box
+        edges = [
+            (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2])),           # Bottom edge
+            (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2])),           # Left edge
+            (Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2])), # Right edge
+            (Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2]))  # Top edge
+        ]
+
+        for (p1, p2) in edges
+            # Find intersection of the circle with the line segment
+            intersects, t1, t2 = circle_line_intersection(cx, cy, r, p1, p2)
+            if intersects
+            for t in (t1, t2)
+                if 0 <= t <= 1
+                intersection = p1 + t * (p2 - p1)
+                angle = atan(intersection[2] - cy, intersection[1] - cx)
+                if is_between(angle, angle1, angle2)
+                    return true, MoveTo(intersection), EllipticalArc(comm.c, comm.r1, comm.r2, comm.angle, angle, comm.a2)
+                end
+                end
+            end
+            end
+        end
+
+        return false, nothing, nothing
+    else
+        # ellipse not implemented
+        return false, nothing, nothing
+    end
+end
+
+function circle_line_intersection(cx, cy, r, p1::Point2, p2::Point2)
+    x1, y1 = p1
+    x2, y2 = p2
+
+    # Translate line to circle's center
+    dx, dy = x2 - x1, y2 - y1
+    fx, fy = x1 - cx, y1 - cy
+
+    a = dx^2 + dy^2
+    b = 2 * (fx * dx + fy * dy)
+    c = fx^2 + fy^2 - r^2
+
+    discriminant = b^2 - 4 * a * c
+    if discriminant < 0
+    return false, nothing, nothing
+    end
+
+    sqrt_discriminant = sqrt(discriminant)
+    t1 = (-b - sqrt_discriminant) / (2 * a)
+    t2 = (-b + sqrt_discriminant) / (2 * a)
+
+    return true, t1, t2
 end
 
 function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
@@ -540,28 +709,26 @@ end
 
 struct ArrowLineStyle end
 
-annotation_style_plotspecs(::Automatic, path; kwargs...) = annotation_style_plotspecs(LineStyle(), path; kwargs...)
+annotation_style_plotspecs(::Automatic, path, p2; kwargs...) = annotation_style_plotspecs(LineStyle(), path, p2; kwargs...)
 
-function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath; color)
+function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath, p2; color)
     length(path.commands) < 2 && return PlotSpec[]
     p = endpoint(path.commands[end])
     markersize = 10
-    dir = path_direction(endpoint(path.commands[end-1]), path.commands[end], markersize)
-    rotation = atan(dir[2], dir[1])
     shortened_path = shrink_path(path, (0, markersize))
+    # shortened_path = shrink_path(path, (0, 0))
+    length(shortened_path.commands) < 2 && return PlotSpec[]
+    dir = p2 - endpoint(shortened_path.commands[end])
+    rotation = atan(dir[2], dir[1])
     [
         PlotSpec(:Lines, shortened_path; color, space = :pixel),
         PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
     ]
 end
 
-function path_direction(p, l::LineTo, _)
-    return normalize(l.p - p)
-end
-
 struct LineStyle end
 
-function annotation_style_plotspecs(::LineStyle, path::BezierPath; color)
+function annotation_style_plotspecs(::LineStyle, path::BezierPath, p2; color)
     [
         PlotSpec(:Lines, path; color, space = :pixel),
     ]
@@ -569,7 +736,7 @@ end
 
 struct PolyStyle end
 
-function annotation_style_plotspecs(::PolyStyle, path::BezierPath; color)
+function annotation_style_plotspecs(::PolyStyle, path::BezierPath, p2; color)
     @assert length(path.commands) == 2
     p1 = (path.commands[1]::MoveTo).p
     p2 = (path.commands[2]::LineTo).p
