@@ -554,29 +554,28 @@ end
 
 @reference_test "Textbox" begin
     f = Figure()
+    e = events(f)
 
     tb1 = Makie.Textbox(f[1,1])
     Makie.set!(tb1, "1234567890qwertyuiop")
     Makie.focus!(tb1)
-    f.scene.events.mouseposition[] = (297, 221)
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    click(e, 297, 221)
     Makie.defocus!(tb1)
 
     tb2 = Makie.Textbox(f[2,1], width=100)
     Makie.set!(tb2, "1234567890qwertyuiop")
     tb2.cursorindex[] = 20
     Makie.focus!(tb2)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
     tb3 = Makie.Textbox(f[3,1], width=100)
     Makie.set!(tb3, "1234567890qwertyuiop")
     tb3.cursorindex[] = 20
     Makie.focus!(tb3)
-    f.scene.events.mouseposition[] = (259, 173)  # between 7 and 8
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    click(e, 259, 173) # between 7 and 8
+    send(e, Keyboard.left)
+    send(e, Keyboard.left)
     Makie.defocus!(tb3)
 
     tb4 = Makie.Textbox(f[4,1], width=100)
@@ -585,7 +584,7 @@ end
     tb4.cursorindex[] = 10
     Makie.focus!(tb4)
     for _ in 1:8
-        f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+        send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
 
