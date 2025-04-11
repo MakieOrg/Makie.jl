@@ -25,12 +25,12 @@ and parent nodes identified by `merges`.
 """
 @recipe Dendrogram begin
     "TODO: document"
-    weights = Makie.automatic
+    weights = automatic
     """
     Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
     rectangular lines. Other styles can be defined by overloading
-    `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` which should return a
-    Vector of points connecting the parent to its children.
+    `dendrogram_connectors!(::Val{:mystyle}, points, parent, child1, child2)` which should
+    add the points connecting the parent node to its children to `points`.
     """
     branch_shape = :box
     "TODO: document"
@@ -63,14 +63,13 @@ function recursive_dendrogram_points!(
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
 
-    l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
-
-    # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
+    # Add branch connection points
     N = length(ret_points)
-    append!(ret_points, to_ndim.(Point{D, Float64}, l, 0))
+    dendrogram_connectors!(Val(branch_shape), ret_points, node, child1, child2)
     push!(ret_points, Point{D, Float64}(NaN)) # separate segments
     N = length(ret_points) - N
 
+    # If colors are defined per node, repeat them to be per point
     if ret_colors isa Vector
         append!(ret_colors, (branch_groups[node.idx] for _ in 1:N))
     end
@@ -81,7 +80,7 @@ function recursive_dendrogram_points!(
 end
 
 
-function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
+function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
     branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
         if isnothing(groups)
             return to_color(color)
@@ -126,29 +125,27 @@ end
 
 # branching styles
 
-function dendrogram_connectors(::Val{:tree}, parent, child1, child2)
-    return [child1.position, parent.position, child2.position]
+function dendrogram_connectors!(::Val{:tree}, points, parent, child1, child2)
+    push!(points, child1.position, parent.position, child2.position)
 end
 
-function dendrogram_connectors(::Val{:box}, parent::DNode{2}, child1::DNode{2}, child2::DNode{2})
+function dendrogram_connectors!(::Val{:box}, points, parent::DNode{2}, child1::DNode{2}, child2::DNode{2})
     yp = parent.position[2]
     x1 = child1.position[1]
     x2 = child2.position[1]
-
-    return Point2d[child1.position, (x1, yp), (x2, yp), child2.position]
+    push!(points, child1.position, Point2d(x1, yp), Point2d(x2, yp), child2.position)
 end
 
-function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
+function dendrogram_connectors!(::Val{:box}, points, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
     yp = parent.position[2]
     x1 = child1.position[1]
     x2 = child2.position[1]
-
-    return Point3d[
+    push!(points,
         child1.position,
-        (x1, yp, 0.5 * (parent.position[3] + child1.position[3])),
-        (x2, yp, 0.5 * (parent.position[3] + child2.position[3])),
+        Point3d(x1, yp, 0.5 * (parent.position[3] + child1.position[3])),
+        Point3d(x2, yp, 0.5 * (parent.position[3] + child2.position[3])),
         child2.position
-    ]
+    )
 end
 
 
