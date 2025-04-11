@@ -1,23 +1,55 @@
 module Ann
 
-module Paths
+    module Paths
 
-struct Line end
-struct Corner end
-struct Arc
-    height::Float64 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
-end
+        struct Line end
+        struct Corner end
+        struct Arc
+            height::Float64 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
+        end
 
-end
+    end
 
-module Styles
+    module Arrows
 
-struct Line end
+        using ...Makie
 
-struct LineArrow end
+        Base.@kwdef struct Line3
+            length = Makie.automatic
+            angle::Float64 = deg2rad(60)
+            color = Makie.automatic
+            linewidth::Union{Makie.Automatic,Float64} = Makie.automatic
+        end
 
-end
+        shrinksize(::Nothing; arrowsize) = 0
+        shrinksize(l::Line3; arrowsize) = 0
 
+        function plotspecs(l::Line3, pos; rotation, arrowsize, color, linewidth)
+            color = l.color === Makie.automatic ? color : l.color
+            linewidth = l.linewidth === Makie.automatic ? linewidth : l.linewidth
+            dir1 = Point2(-cos(l.angle/2 + rotation), -sin(l.angle/2 + rotation))
+            dir2 = Point2(-cos(-l.angle/2 + rotation), -sin(-l.angle/2 + rotation))
+            p1 = pos + dir1 * arrowsize
+            p2 = pos + dir2 * arrowsize
+            [
+                Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth)
+            ]
+        end
+
+    end
+
+    module Styles
+
+        using ..Arrows: Arrows
+
+        struct Line end
+
+        Base.@kwdef struct LineArrow4
+            head = Arrows.Line3()
+            tail = nothing
+        end
+
+    end
 end
 
 using .Ann
@@ -34,6 +66,7 @@ using .Ann
         style = automatic,
         maxiter = 100,
         linewidth = 1.0,
+        arrowsize = 12,
     )
 end
 
@@ -111,7 +144,8 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
             p.style,
             p.color,
             p.linewidth,
-        ) do text_bbs, conn, clipstart, shrink, style, color, linewidth
+            p.arrowsize,
+        ) do text_bbs, conn, clipstart, shrink, style, color, linewidth, arrowsize
         specs = PlotSpec[]
         broadcast_foreach(text_bbs, screenpoints_target[], conn, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
@@ -129,7 +163,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
 
             shrunk_path = shrink_path(clipped_path, shrink)
 
-            append!(specs, annotation_style_plotspecs(style, shrunk_path, p2; color, linewidth))
+            append!(specs, annotation_style_plotspecs(style, shrunk_path, p1, p2; color, linewidth, arrowsize))
         end
         return specs
     end
@@ -737,24 +771,42 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-annotation_style_plotspecs(::Makie.Automatic, path, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p2; kwargs...)
+annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
-function annotation_style_plotspecs(::Ann.Styles.LineArrow, path::BezierPath, p2; color, linewidth)
+function annotation_style_plotspecs(l::Ann.Styles.LineArrow4, path::BezierPath, p1, p2; color, linewidth, arrowsize)
     length(path.commands) < 2 && return PlotSpec[]
-    p = endpoint(path.commands[end])
-    markersize = 10
-    shortened_path = shrink_path(path, (0, markersize))
-    # shortened_path = shrink_path(path, (0, 0))
+    p_head = endpoint(path.commands[end])
+
+    _startpoint(c::MoveTo) = c.p
+
+    p_tail = _startpoint(path.commands[1])
+
+    shrink_for_head = Ann.Arrows.shrinksize(l.head; arrowsize)
+    shrink_for_tail = Ann.Arrows.shrinksize(l.tail; arrowsize)
+
+    shortened_path = shrink_path(path, (shrink_for_tail, shrink_for_head))
     length(shortened_path.commands) < 2 && return PlotSpec[]
-    dir = p2 - endpoint(shortened_path.commands[end])
-    rotation = atan(dir[2], dir[1])
-    [
-        PlotSpec(:Lines, shortened_path; color, space = :pixel, linewidth),
-        PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
+
+    head_dir = normalize(p2 - endpoint(shortened_path.commands[end]))
+    head_rotation = atan(head_dir[2], head_dir[1])
+    tail_dir = normalize(p1 - _startpoint(shortened_path.commands[1]))
+    tail_rotation = atan(tail_dir[2], tail_dir[1])
+
+
+    specs = [
+        PlotSpec(:Lines, shortened_path; color, space = :pixel, linewidth);
+        # PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
     ]
+    if l.head !== nothing
+        append!(specs, Ann.Arrows.plotspecs(l.head, p_head; rotation = head_rotation, arrowsize, color, linewidth))
+    end
+    if l.tail !== nothing
+        append!(specs, Ann.Arrows.plotspecs(l.tail, p_tail; rotation = tail_rotation, arrowsize, color, linewidth))
+    end
+    return specs
 end
 
-function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p2; color, linewidth)
+function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth)
     [
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
