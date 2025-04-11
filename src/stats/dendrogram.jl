@@ -73,7 +73,7 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
     args = @extract plot (color, groups)
 
     points_vec = Observable{Vector{GeometryBasics.Point{2, Float64}}}([])
-    colors_vec = Observable{Any}([])
+    colors_vec = Observable(Float32[])
 
     length(plot[1][])>1 && lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
         points_vec[] = []
