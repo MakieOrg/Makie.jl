@@ -404,6 +404,7 @@ export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatte
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export Ann
 
 include("precompiles.jl")
 

@@ -1,20 +1,39 @@
-struct ConnectionLine end
-struct ConnectionCorner end
-struct ConnectionArc
-    relative_radius::Float64 # 1 would mean that the arc forms a half circle, lower than 1 would mean it gets closer and closer to a line
+module Ann
+
+module Paths
+
+struct Line end
+struct Corner end
+struct Arc
+    height::Float64 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
 end
+
+end
+
+module Styles
+
+struct Line end
+
+struct LineArrow end
+
+end
+
+end
+
+using .Ann
 
 @recipe(Annotate) do scene
     Theme(
         textcolor = :black,
         color = :black,
         text = "",
-        connection = ConnectionLine(),
+        connection = Ann.Paths.Line(),
         shrink = (5.0, 7.0),
         clipstart = automatic,
         align = (:center, :center),
         style = automatic,
         maxiter = 100,
+        linewidth = 1.0,
     )
 end
 
@@ -83,7 +102,16 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         notify(txt.offset)
     end
 
-    plotspecs = lift(p, text_bbs, p.connection, p.clipstart, p.shrink, p.style, p.color) do text_bbs, conn, clipstart, shrink, style, color
+    plotspecs = lift(
+            p,
+            text_bbs,
+            p.connection,
+            p.clipstart,
+            p.shrink,
+            p.style,
+            p.color,
+            p.linewidth,
+        ) do text_bbs, conn, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]
         broadcast_foreach(text_bbs, screenpoints_target[], conn, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
@@ -101,7 +129,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
 
             shrunk_path = shrink_path(clipped_path, shrink)
 
-            append!(specs, annotation_style_plotspecs(style, shrunk_path, p2; color))
+            append!(specs, annotation_style_plotspecs(style, shrunk_path, p2; color, linewidth))
         end
         return specs
     end
@@ -276,9 +304,9 @@ function rect_overlap(r1, r2)
     end
 end
 
-startpoint(::ConnectionLine, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths
+startpoint(::Ann.Paths.Line, text_bb, p2) = text_bb.origin + 0.5 * text_bb.widths
 
-function startpoint(::ConnectionCorner, text_bb, p2)
+function startpoint(::Ann.Paths.Corner, text_bb, p2)
     l = left(text_bb)
     r = right(text_bb)
     b = bottom(text_bb)
@@ -297,14 +325,14 @@ end
 Makie.data_limits(p::Annotate) = Rect3f(Rect2f(Vec2f.(p[1][])))
 Makie.boundingbox(p::Annotate, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
-function connection_path(::ConnectionLine, p1, p2)
+function connection_path(::Ann.Paths.Line, p1, p2)
     BezierPath([
         MoveTo(p1),
         LineTo(p2),
     ])
 end
 
-function connection_path(::ConnectionCorner, p1, p2)
+function connection_path(::Ann.Paths.Corner, p1, p2)
     dir = p2 - p1
     if abs(dir[1]) > abs(dir[2])
         BezierPath([
@@ -321,7 +349,7 @@ function connection_path(::ConnectionCorner, p1, p2)
     end
 end
 
-function startpoint(::ConnectionArc, text_bb, p2)
+function startpoint(::Ann.Paths.Arc, text_bb, p2)
     center(text_bb)
 end
 
@@ -358,12 +386,15 @@ function arc_center_radius(p1::Point2, p2::Point2, x::Real)
     # Unit perpendicular vector to chord
     perp = normalize(Point2(-chord[2], chord[1]))
     # Center lies along perpendicular from midpoint, distance (r - x)
-    center = mid + sign(x) * perp * (r - height)
+
+    direction = sign(x) * chord[1] > 0 ? -1 : 1
+
+    center = mid + direction * perp * (r - height)
     return r, center
 end
 
-function connection_path(ca::ConnectionArc, p1, p2)
-    radius, center = arc_center_radius(p1, p2, ca.relative_radius)
+function connection_path(ca::Ann.Paths.Arc, p1, p2)
+    radius, center = arc_center_radius(p1, p2, ca.height)
     BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
 end
 
@@ -707,11 +738,9 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-struct ArrowLineStyle end
+annotation_style_plotspecs(::Makie.Automatic, path, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p2; kwargs...)
 
-annotation_style_plotspecs(::Automatic, path, p2; kwargs...) = annotation_style_plotspecs(LineStyle(), path, p2; kwargs...)
-
-function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath, p2; color)
+function annotation_style_plotspecs(::Ann.Styles.LineArrow, path::BezierPath, p2; color, linewidth)
     length(path.commands) < 2 && return PlotSpec[]
     p = endpoint(path.commands[end])
     markersize = 10
@@ -721,22 +750,20 @@ function annotation_style_plotspecs(::ArrowLineStyle, path::BezierPath, p2; colo
     dir = p2 - endpoint(shortened_path.commands[end])
     rotation = atan(dir[2], dir[1])
     [
-        PlotSpec(:Lines, shortened_path; color, space = :pixel),
+        PlotSpec(:Lines, shortened_path; color, space = :pixel, linewidth),
         PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
     ]
 end
 
-struct LineStyle end
-
-function annotation_style_plotspecs(::LineStyle, path::BezierPath, p2; color)
+function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p2; color, linewidth)
     [
-        PlotSpec(:Lines, path; color, space = :pixel),
+        PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
 end
 
 struct PolyStyle end
 
-function annotation_style_plotspecs(::PolyStyle, path::BezierPath, p2; color)
+function annotation_style_plotspecs(::PolyStyle, path::BezierPath, p2; color, linewidth)
     @assert length(path.commands) == 2
     p1 = (path.commands[1]::MoveTo).p
     p2 = (path.commands[2]::LineTo).p
