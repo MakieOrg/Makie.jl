@@ -760,29 +760,3 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p2; col
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
 end
-
-struct PolyStyle end
-
-function annotation_style_plotspecs(::PolyStyle, path::BezierPath, p2; color, linewidth)
-    @assert length(path.commands) == 2
-    p1 = (path.commands[1]::MoveTo).p
-    p2 = (path.commands[2]::LineTo).p
-    
-    dir = p2 - p1
-    len = norm(dir)
-    w = len / 1.68
-
-    vl = normalize(dir)
-    vw = Vec2(-vl[2], vl[1])
-
-    points = [
-        p1 + w/2 * vw,
-        p2,
-        p1 - w/2 * vw,
-    ]
-
-    [
-        PlotSpec(:Poly, points; color, space = :pixel),
-        PlotSpec(:Text, (p1 + p2) / 2; text = "style", align = (:center, :center), rotation = mod(atan(dir[2], dir[1]), pi), space = :pixel)
-    ]
-end
