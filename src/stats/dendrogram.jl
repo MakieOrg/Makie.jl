@@ -39,8 +39,11 @@ and parent nodes identified by `merges`.
     )
 end
 
-function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
-                                     color=:black, branch_shape=:tree, groups=nothing)
+function recursive_dendrogram_points(
+        node::DNode{D}, nodes, ret_points::Vector{<: VecTypes{D}}, ret_colors;
+        color=:black, branch_shape=:tree, groups=nothing
+    ) where {D}
+
     isnothing(node.children) && return
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
@@ -48,8 +51,8 @@ function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
     l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
 
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
-    append!(ret_points, to_ndim.(Point3d, l, 0))
-    push!(ret_points, Point3d(NaN)) # separate segments
+    append!(ret_points, to_ndim.(Point{D, Float64}, l, 0))
+    push!(ret_points, Point{D, Float64}(NaN)) # separate segments
 
     if isnothing(groups)
         cgroup = 0
@@ -69,24 +72,24 @@ function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
 end
 
 
-function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
+function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: DNode{D}}}}) where {D}
     args = @extract plot (color, groups)
 
-    points_vec = Observable(Point2d[])
+    points_vec = Observable(Point{D, Float64}[])
     colors_vec = Observable(Float32[])
 
-    if length(plot[1][]) > 1
-        lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
-            empty!(points_vec[])
-            empty!(colors_vec[])
+    onany(plot[1], plot.branch_shape, plot[:color], update = true) do nodes, branch_shape, color
+        empty!(points_vec[])
+        empty!(colors_vec[])
 
-            # this pattern is basically first updating the values of the observables,
-            recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes, points_vec[], colors_vec[];
-                                        color, branch_shape, groups=groups[])
+        # this pattern is basically first updating the values of the observables,
+        recursive_dendrogram_points(
+            nodes[maximum(keys(nodes))], nodes, points_vec[], colors_vec[];
+            color, branch_shape, groups=groups[]
+        )
 
-            # then propagating the signal, so that there is no error with differing lengths.
-            notify(points_vec); notify(colors_vec)
-        end
+        # then propagating the signal, so that there is no error with differing lengths.
+        notify(points_vec); notify(colors_vec)
     end
 
 
@@ -108,7 +111,7 @@ function dendrogram_connectors(::Val{:box}, parent::DNode{2}, child1::DNode{2}, 
     x1 = child1.position[1]
     x2 = child2.position[1]
 
-    return Point2d[(x1, child1.position[2]), (x1, yp), (x2, yp), (x2, child2.position[2])]
+    return Point2d[child1.position, (x1, yp), (x2, yp), child2.position]
 end
 
 function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
@@ -117,10 +120,10 @@ function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, 
     x2 = child2.position[1]
 
     return Point3d[
-        (x1, child1.position[2], child1.position[3]),
-        (x1, yp, (parent.position[3] + child1.position[3])./2),
-        (x2, yp, (parent.position[3] + child2.position[3])./2),
-        (x2, child2.position[2], child2.position[3])
+        child1.position,
+        (x1, yp, 0.5 * (parent.position[3] + child1.position[3])),
+        (x2, yp, 0.5 * (parent.position[3] + child2.position[3])),
+        child2.position
     ]
 end
 
