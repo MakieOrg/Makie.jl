@@ -74,7 +74,7 @@ function recursive_dendrogram_points(
 end
 
 
-function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: DNode{D}}}}) where {D}
+function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
     args = @extract plot (color, groups)
 
     points_vec = Observable(Point{D, Float64}[])
@@ -86,7 +86,7 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: DNode{D}}}
 
         # this pattern is basically first updating the values of the observables,
         recursive_dendrogram_points(
-            nodes[maximum(keys(nodes))], nodes, points_vec[], colors_vec[];
+            nodes[end], nodes, points_vec[], colors_vec[];
             color, branch_shape, groups=groups[]
         )
 
@@ -153,33 +153,30 @@ function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.i
     return DNode{3}(index, Point3d(newx, newy, newz), (n1.idx, n2.idx))
 end
 
-function Makie.convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
-    nodes = Dict(i => DNode(i, n, nothing) for (i,n) in enumerate(leaves))
-    nm = maximum(keys(nodes))
-
+function convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
+    nodes = [DNode(i, n, nothing) for (i,n) in enumerate(leaves)]
     for m in merges
-        nm += 1
-        nodes[nm] = find_merge(nodes[m[1]], nodes[m[2]]; index = nm)
+        push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes)+1))
     end
     return (nodes,)
 end
 
 
-function hcl_nodes(hcl; useheight=false)
-    nleaves = length(hcl.order)
-    nodes = Dict(i => DNode(i, Point2d(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order)))
-    nm = maximum(keys(nodes))
+# function hcl_nodes(hcl; useheight=false)
+#     nleaves = length(hcl.order)
+#     nodes = Dict(i => DNode(i, Point2d(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order)))
+#     nm = maximum(keys(nodes))
 
-    for (m1, m2) in eachrow(hcl.merges)
-        nm += 1
+#     for (m1, m2) in eachrow(hcl.merges)
+#         nm += 1
 
-        m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
-        m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
-        nodes[nm] = find_merge(nodes[m1], nodes[m2]; index=nm)
-    end
+#         m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
+#         m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
+#         nodes[nm] = find_merge(nodes[m1], nodes[m2]; index=nm)
+#     end
 
-    return nodes
-end
+#     return nodes
+# end
 
 recursive_leaf_groups(node, nodes, groups::Nothing) = 0
 function recursive_leaf_groups(node, nodes, groups::AbstractArray{T}) where {T}
