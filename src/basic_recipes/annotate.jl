@@ -633,22 +633,21 @@ function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
             # Find intersection of the circle with the line segment
             intersects, t1, t2 = circle_line_intersection(cx, cy, r, p1, p2)
             if intersects
-            for t in (t1, t2)
-                if 0 <= t <= 1
-                intersection = p1 + t * (p2 - p1)
-                angle = atan(intersection[2] - cy, intersection[1] - cx)
-                if is_between(angle, angle1, angle2)
-                    return true, MoveTo(intersection), EllipticalArc(comm.c, comm.r1, comm.r2, comm.angle, angle, comm.a2)
+                for t in (t1, t2)
+                    if 0 <= t <= 1
+                        intersection = p1 + t * (p2 - p1)
+                        angle = atan(intersection[2] - cy, intersection[1] - cx)
+                        if is_between(angle, angle1, angle2)
+                            return true, MoveTo(intersection), EllipticalArc(comm.c, comm.r1, comm.r2, comm.angle, angle, comm.a2)
+                        end
+                    end
                 end
-                end
-            end
             end
         end
 
         return false, nothing, nothing
     else
-        # ellipse not implemented
-        return false, nothing, nothing
+        error("Not implemented for ellipses")
     end
 end
 
