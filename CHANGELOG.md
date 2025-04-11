@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [0.22.4] - 2025-04-11
+- Re-added the `apply_transform(f, data, space)` method that was accidentally removed in v0.22.3, but with a deprecation warning.  It will be removed in the next breaking version.
+
 ## [0.22.3] - 2025-04-08
 
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
