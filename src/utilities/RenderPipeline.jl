@@ -500,8 +500,8 @@ end
 
 function Base.show(io::IO, format::BufferFormat)
     print(io, "BufferFormat($(format.dims), $(format.type)")
-    for (k, v) in format.extras
-        print(io, ", :", k, " => ", v)
+    for k in (:minfilter, :magfilter, :repeat, :mipmap)
+        print(io, ", ", k, " = ", getproperty(format, k))
     end
     print(io, ")")
 end
@@ -789,6 +789,13 @@ end
 ################################################################################
 ##  Experimental GUI for RenderPipeline
 ################################################################################
+
+function pipeline_gui(pipeline)
+    fig = Figure()
+    ax = Axis(fig[1, 1]; aspect = DataAspect())
+    pipeline_gui!(ax, pipeline)
+    return fig
+end
 
 function pipeline_gui!(ax, pipeline)
     width = 5
