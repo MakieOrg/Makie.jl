@@ -41,9 +41,26 @@ and parent nodes identified by `merges`.
     MakieCore.documented_attributes(Lines)...
 end
 
-function recursive_dendrogram_points(
-        node::DNode{D}, nodes, ret_points::Vector{<: VecTypes{D}}, ret_colors;
-        color=:black, branch_shape=:tree, groups=nothing
+function dendrogram_points!(ret_points, nodes, branch_shape, branch_color_groups)
+    if branch_color_groups isa Colorant
+        recursive_dendrogram_points!(
+            ret_points, branch_color_groups, nodes[end],
+            nodes, branch_shape, branch_color_groups
+        )
+        return branch_color_groups
+    else
+        colors = similar(branch_color_groups, 0)
+        recursive_dendrogram_points!(
+            ret_points, colors, nodes[end],
+            nodes, branch_shape, branch_color_groups
+        )
+        return colors
+    end
+end
+
+function recursive_dendrogram_points!(
+        ret_points::Vector{<: VecTypes{D}}, ret_colors,
+        node::DNode{D}, nodes, branch_shape, branch_groups
     ) where {D}
 
     isnothing(node.children) && return
@@ -53,52 +70,48 @@ function recursive_dendrogram_points(
     l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
 
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
+    N = length(ret_points)
     append!(ret_points, to_ndim.(Point{D, Float64}, l, 0))
     push!(ret_points, Point{D, Float64}(NaN)) # separate segments
+    N = length(ret_points) - N
 
-    if isnothing(groups)
-        cgroup = 0
-    else
-        gs = recursive_leaf_groups(node, nodes, groups)
-        @debug gs
-        cgroup = length(unique(gs)) == 1 ? first(gs) : 0
+    if ret_colors isa Vector
+        append!(ret_colors, (branch_groups[node.idx] for _ in 1:N))
     end
 
-    @debug cgroup maxlog=2
-
-    append!(ret_colors, [cgroup for _ in 1:length(l)])
-    push!(ret_colors, NaN32) # separate segments
-
-    recursive_dendrogram_points(child1, nodes, ret_points, ret_colors; branch_shape, groups)
-    recursive_dendrogram_points(child2, nodes, ret_points, ret_colors; branch_shape, groups)
+    recursive_dendrogram_points!(ret_points, ret_colors, child1, nodes, branch_shape, branch_groups)
+    recursive_dendrogram_points!(ret_points, ret_colors, child2, nodes, branch_shape, branch_groups)
+    return
 end
 
 
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
-    args = @extract plot (color, groups)
-
-    points_vec = Observable(Point{D, Float64}[])
-    colors_vec = Observable(Float32[])
-
-    onany(plot[1], plot.branch_shape, plot[:color], update = true) do nodes, branch_shape, color
-        empty!(points_vec[])
-        empty!(colors_vec[])
-
-        # this pattern is basically first updating the values of the observables,
-        recursive_dendrogram_points(
-            nodes[end], nodes, points_vec[], colors_vec[];
-            color, branch_shape, groups=groups[]
-        )
-
-        # then propagating the signal, so that there is no error with differing lengths.
-        notify(points_vec); notify(colors_vec)
+    branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
+        if isnothing(groups)
+            return to_color(color)
+        else
+            return recursive_leaf_groups(nodes[end], nodes, groups)
+        end
     end
 
+    points_vec = Observable(Point{D, Float64}[])
+    colors_vec = map(plot, plot[1], plot.branch_shape, branch_colors) do nodes, branch_shape, branch_colors
+        empty!(points_vec[])
 
-    lines!(plot, points_vec;
-        color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange,
-        linewidth = plot.linewidth, inspectable = plot.inspectable
-    )
+        # this pattern is basically first updating the values of the observables,
+        colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
+
+        # then propagating the signal, so that there is no error with differing lengths.
+        notify(points_vec)
+
+        return colors
+    end
+
+    attr = shared_attributes(plot, Lines)
+    pop!(attr, :color)
+    attr[:color] = colors_vec
+
+    lines!(plot, attr, points_vec)
 end
 
 
@@ -180,16 +193,33 @@ end
 
 recursive_leaf_groups(node, nodes, groups::Nothing) = 0
 function recursive_leaf_groups(node, nodes, groups::AbstractArray{T}) where {T}
-    output = recursive_leaf_groups!(T[], node, nodes, groups)
+    output = Vector{Float32}(undef, length(nodes))
+    recursive_leaf_groups!(output, node, nodes, groups)
     return output
 end
 
+# function recursive_leaf_groups!(output, node, nodes, groups)
+#     if isnothing(node.children)
+#         push!(output, groups[node.idx])
+#     else
+#         recursive_leaf_groups!(output, nodes[node.children[1]], nodes, groups)
+#         recursive_leaf_groups!(output, nodes[node.children[2]], nodes, groups)
+#     end
+#     return output
+# end
+
 function recursive_leaf_groups!(output, node, nodes, groups)
+    # group of a branch is based on its children. If all have the same group,
+    # that group is used, otherwise it is marked as invalid/ungrouped (NaN)
     if isnothing(node.children)
-        push!(output, groups[node.idx])
+        value = groups[node.idx]
+        output[node.idx] = value
+        return value
     else
-        recursive_leaf_groups!(output, nodes[node.children[1]], nodes, groups)
-        recursive_leaf_groups!(output, nodes[node.children[2]], nodes, groups)
+        right = recursive_leaf_groups!(output, nodes[node.children[2]], nodes, groups)
+        left = recursive_leaf_groups!(output, nodes[node.children[1]], nodes, groups)
+        value = ifelse(left == right, left, NaN)
+        output[node.idx] = value
+        return value
     end
-    return output
 end
