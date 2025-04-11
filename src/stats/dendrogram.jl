@@ -39,23 +39,19 @@ and parent nodes identified by `merges`.
     groups = nothing
 
     MakieCore.documented_attributes(Lines)...
+    nan_color = automatic
 end
 
 function dendrogram_points!(ret_points, nodes, branch_shape, branch_color_groups)
-    if branch_color_groups isa Colorant
-        recursive_dendrogram_points!(
-            ret_points, branch_color_groups, nodes[end],
-            nodes, branch_shape, branch_color_groups
-        )
-        return branch_color_groups
-    else
-        colors = similar(branch_color_groups, 0)
-        recursive_dendrogram_points!(
-            ret_points, colors, nodes[end],
-            nodes, branch_shape, branch_color_groups
-        )
-        return colors
-    end
+    # If an explicit color is given we don't need to repeat anything, i.e. we
+    # don't need to construct a new array.
+    # This can be a <: Colorant, Vector{<: Colorant} or Vector{<: Real}
+    colors = branch_color_groups isa Colorant ? branch_color_groups : similar(branch_color_groups, 0)
+    recursive_dendrogram_points!(
+        ret_points, colors, nodes[end],
+        nodes, branch_shape, branch_color_groups
+    )
+    return colors
 end
 
 function recursive_dendrogram_points!(
@@ -90,6 +86,8 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {
         if isnothing(groups)
             return to_color(color)
         else
+            # Get a value per node, where each value matches the group values of
+            # both children if they are the same or NaN if they differ
             return recursive_leaf_groups(nodes[end], nodes, groups)
         end
     end
@@ -98,10 +96,11 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {
     colors_vec = map(plot, plot[1], plot.branch_shape, branch_colors) do nodes, branch_shape, branch_colors
         empty!(points_vec[])
 
-        # this pattern is basically first updating the values of the observables,
+        # Generate positional data that connect branches of the tree. If colors are
+        # given per node (either directly or through grouping) repeat their values
+        # to match up with the branches
         colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
 
-        # then propagating the signal, so that there is no error with differing lengths.
         notify(points_vec)
 
         return colors
@@ -110,6 +109,16 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {
     attr = shared_attributes(plot, Lines)
     pop!(attr, :color)
     attr[:color] = colors_vec
+
+    # Set the default for nan_color. If groups are used, nan_color represents the
+    # ungrouped case, :black. Otherwise it should follow the usual default :transparent
+    attr[:nan_color] = map(plot, plot.groups, pop!(attr, :nan_color)) do groups, nan_color
+        if nan_color === automatic
+            return ifelse(groups === nothing, :transparent, :black)
+        else
+            return nan_color
+        end
+    end
 
     lines!(plot, attr, points_vec)
 end
@@ -191,22 +200,11 @@ end
 #     return nodes
 # end
 
-recursive_leaf_groups(node, nodes, groups::Nothing) = 0
 function recursive_leaf_groups(node, nodes, groups::AbstractArray{T}) where {T}
     output = Vector{Float32}(undef, length(nodes))
     recursive_leaf_groups!(output, node, nodes, groups)
     return output
 end
-
-# function recursive_leaf_groups!(output, node, nodes, groups)
-#     if isnothing(node.children)
-#         push!(output, groups[node.idx])
-#     else
-#         recursive_leaf_groups!(output, nodes[node.children[1]], nodes, groups)
-#         recursive_leaf_groups!(output, nodes[node.children[2]], nodes, groups)
-#     end
-#     return output
-# end
 
 function recursive_leaf_groups!(output, node, nodes, groups)
     # group of a branch is based on its children. If all have the same group,
