@@ -36,12 +36,9 @@ function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
     end
     attr = plot.args[1]
     if haskey(attr.inputs, key)
-        if attr[key][] != val
-            setproperty!(attr, key, val)
-        end
+        setproperty!(attr, key, val)
     else
         add_input!(attr, key, val)
-
         # maybe best to not make assumptions about user attributes?
         # CairoMakie rasterize needs this (or be treated with more care)
         attr[key].value = RefValue{Any}(nothing)
@@ -642,46 +639,34 @@ end
 
 # TODO: it may make sense to just remove Mesh in convert_arguments?
 # TODO: this could probably be reused by meshscatter
+
+function color_per_mesh(ccolors, vertes_per_mesh)
+    result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
+    i = 1
+    for (cs, len) in zip(ccolors, vertes_per_mesh)
+        for j in 1:len
+            result[i] = cs
+            i += 1
+        end
+    end
+    return result
+end
+
 function register_mesh_decomposition!(attr)
-    register_computation!(attr, [:mesh], [:positions, :faces]) do (mesh,), changed, cached
-        if mesh[] isa Vector
-            @info "TODO: Vector{Mesh}"
-            return (coordinates(mesh[][1]), decompose(GLTriangleFace, mesh[][1]))
+    register_computation!(attr, [:mesh, :color], [:positions, :faces, :normals, :texturecoordinates, :mesh_color]) do (mesh, color), changed, cached
+        merged = mesh[] isa Vector ? merge(mesh[]) : mesh[]
+        pos = coordinates(merged)
+        faces = decompose(GLTriangleFace, merged)
+        normies = normals(merged)
+        texturecoords = texturecoordinates(merged)
+        if hasproperty(merged, :color)
+            _color = merged.color
+        elseif mesh[] isa Vector && color[] isa Vector && length(color[]) == length(mesh[])
+            _color = color_per_mesh(color[], map(x-> length(coordinates(x)), mesh[]))
         else
-            return (coordinates(mesh[]), decompose(GLTriangleFace, mesh[]))
+            _color = color[]
         end
-    end
-
-    # texturecoordinates, normals return nothing when no data is present and
-    # reflect types in mesh. May need further conversions
-
-    # TODO: if we're throwing away normals when they are not used we should throw away uvs too...
-    register_computation!(attr, [:mesh], [:texturecoordinates]) do (mesh,), changed, cached
-        if mesh[] isa Vector
-            return (texturecoordinates(mesh[][1]),)
-        else
-            return (texturecoordinates(mesh[]),) # will be nothing if none exist
-        end
-    end
-
-    register_computation!(attr, [:mesh, :matcap, :shading], [:normals]) do (mesh, matcap, shading), changed, cached
-        if shading[] != NoShading || matcap !== nothing
-            if mesh[] isa Vector
-                return (normals(mesh[][1]),)
-            else
-                return (normals(mesh[]),)
-            end
-        else
-            return nothing
-        end
-    end
-
-    register_computation!(attr, [:mesh, :color], [:mesh_color]) do (mesh, color), changed, cached
-        if hasproperty(mesh[], :color)
-            return (mesh[].color, )
-        else
-            return (color[], )
-        end
+        return (pos, faces, normies, texturecoords, _color)
     end
 end
 
@@ -717,13 +702,7 @@ function compute_plot(::Type{Volume}, args::Tuple, user_kw::Dict{Symbol,Any})
 end
 
 function ComputePipeline.update!(plot::ComputePlots; args...)
-    new_values = filter(pairs(args)) do (k, v)
-        return plot[k][] != v
-    end
-    if isempty(new_values)
-        return
-    end
-    ComputePipeline.update!(plot.args[1]; new_values...)
+    ComputePipeline.update!(plot.args[1]; args...)
     return
 end
 

@@ -96,15 +96,15 @@ _xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 function add_computation!(attr, scene, ::Val{:heatmap_transform})
     # TODO: consider just using a grid of points?
     register_computation!(attr,
-            [:x, :y, :image, :transform_func, :space],
+            [:x, :y, :image, :transform_func],
             [:x_transformed, :y_transformed]
-        ) do (x, y, img, func, space), changed, last
+        ) do (x, y, img, func), changed, last
 
         x1d = _xy_convert(x[], size(img[], 1))
-        xps = apply_transform(func[], Point2.(x1d, 0), space[])
+        xps = apply_transform(func[], Point2.(x1d, 0))
 
         y1d = _xy_convert(y[], size(img[], 2))
-        yps = apply_transform(func[], Point2.(0, y1d), space[])
+        yps = apply_transform(func[], Point2.(0, y1d))
 
         return (xps, yps)
     end
@@ -163,10 +163,10 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
     # TODO: If we're always creating a Matrix of Points the backends should just
     #       use that directly instead of going back to a x and y matrix representation
     register_computation!(attr,
-            [:x, :y, :transform_func, :space],
+            [:x, :y, :transform_func],
             [:xy_transformed]
-        ) do (x, y, func, space), changed, last
-        return (apply_transform(func[], _surf_xy_convert(x[], y[]), space[]), )
+        ) do (x, y, func), changed, last
+        return (apply_transform(func[], _surf_xy_convert(x[], y[])), )
     end
 
     register_computation!(attr,

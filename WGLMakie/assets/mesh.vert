@@ -98,7 +98,7 @@ void main(){
 
     render(position_world, get_normal(), view, projection);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
-    frag_color = get_color(get_vertex_color(), get_scaled_colorrange(), alpha_colormap);
+    frag_color = get_color(get_vertex_color(), get_uniform_colorrange(), uniform_colormap);
 
     frag_instance_id = uint(gl_VertexID);
 }

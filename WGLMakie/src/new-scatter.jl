@@ -46,14 +46,28 @@ function backend_colors!(attr)
         end
     end
     register_computation!(attr, [:scaled_color], [:vertex_color]) do (color,), changed, last
-        if color[] isa AbstractVector
-            return (Buffer(color[]),)
-        else
-            return (false,)
-        end
+        color[] isa AbstractVector ? (Buffer(color[]),) : (false,)
+    end
+
+    register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, colorrange, color_mapping_type), changed, last
+        isnothing(colorrange[]) && return (false, false)
+        cmap_minfilter = color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        cmap_changed = changed.alpha_colormap || changed.color_mapping_type
+        cmap_s = cmap_changed ? Sampler(cmap[], minfilter=cmap_minfilter) : nothing
+        return (cmap_s, Vec2f(colorrange[]))
     end
 end
 
+function handle_color!(data, attr)
+    data[:vertex_color] = attr.vertex_color[]
+    data[:uniform_color] = attr.uniform_color[]
+    data[:pattern] = attr.pattern[]
+    data[:uniform_colorrange] = attr.uniform_colorrange[]
+    data[:uniform_colormap] = attr.uniform_colormap[]
+    data[:highclip_color] = attr.highclip_color[]
+    data[:lowclip_color] = attr.lowclip_color[]
+    data[:nan_color] = attr.nan_color[]
+end
 
 function plot_updates(args, changed, name_map)
     new_values = []
@@ -85,17 +99,10 @@ end
 
 
 function assemble_particle_robj!(attr, data)
-    needs_mapping = !(attr.scaled_colorrange[] isa Nothing)
-    color_norm = needs_mapping ? Vec2f(attr.scaled_colorrange[]) : false
-
     data[:positions_transformed_f32c] = attr.positions_transformed_f32c[]
-    data[:alpha_colormap] = needs_mapping ? Sampler(attr.alpha_colormap[]) : false
 
-    data[:color] = attr.scaled_color[]
-    data[:scaled_colorrange] = color_norm
-    data[:highclip_color] = attr.highclip_color[]
-    data[:lowclip_color] = attr.lowclip_color[]
-    data[:nan_color] = attr.nan_color[]
+    handle_color!(data, attr)
+    handle_color_getter!(data)
 
     data[:rotation] = attr.rotation[]
     data[:f32c_scale] = attr.f32c_scale[]
@@ -109,21 +116,17 @@ function assemble_particle_robj!(attr, data)
     data[:depth_shift] = attr.depth_shift[]
     data[:transform_marker] = attr.transform_marker[]
 
+
     per_instance_keys = (
-        :positions_transformed_f32c, :rotation, :markersize, :color, :intensity, :uv_offset_width, :quad_offset, :marker_offset
+        :positions_transformed_f32c, :rotation, :markersize, :vertex_color, :intensity, :uv_offset_width, :quad_offset, :marker_offset
     )
+
     per_instance = filter(data) do (k, v)
         return k in per_instance_keys && !(Makie.isscalar(v))
     end
+
     filter!(data) do (k, v)
         return !(k in per_instance_keys && !(Makie.isscalar(v)))
-    end
-
-    handle_color_getter!(data, per_instance)
-
-    if haskey(data, :color) && haskey(per_instance, :color)
-        to_value(data[:color]) isa Bool && delete!(data, :color)
-        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
     end
     _, arr = first(per_instance)
     if any(v -> length(arr) != length(v), values(per_instance))
@@ -136,9 +139,16 @@ end
 
 const SCATTER_INPUTS = [
     :positions_transformed_f32c,
-    :scaled_color,
-    :alpha_colormap,
-    :scaled_colorrange,
+
+    :vertex_color,
+    :uniform_color,
+    :uniform_colormap,
+    :uniform_colorrange,
+    :nan_color,
+    :highclip_color,
+    :lowclip_color,
+    :pattern,
+
     :rotation,
     :quad_scale,
     :quad_offset,
@@ -152,9 +162,7 @@ const SCATTER_INPUTS = [
     :depth_shift,
     :atlas_1024_32,
     :markerspace,
-    :nan_color,
-    :highclip_color,
-    :lowclip_color,
+
     :visible,
     :transform_marker,
     :f32c_scale,
@@ -178,7 +186,6 @@ function scatter_program(attr, changed, last)
             :uv_offset_width => attr.sdf_uv[],
             :shape_type => attr.sdf_marker_shape[],
             :distancefield => distancefield,
-            :image => isnothing(attr.image[]) ? false : attr.image[],
             :resolution => Vec2f(0),
             :preprojection => Mat4f(I),
             :billboard => attr.rotation[] isa Billboard,
@@ -210,13 +217,15 @@ end
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
+    Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    register_computation!(scatter_program, attr, SCATTER_INPUTS, [:wgl_renderobject, :wgl_update_obs])
+    backend_colors!(attr)
+    register_computation!(scatter_program, attr, SCATTER_INPUTS, [:wgl_scatter_renderobject, :wgl_update_obs])
     on(attr.onchange) do _
-        attr[:wgl_renderobject][]
+        attr[:wgl_scatter_renderobject][]
         return nothing
     end
-    return attr[:wgl_renderobject][]
+    return attr[:wgl_scatter_renderobject][]
 end
 
 function meshscatter_program(args, changed, last)
@@ -265,12 +274,13 @@ function create_shader(scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
-
+    Makie.add_input!(attr, :interpolate, false)
+    backend_colors!(attr)
     inputs = [
         # Special
         :space,
-        :alpha_colormap, :scaled_color, :scaled_colorrange,
-        :packed_uv_transform,
+        :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
+        :packed_uv_transform, :pattern,
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
@@ -308,7 +318,7 @@ function add_uv_mesh!(attr)
     Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
 end
 
-function create_shader(::Scene, plot::Image)
+function create_shader(::Scene, plot::Union{Heatmap, Image})
     attr = plot.args[1]
     add_uv_mesh!(attr)
     backend_colors!(attr)
@@ -317,7 +327,7 @@ function create_shader(::Scene, plot::Image)
         # Special
         :space,
         # Needs explicit handling
-        :alpha_colormap, :uniform_color, :vertex_color, :scaled_colorrange, :color_mapping_type, :pattern, :interpolate,
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :color_mapping_type, :pattern, :interpolate,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :pattern_uv_transform, :fetch_pixel, :shading,
@@ -326,7 +336,7 @@ function create_shader(::Scene, plot::Image)
     register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         r = Dict()
         if isnothing(last)
-            program = _create_mesh(args)
+            program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
             updater = last[2][]
@@ -347,27 +357,8 @@ function to_3x3(mat::Mat{2, 3})::Mat{3, 3}
     return Mat3f(mat[1, 1], mat[1, 2], 0, mat[2, 1], mat[2, 2], 0, 0, 0, 1)
 end
 
-function handle_color!(data, attr)
-    colorrange = attr.scaled_colorrange[]
-    uses_mapping = !isnothing(colorrange)
-    data[:vertex_color] = attr.vertex_color[]
-    data[:uniform_color] = attr.uniform_color[]
-    data[:pattern] = attr.pattern[]
 
-    if uses_mapping
-        cmap_minfilter = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
-        data[:scaled_colorrange] = Vec2f(colorrange)
-        data[:alpha_colormap] = Sampler(attr.alpha_colormap[], minfilter=cmap_minfilter)
-    else
-        data[:scaled_colorrange] = false
-        data[:alpha_colormap] = false
-    end
-    data[:highclip_color] = attr.highclip_color[]
-    data[:lowclip_color] = attr.lowclip_color[]
-    data[:nan_color] = attr.nan_color[]
-end
-
-function _create_mesh(attr)
+function mesh_program(attr)
     i = Vec(1, 2, 3)
     uv_transform = to_3x3(attr.pattern_uv_transform[])
     shading = attr.shading[] isa Bool ? attr.shading[] : attr.shading[] != NoShading
@@ -386,7 +377,7 @@ function _create_mesh(attr)
         :PICKING_INDEX_FROM_UV => true,
         :uv_transform => Mat3f(I),
         :depth_shift => attr.depth_shift[],
-        :normalmatrix => Mat3f(transpose(inv(attr.model_f32c[][i, i]))),
+        :normalmatrix => attr.world_normalmatrix[],
         :interpolate_in_fragment_shader => true
     )
     handle_color!(data, attr)
@@ -407,7 +398,6 @@ function _create_mesh(attr)
     else
         uniforms[:uv] = Vec2f(0)
     end
-
     vbo = VertexArray(; positions_transformed_f32c=attr.positions_transformed_f32c[], faces=attr.faces[], buffers...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), vbo, uniforms)
 end
@@ -422,19 +412,20 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         # Special
         :space,
         # Needs explicit handling
-        :alpha_colormap, :uniform_color, :vertex_color, :scaled_colorrange, :pattern,
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :shading,
+        :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
     register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         r = Dict()
         if isnothing(last)
-            program = _create_mesh(args)
+            program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
             updater = last[2][]
+
             update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
             return nothing
         end
@@ -490,17 +481,21 @@ function create_shader(scene::Scene, plot::Surface)
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-
-    register_computation!(attr, MESH_INPUTS, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict(
-            :image => :uniform_color,
-            :scaled_colorrange => :colorrange,
-            :highclip_color => :highclip,
-            :lowclip_color => :lowclip,
-            :positions_transformed_f32c => :position,
-        )
+    backend_colors!(attr)
+    inputs = [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+    ]
+    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        r = Dict()
         if isnothing(last)
-            program = _create_mesh(args)
+            program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
             updater = last[2][]

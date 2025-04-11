@@ -1,17 +1,13 @@
 
-function handle_color_getter!(uniform_dict, per_instance)
-    if haskey(uniform_dict, :color) && haskey(per_instance, :color)
-        to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
-        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
-    end
-    color = haskey(uniform_dict, :color) ? to_value(uniform_dict[:color]) : to_value(per_instance[:color])
-    if color isa AbstractArray{<:Real}
-        uniform_dict[:color_getter] = """
-            vec4 get_color(){
-                vec2 norm = get_scaled_colorrange();
+function handle_color_getter!(uniform_dict)
+    vertex_color = uniform_dict[:vertex_color]
+    if vertex_color isa AbstractArray{<:Real}
+        uniform_dict[:vertex_color_getter] = """
+            vec4 get_vertex_color(){
+                vec2 norm = get_uniform_colorrange();
                 float cmin = norm.x;
                 float cmax = norm.y;
-                float value = color;
+                float value = vertex_color;
                 if (value <= cmax && value >= cmin) {
                     // in value range, continue!
                 } else if (value < cmin) {
@@ -26,111 +22,15 @@ function handle_color_getter!(uniform_dict, per_instance)
                 float i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0);
                 // 1/0 corresponds to the corner of the colormap, so to properly interpolate
                 // between the colors, we need to scale it, so that the ends are at 1 - (stepsize/2) and 0+(stepsize/2).
-                float stepsize = 1.0 / float(textureSize(alpha_colormap, 0));
+                float stepsize = 1.0 / float(textureSize(uniform_colormap, 0));
                 i01 = (1.0 - stepsize) * i01 + 0.5 * stepsize;
-                return texture(alpha_colormap, vec2(i01, 0.0));
+                return texture(uniform_colormap, vec2(i01, 0.0));
             }
         """
     end
     return
 end
 
-
-function create_shader(scene::Scene, plot::MeshScatter)
-    # Potentially per instance attributes
-    per_instance_keys = (:rotation, :markersize, :intensity)
-    per_instance = filter(plot.attributes.attributes) do (k, v)
-        return k in per_instance_keys && !(isscalar(v[]))
-    end
-
-    f32c, model = Makie.patch_model(plot)
-    per_instance[:offset] = apply_transform_and_f32_conversion(plot, f32c, plot[1])
-
-    for (k, v) in per_instance
-        per_instance[k] = Buffer(lift_convert(k, v, plot))
-    end
-
-    uniforms = filter(plot.attributes.attributes) do (k, v)
-        return (!haskey(per_instance, k)) && isscalar(v[])
-    end
-
-    uniform_dict = Dict{Symbol,Any}()
-    color_keys = Set([:color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale, :calculated_colors])
-    for (k, v) in uniforms
-        k in IGNORE_KEYS && continue
-        k in color_keys && continue
-        uniform_dict[k] = lift_convert(k, v, plot)
-    end
-
-    # TODO: allow passing Mat{2, 3, Float32} (and nothing)
-    uv_transform = map(plot, plot[:uv_transform]) do x
-        M = convert_attribute(x, Key{:uv_transform}(), Key{:meshscatter}())
-        # why transpose?
-        T = Mat3f(0,1,0, 1,0,0, 0,0,1)
-        if M === nothing
-            return T
-        elseif M isa Mat
-            return T * Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
-        elseif M isa Vector
-            return [T * Mat3f(m[1], m[2], 0, m[3], m[4], 0, m[5], m[6], 1) for m in M]
-        end
-    end
-
-    if to_value(uv_transform) isa Vector
-        per_instance[:uv_transform] = Buffer(uv_transform)
-    else
-        uniform_dict[:uv_transform] = uv_transform
-    end
-
-    handle_color!(plot, uniform_dict, per_instance)
-    # handle_color_getter!(uniform_dict, per_instance)
-    instance = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
-    uniform_dict[:interpolate_in_fragment_shader] = get(plot, :interpolate_in_fragment_shader, false)
-    uniform_dict[:transform_marker] = get(plot, :transform_marker, false)
-
-    # See GLMakie/drawing_primtives.jl
-    if isnothing(scene.float32convert)
-        uniform_dict[:f32c_scale] = Vec3f(1)
-    else
-        uniform_dict[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-            return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-        end
-    end
-
-    if haskey(uniform_dict, :color) && haskey(per_instance, :color)
-        to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
-        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
-    end
-
-    if !hasproperty(instance, :uv)
-        uniform_dict[:uv] = Vec2f(0)
-    end
-    if !hasproperty(instance, :normal)
-        uniform_dict[:normal] = Vec3f(0)
-    end
-
-    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
-    uniform_dict[:backlight] = plot.backlight
-
-    # Make sure these exist
-    get!(uniform_dict, :ambient, Vec3f(0.1))
-    get!(uniform_dict, :diffuse, Vec3f(0.9))
-    get!(uniform_dict, :specular, Vec3f(0.3))
-    get!(uniform_dict, :shininess, 8f0)
-    get!(uniform_dict, :light_direction, Vec3f(1))
-    get!(uniform_dict, :light_color, Vec3f(1))
-    get!(uniform_dict, :PICKING_INDEX_FROM_UV, false)
-
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
-    uniform_dict[:picking] = false
-    uniform_dict[:object_id] = UInt32(0)
-    uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
-
-    uniform_dict[:model] = model
-
-    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
-end
 
 using Makie: to_spritemarker
 
@@ -159,45 +59,46 @@ function serialize_three(fta::NoDataTextureAtlas)
     return tex
 end
 
-
-# function create_shader(scene::Scene, plot::Scatter)
-#     # Potentially per instance attributes
-#     # create new dict so we don't automatically convert to observables
-#     # Which is the case for Dict{Symbol, Observable}
-#     attributes = Dict{Symbol, Any}()
-#     for (k, v) in plot.attributes.attributes
-#         attributes[k] = v
-#     end
-#     space = get(attributes, :space, :data)
-#     attributes[:preprojection] = Mat4f(I) # calculate this in JS
-#     f32c, model = Makie.patch_model(plot)
-#     attributes[:pos] = apply_transform_and_f32_conversion(plot, f32c, plot[1], space)
-
-#     quad_offset = get(attributes, :marker_offset, Observable(Vec2f(0)))
-#     attributes[:marker_offset] = Vec3f(0)
-#     attributes[:quad_offset] = quad_offset
-#     attributes[:billboard] = lift(rot -> isa(rot, Billboard), plot, plot.rotation)
-#     attributes[:model] = model
-#     attributes[:depth_shift] = get(plot, :depth_shift, Observable(0f0))
-
-#     delete!(attributes, :uv_offset_width)
-#     filter!(kv -> !(kv[2] isa Function), attributes)
-#     return scatter_shader(scene, attributes, plot)
-# end
-
-value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticVector) = x
-value_or_first(x::Mat) = x
-value_or_first(x) = x
-
-
-
 function scatter_shader(scene::Scene, attributes, plot)
     # Potentially per instance attributes
-    per_instance_keys = (:positions_transformed_f32c, :rotation, :markersize, :color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset)
-    uniform_dict = Dict{Symbol,Any}()
-    uniform_dict[:image] = false
+    all_keys = [
+        :positions_transformed_f32c,
+        :vertex_color,
+        :uniform_color,
+        :uniform_colormap,
+        :uniform_colorrange,
+        :nan_color,
+        :highclip_color,
+        :lowclip_color,
+        :pattern,
+
+        :rotation,
+        :quad_scale,
+        :quad_offset,
+        :sdf_uv,
+        :sdf_marker_shape,
+        :image,
+        :strokewidth,
+        :strokecolor,
+        :glowwidth,
+        :glowcolor,
+        :depth_shift,
+        :atlas_1024_32,
+        :markerspace,
+        :visible,
+        :transform_marker,
+        :f32c_scale,
+        :shape_type,
+        :uv_offset_width,
+        :markersize,
+        :marker_offset,
+        :model,
+        :preprojection,
+        :billboard
+    ]
+    per_instance_keys = [:positions_transformed_f32c, :rotation, :markersize, :vertex_color, :intensity,
+                         :uv_offset_width, :quad_offset, :marker_offset]
+    data = Dict{Symbol,Any}()
     marker = nothing
     atlas = wgl_texture_atlas()
     if haskey(attributes, :marker)
@@ -211,35 +112,42 @@ function scatter_shader(scene::Scene, attributes, plot)
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
 
         msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
-        attributes[:markersize] = msize
-        attributes[:quad_offset] = offset
-        attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
+        data[:markersize] = msize
+        data[:quad_offset] = offset
+        data[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
         if to_value(marker) isa AbstractMatrix
-            uniform_dict[:image] = Sampler(lift(el32convert, plot, marker))
+            data[:uniform_color] = Sampler(lift(el32convert, plot, marker))
         end
     end
+    for key in all_keys
+        if haskey(attributes, key)
+            data[key] = attributes[key]
+        end
+    end
+    handle_old_color!(plot, data)
+    handle_color_getter!(data)
 
-    per_instance = filter(attributes) do (k, v)
-        return k in per_instance_keys && !(Makie.isscalar(to_value(v)))
+    per_instance = filter(data) do (k, v)
+        _v = to_value(v)
+        return k in per_instance_keys && (!(Makie.isscalar(_v)) || _v isa Buffer)
     end
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
     end
 
-    uniforms = filter(attributes) do (k, v)
+    uniform_dict = filter(data) do (k, v)
         return !haskey(per_instance, k)
     end
 
-    color_keys = Set([:color, :colormap, :highclip, :lowclip, :nan_color, :colorrange, :colorscale,
+    color_keys = Set([:uniform_color, :uniform_colormap, :highclip_color, :lowclip_color, :nan_color, :colorrange, :colorscale,
                       :calculated_colors])
 
-    for (k, v) in uniforms
+    for (k, v) in uniform_dict
         k in IGNORE_KEYS && continue
         k in color_keys && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
-
     if !isnothing(marker)
         get!(uniform_dict, :shape_type) do
             return lift(plot, marker; ignore_equal_values=true) do marker
@@ -255,13 +163,6 @@ function scatter_shader(scene::Scene, attributes, plot)
     else
         uniform_dict[:atlas_texture_size] = 0f0
         uniform_dict[:distancefield] = Observable(false)
-    end
-
-    handle_color!(plot, uniform_dict, per_instance, :color)
-    handle_color_getter!(uniform_dict, per_instance)
-    if haskey(uniform_dict, :color) && haskey(per_instance, :color)
-        to_value(uniform_dict[:color]) isa Bool && delete!(uniform_dict, :color)
-        to_value(per_instance[:color]) isa Bool && delete!(per_instance, :color)
     end
 
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1f0, 1f0))

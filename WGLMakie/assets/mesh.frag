@@ -139,7 +139,7 @@ void main()
         }
     }
 
-    vec4 real_color = get_color(uniform_color, frag_uv, get_scaled_colorrange(), alpha_colormap);
+    vec4 real_color = get_color(uniform_color, frag_uv, get_uniform_colorrange(), uniform_colormap);
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){

@@ -56,6 +56,9 @@ vec3 tovec3(vec3 v){return v;}
 
 vec4 tovec4(vec3 v){return vec4(v, 1.0);}
 vec4 tovec4(vec4 v){return v;}
+vec4 tovec4(bool v) {
+    return vec4(0.0);
+}
 
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
@@ -148,7 +151,7 @@ void main(){
     ) / viewport_from_sprite_scale;
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
-    frag_color = tovec4(get_color());
+    frag_color = tovec4(get_vertex_color());
     frag_uv_offset_width = get_uv_offset_width();
     // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
     // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
