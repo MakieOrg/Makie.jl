@@ -351,6 +351,16 @@ end
 # PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
 Base.broadcastable(x::PointTrans) = (x,)
 
+function apply_transform(f, data, space)
+    Base.depwarn("`apply_transform(f, data, space::Symbol)` is deprecated, use `apply_transform(f, data)` instead.", :apply_transform)
+    to_value(space) == :data ? apply_transform(f, data) : apply_transform(identity, data)
+end
+
+function apply_transform(f::Observable, data::Observable, space::Observable)
+    Base.depwarn("`apply_transform(f, data, space::Observable)` is deprecated, use `apply_transform(f, data)` instead.", :apply_transform)
+    return lift(apply_transform, f, data, space)
+end
+
 function apply_transform(f::PointTrans{N}, point::Point{N}) where N
     return f.f(point)
 end
