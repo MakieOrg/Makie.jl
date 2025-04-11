@@ -15,28 +15,30 @@ end
 Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram),
 with leaf nodes specified by `x` and `y` coordinates,
 and parent nodes identified by `merges`.
+
 # Arguments
 - `x`: x positions of leaf nodes
 - `y`: y positions of leaf nodes (default = 0)
+
 # Keywords
 - `merges`: specifies connections between nodes (see below)
-- `treestyle`: one of `:tree`, `:box`.  Overload `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` to define a new style.
 """
-@recipe(Dendrogram, nodes) do scene
-    Theme(
-        weights = Makie.automatic,
-        branch_shape = :box,
-        linewidth = Makie.inherit(scene, :linewidth, 1.0),
-        color = Makie.inherit(scene, :color, :black),
-        colormap = Makie.inherit(scene, :colormap, :tableau_10),
-        colorrange = Makie.automatic,
-        orientation = :vertical,
-        groups = nothing,
-        cycle = [:color => :patchcolor],
-        inspectable = Makie.inherit(scene, :inspectable, false),
-        xautolimits = Makie.inherit(scene, :xautolimits, true),
-        yautolimits = Makie.inherit(scene, :yautolimits, true),
-    )
+@recipe Dendrogram begin
+    "TODO: document"
+    weights = Makie.automatic
+    """
+    Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
+    rectangular lines. Other styles can be defined by overloading
+    `dendrogram_connectors(::Val{:mystyle}, parent, child1, child2)` which should return a
+    Vector of points connecting the parent to its children.
+    """
+    branch_shape = :box
+    "TODO: document"
+    orientation = :vertical
+    "TODO: document"
+    groups = nothing
+
+    MakieCore.documented_attributes(Lines)...
 end
 
 function recursive_dendrogram_points(
