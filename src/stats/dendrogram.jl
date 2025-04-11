@@ -44,9 +44,9 @@ function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
     isnothing(node.children) && return
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
-   
+
     l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
-    
+
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
     append!(ret_points, Makie.to_ndim.(Point3d, l, 0))
     push!(ret_points, Point3d(NaN)) # separate segments
@@ -86,8 +86,8 @@ function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNod
         notify(points_vec); notify(colors_vec)
     end
 
-   
-    lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits) 
+
+    lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits)
 end
 
 
@@ -111,9 +111,9 @@ function dendrogram_connectors(::Val{:box}, parent::DNode{3}, child1::DNode{3}, 
     x2 = child2.position[1]
 
     return Point3d[
-        (x1, child1.position[2], child1.position[3]), 
-        (x1, yp, (parent.position[3] + child1.position[3])./2), 
-        (x2, yp, (parent.position[3] + child2.position[3])./2), 
+        (x1, child1.position[2], child1.position[3]),
+        (x1, yp, (parent.position[3] + child1.position[3])./2),
+        (x2, yp, (parent.position[3] + child2.position[3])./2),
         (x2, child2.position[2], child2.position[3])
     ]
 end
@@ -161,10 +161,10 @@ function hcl_nodes(hcl; useheight=false)
 
     for (m1, m2) in eachrow(hcl.merges)
         nm += 1
-        
+
         m1 = m1 < 0 ? -m1 : m1 + nleaves
         m2 = m2 < 0 ? -m2 : m2 + nleaves
-        nodes[nm] = find_merge(nodes[m1], nodes[m2]; index=nm)            
+        nodes[nm] = find_merge(nodes[m1], nodes[m2]; index=nm)
     end
 
     return nodes
