@@ -139,16 +139,16 @@ function find_merge(n1, n2; height=1)
 end
 
 function find_merge(n1::DNode{2}, n2::DNode{2}; height=1, index=max(n1.idx, n2.idx)+1)
-    newx = min(n1.position[1], n2.position[1]) + abs((n1.position[1] - n2.position[1])) / 2
+    newx = min(n1.position[1], n2.position[1]) + 0.5 * abs((n1.position[1] - n2.position[1]))
     newy = max(n1.position[2], n2.position[2]) + height
 
     return DNode{2}(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
 function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.idx)+1)
-    newx = min(n1.position[1], n2.position[1]) + abs((n1.position[1] - n2.position[1])) / 2
+    newx = min(n1.position[1], n2.position[1]) + 0.5 * abs((n1.position[1] - n2.position[1]))
     newy = max(n1.position[2], n2.position[2]) + height
-    newz = min(n1.position[3], n2.position[3]) + abs((n1.position[3] - n2.position[3])) / 2
+    newz = min(n1.position[3], n2.position[3]) + 0.5 * abs((n1.position[3] - n2.position[3]))
 
     return DNode{3}(index, Point3d(newx, newy, newz), (n1.idx, n2.idx))
 end
@@ -173,21 +173,26 @@ function hcl_nodes(hcl; useheight=false)
     for (m1, m2) in eachrow(hcl.merges)
         nm += 1
 
-        m1 = m1 < 0 ? -m1 : m1 + nleaves
-        m2 = m2 < 0 ? -m2 : m2 + nleaves
+        m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
+        m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
         nodes[nm] = find_merge(nodes[m1], nodes[m2]; index=nm)
     end
 
     return nodes
 end
 
-function recursive_leaf_groups(node, nodes, groups)
+recursive_leaf_groups(node, nodes, groups::Nothing) = 0
+function recursive_leaf_groups(node, nodes, groups::AbstractArray{T}) where {T}
+    output = recursive_leaf_groups!(T[], node, nodes, groups)
+    return output
+end
+
+function recursive_leaf_groups!(output, node, nodes, groups)
     if isnothing(node.children)
-        return [groups[node.idx]]
+        push!(output, groups[node.idx])
     else
-        return vcat(
-            recursive_leaf_groups(nodes[node.children[1]], nodes, groups),
-            recursive_leaf_groups(nodes[node.children[2]], nodes, groups)
-        )
+        recursive_leaf_groups!(output, nodes[node.children[1]], nodes, groups)
+        recursive_leaf_groups!(output, nodes[node.children[2]], nodes, groups)
     end
+    return output
 end
