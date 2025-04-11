@@ -129,6 +129,10 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
         el isa Markdown.Header{1}
     end).text[]
 
+    if title isa Markdown.Link
+        title = title.text[]
+    end
+
     el = node.element
     infoexpr = Meta.parse(el.info)
     args = infoexpr.args[3:end]

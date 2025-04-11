@@ -77,7 +77,7 @@ end
 Calculate the polygons and colors for a contourf plot, and store them in `polys` and `colors`.
 This mutates the `polys` and `colors` vectors to contain the new data.
 
-The mutating nature of the function enables efficient re-use of previously allocated memory!
+The mutating nature of the function enables efficient reuse of previously allocated memory!
 
 This is an internal function, not public API and should not be treated as such.  Note that it currently
 uses Isoband.jl internally.

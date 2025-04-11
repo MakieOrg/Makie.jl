@@ -135,6 +135,13 @@ function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f};
     return Sampler(cmap, uv, alpha, interpolation, Scaling())
 end
 
+"""
+    apply_scale(scale, x)
+
+Applies the scale function / callable `scale` to each element of `x`.
+If `scale` is an Observable then this returns an Observable via `lift`,
+otherwise simply returns `broadcast(scale, x)`.
+"""
 apply_scale(scale::AbstractObservable, x) = lift(apply_scale, scale, x)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
 apply_scale(scale, x) = broadcast(scale, x)
@@ -166,8 +173,7 @@ function numbers_to_colors(
     )::Union{Array{RGBAf, N},RGBAf} where {N}
 
     cmin, cmax = colorrange
-    scaled_cmin = apply_scale(colorscale, cmin)
-    scaled_cmax = apply_scale(colorscale, cmax)
+    scaled_cmin, scaled_cmax = extrema(apply_scale(colorscale, (cmin, cmax)))
 
     return map(numbers) do number
         scaled_number = apply_scale(colorscale, Float64(number))  # ints don't work in interpolated_getindex
@@ -307,7 +313,7 @@ function _colormapping(
     end
 
     colorrange_scaled = lift(colorrange, colorscale; ignore_equal_values=true) do range, scale
-        return Vec2f(apply_scale(scale, range))
+        return Vec2f(extrema(apply_scale(scale, range)))
     end
 
     color_scaled = Observable(el32convert(apply_scale(colorscale[], color_tight[])))

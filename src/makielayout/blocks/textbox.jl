@@ -87,8 +87,7 @@ function initialize_block!(tbox::Textbox)
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
-            cursorindex[] = length(bbs)
-            return
+            ci = cursorindex[] = length(bbs)
         end
 
         line_ps = if 0 < ci < length(bbs)
@@ -357,10 +356,18 @@ end
 Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
 function set!(tb::Textbox, string::String)
-    if !validate_textbox(string, tb.validator[])
+    if validate_textbox(string, tb.validator[])
+        unsafe_set!(tb, string)
+    else
         error("Invalid string \"$(string)\" for textbox.")
     end
+end
 
+"""
+    unsafe_set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, ignoring the possibility that it might not pass the validator function.
+"""
+function unsafe_set!(tb::Textbox, string::String)
     tb.displayed_string = string
     tb.stored_string = string
     nothing
