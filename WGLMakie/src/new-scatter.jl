@@ -217,7 +217,7 @@ end
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr, 1024, 32)
-    Makie.add_input!(attr, :interpolate, false)
+    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)
     register_computation!(scatter_program, attr, SCATTER_INPUTS, [:wgl_scatter_renderobject, :wgl_update_obs])
@@ -274,7 +274,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
-    Makie.add_input!(attr, :interpolate, false)
+    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     backend_colors!(attr)
     inputs = [
         # Special
@@ -305,17 +305,19 @@ function add_uv_mesh!(attr)
     end
     # These are constant so we just add them as inputs
     rect = Rect2f(0, 0, 1, 1)
-    Makie.add_input!(attr, :faces, decompose(GLTriangleFace, rect))
-    Makie.add_input!(attr, :texturecoordinates, decompose_uv(rect))
-    Makie.add_input!(attr, :normals, nothing)
-    for name in [:diffuse, :specular]
-        Makie.add_input!(attr, name, Vec3f(0))
-    end
+    if !haskey(attr, :faces)
+        Makie.add_input!(attr, :faces, decompose(GLTriangleFace, rect))
+        Makie.add_input!(attr, :texturecoordinates, decompose_uv(rect))
+        Makie.add_input!(attr, :normals, nothing)
+        for name in [:diffuse, :specular]
+            Makie.add_input!(attr, name, Vec3f(0))
+        end
 
-    Makie.add_input!(attr, :shininess, 0f0)
-    Makie.add_input!(attr, :backlight, 0f0)
-    Makie.add_input!(attr, :shading, false)
-    Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
+        Makie.add_input!(attr, :shininess, 0f0)
+        Makie.add_input!(attr, :backlight, 0f0)
+        Makie.add_input!(attr, :shading, false)
+        Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
+    end
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})

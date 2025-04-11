@@ -20,7 +20,7 @@ function create_lines_data(islines, attr)
     end
 
     if !isnothing(attr.scaled_colorrange[])
-        cm_minfilter = attr.colormapping_type[] === Makie.continuous ? :linear : :nearest
+        cm_minfilter = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
         uniforms[:colormap] = Sampler(attr.alpha_colormap[], minfilter = cm_minfilter)
         uniforms[:colorrange] = attr.scaled_colorrange[]
         uniforms[:highclip] = attr.highclip_color[]
@@ -72,6 +72,7 @@ const LINE_INPUTS = [
     :synched_color,
     :alpha_colormap,
     :scaled_colorrange,
+    :color_mapping_type,
     # Auto
     :positions_transformed_f32c,
     :linecap,
