@@ -14,6 +14,8 @@ module Ann
 
         using ...Makie
 
+        auto(x::Makie.Automatic, default) = default
+        auto(x, default) = x
         Base.@kwdef struct Line3
             length = Makie.automatic
             angle::Float64 = deg2rad(60)
@@ -21,18 +23,45 @@ module Ann
             linewidth::Union{Makie.Automatic,Float64} = Makie.automatic
         end
 
+        Base.@kwdef struct Head
+            length = Makie.automatic
+            angle::Float64 = deg2rad(60)
+            color = Makie.automatic
+            notch::Float64 = 0 # 0 to 1
+        end
+
         shrinksize(::Nothing; arrowsize) = 0
         shrinksize(l::Line3; arrowsize) = 0
+        function shrinksize(l::Head; arrowsize)
+            s = auto(l.length, arrowsize)
+            s * (1 - l.notch)
+        end
 
         function plotspecs(l::Line3, pos; rotation, arrowsize, color, linewidth)
-            color = l.color === Makie.automatic ? color : l.color
-            linewidth = l.linewidth === Makie.automatic ? linewidth : l.linewidth
+            color = auto(l.color, color)
+            linewidth = auto(l.linewidth, linewidth)
+            len = auto(l.length, arrowsize)
+            sidelen = len / cos(l.angle/2)
             dir1 = Point2(-cos(l.angle/2 + rotation), -sin(l.angle/2 + rotation))
             dir2 = Point2(-cos(-l.angle/2 + rotation), -sin(-l.angle/2 + rotation))
-            p1 = pos + dir1 * arrowsize
-            p2 = pos + dir2 * arrowsize
+            p1 = pos + dir1 * sidelen
+            p2 = pos + dir2 * sidelen
             [
                 Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth)
+            ]
+        end
+
+        function plotspecs(h::Head, pos; rotation, arrowsize, color, linewidth)
+            color = auto(h.color, color)
+            len = auto(h.length, arrowsize)
+            L = 1 / cos(h.angle/2)
+            p1 = L * Point2(-cos(h.angle/2), -sin(h.angle/2))
+            p2 = Point2(-(1 - h.notch), 0)
+            p3 = L * Point2(-cos(-h.angle/2), -sin(-h.angle/2))
+
+            marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
+            [
+                Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len)
             ]
         end
 
@@ -806,7 +835,7 @@ function annotation_style_plotspecs(l::Ann.Styles.LineArrow4, path::BezierPath, 
     return specs
 end
 
-function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth)
+function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth, arrowsize)
     [
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
