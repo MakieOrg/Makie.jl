@@ -2,7 +2,6 @@ function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
     listheight = Observable(0.0; ignore_equal_values=true)
-
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values=true)

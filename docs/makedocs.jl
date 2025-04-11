@@ -191,6 +191,7 @@ pages = [
             "explanations/theming/predefined_themes.md",
         ],
         "explanations/transparency.md",
+        "explanations/compute-pipeline.md",
     ],
     "How-Tos" => [
         "how-to/match-figure-size-font-sizes-and-dpi.md",

@@ -8,12 +8,13 @@ import {
     delete_three_scene,
     find_plots,
     deserialize_scene,
-    TEXTURE_ATLAS,
     on_next_insert,
     scene_cache,
     plot_cache,
     find_scene,
 } from "./Serialization.js";
+
+import { TEXTURE_ATLAS } from "./ThreeHelper.js";
 
 import { events2unitless } from "./Camera.js";
 
@@ -204,7 +205,9 @@ function getShaderErrors(gl, shader, type) {
             "\n\n" +
             errors +
             "\n\n" +
-            handleSource(gl.getShaderSource(shader), errorLine)
+            "In line: " + errorLine + "\n\n" +
+            "Source:\n" +
+            gl.getShaderSource(shader)
         );
     } else {
         return errors;
@@ -497,6 +500,7 @@ function create_scene(
     set_render_size(screen, width, height);
 
     const three_scene = deserialize_scene(scenes, screen);
+    console.log(three_scene)
     screen.root_scene = three_scene;
     start_renderloop(three_scene);
 

@@ -903,6 +903,7 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
+convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
@@ -910,9 +911,9 @@ convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"highclip") = p
+convert_attribute(p::Union{Automatic, Nothing}, ::key"highclip") = p
 convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"lowclip") = p
+convert_attribute(p::Union{Automatic,Nothing}, ::key"lowclip") = p
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -1250,7 +1251,7 @@ end
 
 function convert_attribute(value::Symbol, ::key"linecap")
     # TODO: make this an enum?
-    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    vals = Dict(:butt => Int32(0), :square => Int32(1), :round => Int32(2))
     return get(vals, value) do
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
@@ -1259,7 +1260,7 @@ end
 function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
-    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
+    vals = (miter = Int32(0), round = Int32(2), bevel = Int32(3))
     return get(vals, value) do
         error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
     end
@@ -1471,6 +1472,7 @@ to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
+convert_attribute(x::Automatic, ::key"colorrange") = x
 convert_attribute(x, ::key"colorrange") = to_colorrange(x)
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 

@@ -69,6 +69,7 @@ function f32_convert_matrix(ls::LinearScaling, space::Symbol)
 end
 inv_f32_convert_matrix(ls::LinearScaling, space::Symbol) = f32_convert_matrix(inv(ls), space)
 
+is_identity_transform(f32c::Float32Convert) = is_identity_transform(f32c.scaling[])
 is_identity_transform(ls::LinearScaling) = (ls.scale == Vec3d(1)) && (ls.offset == Vec3d(0))
 is_identity_transform(ls::Nothing) = true # Float32Convert with scaling == nothing is neutral/identity
 
@@ -174,7 +175,7 @@ is called. Note that resolution must be smaller than `1 / eps(Float32)`.
 """
 function Float32Convert(resolution = 1e4)
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
-    return Float32Convert(Observable(scaling), resolution)
+    return Float32Convert(Observable(scaling; ignore_equal_values=true), resolution)
 end
 
 # transformed space limits
@@ -254,6 +255,7 @@ end
 @inline inv_f32_convert(c::Union{Nothing, Float32Convert}, x::AbstractArray) = inv_f32_convert.((c,), x)
 @inline inv_f32_convert(ls::Float32Convert, r::Rect) = inv_f32_convert(ls.scaling[], r)
 @inline inv_f32_convert(x::SceneLike, args...) = inv_f32_convert(f32_conversion(x), args...)
+@inline inv_f32_convert(::Nothing, array::AbstractVector) = array
 
 @inline inv_f32_scale(c::Nothing, v::VecTypes{3}) = Vec3d(v)
 @inline inv_f32_scale(c::Float32Convert, v::VecTypes{3}) = inv_f32_scale(c.scaling[], v)
