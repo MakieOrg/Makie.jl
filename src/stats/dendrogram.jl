@@ -48,7 +48,7 @@ function recursive_dendrogram_points(node, nodes, ret_points, ret_colors;
     l = dendrogram_connectors(Val(branch_shape), node, child1, child2)
 
     # even if the inputs are 2d, the outputs should be 3d - this is what `to_ndim` does.
-    append!(ret_points, Makie.to_ndim.(Point3d, l, 0))
+    append!(ret_points, to_ndim.(Point3d, l, 0))
     push!(ret_points, Point3d(NaN)) # separate segments
 
     if isnothing(groups)
@@ -72,22 +72,28 @@ end
 function Makie.plot!(plot::Dendrogram{<: Tuple{<: Dict{<: Integer, <: Union{DNode{2}, DNode{3}}}}})
     args = @extract plot (color, groups)
 
-    points_vec = Observable{Vector{GeometryBasics.Point{2, Float64}}}([])
+    points_vec = Observable(Point2d[])
     colors_vec = Observable(Float32[])
 
-    length(plot[1][])>1 && lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
-        points_vec[] = []
-        colors_vec[] = []
+    if length(plot[1][]) > 1
+        lift(plot[1], plot.branch_shape, plot[:color]) do nodes, branch_shape, color
+            empty!(points_vec[])
+            empty!(colors_vec[])
 
-        # this pattern is basically first updating the values of the observables,
-        recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes, points_vec.val, colors_vec.val;
-                                    color, branch_shape, groups=groups.val)
-        # then propagating the signal, so that there is no error with differing lengths.
-        notify(points_vec); notify(colors_vec)
+            # this pattern is basically first updating the values of the observables,
+            recursive_dendrogram_points(nodes[maximum(keys(nodes))], nodes, points_vec[], colors_vec[];
+                                        color, branch_shape, groups=groups[])
+
+            # then propagating the signal, so that there is no error with differing lengths.
+            notify(points_vec); notify(colors_vec)
+        end
     end
 
 
-    lines!(plot, points_vec; color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange, linewidth = plot.linewidth, inspectable = plot.inspectable, xautolimits = plot.xautolimits, yautolimits = plot.yautolimits)
+    lines!(plot, points_vec;
+        color = colors_vec, colormap = plot.colormap, colorrange = plot.colorrange,
+        linewidth = plot.linewidth, inspectable = plot.inspectable
+    )
 end
 
 
@@ -177,6 +183,6 @@ function recursive_leaf_groups(node, nodes, groups)
         return vcat(
             recursive_leaf_groups(nodes[node.children[1]], nodes, groups),
             recursive_leaf_groups(nodes[node.children[2]], nodes, groups)
-            )
-        end
+        )
+    end
 end
