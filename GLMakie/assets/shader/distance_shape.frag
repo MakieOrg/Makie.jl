@@ -152,6 +152,29 @@ float get_distancefield(Nothing distancefield, vec2 uv){
     return 0.0;
 }
 
+// Given a fragment derivative of f_uv (i.e. dFdx(f_uv) or dFdy(f_uv)), calculate
+// the associated change in the distancefield. This is effectively the partial
+// derivative of the distancefield with respect to fragment (pixel) coordinates
+float partial_derivate(vec2 df_uv) {
+    vec2 uv1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv + 0.5 * df_uv, 0, 1));
+    vec2 uv0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv - 0.5 * df_uv, 0, 1));
+    return get_distancefield(distancefield, uv1) - get_distancefield(distancefield, uv0);
+}
+
+// Attempt to correct for clamping of uv coordinates (needed to not sample
+// different marker/character)
+float corrected_partial_derivate(vec2 df_uv) {
+    vec2 uv1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, f_uv + 0.5 * df_uv);
+    vec2 uv0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, f_uv - 0.5 * df_uv);
+    float uv_distance_factor = length(uv1 - uv0);
+    uv1 = clamp(uv1, f_uv_texture_bbox.xy, f_uv_texture_bbox.zw);
+    uv0 = clamp(uv0, f_uv_texture_bbox.xy, f_uv_texture_bbox.zw);
+    uv_distance_factor = uv_distance_factor / length(uv1 - uv0);
+    return uv_distance_factor * (
+        get_distancefield(distancefield, uv1) - get_distancefield(distancefield, uv0)
+    );
+}
+
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
@@ -164,25 +187,30 @@ void main(){
 
     float aa_step = ANTIALIAS_RADIUS;
 
-    vec2 dx, dy, uv_x1, uv_x0, uv_y1, uv_y0, grad;
     if(shape == CIRCLE)
         signed_distance = circle(f_uv);
     else if(shape == DISTANCEFIELD){
         signed_distance = get_distancefield(distancefield, tex_uv);
 
-        // TODO: worry about clamping
-        dx = dFdx(f_uv);
-        dy = dFdy(f_uv);
-        uv_x1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv + 0.5 * dx, 0.0, 1.0));
-        uv_x0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv - 0.5 * dx, 0.0, 1.0));
-        uv_y1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv + 0.5 * dy, 0.0, 1.0));
-        uv_y0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv - 0.5 * dy, 0.0, 1.0));
-        grad = vec2(
-            get_distancefield(distancefield, uv_x1) - get_distancefield(distancefield, uv_x0),
-            get_distancefield(distancefield, uv_y1) - get_distancefield(distancefield, uv_y0)
-        );
-        // basically fwidth without biasing due to fragment clusters
-        aa_step = f_viewport_from_u_scale * (abs(grad.x) + abs(grad.y));
+        // TODO: document
+
+        // mirror fwidth
+        // aa_step = f_viewport_from_u_scale * (
+        //     abs(partial_derivate(dFdx(f_uv))) +
+        //     abs(partial_derivate(dFdy(f_uv)))
+        // );
+
+        // with a bit of downscaling
+        // aa_step = f_viewport_from_u_scale * ANTIALIAS_RADIUS * (
+        //     abs(partial_derivate(dFdx(f_uv))) +
+        //     abs(partial_derivate(dFdy(f_uv)))
+        // );
+
+        // technically more correct vector length/norm?
+        // this seems better (sharper)
+        // aa_step = f_viewport_from_u_scale * length(vec2(
+        //     partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
+        // ));
 
         if (stroke_width > 0 || glow_width > 0) {
             // Compensate for the clamping of tex_uv by an approximate
