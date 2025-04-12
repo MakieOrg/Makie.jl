@@ -42,12 +42,11 @@ flat in vec2            f_sprite_scale;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
-float aastep(float threshold1, float dist) {
-    float aa = fwidth(dist);
+float aastep(float threshold1, float dist, float aa) {
     return smoothstep(threshold1-aa, threshold1+aa, dist);
 }
 
-float aastep(float threshold1, float threshold2, float dist) {
+float aastep2(float threshold1, float threshold2, float dist) {
     return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
            smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
 }
@@ -119,7 +118,7 @@ vec4 fill(vec4 c, sampler2DArray image, vec2 uv) {
 
 void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
     if (width != 0.0){
-        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance);
+        float t = aastep2(min(width, 0.0), max(width, 0.0), signed_distance);
         vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
         color = mix(bg_color, strokecolor, t);
     }
@@ -163,10 +162,28 @@ void main(){
     vec2 tex_uv = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw,
                       clamp(f_uv, 0.0, 1.0));
 
+    float aa_step = ANTIALIAS_RADIUS;
+
+    vec2 dx, dy, uv_x1, uv_x0, uv_y1, uv_y0, grad;
     if(shape == CIRCLE)
         signed_distance = circle(f_uv);
     else if(shape == DISTANCEFIELD){
         signed_distance = get_distancefield(distancefield, tex_uv);
+
+        // TODO: worry about clamping
+        dx = dFdx(f_uv);
+        dy = dFdy(f_uv);
+        uv_x1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv + 0.5 * dx, 0.0, 1.0));
+        uv_x0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv - 0.5 * dx, 0.0, 1.0));
+        uv_y1 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv + 0.5 * dy, 0.0, 1.0));
+        uv_y0 = mix(f_uv_texture_bbox.xy, f_uv_texture_bbox.zw, clamp(f_uv - 0.5 * dy, 0.0, 1.0));
+        grad = vec2(
+            get_distancefield(distancefield, uv_x1) - get_distancefield(distancefield, uv_x0),
+            get_distancefield(distancefield, uv_y1) - get_distancefield(distancefield, uv_y0)
+        );
+        // basically fwidth without biasing due to fragment clusters
+        aa_step = f_viewport_from_u_scale * (abs(grad.x) + abs(grad.y));
+
         if (stroke_width > 0 || glow_width > 0) {
             // Compensate for the clamping of tex_uv by an approximate
             // extension of the signed distance outside the valid texture
@@ -194,7 +211,7 @@ void main(){
     if (!fxaa){ // anti-aliasing via sdf
         // For the initial coloring we can use the base pixel color and modulate
         // its alpha value to create the shape set by the signed distance field. (i.e. inside)
-        float inside = aastep(inside_start, signed_distance);
+        float inside = aastep(inside_start, signed_distance, aa_step);
         final_color.a = final_color.a * inside;
 
         // Stroke and glow need to also modulate colors (rgb) to smoothly transition
@@ -213,7 +230,7 @@ void main(){
 
     // glow is always semi transparent so switching between step and smoothstep
     // is mostly useless here
-    glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance), final_color);
+    glow(f_glow_color, signed_distance, aastep(-s_stroke_width, signed_distance, aa_step), final_color);
 
 
     // TODO: In 3D, we should arguably discard fragments outside the sprite
