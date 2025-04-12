@@ -95,7 +95,7 @@ using .Ann
         style = automatic,
         maxiter = 100,
         linewidth = 1.0,
-        arrowsize = 12,
+        arrowsize = 8,
     )
 end
 
@@ -159,8 +159,8 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
-    on(text_bbs; update = true) do text_bbs
-        calculate_best_offsets!(txt.offset[], screenpoints_target[], screenpoints_label[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter = p.maxiter[])
+    onany(text_bbs, p.maxiter; update = true) do text_bbs, maxiter # maxiter just for animating the relaxation process
+        calculate_best_offsets!(txt.offset[], screenpoints_target[], screenpoints_label[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter)
         notify(txt.offset)
     end
 
@@ -254,12 +254,6 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
         return
     end
     # TODO: make it so some positions can be fixed and others are not (NaNs)
-
-    # Initialize velocities and forces for the offsets
-    velocities = zeros(Vec2d, length(offsets))
-    forces = zeros(Vec2d, length(offsets))
-    damping = 0.9
-    threshold = 1e-2
 
     padding = Vec2d(4, 2)
     # padding = Vec2d(0, 0)
