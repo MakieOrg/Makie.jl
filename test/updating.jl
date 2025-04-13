@@ -55,7 +55,7 @@ end
 
 @testset "updating heatmap with mutated array that is A === B" begin
     n = 5
-    # Float32 is important, to not have a conversion inbetween, which circumvents A === B
+    # Float32 is important, to not have a conversion in between, which circumvents A === B
     data = Observable(fill(1f0, n, n))
     s = Scene(; size=(200, 200))
     # TODO heatmap!(s, data) triggers 3 times :(
@@ -71,7 +71,7 @@ end
     @test color_triggered[] == 0
     notify(data)
     @test color_triggered[] == 1
-    # If updating with a new array, that contains the same values, we don't want to trigger an updat
+    # If updating with a new array, that contains the same values, we don't want to trigger an update
     data[] = copy(data[])
     @test color_triggered[] == 1
     # Colorrange should never update if it stays the same
@@ -80,7 +80,7 @@ end
 
 @testset "updating volume with mutated array that is A === B" begin
     n = 5
-    # Float32 is important, to not have a conversion inbetween, which circumvents A === B
+    # Float32 is important, to not have a conversion in between, which circumvents A === B
     data = Observable(fill(1.0f0, n, n, n))
     s = Scene(; size=(200, 200))
     # TODO heatmap!(s, data) triggers 3 times :(
@@ -96,7 +96,7 @@ end
     @test color_triggered[] == 0
     notify(data)
     @test color_triggered[] == 1
-    # If updating with a new array, that contains the same values, we don't want to trigger an updat
+    # If updating with a new array, that contains the same values, we don't want to trigger an update
     data[] = copy(data[])
     @test color_triggered[] == 1
     # Colorrange should never update if it stays the same

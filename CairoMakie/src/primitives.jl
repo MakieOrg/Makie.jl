@@ -844,7 +844,7 @@ function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
 
         if alpha(colors[i, j]) == 1
             # To avoid gaps between heatmap cells we pad cells.
-            # For 3D compatability (and rotation, inversion/mirror) we pad cells
+            # For 3D compatibility (and rotation, inversion/mirror) we pad cells
             # using directional vectors, not along x/y directions.
             v1 = normalize(p2 - p1)
             v2 = normalize(p4 - p1)

@@ -124,7 +124,7 @@ We're separating this state from convert_arguments, to better apply `dim_convert
 """
 expand_dimensions(trait, args...) = nothing
 
-expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are nd points
+expand_dimensions(::PointBased, y::VecTypes) = nothing # VecTypes are n dimensional points
 expand_dimensions(::PointBased, y::RealVector) = (keys(y), y)
 expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
     (OffsetArrays.no_offset_view(keys(y)), OffsetArrays.no_offset_view(y))
@@ -288,18 +288,18 @@ Those attributes will not be forwarded to the backend, but only used during the
 conversion pipeline.
 Usage:
 ```julia
-    struct MyType end
-    used_attributes(::MyType) = (:attribute,)
-    function convert_arguments(x::MyType; attribute = 1)
-        ...
-    end
-    # attribute will get passed to convert_arguments
-    # without keyword_verload, this wouldn't happen
-    plot(MyType, attribute = 2)
-    #You can also use the convenience macro, to overload convert_arguments in one step:
-    @keywords convert_arguments(x::MyType; attribute = 1)
-        ...
-    end
+struct MyType end
+used_attributes(::MyType) = (:attribute,)
+function convert_arguments(x::MyType; attribute = 1)
+    ...
+end
+# attribute will get passed to convert_arguments
+# without keyword_verload, this wouldn't happen
+plot(MyType, attribute = 2)
+#You can also use the convenience macro, to overload convert_arguments in one step:
+@keywords convert_arguments(x::MyType; attribute = 1)
+    ...
+end
 ```
 """
 used_attributes(::Type{<:Plot}, args...) = used_attributes(args...)

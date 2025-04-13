@@ -138,7 +138,7 @@ end
 """
     apply_scale(scale, x)
 
-Applies the scale function / callable `scale` to each element of `x`.  
+Applies the scale function / callable `scale` to each element of `x`.
 If `scale` is an Observable then this returns an Observable via `lift`,
 otherwise simply returns `broadcast(scale, x)`.
 """
