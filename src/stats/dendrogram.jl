@@ -24,8 +24,6 @@ and parent nodes identified by `merges`.
 - `merges`: specifies connections between nodes (see below)
 """
 @recipe Dendrogram begin
-    "TODO: document"
-    weights = automatic
     """
     Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
     rectangular lines. Other styles can be defined by overloading
@@ -37,6 +35,8 @@ and parent nodes identified by `merges`.
     orientation = :vertical
     "TODO: document"
     groups = nothing
+    "TODO: document"
+    origin = Point2d(0)
 
     MakieCore.documented_attributes(Lines)...
     nan_color = automatic
@@ -79,7 +79,6 @@ function recursive_dendrogram_points!(
     return
 end
 
-
 function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
     branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
         if isnothing(groups)
@@ -92,13 +91,28 @@ function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
     end
 
     points_vec = Observable(Point{D, Float64}[])
-    colors_vec = map(plot, plot[1], plot.branch_shape, branch_colors) do nodes, branch_shape, branch_colors
+    colors_vec = map(plot, plot[1], plot.origin, plot.orientation, plot.branch_shape, branch_colors
+            ) do nodes, origin, orientation, branch_shape, branch_colors
         empty!(points_vec[])
 
         # Generate positional data that connect branches of the tree. If colors are
         # given per node (either directly or through grouping) repeat their values
         # to match up with the branches
         colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
+
+        # TODO: what does :horizontal/:vertical mean for 3D? Should it error?
+        root_pos = nodes[end].position
+        if D == 2
+            flip = orientation !== :vertical
+            for (i, p) in enumerate(points_vec[])
+                pos = p - root_pos
+                pos = ifelse(flip, Point2d(-pos[2], pos[1]), pos)
+                points_vec[][i] = pos + origin
+            end
+        else
+            shift = origin - root_pos
+            points_vec[] .= points_vec[] .+ shift
+        end
 
         notify(points_vec)
 
