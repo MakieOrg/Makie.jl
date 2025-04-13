@@ -31,15 +31,19 @@ and parent nodes identified by `merges`.
     add the points connecting the parent node to its children to `points`.
     """
     branch_shape = :box
-    "TODO: document"
+    """
+    Sets the orientation of the dendrogram. :vertical has the root at the top and the leaves
+    at the bottom, :horizontal has the root to the left and leaves to the right.
+    """
     orientation = :vertical
     "TODO: document"
     groups = nothing
-    "TODO: document"
+    "Sets the position of the tree root."
     origin = Point2d(0)
+    "Sets the color of branches with mixed groups if groups are defined."
+    ungrouped_color = :gray
 
     MakieCore.documented_attributes(Lines)...
-    nan_color = automatic
 end
 
 function dendrogram_points!(ret_points, nodes, branch_shape, branch_color_groups)
@@ -120,17 +124,16 @@ function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
     end
 
     attr = shared_attributes(plot, Lines)
+    # Not sure if Attributes() replaces an entry with setindex!(attr, key, ::Observable)
+    # or if it tries to be smart and updates, so pop!() to be safe
     pop!(attr, :color)
     attr[:color] = colors_vec
 
     # Set the default for nan_color. If groups are used, nan_color represents the
     # ungrouped case, :black. Otherwise it should follow the usual default :transparent
-    attr[:nan_color] = map(plot, plot.groups, pop!(attr, :nan_color)) do groups, nan_color
-        if nan_color === automatic
-            return ifelse(groups === nothing, :transparent, :black)
-        else
-            return nan_color
-        end
+    if plot.groups[] !== nothing
+        pop!(attr, :nan_color)
+        attr[:nan_color] = plot.ungrouped_color
     end
 
     lines!(plot, attr, points_vec)
