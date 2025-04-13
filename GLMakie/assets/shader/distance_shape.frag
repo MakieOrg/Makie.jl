@@ -40,10 +40,16 @@ in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
 flat in vec2            f_sprite_scale;
 
+float linstep(float edge0, float edge1, float x) {
+    return (x - edge0) / (edge1 - edge0);
+    // return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist, float aa) {
-    return smoothstep(threshold1-aa, threshold1+aa, dist);
+    // return smoothstep(threshold1-aa, threshold1+aa, dist);
+    return linstep(threshold1-aa, threshold1+aa, dist);
 }
 
 float aastep2(float threshold1, float threshold2, float dist) {
@@ -208,9 +214,12 @@ void main(){
 
         // technically more correct vector length/norm?
         // this seems better (sharper)
-        // aa_step = f_viewport_from_u_scale * length(vec2(
+        // aa_step *= f_viewport_from_u_scale * length(vec2(
         //     partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
         // ));
+        aa_step = f_viewport_from_u_scale * 0.7071067811865476 * length(vec2(
+            partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
+        ));
 
         if (stroke_width > 0 || glow_width > 0) {
             // Compensate for the clamping of tex_uv by an approximate
