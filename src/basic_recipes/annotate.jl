@@ -895,7 +895,6 @@ function annotation_style_plotspecs(l::Ann.Styles.LineArrow4, path::BezierPath, 
 
     specs = [
         PlotSpec(:Lines, shortened_path; color, space = :pixel, linewidth);
-        # PlotSpec(:Scatter, p; rotation, color, marker = BezierPath([MoveTo(0, 0), LineTo(-1, 0.5), LineTo(-1, -0.5), ClosePath()]), space = :pixel, markersize),
     ]
     if l.head !== nothing
         append!(specs, Ann.Arrows.plotspecs(l.head, p_head; rotation = head_rotation, arrowsize, color, linewidth))
