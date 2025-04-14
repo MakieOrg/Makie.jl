@@ -239,7 +239,6 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     if length(expanded_args) in (2, 3)
         inputs = Symbol[]
         for (i, arg) in enumerate(expanded_args)
-            @show dim_converts
             update_dim_conversion!(dim_converts, i, arg)
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
