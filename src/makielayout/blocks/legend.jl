@@ -316,6 +316,23 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     return [pol]
 end
 
+function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    lims = map(scene, bbox, attr.imagelimits) do bb, lims
+        x0, y0 = minimum(bb)
+        w, h = widths(bb)
+        xl0, xl1 = extrema(lims[1])
+        yl0, yl1 = extrema(lims[2])
+        return x0 + w * xl0 .. x0 + w * xl1, y0 + h * yl0 .. y0 + h * yl1
+    end
+    plt = image!(scene, map(first, scene, lims), map(last, scene, lims),
+        attr.data, colormap = attr.imagecolormap, colorrange = attr.imagecolorrange,
+        inspectable = false, alpha = attr.alpha, interpolate = attr.interpolate)
+
+    return [plt]
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -423,6 +440,8 @@ function PolyElement(;kwargs...)
     _legendelement(PolyElement, Attributes(kwargs))
 end
 
+ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
+
 function _legendelement(T::Type{<:LegendElement}, a::Attributes)
     _rename_attributes!(T, a)
     T(a)
@@ -449,6 +468,12 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :strokecolor => :polystrokecolor,
     :colormap => :polycolormap,
     :colorrange => :polycolorrange,
+)
+_renaming_mapping(::Type{ImageElement}) = Dict(
+    :limits => :imagelimits,
+    :values => :imagevalues,
+    :colormap => :imagecolormap,
+    :colorrange => :imagecolorrange,
 )
 
 function _rename_attributes!(T, a)
@@ -536,6 +561,26 @@ function legendelements(plot::Union{Poly, Density}, legend)
         alpha = get(plot, :alpha, 1f0)
     )]
 end
+function legendelements(plot::Image, legend)
+    LegendElement[ImageElement(
+        limits = legend[:imagelimits],
+        data = legend[:imagevalues],
+        colormap = plot.colormap,
+        colorrange = legend.imagecolorrange,
+        interpolate = true
+    )]
+end
+
+function legendelements(plot::Heatmap, legend)
+    LegendElement[ImageElement(
+        limits = legend[:heatmaplimits],
+        data = legend[:heatmapvalues],
+        colormap = plot.colormap,
+        colorrange = legend.heatmapcolorrange,
+        interpolate = false
+    )]
+end
+
 
 
 # if there is no specific overload available, we go through the child plots and just stack

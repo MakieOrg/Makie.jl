@@ -1348,6 +1348,11 @@ struct PolyElement <: LegendElement
     attributes::Attributes
 end
 
+struct ImageElement <: LegendElement
+    attributes::Attributes
+end
+
+
 struct LegendEntry
     elements::Vector{LegendElement}
     attributes::Attributes
@@ -1472,6 +1477,20 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+
+        "The default (xs, ys) used to for ImageElements in normalized coordinates relative to each label patch."
+        imagelimits = (0..1, 0..1)
+        "The default values used to for ImageElements."
+        imagevalues = [0 0.3; 0.6 1]
+        "The default colorrange for ImageElements. If not set this will be derived from imagevalues."
+        imagecolorrange = automatic
+
+        "The default (xs, ys) used to for HeatmapElements in normalized coordinates relative to each label patch."
+        heatmaplimits = (0..1, 0..1)
+        "The default values used to for HeatmapElements."
+        heatmapvalues = [0 0.3; 0.6 1]
+        "The default colorrange for HeatmapElements. If not set this will be derived from imagevalues."
+        heatmapcolorrange = automatic
         "The default alpha for legend elements"
         alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."
