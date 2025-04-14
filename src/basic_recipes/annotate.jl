@@ -16,7 +16,7 @@ module Ann
 
         auto(x::Makie.Automatic, default) = default
         auto(x, default) = x
-        Base.@kwdef struct Line3
+        Base.@kwdef struct Line
             length = Makie.automatic
             angle::Float64 = deg2rad(60)
             color = Makie.automatic
@@ -31,13 +31,13 @@ module Ann
         end
 
         shrinksize(::Nothing; arrowsize) = 0
-        shrinksize(l::Line3; arrowsize) = 0
+        shrinksize(l::Line; arrowsize) = 0
         function shrinksize(l::Head; arrowsize)
             s = auto(l.length, arrowsize)
             s * (1 - l.notch)
         end
 
-        function plotspecs(l::Line3, pos; rotation, arrowsize, color, linewidth)
+        function plotspecs(l::Line, pos; rotation, arrowsize, color, linewidth)
             color = auto(l.color, color)
             linewidth = auto(l.linewidth, linewidth)
             len = auto(l.length, arrowsize)
@@ -73,8 +73,8 @@ module Ann
 
         struct Line end
 
-        Base.@kwdef struct LineArrow4
-            head = Arrows.Line3()
+        Base.@kwdef struct LineArrow
+            head = Arrows.Line()
             tail = nothing
         end
 
@@ -135,6 +135,11 @@ that overlaps between labels and data points are reduced.
     The maximum number of iterations that the label placement algorithm is allowed to run.
     """
     maxiter = 200
+    """
+    The space in which the label positions are given. Can be `:screen_offset` (the positions are given in
+    screen space relative to the target data positions) or `:data`.
+    """
+    labelspace = :screen_offset
     linewidth = 1.0
     arrowsize = 8
     step_simulation = 0 # this allows to take steps in the solving animation manually, for recordings
@@ -193,14 +198,20 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     screenpoints_label = Ref{Vector{Point2f}}()
 
     glyphcolls = txt.plots[1][1]
-    text_bbs = lift(p, glyphcolls, scene.camera.projectionview) do glyphcolls, _
+    text_bbs = lift(p, glyphcolls, scene.camera.projectionview, p.labelspace) do glyphcolls, _, labelspace
         points = Makie.project.(Ref(scene), textpositions[])
         screenpoints_target[] = points
-        screenpoints_label[] = Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4)))
+        screenpoints_label[] = if labelspace === :data
+            Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4)))
+        elseif labelspace === :screen_offset
+            points .+ Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4))
+        else
+            error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:screen_offset` and `:data`.")
+        end
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
-    onany(text_bbs, p.maxiter; update = true) do text_bbs, maxiter
+    onany(text_bbs, p.maxiter, p.labelspace; update = true) do text_bbs, maxiter, labelspace
         calculate_best_offsets!(
             txt.offset[],
             screenpoints_target[],
@@ -208,6 +219,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
             text_bbs,
             Rect2d((0, 0),
             scene.viewport[].widths);
+            labelspace,
             maxiter,
             reset = true, # start with zero offsets whenever text positions or texts change basically, so solutions are not influenced by previous ones
         )
@@ -222,6 +234,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
             text_bbs[],
             Rect2d((0, 0),
             scene.viewport[].widths);
+            labelspace = p.labelspace[],
             maxiter = step_simulation,
             reset = false, # don't reset on step_simulation so we can advance the same one frame by frame
         )
@@ -318,6 +331,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
         attract_strength=0.1,
         maxiter::Int,
         reset::Bool,
+        labelspace::Symbol,
     )
 
     if reset
@@ -337,8 +351,6 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
     end
     offset_bbs = copy(padded_bbs)
 
-    # offsets .= 30 .* randn.(Vec2d)
-
     for _ in 1:maxiter
         offset_bbs .= padded_bbs .+ offsets
 
@@ -348,23 +360,16 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
                 bb1 = offset_bbs[i]
                 bb2 = offset_bbs[j]
                 overlap = repel_strength * rect_overlap(bb1, bb2)
-                # @show i, j, overlap
                 offsets[i] -= overlap
                 offsets[j] += overlap
             end
         end
-        # @show offsets
 
         # Compute attractive forces towards their own text positions
         for i in 1:length(text_bbs)
             bb = offset_bbs[i]
             target_pos = textpositions[i]
-            # println(i)
-            # @show target_pos
-            # @show bb
             diff = distance_point_outside_rect(target_pos, bb)
-            # @show diff
-            # println()
             offsets[i] += attract_strength * diff
         end
 
@@ -373,11 +378,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
             for j in 1:length(textpositions)
                 bb = offset_bbs[i]
                 target_pos = textpositions[j]
-                # println(i)
-                # @show target_pos
-                # @show bb
                 diff = distance_point_inside_rect(target_pos, bb)
-                # println()
                 offsets[i] += repel_strength * diff
             end
         end
@@ -873,7 +874,7 @@ end
 
 annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
-function annotation_style_plotspecs(l::Ann.Styles.LineArrow4, path::BezierPath, p1, p2; color, linewidth, arrowsize)
+function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth, arrowsize)
     length(path.commands) < 2 && return PlotSpec[]
     p_head = endpoint(path.commands[end])
 
