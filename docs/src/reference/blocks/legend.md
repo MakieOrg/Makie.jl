@@ -333,7 +333,7 @@ The Legend can be interacted with to show or hide connected plots.
 A left click on a specific element will toggle the visibility of the connected plots.
 A right click anywhere in the Legend will toggle the visibility of all plots associated with every element.
 A middle click will toggle all plots if they have the same visibility state or make all visible if they do not.
-Note that if you construct elements (MarkerElement, PolyElement, etc) yourself, you need to also pass a plot or vector of plots as the first argument to enable these interactions.
+Note that if you construct elements (MarkerElement, PolyElement, etc.) yourself, you need to also pass a plot or vector of plots as the first argument to enable these interactions.
 
 ```@example legend_interaction
 using GLMakie
