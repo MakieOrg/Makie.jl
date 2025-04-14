@@ -275,6 +275,9 @@ function draw_scatter(screen, (marker, position), data)
         uv_offset_width = Vec4f(0) => GLBuffer
         f32c_scale      = Vec3f(1)
 
+        aa_scale = 1f0
+        use_smoothstep = true
+
         distancefield   = nothing => Texture
         indices         = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along

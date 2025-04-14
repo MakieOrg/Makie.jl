@@ -621,7 +621,7 @@ function draw_atomic(screen::Screen, scene::Scene,
             # These are liftkeys without model
             !(k in (
                 :position, :space, :markerspace, :font,
-                :fontsize, :rotation, :justification
+                :fontsize, :rotation, :justification,
             )) # space,
         end
 

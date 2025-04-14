@@ -28,6 +28,8 @@ uniform int             shape; // shape is a uniform for now. Making them a in &
 uniform float           px_per_unit;
 uniform bool            transparent_picking;
 uniform bool            fxaa;
+uniform float aa_scale;
+uniform bool use_smoothstep;
 
 flat in float           f_viewport_from_u_scale;
 flat in float           f_distancefield_scale;
@@ -48,8 +50,10 @@ float linstep(float edge0, float edge1, float x) {
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist, float aa) {
-    // return smoothstep(threshold1-aa, threshold1+aa, dist);
-    return linstep(threshold1-aa, threshold1+aa, dist);
+    if (use_smoothstep)
+        return smoothstep(threshold1-aa, threshold1+aa, dist);
+    else
+        return linstep(threshold1-aa, threshold1+aa, dist);
 }
 
 float aastep2(float threshold1, float threshold2, float dist) {
@@ -214,12 +218,15 @@ void main(){
 
         // technically more correct vector length/norm?
         // this seems better (sharper)
-        // aa_step *= f_viewport_from_u_scale * length(vec2(
-        //     partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
-        // ));
-        aa_step = f_viewport_from_u_scale * 0.7071067811865476 * length(vec2(
+        aa_step = f_viewport_from_u_scale * aa_scale * length(vec2(
             partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
         ));
+        // aa_step = f_viewport_from_u_scale * 0.7071067811865476 * length(vec2(
+        //     partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
+        // ));
+        // aa_step = f_viewport_from_u_scale * 0.5 * length(vec2(
+        //     partial_derivate(dFdx(f_uv)), partial_derivate(dFdy(f_uv))
+        // ));
 
         if (stroke_width > 0 || glow_width > 0) {
             // Compensate for the clamping of tex_uv by an approximate
