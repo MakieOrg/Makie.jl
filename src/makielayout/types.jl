@@ -1541,6 +1541,9 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         meshscatterpoints = [Point3f(0)]
         "The default marker size used for MeshScatterElements. This is relative to the patchsize."
         meshscattersize = 0.8
+        "The default marker rotation used for MeshScatterElements."
+        meshscatterrotation = Quaternionf(0,0,0,1)
+
         "The default alpha for legend elements"
         alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."

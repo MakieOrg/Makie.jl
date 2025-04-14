@@ -336,19 +336,23 @@ end
 function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attr = element.attributes
-    points = map(scene, bbox, attr.position) do bb, ps
-        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
-        ws = Vec3f(0.5 * minimum(widths(bb)))
-        return [c + ws .* p for p in ps]
-    end
-    markersize = map(scene, bbox, attr.markersize) do bb, ms
-        return 0.5 * minimum(widths(bb)) * ms
-    end
-    plt = meshscatter!(scene, points,
-        marker = attr.marker, markersize = markersize,
+    plt = meshscatter!(scene, attr.position,
+        marker = attr.marker, markersize = attr.markersize, rotation = attr.rotation,
         colormap = attr.colormap, colorrange = attr.colorrange,
         color = attr.color, alpha = attr.alpha,
         inspectable = false)
+
+    # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
+    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rotate!(plt, rot)
+
+    on(scene, bbox, update = true) do bb
+        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
+        ws = Vec3f(0.5 * minimum(widths(bb)))
+        translate!(plt, c)
+        scale!(plt, ws)
+        return
+    end
 
     return [plt]
 end
@@ -658,6 +662,7 @@ function legendelements(plot::MeshScatter, legend)
         color = extract_color(plot, legend[:meshscattercolor]),
         marker = legend[:meshscattermarker],
         markersize = legend[:meshscattersize],
+        rotation = legend[:meshscatterrotation],
         colormap = plot.colormap,
         colorrange = plot.colorrange,
         alpha = plot.alpha,
