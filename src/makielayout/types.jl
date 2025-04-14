@@ -1352,6 +1352,9 @@ struct ImageElement <: LegendElement
     attributes::Attributes
 end
 
+struct MeshScatterElement <: LegendElement
+    attributes::Attributes
+end
 
 struct LegendEntry
     elements::Vector{LegendElement}
@@ -1437,6 +1440,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         rowgap = 3
         "The gap between the patch and the label of each legend entry."
         patchlabelgap = 5
+
         "The default points used for LineElements in normalized coordinates relative to each label patch."
         linepoints = [Point2f(0, 0.5), Point2f(1, 0.5)]
         "The default line width used for LineElements."
@@ -1449,6 +1453,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
         "The default marker colormap for MarkerElements"
@@ -1465,6 +1470,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         markerstrokewidth = theme(scene, :markerstrokewidth)
         "The default marker stroke color used for MarkerElements."
         markerstrokecolor = theme(scene, :markerstrokecolor)
+
         "The default poly points used for PolyElements in normalized coordinates relative to each label patch."
         polypoints = [Point2f(0, 0), Point2f(1, 0), Point2f(1, 1), Point2f(0, 1)]
         "The default poly stroke width used for PolyElements."
@@ -1491,6 +1497,22 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         heatmapvalues = [0 0.3; 0.6 1]
         "The default colorrange for HeatmapElements. If not set this will be derived from imagevalues."
         heatmapcolorrange = automatic
+
+        "The default marker color for MeshScatterElements"
+        meshscattercolor = theme(scene, :markercolor)
+        "The default marker colormap for MeshScatterElements"
+        meshscattercolormap = theme(scene, :colormap)
+        "The default marker colorrange for MeshScatterElements"
+        meshscattercolorrange = automatic
+        "The default marker for MeshScatterElements"
+        meshscattermarker = Sphere(Point3f(0), 1f0)
+        """
+        The default marker points used for MeshScatterElements in normalized coordinates relative to
+        each label patch.
+        """
+        meshscatterpoints = [Point3f(0)]
+        "The default marker size used for MeshScatterElements. This is relative to the patchsize."
+        meshscattersize = 0.8
         "The default alpha for legend elements"
         alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."

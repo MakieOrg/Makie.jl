@@ -333,6 +333,26 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
     return [plt]
 end
 
+function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    points = map(scene, bbox, attr.position) do bb, ps
+        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
+        ws = Vec3f(0.5 * minimum(widths(bb)))
+        return [c + ws .* p for p in ps]
+    end
+    markersize = map(scene, bbox, attr.markersize) do bb, ms
+        return 0.5 * minimum(widths(bb)) * ms
+    end
+    plt = meshscatter!(scene, points,
+        marker = attr.marker, markersize = markersize,
+        colormap = attr.colormap, colorrange = attr.colorrange,
+        color = attr.color, alpha = attr.alpha,
+        inspectable = false)
+
+    return [plt]
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -441,6 +461,7 @@ function PolyElement(;kwargs...)
 end
 
 ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
+MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(kwargs))
 
 function _legendelement(T::Type{<:LegendElement}, a::Attributes)
     _rename_attributes!(T, a)
@@ -475,6 +496,8 @@ _renaming_mapping(::Type{ImageElement}) = Dict(
     # :colormap => :imagecolormap,
     # :colorrange => :imagecolorrange,
 )
+_renaming_mapping(::Type{MeshScatterElement}) = Dict()
+
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -578,6 +601,18 @@ function legendelements(plot::Heatmap, legend)
         colormap = plot.colormap,
         colorrange = legend.heatmapcolorrange,
         interpolate = false
+    )]
+end
+
+function legendelements(plot::MeshScatter, legend)
+    LegendElement[MeshScatterElement(
+        position = legend.meshscatterpoints,
+        color = extract_color(plot, legend[:meshscattercolor]),
+        marker = legend[:meshscattermarker],
+        markersize = legend[:meshscattersize],
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        alpha = plot.alpha,
     )]
 end
 
