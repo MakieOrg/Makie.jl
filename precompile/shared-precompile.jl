@@ -1,6 +1,5 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
-using WGLMakie: three_display, Screen, serialize_scene
 # macro compile(ex)
 #     :(display($ex))
 # end
