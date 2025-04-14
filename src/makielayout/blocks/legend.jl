@@ -441,6 +441,23 @@ function apply_legend_override!(le::PolyElement, override::LegendOverride)
     end
 end
 
+function apply_legend_override!(le::T, override::LegendOverride) where {T <: LegendElement}
+    old2new = _renaming_mapping(T)
+
+    for (k, v) in override.overrides
+        if haskey(old2new, k)
+            key = old2new[k]
+            @assert !haskey(override.overrides, key) "Key $key with alias $k doubly defined."
+        else
+            key = k
+        end
+
+        if haskey(le.attributes, key)
+            le.attributes[key] = v
+        end
+    end
+end
+
 function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
     attrs = Attributes(; label)
 
