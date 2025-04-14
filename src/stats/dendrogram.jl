@@ -28,10 +28,10 @@ and parent nodes identified by `merges`.
     """
     branch_shape = :box
     """
-    Sets the orientation of the dendrogram. :vertical has the root at the top and the leaves
-    at the bottom, :horizontal has the root to the left and leaves to the right.
+    Sets the rotation of the dendrogram, i.e. where the leaves are relative to the root.
+    Can be `:down`, `:right`, `:up`, `:left` or a float.
     """
-    orientation = :vertical
+    rotation = :down
     "TODO: document"
     groups = nothing
     "Sets the position of the tree root."
@@ -88,8 +88,8 @@ function plot!(plot::Dendrogram)
 
     points_vec = Observable(Point2d[])
     colors_vec = map(plot,
-            plot[1], plot.origin, plot.orientation, plot.branch_shape, branch_colors
-        ) do nodes, origin, orientation, branch_shape, branch_colors
+            plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors
+        ) do nodes, origin, rotation, branch_shape, branch_colors
 
         empty!(points_vec[])
 
@@ -98,13 +98,26 @@ function plot!(plot::Dendrogram)
         # to match up with the branches
         colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
 
-        # TODO: implement 180° and 270° rotation (or mirroring?)
+        # parse rotation, construct rotation matrix
+        if rotation isa Real;
+            rot_angle = rotation
+        elseif rotation === :down
+            rot_angle = 0.0
+        elseif rotation === :right
+            rot_angle = pi/2
+        elseif rotation === :up
+            rot_angle = pi
+        elseif rotation === :left
+            rot_angle = 3pi/2
+        else
+            error("Rotation $rotation is not valid. Must be a <: Real or :down, :right, :up or :left.")
+        end
+        R = rotmatrix2d(rot_angle)
+
+        # move root to (0, 0), rotate, then to origin
         root_pos = nodes[end].position
-        flip = orientation !== :vertical
         for (i, p) in enumerate(points_vec[])
-            pos = p - root_pos
-            pos = ifelse(flip, Point2d(-pos[2], pos[1]), pos)
-            points_vec[][i] = pos + origin
+            points_vec[][i] = R * (p - root_pos) + origin
         end
 
         notify(points_vec)
