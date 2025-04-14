@@ -852,7 +852,7 @@ end
     y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
     @. f1(x,y) = x^2 + y^2;
     z = f1(x,y);
-    
+
     f = Figure()
     ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
     ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
@@ -1953,4 +1953,31 @@ end
     translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
     Makie.step!(st)
     st
+end
+
+@reference_tests "Dendrogram" begin
+    leaves = Point2f.([
+        (1,0),
+        (2,0.5),
+        (3,1),
+        (4,2),
+        (5,0)
+        ])
+
+    merges = [
+        (1, 2), # 6
+        (6, 3), # 7
+        (4, 5), # 8
+        (7, 8), # 9
+    ]
+    f = Figure(size = (500, 500))
+    a = Axis(f[1, 1], aspect = DataAspect())
+    # TODO: vary more attributes to confirm that they work
+    #       (i.e. Lines attributes, colors w/o grouping, branch_style)
+    dendrogram!(leaves, merges; origin = Point2f( 0, -2), rotation = :down,  ungrouped_color = :gray,      groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,       groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    ungrouped_color = :green,     groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  ungrouped_color = :lightblue, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange,    groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    f
 end
