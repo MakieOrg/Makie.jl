@@ -93,9 +93,10 @@ using .Ann
         clipstart = automatic,
         align = (:center, :center),
         style = automatic,
-        maxiter = 100,
+        maxiter = 200,
         linewidth = 1.0,
         arrowsize = 8,
+        step_simulation = 0, # this allows to take steps in the solving animation manually, for recordings
     )
 end
 
@@ -159,8 +160,31 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
-    onany(text_bbs, p.maxiter; update = true) do text_bbs, maxiter # maxiter just for animating the relaxation process
-        calculate_best_offsets!(txt.offset[], screenpoints_target[], screenpoints_label[], text_bbs, Rect2d((0, 0), scene.viewport[].widths); maxiter)
+    onany(text_bbs, p.maxiter; update = true) do text_bbs, maxiter
+        calculate_best_offsets!(
+            txt.offset[],
+            screenpoints_target[],
+            screenpoints_label[],
+            text_bbs,
+            Rect2d((0, 0),
+            scene.viewport[].widths);
+            maxiter,
+            reset = true, # start with zero offsets whenever text positions or texts change basically, so solutions are not influenced by previous ones
+        )
+        notify(txt.offset)
+    end
+
+    on(p.step_simulation) do step_simulation
+        calculate_best_offsets!(
+            txt.offset[],
+            screenpoints_target[],
+            screenpoints_label[],
+            text_bbs[],
+            Rect2d((0, 0),
+            scene.viewport[].widths);
+            maxiter = step_simulation,
+            reset = false, # don't reset on step_simulation so we can advance the same one frame by frame
+        )
         notify(txt.offset)
     end
 
@@ -239,15 +263,26 @@ function distance_point_inside_rect(p::Point2, rect::Rect2)
     else
         argmin(abs, (py - rb, py - rt))
     end
-
-    return Vec2d(dx, dy)
+    
+    # keep only the smaller one because it's faster
+    # to move the rect away from the point that way
+    return if abs(dx) < abs(dy)
+        Vec2d(dx, zero(dy))
+    else
+        Vec2d(zero(dx), dy)
+    end
 end
 
 function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        repel_strength=0.25,
-        attract_strength=0.25,
-        maxiter::Int
+        repel_strength=0.1,
+        attract_strength=0.1,
+        maxiter::Int,
+        reset::Bool,
     )
+
+    if reset
+        offsets .= zero.(eltype(offsets))
+    end
 
     if all(!isnan, textpositions_offset)
         offsets .= textpositions_offset .- textpositions
@@ -255,7 +290,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
     end
     # TODO: make it so some positions can be fixed and others are not (NaNs)
 
-    padding = Vec2d(4, 2)
+    padding = Vec2d(6, 5)
     # padding = Vec2d(0, 0)
     padded_bbs = map(text_bbs) do bb
         Rect2(bb.origin .- padding, bb.widths .+ 2padding)
@@ -293,7 +328,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
             offsets[i] += attract_strength * diff
         end
 
-        # Compute repulsive forces from their own text positions
+        # Compute repulsive forces from all text positions
         for i in 1:length(text_bbs)
             for j in 1:length(textpositions)
                 bb = offset_bbs[i]
@@ -302,7 +337,6 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
                 # @show target_pos
                 # @show bb
                 diff = distance_point_inside_rect(target_pos, bb)
-                # @show diff
                 # println()
                 offsets[i] += repel_strength * diff
             end
@@ -354,10 +388,13 @@ function rect_overlap(r1, r2)
     x = interval_overlap(r1l, r1r, r2l, r2r)
     y = interval_overlap(r1b, r1t, r2b, r2t)
 
-    if x == 0 || y == 0
-        return Vec2d(0, 0)
+    ax = abs(x)
+    ay = abs(y)
+    ax == 0 && ay == 0 && return Vec2d(0, 0)
+    if ax < ay # we only ever want to move in the direction in which it's faster to avoid the overlap
+        return Vec2d(x, y * ax / (ax + ay))
     else
-        return Vec2d(x, y)
+        return Vec2d(x * ay / (ax + ay), y)
     end
 end
 
