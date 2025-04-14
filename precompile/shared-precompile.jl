@@ -1,6 +1,6 @@
 # File to run to snoop/trace all functions to compile
 using GeometryBasics
-
+using WGLMakie: three_display, Screen, serialize_scene
 # macro compile(ex)
 #     :(display($ex))
 # end
@@ -29,25 +29,25 @@ end
 @compile contour(randn(100, 90), levels=3)
 @compile contour(randn(33, 30), levels=[0.1, 0.5, 0.9], color=[:black, :green, (:blue, 0.4)], linewidth=2)
 
-# @compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
-# @compile meshscatter(rand(Point3f, 10), color=rand(RGBAf, 10), transparency=true)
+@compile meshscatter(rand(10), rand(10), rand(10), color=rand(10))
+@compile meshscatter(rand(Point3f, 10), color=rand(RGBAf, 10), transparency=true)
 
-# @compile begin
-#     l = range(-10, stop=10, length=10)
-#     surface(l, l, rand(10, 10), colormap=:Spectral)
-# end
+@compile begin
+    l = range(-10, stop=10, length=10)
+    surface(l, l, rand(10, 10), colormap=:Spectral)
+end
 
-# @compile begin
-#     NL = 30
-#     NR = 31
+@compile begin
+    NL = 30
+    NR = 31
 
-#     l = range(0, stop=3, length=NL)
-#     r = range(0, stop=3, length=NR)
-#     surface(
-#         [l for l in l, r in r], [r for l in l, r in r], rand(NL, NR),
-#         colormap=:Spectral
-#     )
-# end
+    l = range(0, stop=3, length=NL)
+    r = range(0, stop=3, length=NR)
+    surface(
+        [l for l in l, r in r], [r for l in l, r in r], rand(NL, NR),
+        colormap=:Spectral
+    )
+end
 
 @compile begin
     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
@@ -80,33 +80,33 @@ end
 
     s
 end
-# @compile begin
-#     P = Polygon.([Point2f[[0.45, 0.05], [0.64, 0.15], [0.37, 0.62]],
-#          Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
-#     poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
-# end
+@compile begin
+    P = Polygon.([Point2f[[0.45, 0.05], [0.64, 0.15], [0.37, 0.62]],
+         Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
+    poly(P, color = [:red, :green], strokecolor = [:blue, :red], strokewidth = 2)
+end
 
-# @compile begin
-#     meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
-# end
+@compile begin
+    meshscatter(rand(Point3f, 10), axis=(type=Axis3,))
+end
 
-# @compile begin
-#     f = Figure()
-#     ax = Makie.Axis(f)
-#     Makie.Toggle(f)
-#     Makie.Slider(f)
-#     Makie.LScene(f)
-#     Makie.PolarAxis(f)
-#     Makie.IntervalSlider(f)
-#     lines!(ax, 1:2, label = "Line")
-#     Makie.Legend(f, ax, "Default", nbanks = 2)
-#     Makie.Box(f)
-#     Makie.Label(f)
-#     Makie.Textbox(f)
-#     Makie.Axis3(f)
-#     Makie.Colorbar(f)
-#     Makie.Button(f)
-#     Makie.Menu(f, options=["one"])
-#     Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
-#     f
-# end
+@compile begin
+    f = Figure()
+    ax = Makie.Axis(f)
+    Makie.Toggle(f)
+    Makie.Slider(f)
+    Makie.LScene(f)
+    Makie.PolarAxis(f)
+    Makie.IntervalSlider(f)
+    lines!(ax, 1:2, label = "Line")
+    # Makie.Legend(f, ax, "Default", nbanks = 2) TODO
+    Makie.Box(f)
+    Makie.Label(f)
+    Makie.Textbox(f)
+    Makie.Axis3(f)
+    Makie.Colorbar(f)
+    Makie.Button(f)
+    Makie.Menu(f, options=["one"])
+    Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
+    f
+end
