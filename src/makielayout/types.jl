@@ -1492,7 +1492,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         The default mesh used for MeshElements.
         For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
         """
-        mesh = Rect3f(Point3f(-0.8), Vec3f(1.6))
+        mesh = Rect3f(Point3f(-0.7), Vec3f(1.4))
         "The default mesh color used for MeshElements."
         meshcolor = wong_colors()[1]
         "The default colormap for MeshElements"
@@ -1504,7 +1504,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         The default (x, y, z) data used for surface-based MeshElements.
         For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
         """
-        surfacedata = (-0.8..0.8, -0.8..0.8, [-0.008 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
+        surfacedata = (-0.7..0.7, -0.7..0.7, [-0.007 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
         """
         The default values/colors used for surface-based MeshElements. These need to match the size of zs.
         If not set the z values will be used.
