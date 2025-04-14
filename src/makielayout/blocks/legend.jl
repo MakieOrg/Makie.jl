@@ -363,7 +363,7 @@ function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect
     plt = mesh!(scene, attr.mesh,
         colormap = attr.colormap, colorrange = attr.colorrange,
         color = attr.color, alpha = attr.alpha,
-        inspectable = false
+        inspectable = false, uv_transform = attr.uv_transform
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
@@ -616,6 +616,7 @@ function legendelements(plot::Mesh, legend)
         alpha = plot.alpha,
         colormap = plot.colormap,
         colorrange = plot.colorrange,
+        uv_transform = automatic,
     )]
 end
 
@@ -623,8 +624,7 @@ function legendelements(plot::Surface, legend)
     xyzs = map(args -> convert_arguments(Surface, args...), legend[:surfacedata])
     mesh = map(xyzs -> surface2mesh(xyzs...), xyzs)
     color = map(xyzs, legend.surfacevalues) do xyzs, vals
-        # TODO: why is a transpose needed here?
-        return vals === automatic ? xyzs[end]' : vals
+        return vals === automatic ? xyzs[end] : vals
     end
     LegendElement[MeshElement(
         mesh = mesh,
@@ -632,6 +632,7 @@ function legendelements(plot::Surface, legend)
         colormap = plot.colormap,
         colorrange = legend[:surfacecolorrange],
         alpha = plot.alpha,
+        uv_transform = identity, # otherwise color values don't line up with mesh
     )]
 end
 
