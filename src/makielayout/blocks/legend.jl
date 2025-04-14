@@ -353,6 +353,30 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
     return [plt]
 end
 
+function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    plt = mesh!(scene, attr.mesh,
+        colormap = attr.colormap, colorrange = attr.colorrange,
+        color = attr.color, alpha = attr.alpha,
+        inspectable = false
+    )
+
+    # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
+    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rotate!(plt, rot)
+
+    on(scene, bbox, update = true) do bb
+        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
+        ws = Vec3f(0.5 * minimum(widths(bb)))
+        translate!(plt, c)
+        scale!(plt, ws)
+        return
+    end
+
+    return [plt]
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -462,6 +486,7 @@ end
 
 ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
 MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(kwargs))
+MeshElement(; kwargs...) = _legendelement(MeshElement, Attributes(kwargs))
 
 function _legendelement(T::Type{<:LegendElement}, a::Attributes)
     _rename_attributes!(T, a)
@@ -490,14 +515,9 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :colormap => :polycolormap,
     :colorrange => :polycolorrange,
 )
-_renaming_mapping(::Type{ImageElement}) = Dict(
-    # :limits => :imagelimits,
-    # :values => :imagevalues,
-    # :colormap => :imagecolormap,
-    # :colorrange => :imagecolorrange,
-)
+_renaming_mapping(::Type{MeshElement}) = Dict()
+_renaming_mapping(::Type{ImageElement}) = Dict()
 _renaming_mapping(::Type{MeshScatterElement}) = Dict()
-
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -584,6 +604,34 @@ function legendelements(plot::Union{Poly, Density}, legend)
         alpha = get(plot, :alpha, 1f0)
     )]
 end
+
+function legendelements(plot::Mesh, legend)
+    LegendElement[MeshElement(
+        mesh = legend[:mesh],
+        color = legend[:meshcolor],
+        alpha = plot.alpha,
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+    )]
+end
+
+function legendelements(plot::Surface, legend)
+    xyzs = map(args -> convert_arguments(Surface, args...), legend[:surfacedata])
+    mesh = map(xyzs -> surface2mesh(xyzs...), xyzs)
+    color = map(xyzs, legend.surfacevalues) do xyzs, vals
+        # TODO: why is a transpose needed here?
+        return vals === automatic ? xyzs[end]' : vals
+    end
+    LegendElement[MeshElement(
+        mesh = mesh,
+        color = color,
+        colormap = plot.colormap,
+        colorrange = legend[:surfacecolorrange],
+        alpha = plot.alpha,
+    )]
+end
+
+
 function legendelements(plot::Image, legend)
     LegendElement[ImageElement(
         limits = legend[:imagelimits],

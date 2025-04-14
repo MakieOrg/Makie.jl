@@ -1352,6 +1352,10 @@ struct ImageElement <: LegendElement
     attributes::Attributes
 end
 
+struct MeshElement <: LegendElement
+    attributes::Attributes
+end
+
 struct MeshScatterElement <: LegendElement
     attributes::Attributes
 end
@@ -1483,6 +1487,30 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+
+        """
+        The default mesh used to for MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        mesh = Rect3f(Point3f(-0.8), Vec3f(1.6))
+        "The default mesh color used for MeshElements."
+        meshcolor = wong_colors()[1]
+        "The default colormap for MeshElements"
+        meshcolormap = theme(scene, :colormap)
+        "The default colorrange for MeshElements."
+        meshcolorrange = automatic
+
+        """
+        The default (xs, ys, zs) used to for surface MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        surfacedata = (-0.8..0.8, -0.8..0.8, [-0.008 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
+        "The default values/colors used to for surface MeshElements. These need to match the size of zs. If not set the z values will be used."
+        surfacevalues = automatic
+        "The default colormap for surface MeshElements"
+        surfacecolormap = theme(scene, :colormap)
+        "The default colorrange for surface MeshElements. If not set this will be derived from imagevalues."
+        surfacecolorrange = automatic
 
         "The default (xs, ys) used to for ImageElements in normalized coordinates relative to each label patch."
         imagelimits = (0..1, 0..1)
