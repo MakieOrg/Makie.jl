@@ -1489,7 +1489,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolorrange = automatic
 
         """
-        The default mesh used to for MeshElements.
+        The default mesh used for MeshElements.
         For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
         """
         mesh = Rect3f(Point3f(-0.8), Vec3f(1.6))
@@ -1501,29 +1501,32 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         meshcolorrange = automatic
 
         """
-        The default (xs, ys, zs) used to for surface MeshElements.
+        The default (x, y, z) data used for surface-based MeshElements.
         For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
         """
         surfacedata = (-0.8..0.8, -0.8..0.8, [-0.008 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
-        "The default values/colors used to for surface MeshElements. These need to match the size of zs. If not set the z values will be used."
+        """
+        The default values/colors used for surface-based MeshElements. These need to match the size of zs.
+        If not set the z values will be used.
+        """
         surfacevalues = automatic
-        "The default colormap for surface MeshElements"
+        "The default colormap for surface-based MeshElements"
         surfacecolormap = theme(scene, :colormap)
-        "The default colorrange for surface MeshElements. If not set this will be derived from imagevalues."
+        "The default colorrange for surface-based MeshElements. If not set this will be derived from surfacevalues."
         surfacecolorrange = automatic
 
-        "The default (xs, ys) used to for ImageElements in normalized coordinates relative to each label patch."
+        "The default (x, y) limits used for ImageElements in normalized coordinates relative to each label patch."
         imagelimits = (0..1, 0..1)
-        "The default values used to for ImageElements."
+        "The default values (or colors) used for ImageElements."
         imagevalues = [0 0.3; 0.6 1]
         "The default colorrange for ImageElements. If not set this will be derived from imagevalues."
         imagecolorrange = automatic
 
-        "The default (xs, ys) used to for HeatmapElements in normalized coordinates relative to each label patch."
+        "The default (x, y) limits (or vectors) used for HeatmapElements in normalized coordinates relative to each label patch."
         heatmaplimits = (0..1, 0..1)
-        "The default values used to for HeatmapElements."
+        "The default values used for HeatmapElements."
         heatmapvalues = [0 0.3; 0.6 1]
-        "The default colorrange for HeatmapElements. If not set this will be derived from imagevalues."
+        "The default colorrange for HeatmapElements. If not set this will be derived from heatmapvalues."
         heatmapcolorrange = automatic
 
         "The default marker color for MeshScatterElements"
@@ -1535,11 +1538,11 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The default marker for MeshScatterElements"
         meshscattermarker = Sphere(Point3f(0), 1f0)
         """
-        The default marker points used for MeshScatterElements in normalized coordinates relative to
-        each label patch.
+        The default marker points used for MeshScatterElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
         """
         meshscatterpoints = [Point3f(0)]
-        "The default marker size used for MeshScatterElements. This is relative to the patchsize."
+        "The default marker size used for MeshScatterElements."
         meshscattersize = 0.8
         "The default marker rotation used for MeshScatterElements."
         meshscatterrotation = Quaternionf(0,0,0,1)
