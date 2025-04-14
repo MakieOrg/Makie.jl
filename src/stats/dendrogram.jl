@@ -1,12 +1,8 @@
 # Node struct
-struct DNode{N}
+struct DNode
     idx::Int
-    position::Point{N, Float64}
+    position::Point2d
     children::Union{Tuple{Int,Int}, Nothing}
-end
-
-function DNode(idx::Int, point::Point{N}, children::Union{Tuple{Int,Int}, Nothing}) where N
-    return DNode{N}(idx, point, children)
 end
 
 """
@@ -58,11 +54,7 @@ function dendrogram_points!(ret_points, nodes, branch_shape, branch_color_groups
     return colors
 end
 
-function recursive_dendrogram_points!(
-        ret_points::Vector{<: VecTypes{D}}, ret_colors,
-        node::DNode{D}, nodes, branch_shape, branch_groups
-    ) where {D}
-
+function recursive_dendrogram_points!(ret_points, ret_colors, node, nodes, branch_shape, branch_groups)
     isnothing(node.children) && return
     child1 = nodes[node.children[1]]
     child2 = nodes[node.children[2]]
@@ -70,7 +62,7 @@ function recursive_dendrogram_points!(
     # Add branch connection points
     N = length(ret_points)
     dendrogram_connectors!(Val(branch_shape), ret_points, node, child1, child2)
-    push!(ret_points, Point{D, Float64}(NaN)) # separate segments
+    push!(ret_points, Point2d(NaN)) # separate segments
     N = length(ret_points) - N
 
     # If colors are defined per node, repeat them to be per point
@@ -83,7 +75,7 @@ function recursive_dendrogram_points!(
     return
 end
 
-function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
+function plot!(plot::Dendrogram)
     branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
         if isnothing(groups)
             return to_color(color)
@@ -94,9 +86,11 @@ function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
         end
     end
 
-    points_vec = Observable(Point{D, Float64}[])
-    colors_vec = map(plot, plot[1], plot.origin, plot.orientation, plot.branch_shape, branch_colors
-            ) do nodes, origin, orientation, branch_shape, branch_colors
+    points_vec = Observable(Point2d[])
+    colors_vec = map(plot,
+            plot[1], plot.origin, plot.orientation, plot.branch_shape, branch_colors
+        ) do nodes, origin, orientation, branch_shape, branch_colors
+
         empty!(points_vec[])
 
         # Generate positional data that connect branches of the tree. If colors are
@@ -104,18 +98,13 @@ function plot!(plot::Dendrogram{<: Tuple{<: Vector{<: DNode{D}}}}) where {D}
         # to match up with the branches
         colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
 
-        # TODO: what does :horizontal/:vertical mean for 3D? Should it error?
+        # TODO: implement 180° and 270° rotation (or mirroring?)
         root_pos = nodes[end].position
-        if D == 2
-            flip = orientation !== :vertical
-            for (i, p) in enumerate(points_vec[])
-                pos = p - root_pos
-                pos = ifelse(flip, Point2d(-pos[2], pos[1]), pos)
-                points_vec[][i] = pos + origin
-            end
-        else
-            shift = origin - root_pos
-            points_vec[] .= points_vec[] .+ shift
+        flip = orientation !== :vertical
+        for (i, p) in enumerate(points_vec[])
+            pos = p - root_pos
+            pos = ifelse(flip, Point2d(-pos[2], pos[1]), pos)
+            points_vec[][i] = pos + origin
         end
 
         notify(points_vec)
@@ -146,25 +135,15 @@ function dendrogram_connectors!(::Val{:tree}, points, parent, child1, child2)
     push!(points, child1.position, parent.position, child2.position)
 end
 
-function dendrogram_connectors!(::Val{:box}, points, parent::DNode{2}, child1::DNode{2}, child2::DNode{2})
+function dendrogram_connectors!(::Val{:box}, points, parent::DNode, child1::DNode, child2::DNode)
     yp = parent.position[2]
     x1 = child1.position[1]
     x2 = child2.position[1]
     push!(points, child1.position, Point2d(x1, yp), Point2d(x2, yp), child2.position)
 end
 
-function dendrogram_connectors!(::Val{:box}, points, parent::DNode{3}, child1::DNode{3}, child2::DNode{3})
-    yp = parent.position[2]
-    x1 = child1.position[1]
-    x2 = child2.position[1]
-    push!(points,
-        child1.position,
-        Point3d(x1, yp, 0.5 * (parent.position[3] + child1.position[3])),
-        Point3d(x2, yp, 0.5 * (parent.position[3] + child2.position[3])),
-        child2.position
-    )
-end
-
+# Note: If wanted curved connections might be fairly easy to implemented with
+#       convert_arguments(Lines, BezierPath(...))[1]
 
 # convert utils
 
@@ -174,22 +153,14 @@ function find_merge(n1, n2; height=1)
     return Point2d(newx, newy)
 end
 
-function find_merge(n1::DNode{2}, n2::DNode{2}; height=1, index=max(n1.idx, n2.idx)+1)
+function find_merge(n1::DNode, n2::DNode; height=1, index=max(n1.idx, n2.idx)+1)
     newx = min(n1.position[1], n2.position[1]) + 0.5 * abs((n1.position[1] - n2.position[1]))
     newy = max(n1.position[2], n2.position[2]) + height
 
-    return DNode{2}(index, Point2d(newx, newy), (n1.idx, n2.idx))
+    return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
-function find_merge(n1::DNode{3}, n2::DNode{3}; height=1, index=max(n1.idx, n2.idx)+1)
-    newx = min(n1.position[1], n2.position[1]) + 0.5 * abs((n1.position[1] - n2.position[1]))
-    newy = max(n1.position[2], n2.position[2]) + height
-    newz = min(n1.position[3], n2.position[3]) + 0.5 * abs((n1.position[3] - n2.position[3]))
-
-    return DNode{3}(index, Point3d(newx, newy, newz), (n1.idx, n2.idx))
-end
-
-function convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
+function convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: VecTypes{2}}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
     nodes = [DNode(i, n, nothing) for (i,n) in enumerate(leaves)]
     for m in merges
         push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes)+1))
@@ -197,7 +168,7 @@ function convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: Point}, merg
     return (nodes,)
 end
 
-
+# TODO: PackageExtension?
 function hcl_nodes(hcl; useheight=false)
     nleaves = length(hcl.order)
     nodes = [DNode(i, Point2d(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order))]
