@@ -319,7 +319,7 @@ end
 function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attr = element.attributes
-    lims = map(scene, bbox, attr.imagelimits) do bb, lims
+    lims = map(scene, bbox, attr.limits) do bb, lims
         x0, y0 = minimum(bb)
         w, h = widths(bb)
         xl0, xl1 = extrema(lims[1])
@@ -327,7 +327,7 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
         return x0 + w * xl0 .. x0 + w * xl1, y0 + h * yl0 .. y0 + h * yl1
     end
     plt = image!(scene, map(first, scene, lims), map(last, scene, lims),
-        attr.data, colormap = attr.imagecolormap, colorrange = attr.imagecolorrange,
+        attr.data, colormap = attr.colormap, colorrange = attr.colorrange,
         inspectable = false, alpha = attr.alpha, interpolate = attr.interpolate)
 
     return [plt]
@@ -470,10 +470,10 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :colorrange => :polycolorrange,
 )
 _renaming_mapping(::Type{ImageElement}) = Dict(
-    :limits => :imagelimits,
-    :values => :imagevalues,
-    :colormap => :imagecolormap,
-    :colorrange => :imagecolorrange,
+    # :limits => :imagelimits,
+    # :values => :imagevalues,
+    # :colormap => :imagecolormap,
+    # :colorrange => :imagecolorrange,
 )
 
 function _rename_attributes!(T, a)
