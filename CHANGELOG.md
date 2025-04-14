@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
+
 ## [0.22.3] - 2025-04-08
 
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
