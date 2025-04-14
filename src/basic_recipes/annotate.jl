@@ -83,21 +83,61 @@ end
 
 using .Ann
 
-@recipe(Annotate) do scene
-    Theme(
-        textcolor = :black,
-        color = :black,
-        text = "",
-        connection = Ann.Paths.Line(),
-        shrink = (5.0, 7.0),
-        clipstart = automatic,
-        align = (:center, :center),
-        style = automatic,
-        maxiter = 200,
-        linewidth = 1.0,
-        arrowsize = 8,
-        step_simulation = 0, # this allows to take steps in the solving animation manually, for recordings
-    )
+"""
+    annotate(x, y)
+    annotate(x, y, x_label, y_label)
+    annotate(points)
+    annotate(points, points_label)
+
+Create an annotation plot that labels one or more points with text.
+If no text positions are given, they will be determined automatically such
+that overlaps between labels and data points are reduced.
+"""
+@recipe Annotate begin
+    """
+    The color of the text labels.
+    """
+    textcolor = :black
+    """
+    The color of the connection object.
+    """
+    color = :black
+    """
+    One object or an array of objects that determine the textual content of the labels.
+    """
+    text = ""
+    """
+    One path type or an array of path types that determine how to connect each label to its point.
+    Suitable objects can be found in the module `Makie.Ann.Paths`.
+    """
+    path = Ann.Paths.Line()
+    """
+    One style object or an array of style objects that determine how the path from a label to its point
+    is visualized. Suitable objects can be found in the module `Makie.Ann.Styles`.
+    """
+    style = automatic
+    """
+    One tuple or an array of tuples with two numbers, where each number specifies the radius of a circle
+    in screen space which clips the connection path at the start or end, respectively, to add a
+    little bit of visual space between arrow and label or target.
+    """
+    shrink = (5.0, 7.0)
+    """
+    Determines which object is used to clip the path at the start. If set to `automatic`, the
+    boundingbox of the text label is used.
+    """
+    clipstart = automatic
+    """
+    The alignment of text relative to the label anchor position.
+    """
+    align = (:center, :center)
+    """
+    The maximum number of iterations that the label placement algorithm is allowed to run.
+    """
+    maxiter = 200
+    linewidth = 1.0
+    arrowsize = 8
+    step_simulation = 0 # this allows to take steps in the solving animation manually, for recordings
 end
 
 function closest_point_on_rectangle(r::Rect2, p)
@@ -191,21 +231,21 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     plotspecs = lift(
             p,
             text_bbs,
-            p.connection,
+            p.path,
             p.clipstart,
             p.shrink,
             p.style,
             p.color,
             p.linewidth,
             p.arrowsize,
-        ) do text_bbs, conn, clipstart, shrink, style, color, linewidth, arrowsize
+        ) do text_bbs, pth, clipstart, shrink, style, color, linewidth, arrowsize
         specs = PlotSpec[]
-        broadcast_foreach(text_bbs, screenpoints_target[], conn, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
+        broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
 
             p2 in offset_bb && return
-            p1 = startpoint(conn, offset_bb, p2)
-            path = connection_path(conn, p1, p2)
+            p1 = startpoint(pth, offset_bb, p2)
+            path = connection_path(pth, p1, p2)
 
             clipstart = if clipstart === automatic
                 offset_bb
