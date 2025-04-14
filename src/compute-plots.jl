@@ -134,7 +134,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     register_computation!(
             attr,
             [colorname, :colorscale, :alpha],
-            [:scaled_color, :fetch_pixel]
+            [:raw_color, :scaled_color, :fetch_pixel]
         ) do (color, colorscale, alpha), changed, last
 
         val = if color[] isa Union{AbstractArray{<: Real}, Real}
@@ -146,12 +146,12 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         else
             add_alpha(color[], alpha[])
         end
-        return (val, isnothing(last) ? color[] isa AbstractPattern : nothing)
+        return (color[], val, isnothing(last) ? color[] isa AbstractPattern : nothing)
     end
 
     register_computation!(attr, [:colorrange, :scaled_color], [:scaled_colorrange]) do (colorrange, color), changed, last
 
-        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return nothing
+        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return (nothing,)
 
         if colorrange[] === automatic
             return (Vec2d(distinct_extrema_nan(color[])),)
@@ -234,11 +234,12 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         end
     end
 
-    dim_converts = get!(() -> DimConversions(), user_kw, :dim_conversions)
+    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     expanded_args = attr[:expanded_args][]
     if length(expanded_args) in (2, 3)
         inputs = Symbol[]
         for (i, arg) in enumerate(expanded_args)
+            @show dim_converts
             update_dim_conversion!(dim_converts, i, arg)
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
@@ -709,24 +710,23 @@ end
 
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.args[1])
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
-    isnothing(attr[:_colorrange][]) && return nothing
+    isnothing(attr[:scaled_colorrange][]) && return nothing
     register_computation!(attr, [:colormap], [:colormapping_type]) do args, changed, last
         return (colormapping_type(args[1][]),)
     end
-    attributes = [:color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :_colorrange, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
+    attributes = [:raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
     register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
-        dict = Dict(zip(attributes, getindex.(args)))
-
-        N = ndims(dict[:color])
-        Cin = typeof(dict[:color])
+        dict = Dict(zip(attributes, getindex.(values(args))))
+        N = ndims(dict[:raw_color])
+        Cin = typeof(dict[:raw_color])
         Cout = typeof(dict[:scaled_color])
-
         if isnothing(cached)
             observables = map(attributes) do name
                 Observable(dict[name])
             end
+
             observable_dict = Dict(zip(attributes, observables))
-            cm = ColorMapping{N,Cin,Cout}(observables...)
+            cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange[]), observables[6:end]...)
             return (cm, observable_dict)
         else
             observable_dict = cached[2][]
