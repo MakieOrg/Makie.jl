@@ -88,15 +88,23 @@ function plot!(plot::Dendrogram)
 
     points_vec = Observable(Point2d[])
     colors_vec = map(plot,
-            plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors
-        ) do nodes, origin, rotation, branch_shape, branch_colors
+            plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors,
+            transform_func_obs(plot)
+        ) do nodes, origin, rotation, branch_shape, branch_colors, tf
 
-        empty!(points_vec[])
+        ps = empty!(points_vec[])
 
         # Generate positional data that connect branches of the tree. If colors are
         # given per node (either directly or through grouping) repeat their values
         # to match up with the branches
-        colors = dendrogram_points!(points_vec[], nodes, branch_shape, branch_colors)
+        colors = dendrogram_points!(ps, nodes, branch_shape, branch_colors)
+
+        # force rotation to work with Polar transform
+        if tf isa Polar
+            rotation = ifelse(tf.theta_as_x, :up, :right)
+            r_dim = ifelse(tf.theta_as_x, 2, 1)
+            origin[r_dim] >= 0.0 || error("The origin of a dendrogram must not be at a negative radius in polar coordinates.")
+        end
 
         # parse rotation, construct rotation matrix
         if rotation isa Real;
@@ -116,11 +124,55 @@ function plot!(plot::Dendrogram)
 
         # move root to (0, 0), rotate, then to origin
         root_pos = nodes[end].position
-        for (i, p) in enumerate(points_vec[])
-            points_vec[][i] = R * (p - root_pos) + origin
+        for (i, p) in enumerate(ps)
+            ps[i] = R * (p - root_pos) + origin
         end
 
-        notify(points_vec)
+        if tf isa Polar
+            dim = ifelse(tf.theta_as_x, 1, 2)
+            step = 2pi/180
+
+            # downscale angles so that leaves spread across 0..2pi without overlap at 0/2pi
+            # Nleaves = count(node -> isnothing(node.children), nodes)
+            # mini, maxi = extrema(node -> node.position[dim], nodes)
+            # angle_scale = 2pi * Nleaves / ((Nleaves + 1) * (maxi - mini))
+            # scale = ifelse(tf.theta_as_x, Vec2d(angle_scale, 1), Vec2f(1, angle_scale))
+
+            interpolated_points = similar(ps, 0)
+            push!(interpolated_points, ps[1])
+            interpolated_colors = similar(colors, 0)
+            push!(interpolated_colors, colors[1])
+
+            for i in 2:length(ps)
+                # p0 = scale .* ps[i-1]
+                # p1 = scale .* ps[i]
+                p0 = ps[i-1]
+                p1 = ps[i]
+
+                if isnan(p0) || isnan(p1)
+                    push!(interpolated_points, p1)
+                    push!(interpolated_colors, colors[i])
+                    continue
+                end
+
+                N = 1 + max(1, round(Int, abs(p1[dim] - p0[dim]) / step))
+                if N == 2
+                    push!(interpolated_points, p1)
+                    push!(interpolated_colors, colors[i])
+                else
+                    append!(interpolated_points, range(p0, p1, length = N)[2:N])
+                    if isnan(colors[i-1]) || isnan(colors[i])
+                        append!(interpolated_colors, (colors[i-1] for _ in 2:N))
+                    else
+                        append!(interpolated_colors, range(colors[i-1], colors[i], length = N)[2:N])
+                    end
+                end
+            end
+            points_vec[] = interpolated_points
+            colors = interpolated_colors
+        else
+            notify(points_vec)
+        end
 
         return colors
     end
