@@ -1955,7 +1955,7 @@ end
     st
 end
 
-@reference_tests "Dendrogram" begin
+@reference_test "Dendrogram" begin
     leaves = Point2f.([
         (1,0),
         (2,0.5),
