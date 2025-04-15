@@ -32,10 +32,20 @@ and parent nodes identified by `merges`.
     Can be `:down`, `:right`, `:up`, `:left` or a float.
     """
     rotation = :down
-    "TODO: document"
-    groups = nothing
     "Sets the position of the tree root."
     origin = Point2d(0)
+    """
+    Sets the width of the dendrogram, i.e. the maximum distance between to leaf nodes.
+    Defaults to keeping neighboring leaf nodes 1 unit apart.
+    """
+    width = automatic
+    """
+    Sets the depth or height of the dendrogram, i.e. how far apart the root noe and
+    the most distant leaf node are. TODO: What does the default case do?
+    """
+    depth = automatic
+    "TODO: document"
+    groups = nothing
     "Sets the color of branches with mixed groups if groups are defined."
     ungrouped_color = :gray
 
@@ -131,11 +141,19 @@ function plot!(plot::Dendrogram)
         end
     end
 
+    parse_scale(nodes, width::Automatic) = 1.0
+    parse_scale(nodes, width) = error("Incorrect type for Dendrogram width or depth. Must be automatic or Real, but is $(typeof(width)).")
+    function parse_scale(nodes, width::Real)
+        # TODO: Should we consider connections? (check positions instead of nodes)
+        mini, maxi = extrema(node -> node.position[1], nodes)
+        return width / (maxi - mini)
+    end
+
     points_vec = Observable(Point2d[])
     colors_vec = map(plot,
             plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors,
-            transform_func_obs(plot)
-        ) do nodes, origin, rotation, branch_shape, branch_colors, tf
+            transform_func_obs(plot), plot.width, plot.depth
+        ) do nodes, origin, rotation, branch_shape, branch_colors, tf, width, depth
 
         ps = empty!(points_vec[])
 
@@ -167,10 +185,13 @@ function plot!(plot::Dendrogram)
         end
         R = rotmatrix2d(rot_angle)
 
-        # move root to (0, 0), rotate, then to origin
+        # parse scaling
+        scale = Vec2d(parse_scale(nodes, width), parse_scale(nodes, depth))
+
+        # move root to (0, 0), scale, then rotate, then move to origin
         root_pos = nodes[end].position
         for (i, p) in enumerate(ps)
-            ps[i] = R * (p - root_pos) + origin
+            ps[i] = R * (scale .* (p - root_pos)) + origin
         end
 
         points_vec.val, colors = resample_for_transform(tf, ps, colors)
