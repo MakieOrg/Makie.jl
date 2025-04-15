@@ -194,7 +194,11 @@ function plot!(plot::Dendrogram)
             ps[i] = R * (scale .* (p - root_pos)) + origin
         end
 
-        points_vec.val, colors = resample_for_transform(tf, ps, colors)
+        if colors isa Vector
+            points_vec.val, colors = resample_for_transform(tf, ps, colors)
+        else
+            points_vec.val = resample_for_transform(tf, ps)[1]
+        end
 
         notify(points_vec)
 
