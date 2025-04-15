@@ -75,6 +75,51 @@ function recursive_dendrogram_points!(ret_points, ret_colors, node, nodes, branc
     return
 end
 
+resample_for_transform(tf, args...; step = nothing) = args
+function resample_for_transform(tf::Polar, ps, args...; step = 2pi/180)
+    isempty(ps) && return (ps, args...)
+
+    interpolated_points = similar(ps, 0)
+    push!(interpolated_points, ps[1])
+    interpolated_args = map(x -> similar(x, 0), args)
+    for (old, new) in zip(args, interpolated_args)
+        push!(new, old[1])
+    end
+
+    dim = ifelse(tf.theta_as_x, 1, 2)
+    for i in 2:length(ps)
+        p0 = ps[i-1]
+        p1 = ps[i]
+
+        if isnan(p0) || isnan(p1)
+            push!(interpolated_points, p1)
+            for (old, new) in zip(args, interpolated_args)
+                push!(new, old[i])
+            end
+            continue
+        end
+
+        N = 1 + max(1, round(Int, abs(p1[dim] - p0[dim]) / step))
+        if N == 2
+            push!(interpolated_points, p1)
+            for (old, new) in zip(args, interpolated_args)
+                push!(new, old[i])
+            end
+        else
+            append!(interpolated_points, range(p0, p1, length = N)[2:N])
+            for (old, new) in zip(args, interpolated_args)
+                if isnan(old[i-1]) || isnan(old[i])
+                    append!(new, (old[i-1] for _ in 2:N))
+                else
+                    append!(new, range(old[i-1], old[i], length = N)[2:N])
+                end
+            end
+        end
+    end
+
+    return (interpolated_points, interpolated_args...)
+end
+
 function plot!(plot::Dendrogram)
     branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
         if isnothing(groups)
@@ -128,51 +173,9 @@ function plot!(plot::Dendrogram)
             ps[i] = R * (p - root_pos) + origin
         end
 
-        if tf isa Polar
-            dim = ifelse(tf.theta_as_x, 1, 2)
-            step = 2pi/180
+        points_vec.val, colors = resample_for_transform(tf, ps, colors)
 
-            # downscale angles so that leaves spread across 0..2pi without overlap at 0/2pi
-            # Nleaves = count(node -> isnothing(node.children), nodes)
-            # mini, maxi = extrema(node -> node.position[dim], nodes)
-            # angle_scale = 2pi * Nleaves / ((Nleaves + 1) * (maxi - mini))
-            # scale = ifelse(tf.theta_as_x, Vec2d(angle_scale, 1), Vec2f(1, angle_scale))
-
-            interpolated_points = similar(ps, 0)
-            push!(interpolated_points, ps[1])
-            interpolated_colors = similar(colors, 0)
-            push!(interpolated_colors, colors[1])
-
-            for i in 2:length(ps)
-                # p0 = scale .* ps[i-1]
-                # p1 = scale .* ps[i]
-                p0 = ps[i-1]
-                p1 = ps[i]
-
-                if isnan(p0) || isnan(p1)
-                    push!(interpolated_points, p1)
-                    push!(interpolated_colors, colors[i])
-                    continue
-                end
-
-                N = 1 + max(1, round(Int, abs(p1[dim] - p0[dim]) / step))
-                if N == 2
-                    push!(interpolated_points, p1)
-                    push!(interpolated_colors, colors[i])
-                else
-                    append!(interpolated_points, range(p0, p1, length = N)[2:N])
-                    if isnan(colors[i-1]) || isnan(colors[i])
-                        append!(interpolated_colors, (colors[i-1] for _ in 2:N))
-                    else
-                        append!(interpolated_colors, range(colors[i-1], colors[i], length = N)[2:N])
-                    end
-                end
-            end
-            points_vec[] = interpolated_points
-            colors = interpolated_colors
-        else
-            notify(points_vec)
-        end
+        notify(points_vec)
 
         return colors
     end
