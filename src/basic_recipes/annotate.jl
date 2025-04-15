@@ -198,7 +198,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     screenpoints_label = Ref{Vector{Point2f}}()
 
     glyphcolls = txt.plots[1][1]
-    text_bbs = lift(p, glyphcolls, scene.camera.projectionview, p.labelspace) do glyphcolls, _, labelspace
+    text_bbs = lift(p, glyphcolls, scene.viewport, scene.camera.projectionview, p.labelspace) do glyphcolls, _, _, labelspace
         points = Makie.project.(Ref(scene), textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
