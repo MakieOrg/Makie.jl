@@ -327,6 +327,60 @@ Label(f[3, 1:2, Top()], "titleposition = :left, orientation = :horizontal\nnbank
 f
 ```
 
+## Legend Interactivity
+
+The Legend can be interacted with to show or hide connected plots.
+A left click on a specific element will toggle the visibility of the connected plots.
+A right click anywhere in the Legend will toggle the visibility of all plots associated with every element.
+A middle click will toggle all plots if they have the same visibility state or make all visible if they do not.
+Note that if you construct elements (MarkerElement, PolyElement, etc.) yourself, you need to also pass a plot or vector of plots as the first argument to enable these interactions.
+
+```@example legend_interaction
+using GLMakie
+GLMakie.activate!() # hide
+
+fig = Figure(size = (600, 450))
+ax = Axis(fig[1, 1])
+lines!(ax, Rect2f(-1,-1,2,2), linewidth = 5, color = RGBf(0.3, 0.5, 1), label = "blue line")
+scatter!(ax, Rect2f(-1,-1,2,2), markersize = 30, color = :orange, label = "orange scatter")
+lines!(ax, Circle(Point2f(0), 1), linewidth = 5, color = :darkgreen, label = "green circle")
+leg = axislegend(ax, position = (:center, :center))
+fig
+nothing # hide
+```
+
+```@setup legend_interaction
+using ..FakeInteraction
+
+_events = [
+    Wait(0.5),
+    Lazy() do fig
+        MouseTo(relative_pos(leg, (0.6, 0.8)))
+    end,
+    Wait(0.2), LeftClick(),
+    Wait(1.5),
+    Lazy() do fig
+        MouseTo(relative_pos(leg, (0.6, 0.5)))
+    end,
+    Wait(0.2), LeftClick(),
+    Wait(1.5),
+    RightClick(),
+    Wait(1.5),
+    Lazy() do fig
+        MouseTo(relative_pos(leg, (0.6, 0.7)))
+    end,
+    Wait(0.2), LeftClick(),
+    Wait(1.5),
+    MiddleClick(),
+    Wait(1.5)
+]
+
+interaction_record(fig, "legend_interaction_example.mp4", _events)
+```
+
+```@raw html
+<video autoplay loop muted playsinline src="./legend_interaction_example.mp4" width="600"/>
+```
 
 ## Attributes
 
