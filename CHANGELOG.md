@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
+- Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
 
 ## [0.22.4] - 2025-04-11
 
