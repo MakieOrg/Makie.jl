@@ -236,6 +236,12 @@ These are the attributes you can override (note that some of them have convenien
   - `[line]points`, `linewidth`, `[line]color`, `linestyle`, `[line]colorrange`, `[line]colormap`
 - `PolyElement`
   - `[poly]points`, `[poly]strokewidth`, `[poly]color`, `[poly]strokecolor`, `[poly]colorrange`, `[poly]colormap`
+- `MeshElement`
+  - `mesh`, `color`, `colormap`, `colorrange`, `uv_transform`
+- `ImageElement`
+  - `limits`, `data`, `colormap`, `colorrange`, `interpolate`
+- `MeshScatterElement`
+  - `position`, `color`, `marker`, `markersize`, `rotation`, `colormap`, `colorrange`
 
 Another common case is when you want to create a legend for a plot with a categorical colormap.
 By passing a vector of labels paired with overrides, you can create multiple entries with the correct colors:

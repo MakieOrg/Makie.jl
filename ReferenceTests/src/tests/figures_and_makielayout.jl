@@ -221,6 +221,20 @@ end
     f
 end
 
+@reference_test "Legend Image-, Mesh- and MeshScatterElements" begin
+    f = Figure(size = (400, 400))
+    a,p = heatmap(f[1, 1:2], rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
+    image!(10.5..20.5, 0.5..10.5, rand(10, 10), label = "Image" => (colormap = :viridis,))
+    axislegend(a)
+
+    a,p = meshscatter(f[2, 1], rand(Point3f, 10), label = "MeshScatter" => (color = :orange,))
+    mesh!(Rect3f(0,0,0,1,1,1), label = "Mesh" => (color = :lightblue,))
+    surface!(rand(10, 10), label = "Surface" => (colormap = :magma,))
+    Legend(f[2, 2], a, tellwidth = false)
+
+    f
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
