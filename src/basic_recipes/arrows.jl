@@ -73,17 +73,31 @@ function _circle(origin, r, normal, N)
     GeometryBasics.mesh(coords, faces; normal = normals)
 end
 
-function convert_arguments(::Type{<: Arrows}, x, y, u, v)
-    return (Point2{float_type(x, y)}.(x, y), Vec2{float_type(u, v)}.(u, v))
+# vec(::Point) and vec(::Vec) works (returns input), but vec(::Tuple) errors
+convert_arguments(::Type{<: Arrows}, pos::VecTypes{N}, dir::VecTypes{N}) where {N} = ([pos], [dir])
+
+function convert_arguments(::Type{<: Arrows}, pos, dir)
+    return (
+        convert_arguments(PointBased(), vec(pos))[1],
+        convert_arguments(PointBased(), vec(dir))[1]
+    )
 end
-function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
-    return (vec(Point2{float_type(x, y)}.(x, y')), vec(Vec2{float_type(u, v)}.(u, v)))
+function convert_arguments(::Type{<: Arrows}, x, y, u, v)
+    return (
+        convert_arguments(PointBased(), vec(x), vec(y))[1],
+        convert_arguments(PointBased(), vec(u), vec(v))[1]
+    )
 end
 function convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w)
-    return (Point3{float_type(x, y, z)}.(x, y, z), Vec3{float_type(u, v, w)}.(u, v, w))
+    return (
+        convert_arguments(PointBased(), vec(x), vec(y), vec(z))[1],
+        convert_arguments(PointBased(), vec(u), vec(v), vec(w))[1]
+    )
 end
 
-function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N}}, V}}) where {N, V}
+
+
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: VecTypes{N}}, V}}) where {N, V}
     @extract arrowplot (
         points, directions, colormap, colorscale, normalize, align,
         arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
