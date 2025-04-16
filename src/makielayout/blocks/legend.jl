@@ -39,10 +39,6 @@ function _set_visibility_ored!(entry_groups)
     end
 end
 
-function process_visibility(event, mpos, entry_groups, legend_area, entryshades)
-
-end
-
 function initialize_block!(leg::Legend; entrygroups)
     entry_groups = convert(Observable{Vector{Tuple{Any,Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
@@ -545,8 +541,8 @@ function PolyElement(; plots=Plot[], kwargs...)
 end
 
 function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
-    if !(plot isa Vector{Plot} || plot isa Plot)
-        error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well.")
+    if !(plot isa AbstractVector{Plot} || plot isa Plot)
+        error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well. Found: $(typeof(plot))")
     end
     ps = plot isa AbstractVector ? plot : [plot]
     _rename_attributes!(T, a)
