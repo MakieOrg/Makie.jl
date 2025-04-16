@@ -497,7 +497,7 @@ function get_plots(plot::DataShader)
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+    return [PolyElement(; plots=plot, color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,

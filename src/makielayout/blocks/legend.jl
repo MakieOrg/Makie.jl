@@ -1,3 +1,48 @@
+function get_n_visible(entry::LegendEntry)
+    n_visible = Ref(0)
+    n_total = Ref(0)
+    foreach_plot_visibility(entry) do vis
+        n_visible[] += Int64(vis[])
+        n_total[] += 1
+    end
+    return n_visible[], n_total[]
+end
+
+function _toggle_over_mouse!(mpos, entry_groups, entryshades)
+    for ((title, entries), shades) in zip(entry_groups, entryshades)
+        for (entry, shade) in zip(entries, shades)
+            # shade and halfshade are Box()es covering the entry
+            bbox = shade.layoutobservables.computedbbox[]
+            if mpos in bbox
+                # determine number of currently visible plot elements
+                n_visible, n_total = get_n_visible(entry)
+                n_total == 0 && return
+                # if not all attached plots have the same state we set all to visible
+                sync_to_visible = n_visible != n_total
+                toggle_visibility!(entry, sync_to_visible)
+                return
+            end
+        end
+    end
+    return
+end
+
+function _set_visibility_ored!(entry_groups)
+    sync_to_visible = false
+    for (_, entries) in entry_groups, e in entries
+        n_visible, n_total = get_n_visible(e)
+        sync_to_visible |= n_visible != n_total
+        sync_to_visible && break
+    end
+    for (_, entries) in entry_groups, e in entries
+        toggle_visibility!(e, sync_to_visible)
+    end
+end
+
+function process_visibility(event, mpos, entry_groups, legend_area, entryshades)
+
+end
+
 function initialize_block!(leg::Legend; entrygroups)
     entry_groups = convert(Observable{Vector{Tuple{Any,Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
@@ -207,25 +252,6 @@ function initialize_block!(leg::Legend; entrygroups)
         foreach(off, entry_observer_funcs)
         empty!(entry_observer_funcs)
 
-        # Check that every <: LegendElement has plots, i.e works with
-        # show/hide interaction
-        bad_types = Set{Type}()
-        for (title, entries) in entry_groups
-            for entry in entries
-                for element in entry.elements
-                    if !hasfield(typeof(element), :plots)
-                        push!(bad_types, typeof(element))
-                    end
-                end
-            end
-        end
-        if !isempty(bad_types)
-            @warn "LegendElements should now keep track of the plots they respresent in a `plots` field. " *
-                    "This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to " *
-                    "toggle visibility of the associated plots. The `plots` field is missing in: $bad_types"
-        end
-
-
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
         # TODO: Fix
@@ -282,7 +308,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 push!(eplots, symbolplots)
 
                 # TODO: Should this be connected to scene/blockscene for cleanup?
-                #       Probably not plots since plot deletion needs to trigger relayout anyway
+                # Probably not plots since plot deletion needs to trigger relayout anyway
                 # listen to visibilty attributes of plot elements to toggle shades below
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
@@ -315,72 +341,24 @@ function initialize_block!(leg::Legend; entrygroups)
     end
 
     # Process hide/show events
-    on(scene, events(blockscene).mousebutton, priority = 1) do event
-        mpos = Makie.events(blockscene).mouseposition[]
-
+    sevents = events(blockscene)
+    on(scene, sevents.mousebutton, priority = 1) do event
+        mpos = sevents.mouseposition[]
         if (event.action == Mouse.release) && in(mpos, legend_area[])
-
             if event.button == Mouse.left
-
                 # Find hovered entry
-                for ((title, entries), shades) in zip(entry_groups[], entryshades)
-                    for (entry, shade) in zip(entries, shades)
-
-                        # shade and halfshade are Box()es covering the entry
-                        bbox = shade.layoutobservables.computedbbox[]
-                        if mpos in bbox
-
-                            # determine number of currently visible plot elements
-                            visibilities = to_value.(get_plot_visibilities(entry))
-                            n_visible = sum(s -> Int64(s), visibilities, init = 0)
-                            n_total = length(visibilities)
-                            n_total == 0 && return Consume(true)
-
-                            # if not all attached plots have the same state we set all to visible
-                            sync_to_visible = n_visible != n_total
-                            toggle_visibility!(entry, sync_to_visible)
-
-                            return Consume(true)
-                        end
-
-                    end
-                end
-
+                _toggle_over_mouse!(mpos, entry_groups[], entryshades)
             elseif event.button == Mouse.right
-
                 # Toggle all
-                for (_, entries) in entry_groups[]
-                    for e in entries
-                        toggle_visibility!(e)
-                    end
+                for (_, entries) in entry_groups[], e in entries
+                    toggle_visibility!(e)
                 end
-
             elseif event.button == Mouse.middle
-
                 # Same as left click, but effectively or-ed for every entry
-                sync_to_visible = false
-                for (title, entries) in entry_groups[]
-                    for entry in entries
-                        visibilities = to_value.(get_plot_visibilities(entry))
-                        n_visible = sum(s -> Int64(s), visibilities, init = 0)
-                        n_total = length(visibilities)
-                        sync_to_visible |= n_visible != n_total
-                    end
-                    sync_to_visible && break
-                end
-
-                for (_, entries) in entry_groups[]
-                    for e in entries
-                        toggle_visibility!(e, sync_to_visible)
-                    end
-                end
-
+                _set_visibility_ored!(entry_groups[])
             end
-
             return Consume(true)
-
         end
-
         return Consume(false)
     end
 
@@ -554,24 +532,25 @@ function LegendEntry(label, content, legend; kwargs...)
     LegendEntry(elems, attrs)
 end
 
-function LineElement(; plots=nothing, kwargs...)
-    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
-    _legendelement(LineElement, ps, Attributes(kwargs))
+function LineElement(; plots=Plot[], kwargs...)
+    _legendelement(LineElement, plots, Attributes(kwargs))
 end
 
-function MarkerElement(; plots=nothing, kwargs...)
-    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
-    _legendelement(MarkerElement, ps, Attributes(kwargs))
+function MarkerElement(; plots=Plot[], kwargs...)
+    _legendelement(MarkerElement, plots, Attributes(kwargs))
 end
 
-function PolyElement(; plots=nothing, kwargs...)
-    ps = isnothing(plots) ? nothing : plots isa AbstractVector ? plots : [plots]
-    _legendelement(PolyElement, ps, Attributes(kwargs))
+function PolyElement(; plots=Plot[], kwargs...)
+    _legendelement(PolyElement, plots, Attributes(kwargs))
 end
 
 function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
+    if !(plot isa Vector{Plot} || plot isa Plot)
+        error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well.")
+    end
+    ps = plot isa AbstractVector ? plot : [plot]
     _rename_attributes!(T, a)
-    T(plot, a)
+    T(ps, a)
 end
 
 _renaming_mapping(::Type{LineElement}) = Dict(
@@ -945,28 +924,28 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function toggle_visibility!(entry::LegendEntry, sync = false)
-    for el in entry.elements
-        if (el !== nothing) && hasfield(typeof(el), :plots) && (el.plots !== nothing)
-            for plot in el.plots
-                !hasproperty(plot, :visible) && continue
-                plot.visible[] = sync ? true : !plot.visible[]
+function foreach_plot_visibility(f, entry::LegendEntry)
+    for element in entry.elements
+        if !isnothing(element)
+            for p in get_plots(element)
+                if hasproperty(p, :visible)
+                    f(p.visible)
+                end
             end
         end
+    end
+end
+
+function toggle_visibility!(entry::LegendEntry, sync = false)
+    foreach_plot_visibility(entry) do visible
+        visible[] = sync ? true : !visible[]
     end
     return
 end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    for element in entry.elements
-        if (element !== nothing) && hasfield(typeof(element), :plots) && (element.plots !== nothing)
-            for plot in element.plots
-                !hasproperty(plot, :visible) && continue
-                push!(visibilities, plot.visible)
-            end
-        end
-    end
+    foreach_plot_visibility(x -> push!(visibilities, x), entry)
     return visibilities
 end
 
