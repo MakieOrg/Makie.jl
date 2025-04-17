@@ -100,11 +100,11 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
             [:x_transformed, :y_transformed]
         ) do (x, y, img, func), changed, last
 
-        x1d = _xy_convert(x[], size(img[], 1))
-        xps = apply_transform(func[], Point2.(x1d, 0))
+        x1d = _xy_convert(x, size(img, 1))
+        xps = apply_transform(func, Point2.(x1d, 0))
 
-        y1d = _xy_convert(y[], size(img[], 2))
-        yps = apply_transform(func[], Point2.(0, y1d))
+        y1d = _xy_convert(y, size(img, 2))
+        yps = apply_transform(func, Point2.(0, y1d))
 
         return (xps, yps)
     end
@@ -118,10 +118,10 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
 
         # trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
-            m = changed.model ? Mat4f(model[]) : nothing
-            xs = changed.x_transformed || changed.f32c ? el32convert(first.(x[])) : nothing
-            ys = changed.y_transformed || changed.f32c ? el32convert(last.(y[])) : nothing
+        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+            m = changed.model ? Mat4f(model) : nothing
+            xs = changed.x_transformed || changed.f32c ? el32convert(first.(x)) : nothing
+            ys = changed.y_transformed || changed.f32c ? el32convert(last.(y)) : nothing
             return (xs, ys, m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -132,17 +132,17 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
-            xs = Vector{Float32}(undef, length(x[]))
+            xs = Vector{Float32}(undef, length(x))
             @inbounds for i in eachindex(output)
-                p4d = to_ndim(Point4d, to_ndim(Point3d, x[][i], 0), 1)
-                p4d = model[] * p4d
-                xs[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)], 1)
+                p4d = to_ndim(Point4d, to_ndim(Point3d, x[i], 0), 1)
+                p4d = model * p4d
+                xs[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 1)
             end
-            ys = Vector{Float32}(undef, length(y[]))
+            ys = Vector{Float32}(undef, length(y))
             @inbounds for i in eachindex(output)
-                p4d = to_ndim(Point4d, to_ndim(Point3d, y[][i], 0), 1)
-                p4d = model[] * p4d
-                ys[i] = f32_convert(f32c[], p4d[Vec(1, 2, 3)], 2)
+                p4d = to_ndim(Point4d, to_ndim(Point3d, y[i], 0), 1)
+                p4d = model * p4d
+                ys[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 2)
             end
             m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
             return (xs, ys, m)
@@ -213,9 +213,9 @@ end
 
 function add_computation!(attr, scene, ::Val{:volume_model})
     register_computation!(attr, [:x, :y, :z, :model], [:volume_model]) do (xs, ys, zs, model), changed, cached
-        mini  = minimum.((xs[], ys[], zs[]))
-        width = maximum.((xs[], ys[], zs[])) .- mini
-        return (Mat4f(model[] * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
+        mini  = minimum.((xs, ys, zs))
+        width = maximum.((xs, ys, zs)) .- mini
+        return (Mat4f(model * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
     end
 end
 

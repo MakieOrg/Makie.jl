@@ -35,7 +35,7 @@ end
 function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Dict{Symbol,Symbol})
     for name in keys(args)
         changed[name] || continue
-        value = args[name][]
+        value = args[name]
         gl_name = get(gl_names, name, name)
         if name === :visible
             robj.visible = value
@@ -150,15 +150,15 @@ function generate_clip_planes!(attr, scene, target_space::Symbol = :world, model
         push!(inputs, :projectionview)
     end
 
-    register_computation!(attr, inputs, [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, cached
-        output = isnothing(cached) ?  Vector{Vec4f}(undef, 8) : cached[1][]
-        planes = input.clip_planes[]
+    register_computation!(attr, inputs, [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, last
+        output = isnothing(last) ?  Vector{Vec4f}(undef, 8) : last.gl_clip_planes
+        planes = input.clip_planes
         if target_space === :world
-            return generate_clip_planes(planes, input.space[], output)
+            return generate_clip_planes(planes, input.space, output)
         elseif target_space === :model
-            return generate_model_space_clip_planes(getproperty(input, modelname)[], planes, input.space[], output)
+            return generate_model_space_clip_planes(getproperty(input, modelname), planes, input.space, output)
         elseif target_space === :clip
-            return generate_clip_planes(input.projectionview[], planes, input.space[], output)
+            return generate_clip_planes(input.projectionview, planes, input.space, output)
         else
             error("Unknown space $target_space.")
         end
@@ -226,7 +226,7 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
             # That would simplify this code and remove attr, uniforms from the enclosed variables here
             _robj = constructor(screen, scene, attr, args, uniforms, input2glname)
         else
-            _robj = last[1][]
+            _robj = last.gl_renderobject
             update_robjs!(_robj, args, changed, input2glname)
         end
         screen.requires_update = true
@@ -254,11 +254,11 @@ function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniform
     markerspace = attr[:markerspace][]
     fast_pixel = attr[:marker][] isa FastPixel
     pspace = fast_pixel ? space : markerspace
-    colormap = args.alpha_colormap[]
-    color = args.scaled_color[]
-    colornorm = args.scaled_colorrange[]
-    marker_shape = args.sdf_marker_shape[]
-    distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas[]) : nothing
+    colormap = args.alpha_colormap
+    color = args.scaled_color
+    colornorm = args.scaled_colorrange
+    marker_shape = args.sdf_marker_shape
+    distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
 
     data = Dict(
         :preprojection => Makie.get_preprojection(camera, space, markerspace),
@@ -281,7 +281,7 @@ function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniform
         input2glname[:scaled_color] = :image
     end
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
     if fast_pixel
         return draw_pixel_scatter(screen, data[:position], data)
@@ -326,20 +326,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         register_computation!(attr,
             [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, _, space, model), changed, cached
-            pvm = Makie.space_to_clip(scene.camera, space[]) * model[]
-            depth_vals = isnothing(cached) ? Float32[] : cached[1][]
-            indices = isnothing(cached) ? Cuint[] : cached[2][]
+        ) do (pos, _, space, model), changed, last
+            pvm = Makie.space_to_clip(scene.camera, space) * model
+            depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
+            indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos[], depth_vals, indices, pvm)
         end
     else
         register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
-            return (length(ps[]),)
+            return (length(ps),)
         end
     end
 
     register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
-        return (Int32(length(ps[])),)
+        return (Int32(length(ps)),)
     end
 
     inputs = [
@@ -351,13 +351,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     ]
     if attr[:marker][] isa FastPixel
         register_computation!(attr, [:markerspace], [:gl_markerspace]) do (space,), changed, last
-            space[] == :pixel && return (Int32(0),)
-            space[] == :data  && return (Int32(1),)
+            space == :pixel && return (Int32(0),)
+            space == :data  && return (Int32(1),)
             return error("Unsupported markerspace for FastPixel marker: $space")
         end
 
         register_computation!(attr, [:marker], [:sdf_marker_shape]) do (marker,), changed, last
-            return (marker[].marker_type,)
+            return (marker.marker_type,)
         end
 
         uniforms = [
@@ -427,13 +427,13 @@ function assemble_meshscatter_robj(screen::Screen, scene::Scene, attr, args, uni
         :ssao => attr[:ssao][],
     )
 
-    if args.packed_uv_transform[] isa Vector{Vec2f}
-        data[:uv_transform] = TextureBuffer(screen.glscreen, args.packed_uv_transform[])
+    if args.packed_uv_transform isa Vector{Vec2f}
+        data[:uv_transform] = TextureBuffer(screen.glscreen, args.packed_uv_transform)
     else
-        data[:uv_transform] = args.packed_uv_transform[]
+        data[:uv_transform] = args.packed_uv_transform
     end
 
-    add_color_attributes!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
+    add_color_attributes!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
     add_camera_attributes!(data, screen, camera, attr[:space][])
     add_light_attributes!(screen, scene, data, attr)
 
@@ -449,7 +449,7 @@ function assemble_meshscatter_robj(screen::Screen, scene::Scene, attr, args, uni
     end
 
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     marker = attr[:marker][]
@@ -467,7 +467,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     Makie.register_world_normalmatrix!(attr)
 
     register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
-        return (length(pos[]), Int32(length(pos[])))
+        return (length(pos), Int32(length(pos)))
     end
 
     inputs = [
@@ -504,7 +504,7 @@ end
 
 function assemble_lines_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
 
-    positions = args[1][] # changes name, so we use positional
+    positions = args[1] # changes name, so we use positional
     linestyle = attr[:linestyle][]
     camera = scene.camera
 
@@ -519,8 +519,8 @@ function assemble_lines_robj(screen::Screen, scene::Scene, attr, args, uniforms,
         :debug => attr[:debug][],
     )
 
-    add_camera_attributes!(data, screen, camera, args.space[])
-    add_color_attributes_lines!(data, args.scaled_color[], args.alpha_colormap[], args.scaled_colorrange[])
+    add_camera_attributes!(data, screen, camera, args.space)
+    add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
     if !isnothing(get(data, :intensity, nothing))
         input2glname[:scaled_color] = :intensity
@@ -528,7 +528,7 @@ function assemble_lines_robj(screen::Screen, scene::Scene, attr, args, uniforms,
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_lines(screen, positions, data)
@@ -620,10 +620,10 @@ function generate_indices(positions::NamedTuple, changed::NamedTuple, cached)
         indices = Cuint[]
         valid = Float32[]
     else
-        indices = empty!(cached[1][])
-        valid = cached[2][]
+        indices = empty!(cached[1])
+        valid = cached[2]
     end
-    ps = positions[1][]
+    ps = positions[1]
     return generate_indices(ps, indices, valid)
 end
 
@@ -638,7 +638,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin, :resolution]
     ) do (ppu, viewport), changed, output
-        return (Vec2f(ppu[] * origin(viewport[])), Vec2f(ppu[] * widths(viewport[])))
+        return (Vec2f(ppu * origin(viewport)), Vec2f(ppu * widths(viewport)))
     end
 
     # position calculations for patterned lines
@@ -647,17 +647,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(
         attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
-        pvm = Makie.space_to_clip(scene.camera, space[]) *
-            Makie.f32_convert_matrix(f32c[], space[]) * model[]
+        pvm = Makie.space_to_clip(scene.camera, space) *
+            Makie.f32_convert_matrix(f32c, space) * model
         return (pvm,)
     end
     register_computation!(
         attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
-    ) do (pvm32, positions), changed, cached
-        output = isnothing(cached) ? Point4f[] : cached[1][]
-        resize!(output, length(positions[]))
-        map!(output, positions[]) do pos
-            return pvm32[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0.0), 1.0)
+    ) do (pvm32, positions), changed, last
+        output = isnothing(last) ? Point4f[] : last.gl_projected_positions
+        resize!(output, length(positions))
+        map!(output, positions) do pos
+            return pvm32 * to_ndim(Point4d, to_ndim(Point3d, pos, 0.0), 1.0)
         end
         return (output,)
     end
@@ -675,10 +675,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     # Derived vertex attributes
     register_computation!(generate_indices, attr, [positions], [:gl_indices, :gl_valid_vertex])
     register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
-        return (Int32(length(indices[]) - 2),)
+        return (Int32(length(indices) - 2),)
     end
     register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
-        return (sumlengths(pos[], res[]),)
+        return (sumlengths(pos, res),)
     end
 
     inputs = [
@@ -725,8 +725,8 @@ function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, un
         :ssao => false,
     )
 
-    add_camera_attributes!(data, screen, camera, args.space[])
-    add_color_attributes_lines!(data, args.synched_color[], args.alpha_colormap[], args.scaled_colorrange[])
+    add_camera_attributes!(data, screen, camera, args.space)
+    add_color_attributes_lines!(data, args.synched_color, args.alpha_colormap, args.scaled_colorrange)
 
     if !isnothing(get(data, :intensity, nothing))
         input2glname[:synched_color] = :intensity
@@ -734,7 +734,7 @@ function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, un
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     # Here we do need to be careful with pattern because :fast does not
@@ -754,7 +754,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     register_computation!(
         attr, [:px_per_unit, :viewport], [:scene_origin]
     ) do (ppu, viewport), changed, output
-        return (Vec2f(ppu[] * origin(viewport[])),)
+        return (Vec2f(ppu * origin(viewport)),)
     end
 
     # linestyle/pattern handling
@@ -764,7 +764,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     generate_clip_planes!(attr, scene)
 
     register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
-        return (length(positions[]),)
+        return (length(positions),)
     end
 
     inputs = [
@@ -810,11 +810,11 @@ function assemble_image_robj(screen::Screen, scene::Scene, attr, args, uniforms,
     )
 
     camera = scene.camera
-    add_camera_attributes!(data, screen, camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space)
 
-    colormap = args.alpha_colormap[]
-    color = args.scaled_color[]
-    colornorm = args.scaled_colorrange[]
+    colormap = args.alpha_colormap
+    color = args.scaled_color
+    colornorm = args.scaled_colorrange
     add_color_attributes!(data, color, colormap, colornorm)
 
     # always use :image with specific interpolation settings, so remove:
@@ -828,7 +828,7 @@ function assemble_image_robj(screen::Screen, scene::Scene, attr, args, uniforms,
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_mesh(screen, data)
@@ -874,8 +874,8 @@ end
 
 function assemble_heatmap_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
-        :position_x => Texture(screen.glscreen, args[1][], minfilter = :nearest),
-        :position_y => Texture(screen.glscreen, args[2][], minfilter = :nearest),
+        :position_x => Texture(screen.glscreen, args[1], minfilter = :nearest),
+        :position_y => Texture(screen.glscreen, args[2], minfilter = :nearest),
         # Compile time variable, Constants
         :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
@@ -883,11 +883,10 @@ function assemble_heatmap_robj(screen::Screen, scene::Scene, attr, args, uniform
     )
 
     camera = scene.camera
-    add_camera_attributes!(data, screen, camera, args.space[])
-
-    colormap = args.alpha_colormap[]
-    color = args.scaled_color[]
-    colornorm = args.scaled_colorrange[]
+    add_camera_attributes!(data, screen, camera, args.space)
+    colormap = args.alpha_colormap
+    color = args.scaled_color
+    colornorm = args.scaled_colorrange
     add_color_attributes!(data, color, colormap, colornorm)
 
     # always use :image with specific interpolation settings, so remove:
@@ -905,7 +904,7 @@ function assemble_heatmap_robj(screen::Screen, scene::Scene, attr, args, uniform
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_heatmap(screen, data)
@@ -928,7 +927,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
     Makie.add_computation!(attr, scene, Val(:heatmap_transform))
 
     register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:instances]) do (x, y), changed, cached
-        return ((length(x[]) - 1) * (length(y[]) - 1), )
+        return ((length(x) - 1) * (length(y) - 1), )
     end
 
     inputs = [
@@ -971,20 +970,20 @@ function assemble_surface_robj(screen::Screen, scene::Scene, attr, args, uniform
 
     colorname = add_mesh_color_attributes!(
         screen, data,
-        args.scaled_color[],
-        args.alpha_colormap[],
-        args.scaled_colorrange[],
-        attr[:interpolate][]
+        args.scaled_color,
+        args.alpha_colormap,
+        args.scaled_colorrange,
+        attr[:interpolate]
     )
     @assert colorname == :image
 
     camera = scene.camera
-    add_camera_attributes!(data, screen, camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space)
     add_light_attributes!(screen, scene, data, attr)
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_surface(screen, data[:image], data)
@@ -1000,12 +999,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
 
     register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
-        return ((size(z[],1)-1) * (size(z[],2)-1), )
+        return ((size(z,1)-1) * (size(z,2)-1), )
     end
 
     # TODO: not part of the conversion pipeline on master... but shouldn't it be?
     register_computation!(attr, [:z], [:z_converted]) do (z,), changed, cached
-        return (el32convert(z[]), )
+        return (el32convert(z), )
     end
 
     inputs = [
@@ -1093,13 +1092,13 @@ function assemble_mesh_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
         :ssao => attr[:ssao][],
     )
 
-    add_camera_attributes!(data, screen, camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space)
 
     input2glname[:scaled_color] = add_mesh_color_attributes!(
         screen, data,
-        args.scaled_color[],
-        args.alpha_colormap[],
-        args.scaled_colorrange[],
+        args.scaled_color,
+        args.alpha_colormap,
+        args.scaled_colorrange,
         attr[:interpolate][]
     )
 
@@ -1107,7 +1106,7 @@ function assemble_mesh_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     data[:normals] === nothing && delete!(data, :normals)
@@ -1161,8 +1160,8 @@ end
 function assemble_voxel_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
     camera = scene.camera
 
-    voxel_id = Texture(screen.glscreen, args.chunk_u8[], minfilter = :nearest)
-    uvt = args.packed_uv_transform[]
+    voxel_id = Texture(screen.glscreen, args.chunk_u8, minfilter = :nearest)
+    uvt = args.packed_uv_transform
     data = Dict{Symbol, Any}(
         :voxel_id => voxel_id,
         :uv_transform => isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest),
@@ -1173,17 +1172,17 @@ function assemble_voxel_robj(screen::Screen, scene::Scene, attr, args, uniforms,
         :ssao => attr[:ssao][],
     )
 
-    add_camera_attributes!(data, screen, camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space)
     add_light_attributes!(screen, scene, data, attr)
 
     if haskey(args, :voxel_color)
         interp = attr[:interpolate][] ? :linear : :nearest
-        data[:color] = Texture(screen.glscreen, args.voxel_color[], minfilter = interp)
+        data[:color] = Texture(screen.glscreen, args.voxel_color, minfilter = interp)
     end
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_voxels(screen, voxel_id, data)
@@ -1199,18 +1198,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     register_world_normalmatrix!(attr, :voxel_model)
 
     register_computation!(attr, [:chunk_u8, :gap], [:instances]) do (chunk, gap), changed, cached
-        N = sum(size(chunk[]))
-        return (ifelse(gap[] > 0.01, 2 * N, N + 3),)
+        N = sum(size(chunk))
+        return (ifelse(gap > 0.01, 2 * N, N + 3),)
     end
 
     # TODO: can this be reused in WGLMakie?
     # TODO: Should this verify that color is a texture?
     register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
-        if !isnothing(uvt[])
-            return (Makie.pack_voxel_uv_transform(uvt[]),)
-        elseif !isnothing(uvmap[])
+        if !isnothing(uvt)
+            return (Makie.pack_voxel_uv_transform(uvt),)
+        elseif !isnothing(uvmap)
             @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
-            raw_uvt = Makie.uvmap_to_uv_transform(uvmap[])
+            raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
             converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
             return (Makie.pack_voxel_uv_transform(converted_uvt),)
         else
@@ -1250,7 +1249,7 @@ end
 
 function assemble_volume_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
     interp = attr[:interpolate][] ? :linear : :nearest
-    volume_data = Texture(screen.glscreen, args.volume[], minfilter = interp)
+    volume_data = Texture(screen.glscreen, args.volume, minfilter = interp)
 
     data = Dict{Symbol, Any}(
         # Compile time variable, Constants
@@ -1262,17 +1261,17 @@ function assemble_volume_robj(screen::Screen, scene::Scene, attr, args, uniforms
     )
 
     camera = scene.camera
-    add_camera_attributes!(data, screen, camera, args.space[])
+    add_camera_attributes!(data, screen, camera, args.space)
     add_light_attributes!(screen, scene, data, attr)
 
-    if args.volume[] isa AbstractArray{<:Real}
-        data[:color_map] = args.alpha_colormap[]
-        data[:color_norm] = args.scaled_colorrange[]
+    if args.volume isa AbstractArray{<:Real}
+        data[:color_map] = args.alpha_colormap
+        data[:color_norm] = args.scaled_colorrange
     end
 
     # Transfer over uniforms
     for name in uniforms
-        data[get(input2glname, name, name)] = args[name][]
+        data[get(input2glname, name, name)] = args[name]
     end
 
     return draw_volume(screen, volume_data, data)
@@ -1289,7 +1288,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
 
     # TODO: reuse in clip planes
     register_computation!(attr, [:volume_model], [:modelinv]) do (model,), changed, cached
-        return (Mat4f(inv(model[])),)
+        return (Mat4f(inv(model)),)
     end
 
     inputs = [
