@@ -92,13 +92,17 @@ function register_voxel_colormapping!(attr)
                 for i in min(255, length(color))+1 : 255
                     output[i] = RGBAf(0,0,0,0)
                 end
+                return (output,)
             elseif color isa AbstractArray # image/texture
                 output = add_alpha.(to_color.(color), alpha)
+                return (output,)
             elseif color isa Colorant # static
                 c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
+                return (output,)
+            else
+                error("Invalid color type $(typeof(color))")
             end
-            return (output,)
         end
 
     end

@@ -127,7 +127,7 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
             [:real_markercolor]
         ) do (color, markercolor), changed, last
 
-        return (to_color(markercolor[] === automatic ? color[] : markercolor[]),)
+        return (to_color(markercolor === automatic ? color : markercolor),)
     end
 
     register_computation!(attr,
@@ -135,7 +135,7 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
             [:real_markercolormap]
         ) do (colormap, markercolormap), changed, last
 
-        return (markercolormap[] === automatic ? colormap[] : markercolormap[],)
+        return (markercolormap === automatic ? colormap : markercolormap,)
     end
 
     register_computation!(attr,
@@ -143,7 +143,7 @@ function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
             [:real_markercolorrange]
         ) do (colorrange, markercolorrange), changed, last
 
-        return (markercolorrange[] === automatic ? colorrange[] : markercolorrange[],)
+        return (markercolorrange === automatic ? colorrange : markercolorrange,)
     end
 
     lines!(p,         attr.outputs[:positions];

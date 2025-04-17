@@ -973,7 +973,7 @@ function assemble_surface_robj(screen::Screen, scene::Scene, attr, args, uniform
         args.scaled_color,
         args.alpha_colormap,
         args.scaled_colorrange,
-        attr[:interpolate]
+        attr[:interpolate][]
     )
     @assert colorname == :image
 

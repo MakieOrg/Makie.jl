@@ -13,7 +13,7 @@ function add_computation!(attr, scene, ::Val{:scene_origin})
     register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
         !changed[1] && return nothing
         new_val = Vec2f(origin(viewport))
-        if !isnothing(last) && last[1][] == new_val
+        if !isnothing(last) && last[1] == new_val
             return nothing
         else
             return (new_val,)
@@ -166,7 +166,7 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
             [:x, :y, :transform_func],
             [:xy_transformed]
         ) do (x, y, func), changed, last
-        return (apply_transform(func[], _surf_xy_convert(x[], y[])), )
+        return (apply_transform(func, _surf_xy_convert(x, y)), )
     end
 
     register_computation!(attr,
@@ -178,9 +178,9 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
 
         # trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
-            m = changed.model ? Mat4f(model[]) : nothing
-            xys = changed.xy_transformed || changed.f32c ? el32convert(xy[]) : nothing
+        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+            m = changed.model ? Mat4f(model) : nothing
+            xys = changed.xy_transformed || changed.f32c ? el32convert(xy) : nothing
             return (first.(xys), last.(xys), m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -191,9 +191,9 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
-            xys = map(xy[]) do pos
-                p4d = model[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
-                return f32_convert(f32c[], p4d[Vec(1, 2)])
+            xys = map(xy) do pos
+                p4d = model * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+                return f32_convert(f32c, p4d[Vec(1, 2)])
             end
             m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
             return (first.(xys), last.(xys), m)
