@@ -203,11 +203,10 @@ end
 
 function add_computation!(attr, scene, ::Val{:voxel_model})
     register_computation!(attr, [:x, :y, :z, :chunk_u8, :model], [:voxel_model]) do (xs, ys, zs, chunk, model), changed, cached
-        mini  = minimum.((xs[], ys[], zs[]))
-        width = maximum.((xs[], ys[], zs[])) .- mini
-        return (Mat4f(model[] *
-            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk[])))
-        ), )
+        mini  = minimum.((xs, ys, zs))
+        width = maximum.((xs, ys, zs)) .- mini
+        m = Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
+        return (Mat4f(model * m),)
     end
 end
 
@@ -225,8 +224,8 @@ function add_computation!(attr, scene, ::Val{:uv_transform_packing}, uv_transfor
     register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, last
         if uvt isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
-            output = Vector{Vec2f}(undef, 3 * length(uvt[]))
-            for i in eachindex(uvt[])
+            output = Vector{Vec2f}(undef, 3 * length(uvt))
+            for i in eachindex(uvt)
                 output[3 * (i-1) + 1] = uvt[i][Vec(1, 2)]
                 output[3 * (i-1) + 2] = uvt[i][Vec(3, 4)]
                 output[3 * (i-1) + 3] = uvt[i][Vec(5, 6)]

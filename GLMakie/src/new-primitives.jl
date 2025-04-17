@@ -1195,7 +1195,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
     generate_clip_planes!(attr, scene, :model, :voxel_model)
 
-    register_world_normalmatrix!(attr, :voxel_model)
+    Makie.register_world_normalmatrix!(attr, :voxel_model)
 
     register_computation!(attr, [:chunk_u8, :gap], [:instances]) do (chunk, gap), changed, cached
         N = sum(size(chunk))

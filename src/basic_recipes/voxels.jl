@@ -34,11 +34,11 @@ end
 function register_voxel_conversions!(attr)
 
     register_computation!(attr, [:chunk, :colorrange, :is_air], [:value_limits]) do (chunk, colorrange, is_air), changed, cached
-        colorrange[] !== automatic && return (colorrange[],)
+        colorrange !== automatic && return (colorrange,)
 
         mini, maxi = (Inf, -Inf)
-        for elem in chunk[]
-            is_air[](elem) && continue
+        for elem in chunk
+            is_air(elem) && continue
             mini = min(mini, elem)
             maxi = max(maxi, elem)
         end
@@ -49,18 +49,18 @@ function register_voxel_conversions!(attr)
     end
 
     register_computation!(attr, [:value_limits, :is_air, :colorscale, :chunk],
-            [:chunk_u8]) do (lims, is_air, scale, chunk), changed, cached
+            [:chunk_u8]) do (lims, is_air, scale, chunk), changed, last
 
         # No conversions necessary so no new array necessary. Should still
         # propagate updates though
-        chunk[] isa Array{UInt8, 3} && return (chunk[], )
+        chunk isa Array{UInt8, 3} && return (chunk, )
 
-        chunk_u8 = isnothing(cached) ? Array{UInt8, 3}(undef, size(chunk[])) : cached[1][]
+        chunk_u8 = isnothing(last) ? Array{UInt8, 3}(undef, size(chunk)) : cached.chunk_u8
 
-        mini, maxi = apply_scale(scale[], lims[])
+        mini, maxi = apply_scale(scale, lims)
         maxi = max(mini + 10eps(float(mini)), maxi)
-        @inbounds for i in eachindex(chunk[])
-            _update_voxel(chunk_u8, chunk[], i, is_air[], scale[], mini, maxi)
+        @inbounds for i in eachindex(chunk)
+            _update_voxel(chunk_u8, chunk, i, is_air, scale, mini, maxi)
         end
 
         return (chunk_u8,)
@@ -71,34 +71,31 @@ end
 function register_voxel_colormapping!(attr)
     # TODO: Is resolving this immediately fine?
     if isnothing(attr[:color][])
-
         register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
-            N = 253 + (lowclip[] === automatic) + (highclip[] === automatic)
-            cm = add_alpha.(resample_cmap(cmap[], N), alpha[])
-            if lowclip[] !== automatic
-                cm = [to_color(lowclip[]); cm]
+            N = 253 + (lowclip === automatic) + (highclip === automatic)
+            cm = add_alpha.(resample_cmap(cmap, N), alpha)
+            if lowclip !== automatic
+                cm = [to_color(lowclip); cm]
             end
-            if highclip[] !== automatic
-                cm = [cm; to_color(highclip[])]
+            if highclip !== automatic
+                cm = [cm; to_color(highclip)]
             end
             return (cm,)
         end
-
     else
-
         register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
-            if color[] isa AbstractVector # one color per id
+            if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
-                @inbounds for i in 1:min(255, length(color[]))
-                    output[i] = add_alpha(to_color(color[][i]), alpha[])
+                @inbounds for i in 1:min(255, length(color))
+                    output[i] = add_alpha(to_color(color[i]), alpha)
                 end
-                for i in min(255, length(color[]))+1 : 255
+                for i in min(255, length(color))+1 : 255
                     output[i] = RGBAf(0,0,0,0)
                 end
-            elseif color[] isa AbstractArray # image/texture
-                output = add_alpha.(to_color.(color[]), alpha[])
-            elseif color[] isa Colorant # static
-                c = add_alpha(to_color(color[]), alpha[])
+            elseif color isa AbstractArray # image/texture
+                output = add_alpha.(to_color.(color), alpha)
+            elseif color isa Colorant # static
+                c = add_alpha(to_color(color), alpha)
                 output = [c for _ in 1:255]
             end
             return (output,)
@@ -114,7 +111,7 @@ function compute_plot(::Type{Voxels}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
-        mini, maxi = Vec3.(x[], y[], z[])
+        mini, maxi = Vec3.(x, y, z)
         return (Rect3d(mini, maxi .- mini),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:chunk][]))
