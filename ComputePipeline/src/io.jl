@@ -28,6 +28,11 @@ edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
 edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
 edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
 
+
+# Get Input callback function and input type
+edge_callback_location(edge::Input) = edge_callback_location(edge.f, (typeof(edge.value),))
+
+# get ComputeEdge callback function, input type, output type
 function edge_callback_location(edge::ComputeEdge)
     inputT = if all(c -> isdefined(c, :value), edge.inputs)
         typeof(ntuple(i -> edge.inputs[i].value, length(edge.inputs)))
@@ -38,21 +43,26 @@ function edge_callback_location(edge::ComputeEdge)
     return edge_callback_location(edge.callback, inputT, outputT)
 end
 
+# fill out ComputeEdge callback arg types
 edge_callback_location(f, arg1, arg3) = edge_callback_location(f, (arg1, Vector{Bool}, arg3))
 
-function edge_callback_location(f, args)
-    file, line = Base.functionloc(f, args)
-    return "$file:$line"
-end
-
+# for add_input!(..., ::Computed)
 function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any, <: Any, <: Any})
-    file, line = Base.functionloc(f.user_func, (x.key, args[1][1][]))
-    return "$file:$line"
+    return edge_callback_location(f.user_func, (Symbol, args[1][1]))
 end
 
+# for add_input!(..., value)
 function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any})
-    file, line = Base.functionloc(f.user_func, (x.key, args[1]))
-    return "$file:$line"
+    return edge_callback_location(f.user_func, (Symbol, args[1]))
+end
+
+function edge_callback_location(f, args)
+    if hasmethod(f, args)
+        file, line = Base.functionloc(f, args)
+        return "$file:$line"
+    else
+        return "not found"
+    end
 end
 
 
@@ -331,7 +341,7 @@ function trace_error(io::IO, edge::Input, marked = nothing)
         printstyled(io, edge.name, color = :red)
         func = edge_callback_name(edge.f, "")
         println(io, " = ", func, '(', edge.value, ")")
-        printstyled(io, "  @ $(edge)\n", color = :light_black)
+        printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
     else
         printstyled(io, "$(edge.name)\n", color = :green)
     end
