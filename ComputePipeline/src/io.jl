@@ -34,11 +34,16 @@ edge_callback_location(edge::Input) = edge_callback_location(edge.f, (typeof(edg
 
 # get ComputeEdge callback function, input type, output type
 function edge_callback_location(edge::ComputeEdge)
+    # TypedEdge may not be initialized yet so we can't rely on its input type
     inputT = if all(c -> isdefined(c, :value), edge.inputs)
-        typeof(ntuple(i -> edge.inputs[i].value, length(edge.inputs)))
+        N = length(edge.inputs)
+        names = ntuple(i -> edge.inputs[i].name, N)
+        values = ntuple(i -> edge.inputs[i].value, N)
+        NamedTuple{names, typeof(values)}
     else
-        Tuple
+        NamedTuple
     end
+
     outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
     return edge_callback_location(edge.callback, inputT, outputT)
 end
@@ -61,7 +66,7 @@ function edge_callback_location(f, args)
         file, line = Base.functionloc(f, args)
         return "$file:$line"
     else
-        return "not found"
+        return "unknown method location"
     end
 end
 
