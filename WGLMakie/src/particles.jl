@@ -161,8 +161,7 @@ function serialize_three(fta::NoDataTextureAtlas)
                :three_type => three_type(Float16),
                :minFilter => three_filter(:linear),
                :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+               :wrapS => "RepeatWrapping")
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
