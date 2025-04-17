@@ -14,8 +14,7 @@ in vec2 frag_uv;
 
 
 // Half width of antialiasing smoothstep
-// #define ANTIALIAS_RADIUS 0.7071067811865476
-#define ANTIALIAS_RADIUS 0.6
+#define ANTIALIAS_RADIUS 0.7071067811865476
 
 in float frag_uvscale;
 in float frag_distancefield_scale;
@@ -26,19 +25,15 @@ flat in vec2 f_sprite_scale;
 
 uniform int num_clip_planes;
 
-float linstep(float edge0, float edge1, float x) {
-    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-}
-
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist, float aa) {
-    return linstep(threshold1 - aa, threshold1 + aa, dist);
+    return smoothstep(threshold1 - aa, threshold1 + aa, dist);
 }
 
 float aastep(float threshold1, float threshold2, float dist, float aa) {
-    return linstep(threshold1 - aa, threshold1 + aa, dist) -
-           linstep(threshold2 - aa, threshold2 + aa, dist);
+    return smoothstep(threshold1 - aa, threshold1 + aa, dist) -
+           smoothstep(threshold2 - aa, threshold2 + aa, dist);
 }
 
 // Procedural signed distance functions on the uv coordinate patch [0,1]x[0,1]
