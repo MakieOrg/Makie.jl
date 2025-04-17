@@ -12,7 +12,7 @@ function add_computation!(attr, scene, ::Val{:scene_origin})
     haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport[])
     register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
         !changed[1] && return nothing
-        new_val = Vec2f(origin(viewport[]))
+        new_val = Vec2f(origin(viewport))
         if !isnothing(last) && last[1][] == new_val
             return nothing
         else
@@ -23,7 +23,7 @@ end
 
 function add_computation!(attr, ::Val{:gl_miter_limit})
     register_computation!(attr, [:miter_limit], [:gl_miter_limit]) do (miter,), changed, output
-        return (Float32(cos(pi - miter[])),)
+        return (Float32(cos(pi - miter)),)
     end
 end
 
@@ -32,17 +32,17 @@ function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
     register_computation!(
         attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
     ) do (linestyle,), changed, cached
-        if isnothing(linestyle[])
+        if isnothing(linestyle)
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
             len = 1.0f0 # should be irrelevant, compat for strictly solid lines
         else
-            sdf = Makie.linestyle_to_sdf(linestyle[])
-            len = Float32(last(linestyle[]) - first(linestyle[]))
+            sdf = Makie.linestyle_to_sdf(linestyle)
+            len = Float32(last(linestyle) - first(linestyle))
         end
         if isnothing(cached)
             tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
         else
-            tex = cached[1][]
+            tex = cached.gl_pattern
             ShaderAbstractions.update!(tex, sdf)
         end
         return (tex, len)
@@ -222,18 +222,18 @@ end
 # TODO: Is this reusable?
 # repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
 function add_computation!(attr, scene, ::Val{:uv_transform_packing}, uv_transform_name = :uv_transform)
-    register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, cached
-        if uvt[] isa Vector
+    register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, last
+        if uvt isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
             output = Vector{Vec2f}(undef, 3 * length(uvt[]))
             for i in eachindex(uvt[])
-                output[3 * (i-1) + 1] = uvt[][i][Vec(1, 2)]
-                output[3 * (i-1) + 2] = uvt[][i][Vec(3, 4)]
-                output[3 * (i-1) + 3] = uvt[][i][Vec(5, 6)]
+                output[3 * (i-1) + 1] = uvt[i][Vec(1, 2)]
+                output[3 * (i-1) + 2] = uvt[i][Vec(3, 4)]
+                output[3 * (i-1) + 3] = uvt[i][Vec(5, 6)]
             end
             return (output,)
         else
-            return (uvt[],)
+            return (uvt,)
         end
     end
 end
@@ -250,7 +250,7 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     # transform them to world space (post float32convert) on the CPU. We then can't
     # do instancing anymore, so meshscatter becomes pointless.
     register_computation!(attr, [:f32c], [:f32c_scale]) do (f32c, ), changed, cached
-        return (Makie.is_identity_transform(f32c[]) ? Vec3f(1) : Vec3f(f32c[].scale), )
+        return (Makie.is_identity_transform(f32c) ? Vec3f(1) : Vec3f(f32c.scale), )
     end
 end
 
@@ -264,13 +264,13 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname =
         [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
         [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached
 
-        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern[] || changed.uv_transform
+        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern || changed.uv_transform
         if needs_update
-            if is_pattern[]
-                new_uvt = Makie.pattern_uv_transform(uvt[], pv[] * model[], widths(vp[]), pattern[], target_mat3)
+            if is_pattern
+                new_uvt = Makie.pattern_uv_transform(uvt, pv * model, widths(vp), pattern, target_mat3)
                 return (new_uvt, )
             else
-                return (uvt[],)
+                return (uvt,)
             end
         else
             return nothing

@@ -105,28 +105,27 @@ end
 
 function register_colormapping!(attr::ComputeGraph, colorname=:color)
     register_computation!(attr, [:colormap, :alpha],
-                          [:alpha_colormap, :raw_colormap, :color_mapping]) do (colormap, a), changed, last
-        icm = colormap[] # the raw input colormap e.g. :viridis
+                          [:alpha_colormap, :raw_colormap, :color_mapping]) do (icm, a), changed, last
         raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
-        if a[] < 1.0
-            alpha_colormap = add_alpha.(colormap[], a[])
-            raw_colormap .= add_alpha.(raw_colormap, a[])
+        if a < 1.0
+            alpha_colormap = add_alpha.(icm, a)
+            raw_colormap .= add_alpha.(raw_colormap, a)
         else
-            alpha_colormap = colormap[]
+            alpha_colormap = icm
         end
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
         return (alpha_colormap, raw_colormap, color_mapping)
     end
     register_computation!(attr, [:raw_colormap], [:color_mapping_type]) do (color,), changed, last
-        return (colormapping_type(color[]),)
+        return (colormapping_type(color),)
     end
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
         register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
-            if input[] === automatic
-                (ifelse(key == :lowclip, first(cmap[]), last(cmap[])),)
+            if input === automatic
+                (ifelse(key == :lowclip, first(cmap), last(cmap)),)
             else
-                (to_color(input[]),)
+                (to_color(input),)
             end
         end
     end
@@ -137,26 +136,24 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             [:raw_color, :scaled_color, :fetch_pixel]
         ) do (color, colorscale, alpha), changed, last
 
-        val = if color[] isa Union{AbstractArray{<: Real}, Real}
-            el32convert(apply_scale(colorscale[], color[]))
-        elseif color[] isa AbstractPattern
-            ShaderAbstractions.Sampler(add_alpha.(to_image(color[]), alpha[]), x_repeat=:repeat)
-        elseif color[] isa AbstractArray
-            add_alpha.(color[], alpha[])
+        val = if color isa Union{AbstractArray{<: Real}, Real}
+            el32convert(apply_scale(colorscale, color))
+        elseif color isa AbstractPattern
+            ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat=:repeat)
+        elseif color isa AbstractArray
+            add_alpha.(color, alpha)
         else
-            add_alpha(color[], alpha[])
+            add_alpha(color, alpha)
         end
-        return (color[], val, isnothing(last) ? color[] isa AbstractPattern : nothing)
+        return (color, val, isnothing(last) ? color isa AbstractPattern : nothing)
     end
 
     register_computation!(attr, [:colorrange, :scaled_color], [:scaled_colorrange]) do (colorrange, color), changed, last
-
-        (color[] isa AbstractArray{<:Real} || color[] isa Real) || return (nothing,)
-
-        if colorrange[] === automatic
-            return (Vec2d(distinct_extrema_nan(color[])),)
+        (color isa AbstractArray{<:Real} || color isa Real) || return (nothing,)
+        if colorrange === automatic
+            return (Vec2d(distinct_extrema_nan(color)),)
         else
-            return (Vec2d(colorrange[]),)
+            return (Vec2d(colorrange),)
         end
     end
 end
@@ -165,7 +162,7 @@ function register_position_transforms!(attr)
     haskey(attr.outputs, :positions) || return
     register_computation!(attr, [:positions, :transform_func],
                         [:positions_transformed]) do (positions, func), changed, last
-        return (apply_transform(func[], positions[]),)
+        return (apply_transform(func, positions),)
     end
 
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
@@ -178,9 +175,9 @@ function register_position_transforms!(attr)
 
         # trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c[]) # && is_float_safe(scale, trans)
-            m = changed[2] ? Mat4f(model[]) : nothing
-            pos = changed[1] ? el32convert(positions[]) : nothing
+        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+            m = changed[2] ? Mat4f(model) : nothing
+            pos = changed[1] ? el32convert(positions) : nothing
             return (pos, m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -191,10 +188,10 @@ function register_position_transforms!(attr)
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
-            output = map(positions[]) do point
+            output = map(positions) do point
                 p4d = to_ndim(Point4d, to_ndim(Point3d, point, 0), 1)
-                p4d = model[] * p4d
-                return f32_convert(f32c[], p4d[Vec(1, 2, 3)])
+                p4d = model * p4d
+                return f32_convert(f32c, p4d[Vec(1, 2, 3)])
             end
             m = isnothing(last) ? Mat4f(I) : nothing
             return (output, m)
@@ -225,7 +222,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     end
 
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
-        args = map(getindex, values(input_args))
+        args = values(input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
             return (args,)
@@ -246,20 +243,20 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             push!(inputs, Symbol(:dim_convert_, i))
         end
         register_computation!(attr, [:expanded_args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
-            last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last[1][]
+            last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
             result = ntuple(length(converts)) do i
-                return convert_dim_value(converts[i][], attr, expanded[][i], last_vals[i])
+                return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
             end
             return (result,)
         end
     else
         register_computation!(attr, [:expanded_args], [:dim_converted]) do args, changed, last
-            return (args.expanded_args[],)
+            return (args.expanded_args,)
         end
     end
 
     register_computation!(attr, [:dim_converted], [MakieCore.argument_names(P, 10)...]) do args, changed, last
-        return convert_arguments(P, args.dim_converted[]...)
+        return convert_arguments(P, args.dim_converted...)
     end
 
     add_input!(attr, :transform_func, identity)
@@ -288,8 +285,8 @@ function register_marker_computations!(attr::ComputeGraph)
         atlas = get_texture_atlas()
         font = defaultfont()
         mm_changed = changed[1] || changed[2]
-        quad_scale = mm_changed ? rescale_marker(atlas, marker[], font, markersize[]) : nothing
-        quad_offset = offset_marker(atlas, marker[], font, markersize[])
+        quad_scale = mm_changed ? rescale_marker(atlas, marker, font, markersize) : nothing
+        quad_offset = offset_marker(atlas, marker, font, markersize)
 
         return (quad_offset, quad_scale)
     end
@@ -491,8 +488,8 @@ function compute_plot(::Type{Image}, args::Tuple, user_kw::Dict{Symbol,Any})
     add_attributes!(Image, attr, user_kw)
     register_arguments!(Image, attr, user_kw, args...)
     register_computation!(attr, [:x, :y], [:positions]) do (x, y), changed, cached
-        x0, x1 = x[]
-        y0, y1 = y[]
+        x0, x1 = x
+        y0, y1 = y
         return (decompose(Point2d, Rect2d(x0, y0, x1-x0, y1-y0)),)
     end
     register_position_transforms!(attr)
@@ -502,10 +499,9 @@ function compute_plot(::Type{Image}, args::Tuple, user_kw::Dict{Symbol,Any})
         attr,
         [:x, :y],
         [:data_limits],
-    ) do args, changed, _
-        mini_maxi = args[1][], args[2][]
-        mini = Vec3d(first.(mini_maxi)..., 0)
-        maxi = Vec3d(last.(mini_maxi)..., 0)
+    ) do mini_maxi, changed, _
+        mini = Vec3d(first.(values(mini_maxi))..., 0)
+        maxi = Vec3d(last.(values(mini_maxi))..., 0)
         return (Rect3d(mini, maxi .- mini),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:image][]))
@@ -519,10 +515,9 @@ function compute_plot(::Type{Heatmap}, args::Tuple, user_kw::Dict{Symbol,Any})
     add_attributes!(Heatmap, attr, user_kw)
     register_arguments!(Heatmap, attr, user_kw, args...)
     register_colormapping!(attr, :image)
-    register_computation!(attr, [:x, :y], [:data_limits]) do args, changed, _
-        mini_maxi = args[1][], args[2][]
-        mini = Vec3d(first.(mini_maxi)..., 0)
-        maxi = Vec3d(last.(mini_maxi)..., 0)
+    register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
+        mini = Vec3d(first.(values(mini_maxi))..., 0)
+        maxi = Vec3d(last.(values(mini_maxi))..., 0)
         return (Rect3d(mini, maxi .- mini),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:image][]))
@@ -536,13 +531,13 @@ function compute_plot(::Type{Surface}, args::Tuple, user_kw::Dict{Symbol,Any})
     add_attributes!(Surface, attr, user_kw)
     register_arguments!(Surface, attr, user_kw, args...)
     register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
-        return (isnothing(color[]) ? z[] : color[],)
+        return (isnothing(color) ? z : color,)
     end
     register_colormapping!(attr, :color_with_default)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
-        xlims = extrema(x[])
-        ylims = extrema(y[])
-        zlims = extrema(z[])
+        xlims = extrema(x)
+        ylims = extrema(y)
+        zlims = extrema(z)
         return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:z][]))
@@ -559,7 +554,7 @@ function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_colormapping!(attr)
     register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
                           [:data_limits]) do args, changed, last
-        return (_boundingbox(map(getindex, args)...),)
+        return (_boundingbox(args...),)
     end
     T = typeof(attr[:positions][])
     p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
@@ -575,7 +570,7 @@ function compute_plot(::Type{MeshScatter}, args::Tuple, user_kw::Dict{Symbol,Any
     register_colormapping!(attr)
     register_computation!(attr, [:positions, :marker, :markersize, :rotation],
                           [:data_limits]) do args, changed, last
-        return (_meshscatter_data_limits(map(getindex, args)...),)
+        return (_meshscatter_data_limits(args...),)
     end
     T = typeof(attr[:positions][])
     p = Plot{meshscatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
@@ -590,19 +585,19 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
         [output_name],
     ) do (vec, positions), changed, last
         any(changed) || return nothing
-        if !(vec[] isa AbstractVector)
-            !isnothing(last) && vec[] == last[1][] && return nothing
-            return (vec[],)
+        if !(vec isa AbstractVector)
+            !isnothing(last) && vec == last[1] && return nothing
+            return (vec,)
         end
-        NP = length(positions[])
-        NC = length(vec[])
-        NP == NC && return (vec[],)
+        NP = length(positions)
+        NC = length(vec)
+        NP == NC && return (vec,)
         if NP ÷ 2 == NC
-            output = [vec[][div(i + 1, 2)] for i in 1:NP]
+            output = [vec[div(i + 1, 2)] for i in 1:NP]
             return (output,)
         end
         error("Color vector length $(NC) does not match position length $(NP)")
-        return (vec[],)
+        return (vec,)
     end
 end
 
@@ -612,7 +607,7 @@ function compute_plot(::Type{Lines}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_arguments!(Lines, attr, user_kw, args...)
     register_colormapping!(attr)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions[]),)
+        return (Rect3d(positions),)
     end
     T = typeof(attr[:positions][])
     p = Plot{lines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
@@ -628,7 +623,7 @@ function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,An
     attribute_per_pos!(attr, :scaled_color, :synched_color)
     attribute_per_pos!(attr, :linewidth, :synched_linewidth)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions[]),)
+        return (Rect3d(positions),)
     end
 
     T = typeof(attr[:positions][])
@@ -653,20 +648,26 @@ function color_per_mesh(ccolors, vertes_per_mesh)
 end
 
 function register_mesh_decomposition!(attr)
-    register_computation!(attr, [:mesh, :color], [:positions, :faces, :normals, :texturecoordinates, :mesh_color]) do (mesh, color), changed, cached
-        merged = mesh[] isa Vector ? merge(mesh[]) : mesh[]
+    register_computation!(attr, [:mesh], [:merged_mesh]) do (mesh,), changed, cached
+        merged = mesh isa Vector ? merge(mesh) : mesh
+        return (merged,)
+    end
+    register_computation!(attr, [:merged_mesh], [:positions, :faces, :normals, :texturecoordinates]) do (merged,), changed, cached
         pos = coordinates(merged)
         faces = decompose(GLTriangleFace, merged)
         normies = normals(merged)
         texturecoords = texturecoordinates(merged)
+        return (pos, faces, normies, texturecoords)
+    end
+    register_computation!(attr, [:merged_mesh, :color], [:mesh_color]) do (merged, color), changed, cached
         if hasproperty(merged, :color)
             _color = merged.color
-        elseif mesh[] isa Vector && color[] isa Vector && length(color[]) == length(mesh[])
-            _color = color_per_mesh(color[], map(x-> length(coordinates(x)), mesh[]))
+        elseif mesh isa Vector && color isa Vector && length(color) == length(mesh)
+            _color = color_per_mesh(color, map(x-> length(coordinates(x)), mesh))
         else
-            _color = color[]
+            _color = color
         end
-        return (pos, faces, normies, texturecoords, _color)
+        return (_color,)
     end
 end
 
@@ -678,7 +679,7 @@ function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_colormapping!(attr, :mesh_color)
     register_position_transforms!(attr)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions[]),)
+        return (Rect3d(positions),)
     end
     T = typeof(attr[:arg1][])
     p = Plot{mesh,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
@@ -693,7 +694,7 @@ function compute_plot(::Type{Volume}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_position_transforms!(attr)
     register_colormapping!(attr, :volume)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
-        return (Rect3d(Vec3.(x[], y[], z[])...),)
+        return (Rect3d(Vec3.(x, y, z)...),)
     end
     T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:volume][]))
     p = Plot{volume,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
@@ -710,12 +711,12 @@ end
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.args[1])
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
-    register_computation!(attr, [:colormap], [:colormapping_type]) do args, changed, last
-        return (colormapping_type(args[1][]),)
+    register_computation!(attr, [:colormap], [:colormapping_type]) do (cmap,), changed, last
+        return (colormapping_type(cmap),)
     end
     attributes = [:raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
     register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
-        dict = Dict(zip(attributes, getindex.(values(args))))
+        dict = Dict(zip(attributes, values(args)))
         N = ndims(dict[:raw_color])
         Cin = typeof(dict[:raw_color])
         Cout = typeof(dict[:scaled_color])
@@ -723,18 +724,17 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
             observables = map(attributes) do name
                 Observable(dict[name])
             end
-
             observable_dict = Dict(zip(attributes, observables))
-            cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange[]), observables[6:end]...)
+            cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange), observables[6:end]...)
             return (cm, observable_dict)
         else
-            observable_dict = cached[2][]
+            observable_dict = cached.cb_observables
             for (name, value, ischanged) in zip(attributes, args, changed)
                 if ischanged
-                    observable_dict[name][] = value[]
+                    observable_dict[name][] = value
                 end
             end
-            return (cached[1][], nothing)
+            return (cached.cb_colormapping, nothing)
         end
     end
     on(plot, attr.onchange) do _
@@ -771,7 +771,7 @@ end
 # This one plays nice with out system, only needs model
 function register_world_normalmatrix!(attr, modelname = :model_f32c)
     register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
-        return (Mat3f(transpose(inv(m[][Vec(1,2,3), Vec(1,2,3)]))), )
+        return (Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)]))), )
     end
 end
 

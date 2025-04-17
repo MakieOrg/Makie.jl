@@ -93,7 +93,8 @@ function TypedEdge(edge::ComputeEdge)
     values = ntuple(i -> edge.inputs[i].value, N)
     inputs = NamedTuple{names}(values)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
-    result = edge.callback(inputs, dirty, nothing)
+
+    result = edge.callback(map(getindex, inputs), dirty, nothing)
 
     if result isa Tuple
         if length(result) != length(edge.outputs)
@@ -363,7 +364,12 @@ end
 function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
-        result = edge.callback(edge.inputs, dirty, edge.outputs)
+        vals = map(getindex, edge.outputs)
+        names = ntuple(length(vals)) do i
+            edge.output_nodes[i].name
+        end
+        last = NamedTuple{names}(vals)
+        result = edge.callback(map(getindex, edge.inputs), dirty, last)
         if result === :deregister
             # TODO
         elseif result isa Tuple
@@ -446,7 +452,7 @@ struct InputFunctionWrapper{FT} <: Function
     user_func::FT
 end
 (x::InputFunctionWrapper)(v) = x.user_func(x.key, v)
-(x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1][]), )
+(x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1]),)
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
     return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)

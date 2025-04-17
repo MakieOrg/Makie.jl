@@ -1,46 +1,46 @@
 function create_lines_data(islines, attr)
     uniforms = Dict(
-        :model => attr.model_f32c[],
-        :depth_shift => attr.depth_shift[],
+        :model => attr.model_f32c,
+        :depth_shift => attr.depth_shift,
         :picking => false,
-        :linecap => attr.linecap[],
-        :scene_origin => attr.scene_origin[],
+        :linecap => attr.linecap,
+        :scene_origin => attr.scene_origin,
     )
     if islines
-        uniforms[:joinstyle] = attr.joinstyle[]
-        uniforms[:miter_limit] = attr.gl_miter_limit[]
+        uniforms[:joinstyle] = attr.joinstyle
+        uniforms[:miter_limit] = attr.gl_miter_limit
     end
 
-    if isnothing(attr.linestyle[])
+    if isnothing(attr.linestyle)
         uniforms[:pattern] = false
         uniforms[:pattern_length] = 1.0f0
     else
-        uniforms[:pattern] = Sampler(attr.gl_pattern[]; x_repeat=:repeat)
-        uniforms[:pattern_length] = attr.gl_pattern_length[]
+        uniforms[:pattern] = Sampler(attr.gl_pattern; x_repeat=:repeat)
+        uniforms[:pattern_length] = attr.gl_pattern_length
     end
 
-    if !isnothing(attr.scaled_colorrange[])
-        cm_minfilter = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
-        uniforms[:colormap] = Sampler(attr.alpha_colormap[], minfilter = cm_minfilter)
-        uniforms[:colorrange] = attr.scaled_colorrange[]
-        uniforms[:highclip] = attr.highclip_color[]
-        uniforms[:lowclip] = attr.lowclip_color[]
-        uniforms[:nan_color] = attr.nan_color[]
-        color = islines ? attr.scaled_color[] : attr.synched_color[]
+    if !isnothing(attr.scaled_colorrange)
+        cm_minfilter = attr.color_mapping_type === Makie.continuous ? :linear : :nearest
+        uniforms[:colormap] = Sampler(attr.alpha_colormap, minfilter = cm_minfilter)
+        uniforms[:colorrange] = attr.scaled_colorrange
+        uniforms[:highclip] = attr.highclip_color
+        uniforms[:lowclip] = attr.lowclip_color
+        uniforms[:nan_color] = attr.nan_color
+        color = islines ? attr.scaled_color : attr.synched_color
     else
         for name in [:nan_color, :highclip, :lowclip]
             uniforms[name] = RGBAf(0, 0, 0, 0)
         end
         uniforms[:colormap] = false
         uniforms[:colorrange] = false
-        color = islines ? attr.scaled_color[] : attr.synched_color[]
+        color = islines ? attr.scaled_color : attr.synched_color
     end
 
     attributes = Dict{Symbol,Any}(
-        :linepoint => serialize_buffer_attribute(attr.positions_transformed_f32c[]),
+        :linepoint => serialize_buffer_attribute(attr.positions_transformed_f32c),
     )
 
-    for (name, vals) in [:color => color, :linewidth => islines ? attr.linewidth[] : attr.synched_linewidth[]]
+    for (name, vals) in [:color => color, :linewidth => islines ? attr.linewidth : attr.synched_linewidth]
         if Makie.is_scalar_attribute(to_value(vals))
             uniforms[name] = vals
         else
@@ -54,13 +54,13 @@ function create_lines_data(islines, attr)
     uniforms[:num_clip_planes] = 0
     uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
     return Dict(
-        :visible => Observable(attr.visible[]),
+        :visible => Observable(attr.visible),
         :is_segments => !islines,
         :plot_type => "Lines",
-        :cam_space => attr.space[],
+        :cam_space => attr.space,
         :uniforms => serialize_uniforms(uniforms),
         :attributes => attributes,
-        :transparency => attr.transparency[],
+        :transparency => attr.transparency,
         :overdraw => false, # TODO
         :zvalue => 0,
     )
@@ -105,8 +105,7 @@ function create_lines_robj(islines, args, changed, last)
     if isnothing(last)
         return (create_lines_data(islines, args), Observable([]))
     else
-        updater = last[2][]
-        update_values!(updater, plot_updates(args, changed, r))
+        update_values!(last[2], plot_updates(args, changed, r))
         return nothing
     end
 end

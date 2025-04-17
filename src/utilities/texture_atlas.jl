@@ -500,29 +500,31 @@ is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
 function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
     # TODO, only calculate offset if needed
-    if m[] isa Matrix{<: Colorant} # single image marker
-        return (Cint(RECTANGLE), Vec4f(0,0,1,1), m[])
-    elseif m[] isa Vector{<: Matrix{<: Colorant}} # multiple image markers
+    # [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
+    # [:sdf_marker_shape, :sdf_uv, :image]
+    if m isa Matrix{<: Colorant} # single image marker
+        return (Cint(RECTANGLE), Vec4f(0,0,1,1), m)
+    elseif m isa Vector{<: Matrix{<: Colorant}} # multiple image markers
         # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-        if changed[3]
-            uvs, images = pack_images(m[])
+        if changed.marker
+            uvs, images = pack_images(m)
             return (Cint(RECTANGLE), uvs, images)
         else
             # if marker is up to date don't update
             return (nothing, nothing, nothing)
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-        if changed[3] || changed[5]
-            shape = Cint(Makie.marker_to_sdf_shape(m[])) # expensive for arrays with abstract eltype?
-            if shape == 0 && !is_all_equal_scale(scale[])
+        if changed.marker || changed.markersize
+            shape = Cint(Makie.marker_to_sdf_shape(m)) # expensive for arrays with abstract eltype?
+            if shape == 0 && !is_all_equal_scale(scale)
                 shape = Cint(5)
             end
         else
-            shape = last[1][]
+            shape = last.sdf_marker_shape
         end
 
-        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed[4])
-            uv = Makie.primitive_uv_offset_width(atlas[], m[], f[])
+        if (shape == Cint(DISTANCEFIELD)) && (changed.marker || changed.font)
+            uv = Makie.primitive_uv_offset_width(atlas, m, f)
         elseif isnothing(last)
             uv = Vec4f(0,0,1,1)
         else

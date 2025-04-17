@@ -331,7 +331,7 @@ function trace_error(io::IO, edge::Input, marked = nothing)
         printstyled(io, edge.name, color = :red)
         func = edge_callback_name(edge.f, "")
         println(io, " = ", func, '(', edge.value, ")")
-        printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
+        printstyled(io, "  @ $(edge)\n", color = :light_black)
     else
         printstyled(io, "$(edge.name)\n", color = :green)
     end

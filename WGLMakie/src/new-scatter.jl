@@ -29,15 +29,15 @@ end
 
 function backend_colors!(attr)
     register_computation!(attr, [:scaled_color, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
-        filter = interpolate[] ? :linear : :nearest
-        if color[] isa AbstractMatrix
+        filter = interpolate ? :linear : :nearest
+        if color isa AbstractMatrix
             # TODO, don't construct a sampler every time
-            return (Sampler(color[], minfilter=filter), false)
-        elseif color[] isa Union{Real, Colorant}
-            return (color[], false)
-        elseif color[] isa Makie.AbstractPattern
-            color[] isa Makie.AbstractPattern
-            img = Makie.to_image(color[])
+            return (Sampler(color, minfilter=filter), false)
+        elseif color isa Union{Real, Colorant}
+            return (color, false)
+        elseif color isa Makie.AbstractPattern
+            color isa Makie.AbstractPattern
+            img = Makie.to_image(color)
             sampler = Sampler(img; x_repeat = :repeat, minfilter=filter)
             return (sampler, true)
         else
@@ -46,27 +46,27 @@ function backend_colors!(attr)
         end
     end
     register_computation!(attr, [:scaled_color], [:vertex_color]) do (color,), changed, last
-        color[] isa AbstractVector ? (Buffer(color[]),) : (false,)
+        color isa AbstractVector ? (Buffer(color),) : (false,)
     end
 
-    register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, colorrange, color_mapping_type), changed, last
-        isnothing(colorrange[]) && return (false, false)
-        cmap_minfilter = color_mapping_type[] === Makie.continuous ? :linear : :nearest
+    register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
+        isnothing(crange) && return (false, false)
+        cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
-        cmap_s = cmap_changed ? Sampler(cmap[], minfilter=cmap_minfilter) : nothing
-        return (cmap_s, Vec2f(colorrange[]))
+        cmap_s = cmap_changed ? Sampler(cmap, minfilter=cmap_minfilter) : nothing
+        return (cmap_s, Vec2f(crange))
     end
 end
 
 function handle_color!(data, attr)
-    data[:vertex_color] = attr.vertex_color[]
-    data[:uniform_color] = attr.uniform_color[]
-    data[:pattern] = attr.pattern[]
-    data[:uniform_colorrange] = attr.uniform_colorrange[]
-    data[:uniform_colormap] = attr.uniform_colormap[]
-    data[:highclip_color] = attr.highclip_color[]
-    data[:lowclip_color] = attr.lowclip_color[]
-    data[:nan_color] = attr.nan_color[]
+    data[:vertex_color] = attr.vertex_color
+    data[:uniform_color] = attr.uniform_color
+    data[:pattern] = attr.pattern
+    data[:uniform_colorrange] = attr.uniform_colorrange
+    data[:uniform_colormap] = attr.uniform_colormap
+    data[:highclip_color] = attr.highclip_color
+    data[:lowclip_color] = attr.lowclip_color
+    data[:nan_color] = attr.nan_color
 end
 
 function plot_updates(args, changed, name_map)
@@ -74,10 +74,10 @@ function plot_updates(args, changed, name_map)
     for (name, value) in pairs(args)
         if changed[name]
             name = get(name_map, name, name)
-            _val = if value[] isa Sampler
-                [Int32[size(value[].data)...], serialize_three(value[].data)]
+            _val = if value isa Sampler
+                [Int32[size(value[].data)...], serialize_three(value.data)]
             else
-                serialize_three(value[])
+                serialize_three(value)
             end
             push!(new_values, [name, _val])
         end
@@ -99,13 +99,13 @@ end
 
 
 function assemble_particle_robj!(attr, data)
-    data[:positions_transformed_f32c] = attr.positions_transformed_f32c[]
+    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
 
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = attr.rotation[]
-    data[:f32c_scale] = attr.f32c_scale[]
+    data[:rotation] = attr.rotation
+    data[:f32c_scale] = attr.f32c_scale
 
     # Camera will be set in JS
     data[:model] = Mat4f(I)
@@ -113,8 +113,8 @@ function assemble_particle_robj!(attr, data)
     data[:picking] = false
     data[:object_id] = UInt32(0)
 
-    data[:depth_shift] = attr.depth_shift[]
-    data[:transform_marker] = attr.transform_marker[]
+    data[:depth_shift] = attr.depth_shift
+    data[:transform_marker] = attr.transform_marker
 
 
     per_instance_keys = (
@@ -176,25 +176,25 @@ function scatter_program(attr, changed, last)
         :model_f32c => :model,
     )
     if isnothing(last)
-        dfield = attr.sdf_marker_shape[] === Cint(Makie.DISTANCEFIELD)
-        atlas = attr.atlas_1024_32[]
+        dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
+        atlas = attr.atlas_1024_32
         distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
         data = Dict(
             :marker_offset => Vec3f(0),
-            :markersize => attr.quad_scale[],
-            :quad_offset => attr.quad_offset[],
-            :uv_offset_width => attr.sdf_uv[],
-            :shape_type => attr.sdf_marker_shape[],
+            :markersize => attr.quad_scale,
+            :quad_offset => attr.quad_offset,
+            :uv_offset_width => attr.sdf_uv,
+            :shape_type => attr.sdf_marker_shape,
             :distancefield => distancefield,
             :resolution => Vec2f(0),
             :preprojection => Mat4f(I),
-            :billboard => attr.rotation[] isa Billboard,
+            :billboard => attr.rotation isa Billboard,
             :atlas_texture_size => Float32(size(atlas.data, 2)),
-            :shape_type => attr.sdf_marker_shape[],
-            :strokewidth => attr.strokewidth[],
-            :strokecolor => attr.strokecolor[],
-            :glowwidth => attr.glowwidth[],
-            :glowcolor => attr.glowcolor[],
+            :shape_type => attr.sdf_marker_shape,
+            :strokewidth => attr.strokewidth,
+            :strokecolor => attr.strokecolor,
+            :glowwidth => attr.glowwidth,
+            :glowcolor => attr.glowcolor,
         )
         per_instance, uniforms = assemble_particle_robj!(attr, data)
         instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
@@ -233,23 +233,23 @@ function meshscatter_program(args, changed, last)
         :model_f32c => :model,
     )
     if isnothing(last)
-        instance = args.marker[]
+        instance = args.marker
         data = Dict{Symbol, Any}(
             :ambient => Vec3f(0.5),
-            :diffuse => args.diffuse[],
-            :specular => args.specular[],
-            :shininess => args.shininess[],
+            :diffuse => args.diffuse,
+            :specular => args.specular,
+            :shininess => args.shininess,
             :pattern => false,
             :uniform_color => false,
             :uv_transform => Mat3f(I),
             :light_direction => Vec3f(1),
             :light_color => Vec3f(1),
             :PICKING_INDEX_FROM_UV => false,
-            :shading => args.shading[] == false || args.shading[] != NoShading,
-            :backlight => args.backlight[],
+            :shading => args.shading == false || args.shading != NoShading,
+            :backlight => args.backlight,
             :interpolate_in_fragment_shader => false,
-            :markersize => args.markersize[],
-            :f32c_scale => args.f32c_scale[],
+            :markersize => args.markersize,
+            :f32c_scale => args.f32c_scale,
             :uv => Vec2f(0)
         )
 
@@ -299,7 +299,7 @@ end
 function add_uv_mesh!(attr)
     if !haskey(attr, :positions)
         register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, last
-            return (decompose(Point2f, Rect2f(rect[])),)
+            return (decompose(Point2f, Rect2f(rect)),)
         end
         Makie.register_position_transforms!(attr)
     end
@@ -362,24 +362,24 @@ end
 
 function mesh_program(attr)
     i = Vec(1, 2, 3)
-    uv_transform = to_3x3(attr.pattern_uv_transform[])
-    shading = attr.shading[] isa Bool ? attr.shading[] : attr.shading[] != NoShading
+    uv_transform = to_3x3(attr.pattern_uv_transform)
+    shading = attr.shading isa Bool ? attr.shading : attr.shading != NoShading
     data = Dict(
 
         :shading => shading,
-        :diffuse => attr.diffuse[],
-        :specular => attr.specular[],
-        :shininess => attr.shininess[],
-        :backlight => attr.backlight[],
+        :diffuse => attr.diffuse,
+        :specular => attr.specular,
+        :shininess => attr.shininess,
+        :backlight => attr.backlight,
         :ambient => Vec3f(1),
         :light_direction => Vec3f(1),
         :light_color => Vec3f(1),
 
-        :model => Mat4f(attr.model_f32c[]),
+        :model => Mat4f(attr.model_f32c),
         :PICKING_INDEX_FROM_UV => true,
         :uv_transform => Mat3f(I),
-        :depth_shift => attr.depth_shift[],
-        :normalmatrix => attr.world_normalmatrix[],
+        :depth_shift => attr.depth_shift,
+        :normalmatrix => attr.world_normalmatrix,
         :interpolate_in_fragment_shader => true
     )
     handle_color!(data, attr)
@@ -390,17 +390,17 @@ function mesh_program(attr)
     uniforms = filter(x-> !(x[2] isa Buffer), data)
     buffers = filter(x-> x[2] isa Buffer, data)
 
-    if !isnothing(attr.normals[])
-        buffers[:normal] = attr.normals[]
+    if !isnothing(attr.normals)
+        buffers[:normal] = attr.normals
     else
         uniforms[:normal] = Vec3f(0)
     end
-    if !isnothing(attr.texturecoordinates[])
-        buffers[:uv] = attr.texturecoordinates[]
+    if !isnothing(attr.texturecoordinates)
+        buffers[:uv] = attr.texturecoordinates
     else
         uniforms[:uv] = Vec2f(0)
     end
-    vbo = VertexArray(; positions_transformed_f32c=attr.positions_transformed_f32c[], faces=attr.faces[], buffers...)
+    vbo = VertexArray(; positions_transformed_f32c=attr.positions_transformed_f32c, faces=attr.faces, buffers...)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), vbo, uniforms)
 end
 
@@ -426,9 +426,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
             program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
-            updater = last[2][]
-
-            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
+            update_values!(last.wgl_update_obs, Bonito.LargeUpdate(plot_updates(args, changed, r)))
             return nothing
         end
     end
@@ -454,25 +452,23 @@ end
 
 function surface2mesh_computation!(attr)
     register_computation!(attr, [:x, :y, :z], [:positions]) do (x, y, z), changed, last
-        return (Makie.matrix_grid(identity, x[], y[], z[]),)
+        return (Makie.matrix_grid(identity, x, y, z),)
     end
     Makie.register_position_transforms!(attr)
     register_computation!(attr, [:z], [:_faces, :texturecoordinates, :z_size]) do (z,), changed, last
-        last_size = isnothing(last) ? size(z[]) : last[3][]
-        new_size = size(z[])
+        last_size = isnothing(last) ? size(z) : last.z_size
+        new_size = size(z)
         !isnothing(last) && last_size == new_size && return nothing
         rect = Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), new_size)
         return (decompose(QuadFace{Int}, rect), _surface_uvs(new_size...), new_size)
     end
-    register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (_fs, _ps), changed, last
-        fs = _fs[]
-        ps = _ps[]
+    register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (fs, ps), changed, last
         return (filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs),)
     end
     register_computation!(attr, [:positions_transformed_f32c, :faces, :invert_normals], [:normals]) do (ps, fs, invert_normals), changed, last
         # TODO only recalculate normals if changed
-        ns = Makie.nan_aware_normals(ps[], fs[])
-        return (invert_normals[] ? -ns : ns,)
+        ns = Makie.nan_aware_normals(ps, fs)
+        return (invert_normals ? -ns : ns,)
     end
 end
 
@@ -500,7 +496,7 @@ function create_shader(scene::Scene, plot::Surface)
             program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
-            updater = last[2][]
+            updater = last.wgl_update_obs
             update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
             return nothing
         end
