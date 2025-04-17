@@ -344,7 +344,7 @@ function gpu_data(t::Texture{T, NDim}) where {T, NDim}
 end
 
 function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
-    switch_context!(t.context)
+    switch_context!(source.context)
     bind(source)
     glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, dest)
     bind(source, 0)
