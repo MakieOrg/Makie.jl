@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
 Base.haskey(x::ComputePlots, key) = haskey(x.args[1], key)
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -199,8 +199,13 @@ function register_position_transforms!(attr)
     end
 end
 
-
+# Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
+    _register_expand_arguments!(P, attr, input_args)
+    _register_argument_conversions!(P, attr, user_kw)
+end
+
+function _register_expand_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
     # TODO expand_dims + dim_converts
     # Only 2 and 3d conversions are supported, and only
     PTrait = conversion_trait(P, map(to_value, input_args)...)
@@ -212,6 +217,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             return sym
         end
     elseif !any(arg -> arg isa Computed, input_args)
+        # TODO: same code, merge with above branch?
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
@@ -230,7 +236,9 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             return (args_exp,)
         end
     end
+end
 
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     expanded_args = attr[:expanded_args][]
     if length(expanded_args) in (2, 3)
