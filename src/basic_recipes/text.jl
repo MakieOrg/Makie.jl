@@ -8,6 +8,7 @@ end
 # convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
 conversion_trait(::Type{<: Text}, args...) = PointBased()
 
+# TODO: is this relying on things from conversions.jl actually?
 # TODO: Can this be merged with scatter
 # TODO: Wait why Vec2f? Why not Vec3f?
 convert_attribute(o, ::key"offset", ::key"text") = to_offset(o)
@@ -31,28 +32,23 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # input_positions is always a tuple because it could be (xs, ys, zs)
     # convert_arguments always generates a vector of positions, so let's
     # always generated a vector of texts too
-    # TODO: skip this
-    register_computation!(attr, inputs, [:merged_raw_inputs]) do inputs, changed, last
-        t = values(inputs)
-        return (t,)
-    end
-
-    register_computation!(attr, [:position, :text, :merged_raw_inputs], [:input_positions, :input_text]) do (a_pos, a_text, args), changed, cached
+    pushfirst!(inputs, :position, :text)
+    register_computation!(attr, inputs, [:input_positions, :input_text]) do inputs, changed, cached
+        a_pos, a_text, args... = values(inputs)
 
         # Note: Could add RichText
         if args isa Tuple{<: AbstractString}
-            output = ((a_pos,), [args[1]])
+            return ((a_pos,), [args[1]])
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
             # text(s) argument
-            output = ((a_pos,), args[1])
+            return ((a_pos,), args[1])
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
-            output = ((last.(args[1]),), first.(args[1]))
+            return ((last.(args[1]),), first.(args[1]))
         else
             # position argument
-            output = (args, a_text isa AbstractVector ? a_text : [a_text])
+            return (args, a_text isa AbstractVector ? a_text : [a_text])
         end
-        return output
     end
 
     # Continue with _register_expand_arguments!() with adjusted inputs
