@@ -539,7 +539,7 @@ creates indices under the assumption, that each triplet in `xyz` forms a triangl
 """
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector
+        xyz::AbstractVector{<: VecTypes}
     )
     faces = connect(UInt32.(0:length(xyz)-1), GLTriangleFace)
     # TODO support faceview natively
@@ -559,11 +559,11 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
 end
 
 function convert_arguments(
-        ::Type{<:Mesh},
-        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
+        T::Type{<:Mesh},
+        meshes::AbstractVector{<: GeometryBasics.AbstractGeometry}
     )
-    # TODO: clear faceviews
-    return (meshes,)
+    converted = [convert_arguments(T, m)[1] for m in meshes]
+    return (merge(converted),)
 end
 
 function convert_arguments(MT::Type{<:Mesh}, xyz::AbstractPolygon)
