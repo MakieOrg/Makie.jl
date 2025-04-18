@@ -79,7 +79,7 @@ end
 
     s
 end
-#=
+
 @compile begin
     P = Polygon.([Point2f[[0.45, 0.05], [0.64, 0.15], [0.37, 0.62]],
          Point2f[[0.32, 0.66], [0.46, 0.59], [0.09, 0.08]]])
@@ -96,18 +96,17 @@ end
     Makie.Toggle(f)
     Makie.Slider(f)
     Makie.LScene(f)
-    Makie.PolarAxis(f)
+    # Makie.PolarAxis(f)
     Makie.IntervalSlider(f)
     lines!(ax, 1:2, label = "Line")
     # Makie.Legend(f, ax, "Default", nbanks = 2) TODO
     Makie.Box(f)
     Makie.Label(f)
-    Makie.Textbox(f)
+    # Makie.Textbox(f)
     Makie.Axis3(f)
     Makie.Colorbar(f)
     Makie.Button(f)
-    Makie.Menu(f, options=["one"])
+    # Makie.Menu(f, options=["one"])
     Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
     f
 end
-=#
