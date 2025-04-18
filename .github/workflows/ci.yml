@@ -28,7 +28,7 @@ jobs:
           - '1.6'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
