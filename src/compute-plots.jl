@@ -165,6 +165,7 @@ function register_position_transforms!(attr)
         return (apply_transform(func, positions),)
     end
 
+    # TODO: f32c should be identity or not get applied here if space != :data
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
     register_computation!(attr,
         [:positions_transformed, :model, :f32c],
@@ -648,22 +649,20 @@ function color_per_mesh(ccolors, vertes_per_mesh)
 end
 
 function register_mesh_decomposition!(attr)
-    register_computation!(attr, [:mesh], [:merged_mesh]) do (mesh,), changed, cached
-        merged = mesh isa Vector ? merge(mesh) : mesh
-        return (merged,)
-    end
-    register_computation!(attr, [:merged_mesh], [:positions, :faces, :normals, :texturecoordinates]) do (merged,), changed, cached
+    # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
+    register_computation!(attr, [:mesh], [:positions, :faces, :normals, :texturecoordinates]) do (merged,), changed, cached
         pos = coordinates(merged)
         faces = decompose(GLTriangleFace, merged)
         normies = normals(merged)
         texturecoords = texturecoordinates(merged)
         return (pos, faces, normies, texturecoords)
     end
-    register_computation!(attr, [:merged_mesh, :color], [:mesh_color]) do (merged, color), changed, cached
+
+    register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color]) do (meshes, merged, color), changed, cached
         if hasproperty(merged, :color)
             _color = merged.color
-        elseif mesh isa Vector && color isa Vector && length(color) == length(mesh)
-            _color = color_per_mesh(color, map(x-> length(coordinates(x)), mesh))
+        elseif meshes isa Vector && color isa Vector && length(color) == length(meshes)
+            _color = color_per_mesh(color, map(x-> length(coordinates(x)), meshes))
         else
             _color = color
         end
