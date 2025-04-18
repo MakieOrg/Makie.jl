@@ -160,15 +160,62 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     register_text_arguments!(attr, user_kw, args...)
     register_text_computations!(attr)
 
-    # TODO: add this
-    register_computation!(attr, [:positions], [:data_limits]) do args, changed, last
-        return (Rect3d(Point3d(NaN), Vec3f(0)),)
+    # TODO: naming...?
+    # markerspace bounding boxes of elements (i.e. each string passed to text)
+    register_computation!(attr, [:glyph_collections, :rotation], [:element_bbs]) do (gcs, rot), changed, last
+        N = length(gcs)
+        @assert attr_broadcast_length(rot) in (1, N) ":rotation must be either scalar or have the same length as :text"
+
+        bbs = [unchecked_boundingbox(gcs[i], attr_broadcast_getindex(rot, i)) for i in 1:N]
+        return (bbs,)
+    end
+
+    # TODO: There is a :position attribute and a :positions Computed (after dim converts)
+    #       This seems quite error prone...
+
+    # data_limits()
+    register_computation!(attr, [:element_bbs, :positions, :space, :markerspace], [:data_limits]) do inputs, changed, last
+        bbs, pos, space, markerspace = inputs
+        # TODO: technically this should also verify transform_func === identity
+        # TODO: technically this should consider scene space if space == :data
+        if space === markerspace
+            total_bb = Rect3d()
+            for (bb, p) in zip(bbs, pos)
+                total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
+            end
+            return (total_bb,)
+        elseif changed.positions
+            return (Rect3d(pos),)
+        else
+            return nothing
+        end
+
+        return (Rect3d(positions),)
     end
 
     T = typeof(attr[:positions][])
     p = Plot{text, Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
     return p
+end
+
+function string_boundingbox(plot::Text)
+    # TODO: technically this should consider scene space if space == :data
+    if plot.space[] == plot.markerspace[]
+        # TODO: Should probably be positions_transformed_f32c since those are the
+        #       positions that mix with marker/text metrics
+        pos = to_ndim.(Point3d, plot.positions[], 0)
+    else
+        cam = (parent_scene(plot).camera,)
+        transformed = plot.positions_transformed_f32c[]
+        pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed) # TODO: vectorized project
+    end
+
+    total_bb = Rect3d()
+    for (bb, p) in zip(plot.element_bbs[], pos)
+        total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
+    end
+    return (total_bb,)
 end
 
 
