@@ -31,7 +31,7 @@ function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
     # linestyle/pattern handling
     register_computation!(
         attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
-    ) do (linestyle,), changed, cached
+    ) do (linestyle,), changed, last
         if isnothing(linestyle)
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
             len = 1.0f0 # should be irrelevant, compat for strictly solid lines
@@ -39,10 +39,10 @@ function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
             sdf = Makie.linestyle_to_sdf(linestyle)
             len = Float32(last(linestyle) - first(linestyle))
         end
-        if isnothing(cached)
+        if isnothing(last)
             tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
         else
-            tex = cached.gl_pattern
+            tex = last.gl_pattern
             ShaderAbstractions.update!(tex, sdf)
         end
         return (tex, len)
@@ -210,11 +210,12 @@ function add_computation!(attr, scene, ::Val{:voxel_model})
     end
 end
 
-function add_computation!(attr, scene, ::Val{:volume_model})
-    register_computation!(attr, [:x, :y, :z, :model], [:volume_model]) do (xs, ys, zs, model), changed, cached
-        mini  = minimum.((xs, ys, zs))
-        width = maximum.((xs, ys, zs)) .- mini
-        return (Mat4f(model * Makie.transformationmatrix(Vec3f(mini), Vec3f(width))), )
+function add_computation!(attr, scene, ::Val{:uniform_model})
+    register_computation!(attr, [:data_limits, :model], [:uniform_model]) do (cube, model), changed, cached
+        mini = minimum(cube)
+        width = widths(cube)
+        trans = Makie.transformationmatrix(Vec3f(mini), Vec3f(width))
+        return (Mat4f(model * trans),)
     end
 end
 

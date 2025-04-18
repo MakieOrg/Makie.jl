@@ -619,8 +619,8 @@ function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,An
     attr = ComputeGraph()
     add_attributes!(LineSegments, attr, user_kw)
     register_arguments!(LineSegments, attr, user_kw, args...)
-    register_colormapping!(attr)
-    attribute_per_pos!(attr, :scaled_color, :synched_color)
+    attribute_per_pos!(attr, :color, :synched_color)
+    register_colormapping!(attr, :synched_color)
     attribute_per_pos!(attr, :linewidth, :synched_linewidth)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions),)

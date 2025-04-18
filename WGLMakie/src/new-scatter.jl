@@ -3,16 +3,16 @@ using Makie: register_computation!
 function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     program = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+
     mesh[:plot_type] = "Mesh"
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)
     mesh[:updater] = plot.args[1][:wgl_update_obs][]
-
     mesh[:overdraw] = Observable(plot.overdraw[])
     mesh[:transparency] = Observable(plot.transparency[])
-
     mesh[:space] = Observable(plot.space[])
+
     if haskey(plot, :markerspace)
         mesh[:markerspace] = Observable(plot.markerspace[])
         mesh[:cam_space] = plot.markerspace[]
@@ -30,7 +30,7 @@ end
 function backend_colors!(attr)
     register_computation!(attr, [:scaled_color, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
         filter = interpolate ? :linear : :nearest
-        if color isa AbstractMatrix
+        if color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
             # TODO, don't construct a sampler every time
             return (Sampler(color, minfilter=filter), false)
         elseif color isa Union{Real, Colorant}
@@ -69,22 +69,6 @@ function handle_color!(data, attr)
     data[:nan_color] = attr.nan_color
 end
 
-function plot_updates(args, changed, name_map)
-    new_values = []
-    for (name, value) in pairs(args)
-        if changed[name]
-            name = get(name_map, name, name)
-            _val = if value isa Sampler
-                [Int32[size(value[].data)...], serialize_three(value.data)]
-            else
-                serialize_three(value)
-            end
-            push!(new_values, [name, _val])
-        end
-    end
-    return new_values
-end
-
 function update_values!(updater, values::Bonito.LargeUpdate)
     isempty(values.data) && return
     updater[] = values
@@ -96,7 +80,37 @@ function update_values!(updater, values)
     updater[] = values
     return
 end
+function plot_updates(args, changed)
+    new_values = []
+    for (name, value) in pairs(args)
+        if changed[name]
+            _val = if value isa Sampler
+                [Int32[size(value[].data)...], serialize_three(value.data)]
+            else
+                serialize_three(value)
+            end
+            push!(new_values, [name, _val])
+        end
+    end
+    return new_values
+end
 
+function create_wgl_renderobject(callback, attr, inputs)
+    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
+        if isnothing(last)
+            program = callback(args)
+            return (program, Observable{Any}([]))
+        else
+            update_values!(last.wgl_update_obs, Bonito.LargeUpdate(plot_updates(args, changed)))
+            return nothing
+        end
+    end
+    on(attr.onchange) do _
+        attr[:wgl_renderobject][]
+        return nothing
+    end
+    return attr[:wgl_renderobject][]
+end
 
 function assemble_particle_robj!(attr, data)
     data[:positions_transformed_f32c] = attr.positions_transformed_f32c
@@ -107,8 +121,8 @@ function assemble_particle_robj!(attr, data)
     data[:rotation] = attr.rotation
     data[:f32c_scale] = attr.f32c_scale
 
-    # Camera will be set in JS
-    data[:model] = Mat4f(I)
+    # Uniforms will be set in JavaScript
+    data[:model_f32c] = attr.model_f32c
     data[:px_per_unit] = 0f0
     data[:picking] = false
     data[:object_id] = UInt32(0)
@@ -116,10 +130,10 @@ function assemble_particle_robj!(attr, data)
     data[:depth_shift] = attr.depth_shift
     data[:transform_marker] = attr.transform_marker
 
-
-    per_instance_keys = (
-        :positions_transformed_f32c, :rotation, :markersize, :vertex_color, :intensity, :uv_offset_width, :quad_offset, :marker_offset
-    )
+    per_instance_keys = Set([
+        :positions_transformed_f32c, :rotation, :markersize, :vertex_color,
+        :intensity, :uv_offset_width, :quad_offset, :marker_offset
+    ])
 
     per_instance = filter(data) do (k, v)
         return k in per_instance_keys && !(Makie.isscalar(v))
@@ -168,50 +182,39 @@ const SCATTER_INPUTS = [
     :f32c_scale,
 ]
 
-function scatter_program(attr, changed, last)
-    r = Dict(
-        :quad_scale => :markersize,
-        :sdf_uv => :uv_offset_width,
-        :sdf_marker_shape => :shape_type,
-        :model_f32c => :model,
+function scatter_program(attr)
+    dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
+    atlas = attr.atlas_1024_32
+    distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
+    data = Dict(
+        :marker_offset => Vec3f(0),
+        :resolution => Vec2f(0),
+        :preprojection => Mat4f(I),
+        :atlas_texture_size => Float32(size(atlas.data, 2)),
+        :billboard => attr.rotation isa Billboard,
+        :distancefield => distancefield,
+
+        :quad_scale => attr.quad_scale,
+        :quad_offset => attr.quad_offset,
+        :sdf_uv => attr.sdf_uv,
+        :sdf_marker_shape => attr.sdf_marker_shape,
+        :shape_type => attr.sdf_marker_shape,
+        :strokewidth => attr.strokewidth,
+        :strokecolor => attr.strokecolor,
+        :glowwidth => attr.glowwidth,
+        :glowcolor => attr.glowcolor,
     )
-    if isnothing(last)
-        dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
-        atlas = attr.atlas_1024_32
-        distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
-        data = Dict(
-            :marker_offset => Vec3f(0),
-            :markersize => attr.quad_scale,
-            :quad_offset => attr.quad_offset,
-            :uv_offset_width => attr.sdf_uv,
-            :shape_type => attr.sdf_marker_shape,
-            :distancefield => distancefield,
-            :resolution => Vec2f(0),
-            :preprojection => Mat4f(I),
-            :billboard => attr.rotation isa Billboard,
-            :atlas_texture_size => Float32(size(atlas.data, 2)),
-            :shape_type => attr.sdf_marker_shape,
-            :strokewidth => attr.strokewidth,
-            :strokecolor => attr.strokecolor,
-            :glowwidth => attr.glowwidth,
-            :glowcolor => attr.glowcolor,
-        )
-        per_instance, uniforms = assemble_particle_robj!(attr, data)
-        instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
-        program = InstancedProgram(
-            WebGL(),
-            lasset("sprites.vert"),
-            lasset("sprites.frag"),
-            instance,
-            per_instance,
-            uniforms,
-        )
-        return (program, Observable([]))
-    else
-        updater = last[2][]
-        update_values!(updater, plot_updates(attr, changed, r))
-        return nothing
-    end
+    per_instance, uniforms = assemble_particle_robj!(attr, data)
+    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
+    return InstancedProgram(
+        WebGL(),
+        lasset("sprites.vert"),
+        lasset("sprites.frag"),
+        instance,
+        per_instance,
+        uniforms,
+    )
+
 end
 
 function create_shader(scene::Scene, plot::Scatter)
@@ -220,50 +223,34 @@ function create_shader(scene::Scene, plot::Scatter)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)
-    register_computation!(scatter_program, attr, SCATTER_INPUTS, [:wgl_scatter_renderobject, :wgl_update_obs])
-    on(attr.onchange) do _
-        attr[:wgl_scatter_renderobject][]
-        return nothing
-    end
-    return attr[:wgl_scatter_renderobject][]
+    return create_wgl_renderobject(scatter_program, attr, SCATTER_INPUTS)
 end
 
-function meshscatter_program(args, changed, last)
-    r = Dict(
-        :model_f32c => :model,
+function meshscatter_program(args)
+    instance = args.marker
+    data = Dict{Symbol, Any}(
+        :ambient => Vec3f(0.5),
+        :diffuse => args.diffuse,
+        :specular => args.specular,
+        :shininess => args.shininess,
+        :pattern => false,
+        :uniform_color => false,
+        :uv_transform => Mat3f(I),
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
+        :PICKING_INDEX_FROM_UV => false,
+        :shading => args.shading == false || args.shading != NoShading,
+        :backlight => args.backlight,
+        :interpolate_in_fragment_shader => false,
+        :markersize => args.markersize,
+        :f32c_scale => args.f32c_scale,
+        :uv => Vec2f(0)
     )
-    if isnothing(last)
-        instance = args.marker
-        data = Dict{Symbol, Any}(
-            :ambient => Vec3f(0.5),
-            :diffuse => args.diffuse,
-            :specular => args.specular,
-            :shininess => args.shininess,
-            :pattern => false,
-            :uniform_color => false,
-            :uv_transform => Mat3f(I),
-            :light_direction => Vec3f(1),
-            :light_color => Vec3f(1),
-            :PICKING_INDEX_FROM_UV => false,
-            :shading => args.shading == false || args.shading != NoShading,
-            :backlight => args.backlight,
-            :interpolate_in_fragment_shader => false,
-            :markersize => args.markersize,
-            :f32c_scale => args.f32c_scale,
-            :uv => Vec2f(0)
-        )
-
-        per_instance, uniforms = assemble_particle_robj!(args, data)
-        program = InstancedProgram(
-            WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
-            instance, per_instance, uniforms
-        )
-        return (program, Observable([]))
-    else
-        updater = last[2][]
-        update_values!(updater, plot_updates(args, changed, r))
-        return nothing
-    end
+    per_instance, uniforms = assemble_particle_robj!(args, data)
+    return InstancedProgram(
+        WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
+        instance, per_instance, uniforms
+    )
 end
 
 
@@ -287,12 +274,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :transform_marker, :marker, :shading, :depth_shift
     ]
-    register_computation!(meshscatter_program, attr, inputs, [:wgl_renderobject, :wgl_update_obs])
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
-    end
-    return attr[:wgl_renderobject][]
+    return create_wgl_renderobject(meshscatter_program, attr, inputs)
 end
 
 
@@ -319,46 +301,10 @@ function add_uv_mesh!(attr)
         Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
     end
 end
-
-function create_shader(::Scene, plot::Union{Heatmap, Image})
-    attr = plot.args[1]
-    add_uv_mesh!(attr)
-    backend_colors!(attr)
-    Makie.register_world_normalmatrix!(attr)
-    inputs = [
-        # Special
-        :space,
-        # Needs explicit handling
-        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :color_mapping_type, :pattern, :interpolate,
-        :lowclip_color, :highclip_color, :nan_color, :model_f32c,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :shading,
-        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-    ]
-    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict()
-        if isnothing(last)
-            program = mesh_program(args)
-            return (program, Observable{Any}([]))
-        else
-            updater = last[2][]
-            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-            return nothing
-        end
-    end
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
-    end
-    return attr[:wgl_renderobject][]
-end
-
-
 to_3x3(mat::Mat{3, 3}) = mat
 function to_3x3(mat::Mat{2, 3})::Mat{3, 3}
     return Mat3f(mat[1, 1], mat[1, 2], 0, mat[2, 1], mat[2, 2], 0, 0, 0, 1)
 end
-
 
 function mesh_program(attr)
     i = Vec(1, 2, 3)
@@ -404,6 +350,25 @@ function mesh_program(attr)
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), vbo, uniforms)
 end
 
+function create_shader(::Scene, plot::Union{Heatmap, Image})
+    attr = plot.args[1]
+    add_uv_mesh!(attr)
+    backend_colors!(attr)
+    Makie.register_world_normalmatrix!(attr)
+    inputs = [
+        # Special
+        :space,
+        # Needs explicit handling
+        :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :color_mapping_type, :pattern, :interpolate,
+        :lowclip_color, :highclip_color, :nan_color, :model_f32c,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :pattern_uv_transform, :fetch_pixel, :shading,
+        :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+    ]
+    return create_wgl_renderobject(mesh_program, attr, inputs)
+end
+
+
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
     attr = plot.args[1]
@@ -420,23 +385,8 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
-    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict()
-        if isnothing(last)
-            program = mesh_program(args)
-            return (program, Observable{Any}([]))
-        else
-            update_values!(last.wgl_update_obs, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-            return nothing
-        end
-    end
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
-    end
-    return attr[:wgl_renderobject][]
+    return create_wgl_renderobject(mesh_program, attr, inputs)
 end
-
 
 # This adjusts uvs (compared to decompose_uv) so texture sampling starts at
 # the center of a texture pixel rather than the edge, fixing
@@ -460,7 +410,8 @@ function surface2mesh_computation!(attr)
         new_size = size(z)
         !isnothing(last) && last_size == new_size && return nothing
         rect = Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), new_size)
-        return (decompose(QuadFace{Int}, rect), _surface_uvs(new_size...), new_size)
+        faces = fast_faces(new_size)
+        return (faces, _surface_uvs(new_size...), new_size)
     end
     register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (fs, ps), changed, last
         return (filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs),)
@@ -471,7 +422,6 @@ function surface2mesh_computation!(attr)
         return (invert_normals ? -ns : ns,)
     end
 end
-
 
 function create_shader(scene::Scene, plot::Surface)
     attr = plot.args[1]
@@ -490,20 +440,149 @@ function create_shader(scene::Scene, plot::Surface)
         :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
-    register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
-        r = Dict()
-        if isnothing(last)
-            program = mesh_program(args)
-            return (program, Observable{Any}([]))
+    return create_wgl_renderobject(mesh_program, attr, inputs)
+end
+
+
+function create_volume_shader(attr)
+    box = GeometryBasics.mesh(Rect3f(Vec3f(0), Vec3f(1)))
+    uniforms = Dict{Symbol, Any}(
+        :modelinv => attr.modelinv,
+        :isovalue => attr.isovalue,
+        :isorange => attr.isorange,
+        :absorption => attr.absorption,
+        :algorithm => attr.algorithm,
+        :diffuse => attr.diffuse,
+        :specular => attr.specular,
+        :shininess => attr.shininess,
+        :model => attr.uniform_model,
+        :depth_shift => attr.depth_shift,
+        # these get filled in later by serialization, but we need them
+        # as dummy values here, so that the correct uniforms are emitted
+        :light_direction => Vec3f(1),
+        :light_color => Vec3f(1),
+        :eyeposition => Vec3f(1),
+        :ambient => Vec3f(1),
+        :picking => false,
+        :object_id => UInt32(0)
+    )
+    handle_color!(uniforms, attr)
+    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
+end
+
+function create_shader(scene::Scene, plot::Volume)
+    attr = plot.args[1]
+
+    Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
+    # TODO: reuse in clip planes
+    register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
+        return (Mat4f(inv(model)),)
+    end
+    backend_colors!(attr)
+    inputs = [
+        # Special
+        :space,
+        # Needs explicit handling
+        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :pattern,
+        :modelinv, :algorithm, :absorption, :isovalue, :isorange,
+        :diffuse, :specular, :shininess, :backlight, :depth_shift,
+        :lowclip_color, :highclip_color, :nan_color,
+        :uniform_model,
+    ]
+    return create_wgl_renderobject(create_volume_shader, attr, inputs)
+end
+
+
+function create_lines_data(islines, attr)
+    uniforms = Dict(
+        :model_f32c => attr.model_f32c,
+        :depth_shift => attr.depth_shift,
+        :picking => false,
+        :linecap => attr.linecap,
+        :scene_origin => attr.scene_origin,
+    )
+
+    if islines
+        uniforms[:joinstyle] = attr.joinstyle
+        uniforms[:miter_limit] = attr.gl_miter_limit
+    end
+
+    uniforms[:gl_pattern] = attr.gl_pattern
+    uniforms[:gl_pattern_length] = attr.gl_pattern_length
+
+    handle_color!(uniforms, attr)
+
+    attributes = Dict{Symbol,Any}(
+        :positions_transformed_f32c => serialize_buffer_attribute(attr.positions_transformed_f32c),
+    )
+
+    for (name, vals) in [:color => color, :linewidth => attr.uniform_linewidth]
+        if Makie.is_scalar_attribute(to_value(vals))
+            uniforms[name] = vals
         else
-            updater = last.wgl_update_obs
-            update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
-            return nothing
+            # TODO: to js?
+            # duplicates per vertex attributes to match positional duplication
+            # min(idxs, end) avoids update order issues here
+            attributes[name] = serialize_buffer_attribute(vals)
         end
     end
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
-        return nothing
+
+    uniforms[:num_clip_planes] = 0
+    uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
+    return Dict(
+        :plot_type => "Lines",
+        :visible => Observable(attr.visible),
+        :is_segments => !islines,
+        :cam_space => attr.space,
+        :uniforms => serialize_uniforms(uniforms),
+        :attributes => attributes,
+        :transparency => attr.transparency,
+        :overdraw => false, # TODO
+        :zvalue => 0,
+    )
+end
+
+const LINE_INPUTS = [
+    # relevant to compile time decisions
+    :space,
+    :synched_color,
+    :uniform_colormap,
+    :scaled_colorrange,
+    :color_mapping_type,
+    # Auto
+    :positions_transformed_f32c,
+    :linecap,
+    :linestyle,
+    :gl_pattern,
+    :gl_pattern_length,
+    :synched_linewidth,
+    :scene_origin,
+    :transparency,
+    :visible,
+    :model_f32c,
+    :lowclip_color,
+    :highclip_color,
+    :nan_color,
+    :depth_shift,
+]
+
+function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
+    attr = plot.args[1]
+    Makie.add_computation!(attr, scene, :scene_origin)
+    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+    backend_colors!(attr)
+    islines = plot isa Lines
+    inputs = copy(LINE_INPUTS)
+    if islines
+        Makie.add_computation!(attr, :gl_miter_limit)
+        push!(inputs, :joinstyle, :gl_miter_limit)
+        register_computation!(attr, [:synched_linewidth], [:uniform_linewidth]) do (lw,), changed, last
+            return (lw,)
+        end
     end
-    return attr[:wgl_renderobject][]
+    dict = create_wgl_renderobject(args-> create_lines_data(islines, args), attr, inputs)
+    dict[:uuid] = js_uuid(plot)
+    dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    dict[:updater] = attr[:wgl_update_obs][]
+    return dict
 end

@@ -6,6 +6,20 @@ using Base: RefValue
 
 abstract type AbstractEdge end
 
+#=
+TODO, use this for Ref{NamedTuple} ?
+@generated function _setindex(nt::T, value, field::Symbol)::T where {T<:NamedTuple}
+    names = Base.fieldnames(T)
+    result = Expr(:tuple)
+    for name in names
+        qn = QuoteNode(name)
+        expr = Expr(:(=), name, :(($(qn) === field ? value : getfield(nt, $(qn)))::fieldtype(T, $(qn))))
+        push!(result.args, expr)
+    end
+    return result
+end
+=#
+
 """
     struct Computed
 

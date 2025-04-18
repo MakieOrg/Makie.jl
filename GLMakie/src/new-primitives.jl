@@ -726,10 +726,10 @@ function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, un
     )
 
     add_camera_attributes!(data, screen, camera, args.space)
-    add_color_attributes_lines!(data, args.synched_color, args.alpha_colormap, args.scaled_colorrange)
+    add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
     if !isnothing(get(data, :intensity, nothing))
-        input2glname[:synched_color] = :intensity
+        input2glname[:scaled_color] = :intensity
     end
 
     # Transfer over uniforms
@@ -769,7 +769,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     inputs = [
         :space,
-        :synched_color, :alpha_colormap, :scaled_colorrange
+        :scaled_color, :alpha_colormap, :scaled_colorrange
     ]
     uniforms = [
         :positions_transformed_f32c, :indices,
@@ -782,7 +782,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
         :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
-        :synched_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
@@ -1281,13 +1281,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     attr = plot.args[1]
 
     generic_robj_setup(screen, scene, plot)
-    Makie.add_computation!(attr, scene, Val(:volume_model)) # bit different from voxel_model
+    Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
 
     # TODO: check if this should be the normal model matrix (for voxel too)
-    generate_clip_planes!(attr, scene, :model, :volume_model) # <--
+    generate_clip_planes!(attr, scene, :model, :uniform_model) # <--
 
     # TODO: reuse in clip planes
-    register_computation!(attr, [:volume_model], [:modelinv]) do (model,), changed, cached
+    register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
         return (Mat4f(inv(model)),)
     end
 
@@ -1301,14 +1301,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
         # :lowclip_color, :highclip_color, :nan_color,
-        :volume_model,
+        :uniform_model,
     ]
 
     haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
     haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
 
     input2glname = Dict{Symbol, Symbol}(
-        :volume => :volumedata, :volume_model => :model,
+        :volume => :volumedata, :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
     )
 

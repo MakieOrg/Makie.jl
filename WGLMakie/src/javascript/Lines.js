@@ -5,11 +5,7 @@ import {
     attribute_type,
 } from "./ThreeHelper.js";
 
-<<<<<<< HEAD:WGLMakie/src/javascript/Lines.js
 import { is_typed_array } from "./Serialization.js";
-=======
-import { deserialize_uniforms } from "./Serialization.js";
->>>>>>> master:WGLMakie/src/Lines.js
 
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -77,7 +73,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
             vec4 clip_space(vec3 point) {
-                return projectionview * model * vec4(point, 1);
+                return projectionview * model_f32c * vec4(point, 1);
             }
             vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
@@ -173,7 +169,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float segment_length = length(v1);
                 v1 /= segment_length;
 
-                // line normal (i.e. in linewidth direction)
+                // line normal (i.e. in uniform_linewidth direction)
                 vec2 n1 = normal_vector(v1);
 
 
@@ -182,7 +178,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                // invalid - no joints requiring pattern adjustments
+                // invalid - no joints requiring gl_pattern adjustments
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
 
                 // invalid - no joints requiring line sdfs to be extruded
@@ -282,13 +278,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
 
-            vec2 process_pattern(bool pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
+            vec2 process_pattern(bool gl_pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // do not adjust stuff
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
                 return vec2(0);
             }
 
-            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
+            vec2 process_pattern(sampler2D gl_pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // samples:
                 //   -ext1  p1 ext1    -ext2 p2 ext2
                 //      1   2   3        4   5   6
@@ -299,14 +295,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_pattern_overwrite.z = +1e12;
                 vec2 adjust = vec2(0);
                 float width = 2.0 * halfwidth;
-                float uv_scale = 1.0 / (width * pattern_length);
+                float uv_scale = 1.0 / (width * gl_pattern_length);
                 float left, center, right;
 
                 if (isvalid[0]) {
                     float offset = abs(extrusion[0]);
-                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_start - offset), 0.0)).x;
-                    center = width * texture(pattern, vec2(uv_scale * (lastlen_start         ), 0.0)).x;
-                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + offset), 0.0)).x;
+                    left   = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start - offset), 0.0)).x;
+                    center = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start         ), 0.0)).x;
+                    right  = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start + offset), 0.0)).x;
 
                     // cases:
                     // ++-, +--, +-+ => elongate backwards
@@ -335,9 +331,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[3]) {
                     float offset = abs(extrusion[1]);
-                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length - offset), 0.0)).x;
-                    center = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length         ), 0.0)).x;
-                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length + offset), 0.0)).x;
+                    left   = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start + segment_length - offset), 0.0)).x;
+                    center = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start + segment_length         ), 0.0)).x;
+                    right  = width * texture(gl_pattern, vec2(uv_scale * (lastlen_start + segment_length + offset), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
@@ -365,7 +361,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
             vec4 clip_space(vec3 point) {
-                return projectionview * model * vec4(point, 1);
+                return projectionview * model_f32c * vec4(point, 1);
             }
             vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
@@ -498,7 +494,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 if (isvalid[3])
                     v2 = normalize(p3.xy - p2.xy);
 
-                // line normals (i.e. in linewidth direction)
+                // line normals (i.e. in uniform_linewidth direction)
                 vec2 n0 = normal_vector(v0);
                 vec2 n1 = normal_vector(v1);
                 vec2 n2 = normal_vector(v2);
@@ -582,14 +578,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     shape_factor = segment_length / max(segment_length,
                         (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
-                // If a pattern starts or stops drawing in a joint it will get
+                // If a gl_pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
                 // - adjust the involved line segments so that the patterns ends
                 //   on straight line quad (adjustment becomes +1.0 or -1.0)
-                // - or adjust the pattern to start/stop outside of the joint
+                // - or adjust the gl_pattern to start/stop outside of the joint
                 //   (f_pattern_overwrite is set, adjustment is 0.0)
                 vec2 adjustment = process_pattern(
-                    pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth
+                    gl_pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth
                 );
 
                 // If adjustment != 0.0 we replace a joint by an extruded line,
@@ -676,7 +672,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                             vec3(vec2[2](miter_n1, miter_n2)[x], 0);
                     }
                 } else {
-                    // discard joint for cleaner pattern handling
+                    // discard joint for cleaner gl_pattern handling
                     offset =
                         adjustment[x] * (halfwidth * abs(extrusion[x]) + AA_THICKNESS) * v1 +
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
@@ -724,8 +720,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
 function lines_fragment_shader(uniforms, attributes) {
     const color_uniforms = filter_by_key(uniforms, [
-        "picking", "pattern", "pattern_length",
-        "colorrange", "colormap", "nan_color", "highclip", "lowclip"
+        "picking",
+        "gl_pattern",
+        "gl_pattern_length",
+        "uniform_colorrange",
+        "uniform_colormap",
+        "nan_color",
+        "highclip_color",
+        "lowclip_color",
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
     const color =
@@ -789,9 +791,9 @@ function lines_fragment_shader(uniforms, attributes) {
         if (value <= cmax && value >= cmin) {
             // in value range, continue!
         } else if (value < cmin) {
-            return lowclip;
+            return lowclip_color;
         } else if (value > cmax) {
-            return highclip;
+            return highclip_color;
         } else {
             // isnan CAN be broken (of course) -.-
             // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -822,7 +824,7 @@ function lines_fragment_shader(uniforms, attributes) {
     ////////////////////////////////////////////////////////////////////////
 
 
-    float get_pattern_sdf(sampler2D pattern, vec2 uv){
+    float get_pattern_sdf(sampler2D gl_pattern, vec2 uv){
 
         // f_pattern_overwrite.x
         //      v           joint
@@ -834,23 +836,23 @@ function lines_fragment_shader(uniforms, attributes) {
 
         float w = 2.0 * f_linewidth;
         if (uv.x <= f_pattern_overwrite.x) {
-            // overwrite for pattern with "ON" to the right (positive uv.x)
-            float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
-            // pattern value where we start overwriting
-            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.x, 0.5)).x;
+            // overwrite for gl_pattern with "ON" to the right (positive uv.x)
+            float sdf_overwrite = w * gl_pattern_length * (f_pattern_overwrite.x - uv.x);
+            // gl_pattern value where we start overwriting
+            float edge_sample = w * texture(gl_pattern, vec2(f_pattern_overwrite.x, 0.5)).x;
             // offset for overwrite to smoothly connect between sampling and edge
             float sdf_offset = max(f_pattern_overwrite.y * edge_sample, -AA_RADIUS);
             // add offset and apply direction ("ON" to left or right) to overwrite
             return f_pattern_overwrite.y * (sdf_overwrite + sdf_offset);
         } else if (uv.x >= f_pattern_overwrite.z) {
             // same as above (other than mirroring overwrite direction)
-            float sdf_overwrite = w * pattern_length * (uv.x - f_pattern_overwrite.z);
-            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.z, 0.5)).x;
+            float sdf_overwrite = w * gl_pattern_length * (uv.x - f_pattern_overwrite.z);
+            float edge_sample = w * texture(gl_pattern, vec2(f_pattern_overwrite.z, 0.5)).x;
             float sdf_offset = max(f_pattern_overwrite.w * edge_sample, -AA_RADIUS);
             return f_pattern_overwrite.w * (sdf_overwrite + sdf_offset);
         } else
             // in allowed range
-            return w * texture(pattern, uv).x;
+            return w * texture(gl_pattern, uv).x;
     }
 
     float get_pattern_sdf(bool _, vec2 uv){
@@ -876,7 +878,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // f_quad_sdf.x is the distance from p1, negative in v1 direction.
         vec2 uv = vec2(
-            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * pattern_length),
+            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * gl_pattern_length),
             0.5 + 0.5 * f_quad_sdf.z / f_linewidth
         );
 
@@ -920,7 +922,7 @@ function lines_fragment_shader(uniforms, attributes) {
             sdf = max(sdf, f_truncation.y);
         }
 
-        // distance in linewidth direction
+        // distance in uniform_linewidth direction
         // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
         //  ^  |  ^      ^  | ^
         //     1------------2
@@ -935,8 +937,8 @@ function lines_fragment_shader(uniforms, attributes) {
         sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
         sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
 
-        // pattern application
-        sdf = max(sdf, get_pattern_sdf(pattern, uv));
+        // gl_pattern application
+        sdf = max(sdf, get_pattern_sdf(gl_pattern, uv));
 
         // draw
 
@@ -951,7 +953,7 @@ function lines_fragment_shader(uniforms, attributes) {
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
         float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
-        color = get_color(f_color1 + factor * (f_color2 - f_color1), colormap, colorrange);
+        color = get_color(f_color1 + factor * (f_color2 - f_color1), uniform_colormap, uniform_colorrange);
 
         color.a *= aastep(0.0, -sdf) * f_alpha_weight;
     #endif
@@ -994,8 +996,8 @@ function lines_fragment_shader(uniforms, attributes) {
         if (min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0) > 0.0)
             color.g += 0.2;
 
-        // mark pattern in white
-        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
+        // mark gl_pattern in white
+        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(gl_pattern, uv));
     #endif
 
         if (color.a <= 0.0)
@@ -1104,10 +1106,10 @@ function create_line_material(uniforms_des, attributes, is_linesegments) {
 
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
     // Buffer      required                 generated
-    // linepoint   prev, start, end, next   all
+    // positions_transformed_f32c   prev, start, end, next   all
     // color       start, end               start, end
     // lastlen     start                    start, end
-    // linewidth   start, end*              start, end
+    // uniform_linewidth   start, end*              start, end
     // * used but not strictly needed
 
     const skip_elems = is_segments ? 2 * ndim : ndim;
@@ -1174,7 +1176,7 @@ function create_line_buffer(geometry, buffers, name, attr, is_segments, is_posit
 function create_line_buffers(geometry, buffers, attributes, is_segments) {
     for (let name in attributes) {
         const attr = attributes[name];
-        create_line_buffer(geometry, buffers, name, attr, is_segments, name == "linepoint");
+        create_line_buffer(geometry, buffers, name, attr, is_segments, name == "positions_transformed_f32c");
     }
 }
 
@@ -1209,33 +1211,33 @@ function unpack_array(array) {
 export function add_line_attributes(plot, attributes) {
     const new_data = {};
     let { lineindex } = plot;
-    if (attributes.linepoint) {
-        const {linepoint} = attributes;
-        const val = unpack_array(linepoint);
-        if (linepoint.type_length) {
-            plot.ndims["linepoint"] = linepoint.type_length;
+    if (attributes.positions_transformed_f32c) {
+        const {positions_transformed_f32c} = attributes;
+        const val = unpack_array(positions_transformed_f32c);
+        if (positions_transformed_f32c.type_length) {
+            plot.ndims["positions_transformed_f32c"] = positions_transformed_f32c.type_length;
         }
-        lineindex = nan_free_points_indices(val, plot.ndims["linepoint"]);
+        lineindex = nan_free_points_indices(val, plot.ndims["positions_transformed_f32c"]);
         plot.lineindex = lineindex;
 
-        const points = get_points_view(val, lineindex, plot.ndims["linepoint"]);
-        new_data["linepoint"] = pack_array(linepoint, points);
-        new_data["lineindex"] = pack_array(linepoint, lineindex, 1);
-        new_data["lastlen"] = pack_array(linepoint, new Float32Array(points.length / 2).fill(0), 1);
+        const points = get_points_view(val, lineindex, plot.ndims["positions_transformed_f32c"]);
+        new_data["positions_transformed_f32c"] = pack_array(positions_transformed_f32c, points);
+        new_data["lineindex"] = pack_array(positions_transformed_f32c, lineindex, 1);
+        new_data["lastlen"] = pack_array(positions_transformed_f32c, new Float32Array(points.length / 2).fill(0), 1);
     }
 
     for (const [key, value] of Object.entries(attributes)) {
         const val = unpack_array(value);
-        if (key === "linepoint") {
+        if (key === "positions_transformed_f32c") {
             continue;
         }
         if (
-            (key === "color" || key === "linewidth") &&
+            (key === "color" || key === "uniform_linewidth") &&
             !is_typed_array(val) // uniforms
         ) {
             new_data[key + "_start"] = value;
             new_data[key + "_end"] = value;
-        } else if (is_typed_array(val) && (key === "color" || key === "linewidth")) {
+        } else if (is_typed_array(val) && (key === "color" || key === "uniform_linewidth")) {
             if (value.type_length) {
                 plot.ndims[key] = value.type_length;
             }

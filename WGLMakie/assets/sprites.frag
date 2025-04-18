@@ -121,7 +121,7 @@ void main() {
     vec4 uv_off = frag_uv_offset_width;
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
 
-    int shape = get_shape_type();
+    int shape = get_sdf_marker_shape();
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);
     else if(shape == DISTANCEFIELD) {
