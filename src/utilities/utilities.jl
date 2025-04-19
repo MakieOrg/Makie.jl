@@ -435,7 +435,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(ps, faces; uv=uv, normal = nan_aware_normals(ps, faces))
+    return ps, faces, uv, nan_aware_normals(ps, faces)
 end
 
 
@@ -587,3 +587,10 @@ function drop_attributes(plot::Plot, to_drop::Set{Symbol})
     attr = attributes(attributes(plot))
     return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
 end
+
+isscalar(x::StaticVector) = true
+isscalar(x::Mat) = true
+isscalar(x::AbstractArray) = false
+isscalar(x::Billboard) = isscalar(x.rotation)
+isscalar(x::Observable) = isscalar(x[])
+isscalar(x) = true

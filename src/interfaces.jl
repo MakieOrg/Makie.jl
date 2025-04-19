@@ -28,8 +28,13 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
-    color_and_colormap!(plot, plot[3])
+function calculated_attributes!(::Type{<:Heatmap}, plot)
+    return color_and_colormap!(plot, plot[3])
+end
+
+
+function calculated_attributes!(::Type{<:Image}, plot)
+    return
 end
 
 function calculated_attributes!(::Type{<: Surface}, plot)
@@ -73,23 +78,23 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
     end
 end
 
-function calculated_attributes!(::Type{T}, plot) where {T<:Union{Lines, LineSegments}}
-    pos = plot[1][]
-    # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
-    if T <: LineSegments
-        for attr in [:color, :linewidth]
-            # taken from @edljk  in PR #77
-            if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
-                # TODO, this is actually buggy for `plot.color = new_colors`, since we're overwriting the origin color input
-                attributes(plot.attributes)[attr] = lift(plot, plot[attr]) do cols
-                    map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
-                end
-            end
-        end
-    end
-    color_and_colormap!(plot)
-    return
-end
+# function calculated_attributes!(::Type{T}, plot) where {T<:LineSegments}
+#     pos = plot[1][]
+#     # extend one color/linewidth per linesegment to be one (the same) color/linewidth per vertex
+#     if T <: LineSegments
+#         for attr in [:color, :linewidth]
+#             # taken from @edljk  in PR #77
+#             if haskey(plot, attr) && isa(plot[attr][], AbstractVector) && (length(pos) ÷ 2) == length(plot[attr][])
+#                 # TODO, this is actually buggy for `plot.color = new_colors`, since we're overwriting the origin color input
+#                 attributes(plot.attributes)[attr] = lift(plot, plot[attr]) do cols
+#                     map(i -> cols[(i + 1) ÷ 2], 1:(length(cols) * 2))
+#                 end
+#             end
+#         end
+#     end
+#     color_and_colormap!(plot)
+#     return
+# end
 
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
@@ -259,7 +264,11 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         merge!(user_attributes, attr)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
+
     P = Plot{Func}
+    if (P <: ComputePlots) && !(!isempty(user_args) && to_value(user_args[1]) isa Resampler)
+        return compute_plot(P, user_args, user_attributes)
+    end
     args = map(to_value, user_args)
     attr = used_attributes(P, args...)
     # don't use convert(Observable{Any}, x) here,
@@ -277,7 +286,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     foreach(x -> delete!(user_attributes, x), attr)
     return Plot{FinalPlotFunc,ArgTyp}(
         user_attributes, kw_obs, Any[args_obs...],
-        Observable[converted_obs...], deregister)
+        Observable[converted_obs...], deregister
+    )
 end
 
 """
@@ -457,7 +467,6 @@ function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
     if haskey(theme(scene), plot_sym)
         merge_without_obs_reverse!(plot_theme, theme(scene, plot_sym))
     end
-
     for (k, v) in plot.kw
         if v isa NamedTuple
             raw_attr[k] = Attributes(v)

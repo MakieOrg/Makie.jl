@@ -736,7 +736,7 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
             index = plot[sym][].i
             # replace the Cycled values with values from the correct palettes
             # at the index inside the Cycled object
-            plot[sym] = if cycle.covary
+            x = if cycle.covary
                 palettes[isym][mod1(index, length(palettes[isym]))]
             else
                 cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -744,6 +744,11 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
                 k = mod1(index, n)
                 idx = Tuple(cis[k])
                 palettes[isym][idx[isym]]
+            end
+            if plot.args[1] isa ComputeGraph
+                setproperty!(plot.args[1], sym, x)
+            else
+                plot[sym] = x
             end
         end
 
@@ -754,7 +759,7 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
 
         for (isym, syms) in enumerate(attrsyms(cycle))
             for sym in syms
-                plot[sym] = if cycle.covary
+                x = if cycle.covary
                     palettes[isym][mod1(index, length(palettes[isym]))]
                 else
                     cis = CartesianIndices(Tuple(length(p) for p in palettes))
@@ -762,6 +767,11 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
                     k = mod1(index, n)
                     idx = Tuple(cis[k])
                     palettes[isym][idx[isym]]
+                end
+                if plot.args[1] isa ComputeGraph
+                    setproperty!(plot.args[1], sym, x)
+                else
+                    plot[sym] = x
                 end
             end
         end
