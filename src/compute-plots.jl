@@ -203,7 +203,7 @@ end
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
     inputs = _register_input_arguments!(P, attr, input_args)
-    _register_expand_conversions!(P, attr, inputs)
+    _register_expand_arguments!(P, attr, inputs)
     _register_argument_conversions!(P, attr, user_kw)
 end
 

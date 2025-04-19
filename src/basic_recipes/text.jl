@@ -12,7 +12,6 @@ convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as mar
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 
 # Positions are always vectors so text should be too
-convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = [str]
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
 
@@ -386,6 +385,8 @@ where both scripts are right-aligned against the following text.
 left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 
 export rich, subscript, superscript, subsup, left_subsup
+
+convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
 
 function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
     gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
