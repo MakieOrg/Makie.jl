@@ -1267,51 +1267,51 @@ function _transform_to_world(f32_model, tf, pos)
     end
 end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotation))
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
+#     @get_attribute(primitive, (model, marker, markersize, rotation))
 
-    # We combine vertices and positions in world space. Here we do the
-    # transformation to world space
-    transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
+#     # We combine vertices and positions in world space. Here we do the
+#     # transformation to world space
+#     transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
 
-    # For correct z-ordering we need to be in view/camera or screen space
-    view = scene.camera.view[]
-    zorder = sortperm(transformed_pos, by = p -> begin
-        p4d = to_ndim(Vec4d, p, 1)
-        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
-        cam_pos[1] / cam_pos[2]
-    end, rev=false)
+#     # For correct z-ordering we need to be in view/camera or screen space
+#     view = scene.camera.view[]
+#     zorder = sortperm(transformed_pos, by = p -> begin
+#         p4d = to_ndim(Vec4d, p, 1)
+#         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+#         cam_pos[1] / cam_pos[2]
+#     end, rev=false)
 
-    color = to_color(primitive.calculated_colors[])
-    submesh = Attributes(
-        model = model,
-        calculated_colors = color,
-        shading = primitive.shading, diffuse = primitive.diffuse,
-        specular = primitive.specular, shininess = primitive.shininess,
-        faceculling = get(primitive, :faceculling, -10),
-        transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes,
-        transform_marker = primitive.transform_marker
-    )
+#     color = to_color(primitive.calculated_colors[])
+#     submesh = Attributes(
+#         model = model,
+#         calculated_colors = color,
+#         shading = primitive.shading, diffuse = primitive.diffuse,
+#         specular = primitive.specular, shininess = primitive.shininess,
+#         faceculling = get(primitive, :faceculling, -10),
+#         transformation = Makie.transformation(primitive),
+#         clip_planes = primitive.clip_planes,
+#         transform_marker = primitive.transform_marker
+#     )
 
-    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
-    for i in zorder
-        if color isa AbstractVector
-            submesh[:calculated_colors] = color[i]
-        end
-        scale = markersize isa Vector ? markersize[i] : markersize
-        _rotation = Makie.rotationmatrix4(to_rotation(Makie.sv_getindex(rotation, i)))
-        _uv_transform = Makie.sv_getindex(uv_transform, i)
+#     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
+#     for i in zorder
+#         if color isa AbstractVector
+#             submesh[:calculated_colors] = color[i]
+#         end
+#         scale = markersize isa Vector ? markersize[i] : markersize
+#         _rotation = Makie.rotationmatrix4(to_rotation(Makie.sv_getindex(rotation, i)))
+#         _uv_transform = Makie.sv_getindex(uv_transform, i)
 
-        draw_mesh3D(
-            scene, screen, submesh, marker, pos = transformed_pos[i],
-            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = _rotation, uv_transform = _uv_transform
-        )
-    end
+#         draw_mesh3D(
+#             scene, screen, submesh, marker, pos = transformed_pos[i],
+#             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
+#             rotation = _rotation, uv_transform = _uv_transform
+#         )
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
 
 

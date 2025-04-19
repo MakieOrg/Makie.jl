@@ -450,19 +450,15 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     return draw_mesh2D(screen, cols, vs, fs)
 end
 
-# reworked, TODO: merge this with surface and maybe meshscatter and voxels again
-# Mesh + surface only
+# Mesh + surface entry point
 function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
 
-    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling, clip_planes))
-
+    # per-element in meshscatter
     world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
     screen_points = cairo_project_to_screen(scene, plot, output_type = Point3f)
     meshfaces = plot.faces[]
     meshnormals = plot.normals[]
     _meshuvs = plot.texturecoordinates[]
-
-    matcap = to_value(get(plot, :matcap, nothing))
 
     if (_meshuvs isa AbstractVector{<:Vec3})
         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
@@ -470,16 +466,32 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
     uv_transform = plot.uv_transform[]
+
+    color = cairo_colors(plot)
+
+    draw_mesh3D(
+        scene, screen, plot,
+        world_points, screen_points, meshfaces, meshnormals, meshuvs,
+        uv_transform, color
+    )
+end
+
+function draw_mesh3D(
+        scene, screen, @nospecialize(plot::Plot),
+        world_points, screen_points, meshfaces, meshnormals, meshuvs,
+        uv_transform, color
+    )
+
+    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling, clip_planes))
+
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    # Prioritize colors of the mesh if present
-    color = cairo_colors(plot)
+    matcap = to_value(get(plot, :matcap, nothing))
     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
     space = plot.space[]::Symbol
-
     if per_face_col isa Cairo.CairoPattern
         # plot.model_f32c[] is f32c corrected, not f32c * model
         f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * plot.model[]
@@ -551,7 +563,6 @@ function draw_mesh3D(
         return draw_mesh2D(ctx, per_face_col, screen_points, meshfaces, reverse(zorder))
     end
 
-
     # Light math happens in view/camera space
     dirlight = Makie.get_directional_light(scene)
     if !isnothing(dirlight)
@@ -582,6 +593,7 @@ function draw_mesh3D(
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
         lightdirection, light_color, shininess, diffuse, ambient, specular)
+
     return
 end
 
@@ -613,5 +625,77 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     Makie.register_position_transforms!(attr)
 
     draw_mesh3D(scene, screen, primitive)
+    return nothing
+end
+
+
+################################################################################
+#                                 MeshScatter                                  #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
+    @get_attribute(primitive, (model, marker, markersize, rotation, uv_transform, transform_marker, space))
+
+    mesh = primitive.marker[]
+    meshpoints = decompose(Point3f, mesh)
+    meshfaces = decompose(GLTriangleFace, mesh)
+    meshnormals = normals(mesh)
+    meshuvs = texturecoordinates(mesh)
+
+    # We combine vertices and positions in world space.
+    # Here we do the transformation to world space of meshscatter args
+    transformed_pos = Makie.apply_model(primitive.model_f32c[], primitive.positions_transformed_f32c[])
+
+    # and the mesh transform happen per element (see loop)
+    # translation already applied through transformed_pos
+    f32c_model = ifelse(transform_marker, strip_translation(primitive.model[]), Mat4d(I))
+    if !isnothing(scene.float32convert) && Makie.is_data_space(space)
+        f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
+    end
+
+    # Z sorting based on meshscatter arguments
+    # For correct z-ordering we need to be in view/camera or screen space
+    view = scene.camera.view[]
+    zorder = sortperm(transformed_pos, by = p -> begin
+        p4d = to_ndim(Vec4d, p, 1)
+        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+        cam_pos[1] / cam_pos[2]
+    end, rev=false)
+
+    color = primitive.scaled_color[]
+    proj_mat = cairo_viewport_matrix(scene.camera.resolution[]) * Makie.space_to_clip(scene.camera, space)
+
+    for i in zorder
+        # Get per-element data
+        element_color = color isa AbstractVector ? color[i] : color
+        element_uv_transform = Makie.sv_getindex(uv_transform, i)
+        element_transform = Makie.transformationmatrix(
+            Vec3d(0), Makie.sv_getindex(markersize, i), Makie.sv_getindex(rotation, i)
+        )
+        element_translation = to_ndim(Point4d, transformed_pos[i], 0)
+
+        # TODO: Should we cache this?
+        # mesh transformations
+        # - transform_func does not apply to vertices (only pos)
+        # - only scaling from float32convert applies to vertices
+        #   f32c_scale * (maybe model) *  rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
+        # =        f32c_model          * element_transform * vertices  +       element_translation
+        element_world_pos = map(meshpoints) do p
+            p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+            p4d = f32c_model * element_transform * p4d + element_translation
+            return Point3f(p4d) / p4d[4]
+        end
+
+        # TODO: And this?
+        element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
+
+        draw_mesh3D(
+            scene, screen, primitive,
+            element_world_pos, element_screen_pos, meshfaces, meshnormals, meshuvs,
+            element_uv_transform, element_color
+        )
+    end
+
     return nothing
 end
