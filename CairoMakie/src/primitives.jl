@@ -1228,21 +1228,21 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    # Pretend the surface plot is a mesh plot and plot that instead
-    mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
-    old = primitive[:color]
-    if old[] === nothing
-        primitive[:color] = primitive[3]
-    end
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Observable(-10)
-    end
-    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
-    draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
-    primitive[:color] = old
-    return nothing
-end
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
+#     # Pretend the surface plot is a mesh plot and plot that instead
+#     mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+#     old = primitive[:color]
+#     if old[] === nothing
+#         primitive[:color] = primitive[3]
+#     end
+#     if !haskey(primitive, :faceculling)
+#         primitive[:faceculling] = Observable(-10)
+#     end
+#     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
+#     draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
+#     primitive[:color] = old
+#     return nothing
+# end
 
 
 ################################################################################

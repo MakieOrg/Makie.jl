@@ -46,13 +46,13 @@ end
 
 function cairo_project_to_screen(
         scene::Scene, @nospecialize(plot::Plot);
-        pos_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
+        input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
 
     attr = plot.args[1]::Makie.ComputeGraph
 
     Makie.register_computation!(attr,
-            [pos_name, :space, :model_f32c], [:cairo_screen_pos]
+            [input_name, :space, :model_f32c], [:cairo_screen_pos]
         ) do (pos, space, model), changed, cached
 
         # the existing methods include f32convert matrices which are already
@@ -68,9 +68,24 @@ function cairo_project_to_screen(
     return attr[:cairo_screen_pos][]
 end
 
+function cairo_transform_to_world(scene::Scene, @nospecialize(plot::Plot), pos::Array{PT}) where {PT}
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    mat = f32convert * plot.model[]
+    transformed = apply_transform(transform_func(plot), pos)
+    output = similar(transformed, PT)
+    @inbounds for i in eachindex(output)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0), 1)
+        p4d = mat * p4d
+        output[i] = PT(p4d) / p4d[4]
+    end
+    return output
+end
+
+
 ################################################################################
 #                             Lines, LineSegments                              #
 ################################################################################
+
 
 function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
     linewidth = PT <: Lines ? plot.linewidth[] : plot.synched_linewidth[]
@@ -159,9 +174,11 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
     nothing
 end
 
+
 ################################################################################
 #                                   Scatter                                    #
 ################################################################################
+
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
@@ -256,6 +273,7 @@ function draw_atomic_scatter(
 
     return
 end
+
 
 ################################################################################
 #                                Heatmap, Image                                #
@@ -400,19 +418,16 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     end
 end
 
+
 ################################################################################
 #                                     Mesh                                     #
 ################################################################################
+
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive)
     else
-        if !haskey(primitive, :faceculling)
-            Makie.register_computation!(primitive.args[1]::Makie.ComputeGraph, Symbol[], [:faceculling]) do args...
-                return (-10,)
-            end
-        end
         draw_mesh3D(scene, screen, primitive)
     end
     return nothing
@@ -438,15 +453,16 @@ end
 # reworked, TODO: merge this with surface and maybe meshscatter and voxels again
 # Mesh + surface only
 function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
+
     @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
-    matcap = to_value(get(plot, :matcap, nothing))
-
-    world_points = plot.positions_transformed_f32c[]
+    world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
     screen_points = cairo_project_to_screen(scene, plot, output_type = Point3f)
     meshfaces = plot.faces[]
     meshnormals = plot.normals[]
     _meshuvs = plot.texturecoordinates[]
+
+    matcap = to_value(get(plot, :matcap, nothing))
 
     if (_meshuvs isa AbstractVector{<:Vec3})
         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
@@ -481,7 +497,9 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
     if !isnothing(meshnormals) && to_value(get(plot, :invert_normals, false))
         meshnormals .= -meshnormals
     end
+
     model = plot.model_f32c[]::Mat4f
+    faceculling = to_value(get(plot, :faceculling, -10))
 
     draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
@@ -565,4 +583,35 @@ function draw_mesh3D(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
         lightdirection, light_color, shininess, diffuse, ambient, specular)
     return
+end
+
+
+################################################################################
+#                                   Surface                                    #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
+    attr = primitive.args[1]::Makie.ComputeGraph
+
+    # Generate mesh from surface data and add its data to the compute graph.
+    # Use that to draw surface as a mesh
+    Makie.register_computation!(attr,
+            [:x, :y, :z], [:positions, :faces, :texturecoordinates, :normals]
+        ) do (x, y, z), changed, cached
+
+        # returns positions, faces, uvs, normals
+        # (x, y, z) are generated after convert_arguments and dim_converts,
+        # before apply_transform and
+        return Makie.surface2mesh(x, y, z)
+    end
+
+    # TODO: Should we always have this registered for positions derived from x, y, z?
+    #       That can coexist with range/vector path in GL backends...
+    #       Note that surface2mesh may not be compatible with the order used in
+    #       GL backends.
+    Makie.register_position_transforms!(attr)
+
+    draw_mesh3D(scene, screen, primitive)
+    return nothing
 end
