@@ -45,8 +45,8 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
 end
 
 function cairo_project_to_screen(
-        scene::Scene, @nospecialize(plot::Plot),
-        pos_name = :positions_transformed_f32c, yflip = true
+        scene::Scene, @nospecialize(plot::Plot);
+        pos_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
 
     attr = plot.args[1]::Makie.ComputeGraph
@@ -61,7 +61,7 @@ function cairo_project_to_screen(
         M = Makie.space_to_clip(scene.camera, space) * model
         M = cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
 
-        output = project_position(Point2f, M, pos, eachindex(pos))
+        output = project_position(output_type, M, pos, eachindex(pos))
         return (output,)
     end
 
@@ -400,3 +400,169 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     end
 end
 
+################################################################################
+#                                     Mesh                                     #
+################################################################################
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
+    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+        draw_mesh2D(scene, screen, primitive)
+    else
+        if !haskey(primitive, :faceculling)
+            Makie.register_computation!(primitive.args[1]::Makie.ComputeGraph, Symbol[], [:faceculling]) do args...
+                return (-10,)
+            end
+        end
+        draw_mesh3D(scene, screen, primitive)
+    end
+    return nothing
+end
+
+function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
+    # TODO: no clip_planes?
+    vs = cairo_project_to_screen(scene, plot)
+    fs = plot.faces[]
+    uv = plot.texturecoordinates[]
+    uv_transform = plot.uv_transform[]
+    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+    end
+    color = cairo_colors(plot)
+    cols = per_face_colors(color, nothing, fs, nothing, uv)
+    if cols isa Cairo.CairoPattern
+        align_pattern(cols, scene, model)
+    end
+    return draw_mesh2D(screen, cols, vs, fs)
+end
+
+# reworked, TODO: merge this with surface and maybe meshscatter and voxels again
+# Mesh + surface only
+function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
+    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling, clip_planes))
+
+    matcap = to_value(get(plot, :matcap, nothing))
+
+    world_points = plot.positions_transformed_f32c[]
+    screen_points = cairo_project_to_screen(scene, plot, output_type = Point3f)
+    meshfaces = plot.faces[]
+    meshnormals = plot.normals[]
+    _meshuvs = plot.texturecoordinates[]
+
+    if (_meshuvs isa AbstractVector{<:Vec3})
+        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
+    end
+    meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
+
+    uv_transform = plot.uv_transform[]
+    if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+        meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
+    end
+
+    # Prioritize colors of the mesh if present
+    color = cairo_colors(plot)
+    per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
+
+    space = plot.space[]::Symbol
+
+    if per_face_col isa Cairo.CairoPattern
+        # plot.model_f32c[] is f32c corrected, not f32c * model
+        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * plot.model[]
+        align_pattern(per_face_col, scene, f32c_model)
+    end
+
+    # TODO: assume Symbol here after this has been deprecated for a while
+    if shading isa Bool
+        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+        shading_bool = shading
+    else
+        shading_bool = shading != NoShading
+    end
+
+    if !isnothing(meshnormals) && to_value(get(plot, :invert_normals, false))
+        meshnormals .= -meshnormals
+    end
+    model = plot.model_f32c[]::Mat4f
+
+    draw_mesh3D(
+        scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
+        model, shading_bool::Bool, diffuse::Vec3f,
+        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
+    )
+end
+
+function draw_mesh3D(
+        scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
+        model, shading, diffuse, specular, shininess, faceculling, clip_planes
+    )
+    ctx = screen.context
+    eyeposition = scene.camera.eyeposition[]
+
+    # local_model applies rotation and markersize from meshscatter to vertices
+    i = Vec(1, 2, 3)
+    normalmatrix = transpose(inv(model[i, i])) # see issue #3702
+
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        valid = Bool[is_visible(clip_planes, p) for p in world_points]
+    else
+        valid = Bool[]
+    end
+
+    # Approximate zorder
+    average_zs = map(f -> average_z(screen_points, f), meshfaces)
+    zorder = sortperm(average_zs)
+
+    if isnothing(meshnormals)
+        ns = nothing
+    else
+        ns = map(n -> normalize(normalmatrix * n), meshnormals)
+    end
+
+    # Face culling
+    if isempty(valid) && !isnothing(ns)
+        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+    elseif !isempty(valid)
+        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+    else
+        # no clipped faces, no normals to rely on for culling -> do nothing
+    end
+
+    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
+    # as a color. In this case we don't do shading and fall back to mesh2D
+    # rendering
+    if per_face_col isa Cairo.CairoPattern
+        return draw_mesh2D(ctx, per_face_col, screen_points, meshfaces, reverse(zorder))
+    end
+
+
+    # Light math happens in view/camera space
+    dirlight = Makie.get_directional_light(scene)
+    if !isnothing(dirlight)
+        lightdirection = if dirlight.camera_relative
+            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+            normalize(T * dirlight.direction[])
+        else
+            normalize(dirlight.direction[])
+        end
+        c = dirlight.color[]
+        light_color = Vec3f(red(c), green(c), blue(c))
+    else
+        lightdirection = Vec3f(0,0,-1)
+        light_color = Vec3f(0)
+    end
+
+    ambientlight = Makie.get_ambient_light(scene)
+    ambient = if !isnothing(ambientlight)
+        c = ambientlight.color[]
+        Vec3f(c.r, c.g, c.b)
+    else
+        Vec3f(0)
+    end
+
+    # vs are used as camdir (camera to vertex) for light calculation (in world space)
+    vs = map(v -> normalize(v[i] - eyeposition), world_points)
+
+    draw_pattern(
+        ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
+        lightdirection, light_color, shininess, diffuse, ambient, specular)
+    return
+end

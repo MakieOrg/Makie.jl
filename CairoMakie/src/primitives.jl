@@ -873,39 +873,39 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
-    mesh = primitive[1][]
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive, mesh)
-    else
-        if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Observable(-10)
-        end
-        uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
-        draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
-    end
-    return nothing
-end
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
+#     mesh = primitive[1][]
+#     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+#         draw_mesh2D(scene, screen, primitive, mesh)
+#     else
+#         if !haskey(primitive, :faceculling)
+#             primitive[:faceculling] = Observable(-10)
+#         end
+#         uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+#         draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
+#     end
+#     return nothing
+# end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
-    space = plot.space[]::Symbol
-    transform_func = Makie.transform_func(plot)
-    model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
-    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    # Note: This assume the function is only called from mesh plots
-    uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
-    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
-    end
-    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
-    if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, model)
-    end
-    return draw_mesh2D(screen, cols, vs, fs)
-end
+# function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
+#     space = plot.space[]::Symbol
+#     transform_func = Makie.transform_func(plot)
+#     model = plot.model[]::Mat4d
+#     vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
+#     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+#     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+#     # Note: This assume the function is only called from mesh plots
+#     uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+#     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+#         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+#     end
+#     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
+#     cols = per_face_colors(color, nothing, fs, nothing, uv)
+#     if cols isa Cairo.CairoPattern
+#         align_pattern(cols, scene, model)
+#     end
+#     return draw_mesh2D(screen, cols, vs, fs)
+# end
 
 function draw_mesh2D(screen, color, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
@@ -987,173 +987,173 @@ function strip_translation(M::Mat4{T}) where {T}
     )
 end
 
-function draw_mesh3D(
-        scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
-        uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
-    )
-    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
+# function draw_mesh3D(
+#         scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
+#         uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
+#     )
+#     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
-    matcap = to_value(get(attributes, :matcap, nothing))
-    transform_marker = to_value(get(attributes, :transform_marker, true))
-    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
-    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
-    _meshuvs = texturecoordinates(mesh)
-    if (_meshuvs isa AbstractVector{<:Vec3})
-        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
-    end
-    meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
+#     matcap = to_value(get(attributes, :matcap, nothing))
+#     transform_marker = to_value(get(attributes, :transform_marker, true))
+#     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+#     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+#     meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
+#     _meshuvs = texturecoordinates(mesh)
+#     if (_meshuvs isa AbstractVector{<:Vec3})
+#         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
+#     end
+#     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
-    if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
-    end
+#     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+#         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
+#     end
 
-    # Prioritize colors of the mesh if present
-    color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
-    per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
+#     # Prioritize colors of the mesh if present
+#     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
+#     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
-    model = attributes.model[]::Mat4d
-    space = to_value(get(attributes, :space, :data))::Symbol
+#     model = attributes.model[]::Mat4d
+#     space = to_value(get(attributes, :space, :data))::Symbol
 
-    if per_face_col isa Cairo.CairoPattern
-        align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
-    end
+#     if per_face_col isa Cairo.CairoPattern
+#         align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
+#     end
 
-    if haskey(attributes, :transform_marker)
-        # meshscatter/voxels route:
-        # - transform_func does not apply to vertices (only pos)
-        # - only scaling from float32convert applies to vertices
-        #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
-        # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
-        transform_marker = attributes[:transform_marker][]::Bool
-        f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
-        if !isnothing(scene.float32convert) && Makie.is_data_space(space)
-            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
-        end
-    else
-        # mesh/surface path
-        # - transform_func applies to vertices here
-        # - full float32convert applies to vertices
-        # f32c * model * vertices = f32c_model * vertices
-        transform_marker = true
-        meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
-        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
-    end
+#     if haskey(attributes, :transform_marker)
+#         # meshscatter/voxels route:
+#         # - transform_func does not apply to vertices (only pos)
+#         # - only scaling from float32convert applies to vertices
+#         #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
+#         # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
+#         transform_marker = attributes[:transform_marker][]::Bool
+#         f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
+#         if !isnothing(scene.float32convert) && Makie.is_data_space(space)
+#             f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
+#         end
+#     else
+#         # mesh/surface path
+#         # - transform_func applies to vertices here
+#         # - full float32convert applies to vertices
+#         # f32c * model * vertices = f32c_model * vertices
+#         transform_marker = true
+#         meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
+#         f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+#     end
 
-    # TODO: assume Symbol here after this has been deprecated for a while
-    if shading isa Bool
-        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
-        shading_bool = shading
-    else
-        shading_bool = shading != NoShading
-    end
+#     # TODO: assume Symbol here after this has been deprecated for a while
+#     if shading isa Bool
+#         @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+#         shading_bool = shading
+#     else
+#         shading_bool = shading != NoShading
+#     end
 
-    if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
-        meshnormals .= -meshnormals
-    end
+#     if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
+#         meshnormals .= -meshnormals
+#     end
 
-    draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
-        pos, scale, rotation,
-        f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
-    )
-end
+#     draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
+#         pos, scale, rotation,
+#         f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
+#         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
+#     )
+# end
 
-function draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
-        pos, scale, rotation,
-        f32c_model, shading, diffuse,
-        specular, shininess, faceculling, clip_planes
-    )
-    ctx = screen.context
-    projectionview = Makie.space_to_clip(scene.camera, space, true)
-    eyeposition = scene.camera.eyeposition[]
+# function draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
+#         pos, scale, rotation,
+#         f32c_model, shading, diffuse,
+#         specular, shininess, faceculling, clip_planes
+#     )
+#     ctx = screen.context
+#     projectionview = Makie.space_to_clip(scene.camera, space, true)
+#     eyeposition = scene.camera.eyeposition[]
 
-    # local_model applies rotation and markersize from meshscatter to vertices
-    i = Vec(1, 2, 3)
-    local_model = rotation * Makie.scalematrix(Vec3d(scale))
-    normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
+#     # local_model applies rotation and markersize from meshscatter to vertices
+#     i = Vec(1, 2, 3)
+#     local_model = rotation * Makie.scalematrix(Vec3d(scale))
+#     normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
 
-    # mesh, surface:        apply f32convert and model to vertices
-    # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
-    # (see previous function)
-    vs = broadcast(meshpoints) do v
-        # Should v get a nan2zero?
-        p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
-        p4d = f32c_model * local_model * p4d
-        return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
-    end
+#     # mesh, surface:        apply f32convert and model to vertices
+#     # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
+#     # (see previous function)
+#     vs = broadcast(meshpoints) do v
+#         # Should v get a nan2zero?
+#         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
+#         p4d = f32c_model * local_model * p4d
+#         return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
+#     end
 
-    if Makie.is_data_space(space) && !isempty(clip_planes)
-        valid = Bool[is_visible(clip_planes, p) for p in vs]
-    else
-        valid = Bool[]
-    end
+#     if Makie.is_data_space(space) && !isempty(clip_planes)
+#         valid = Bool[is_visible(clip_planes, p) for p in vs]
+#     else
+#         valid = Bool[]
+#     end
 
-    # Camera to screen space
-    transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
-    ts = project_position(Point3f, transform, vs, eachindex(vs))
+#     # Camera to screen space
+#     transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
+#     ts = project_position(Point3f, transform, vs, eachindex(vs))
 
-    # Approximate zorder
-    average_zs = map(f -> average_z(ts, f), meshfaces)
-    zorder = sortperm(average_zs)
+#     # Approximate zorder
+#     average_zs = map(f -> average_z(ts, f), meshfaces)
+#     zorder = sortperm(average_zs)
 
-    if isnothing(meshnormals)
-        ns = nothing
-    else
-        ns = map(n -> normalize(normalmatrix * n), meshnormals)
-    end
+#     if isnothing(meshnormals)
+#         ns = nothing
+#     else
+#         ns = map(n -> normalize(normalmatrix * n), meshnormals)
+#     end
 
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
-    end
+#     # Face culling
+#     if isempty(valid) && !isnothing(ns)
+#         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+#     elseif !isempty(valid)
+#         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+#     else
+#         # no clipped faces, no normals to rely on for culling -> do nothing
+#     end
 
-    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
-    # as a color. In this case we don't do shading and fall back to mesh2D
-    # rendering
-    if per_face_col isa Cairo.CairoPattern
-        return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
-    end
+#     # If per_face_col is a CairoPattern the plot is using an AbstractPattern
+#     # as a color. In this case we don't do shading and fall back to mesh2D
+#     # rendering
+#     if per_face_col isa Cairo.CairoPattern
+#         return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
+#     end
 
 
-    # Light math happens in view/camera space
-    dirlight = Makie.get_directional_light(scene)
-    if !isnothing(dirlight)
-        lightdirection = if dirlight.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            normalize(T * dirlight.direction[])
-        else
-            normalize(dirlight.direction[])
-        end
-        c = dirlight.color[]
-        light_color = Vec3f(red(c), green(c), blue(c))
-    else
-        lightdirection = Vec3f(0,0,-1)
-        light_color = Vec3f(0)
-    end
+#     # Light math happens in view/camera space
+#     dirlight = Makie.get_directional_light(scene)
+#     if !isnothing(dirlight)
+#         lightdirection = if dirlight.camera_relative
+#             T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+#             normalize(T * dirlight.direction[])
+#         else
+#             normalize(dirlight.direction[])
+#         end
+#         c = dirlight.color[]
+#         light_color = Vec3f(red(c), green(c), blue(c))
+#     else
+#         lightdirection = Vec3f(0,0,-1)
+#         light_color = Vec3f(0)
+#     end
 
-    ambientlight = Makie.get_ambient_light(scene)
-    ambient = if !isnothing(ambientlight)
-        c = ambientlight.color[]
-        Vec3f(c.r, c.g, c.b)
-    else
-        Vec3f(0)
-    end
+#     ambientlight = Makie.get_ambient_light(scene)
+#     ambient = if !isnothing(ambientlight)
+#         c = ambientlight.color[]
+#         Vec3f(c.r, c.g, c.b)
+#     else
+#         Vec3f(0)
+#     end
 
-    # vs are used as camdir (camera to vertex) for light calculation (in world space)
-    vs = map(v -> normalize(v[i] - eyeposition), vs)
+#     # vs are used as camdir (camera to vertex) for light calculation (in world space)
+#     vs = map(v -> normalize(v[i] - eyeposition), vs)
 
-    draw_pattern(
-        ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
-        lightdirection, light_color, shininess, diffuse, ambient, specular)
-    return
-end
+#     draw_pattern(
+#         ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
+#         lightdirection, light_color, shininess, diffuse, ambient, specular)
+#     return
+# end
 
 function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
     L = lightdir
