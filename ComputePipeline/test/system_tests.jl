@@ -5,10 +5,10 @@
     f32(x) = Float32.(x) # wrong on purpose
     add_input!(f32, parent, :pin3, [1,2,3])
 
-    foo1((i, v), changed, outputs) = (v[] .- i[], v[] .+ i[])
+    foo1((i, v), changed, outputs) = (v .- i, v .+ i)
     register_computation!(foo1, parent, [:pin1, :pin3], [:pout1, :pout3])
 
-    foo2((x, i), changed, outputs) = (string(x[], i[]),)
+    foo2((x, i), changed, outputs) = (string(x, i),)
     register_computation!(foo2, parent, [:pin2, :pin1], [:pout2])
 
     @testset "Parent initialization" begin
@@ -83,13 +83,13 @@
     reflect_changed(inputs, changed, cached) = (changed,)
     register_computation!(reflect_changed, graph, [:in1, :in3, :in2, :in4], [:changed1324])
 
-    reflect_cached(inputs, changed, cached) = cached === nothing ? (rand(Int),) : (cached[1][],)
+    reflect_cached(inputs, changed, cached) = cached === nothing ? (rand(Int),) : (cached[1],)
     register_computation!(reflect_cached, graph, [:in1, :in4], [:cached14])
 
-    discard(inputs, changed, outputs) = inputs[:in1][] < 10 ? nothing : (inputs[1][],)
+    discard(inputs, changed, outputs) = inputs[:in1] < 10 ? nothing : (inputs[1],)
     register_computation!(discard, graph, [:in1], [:discard10])
 
-    merge_data(inputs, changed, outputs) = (inputs[1][] .+ inputs[2][],)
+    merge_data(inputs, changed, outputs) = (inputs[1] .+ inputs[2],)
     register_computation!(merge_data, graph, [:trans1, :trans3], [:merged])
 
 
@@ -236,7 +236,7 @@
 
         @testset "callback function" begin
             # check reflection nodes for correct inputs, changed, cached
-            @test graph[:inputs324][] == (graph[:in3].value, graph[:in2].value, graph[:in4].value)
+            @test graph[:inputs324][] == (graph[:in3].value[], graph[:in2].value[], graph[:in4].value[])
             @test graph[:changed1324][] == (in1 = true, in3 = true, in2 = true, in4 = true)
             # If all are unchanged the update is skipped entirely so this is expected:
             @test graph[:changed1324][] == (in1 = true, in3 = true, in2 = true, in4 = true)

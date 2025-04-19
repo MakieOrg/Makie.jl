@@ -208,7 +208,7 @@ function scatter_program(attr, changed, last)
         )
         return (program, Observable([]))
     else
-        updater = last[2][]
+        updater = last[2]
         update_values!(updater, plot_updates(attr, changed, r))
         return nothing
     end
@@ -260,7 +260,7 @@ function meshscatter_program(args, changed, last)
         )
         return (program, Observable([]))
     else
-        updater = last[2][]
+        updater = last[2]
         update_values!(updater, plot_updates(args, changed, r))
         return nothing
     end
@@ -341,7 +341,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
             program = mesh_program(args)
             return (program, Observable{Any}([]))
         else
-            updater = last[2][]
+            updater = last[2]
             update_values!(updater, Bonito.LargeUpdate(plot_updates(args, changed, r)))
             return nothing
         end
