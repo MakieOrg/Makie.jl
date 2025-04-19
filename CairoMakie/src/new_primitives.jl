@@ -636,16 +636,18 @@ end
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
     @get_attribute(primitive, (
         model_f32c, marker, markersize, rotation, positions_transformed_f32c,
-        clip_planes, scaled_color, transform_marker))
+        clip_planes, transform_marker))
 
     # We combine vertices and positions in world space.
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
 
+    colors = cairo_colors(primitive)
+
     draw_scattered_mesh(
         scene, screen, primitive, marker,
-        transformed_pos, markersize, rotation, scaled_color,
+        transformed_pos, markersize, rotation, colors,
         clip_planes, transform_marker
     )
 end
