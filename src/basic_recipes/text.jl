@@ -11,61 +11,48 @@ conversion_trait(::Type{<: Text}, args...) = PointBased()
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 
-function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
-    # Same as _register_expand_arguments!()
-    if all(arg -> arg isa Computed, input_args) || !any(arg -> arg isa Computed, input_args)
-        inputs = map(enumerate(input_args)) do (i, arg)
-            sym = Symbol(:arg, i)
-            add_input!(attr, sym, arg)
-            return sym
-        end
-    else
-        error("args should be either all Computed or all other things. $input_args")
-    end
+# Positions are always vectors so text should be too
+convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
+convert_attribute(str::AbstractString, ::key"text", ::key"text") = [str]
+convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
 
-    # Move things to the correct place
-    # input_positions is always a tuple because it could be (xs, ys, zs)
-    # convert_arguments always generates a vector of positions, so let's
-    # always generated a vector of texts too
+
+function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
+    # Set up Inputs
+    inputs = _register_input_arguments!(Text, attr, input_args)
+
+    # User arguments can be PointBased(), String-like or mixed, with the
+    # position and text attributes supplementing data not in arguments.
+    # For conversion we want to move position data into the argument pipeline
+    # and String-like data into attributes. Do this here:
     pushfirst!(inputs, :position, :text)
     register_computation!(attr, inputs, [:input_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
 
         # Note: Could add RichText
         if args isa Tuple{<: AbstractString}
+            # position data will allways be wrapped in a Vector, so strings should too
             return ((a_pos,), [args[1]])
+
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
-            # text(s) argument
             return ((a_pos,), args[1])
+
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), first.(args[1]))
-        else
-            # position argument
-            return (args, a_text isa AbstractVector ? a_text : [a_text])
+
+        else # assume position data
+            return (args, a_text)
         end
     end
 
-    # Continue with _register_expand_arguments!() with adjusted inputs
-
-    # TODO expand_dims + dim_converts
-    # Only 2 and 3d conversions are supported, and only
-    input_positions = attr[:input_positions][]
-    PTrait = conversion_trait(Text, map(to_value, input_positions)...)
-
-
-    register_computation!(attr, [:input_positions], [:expanded_args]) do (input_args,), changed, last
-        args = values(input_args)
-        args_exp = expand_dimensions(PTrait, args...)
-        if isnothing(args_exp)
-            return (args,)
-        else
-            return (args_exp,)
-        end
-    end
+    # Continue with _register_expand_arguments with adjusted input names
+    _register_expand_arguments!(Text, attr, [:input_positions], true)
 
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
+
+    return
 end
 
 function register_text_computations!(attr::ComputeGraph)
