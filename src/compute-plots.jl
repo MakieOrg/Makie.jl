@@ -7,7 +7,7 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter}
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
 Base.haskey(x::ComputePlots, key) = haskey(x.args[1], key)
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
@@ -200,12 +200,14 @@ function register_position_transforms!(attr)
     end
 end
 
-
+# Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
-    # TODO expand_dims + dim_converts
-    # Only 2 and 3d conversions are supported, and only
-    PTrait = conversion_trait(P, map(to_value, input_args)...)
+    inputs = _register_input_arguments!(P, attr, input_args)
+    _register_expand_arguments!(P, attr, inputs)
+    _register_argument_conversions!(P, attr, user_kw)
+end
 
+function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
     if all(arg -> arg isa Computed, input_args)
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
@@ -213,6 +215,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             return sym
         end
     elseif !any(arg -> arg isa Computed, input_args)
+        # TODO: same code, merge with above branch?
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
@@ -222,8 +225,26 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
         error("args should be either all Computed or all other things. $input_args")
     end
 
+    return inputs
+end
+
+function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false) where P
+    # is_merged = true means that multiple arguments are collected in one input, i.e.:
+    # true:  one input where attr[input][] = (arg1, arg2, ...)
+    # false: multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
+    # this is used in text
+
+    # TODO expand_dims + dim_converts
+    # Only 2 and 3d conversions are supported, and only
+    PTrait = if is_merged
+        @assert length(inputs) == 1
+        conversion_trait(P, attr[inputs[1]][]...)
+    else
+        conversion_trait(P, map(k -> attr[k][], inputs)...)
+    end
+
     register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
-        args = values(input_args)
+        args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
             return (args,)
@@ -231,7 +252,10 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
             return (args_exp,)
         end
     end
+    return
+end
 
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     expanded_args = attr[:expanded_args][]
     if length(expanded_args) in (2, 3)
@@ -277,6 +301,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     if P <: PrimitivePlotTypes
         register_position_transforms!(attr)
     end
+    return
 end
 
 function register_marker_computations!(attr::ComputeGraph)
