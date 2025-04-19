@@ -4,17 +4,12 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
-# Only this can be hit:
-# convert_arguments(::Type{<:Text}, args...) = convert_arguments(PointBased(), args...)
+# We sort out position vs string(-like) vs mixed arguments before convert_arguments,
+# so that we only get positions here
 conversion_trait(::Type{<: Text}, args...) = PointBased()
 
-# TODO: is this relying on things from conversions.jl actually?
-# TODO: Can this be merged with scatter
-# TODO: Wait why Vec2f? Why not Vec3f?
-convert_attribute(o, ::key"offset", ::key"text") = to_offset(o)
+convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
-to_offset(v::VecTypes) = Vec2f(v)
-to_offset(v::AbstractVector) = map(to_offset, v)
 
 function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # Same as _register_expand_arguments!()
@@ -267,8 +262,6 @@ end
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
         rotation, color, strokecolor, strokewidth, word_wrap_width)
 
-    rot = convert_attribute(rotation, key"rotation"())
-
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
@@ -331,7 +324,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
 
     shift = Vec3f(xshift, yshift, 0)
     positions = basepositions .- Ref(shift)
-    positions .= Ref(rot) .* positions
+    positions .= Ref(rotation) .* positions
 
     pre_align_gl = GlyphCollection(
         glyphindices,
@@ -339,7 +332,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, v
         Point3f.(positions),
         extents,
         scales_2d,
-        rot,
+        rotation,
         color,
         strokecolor,
         strokewidth
@@ -472,12 +465,9 @@ end
 
 
 function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
-
-    _f = to_font(fset, f)
-
     lines = [GlyphInfo[]]
 
-    gs = GlyphState(0, 0, Vec2f(ts), _f, to_color(col))
+    gs = GlyphState(0, 0, Vec2f(ts), f, col)
 
     process_rt_node!(lines, gs, rt, fset)
 
@@ -485,10 +475,9 @@ function layout_text(rt::RichText, ts, f, fset, al, rot, jus, lh, col)
     apply_alignment_and_justification!(lines, jus, al)
 
     gc = GlyphCollection(reduce(vcat, lines))
-    quat = to_rotation(rot)::Quaternionf
-    gc.origins .= Ref(quat) .* gc.origins
+    gc.origins .= Ref(rot) .* gc.origins
     @assert gc.rotations.sv isa Vector # should always be a vector because that's how the glyphcollection is created
-    gc.rotations.sv .= Ref(quat) .* gc.rotations.sv
+    gc.rotations.sv .= Ref(rot) .* gc.rotations.sv
     return gc
 end
 
