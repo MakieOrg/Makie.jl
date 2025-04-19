@@ -1,5 +1,10 @@
+# TODO:
+#   - Embed camera matrices in compute pipeline so we can easily and consistently
+#     do projections here
+
 # TODO: update Makie.Sampler to include lowclip, highclip, nan_color
 #       and maybe also just RGBAf color types?
+#       Or just move this to make as a more generic function?
 # Note: This assumes to be called with data from ComputePipeline, i.e.
 #       alpha and colorscale already applied
 function sample_color(
@@ -24,15 +29,15 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
         ) do inputs, changed, cached
         (color, colorrange, colormap, nan_color, lowclip, highclip) = inputs
         # colormapping
-        if color[] isa AbstractVector{<:Real} || color[] isa Real
-            output = map(color[]) do v
-                return sample_color(colormap[], v, colorrange[], lowclip[], highclip[], nan_color[])
+        if color isa AbstractArray{<:Real} || color isa Real
+            output = map(color) do v
+                return sample_color(colormap, v, colorrange, lowclip, highclip, nan_color)
             end
             return (output,)
         else # Raw colors
-            # Skip calculation if anything else changed
+            # Avoid update propagation if nothing changed
             !isnothing(last) && !changed[1] && return nothing
-            return (color[],)
+            return (color,)
         end
     end
 
@@ -40,6 +45,10 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
 end
 
 
+
+################################################################################
+#                             Lines, LineSegments                              #
+################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
     linewidth = PT <: Lines ? plot.linewidth[] : plot.synched_linewidth[]
@@ -128,6 +137,9 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
     nothing
 end
 
+################################################################################
+#                                   Scatter                                    #
+################################################################################
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
@@ -138,7 +150,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
 
     attr = p.args[1]
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
-        return (cairo_scatter_marker(marker[]),)
+        return (cairo_scatter_marker(marker),)
     end
 
     if !haskey(attr.outputs, :cairo_indices) # TODO: Why is this necessary? Is it still necessary?
@@ -146,12 +158,12 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
             [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
             [:cairo_indices]
         ) do (transformed, model, space, clip_planes), changed, outputs
-            return (unclipped_indices(to_model_space(model[], clip_planes[]), transformed[], space[]),)
+            return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
         end
     end
 
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
-    #       the output can be comes invalid from render to render.
+    #       the output can becomes invalid from render to render.
     # Makie.register_computation!(attr,
     #     [:positions_transformed_f32c, :cairo_indices, :model_f32c, :projectionview, :resolution, :space],
     #     [:cairo_positions_px]
