@@ -96,12 +96,19 @@ function register_text_computations!(attr::ComputeGraph)
 
         str, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs = inputs
 
-        # TODO: reused cached?
-        gcs = GlyphCollection[]
-        lsegs = Point2f[]
-        lwidths = Float32[]
-        lcolors = RGBAf[]
-        lindices = Int[]
+        if isnothing(cached)
+            gcs = GlyphCollection[]
+            lsegs = Point2f[]
+            lwidths = Float32[]
+            lcolors = RGBAf[]
+            lindices = Int[]
+        else
+            gcs = empty!(cached[1])
+            lsegs = empty!(cached[2])
+            lwidths = empty!(cached[3])
+            lcolors = empty!(cached[4])
+            lindices = empty!(cached[5])
+        end
 
         broadcast_foreach(str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs) do args...
             gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
@@ -112,7 +119,7 @@ function register_text_computations!(attr::ComputeGraph)
             append!(lindices, lindex)
         end
 
-        return (gcs, lwidths, lcolors, lindices, lsegs)
+        return (gcs, lsegs, lwidths, lcolors, lindices)
     end
 
     return
