@@ -1249,7 +1249,7 @@ end
 #                                 MeshScatter                                  #
 ################################################################################
 
-
+# Still used for voxels
 function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
     space = plot.space[]::Symbol
     model = plot.model[]::Mat4d
@@ -1320,44 +1320,44 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
-    pos = Makie.voxel_positions(primitive)
-    scale = Makie.voxel_size(primitive)
-    colors = Makie.voxel_colors(primitive)
-    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
+#     pos = Makie.voxel_positions(primitive)
+#     scale = Makie.voxel_size(primitive)
+#     colors = Makie.voxel_colors(primitive)
+#     marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
 
-    # transformation to world space
-    transformed_pos = _transform_to_world(scene, primitive, pos)
+#     # transformation to world space
+#     transformed_pos = _transform_to_world(scene, primitive, pos)
 
-    # Face culling
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
-        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
-        transformed_pos = transformed_pos[valid]
-        colors = colors[valid]
-    end
+#     # Face culling
+#     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
+#         valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+#         transformed_pos = transformed_pos[valid]
+#         colors = colors[valid]
+#     end
 
-    # For correct z-ordering we need to be in view/camera or screen space
-    view = scene.camera.view[]
-    zorder = sortperm(transformed_pos, by = p -> begin
-        p4d = to_ndim(Vec4d, p, 1)
-        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
-        cam_pos[1] / cam_pos[2]
-    end, rev=false)
+#     # For correct z-ordering we need to be in view/camera or screen space
+#     view = scene.camera.view[]
+#     zorder = sortperm(transformed_pos, by = p -> begin
+#         p4d = to_ndim(Vec4d, p, 1)
+#         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+#         cam_pos[1] / cam_pos[2]
+#     end, rev=false)
 
-    submesh = Attributes(
-        model = primitive.model,
-        shading = primitive.shading, diffuse = primitive.diffuse,
-        specular = primitive.specular, shininess = primitive.shininess,
-        faceculling = get(primitive, :faceculling, -10),
-        transformation = Makie.transformation(primitive),
-        clip_planes = Plane3f[],
-        transform_marker = true
-    )
+#     submesh = Attributes(
+#         model = primitive.model,
+#         shading = primitive.shading, diffuse = primitive.diffuse,
+#         specular = primitive.specular, shininess = primitive.shininess,
+#         faceculling = get(primitive, :faceculling, -10),
+#         transformation = Makie.transformation(primitive),
+#         clip_planes = Plane3f[],
+#         transform_marker = true
+#     )
 
-    for i in zorder
-        submesh[:calculated_colors] = colors[i]
-        draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
-    end
+#     for i in zorder
+#         submesh[:calculated_colors] = colors[i]
+#         draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
+#     end
 
-    return nothing
-end
+#     return nothing
+# end

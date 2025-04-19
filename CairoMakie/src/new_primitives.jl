@@ -452,6 +452,7 @@ end
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
+    @get_attribute(plot, (uv_transform, clip_planes))
 
     # per-element in meshscatter
     world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
@@ -465,24 +466,22 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
     end
     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
-    uv_transform = plot.uv_transform[]
-
     color = cairo_colors(plot)
 
     draw_mesh3D(
         scene, screen, plot,
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
-        uv_transform, color
+        uv_transform, color, clip_planes
     )
 end
 
 function draw_mesh3D(
         scene, screen, @nospecialize(plot::Plot),
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
-        uv_transform, color
+        uv_transform, color, clip_planes
     )
 
-    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling, clip_planes))
+    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling))
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
@@ -635,21 +634,37 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotation, uv_transform, transform_marker, space))
+    @get_attribute(primitive, (
+        model_f32c, marker, markersize, rotation, positions_transformed_f32c,
+        clip_planes, scaled_color, transform_marker))
 
-    mesh = primitive.marker[]
+    # We combine vertices and positions in world space.
+    # Here we do the transformation to world space of meshscatter args
+    # The rest happens in draw_scattered_mesh()
+    transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
+
+    draw_scattered_mesh(
+        scene, screen, primitive, marker,
+        transformed_pos, markersize, rotation, scaled_color,
+        clip_planes, transform_marker
+    )
+end
+
+function draw_scattered_mesh(
+        scene, screen, @nospecialize(plot::Plot), mesh,
+        # positions in world space, acting as translations for mesh
+        positions, scales, rotations, colors,
+        clip_planes, transform_marker
+    )
+    @get_attribute(plot, (model, uv_transform, space))
+
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
     meshnormals = normals(mesh)
     meshuvs = texturecoordinates(mesh)
 
-    # We combine vertices and positions in world space.
-    # Here we do the transformation to world space of meshscatter args
-    transformed_pos = Makie.apply_model(primitive.model_f32c[], primitive.positions_transformed_f32c[])
-
-    # and the mesh transform happen per element (see loop)
-    # translation already applied through transformed_pos
-    f32c_model = ifelse(transform_marker, strip_translation(primitive.model[]), Mat4d(I))
+    # transformation matrix to mesh into world space, see loop
+    f32c_model = ifelse(transform_marker, strip_translation(plot.model[]), Mat4d(I))
     if !isnothing(scene.float32convert) && Makie.is_data_space(space)
         f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
     end
@@ -657,23 +672,22 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # Z sorting based on meshscatter arguments
     # For correct z-ordering we need to be in view/camera or screen space
     view = scene.camera.view[]
-    zorder = sortperm(transformed_pos, by = p -> begin
+    zorder = sortperm(positions, by = p -> begin
         p4d = to_ndim(Vec4d, p, 1)
         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
         cam_pos[1] / cam_pos[2]
     end, rev=false)
 
-    color = primitive.scaled_color[]
     proj_mat = cairo_viewport_matrix(scene.camera.resolution[]) * Makie.space_to_clip(scene.camera, space)
 
     for i in zorder
         # Get per-element data
-        element_color = color isa AbstractVector ? color[i] : color
+        element_color = Makie.sv_getindex(colors, i)
         element_uv_transform = Makie.sv_getindex(uv_transform, i)
         element_transform = Makie.transformationmatrix(
-            Vec3d(0), Makie.sv_getindex(markersize, i), Makie.sv_getindex(rotation, i)
+            Vec3d(0), Makie.sv_getindex(scales, i), Makie.sv_getindex(rotations, i)
         )
-        element_translation = to_ndim(Point4d, transformed_pos[i], 0)
+        element_translation = to_ndim(Point4d, positions[i], 0)
 
         # TODO: Should we cache this?
         # mesh transformations
@@ -691,11 +705,47 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
 
         draw_mesh3D(
-            scene, screen, primitive,
+            scene, screen, plot,
             element_world_pos, element_screen_pos, meshfaces, meshnormals, meshuvs,
-            element_uv_transform, element_color
+            element_uv_transform, element_color, clip_planes
         )
     end
+
+    return nothing
+end
+
+
+################################################################################
+#                                    Voxel                                     #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
+    pos = Makie.voxel_positions(primitive)
+    scale = Makie.voxel_size(primitive)
+    colors = Makie.voxel_colors(primitive)
+    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+
+    # transformation to world space
+    transformed_pos = _transform_to_world(scene, primitive, pos)
+
+    # clip full voxel instead of faces
+    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
+        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+        transformed_pos = transformed_pos[valid]
+        colors = colors[valid]
+    end
+
+    # sneak in model_f32c so we don't have to pass through another variable
+    Makie.register_computation!(primitive.args[1]::Makie.ComputeGraph, [:model], [:model_f32c]) do (model,), _, __
+        return (Mat4f(model),)
+    end
+
+    draw_scattered_mesh(
+        scene, screen, primitive, marker,
+        transformed_pos, scale, Quaternionf(0,0,0,1), colors,
+        Plane3f[], true
+    )
 
     return nothing
 end
