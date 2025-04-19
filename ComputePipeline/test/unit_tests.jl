@@ -6,7 +6,7 @@
     graph = ComputeGraph()
     add_input!(graph, :in1, parent.in1)
     add_input!(graph, :in2, 2)
-    foo(inputs, changed, cached) = (inputs[1][] + inputs[2][],)
+    foo(inputs, changed, cached) = (inputs[1] + inputs[2],)
     register_computation!(foo, graph, [:in1, :in2], [:merged])
 
     @testset "Overwrite Errors" begin
@@ -29,7 +29,7 @@
         end
 
         # same inputs, different function = different edge -> error
-        goo(inputs, changed, cached) = (inputs[1][] * inputs[2][],)
+        goo(inputs, changed, cached) = (inputs[1] * inputs[2],)
         @test_throws ErrorException register_computation!(goo, graph, [:in1, :in2], [:merged])
     end
 end
@@ -39,7 +39,7 @@ end
     add_input!(graph, :in1, 1)
     add_input!(graph, :in2, 2)
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
-        return (inputs[1][] + inputs[2][],)
+        return (inputs[1] + inputs[2],)
     end
 
     # Sanity checks
@@ -159,9 +159,9 @@ end
     graph = ComputeGraph()
     add_input!(graph, :in1, parent.in1)
     add_input!(graph, :in2, 2)
-    foo2(inputs, changed, cached) = (inputs[1][] + inputs[2][], inputs[1][] - inputs[2][])
+    foo2(inputs, changed, cached) = (inputs[1] + inputs[2], inputs[1] - inputs[2])
     register_computation!(foo2, graph, [:in1, :in2], [:added, :subtracted])
-    bar(inputs, changed, cached) = (inputs[1][],)
+    bar(inputs, changed, cached) = (inputs[1],)
     register_computation!(bar, graph, [:added], [:output])
     register_computation!(bar, graph, [:output], [:output2])
     register_computation!(bar, graph, [:subtracted], [:output3])
@@ -208,8 +208,8 @@ end
 end
 
 @testset "deletion" begin
-    foo(inputs, changed, cached) = (inputs[1][],)
-    foo2(inputs, changed, cached) = (inputs[1][] + inputs[2][], inputs[1][] - inputs[2][])
+    foo(inputs, changed, cached) = (inputs[1],)
+    foo2(inputs, changed, cached) = (inputs[1] + inputs[2], inputs[1] - inputs[2])
 
     @testset "public interface" begin
         graph = ComputeGraph()
