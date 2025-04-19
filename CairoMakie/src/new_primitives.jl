@@ -44,7 +44,29 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
     return plot.cairo_colors[]
 end
 
+function cairo_project_to_screen(
+        scene::Scene, @nospecialize(plot::Plot),
+        pos_name = :positions_transformed_f32c, yflip = true
+    )
 
+    attr = plot.args[1]::Makie.ComputeGraph
+
+    Makie.register_computation!(attr,
+            [pos_name, :space, :model_f32c], [:cairo_screen_pos]
+        ) do (pos, space, model), changed, cached
+
+        # the existing methods include f32convert matrices which are already
+        # applied in :positions_transformed_f32c (using this makes CairoMakie
+        # less performant (extra O(N) step) but allows code reuse with other backends)
+        M = Makie.space_to_clip(scene.camera, space) * model
+        M = cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+
+        output = project_position(Point2f, M, pos, eachindex(pos))
+        return (output,)
+    end
+
+    return attr[:cairo_screen_pos][]
+end
 
 ################################################################################
 #                             Lines, LineSegments                              #
@@ -234,3 +256,147 @@ function draw_atomic_scatter(
 
     return
 end
+
+################################################################################
+#                                Heatmap, Image                                #
+################################################################################
+
+
+# Note: Changed very little here
+function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
+    ctx = screen.context
+
+    xs = primitive.x[]
+    ys = primitive.y[]
+    image = primitive.image[]
+
+    if xs isa Makie.EndPoints
+        l, r = xs
+        N = size(image, 1)
+        xs = range(l, r, length = N+1)
+    else
+        xs = regularly_spaced_array_to_range(xs)
+    end
+
+    if ys isa Makie.EndPoints
+        l, r = ys
+        N = size(image, 2)
+        ys = range(l, r, length = N+1)
+    else
+        ys = regularly_spaced_array_to_range(ys)
+    end
+
+    # TODO: heatmap doesn't handle f32c etc
+    model = primitive.model[]::Mat4d
+    interpolate = primitive.interpolate[]
+
+    # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
+    is_vector = is_vector_backend(ctx)
+    t = Makie.transform_func(primitive)
+    is_identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) &&
+        Makie.is_translation_scale_matrix(model)
+    is_regular_grid = xs isa AbstractRange && ys isa AbstractRange
+    is_xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
+
+    if interpolate
+        if !is_regular_grid
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
+        end
+        if !is_identity_transform
+            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
+        end
+    end
+
+    # TODO: Can we generalize this/reuse from other backends?
+    #       - image could use `xy, xymax = cairo_screen_pos()[[1, 3]]`
+    #       - heatmap doesn't apply f32c, transform_func, and also handles points
+    #         differently...
+    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+    # find projected image corners
+    # this already takes care of flipping the image to correct cairo orientation
+    space = primitive.space[]
+    xy = project_position(primitive, space, Point2(first.(imsize)), model)
+    xymax = project_position(primitive, space, Point2(last.(imsize)), model)
+    w, h = xymax .- xy
+
+    uv_transform = if primitive isa Image
+        val = to_value(get(primitive, :uv_transform, I))
+        T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
+        # Cairo uses pixel units so we need to transform those to a 0..1 range,
+        # then apply uv_transform, then scale them back to pixel units.
+        # Cairo also doesn't have the yflip we have in OpenGL, so we need to
+        # invert y.
+        T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
+        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
+            Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
+        T3[Vec(1, 2), Vec(1,2,3)]
+    else
+        Mat{2, 3, Float32}(1,0,0,1,0,0)
+    end
+
+    can_use_fast_path = !(is_vector && !interpolate) && is_regular_grid && is_identity_transform &&
+        (interpolate || is_xy_aligned) && isempty(primitive.clip_planes[])
+
+    # Debug attribute we can set to disable fastpath
+    # probably shouldn't really be part of the interface
+    use_fast_path = can_use_fast_path && to_value(get(primitive, :fast_path, true))::Bool
+
+    color_image = cairo_colors(primitive)
+
+    if use_fast_path
+        s = to_cairo_image(color_image)
+
+        weird_cairo_limit = (2^15) - 23
+        if s.width > weird_cairo_limit || s.height > weird_cairo_limit
+            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with heatmap(Resampler(data)).")
+        end
+        Cairo.rectangle(ctx, xy..., w, h)
+        Cairo.save(ctx)
+        Cairo.translate(ctx, xy...)
+        Cairo.scale(ctx, w / s.width, h / s.height)
+        Cairo.set_source_surface(ctx, s, 0, 0)
+        p = Cairo.get_source(ctx)
+        if RT !== SVG
+            # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+            # setting seems to create broken SVGs
+            Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+        end
+        filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
+        Cairo.pattern_set_filter(p, filt)
+        pattern_set_matrix(p, Cairo.CairoMatrix(uv_transform...))
+        Cairo.fill(ctx)
+        Cairo.restore(ctx)
+        pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    else
+        # find projected image corners
+        # this already takes care of flipping the image to correct cairo orientation
+        space = primitive.space[]
+        xys = let
+            ps = [Point2(x, y) for x in xs, y in ys]
+            transformed = apply_transform(transform_func(primitive), ps)
+            T = eltype(transformed)
+
+            planes = if Makie.is_data_space(space)
+                to_model_space(model, primitive.clip_planes[])
+            else
+                Plane3f[]
+            end
+
+            for i in eachindex(transformed)
+                if is_clipped(planes, transformed[i])
+                    transformed[i] = T(NaN)
+                end
+            end
+
+            _project_position(scene, space, transformed, model, true)
+        end
+
+        # Note: xs and ys should have size ni+1, nj+1
+        ni, nj = size(image)
+        if ni + 1 != length(xs) || nj + 1 != length(ys)
+            error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
+        end
+        _draw_rect_heatmap(ctx, xys, ni, nj, color_image)
+    end
+end
+
