@@ -177,9 +177,6 @@ function draw_single(primitive::LineSegments, ctx, positions)
     Cairo.new_path(ctx)
 end
 
-# getindex if array, otherwise just return value
-using Makie: sv_getindex
-
 function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, dash)
     @assert iseven(length(positions))
 
@@ -537,14 +534,6 @@ end
 #                                     Text                                     #
 ################################################################################
 
-function p3_to_p2(p::Point3{T}) where T
-    if p[3] == 0 || isnan(p[3])
-        Point2{T}(p[Vec(1,2)]...)
-    else
-        error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
-    end
-end
-
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
@@ -692,14 +681,6 @@ function regularly_spaced_array_to_range(arr)
 end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
-
-function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
-    map(premultiplied_rgba, a)
-end
-premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
-
-premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
-premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
 
 # function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
 #     ctx = screen.context
@@ -975,8 +956,6 @@ function average_z(positions, face)
     vs = positions[face]
     sum(v -> v[3], vs) / length(vs)
 end
-
-nan2zero(x) = !isnan(x) * x
 
 function strip_translation(M::Mat4{T}) where {T}
     return @inbounds Mat4{T}(

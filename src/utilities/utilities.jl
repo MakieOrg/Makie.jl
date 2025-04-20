@@ -483,9 +483,16 @@ function extract_keys(attributes, keys)
 end
 
 # Scalar - Vector getindex
-sv_getindex(v::AbstractVector, i::Integer) = v[i]
+"""
+    sv_getindex(x, index)
+
+Returns `x[i]` if x is a `AbstractArray` and `x` otherwise. `VecTypes` and `Mat`
+are treated as values rather than Arrays for this, i.e. they do not get indexed.
+"""
+sv_getindex(v::AbstractArray, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+sv_getindex(x::Mat, ::Integer) = x
 
 # TODO: move to GeometryBasics
 function corners(rect::Rect2{T}) where T

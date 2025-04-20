@@ -531,6 +531,11 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
+premultiplied_rgba(a::AbstractArray{<:ColorAlpha}) = map(premultiplied_rgba, a)
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 # handle patterns
