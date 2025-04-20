@@ -44,6 +44,23 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
     return plot.cairo_colors[]
 end
 
+function cairo_project_to_screen_impl(scene, space, model, pos, output_type = Point2f, yflip = true)
+    # the existing methods include f32convert matrices which are already
+    # applied in :positions_transformed_f32c (using this makes CairoMakie
+    # less performant (extra O(N) step) but allows code reuse with other backends)
+    M = Makie.space_to_clip(scene.camera, space) * model
+    M = cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+    return project_position(output_type, M, pos, eachindex(pos))
+end
+
+function cairo_project_to_screen_impl(scene, space, model, pos::VecTypes, output_type = Point2f, yflip = true)
+    p4d = to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
+    p4d = model * p4d
+    p4d = Makie.space_to_clip(scene.camera, space) * p4d
+    p4d = cairo_viewport_matrix(scene.camera.resolution[], yflip) * p4d
+    return output_type(p4d) / p4d[4]
+end
+
 function cairo_project_to_screen(
         scene::Scene, @nospecialize(plot::Plot);
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
@@ -55,13 +72,7 @@ function cairo_project_to_screen(
             [input_name, :space, :model_f32c], [:cairo_screen_pos]
         ) do (pos, space, model), changed, cached
 
-        # the existing methods include f32convert matrices which are already
-        # applied in :positions_transformed_f32c (using this makes CairoMakie
-        # less performant (extra O(N) step) but allows code reuse with other backends)
-        M = Makie.space_to_clip(scene.camera, space) * model
-        M = cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
-
-        output = project_position(output_type, M, pos, eachindex(pos))
+        output = cairo_project_to_screen_impl(scene, space, model, pos, output_type, yflip)
         return (output,)
     end
 
@@ -279,40 +290,42 @@ end
 #                                Heatmap, Image                                #
 ################################################################################
 
+#=
+Image:
+- positions_transformed_f32c are rect vertices
+Heatmap:
+- nope
+- heatmap transform adds x_transformed_f32c, y_transformed_f32c
+=#
+
+function image_grid(@nospecialize(primitive::Heatmap))
+    Makie.add_computation!(primitive.args[1], nothing, Val(:heatmap_transform))
+    xs = regularly_spaced_array_to_range(primitive.x_transformed_f32c[])
+    ys = regularly_spaced_array_to_range(primitive.y_transformed_f32c[])
+    return xs, ys
+end
+function image_grid(@nospecialize(primitive::Image))
+    # Rect vertices
+    (x0, y0), _, (x1, y1), _ = primitive.positions_transformed_f32c[]
+    image = primitive.image[]
+    xs = range(x0, x1, length = size(image, 1) + 1)
+    ys = range(y0, y1, length = size(image, 2) + 1)
+    return xs, ys
+end
+
 
 # Note: Changed very little here
 function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
+    @get_attribute(primitive, (interpolate, space, image))
     ctx = screen.context
 
-    xs = primitive.x[]
-    ys = primitive.y[]
-    image = primitive.image[]
-
-    if xs isa Makie.EndPoints
-        l, r = xs
-        N = size(image, 1)
-        xs = range(l, r, length = N+1)
-    else
-        xs = regularly_spaced_array_to_range(xs)
-    end
-
-    if ys isa Makie.EndPoints
-        l, r = ys
-        N = size(image, 2)
-        ys = range(l, r, length = N+1)
-    else
-        ys = regularly_spaced_array_to_range(ys)
-    end
-
-    # TODO: heatmap doesn't handle f32c etc
-    model = primitive.model[]::Mat4d
-    interpolate = primitive.interpolate[]
+    xs, ys = image_grid(primitive)
+    model = primitive.model_f32c[]
 
     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
     is_vector = is_vector_backend(ctx)
-    t = Makie.transform_func(primitive)
-    is_identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) &&
-        Makie.is_translation_scale_matrix(model)
+    # transform_func is already included in xs, ys, so we can see its effect in is_regular_grid
+    is_identity_transform = Makie.is_translation_scale_matrix(model)
     is_regular_grid = xs isa AbstractRange && ys isa AbstractRange
     is_xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
 
@@ -325,21 +338,16 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         end
     end
 
-    # TODO: Can we generalize this/reuse from other backends?
-    #       - image could use `xy, xymax = cairo_screen_pos()[[1, 3]]`
-    #       - heatmap doesn't apply f32c, transform_func, and also handles points
-    #         differently...
-    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
-    space = primitive.space[]
-    xy = project_position(primitive, space, Point2(first.(imsize)), model)
-    xymax = project_position(primitive, space, Point2(last.(imsize)), model)
+
+    xy    = cairo_project_to_screen_impl(scene, space, model, Point2(first(xs), first(ys)))
+    xymax = cairo_project_to_screen_impl(scene, space, model, Point2(last(xs), last(ys)))
+
     w, h = xymax .- xy
 
     uv_transform = if primitive isa Image
-        val = to_value(get(primitive, :uv_transform, I))
-        T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
+        T = primitive.uv_transform[]
         # Cairo uses pixel units so we need to transform those to a 0..1 range,
         # then apply uv_transform, then scale them back to pixel units.
         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
@@ -390,10 +398,10 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         # this already takes care of flipping the image to correct cairo orientation
         space = primitive.space[]
         xys = let
-            ps = [Point2(x, y) for x in xs, y in ys]
-            transformed = apply_transform(transform_func(primitive), ps)
-            T = eltype(transformed)
+            transformed = [Point2(x, y) for x in xs, y in ys]
 
+            # This should transform to the coordinate system transformed is in,
+            # which is pre model_f32c application, not pre model application
             planes = if Makie.is_data_space(space)
                 to_model_space(model, primitive.clip_planes[])
             else
@@ -406,7 +414,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
                 end
             end
 
-            _project_position(scene, space, transformed, model, true)
+            cairo_project_to_screen_impl(scene, space, model, transformed)
         end
 
         # Note: xs and ys should have size ni+1, nj+1
