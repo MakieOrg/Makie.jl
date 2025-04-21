@@ -106,7 +106,7 @@ end
     Makie.Axis3(f)
     Makie.Colorbar(f)
     Makie.Button(f)
-    # Makie.Menu(f, options=["one"])
+    Makie.Menu(f, options=["one"])
     Makie.SliderGrid(f, (label = "Label", range = 0:1:2, startvalue = 1))
     f
 end
