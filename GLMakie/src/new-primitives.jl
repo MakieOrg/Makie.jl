@@ -39,7 +39,7 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         gl_name = get(gl_names, name, name)
         if name === :visible
             robj.visible = value
-        elseif gl_name === :indices
+        elseif gl_name === :indices || gl_name === :faces
             if robj.vertexarray.indices isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.vertexarray.indices, value)
             else
