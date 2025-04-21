@@ -158,9 +158,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     end
 end
 
-function register_position_transforms!(attr)
-    haskey(attr.outputs, :positions) || return
-    register_computation!(attr, [:positions, :transform_func],
+function register_position_transforms!(attr, input_name = :positions)
+    haskey(attr.outputs, input_name) || return
+    register_computation!(attr, [input_name, :transform_func],
                         [:positions_transformed]) do (positions, func), changed, last
         return (apply_transform(func, positions),)
     end
@@ -205,6 +205,14 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args.
     inputs = _register_input_arguments!(P, attr, input_args)
     _register_expand_arguments!(P, attr, inputs)
     _register_argument_conversions!(P, attr, user_kw)
+    # TODO:
+    # - :positions may not be compatible with all primitive plot types
+    #   probably need specialization, e.g. for heatmap, image, surface
+    # - recipe plots may want this too for boundingbox
+    if P <: PrimitivePlotTypes
+        register_position_transforms!(attr)
+    end
+    return
 end
 
 function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
@@ -294,13 +302,6 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
     add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
 
-    # TODO:
-    # - :positions may not be compatible with all primitive plot types
-    #   probably need specialization, e.g. for heatmap, image, surface
-    # - recipe plots may want this too for boundingbox
-    if P <: PrimitivePlotTypes
-        register_position_transforms!(attr)
-    end
     return
 end
 

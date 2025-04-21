@@ -51,6 +51,11 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
 
+    # # remap positions to be per glyph first
+    # @assert !haskey(attr, :positions_transformed_f32c)
+    # or don't because it generates quite a few redundant transform and f32c applications
+    register_position_transforms!(attr)
+
     return
 end
 
@@ -135,22 +140,25 @@ end
 
 function register_quad_computations!(attr, atlas_res=1024, atlas_ppg=32)
     if haskey(attr, :atlas)
-        @error("Overwriting the texture atlas probably doesn't work")
+        @error("Overwriting the texture atlas probably doesn't work", maxlog = 1)
     else
         register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
             (get_texture_atlas(atlas_res, atlas_ppg),)
         end
     end
     inputs = [:atlas, :positions_transformed_f32c, :glyph_collections, :offset]
-    outputs = [:gl_position, :gl_marker_offset, :gl_quad_offset, :gl_uv_offset_width, :gl_scale]
+    # partially matched with scatter in WGLMakie
+    outputs = [:gl_position, :marker_offset, :quad_offset, :sdf_uv, :quad_scale]
     register_computation!(compute_text_attributes, attr, inputs, outputs)
 
+    # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
     register_computation!(per_glyph_data, attr, [:glyph_collections], [:gl_color, :gl_stroke_color, :gl_rotation])
 
+    # Constants
+    register_computation!((args...) -> (Cint(DISTANCEFIELD), ), attr, Symbol[], [:sdf_marker_shape])
+
     # TODO:
-    # This is the bulk of draw_atomic
-    # just need to sort out the naming and deal with preprojection
-    # and add_f32c_scale I guess
+    # f32c_scale
 
     return
 end
