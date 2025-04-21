@@ -177,9 +177,6 @@ function draw_single(primitive::LineSegments, ctx, positions)
     Cairo.new_path(ctx)
 end
 
-# getindex if array, otherwise just return value
-using Makie: sv_getindex
-
 function draw_multi(primitive::LineSegments, ctx, positions, colors, linewidths, dash)
     @assert iseven(length(positions))
 
@@ -537,14 +534,6 @@ end
 #                                     Text                                     #
 ################################################################################
 
-function p3_to_p2(p::Point3{T}) where T
-    if p[3] == 0 || isnan(p[3])
-        Point2{T}(p[Vec(1,2)]...)
-    else
-        error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
-    end
-end
-
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
     ctx = screen.context
     @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
@@ -693,139 +682,131 @@ end
 
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
-function premultiplied_rgba(a::AbstractArray{<:ColorAlpha})
-    map(premultiplied_rgba, a)
-end
-premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+# function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
+#     ctx = screen.context
+#     image = primitive[3][]
+#     xs, ys = primitive[1][], primitive[2][]
+#     if xs isa Makie.EndPoints
+#         l, r = xs
+#         N = size(image, 1)
+#         xs = range(l, r, length = N+1)
+#     else
+#         xs = regularly_spaced_array_to_range(xs)
+#     end
+#     if ys isa Makie.EndPoints
+#         l, r = ys
+#         N = size(image, 2)
+#         ys = range(l, r, length = N+1)
+#     else
+#         ys = regularly_spaced_array_to_range(ys)
+#     end
+#     model = primitive.model[]::Mat4d
+#     interpolate = to_value(primitive.interpolate)
 
-premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
-premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+#     # Debug attribute we can set to disable fastpath
+#     # probably shouldn't really be part of the interface
+#     fast_path = to_value(get(primitive, :fast_path, true))
+#     disable_fast_path = !fast_path
+#     # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
+#     is_vector = is_vector_backend(ctx)
+#     t = Makie.transform_func(primitive)
+#     identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
+#     regular_grid = xs isa AbstractRange && ys isa AbstractRange
+#     xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
 
-function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
-    ctx = screen.context
-    image = primitive[3][]
-    xs, ys = primitive[1][], primitive[2][]
-    if xs isa Makie.EndPoints
-        l, r = xs
-        N = size(image, 1)
-        xs = range(l, r, length = N+1)
-    else
-        xs = regularly_spaced_array_to_range(xs)
-    end
-    if ys isa Makie.EndPoints
-        l, r = ys
-        N = size(image, 2)
-        ys = range(l, r, length = N+1)
-    else
-        ys = regularly_spaced_array_to_range(ys)
-    end
-    model = primitive.model[]::Mat4d
-    interpolate = to_value(primitive.interpolate)
+#     if interpolate
+#         if !regular_grid
+#             error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
+#         end
+#         if !identity_transform
+#             error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
+#         end
+#     end
 
-    # Debug attribute we can set to disable fastpath
-    # probably shouldn't really be part of the interface
-    fast_path = to_value(get(primitive, :fast_path, true))
-    disable_fast_path = !fast_path
-    # Vector backends don't support FILTER_NEAREST for interp == false, so in that case we also need to draw rects
-    is_vector = is_vector_backend(ctx)
-    t = Makie.transform_func(primitive)
-    identity_transform = (t === identity || t isa Tuple && all(x-> x === identity, t)) && (abs(model[1, 2]) < 1e-15)
-    regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
+#     imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
+#     # find projected image corners
+#     # this already takes care of flipping the image to correct cairo orientation
+#     space = primitive.space[]
+#     xy = project_position(primitive, space, Point2(first.(imsize)), model)
+#     xymax = project_position(primitive, space, Point2(last.(imsize)), model)
+#     w, h = xymax .- xy
 
-    if interpolate
-        if !regular_grid
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-regular grid is not supported right now.")
-        end
-        if !identity_transform
-            error("$(typeof(primitive).parameters[1]) with interpolate = true with a non-identity transform is not supported right now.")
-        end
-    end
+#     uv_transform = if primitive isa Image
+#         val = to_value(get(primitive, :uv_transform, I))
+#         T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
+#         # Cairo uses pixel units so we need to transform those to a 0..1 range,
+#         # then apply uv_transform, then scale them back to pixel units.
+#         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
+#         # invert y.
+#         T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
+#         T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
+#             Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
+#         T3[Vec(1, 2), Vec(1,2,3)]
+#     else
+#         Mat{2, 3, Float32}(1,0,0,1,0,0)
+#     end
 
-    imsize = ((first(xs), last(xs)), (first(ys), last(ys)))
-    # find projected image corners
-    # this already takes care of flipping the image to correct cairo orientation
-    space = primitive.space[]
-    xy = project_position(primitive, space, Point2(first.(imsize)), model)
-    xymax = project_position(primitive, space, Point2(last.(imsize)), model)
-    w, h = xymax .- xy
+#     can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
+#         (interpolate || xy_aligned) && isempty(primitive.clip_planes[])
+#     use_fast_path = can_use_fast_path && !disable_fast_path
 
-    uv_transform = if primitive isa Image
-        val = to_value(get(primitive, :uv_transform, I))
-        T = Makie.convert_attribute(val, Makie.key"uv_transform"(), Makie.key"image"())
-        # Cairo uses pixel units so we need to transform those to a 0..1 range,
-        # then apply uv_transform, then scale them back to pixel units.
-        # Cairo also doesn't have the yflip we have in OpenGL, so we need to
-        # invert y.
-        T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
-        T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
-            Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
-        T3[Vec(1, 2), Vec(1,2,3)]
-    else
-        Mat{2, 3, Float32}(1,0,0,1,0,0)
-    end
+#     if use_fast_path
+#         s = to_cairo_image(to_color(primitive.calculated_colors[]))
 
-    can_use_fast_path = !(is_vector && !interpolate) && regular_grid && identity_transform &&
-        (interpolate || xy_aligned) && isempty(primitive.clip_planes[])
-    use_fast_path = can_use_fast_path && !disable_fast_path
+#         weird_cairo_limit = (2^15) - 23
+#         if s.width > weird_cairo_limit || s.height > weird_cairo_limit
+#             error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with heatmap(Resampler(data)).")
+#         end
+#         Cairo.rectangle(ctx, xy..., w, h)
+#         Cairo.save(ctx)
+#         Cairo.translate(ctx, xy...)
+#         Cairo.scale(ctx, w / s.width, h / s.height)
+#         Cairo.set_source_surface(ctx, s, 0, 0)
+#         p = Cairo.get_source(ctx)
+#         if RT !== SVG
+#             # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
+#             # setting seems to create broken SVGs
+#             Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
+#         end
+#         filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
+#         Cairo.pattern_set_filter(p, filt)
+#         pattern_set_matrix(p, Cairo.CairoMatrix(uv_transform...))
+#         Cairo.fill(ctx)
+#         Cairo.restore(ctx)
+#         pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+#     else
+#         # find projected image corners
+#         # this already takes care of flipping the image to correct cairo orientation
+#         space = primitive.space[]
+#         xys = let
+#             ps = [Point2(x, y) for x in xs, y in ys]
+#             transformed = apply_transform(transform_func(primitive), ps)
+#             T = eltype(transformed)
 
-    if use_fast_path
-        s = to_cairo_image(to_color(primitive.calculated_colors[]))
+#             planes = if Makie.is_data_space(space)
+#                 to_model_space(model, primitive.clip_planes[])
+#             else
+#                 Plane3f[]
+#             end
 
-        weird_cairo_limit = (2^15) - 23
-        if s.width > weird_cairo_limit || s.height > weird_cairo_limit
-            error("Cairo stops rendering images bigger than $(weird_cairo_limit), which is likely a bug in Cairo. Please resample your image/heatmap with heatmap(Resampler(data)).")
-        end
-        Cairo.rectangle(ctx, xy..., w, h)
-        Cairo.save(ctx)
-        Cairo.translate(ctx, xy...)
-        Cairo.scale(ctx, w / s.width, h / s.height)
-        Cairo.set_source_surface(ctx, s, 0, 0)
-        p = Cairo.get_source(ctx)
-        if RT !== SVG
-            # this is needed to avoid blurry edges in png renderings, however since Cairo 1.18 this
-            # setting seems to create broken SVGs
-            Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
-        end
-        filt = interpolate ? Cairo.FILTER_BILINEAR : Cairo.FILTER_NEAREST
-        Cairo.pattern_set_filter(p, filt)
-        pattern_set_matrix(p, Cairo.CairoMatrix(uv_transform...))
-        Cairo.fill(ctx)
-        Cairo.restore(ctx)
-        pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
-    else
-        # find projected image corners
-        # this already takes care of flipping the image to correct cairo orientation
-        space = primitive.space[]
-        xys = let
-            ps = [Point2(x, y) for x in xs, y in ys]
-            transformed = apply_transform(transform_func(primitive), ps)
-            T = eltype(transformed)
+#             for i in eachindex(transformed)
+#                 if is_clipped(planes, transformed[i])
+#                     transformed[i] = T(NaN)
+#                 end
+#             end
 
-            planes = if Makie.is_data_space(space)
-                to_model_space(model, primitive.clip_planes[])
-            else
-                Plane3f[]
-            end
+#             _project_position(scene, space, transformed, model, true)
+#         end
+#         colors = to_color(primitive.calculated_colors[])
 
-            for i in eachindex(transformed)
-                if is_clipped(planes, transformed[i])
-                    transformed[i] = T(NaN)
-                end
-            end
-
-            _project_position(scene, space, transformed, model, true)
-        end
-        colors = to_color(primitive.calculated_colors[])
-
-        # Note: xs and ys should have size ni+1, nj+1
-        ni, nj = size(image)
-        if ni + 1 != length(xs) || nj + 1 != length(ys)
-            error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
-        end
-        _draw_rect_heatmap(ctx, xys, ni, nj, colors)
-    end
-end
+#         # Note: xs and ys should have size ni+1, nj+1
+#         ni, nj = size(image)
+#         if ni + 1 != length(xs) || nj + 1 != length(ys)
+#             error("Error in conversion pipeline. xs and ys should have size ni+1, nj+1. Found: xs: $(length(xs)), ys: $(length(ys)), ni: $(ni), nj: $(nj)")
+#         end
+#         _draw_rect_heatmap(ctx, xys, ni, nj, colors)
+#     end
+# end
 
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
     @inbounds for i in 1:ni, j in 1:nj
@@ -873,39 +854,39 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
-    mesh = primitive[1][]
-    if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive, mesh)
-    else
-        if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Observable(-10)
-        end
-        uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
-        draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
-    end
-    return nothing
-end
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Mesh))
+#     mesh = primitive[1][]
+#     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
+#         draw_mesh2D(scene, screen, primitive, mesh)
+#     else
+#         if !haskey(primitive, :faceculling)
+#             primitive[:faceculling] = Observable(-10)
+#         end
+#         uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+#         draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
+#     end
+#     return nothing
+# end
 
-function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
-    space = plot.space[]::Symbol
-    transform_func = Makie.transform_func(plot)
-    model = plot.model[]::Mat4d
-    vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
-    fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
-    # Note: This assume the function is only called from mesh plots
-    uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
-    if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
-    end
-    color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
-    cols = per_face_colors(color, nothing, fs, nothing, uv)
-    if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, model)
-    end
-    return draw_mesh2D(screen, cols, vs, fs)
-end
+# function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh), @nospecialize(mesh::GeometryBasics.Mesh))
+#     space = plot.space[]::Symbol
+#     transform_func = Makie.transform_func(plot)
+#     model = plot.model[]::Mat4d
+#     vs = project_position(scene, transform_func, space, GeometryBasics.coordinates(mesh), model)::Vector{Point2f}
+#     fs = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+#     uv = decompose_uv(mesh)::Union{Nothing, Vector{Vec2f}}
+#     # Note: This assume the function is only called from mesh plots
+#     uv_transform = Makie.convert_attribute(plot[:uv_transform][], Makie.key"uv_transform"(), Makie.key"mesh"())
+#     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+#         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+#     end
+#     color = hasproperty(mesh, :color) ? to_color(mesh.color) : plot.calculated_colors[]
+#     cols = per_face_colors(color, nothing, fs, nothing, uv)
+#     if cols isa Cairo.CairoPattern
+#         align_pattern(cols, scene, model)
+#     end
+#     return draw_mesh2D(screen, cols, vs, fs)
+# end
 
 function draw_mesh2D(screen, color, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
@@ -976,8 +957,6 @@ function average_z(positions, face)
     sum(v -> v[3], vs) / length(vs)
 end
 
-nan2zero(x) = !isnan(x) * x
-
 function strip_translation(M::Mat4{T}) where {T}
     return @inbounds Mat4{T}(
         M[1], M[2], M[3], M[4],
@@ -987,173 +966,173 @@ function strip_translation(M::Mat4{T}) where {T}
     )
 end
 
-function draw_mesh3D(
-        scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
-        uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
-    )
-    @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
+# function draw_mesh3D(
+#         scene, screen, attributes, mesh; pos = Vec3d(0), scale = 1.0, rotation = Mat4d(I),
+#         uv_transform = Mat{2, 3, Float32}(1,0,0,1,0,0)
+#     )
+#     @get_attribute(attributes, (shading, diffuse, specular, shininess, faceculling, clip_planes))
 
-    matcap = to_value(get(attributes, :matcap, nothing))
-    transform_marker = to_value(get(attributes, :transform_marker, true))
-    meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
-    meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
-    meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
-    _meshuvs = texturecoordinates(mesh)
-    if (_meshuvs isa AbstractVector{<:Vec3})
-        error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
-    end
-    meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
+#     matcap = to_value(get(attributes, :matcap, nothing))
+#     transform_marker = to_value(get(attributes, :transform_marker, true))
+#     meshpoints = decompose(Point3f, mesh)::Vector{Point3f}
+#     meshfaces = decompose(GLTriangleFace, mesh)::Vector{GLTriangleFace}
+#     meshnormals = normals(mesh)::Union{Nothing, Vector{Vec3f}} # note: can be made NaN-aware.
+#     _meshuvs = texturecoordinates(mesh)
+#     if (_meshuvs isa AbstractVector{<:Vec3})
+#         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
+#     end
+#     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
-    if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
-    end
+#     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
+#         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
+#     end
 
-    # Prioritize colors of the mesh if present
-    color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
-    per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
+#     # Prioritize colors of the mesh if present
+#     color = hasproperty(mesh, :color) ? mesh.color : to_value(attributes.calculated_colors)
+#     per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
 
-    model = attributes.model[]::Mat4d
-    space = to_value(get(attributes, :space, :data))::Symbol
+#     model = attributes.model[]::Mat4d
+#     space = to_value(get(attributes, :space, :data))::Symbol
 
-    if per_face_col isa Cairo.CairoPattern
-        align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
-    end
+#     if per_face_col isa Cairo.CairoPattern
+#         align_pattern(per_face_col, scene, Makie.f32_convert_matrix(scene.float32convert, space) * model)
+#     end
 
-    if haskey(attributes, :transform_marker)
-        # meshscatter/voxels route:
-        # - transform_func does not apply to vertices (only pos)
-        # - only scaling from float32convert applies to vertices
-        #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
-        # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
-        transform_marker = attributes[:transform_marker][]::Bool
-        f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
-        if !isnothing(scene.float32convert) && Makie.is_data_space(space)
-            f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
-        end
-    else
-        # mesh/surface path
-        # - transform_func applies to vertices here
-        # - full float32convert applies to vertices
-        # f32c * model * vertices = f32c_model * vertices
-        transform_marker = true
-        meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
-        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
-    end
+#     if haskey(attributes, :transform_marker)
+#         # meshscatter/voxels route:
+#         # - transform_func does not apply to vertices (only pos)
+#         # - only scaling from float32convert applies to vertices
+#         #   f32c_scale * (model) * rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
+#         # = f32c_model * rotation * scale * vertices  +  pos   (see draw_atomic(meshscatter))
+#         transform_marker = attributes[:transform_marker][]::Bool
+#         f32c_model = transform_marker ? strip_translation(model) : Mat4d(I)
+#         if !isnothing(scene.float32convert) && Makie.is_data_space(space)
+#             f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
+#         end
+#     else
+#         # mesh/surface path
+#         # - transform_func applies to vertices here
+#         # - full float32convert applies to vertices
+#         # f32c * model * vertices = f32c_model * vertices
+#         transform_marker = true
+#         meshpoints = apply_transform(Makie.transform_func(attributes), meshpoints)
+#         f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * model
+#     end
 
-    # TODO: assume Symbol here after this has been deprecated for a while
-    if shading isa Bool
-        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
-        shading_bool = shading
-    else
-        shading_bool = shading != NoShading
-    end
+#     # TODO: assume Symbol here after this has been deprecated for a while
+#     if shading isa Bool
+#         @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
+#         shading_bool = shading
+#     else
+#         shading_bool = shading != NoShading
+#     end
 
-    if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
-        meshnormals .= -meshnormals
-    end
+#     if !isnothing(meshnormals) && to_value(get(attributes, :invert_normals, false))
+#         meshnormals .= -meshnormals
+#     end
 
-    draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
-        pos, scale, rotation,
-        f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
-    )
-end
+#     draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
+#         pos, scale, rotation,
+#         f32c_model::Mat4d, shading_bool::Bool, diffuse::Vec3f,
+#         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
+#     )
+# end
 
-function draw_mesh3D(
-        scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
-        pos, scale, rotation,
-        f32c_model, shading, diffuse,
-        specular, shininess, faceculling, clip_planes
-    )
-    ctx = screen.context
-    projectionview = Makie.space_to_clip(scene.camera, space, true)
-    eyeposition = scene.camera.eyeposition[]
+# function draw_mesh3D(
+#         scene, screen, space, meshpoints, meshfaces, meshnormals, per_face_col,
+#         pos, scale, rotation,
+#         f32c_model, shading, diffuse,
+#         specular, shininess, faceculling, clip_planes
+#     )
+#     ctx = screen.context
+#     projectionview = Makie.space_to_clip(scene.camera, space, true)
+#     eyeposition = scene.camera.eyeposition[]
 
-    # local_model applies rotation and markersize from meshscatter to vertices
-    i = Vec(1, 2, 3)
-    local_model = rotation * Makie.scalematrix(Vec3d(scale))
-    normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
+#     # local_model applies rotation and markersize from meshscatter to vertices
+#     i = Vec(1, 2, 3)
+#     local_model = rotation * Makie.scalematrix(Vec3d(scale))
+#     normalmatrix = transpose(inv(f32c_model[i, i] * local_model[i, i])) # see issue #3702
 
-    # mesh, surface:        apply f32convert and model to vertices
-    # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
-    # (see previous function)
-    vs = broadcast(meshpoints) do v
-        # Should v get a nan2zero?
-        p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
-        p4d = f32c_model * local_model * p4d
-        return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
-    end
+#     # mesh, surface:        apply f32convert and model to vertices
+#     # meshscatter, voxels:  apply f32 scale, maybe model, rotation, markersize, positions to vertices
+#     # (see previous function)
+#     vs = broadcast(meshpoints) do v
+#         # Should v get a nan2zero?
+#         p4d = to_ndim(Vec4d, to_ndim(Vec3d, v, 0), 1)
+#         p4d = f32c_model * local_model * p4d
+#         return to_ndim(Vec4f, p4d .+ to_ndim(Vec4d, pos, 0), NaN32)
+#     end
 
-    if Makie.is_data_space(space) && !isempty(clip_planes)
-        valid = Bool[is_visible(clip_planes, p) for p in vs]
-    else
-        valid = Bool[]
-    end
+#     if Makie.is_data_space(space) && !isempty(clip_planes)
+#         valid = Bool[is_visible(clip_planes, p) for p in vs]
+#     else
+#         valid = Bool[]
+#     end
 
-    # Camera to screen space
-    transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
-    ts = project_position(Point3f, transform, vs, eachindex(vs))
+#     # Camera to screen space
+#     transform = cairo_viewport_matrix(scene.camera.resolution[]) * projectionview
+#     ts = project_position(Point3f, transform, vs, eachindex(vs))
 
-    # Approximate zorder
-    average_zs = map(f -> average_z(ts, f), meshfaces)
-    zorder = sortperm(average_zs)
+#     # Approximate zorder
+#     average_zs = map(f -> average_z(ts, f), meshfaces)
+#     zorder = sortperm(average_zs)
 
-    if isnothing(meshnormals)
-        ns = nothing
-    else
-        ns = map(n -> normalize(normalmatrix * n), meshnormals)
-    end
+#     if isnothing(meshnormals)
+#         ns = nothing
+#     else
+#         ns = map(n -> normalize(normalmatrix * n), meshnormals)
+#     end
 
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
-    end
+#     # Face culling
+#     if isempty(valid) && !isnothing(ns)
+#         zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
+#     elseif !isempty(valid)
+#         zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
+#     else
+#         # no clipped faces, no normals to rely on for culling -> do nothing
+#     end
 
-    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
-    # as a color. In this case we don't do shading and fall back to mesh2D
-    # rendering
-    if per_face_col isa Cairo.CairoPattern
-        return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
-    end
+#     # If per_face_col is a CairoPattern the plot is using an AbstractPattern
+#     # as a color. In this case we don't do shading and fall back to mesh2D
+#     # rendering
+#     if per_face_col isa Cairo.CairoPattern
+#         return draw_mesh2D(ctx, per_face_col, ts, meshfaces, reverse(zorder))
+#     end
 
 
-    # Light math happens in view/camera space
-    dirlight = Makie.get_directional_light(scene)
-    if !isnothing(dirlight)
-        lightdirection = if dirlight.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            normalize(T * dirlight.direction[])
-        else
-            normalize(dirlight.direction[])
-        end
-        c = dirlight.color[]
-        light_color = Vec3f(red(c), green(c), blue(c))
-    else
-        lightdirection = Vec3f(0,0,-1)
-        light_color = Vec3f(0)
-    end
+#     # Light math happens in view/camera space
+#     dirlight = Makie.get_directional_light(scene)
+#     if !isnothing(dirlight)
+#         lightdirection = if dirlight.camera_relative
+#             T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+#             normalize(T * dirlight.direction[])
+#         else
+#             normalize(dirlight.direction[])
+#         end
+#         c = dirlight.color[]
+#         light_color = Vec3f(red(c), green(c), blue(c))
+#     else
+#         lightdirection = Vec3f(0,0,-1)
+#         light_color = Vec3f(0)
+#     end
 
-    ambientlight = Makie.get_ambient_light(scene)
-    ambient = if !isnothing(ambientlight)
-        c = ambientlight.color[]
-        Vec3f(c.r, c.g, c.b)
-    else
-        Vec3f(0)
-    end
+#     ambientlight = Makie.get_ambient_light(scene)
+#     ambient = if !isnothing(ambientlight)
+#         c = ambientlight.color[]
+#         Vec3f(c.r, c.g, c.b)
+#     else
+#         Vec3f(0)
+#     end
 
-    # vs are used as camdir (camera to vertex) for light calculation (in world space)
-    vs = map(v -> normalize(v[i] - eyeposition), vs)
+#     # vs are used as camdir (camera to vertex) for light calculation (in world space)
+#     vs = map(v -> normalize(v[i] - eyeposition), vs)
 
-    draw_pattern(
-        ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
-        lightdirection, light_color, shininess, diffuse, ambient, specular)
-    return
-end
+#     draw_pattern(
+#         ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
+#         lightdirection, light_color, shininess, diffuse, ambient, specular)
+#     return
+# end
 
 function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
     L = lightdir
@@ -1228,28 +1207,28 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    # Pretend the surface plot is a mesh plot and plot that instead
-    mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
-    old = primitive[:color]
-    if old[] === nothing
-        primitive[:color] = primitive[3]
-    end
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Observable(-10)
-    end
-    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
-    draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
-    primitive[:color] = old
-    return nothing
-end
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
+#     # Pretend the surface plot is a mesh plot and plot that instead
+#     mesh = Makie.surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+#     old = primitive[:color]
+#     if old[] === nothing
+#         primitive[:color] = primitive[3]
+#     end
+#     if !haskey(primitive, :faceculling)
+#         primitive[:faceculling] = Observable(-10)
+#     end
+#     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"surface"())
+#     draw_mesh3D(scene, screen, primitive, mesh; uv_transform = uv_transform)
+#     primitive[:color] = old
+#     return nothing
+# end
 
 
 ################################################################################
 #                                 MeshScatter                                  #
 ################################################################################
 
-
+# Still used for voxels
 function _transform_to_world(scene::Scene, @nospecialize(plot), pos)
     space = plot.space[]::Symbol
     model = plot.model[]::Mat4d
@@ -1267,51 +1246,51 @@ function _transform_to_world(f32_model, tf, pos)
     end
 end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (model, marker, markersize, rotation))
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
+#     @get_attribute(primitive, (model, marker, markersize, rotation))
 
-    # We combine vertices and positions in world space. Here we do the
-    # transformation to world space
-    transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
+#     # We combine vertices and positions in world space. Here we do the
+#     # transformation to world space
+#     transformed_pos = _transform_to_world(scene, primitive, primitive[1][])
 
-    # For correct z-ordering we need to be in view/camera or screen space
-    view = scene.camera.view[]
-    zorder = sortperm(transformed_pos, by = p -> begin
-        p4d = to_ndim(Vec4d, p, 1)
-        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
-        cam_pos[1] / cam_pos[2]
-    end, rev=false)
+#     # For correct z-ordering we need to be in view/camera or screen space
+#     view = scene.camera.view[]
+#     zorder = sortperm(transformed_pos, by = p -> begin
+#         p4d = to_ndim(Vec4d, p, 1)
+#         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+#         cam_pos[1] / cam_pos[2]
+#     end, rev=false)
 
-    color = to_color(primitive.calculated_colors[])
-    submesh = Attributes(
-        model = model,
-        calculated_colors = color,
-        shading = primitive.shading, diffuse = primitive.diffuse,
-        specular = primitive.specular, shininess = primitive.shininess,
-        faceculling = get(primitive, :faceculling, -10),
-        transformation = Makie.transformation(primitive),
-        clip_planes = primitive.clip_planes,
-        transform_marker = primitive.transform_marker
-    )
+#     color = to_color(primitive.calculated_colors[])
+#     submesh = Attributes(
+#         model = model,
+#         calculated_colors = color,
+#         shading = primitive.shading, diffuse = primitive.diffuse,
+#         specular = primitive.specular, shininess = primitive.shininess,
+#         faceculling = get(primitive, :faceculling, -10),
+#         transformation = Makie.transformation(primitive),
+#         clip_planes = primitive.clip_planes,
+#         transform_marker = primitive.transform_marker
+#     )
 
-    uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
-    for i in zorder
-        if color isa AbstractVector
-            submesh[:calculated_colors] = color[i]
-        end
-        scale = markersize isa Vector ? markersize[i] : markersize
-        _rotation = Makie.rotationmatrix4(to_rotation(Makie.sv_getindex(rotation, i)))
-        _uv_transform = Makie.sv_getindex(uv_transform, i)
+#     uv_transform = Makie.convert_attribute(primitive[:uv_transform][], Makie.key"uv_transform"(), Makie.key"meshscatter"())
+#     for i in zorder
+#         if color isa AbstractVector
+#             submesh[:calculated_colors] = color[i]
+#         end
+#         scale = markersize isa Vector ? markersize[i] : markersize
+#         _rotation = Makie.rotationmatrix4(to_rotation(Makie.sv_getindex(rotation, i)))
+#         _uv_transform = Makie.sv_getindex(uv_transform, i)
 
-        draw_mesh3D(
-            scene, screen, submesh, marker, pos = transformed_pos[i],
-            scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
-            rotation = _rotation, uv_transform = _uv_transform
-        )
-    end
+#         draw_mesh3D(
+#             scene, screen, submesh, marker, pos = transformed_pos[i],
+#             scale = scale isa Real ? Vec3f(scale) : to_ndim(Vec3f, scale, 1f0),
+#             rotation = _rotation, uv_transform = _uv_transform
+#         )
+#     end
 
-    return nothing
-end
+#     return nothing
+# end
 
 
 
@@ -1320,44 +1299,44 @@ end
 ################################################################################
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
-    pos = Makie.voxel_positions(primitive)
-    scale = Makie.voxel_size(primitive)
-    colors = Makie.voxel_colors(primitive)
-    marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
+#     pos = Makie.voxel_positions(primitive)
+#     scale = Makie.voxel_size(primitive)
+#     colors = Makie.voxel_colors(primitive)
+#     marker = GeometryBasics.expand_faceviews(normal_mesh(Rect3f(Point3f(-0.5), Vec3f(1))))
 
-    # transformation to world space
-    transformed_pos = _transform_to_world(scene, primitive, pos)
+#     # transformation to world space
+#     transformed_pos = _transform_to_world(scene, primitive, pos)
 
-    # Face culling
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
-        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
-        transformed_pos = transformed_pos[valid]
-        colors = colors[valid]
-    end
+#     # Face culling
+#     if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
+#         valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+#         transformed_pos = transformed_pos[valid]
+#         colors = colors[valid]
+#     end
 
-    # For correct z-ordering we need to be in view/camera or screen space
-    view = scene.camera.view[]
-    zorder = sortperm(transformed_pos, by = p -> begin
-        p4d = to_ndim(Vec4d, p, 1)
-        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
-        cam_pos[1] / cam_pos[2]
-    end, rev=false)
+#     # For correct z-ordering we need to be in view/camera or screen space
+#     view = scene.camera.view[]
+#     zorder = sortperm(transformed_pos, by = p -> begin
+#         p4d = to_ndim(Vec4d, p, 1)
+#         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
+#         cam_pos[1] / cam_pos[2]
+#     end, rev=false)
 
-    submesh = Attributes(
-        model = primitive.model,
-        shading = primitive.shading, diffuse = primitive.diffuse,
-        specular = primitive.specular, shininess = primitive.shininess,
-        faceculling = get(primitive, :faceculling, -10),
-        transformation = Makie.transformation(primitive),
-        clip_planes = Plane3f[],
-        transform_marker = true
-    )
+#     submesh = Attributes(
+#         model = primitive.model,
+#         shading = primitive.shading, diffuse = primitive.diffuse,
+#         specular = primitive.specular, shininess = primitive.shininess,
+#         faceculling = get(primitive, :faceculling, -10),
+#         transformation = Makie.transformation(primitive),
+#         clip_planes = Plane3f[],
+#         transform_marker = true
+#     )
 
-    for i in zorder
-        submesh[:calculated_colors] = colors[i]
-        draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
-    end
+#     for i in zorder
+#         submesh[:calculated_colors] = colors[i]
+#         draw_mesh3D(scene, screen, submesh, marker, pos = transformed_pos[i], scale = scale)
+#     end
 
-    return nothing
-end
+#     return nothing
+# end

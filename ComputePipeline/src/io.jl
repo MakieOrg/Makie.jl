@@ -91,8 +91,8 @@ function edge_callback_to_string(f, args::Tuple)
     arg_str = join(("::$T" for T in args), ", ")
     arg_str = replace(arg_str, "Base.RefValue" => "Ref")
     func = edge_callback_name(f, "($arg_str)")
-    file, line = Base.functionloc(f, args)
-    return "$func", "@ $file:$line"
+    loc = edge_callback_location(f, args)
+    return "$func", "@ $loc"
 end
 
 function Base.show(io::IO, edge::ComputeEdge)
