@@ -208,6 +208,23 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     return p
 end
 
+# TODO: Naming?
+"""
+    string_widths(plot::Text)
+
+Returns the markerspace size for each text element drawn by the given text plot.
+This is the width and height of the bounding box each individual glyph collection,
+in markerspace.
+"""
+string_widths(plot) = widths.(plot.element_bbs[]) # These do not include positions
+"""
+    maximum_string_widths(plot::Text)
+
+Returns the maximum width, height and depth of each text element drawn by the
+given text plot.
+"""
+maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), init = Vec3d(0))
+
 function string_boundingbox(plot::Text)
     # TODO: technically this should consider scene space if space == :data
     if plot.space[] == plot.markerspace[]

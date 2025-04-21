@@ -96,7 +96,7 @@ end
     Makie.Toggle(f)
     Makie.Slider(f)
     Makie.LScene(f)
-    # Makie.PolarAxis(f)
+    Makie.PolarAxis(f)
     Makie.IntervalSlider(f)
     lines!(ax, 1:2, label = "Line")
     # Makie.Legend(f, ax, "Default", nbanks = 2) TODO
