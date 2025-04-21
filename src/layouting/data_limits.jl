@@ -75,13 +75,13 @@ function data_limits(x::Volume)
     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
 end
 
-function data_limits(plot::Text)
-    if plot.space[] == plot.markerspace[]
-        return string_boundingbox(plot)
-    else
-        return Rect3d(point_iterator(plot))
-    end
-end
+# function data_limits(plot::Text)
+#     if plot.space[] == plot.markerspace[]
+#         return string_boundingbox(plot)
+#     else
+#         return Rect3d(point_iterator(plot))
+#     end
+# end
 
 # function data_limits(plot::Voxels)
 #     xyz = to_value.(plot.converted[1:3])

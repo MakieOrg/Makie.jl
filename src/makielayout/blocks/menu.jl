@@ -118,10 +118,9 @@ function initialize_block!(m::Menu; default = 1)
 
     # listheight needs to be up to date before showing the menuscene so that its
     # direction is correct
-    gc_heights = map(blockscene, optiontexts.plots[1][1], m.textpadding) do gcs, pad
-        gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
-        heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
+    gc_heights = map(blockscene, optiontexts.args[1].onchange, m.textpadding) do gcs, pad
+        widths = string_widths(optiontexts)
+        heights = map(size -> size[2] + pad[3] + pad[4], widths)
         h = sum(heights)
         listheight[] = h
         return (heights, h)

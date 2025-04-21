@@ -45,16 +45,13 @@ function layout_text(
         font, fonts, align, rotation, justification, lineheight, color,
         strokecolor, strokewidth, word_wrap_width
     )
-    ft_font = to_font(font)
     # TODO, somehow some unicode symbols don't get rendered if we dont have one font per char
     # Which is really odd
-    fontperchar = attribute_per_char(string, ft_font)
-    rscale = to_fontsize(fontsize)
-    rot = to_rotation(rotation)
+    fontperchar = attribute_per_char(string, font)
 
     return glyph_collection(
-        string, fontperchar, rscale, align[1], align[2],
-        lineheight, justification, rot, color,
+        string, fontperchar, fontsize, align[1], align[2],
+        lineheight, justification, rotation, color,
         strokecolor, strokewidth, word_wrap_width
     )
 end

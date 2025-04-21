@@ -534,127 +534,127 @@ end
 #                                     Text                                     #
 ################################################################################
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
-    ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
-    transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
-    position = primitive.position[]
-    # use cached glyph info
-    glyph_collection = to_value(primitive[1])
+# function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text{<:Tuple{<:Union{AbstractArray{<:Makie.GlyphCollection}, Makie.GlyphCollection}}}))
+#     ctx = screen.context
+#     @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
+#     transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
+#     position = primitive.position[]
+#     # use cached glyph info
+#     glyph_collection = to_value(primitive[1])
 
-    draw_glyph_collection(
-        scene, ctx, position, glyph_collection, remove_billboard(rotation),
-        model::Mat4d, space::Symbol, markerspace::Symbol, offset,
-        primitive.transformation::Makie.Transformation,
-        transform_marker, clip_planes::Vector{Plane3f}
-    )
+#     draw_glyph_collection(
+#         scene, ctx, position, glyph_collection, remove_billboard(rotation),
+#         model::Mat4d, space::Symbol, markerspace::Symbol, offset,
+#         primitive.transformation::Makie.Transformation,
+#         transform_marker, clip_planes::Vector{Plane3f}
+#     )
 
-    nothing
-end
+#     nothing
+# end
 
-function draw_glyph_collection(
-        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model, space, markerspace, offset, transformation, transform_marker,
-        clip_planes
-    )
+# function draw_glyph_collection(
+#         scene, ctx, positions, glyph_collections::AbstractArray, rotation,
+#         model, space, markerspace, offset, transformation, transform_marker,
+#         clip_planes
+#     )
 
-    # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
-        markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
+#     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
+#     broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
+#         markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
 
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker, clip_planes)
-    end
-end
+#         draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker, clip_planes)
+#     end
+# end
 
-_deref(x) = x
-_deref(x::Ref) = x[]
+# _deref(x) = x
+# _deref(x::Ref) = x[]
 
-function draw_glyph_collection(
-        scene, ctx, position, glyph_collection, rotation, _model, space,
-        markerspace, offsets, transformation, transform_marker, clip_planes)
+# function draw_glyph_collection(
+#         scene, ctx, position, glyph_collection, rotation, _model, space,
+#         markerspace, offsets, transformation, transform_marker, clip_planes)
 
-    glyphs = glyph_collection.glyphs
-    glyphoffsets = glyph_collection.origins
-    fonts = glyph_collection.fonts
-    rotations = glyph_collection.rotations
-    scales = glyph_collection.scales
-    colors = glyph_collection.colors
-    strokewidths = glyph_collection.strokewidths
-    strokecolors = glyph_collection.strokecolors
+#     glyphs = glyph_collection.glyphs
+#     glyphoffsets = glyph_collection.origins
+#     fonts = glyph_collection.fonts
+#     rotations = glyph_collection.rotations
+#     scales = glyph_collection.scales
+#     colors = glyph_collection.colors
+#     strokewidths = glyph_collection.strokewidths
+#     strokecolors = glyph_collection.strokecolors
 
-    model = _deref(_model)
-    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
-    if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
-        model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
-    end
+#     model = _deref(_model)
+#     model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
+#     if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
+#         model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
+#     end
 
-    glyph_pos = let
-        # TODO: f32convert may run into issues here if markerspace is :data or
-        #       :transformed (repeated application in glyphpos etc)
-        transform_func = transformation.transform_func[]
-        transformed = apply_transform(transform_func, position)
-        p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
+#     glyph_pos = let
+#         # TODO: f32convert may run into issues here if markerspace is :data or
+#         #       :transformed (repeated application in glyphpos etc)
+#         transform_func = transformation.transform_func[]
+#         transformed = apply_transform(transform_func, position)
+#         p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
 
-        Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
+#         Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
 
-        Makie.clip_to_space(scene.camera, markerspace) *
-        Makie.space_to_clip(scene.camera, space) *
-        Makie.f32_convert_matrix(scene.float32convert, space) *
-        p
-    end
+#         Makie.clip_to_space(scene.camera, markerspace) *
+#         Makie.space_to_clip(scene.camera, space) *
+#         Makie.f32_convert_matrix(scene.float32convert, space) *
+#         p
+#     end
 
-    Cairo.save(ctx)
+#     Cairo.save(ctx)
 
-    broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
-        glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
+#     broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
+#         glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
 
-        cairoface = set_ft_font(ctx, font)
-        old_matrix = get_font_matrix(ctx)
+#         cairoface = set_ft_font(ctx, font)
+#         old_matrix = get_font_matrix(ctx)
 
-        p3_offset = to_ndim(Point3f, offset, 0)
+#         p3_offset = to_ndim(Point3f, offset, 0)
 
-        # Not renderable by font (e.g. '\n')
-        # TODO, filter out \n in GlyphCollection, and render unrenderables as box
-        glyph == 0 && return
+#         # Not renderable by font (e.g. '\n')
+#         # TODO, filter out \n in GlyphCollection, and render unrenderables as box
+#         glyph == 0 && return
 
-        Cairo.save(ctx)
-        Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+#         Cairo.save(ctx)
+#         Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        # offsets and scale apply in markerspace
-        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
+#         # offsets and scale apply in markerspace
+#         gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
 
-        if any(isnan, gp3)
-            Cairo.restore(ctx)
-            return
-        end
+#         if any(isnan, gp3)
+#             Cairo.restore(ctx)
+#             return
+#         end
 
-        scale2 = scale isa Number ? Vec2d(scale, scale) : scale
-        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
+#         scale2 = scale isa Number ? Vec2d(scale, scale) : scale
+#         glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
 
-        Cairo.save(ctx)
-        set_font_matrix(ctx, mat)
-        show_glyph(ctx, glyph, glyphpos...)
-        Cairo.restore(ctx)
+#         Cairo.save(ctx)
+#         set_font_matrix(ctx, mat)
+#         show_glyph(ctx, glyph, glyphpos...)
+#         Cairo.restore(ctx)
 
-        if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
-            Cairo.save(ctx)
-            Cairo.move_to(ctx, glyphpos...)
-            set_font_matrix(ctx, mat)
-            glyph_path(ctx, glyph, glyphpos...)
-            Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-            Cairo.set_line_width(ctx, strokewidth)
-            Cairo.stroke(ctx)
-            Cairo.restore(ctx)
-        end
-        Cairo.restore(ctx)
+#         if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
+#             Cairo.save(ctx)
+#             Cairo.move_to(ctx, glyphpos...)
+#             set_font_matrix(ctx, mat)
+#             glyph_path(ctx, glyph, glyphpos...)
+#             Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+#             Cairo.set_line_width(ctx, strokewidth)
+#             Cairo.stroke(ctx)
+#             Cairo.restore(ctx)
+#         end
+#         Cairo.restore(ctx)
 
-        cairo_font_face_destroy(cairoface)
-        set_font_matrix(ctx, old_matrix)
-    end
+#         cairo_font_face_destroy(cairoface)
+#         set_font_matrix(ctx, old_matrix)
+#     end
 
-    Cairo.restore(ctx)
-    return
-end
+#     Cairo.restore(ctx)
+#     return
+# end
 
 ################################################################################
 #                                Heatmap, Image                                #

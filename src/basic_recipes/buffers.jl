@@ -39,6 +39,7 @@ function finish!(lsb::LineSegments)
     ComputePipeline.mark_dirty!(lsb.args[1].inputs[:arg1])
     ComputePipeline.mark_dirty!(lsb.args[1].inputs[:color])
     ComputePipeline.mark_dirty!(lsb.args[1].inputs[:linewidth])
+    notify(lsb.args[1].onchange)
     return
 end
 
@@ -51,8 +52,9 @@ function TextBuffer(
         align = [Vec2f(0)],
         kw_args...
     ) where N
-    annotations!(
-        scene, String[" "], [Point{N, Float32}(0)];
+    text!(
+        scene, [Point{N, Float32}(0)];
+        text = String[" "],
         rotation = rotation,
         color = color,
         fontsize = fontsize,
@@ -62,14 +64,14 @@ function TextBuffer(
     )
 end
 
-function start!(tb::Annotations)
-    for key in (1, :color, :rotation, :fontsize, :font, :align)
-        empty!(tb[key][])
+function start!(tb::Text)
+    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+        empty!(tb.args[1].inputs[key].value)
     end
     return
 end
 
-function finish!(tb::Annotations)
+function finish!(tb::Text)
     # update the signal!
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
@@ -77,22 +79,22 @@ function finish!(tb::Annotations)
     if length(tb[1][]) != length(tb.fontsize[])
         error("Inconsistent buffer state for $(tb[1][])")
     end
-    notify(tb[1])
+    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+        ComputePipeline.mark_dirty!(tb.args[1].inputs[key])
+    end
+    notify(tb.args[1].onchange)
     return
 end
 
-function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
-    append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
+function push!(tb::Text, text::String, position::VecTypes{N}; kw_args...) where N
+    append!(tb, [text], [position]; kw_args...)
 end
 
-function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    text_positions = convert_arguments(Annotations, text, positions)[1]
-    append!(tb, text_positions; kw_args...)
-    return
-end
+function append!(tb::Text, text::Vector{String}, positions::Vector{<: VecTypes{N}}; kw_args...) where N
+    textv = same_length_array(positions, text)
+    append!(tb.args[1].inputs[:text].value, textv)
+    append!(tb.args[1].inputs[:arg1].value, positions)
 
-function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
-    append!(tb[1][], text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
@@ -100,11 +102,16 @@ function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, 
             return last(tb[key][])
         end
         val_vec = if key === :font
-            same_length_array(text_positions, to_font(tb.fonts, val))
+            same_length_array(positions, to_font(tb.fonts[], val))
         else
-            same_length_array(text_positions, val, Key{key}())
+            same_length_array(positions, val, Key{key}())
         end
-        append!(tb[key][], val_vec)
+        append!(tb.args[1].inputs[key].value, val_vec)
     end
+    return
+end
+
+function append!(tb::Text, text_positions::Vector{Tuple{String, <: VecTypes{N}}}; kw_args...) where N
+    append!(tb, first.(text_positions), last.(text_positions); kw_args...)
     return
 end
