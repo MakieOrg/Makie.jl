@@ -715,7 +715,7 @@ function compute_plot(::Type{Volume}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Volume, attr, user_kw)
     register_arguments!(Volume, attr, user_kw, args...)
-    register_position_transforms!(attr)
+    register_position_transforms!(attr) # TODO: isn't this skipped
     register_colormapping!(attr, :volume)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
         return (Rect3d(Vec3.(x, y, z)...),)
