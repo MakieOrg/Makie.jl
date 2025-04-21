@@ -301,7 +301,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
     glyph_collection = primitive.glyph_collections[]
 
     draw_glyph_collection(
-        scene, ctx, position, glyph_collection, remove_billboard(rotation),
+        scene, ctx, position, glyph_collection, rotation,
         model::Mat4d, space::Symbol, markerspace::Symbol, offset,
         primitive.transformation::Makie.Transformation,
         transform_marker, clip_planes::Vector{Plane3f}
