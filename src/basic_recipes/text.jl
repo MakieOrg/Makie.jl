@@ -103,6 +103,20 @@ function register_text_computations!(attr::ComputeGraph)
         return (gcs, lsegs, lwidths, lcolors, lindices)
     end
 
+    # TODO: cleanup projection interface and camera interface
+    #       and merge this with generic projection pipeline
+    # register_computation!(attr,
+    #     [:linepoints, :line_indices, :positions_transformed_f32c, :model_f32c, :projectionview, :viewport, :space, :markerspace],
+    #     [:markerspace_linepoints]) do inputs, changed, cached
+
+    #     M = clip_to_space(scene.cam, inputs.markerspace) * space_to_clip(scene.cam, inputs.space) * inputs.model_f32c
+    #     ms_pos = project(M, inputs.positions_transformed_f32c)
+    #     ms_linepos = map(inputs.linepoints, inputs.lineindices) do seg, index
+    #         return seg + attr_broadcast_getindex(ms_pos, index)
+    #     end
+    #     return (ms_linepos, )
+    # end
+
     return
 end
 
@@ -184,6 +198,13 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     T = typeof(attr[:positions][])
     p = Plot{text, Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
+
+    # linesegments!(p,
+    #     p.markerspace_linepoints,
+    #     linewidth = p.linewidths, color = p.linecolors, space = p.markerspace,
+    #     # other attributes...
+    # )
+
     return p
 end
 
