@@ -26,9 +26,9 @@ end
 function plot!(plot::Plot(Test2))
     arg1 = plot[1]
     scatter!(plot, arg1[].series)
-    ser = AbstractTimeseriesSolution(arg1[].series)
+    series = AbstractTimeseriesSolution(arg1[].series)
     sol = Solution(arg1[].series)
-    plot!(plot, ser, var = 10)
+    plot!(plot, series, var = 10)
     scatter!(plot, sol, attribute = 3, color=:red)
 end
 
