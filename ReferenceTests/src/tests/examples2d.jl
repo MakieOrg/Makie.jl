@@ -582,6 +582,16 @@ end
     current_figure()
 end
 
+@reference_test "Open scatter markers" begin
+    data = RNG.randn(200, 2)
+    f = Figure()
+    scatter(f[1, 1], data, marker = open_circle())
+    scatter(f[1, 2], data, marker = open_circle(0.5))
+    scatter(f[2, 1], data, marker = open_square())
+    scatter(f[2, 2], data, marker = open_square(0.5))
+    f
+end
+
 @reference_test "2D surface with explicit color" begin
     surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = NoShading)
 end
