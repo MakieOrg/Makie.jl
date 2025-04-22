@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
-- Added `open_circle` and `open_square` convenience functions for open marker shapes [#4935](https://github.com/MakieOrg/Makie.jl/pull/4935)
+- Added `open_circle` and `open_rect` convenience functions for open marker shapes [#4935](https://github.com/MakieOrg/Makie.jl/pull/4935)
 
 ## [0.22.4] - 2025-04-11
 

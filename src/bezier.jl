@@ -865,13 +865,13 @@ function open_circle(radius_fraction = 0.8; r = 0.47)
 end
 
 """
-    open_square(radius_fraction = 0.8; r)
+    open_rect(radius_fraction = 0.8; r)
 
 Returns a `BezierPath` of an open square whose radius `r` is by default size-matched
 to the `:rect` marker. The relative size of the radius of the hole is
 determined by `radius_fraction`.
 """
-function open_square(radius_fraction = 0.8; r = 0.95 * sqrt(pi) / 2 / 2)
+function open_rect(radius_fraction = 0.8; r = 0.95 * sqrt(pi) / 2 / 2)
     r_inner = r * radius_fraction
     BezierPath([
         MoveTo(Point2d(r, -r)),

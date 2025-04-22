@@ -241,7 +241,7 @@ include("event-recorder.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
-export open_circle, open_square
+export open_circle, open_rect
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments

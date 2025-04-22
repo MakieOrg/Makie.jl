@@ -587,8 +587,8 @@ end
     f = Figure()
     scatter(f[1, 1], data, marker = open_circle())
     scatter(f[1, 2], data, marker = open_circle(0.5))
-    scatter(f[2, 1], data, marker = open_square())
-    scatter(f[2, 2], data, marker = open_square(0.5))
+    scatter(f[2, 1], data, marker = open_rect())
+    scatter(f[2, 2], data, marker = open_rect(0.5))
     f
 end
 
