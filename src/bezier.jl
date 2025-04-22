@@ -844,3 +844,45 @@ const BezierCross = let
 end
 
 const BezierX = rotate(BezierCross, pi / 4)
+
+"""
+    open_circle(radius_fraction = 0.8; r)
+
+Returns a `BezierPath` of an open circle whose radius `r` is by default size-matched
+to the `:circle` marker. The relative size of the radius of the hole is
+determined by `radius_fraction`.
+"""
+function open_circle(radius_fraction = 0.8; r = 0.47)
+    r_inner = r * radius_fraction
+    BezierPath([
+        MoveTo(Point(r, 0.0)),
+        EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
+        ClosePath(),
+        MoveTo(Point(r_inner, 0.0)),
+        EllipticalArc(Point(0.0, 0), r_inner, r_inner, 0.0, 2pi, 0.0),
+        ClosePath(),
+    ])
+end
+
+"""
+    open_square(radius_fraction = 0.8; r)
+
+Returns a `BezierPath` of an open square whose radius `r` is by default size-matched
+to the `:rect` marker. The relative size of the radius of the hole is
+determined by `radius_fraction`.
+"""
+function open_square(radius_fraction = 0.8; r = 0.95 * sqrt(pi) / 2 / 2)
+    r_inner = r * radius_fraction
+    BezierPath([
+        MoveTo(Point2d(r, -r)),
+        LineTo(Point2d(r, r)),
+        LineTo(Point2d(-r, r)),
+        LineTo(Point2d(-r, -r)),
+        ClosePath(),
+        MoveTo(Point2d(r_inner, -r_inner)),
+        LineTo(Point2d(-r_inner, -r_inner)),
+        LineTo(Point2d(-r_inner, r_inner)),
+        LineTo(Point2d(r_inner, r_inner)),
+        ClosePath(),
+    ])
+end
