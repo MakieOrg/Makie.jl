@@ -51,20 +51,33 @@ Here is an example plot showing different shapes that are accessible by `Symbol`
 ```@figure
 markers_labels = [
     (:circle, ":circle"),
+    (open_circle(), "open_circle()"),
     (:rect, ":rect"),
+    (open_rect(), "open_rect()"),
     (:diamond, ":diamond"),
+    (open_diamond(), "open_diamond()"),
     (:hexagon, ":hexagon"),
+    (open_hexagon(), "open_hexagon()"),
     (:cross, ":cross"),
     (:xcross, ":xcross"),
     (:utriangle, ":utriangle"),
+    (open_utriangle(), "open_utriangle()"),
     (:dtriangle, ":dtriangle"),
+    (open_dtriangle(), "open_dtriangle()"),
     (:ltriangle, ":ltriangle"),
+    (open_ltriangle(), "open_ltriangle()"),
     (:rtriangle, ":rtriangle"),
+    (open_rtriangle(), "open_rtriangle()"),
     (:pentagon, ":pentagon"),
+    (open_pentagon(), "open_pentagon()"),
     (:star4, ":star4"),
+    (open_star4(), "open_star4()"),
     (:star5, ":star5"),
+    (open_star5(), "open_star5()"),
     (:star6, ":star6"),
+    (open_star6(), "open_star6()"),
     (:star8, ":star8"),
+    (open_star8(), "open_star8()"),
     (:vline, ":vline"),
     (:hline, ":hline"),
     ('a', "'a'"),
@@ -82,7 +95,7 @@ ax = Axis(f[1, 1], yreversed = true,
 hidedecorations!(ax)
 
 for (i, (marker, label)) in enumerate(markers_labels)
-    p = Point2f(fldmod1(i, 6)...)
+    p = Point2f(fldmod1(i, 7)...)
 
     scatter!(p, marker = marker, markersize = 20, color = :black)
     text!(p, text = label, color = :gray70, offset = (0, 20),

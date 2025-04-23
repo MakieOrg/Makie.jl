@@ -583,13 +583,17 @@ end
 end
 
 @reference_test "Open scatter markers" begin
-    data = RNG.rand(40)
-    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false))
-    funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle]
-    for (i, func) in enumerate(funcs)
-        for (j, args) in enumerate([(), (0.5,)])
-            scatter(f[j, i], ones(length(data)), data, marker = func(args...))
+    x = RNG.rand(40)
+    y = RNG.rand(40)
+    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false, topspinevisible = false, rightspinevisible = false, leftspinevisible = false, bottomspinevisible = false))
+    with_updates_suspended(f.layout) do
+        funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle, open_hexagon, open_pentagon, open_star4, open_star5, open_star6, open_star8]
+        for (i, func) in enumerate(funcs)
+            for (j, args) in enumerate([(), (0.5,)])
+                scatter(f[j, i], x, y, marker = func(args...), axis = (; limits = (-1, 2, nothing, nothing)))
+            end
         end
+        colgap!(f.layout, 0)
     end
     f
 end

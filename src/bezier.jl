@@ -845,101 +845,24 @@ end
 
 const BezierX = rotate(BezierCross, pi / 4)
 
-"""
-    open_circle(radius_fraction = 0.8; r)
-
-Returns a `BezierPath` of an open circle whose radius `r` is by default size-matched
-to the `:circle` marker. The relative size of the radius of the hole is
-determined by `radius_fraction`.
-"""
-function open_circle(radius_fraction = 0.8; r = 0.75 * 0.47)
-    r_inner = r * radius_fraction
-    BezierPath([
-        MoveTo(Point(r, 0.0)),
-        EllipticalArc(Point(0.0, 0), r, r, 0.0, 0.0, 2pi),
-        ClosePath(),
-        MoveTo(Point(r_inner, 0.0)),
-        EllipticalArc(Point(0.0, 0), r_inner, r_inner, 0.0, 2pi, 0.0),
-        ClosePath(),
-    ])
-end
-
-"""
-    open_rect(radius_fraction = 0.8; r)
-
-Returns a `BezierPath` of an open square whose radius `r` is by default size-matched
-to the `:rect` marker. The relative size of the radius of the hole is
-determined by `radius_fraction`.
-"""
-function open_rect(radius_fraction = 0.8; r = 0.75 * 0.95 * sqrt(pi) / 2 / 2)
-    r_inner = r * radius_fraction
-    BezierPath([
-        MoveTo(Point2d(r, -r)),
-        LineTo(Point2d(r, r)),
-        LineTo(Point2d(-r, r)),
-        LineTo(Point2d(-r, -r)),
-        ClosePath(),
-        MoveTo(Point2d(r_inner, -r_inner)),
-        LineTo(Point2d(-r_inner, -r_inner)),
-        LineTo(Point2d(-r_inner, r_inner)),
-        LineTo(Point2d(r_inner, r_inner)),
-        ClosePath(),
-    ])
-end
-
-"""
-    open_diamond(radius_fraction = 0.8; r)
-
-Returns a `BezierPath` of an open diamond whose radius `r` is by default size-matched
-to the `:diamond` marker. The relative size of the radius of the hole is
-determined by `radius_fraction`.
-"""
-function open_diamond(radius_fraction = 0.8; r = 0.75 * 0.95 * sqrt(pi) / 2 / 2)
-    rotate(open_rect(radius_fraction; r), pi/4)
-end
-
-"""
-    open_utriangle(fraction = 0.8)
-
-Returns a `BezierPath` of an open triangle which is size-matched
-to the `:utriangle` marker. The relative size of the hole is
-determined by `fraction`.
-"""
-function open_utriangle(fraction = 0.8)
-    base = scale(BezierUTriangle, 0.75)
-    inner = rotate(scale(base, (fraction, -fraction)), pi)
+# this is not perfect because diagonal edges appear thinner than orthogonal ones
+function with_scaled_hole(base::BezierPath, fraction = 0.8; _scale = (1, -1))
+    inner = rotate(scale(base, fraction .* _scale), pi)
     BezierPath([base.commands; inner.commands])
 end
 
-"""
-    open_rtriangle(fraction = 0.8)
+for marker in [:circle, :rect, :diamond, :utriangle, :rtriangle, :dtriangle, :ltriangle, :hexagon, :pentagon, :star4, :star5, :star6, :star8]
+    funcname = Symbol("open_", marker)
+    @eval begin
+        """
+            $($(funcname))(fraction = 0.8)
 
-Returns a `BezierPath` of an open triangle which is size-matched
-to the `:rtriangle` marker. The relative size of the hole is
-determined by `fraction`.
-"""
-function open_rtriangle(fraction = 0.8)
-    rotate(open_utriangle(fraction), -pi/2)
-end
-
-"""
-    open_dtriangle(fraction = 0.8)
-
-Returns a `BezierPath` of an open triangle which is size-matched
-to the `:dtriangle` marker. The relative size of the hole is
-determined by `fraction`.
-"""
-function open_dtriangle(fraction = 0.8)
-    rotate(open_utriangle(fraction), pi)
-end
-
-"""
-    open_ltriangle(fraction = 0.8)
-
-Returns a `BezierPath` of an open triangle which is size-matched
-to the `:ltriangle` marker. The relative size of the hole is
-determined by `fraction`.
-"""
-function open_ltriangle(fraction = 0.8)
-    rotate(open_utriangle(fraction), pi/2)
+        Returns a `BezierPath` of an open $($(string(marker))) whose radius `r` is by default size-matched
+        to the `:$($(string(marker)))` marker. The relative size of the hole is
+        determined by `fraction`.
+        """
+        function $funcname(fraction = 0.8)
+            with_scaled_hole(Makie.to_spritemarker($(QuoteNode(marker))), fraction; _scale = $(marker in (:rtriangle, :ltriangle) ? (-1, 1) : (1, -1)))
+        end
+    end
 end
