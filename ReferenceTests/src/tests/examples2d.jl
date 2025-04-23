@@ -583,12 +583,14 @@ end
 end
 
 @reference_test "Open scatter markers" begin
-    data = RNG.randn(200, 2)
-    f = Figure()
-    scatter(f[1, 1], data, marker = open_circle())
-    scatter(f[1, 2], data, marker = open_circle(0.5))
-    scatter(f[2, 1], data, marker = open_rect())
-    scatter(f[2, 2], data, marker = open_rect(0.5))
+    data = RNG.rand(40)
+    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false))
+    funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle]
+    for (i, func) in enumerate(funcs)
+        for (j, args) in enumerate([(), (0.5,)])
+            scatter(f[j, i], ones(length(data)), data, marker = func(args...))
+        end
+    end
     f
 end
 
