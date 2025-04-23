@@ -1,3 +1,59 @@
+# TODO to be deleted once text is moved!
+
+function handle_old_color!(plot, uniforms; permute_tex=true)
+    color = plot.calculated_colors
+    minfilter = to_value(get(plot, :interpolate, true)) ? :linear : :nearest
+
+    convert_texture(x) = permute_tex ? lift(permutedims, plot, x) : x
+
+    if color[] isa Colorant
+        uniforms[:uniform_color] = color
+    elseif color[] isa ShaderAbstractions.Sampler
+        uniforms[:uniform_color] = to_value(color)
+    elseif color[] isa AbstractVector
+        uniforms[:vertex_color] = Buffer(color)
+    elseif color[] isa Makie.AbstractPattern
+        uniforms[:pattern] = true
+        img = convert_texture(map(Makie.to_image, plot, color))
+        uniforms[:uniform_color] = Sampler(img; x_repeat = :repeat, minfilter=minfilter)
+        # different default with Patterns (no swapping and flipping of axes)
+        # also includes px to uv coordinate transform so we can use linear
+        # interpolation (no jitter) and related pattern to (0,0,0) in world space
+        scene = Makie.parent_scene(plot)
+        uniforms[:uv_transform] = map(plot,
+                plot.attributes[:uv_transform], scene.camera.projectionview,
+                scene.camera.resolution, plot.model, color # TODO float32convert
+            ) do uvt, pv, res, model, pattern
+            return Makie.pattern_uv_transform(uvt, pv * model, res, pattern, true)
+        end
+    elseif color[] isa Union{AbstractMatrix, AbstractArray{<: Any, 3}}
+        uniforms[:uniform_color] = Sampler(convert_texture(color); minfilter=minfilter)
+    elseif color[] isa Makie.ColorMapping
+        if color[].color_scaled[] isa AbstractVector
+            uniforms[:vertex_color] = Buffer(color[].color_scaled)
+        else
+            color_scaled = convert_texture(color[].color_scaled)
+            uniforms[:uniform_color] = Sampler(color_scaled; minfilter=minfilter)
+        end
+        cm_minfilter = color[].color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        uniforms[:uniform_colormap] = Sampler(color[].colormap, minfilter = cm_minfilter)
+        uniforms[:uniform_colorrange] = color[].colorrange_scaled
+        uniforms[:highclip_color] = Makie.highclip(color[])
+        uniforms[:lowclip_color] = Makie.lowclip(color[])
+        uniforms[:nan_color] = color[].nan_color
+    else
+        error("Color type not supported: $(typeof(color[]))")
+    end
+    get!(uniforms, :vertex_color, false)
+    get!(uniforms, :uniform_color, false)
+    get!(uniforms, :uniform_colormap, false)
+    get!(uniforms, :uniform_colorrange, false)
+    get!(uniforms, :pattern, false)
+    get!(uniforms, :highclip_color, RGBAf(0, 0, 0, 0))
+    get!(uniforms, :lowclip_color, RGBAf(0, 0, 0, 0))
+    get!(uniforms, :nan_color, RGBAf(0, 0, 0, 0))
+    return
+end
 
 function handle_color_getter!(uniform_dict)
     vertex_color = uniform_dict[:vertex_color]

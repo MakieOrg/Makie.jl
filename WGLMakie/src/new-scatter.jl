@@ -136,8 +136,8 @@ function assemble_particle_robj!(attr, data)
     data[:transform_marker] = attr.transform_marker
 
     per_instance_keys = Set([
-        :positions_transformed_f32c, :rotation, :markersize, :vertex_color,
-        :intensity, :uv_offset_width, :quad_offset, :marker_offset
+        :positions_transformed_f32c, :rotation, :quad_offset, :quad_offset, :quad_scale, :vertex_color,
+        :intensity, :sdf_uv
     ])
 
     per_instance = filter(data) do (k, v)
@@ -249,7 +249,7 @@ function meshscatter_program(args)
         :interpolate_in_fragment_shader => false,
         :markersize => args.markersize,
         :f32c_scale => args.f32c_scale,
-        :uv => Vec2f(0)
+        :uv => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
     return InstancedProgram(
@@ -340,6 +340,9 @@ function mesh_program(attr)
 
     uniforms = filter(x-> !(x[2] isa Buffer), data)
     buffers = filter(x-> x[2] isa Buffer, data)
+    @show keys(uniforms)
+    @show keys(buffers)
+    @show typeof(buffers[:vertex_color])
 
     if !isnothing(attr.normals)
         buffers[:normal] = attr.normals
@@ -404,6 +407,25 @@ function _surface_uvs(nx, ny)
         return [f .* Vec2f(0.5 + i, 0.5 + j) for j in ny-1:-1:0 for i in 0:nx-1]
     end
 end
+# TODO, speed up GeometryBasics
+function fast_faces(nvertices)
+    w, h = nvertices
+    idx = LinearIndices(nvertices)
+    nfaces = 2 * (w - 1) * (h - 1)
+    faces = Vector{GLTriangleFace}(undef, nfaces)
+    face_idx = 1
+    @inbounds for i in 1:(w - 1)
+        for j in 1:(h - 1)
+            a, b, c, d = idx[i, j], idx[i + 1, j], idx[i + 1, j + 1], idx[i, j + 1]
+            faces[face_idx] = GLTriangleFace(a, b, c)
+            face_idx += 1
+            faces[face_idx] = GLTriangleFace(a, c, d)
+            face_idx += 1
+        end
+    end
+    return faces
+end
+
 
 function surface2mesh_computation!(attr)
     register_computation!(attr, [:x, :y, :z], [:positions]) do (x, y, z), changed, last
@@ -447,7 +469,6 @@ function create_shader(scene::Scene, plot::Surface)
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
-
 
 function create_volume_shader(attr)
     box = GeometryBasics.mesh(Rect3f(Vec3f(0), Vec3f(1)))
@@ -545,39 +566,22 @@ function create_lines_data(islines, attr)
     )
 end
 
-const LINE_INPUTS = [
-    # relevant to compile time decisions
-    :space,
-    :line_color,
-    :uniform_colormap,
-    :uniform_colorrange,
-    :color_mapping_type,
-    :lowclip_color,
-    :highclip_color,
-    :nan_color,
-    :pattern,
-
-    :positions_transformed_f32c,
-    :linecap,
-    :uniform_pattern,
-    :uniform_pattern_length,
-
-    :uniform_linewidth,
-    :scene_origin,
-    :transparency,
-    :visible,
-    :model_f32c,
-    :depth_shift,
-]
+using Makie.ComputePipeline
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.args[1]
+
     Makie.add_computation!(attr, scene, :scene_origin)
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
-
     backend_colors!(attr)
     islines = plot isa Lines
-    inputs = copy(LINE_INPUTS)
+
+    inputs = [
+        :positions_transformed_f32c,
+        :line_color, :uniform_colormap, :uniform_colorrange, :color_mapping_type, :lowclip_color, :highclip_color, :nan_color,
+        :linecap, :uniform_linewidth, :uniform_pattern, :uniform_pattern_length,
+        :space, :scene_origin, :model_f32c, :depth_shift, :transparency, :visible,
+    ]
 
     register_computation!(attr, [:uniform_color, :vertex_color], [:line_color]) do (uc, vc), changed, last
         return vc == false ? (uc,) : (vc,)
@@ -585,13 +589,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     if islines
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
-        register_computation!(attr, [:linewidth], [:uniform_linewidth]) do (lw,), changed, last
-            return (lw,)
-        end
-    else
-        register_computation!(attr, [:synched_linewidth], [:uniform_linewidth]) do (lw,), changed, last
-            return (lw,)
-        end
+        ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
     end
     dict = create_wgl_renderobject(args-> create_lines_data(islines, args), attr, inputs)
     dict[:uuid] = js_uuid(plot)
