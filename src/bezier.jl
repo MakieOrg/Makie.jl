@@ -852,7 +852,7 @@ Returns a `BezierPath` of an open circle whose radius `r` is by default size-mat
 to the `:circle` marker. The relative size of the radius of the hole is
 determined by `radius_fraction`.
 """
-function open_circle(radius_fraction = 0.8; r = 0.47)
+function open_circle(radius_fraction = 0.8; r = 0.75 * 0.47)
     r_inner = r * radius_fraction
     BezierPath([
         MoveTo(Point(r, 0.0)),
@@ -871,7 +871,7 @@ Returns a `BezierPath` of an open square whose radius `r` is by default size-mat
 to the `:rect` marker. The relative size of the radius of the hole is
 determined by `radius_fraction`.
 """
-function open_rect(radius_fraction = 0.8; r = 0.95 * sqrt(pi) / 2 / 2)
+function open_rect(radius_fraction = 0.8; r = 0.75 * 0.95 * sqrt(pi) / 2 / 2)
     r_inner = r * radius_fraction
     BezierPath([
         MoveTo(Point2d(r, -r)),
@@ -885,4 +885,61 @@ function open_rect(radius_fraction = 0.8; r = 0.95 * sqrt(pi) / 2 / 2)
         LineTo(Point2d(r_inner, r_inner)),
         ClosePath(),
     ])
+end
+
+"""
+    open_diamond(radius_fraction = 0.8; r)
+
+Returns a `BezierPath` of an open diamond whose radius `r` is by default size-matched
+to the `:diamond` marker. The relative size of the radius of the hole is
+determined by `radius_fraction`.
+"""
+function open_diamond(radius_fraction = 0.8; r = 0.75 * 0.95 * sqrt(pi) / 2 / 2)
+    rotate(open_rect(radius_fraction; r), pi/4)
+end
+
+"""
+    open_utriangle(fraction = 0.8)
+
+Returns a `BezierPath` of an open triangle which is size-matched
+to the `:utriangle` marker. The relative size of the hole is
+determined by `fraction`.
+"""
+function open_utriangle(fraction = 0.8)
+    base = scale(BezierUTriangle, 0.75)
+    inner = rotate(scale(base, (fraction, -fraction)), pi)
+    BezierPath([base.commands; inner.commands])
+end
+
+"""
+    open_rtriangle(fraction = 0.8)
+
+Returns a `BezierPath` of an open triangle which is size-matched
+to the `:rtriangle` marker. The relative size of the hole is
+determined by `fraction`.
+"""
+function open_rtriangle(fraction = 0.8)
+    rotate(open_utriangle(fraction), -pi/2)
+end
+
+"""
+    open_dtriangle(fraction = 0.8)
+
+Returns a `BezierPath` of an open triangle which is size-matched
+to the `:dtriangle` marker. The relative size of the hole is
+determined by `fraction`.
+"""
+function open_dtriangle(fraction = 0.8)
+    rotate(open_utriangle(fraction), pi)
+end
+
+"""
+    open_ltriangle(fraction = 0.8)
+
+Returns a `BezierPath` of an open triangle which is size-matched
+to the `:ltriangle` marker. The relative size of the hole is
+determined by `fraction`.
+"""
+function open_ltriangle(fraction = 0.8)
+    rotate(open_utriangle(fraction), pi/2)
 end
