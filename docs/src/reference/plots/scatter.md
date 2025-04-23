@@ -46,7 +46,8 @@ There are a couple different categories of markers you can use with `scatter`:
 
 #### Default markers
 
-Here is an example plot showing different shapes that are accessible by `Symbol`s, as well as a few characters.
+Here is an example plot showing different shapes that are accessible by `Symbol`s, functions that
+offer open versions of some of these markers, as well as a few characters.
 
 ```@figure
 markers_labels = [
