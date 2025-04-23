@@ -88,16 +88,15 @@ function scatter_shader(scene::Scene, attributes, plot)
         :visible,
         :transform_marker,
         :f32c_scale,
-        :shape_type,
         :uv_offset_width,
         :markersize,
         :marker_offset,
-        :model,
+        :model_f32c,
         :preprojection,
         :billboard
     ]
-    per_instance_keys = [:positions_transformed_f32c, :rotation, :markersize, :vertex_color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset]
+    per_instance_keys = [:positions_transformed_f32c, :rotation, :quad_scale, :vertex_color, :intensity,
+                         :uv_offset_width, :quad_scale, :quad_offset, :marker_offset, :sdf_uv]
     data = Dict{Symbol,Any}()
     marker = nothing
     atlas = wgl_texture_atlas()
@@ -149,14 +148,14 @@ function scatter_shader(scene::Scene, attributes, plot)
         uniform_dict[k] = lift_convert(k, v, plot)
     end
     if !isnothing(marker)
-        get!(uniform_dict, :shape_type) do
+        get!(uniform_dict, :sdf_marker_shape) do
             return lift(plot, marker; ignore_equal_values=true) do marker
                 return Cint(Makie.marker_to_sdf_shape(to_spritemarker(marker)))
             end
         end
     end
 
-    if uniform_dict[:shape_type][] == 3
+    if uniform_dict[:sdf_marker_shape][] == 3
         atlas = wgl_texture_atlas()
         uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
@@ -238,15 +237,15 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
     uniforms = Dict(
-        :model => model,
-        :shape_type => Observable(Cint(3)),
+        :model_f32c => model,
+        :sdf_marker_shape => Observable(Cint(3)),
         :rotation => uniform_rotation,
         :positions_transformed_f32c => positions,
         :marker_offset => char_offset,
         :quad_offset => quad_offset,
-        :markersize => scale,
+        :quad_scale => scale,
         :preprojection => Mat4f(I),
-        :uv_offset_width => uv_offset_width,
+        :sdf_uv => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
         :depth_shift => get(plot, :depth_shift, Observable(0f0)),

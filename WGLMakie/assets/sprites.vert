@@ -46,7 +46,7 @@ float distancefield_scale(){
     // Glyph distance field units are in pixels; convert to dimensionless
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
-    vec4 uv_rect = get_uv_offset_width();
+    vec4 uv_rect = get_sdf_uv();
     float pixsize_x = (uv_rect.z - uv_rect.x) * get_atlas_texture_size();
     return -1.0/pixsize_x;
 }
