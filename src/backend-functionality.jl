@@ -27,10 +27,10 @@ function add_computation!(attr, ::Val{:gl_miter_limit})
     end
 end
 
-function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
+function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_length})
     # linestyle/pattern handling
     register_computation!(
-        attr, [:linestyle], [:gl_pattern, :gl_pattern_length]
+        attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
     ) do (linestyle,), changed, last
         if isnothing(linestyle)
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
@@ -42,7 +42,7 @@ function add_computation!(attr, ::Val{:gl_pattern}, ::Val{:gl_pattern_length})
         if isnothing(last)
             tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
         else
-            tex = last.gl_pattern
+            tex = last.uniform_pattern
             ShaderAbstractions.update!(tex, sdf)
         end
         return (tex, len)

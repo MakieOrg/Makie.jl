@@ -28,6 +28,9 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
 end
 
 function backend_colors!(attr)
+    if !haskey(attr, :interpolate)
+        Makie.add_input!(attr, :interpolate, false)
+    end
     register_computation!(attr, [:scaled_color, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
         filter = interpolate ? :linear : :nearest
         if color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
@@ -59,14 +62,15 @@ function backend_colors!(attr)
 end
 
 function handle_color!(data, attr)
-    data[:vertex_color] = attr.vertex_color
-    data[:uniform_color] = attr.uniform_color
-    data[:pattern] = attr.pattern
-    data[:uniform_colorrange] = attr.uniform_colorrange
-    data[:uniform_colormap] = attr.uniform_colormap
-    data[:highclip_color] = attr.highclip_color
-    data[:lowclip_color] = attr.lowclip_color
-    data[:nan_color] = attr.nan_color
+    set!(x) = haskey(attr, x) && (data[x] = attr[x])
+    set!(:vertex_color)
+    set!(:uniform_color)
+    set!(:uniform_colormap)
+    set!(:uniform_colorrange)
+    set!(:highclip_color)
+    set!(:lowclip_color)
+    set!(:nan_color)
+    set!(:pattern)
 end
 
 function update_values!(updater, values::Bonito.LargeUpdate)
@@ -80,6 +84,7 @@ function update_values!(updater, values)
     updater[] = values
     return
 end
+
 function plot_updates(args, changed)
     new_values = []
     for (name, value) in pairs(args)
@@ -180,6 +185,7 @@ const SCATTER_INPUTS = [
     :visible,
     :transform_marker,
     :f32c_scale,
+    :model_f32c,
 ]
 
 function scatter_program(attr)
@@ -198,7 +204,6 @@ function scatter_program(attr)
         :quad_offset => attr.quad_offset,
         :sdf_uv => attr.sdf_uv,
         :sdf_marker_shape => attr.sdf_marker_shape,
-        :shape_type => attr.sdf_marker_shape,
         :strokewidth => attr.strokewidth,
         :strokecolor => attr.strokecolor,
         :glowwidth => attr.glowwidth,
@@ -507,8 +512,8 @@ function create_lines_data(islines, attr)
         uniforms[:miter_limit] = attr.gl_miter_limit
     end
 
-    uniforms[:gl_pattern] = attr.gl_pattern
-    uniforms[:gl_pattern_length] = attr.gl_pattern_length
+    uniforms[:uniform_pattern] = attr.uniform_pattern
+    uniforms[:uniform_pattern_length] = attr.uniform_pattern_length
 
     handle_color!(uniforms, attr)
 
@@ -516,13 +521,11 @@ function create_lines_data(islines, attr)
         :positions_transformed_f32c => serialize_buffer_attribute(attr.positions_transformed_f32c),
     )
 
-    for (name, vals) in [:color => color, :linewidth => attr.uniform_linewidth]
-        if Makie.is_scalar_attribute(to_value(vals))
+    for name in [:line_color, :uniform_linewidth]
+        vals = attr[name]
+        if Makie.is_scalar_attribute(vals)
             uniforms[name] = vals
         else
-            # TODO: to js?
-            # duplicates per vertex attributes to match positional duplication
-            # min(idxs, end) avoids update order issues here
             attributes[name] = serialize_buffer_attribute(vals)
         end
     end
@@ -545,37 +548,47 @@ end
 const LINE_INPUTS = [
     # relevant to compile time decisions
     :space,
-    :synched_color,
+    :line_color,
     :uniform_colormap,
-    :scaled_colorrange,
+    :uniform_colorrange,
     :color_mapping_type,
-    # Auto
+    :lowclip_color,
+    :highclip_color,
+    :nan_color,
+    :pattern,
+
     :positions_transformed_f32c,
     :linecap,
-    :linestyle,
-    :gl_pattern,
-    :gl_pattern_length,
-    :synched_linewidth,
+    :uniform_pattern,
+    :uniform_pattern_length,
+
+    :uniform_linewidth,
     :scene_origin,
     :transparency,
     :visible,
     :model_f32c,
-    :lowclip_color,
-    :highclip_color,
-    :nan_color,
     :depth_shift,
 ]
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.args[1]
     Makie.add_computation!(attr, scene, :scene_origin)
-    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+    Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
+
     backend_colors!(attr)
     islines = plot isa Lines
     inputs = copy(LINE_INPUTS)
+
+    register_computation!(attr, [:uniform_color, :vertex_color], [:line_color]) do (uc, vc), changed, last
+        return vc == false ? (uc,) : (vc,)
+    end
     if islines
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
+        register_computation!(attr, [:linewidth], [:uniform_linewidth]) do (lw,), changed, last
+            return (lw,)
+        end
+    else
         register_computation!(attr, [:synched_linewidth], [:uniform_linewidth]) do (lw,), changed, last
             return (lw,)
         end

@@ -631,7 +631,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     attr = generic_robj_setup(screen, scene, plot)
 
     Makie.add_computation!(attr, :gl_miter_limit)
-    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+    Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
 
     haskey(attr, :px_per_unit) || add_input!(attr, :px_per_unit, screen.px_per_unit)
     haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport)
@@ -690,7 +690,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         # uniforms getting passed through
     uniforms = [
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
-        :gl_pattern, :gl_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
+        :uniform_pattern, :uniform_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
@@ -699,7 +699,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
         :gl_miter_limit => :miter_limit, :linewidth => :thickness,
-        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
+        :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
@@ -758,7 +758,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     end
 
     # linestyle/pattern handling
-    Makie.add_computation!(attr, :gl_pattern, :gl_pattern_length)
+    Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     haskey(attr, :debug) || add_input!(attr, :debug, false)
     haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
     generate_clip_planes!(attr, scene)
@@ -773,7 +773,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     ]
     uniforms = [
         :positions_transformed_f32c, :indices,
-        :gl_pattern, :gl_pattern_length, :linecap, :synched_linewidth,
+        :uniform_pattern, :uniform_pattern_length, :linecap, :synched_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
@@ -781,7 +781,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
         :synched_linewidth => :thickness, :model_f32c => :model,
-        :gl_pattern => :pattern, :gl_pattern_length => :pattern_length,
+        :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
