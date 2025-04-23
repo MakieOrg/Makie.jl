@@ -20,18 +20,18 @@ end
 
 
 # TODO: Naming: not px, it's whatever markerspace is...
-function string_boundingbox(plot::Text)
-    bb = Rect3d()
-    for p in plot.plots
-        _bb = string_boundingbox(p)
-        if !isfinite_rect(bb)
-            bb = _bb
-        elseif isfinite_rect(_bb)
-            bb = union(bb, _bb)
-        end
-    end
-    return bb
-end
+# function string_boundingbox(plot::Text)
+#     bb = Rect3d()
+#     for p in plot.plots
+#         _bb = string_boundingbox(p)
+#         if !isfinite_rect(bb)
+#             bb = _bb
+#         elseif isfinite_rect(_bb)
+#             bb = union(bb, _bb)
+#         end
+#     end
+#     return bb
+# end
 
 # Text can contain linesegments. Use data_limits to avoid transformations as
 # they are already in markerspace

@@ -454,6 +454,7 @@ pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 #     end
 # end
 
+#=
 function draw_atomic(screen::Screen, scene::Scene,
         plot::Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     return cached_robj!(screen, scene, plot) do gl_attributes
@@ -531,6 +532,7 @@ function draw_atomic(screen::Screen, scene::Scene,
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
 end
+=#
 
 # el32convert doesn't copy for array of Float32
 # But we assume that xy_convert copies when we use it

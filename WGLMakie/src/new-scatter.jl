@@ -27,11 +27,11 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     return mesh
 end
 
-function backend_colors!(attr)
+function backend_colors!(attr, color_name=:scaled_color)
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
-    register_computation!(attr, [:scaled_color, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
+    register_computation!(attr, [color_name, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
         filter = interpolate ? :linear : :nearest
         if color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
             # TODO, don't construct a sampler every time
@@ -48,7 +48,7 @@ function backend_colors!(attr)
             return (false, false)
         end
     end
-    register_computation!(attr, [:scaled_color], [:vertex_color]) do (color,), changed, last
+    register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
         color isa AbstractVector ? (Buffer(color),) : (false,)
     end
 
@@ -118,12 +118,15 @@ function create_wgl_renderobject(callback, attr, inputs)
 end
 
 function assemble_particle_robj!(attr, data)
-    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
-
+    if haskey(attr, :gl_position)
+        data[:positions_transformed_f32c] = attr.gl_position
+    else
+        data[:positions_transformed_f32c] = attr.positions_transformed_f32c
+    end
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = attr.rotation
+    data[:rotation] = haskey(attr, :gl_rotation) ? attr.gl_rotation : attr.rotation
     data[:f32c_scale] = attr.f32c_scale
 
     # Uniforms will be set in JavaScript
@@ -137,7 +140,7 @@ function assemble_particle_robj!(attr, data)
 
     per_instance_keys = Set([
         :positions_transformed_f32c, :rotation, :quad_offset, :quad_offset, :quad_scale, :vertex_color,
-        :intensity, :sdf_uv
+        :intensity, :sdf_uv, :strokecolor
     ])
 
     per_instance = filter(data) do (k, v)
@@ -190,14 +193,14 @@ const SCATTER_INPUTS = [
 
 function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
-    atlas = attr.atlas_1024_32
+    atlas = get(()-> attr.atlas, attr, :atlas_1024_32)
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
     data = Dict(
         :marker_offset => Vec3f(0),
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => attr.rotation isa Billboard,
+        :billboard => get(()-> attr.gl_rotation, attr, :rotation) isa Billboard,
         :distancefield => distancefield,
 
         :quad_scale => attr.quad_scale,
@@ -205,12 +208,13 @@ function scatter_program(attr)
         :sdf_uv => attr.sdf_uv,
         :sdf_marker_shape => attr.sdf_marker_shape,
         :strokewidth => attr.strokewidth,
-        :strokecolor => attr.strokecolor,
+        :strokecolor => get(()-> attr.gl_stroke_color, attr, :strokecolor),
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
     )
     per_instance, uniforms = assemble_particle_robj!(attr, data)
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
+    @assert haskey(per_instance.buffers, :strokecolor) || haskey(uniforms, :strokecolor)
     return InstancedProgram(
         WebGL(),
         lasset("sprites.vert"),
@@ -593,4 +597,27 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:updater] = attr[:wgl_update_obs][]
     return dict
+end
+
+################################
+
+
+function create_shader(scene::Scene, plot::Makie.Text)
+    # TODO: color processing incorrect, processed per-glyphcollection/global
+    #       colors instead of per glyph
+    attr = plot.args[1]
+    Makie.register_quad_computations!(attr, 1024, 32)
+    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    backend_colors!(attr, :gl_color)
+    inputs = [
+        :gl_position,
+        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
+        :gl_rotation, :gl_stroke_color, # TODO: do these even work per glyph?
+        :quad_scale, :quad_offset, :sdf_uv, :sdf_marker_shape, :marker_offset,
+        :strokewidth, :glowwidth, :glowcolor,
+        :depth_shift, :atlas, :markerspace,
+        :visible, :transform_marker, :f32c_scale, :model_f32c
+    ]
+    return create_wgl_renderobject(scatter_program, attr, inputs)
 end

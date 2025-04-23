@@ -266,6 +266,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
 
     P = Plot{Func}
+    # TODO: to_value(user_args[1]) errors if user_args[1] is a Observable{SomeType}() (uninitialized)
     if (P <: ComputePlots) && !(!isempty(user_args) && to_value(user_args[1]) isa Resampler)
         return compute_plot(P, user_args, user_attributes)
     end

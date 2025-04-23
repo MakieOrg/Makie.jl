@@ -39,7 +39,7 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         gl_name = get(gl_names, name, name)
         if name === :visible
             robj.visible = value
-        elseif gl_name === :indices
+        elseif gl_name === :indices || gl_name === :faces
             if robj.vertexarray.indices isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.vertexarray.indices, value)
             else
@@ -387,6 +387,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # - rotation -> billboard missing
     # - px_per_unit (that can update dynamically via record, right?)
     # - intensity_convert
+    # - f32c_scale
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
@@ -408,6 +409,131 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     )
 
     robj = register_robj!(assemble_scatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
+
+    return robj
+end
+
+
+################################################################################
+### Text
+################################################################################
+
+function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+    camera = scene.camera
+    space = attr[:space][]
+    markerspace = attr[:markerspace][]
+    colormap = args.alpha_colormap
+    color = args.gl_color
+    colornorm = args.scaled_colorrange
+    distancefield = get_texture!(screen.glscreen, args.atlas)
+
+    data = Dict(
+        :preprojection => Makie.get_preprojection(camera, space, markerspace),
+        :distancefield => distancefield,
+        :px_per_unit => screen.px_per_unit,   # technically not const?
+        :ssao => false,                       # shader compilation const
+        :transparency => attr[:transparency][],
+        :overdraw => attr[:overdraw][],
+        :shape => Cint(DISTANCEFIELD),
+        :image => nothing,
+    )
+
+    add_color_attributes!(data, color, colormap, colornorm)
+    add_camera_attributes!(data, screen, camera, markerspace)
+
+    # Correct the name mapping
+    if !isnothing(get(data, :intensity, nothing))
+        input2glname[:scaled_color] = :intensity
+    end
+    if !isnothing(get(data, :image, nothing))
+        input2glname[:scaled_color] = :image
+    end
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name]
+    end
+    # pass nothing to avoid going into image generating functions
+    return draw_scatter(screen, (nothing, data[:position]), data)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Text)
+    attr = generic_robj_setup(screen, scene, plot)
+
+    # add atlas, run text_quads, attributes duplication
+    Makie.register_quad_computations!(attr, 2048, 64)
+
+
+    if haskey(attr, :depthsorting) && attr[:depthsorting][]
+        # is projectionview enough to trigger on scene resize in all cases?
+        haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
+
+        register_computation!(attr,
+            [:gl_position, :projectionview, :space, :model_f32c],
+            [:gl_depth_cache, :gl_indices]
+        ) do (pos, _, space, model), changed, last
+            pvm = Makie.space_to_clip(scene.camera, space) * model
+            depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
+            indices = isnothing(last) ? Cuint[] : last.gl_indices
+            return depthsort!(pos[], depth_vals, indices, pvm)
+        end
+    else
+        register_computation!(attr, [:gl_position], [:gl_indices]) do (ps,), changed, last
+            return (length(ps),)
+        end
+    end
+
+    register_computation!(attr, [:gl_position], [:gl_len]) do (ps,), changed, last
+        return (Int32(length(ps)),)
+    end
+
+    inputs = [
+        # Special
+        :atlas,
+        # Needs explicit handling
+        :alpha_colormap, :gl_color, :scaled_colorrange,
+    ]
+
+    # Simple forwards
+    uniforms = [
+        :gl_position, # :gl_color,
+        :gl_stroke_color, :gl_rotation,
+        :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
+        :lowclip_color, :highclip_color, :nan_color,
+        :strokewidth, :glowcolor, :glowwidth,
+        :model_f32c, :transform_marker,
+        :gl_indices, :gl_len
+    ]
+
+
+    generate_clip_planes!(attr, scene)
+
+    # TODO:
+    # - rotation -> billboard missing
+    # - px_per_unit (that can update dynamically via record, right?)
+    # - intensity_convert
+    # - f32c_scale
+
+    # To take the human error out of the bookkeeping of two lists
+    # Could also consider using this in computation since Dict lookups are
+    # O(1) and only takes ~4ns
+    input2glname = Dict{Symbol, Symbol}(
+        :gl_position => :position,
+        :alpha_colormap => :color_map,
+        :scaled_colorrange => :color_norm,
+        :gl_color => :color,
+        :sdf_uv => :uv_offset_width,
+        :gl_markerspace => :markerspace,
+        :quad_scale => :scale,
+        :quad_offset => :quad_offset,
+        :gl_rotation => :rotation,
+        :marker_offset => :marker_offset,
+        :gl_stroke_color => :stroke_color, :strokewidth => :stroke_width,
+        :glowcolor => :glow_color, :glowwidth => :glow_width,
+        :model_f32c => :model, :transform_marker => :scale_primitive,
+        :lowclip_color => :lowclip, :highclip_color => :highclip,
+        :gl_indices => :indices, :gl_len => :len,
+    )
+
+    robj = register_robj!(assemble_text_robj, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
