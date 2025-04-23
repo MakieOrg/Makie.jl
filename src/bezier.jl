@@ -844,3 +844,25 @@ const BezierCross = let
 end
 
 const BezierX = rotate(BezierCross, pi / 4)
+
+# this is not perfect because diagonal edges appear thinner than orthogonal ones
+function with_scaled_hole(base::BezierPath, fraction = 0.8; _scale = (1, -1))
+    inner = rotate(scale(base, fraction .* _scale), pi)
+    BezierPath([base.commands; inner.commands])
+end
+
+for marker in [:circle, :rect, :diamond, :utriangle, :rtriangle, :dtriangle, :ltriangle, :hexagon, :pentagon, :star4, :star5, :star6, :star8]
+    funcname = Symbol("open_", marker)
+    @eval begin
+        """
+            $($(funcname))(fraction = 0.8)
+
+        Returns a `BezierPath` of an open $($(string(marker))) whose radius `r` is by default size-matched
+        to the `:$($(string(marker)))` marker. The relative size of the hole is
+        determined by `fraction`.
+        """
+        function $funcname(fraction = 0.8)
+            with_scaled_hole(Makie.to_spritemarker($(QuoteNode(marker))), fraction; _scale = $(marker in (:rtriangle, :ltriangle) ? (-1, 1) : (1, -1)))
+        end
+    end
+end

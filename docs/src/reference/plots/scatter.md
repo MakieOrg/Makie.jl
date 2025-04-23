@@ -46,7 +46,8 @@ There are a couple different categories of markers you can use with `scatter`:
 
 #### Default markers
 
-Here is an example plot showing different shapes that are accessible by `Symbol`s, as well as a few characters.
+Here is an example plot showing different shapes that are accessible by `Symbol`s, functions that
+offer open versions of some of these markers, as well as a few characters.
 
 ```@figure
 markers_labels = [
@@ -72,9 +73,23 @@ markers_labels = [
     ('↑', "'\\uparrow'"),
     ('😄', "'\\:smile:'"),
     ('✈', "'\\:airplane:'"),
+    (open_circle(), "open_circle()"),
+    (open_circle(0.5), "open_circle(0.5)"),
+    (open_rect(), "open_rect()"),
+    (open_diamond(), "open_diamond()"),
+    (open_hexagon(), "open_hexagon()"),
+    (open_utriangle(), "open_utriangle()"),
+    (open_dtriangle(), "open_dtriangle()"),
+    (open_ltriangle(), "open_ltriangle()"),
+    (open_rtriangle(), "open_rtriangle()"),
+    (open_pentagon(), "open_pentagon()"),
+    (open_star4(), "open_star4()"),
+    (open_star5(), "open_star5()"),
+    (open_star6(), "open_star6()"),
+    (open_star8(), "open_star8()"),
 ]
 
-f = Figure()
+f = Figure(size = (650, 600))
 ax = Axis(f[1, 1], yreversed = true,
     xautolimitmargin = (0.15, 0.15),
     yautolimitmargin = (0.15, 0.15)
@@ -82,7 +97,7 @@ ax = Axis(f[1, 1], yreversed = true,
 hidedecorations!(ax)
 
 for (i, (marker, label)) in enumerate(markers_labels)
-    p = Point2f(fldmod1(i, 6)...)
+    p = Point2f(fldmod1(i, 8)...)
 
     scatter!(p, marker = marker, markersize = 20, color = :black)
     text!(p, text = label, color = :gray70, offset = (0, 20),

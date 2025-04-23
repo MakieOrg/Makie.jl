@@ -582,6 +582,22 @@ end
     current_figure()
 end
 
+@reference_test "Open scatter markers" begin
+    x = RNG.rand(40)
+    y = RNG.rand(40)
+    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false, topspinevisible = false, rightspinevisible = false, leftspinevisible = false, bottomspinevisible = false))
+    with_updates_suspended(f.layout) do
+        funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle, open_hexagon, open_pentagon, open_star4, open_star5, open_star6, open_star8]
+        for (i, func) in enumerate(funcs)
+            for (j, args) in enumerate([(), (0.5,)])
+                scatter(f[j, i], x, y, marker = func(args...), axis = (; limits = (-1, 2, nothing, nothing)))
+            end
+        end
+        colgap!(f.layout, 0)
+    end
+    f
+end
+
 @reference_test "2D surface with explicit color" begin
     surface(1:10, 1:10, ones(10, 10); color = [RGBf(x*y/100, 0, 0) for x in 1:10, y in 1:10], shading = NoShading)
 end
