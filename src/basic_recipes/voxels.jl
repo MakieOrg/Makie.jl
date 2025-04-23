@@ -401,16 +401,14 @@ end
 # TODO: for CairoMakie
 
 function voxel_size(p::Voxels)
-    mini = minimum.(to_value.(p.converted[1:3]))
-    maxi = maximum.(to_value.(p.converted[1:3]))
-    _size = size(p.converted[4][])
-    return Vec3f((maxi .- mini) ./ _size .- convert_attribute(p.gap[], key"gap"(), key"voxels"()))
+    mini, maxi = extrema(data_limits(p))
+    _size = size(p.chunk[])
+    return Vec3f((maxi .- mini) ./ _size .- p.gap[])
 end
 
 function voxel_positions(p::Voxels)
-    mini = minimum.(to_value.(p.converted[1:3]))
-    maxi = maximum.(to_value.(p.converted[1:3]))
-    voxel_id = p.converted[4][]
+    mini, maxi = extrema(data_limits(p))
+    voxel_id = p.chunk_u8[]
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
@@ -421,15 +419,14 @@ function voxel_positions(p::Voxels)
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.converted[4][]
-    colormapping = p.calculated_colors[]
+    voxel_id = p.chunk_u8[]
     uv_map = p.uvmap[]
     if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"
-    elseif colormapping isa ColorMapping
-        color = colormapping.colormap[]
+    elseif haskey(p, :voxel_colormap)
+        color = p.colormap[]
     else
-        color = colormapping
+        color = p.voxel_color[]
     end
 
     return [color[id] for id in voxel_id if id !== 0x00]

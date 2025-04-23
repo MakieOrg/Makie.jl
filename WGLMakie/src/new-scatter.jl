@@ -340,9 +340,6 @@ function mesh_program(attr)
 
     uniforms = filter(x-> !(x[2] isa Buffer), data)
     buffers = filter(x-> x[2] isa Buffer, data)
-    @show keys(uniforms)
-    @show keys(buffers)
-    @show typeof(buffers[:vertex_color])
 
     if !isnothing(attr.normals)
         buffers[:normal] = attr.normals

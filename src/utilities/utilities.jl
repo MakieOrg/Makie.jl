@@ -427,7 +427,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
     rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
-    # we use quad faces so that color handling is consistent
+    # we use quad faces so that nan handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
@@ -435,7 +435,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return ps, faces, uv, nan_aware_normals(ps, faces)
+    return ps, decompose(GLTriangleFace, faces), uv, nan_aware_normals(ps, faces)
 end
 
 
@@ -483,9 +483,16 @@ function extract_keys(attributes, keys)
 end
 
 # Scalar - Vector getindex
-sv_getindex(v::AbstractVector, i::Integer) = v[i]
+"""
+    sv_getindex(x, index)
+
+Returns `x[i]` if x is a `AbstractArray` and `x` otherwise. `VecTypes` and `Mat`
+are treated as values rather than Arrays for this, i.e. they do not get indexed.
+"""
+sv_getindex(v::AbstractArray, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+sv_getindex(x::Mat, ::Integer) = x
 
 # TODO: move to GeometryBasics
 function corners(rect::Rect2{T}) where T
