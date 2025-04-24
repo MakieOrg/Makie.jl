@@ -20,20 +20,20 @@ for marker in [:circle, :rect, :diamond, :utriangle, :rtriangle, :dtriangle, :lt
 end
 
 @reference_test "Open scatter markers" begin
-    x = RNG.rand(40)
-    y = RNG.rand(40)
-    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false, topspinevisible = false, rightspinevisible = false, leftspinevisible = false, bottomspinevisible = false))
-    with_updates_suspended(f.layout) do
-        funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle, open_hexagon, open_pentagon, open_star4, open_star5, open_star6, open_star8]
-        for (i, func) in enumerate(funcs)
-            for (j, args) in enumerate([(), (0.5,)])
-                scatter(f[j, i], x, y, marker = func(args...), axis = (; limits = (-1, 2, nothing, nothing)))
-            end
+    x = rand(40)
+    y = rand(40)
+    s = Scene()
+    cam2d!(s)
+    funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle, open_hexagon, open_pentagon, open_star4, open_star5, open_star6, open_star8]
+    for (i, func) in enumerate(funcs)
+        for (j, args) in enumerate([(), (0.5,)])
+            scatter!(s, i .+ (x.*0.5), 5*j .+ (y.*4), marker = func(args...))
         end
-        colgap!(f.layout, 0)
     end
-    f
+    center!(s)
+    display(s);
 end
+
 
 @reference_test "RGB heatmap, heatmap + image overlap" begin
     fig = Figure()
