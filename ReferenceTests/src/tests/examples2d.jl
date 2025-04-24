@@ -1,3 +1,40 @@
+using GLMakie
+# this is not perfect because diagonal edges appear thinner than orthogonal ones
+function with_scaled_hole(base::BezierPath, fraction = 0.8; _scale = (1, -1))
+    inner = Makie.rotate(Makie.scale(base, fraction .* _scale), pi)
+    BezierPath([base.commands; inner.commands])
+end
+
+for marker in [:circle, :rect, :diamond, :utriangle, :rtriangle, :dtriangle, :ltriangle, :hexagon, :pentagon, :star4, :star5, :star6, :star8]
+    funcname = Symbol("open_", marker)
+    @eval begin
+        """
+            $($(funcname))(fraction = 0.8)
+        Returns a `BezierPath` of an open $($(string(marker))) whose radius `r` is by default size-matched
+        to the `:$($(string(marker)))` marker. The relative size of the hole is
+        determined by `fraction`.
+        """
+        function $funcname(fraction = 0.8)
+            with_scaled_hole(Makie.to_spritemarker($(QuoteNode(marker))), fraction; _scale = $(marker in (:rtriangle, :ltriangle) ? (-1, 1) : (1, -1)))
+        end
+    end
+end
+
+@reference_test "Open scatter markers" begin
+    x = RNG.rand(40)
+    y = RNG.rand(40)
+    f = Figure(size = (600, 450), Axis = (; xticksvisible = false, xticklabelsvisible = false, yticksvisible = false, yticklabelsvisible = false, xgridvisible = false, ygridvisible = false, topspinevisible = false, rightspinevisible = false, leftspinevisible = false, bottomspinevisible = false))
+    with_updates_suspended(f.layout) do
+        funcs = [open_circle, open_rect, open_diamond, open_utriangle, open_rtriangle, open_dtriangle, open_ltriangle, open_hexagon, open_pentagon, open_star4, open_star5, open_star6, open_star8]
+        for (i, func) in enumerate(funcs)
+            for (j, args) in enumerate([(), (0.5,)])
+                scatter(f[j, i], x, y, marker = func(args...), axis = (; limits = (-1, 2, nothing, nothing)))
+            end
+        end
+        colgap!(f.layout, 0)
+    end
+    f
+end
 
 @reference_test "RGB heatmap, heatmap + image overlap" begin
     fig = Figure()
@@ -852,7 +889,7 @@ end
     y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
     @. f1(x,y) = x^2 + y^2;
     z = f1(x,y);
-    
+
     f = Figure()
     ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
     ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
