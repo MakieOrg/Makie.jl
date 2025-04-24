@@ -31,9 +31,8 @@ end
         end
     end
     center!(s)
-    display(s);
+    s
 end
-
 
 @reference_test "RGB heatmap, heatmap + image overlap" begin
     fig = Figure()
