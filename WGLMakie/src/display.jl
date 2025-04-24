@@ -220,7 +220,7 @@ function Base.size(screen::Screen)
     return size(screen.scene)
 end
 
-function get_screen_session(screen::Screen; timeout=100,
+function get_screen_session(screen::Screen; timeout=200,
                    error::Union{Nothing,String}=nothing)::Union{Nothing,Session}
     function throw_error(status)
         if !isnothing(error)
