@@ -1,4 +1,3 @@
-using GLMakie
 # this is not perfect because diagonal edges appear thinner than orthogonal ones
 function with_scaled_hole(base::BezierPath, fraction = 0.8; _scale = (1, -1))
     inner = Makie.rotate(Makie.scale(base, fraction .* _scale), pi)
