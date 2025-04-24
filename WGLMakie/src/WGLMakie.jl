@@ -71,7 +71,7 @@ end
 
 const TEXTURE_ATLAS = Observable(Float32[])
 
-wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
+wgl_texture_atlas() = Makie.get_texture_atlas(2048, 32)
 
 function __init__()
     # Activate WGLMakie as backend!
