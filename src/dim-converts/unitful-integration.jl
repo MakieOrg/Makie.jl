@@ -91,10 +91,10 @@ function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
 end
 
 function best_unit(min, max)
-    middle = (min + max) / 2.0
-    all_units = get_all_base10_units(middle)
+    axis_length = max - min
+    all_units = get_all_base10_units(axis_length)
     _, index = findmin(all_units) do unit
-        raw_value = abs(unit_convert(unit, middle))
+        raw_value = abs(unit_convert(unit, axis_length))
         # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
         # So, for fractions between 0..1, we use inv to penalize really small fractions
         positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
