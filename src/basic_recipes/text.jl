@@ -24,17 +24,16 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # position and text attributes supplementing data not in arguments.
     # For conversion we want to move position data into the argument pipeline
     # and String-like data into attributes. Do this here:
-    pushfirst!(inputs, :position, :text)
-    register_computation!(attr, inputs, [:input_positions, :input_text]) do inputs, changed, cached
-        a_pos, a_text, args... = values(inputs)
-
+    pushfirst!(inputs, :text)
+    register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
+        a_text, args... = values(inputs)
         # Note: Could add RichText
         if args isa Tuple{<: AbstractString}
             # position data will allways be wrapped in a Vector, so strings should too
-            return ((a_pos,), [args[1]])
+            return ((Point2f(0),), [args[1]])
 
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
-            return ((a_pos,), args[1])
+            return ((Point2f(0),), args[1])
 
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
@@ -46,7 +45,7 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     end
 
     # Continue with _register_expand_arguments with adjusted input names
-    _register_expand_arguments!(Text, attr, [:input_positions], true)
+    _register_expand_arguments!(Text, attr, [:_positions], true)
 
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
@@ -59,7 +58,53 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     return
 end
 
+
+
+
+function convert_text_arguments(text::AbstractString, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
+    nt = glyph_collection(
+        text, fonts, fontsize, align...,
+        lineheight, justification, word_wrap_width, rotation
+    )
+    return (nt.glyphindices, nt.font_per_char, nt.char_origins, nt.glyph_extents, [1:length(nt.glyphindices)])
+end
+
+function convert_text_arguments(text::AbstractVector{<:AbstractString}, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
+    glyphindices = UInt64[]
+    font_per_char = NativeFont[]
+    char_origins = Point3f[]
+    glyph_extents = GlyphExtent[]
+    text_blocks = UnitRange{Int64}[]
+    broadcast_foreach(text, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width) do text, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width
+        nt = glyph_collection(text, fonts, fontsize, align..., lineheight, justification, word_wrap_width, rotation)
+        curr = length(glyphindices)
+        push!(text_blocks, (curr+1):(curr + length(nt.glyphindices)))
+        append!(glyphindices, nt.glyphindices)
+        append!(font_per_char, nt.font_per_char)
+        append!(char_origins, nt.char_origins)
+        append!(glyph_extents, nt.glyph_extents)
+    end
+    return (glyphindices, font_per_char, char_origins, glyph_extents, text_blocks)
+end
+
+# TODO: is this needed in CairoMakie?
+#       Do it earlier then
+function per_glyph_data((text, attribute), changed, cached)
+    return (attribute,)
+end
+function per_glyph_data((text, attribute)::Tuple{AbstractVector{<:AbstractString}, Any}, changed, cached)
+    return (attribute,)
+end
+
 function register_text_computations!(attr::ComputeGraph)
+    if haskey(attr, :atlas)
+        @error("Overwriting the texture atlas probably doesn't work", maxlog = 1)
+    else
+        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
+            (get_texture_atlas(2048, 64),)
+        end
+    end
+
     register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
         return (to_font(fs, f),)
     end
@@ -69,115 +114,73 @@ function register_text_computations!(attr::ComputeGraph)
     inputs = [
         :input_text, :fontsize,
         :selected_font, # TODO: include to_font here
-        :fonts, # TODO: remove this
         :align, :rotation, :justification,
         :lineheight,
-        :scaled_color, :strokecolor, :strokewidth, # TODO: can we remove these?
         :word_wrap_width, :offset
     ]
 
     register_computation!(attr, inputs,
-            [:glyph_collections, :linepoints, :linewidths, :linecolors, :lineindices]
+            [:glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks]
         ) do inputs, changed, cached
 
-        str, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs = inputs
-
-        if isnothing(cached)
-            gcs = GlyphCollection[]
-            lsegs = Point2f[]
-            lwidths = Float32[]
-            lcolors = RGBAf[]
-            lindices = Int[]
-        else
-            gcs = empty!(cached[1])
-            lsegs = empty!(cached[2])
-            lwidths = empty!(cached[3])
-            lcolors = empty!(cached[4])
-            lindices = empty!(cached[5])
-        end
-
-        broadcast_foreach(str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs) do args...
-            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
-            push!(gcs, gc)
-            append!(lsegs, ls)
-            append!(lwidths, lw)
-            append!(lcolors, lc)
-            append!(lindices, lindex)
-        end
-
-        return (gcs, lsegs, lwidths, lcolors, lindices)
+        return convert_text_arguments(
+            inputs.input_text, inputs.fontsize, inputs.selected_font,
+            inputs.align, inputs.rotation, inputs.justification,
+            inputs.lineheight, inputs.word_wrap_width, inputs.offset
+        )
     end
 
-    # TODO: cleanup projection interface and camera interface
-    #       and merge this with generic projection pipeline
-    # register_computation!(attr,
-    #     [:linepoints, :line_indices, :positions_transformed_f32c, :model_f32c, :projectionview, :viewport, :space, :markerspace],
-    #     [:markerspace_linepoints]) do inputs, changed, cached
-
-    #     M = clip_to_space(scene.cam, inputs.markerspace) * space_to_clip(scene.cam, inputs.space) * inputs.model_f32c
-    #     ms_pos = project(M, inputs.positions_transformed_f32c)
-    #     ms_linepos = map(inputs.linepoints, inputs.lineindices) do seg, index
-    #         return seg + attr_broadcast_getindex(ms_pos, index)
-    #     end
-    #     return (ms_linepos, )
-    # end
-
-    return
-end
-
-# TODO: is this needed in CairoMakie?
-#       Do it earlier then
-function per_glyph_data((gcs, ), changed, cached)
-    color       = reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gcs), init = RGBAf[])
-    strokecolor = reduce(vcat, (Makie.collect_vector(g.strokecolors, length(g.glyphs)) for g in gcs), init = RGBAf[])
-    rotation    = reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gcs), init = Quaternionf[])
-    _sc = isempty(strokecolor) ? RGBAf(0, 0, 0, 0) : strokecolor[1]
-    return (color, _sc, rotation)
-end
-
-function compute_text_attributes((atlas, positions, glyph_collections, offsets), changed, cached)
-    return text_quads(atlas, positions, glyph_collections, offsets)
-end
-
-function register_quad_computations!(attr, atlas_res=1024, atlas_ppg=32)
-    if haskey(attr, :atlas)
-        @error("Overwriting the texture atlas probably doesn't work", maxlog = 1)
-    else
-        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
-            (get_texture_atlas(atlas_res, atlas_ppg),)
-        end
+    register_computation!(attr, [:atlas, :glyphindices, :font_per_char], [:sdf_uv]) do (atlas, gi, fonts), changed, cached
+        return (glyph_uv_width!.((atlas,), gi, fonts),)
     end
-    inputs = [:atlas, :positions_transformed_f32c, :glyph_collections, :offset]
-    # partially matched with scatter in WGLMakie
-    outputs = [:gl_position, :marker_offset, :quad_offset, :sdf_uv, :quad_scale]
-    register_computation!(compute_text_attributes, attr, inputs, outputs)
+    register_computation!(attr, [:glyph_origins, :offset], [:marker_offset]) do (origins, offset), changed, cached
+        return (origins .+ (offset,),)
+    end
+    register_computation!(attr, [:glyphindices, :font_per_char, :fontsize], [:glyph_boundingboxes]) do (gi, fonts, fontsize), changed, cached
+        glyph_boundingboxes = broadcast(gi, fonts, fontsize) do g, f, fs
+            FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
+        end
+        return (glyph_boundingboxes,)
+    end
 
+    register_computation!(attr, [:atlas, :glyph_boundingboxes, :fontsize], [:quad_offset, :quad_scale]) do (atlas, glyph_bb, fontsize), changed, cached
+        pad = atlas.glyph_padding / atlas.pix_per_glyph
+        quad_offsets = broadcast(glyph_bb, fontsize) do bb, fs
+            return minimum(bb) .- fs .* pad
+        end
+        quad_scales = broadcast(glyph_bb, fontsize) do bb, fs
+            return widths(bb) .+ fs * 2pad
+        end
+        return (quad_offsets, quad_scales)
+    end
     # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
-    register_computation!(per_glyph_data, attr, [:glyph_collections], [:gl_color, :gl_stroke_color, :gl_rotation])
+    register_computation!(per_glyph_data, attr, [:input_text, :color], [:text_color])
+    register_computation!(per_glyph_data, attr, [:input_text, :strokecolor], [:text_strokecolor])
 
-    # Constants
-    register_computation!((args...) -> (Cint(DISTANCEFIELD), ), attr, Symbol[], [:sdf_marker_shape])
-
-    # TODO:
-    # f32c_scale
-
+    register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
+        length(blocks) == length(pos) || error("Text blocks and positions have different lengths")
+        return ([p for (b, p) in zip(blocks, pos) for i in b],)
+    end
     return
 end
+
 
 function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
     add_attributes!(Text, attr, user_kw)
+
+    register_computation!((args...) -> (Cint(DISTANCEFIELD), ), attr, Symbol[], [:sdf_marker_shape])
+
     register_colormapping!(attr)
     register_text_arguments!(attr, user_kw, args...)
     register_text_computations!(attr)
 
     # TODO: naming...?
     # markerspace bounding boxes of elements (i.e. each string passed to text)
-    register_computation!(attr, [:glyph_collections, :rotation], [:element_bbs]) do (gcs, rot), changed, last
-        N = length(gcs)
-        @assert attr_broadcast_length(rot) in (1, N) ":rotation must be either scalar or have the same length as :text"
-
-        bbs = [unchecked_boundingbox(gcs[i], attr_broadcast_getindex(rot, i)) for i in 1:N]
+    register_computation!(attr, [:glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :fontsize, :rotation], [:element_bbs]) do (gi, fonts, go, ge, fs, rotation), changed, last
+        c = to_color(:transparent)
+        gcs = GlyphCollection(gi, fonts, go, ge, fs, rotation, c, c, 0f0)
+        bbs = [unchecked_boundingbox(gcs, rotation)]
         return (bbs,)
     end
 
@@ -207,12 +210,6 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     T = typeof(attr[:positions][])
     p = Plot{text, Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
     p.transformation = Transformation()
-
-    # linesegments!(p,
-    #     p.markerspace_linepoints,
-    #     linewidth = p.linewidths, color = p.linecolors, space = p.markerspace,
-    #     # other attributes...
-    # )
 
     return p
 end

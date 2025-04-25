@@ -41,19 +41,92 @@ end
 Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, model, justification, and lineheight.
 """
 function layout_text(
-        string::AbstractString, fontsize::Union{AbstractVector, Number},
-        font, fonts, align, rotation, justification, lineheight, color,
-        strokecolor, strokewidth, word_wrap_width
+        string::AbstractString, fontsize::Union{AbstractVector, Number}, fonts, align, justification, lineheightword_wrap_width
     )
     # TODO, somehow some unicode symbols don't get rendered if we dont have one font per char
     # Which is really odd
-    fontperchar = attribute_per_char(string, font)
-
     return glyph_collection(
         string, fontperchar, fontsize, align[1], align[2],
-        lineheight, justification, rotation, color,
-        strokecolor, strokewidth, word_wrap_width
+        lineheight, justification, word_wrap_width
     )
+end
+
+
+function justification2float(justification, halign)
+    if justification === automatic
+        if halign === :left || halign == 0
+            return 0.0f0
+        elseif halign === :right || halign == 1
+            return 1.0f0
+        elseif halign === :center || halign == 0.5
+            return 0.5f0
+        else
+            return 0.5f0
+        end
+    else
+        msg = "Invalid justification $justification. Valid values are <:Real, :left, :center and :right."
+        return halign2num(justification, msg)
+    end
+end
+
+function create_lineinfos(charinfos, word_wrap_width)
+    last_line_start = 1
+    ViewType = typeof(view(charinfos, 1:1))
+    lineinfos = ViewType[]
+    last_space_local_idx = 0
+    last_space_global_idx = 0
+    newline_offset = 0f0
+    x = 0f0
+    xs = [Float32[]]
+
+    # If word_wrap_width > 0:
+    # Whenever a space is hit, record its index in last_space_local_idx and
+    # last_space_global_index. If there is already a space on record and the
+    # current word overflows word_wrap_width, replace the last space with
+    # a newline. newline character unset the last space index
+    # word{space}word{space}word{space}
+    #        ↑      ↑   ↑
+    #        |     i-1  i
+    # last_space_idx
+
+    for (i, ci) in enumerate(charinfos)
+        push!(xs[end], x)
+        x += ci.extent.hadvance * first(ci.scale)
+        if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
+                ((ci.char in (' ', '\n')) || i == length(charinfos))
+
+            newline_offset = xs[end][last_space_local_idx + 1]
+            push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
+            xs[end-1] = xs[end-1][1:last_space_local_idx]
+            push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
+            last_line_start = last_space_global_idx+1
+            x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
+
+            # TODO Do we need to redo the metrics for newlines?
+            charinfos[last_space_global_idx] = let
+                _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
+                (char = '\n', font = font, scale = scale,
+                    lineheight = lineheight, extent = extent)
+            end
+        end
+
+        if ci.char == '\n'
+            push!(xs, Float32[])
+            push!(lineinfos, view(charinfos, last_line_start:i))
+            last_space_local_idx = 0
+            last_line_start = i+1
+            x = 0f0
+        elseif i == length(charinfos)
+            push!(lineinfos, view(charinfos, last_line_start:i))
+        end
+
+        if 0 < word_wrap_width && ci.char == ' '
+            last_space_local_idx = length(last(xs))
+            last_space_global_idx = i
+        end
+    end
+
+    return lineinfos, xs
 end
 
 """
@@ -65,14 +138,14 @@ rotated to wherever it is needed in the plot.
 """
 function glyph_collection(
         str::AbstractString, font_per_char, fontscale_px, halign, valign,
-        lineheight_factor, justification, rotation, color,
-        strokecolor, strokewidth, word_wrap_width
+        lineheight_factor, justification, word_wrap_width, rotation
     )
-
-    isempty(str) && return GlyphCollection(
-        [], NativeFont[], Point3f[], FreeTypeAbstraction.FontExtent{Float32}[],
-        Vec2f[], Float32[], RGBAf[], RGBAf[], 0f0)
-
+    isempty(str) && return (
+        glyphindices = UInt64[],
+        font_per_char = NativeFont[],
+        char_origins =  Point3f[],
+        glyph_extents = FreeTypeAbstraction.FontExtent{Float32}[],
+    )
     # collect information about every character in the string
     charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
         (
@@ -85,67 +158,7 @@ function glyph_collection(
     end
 
     # split the character info vector into lines after every \n
-    lineinfos, xs = let
-        last_line_start = 1
-        ViewType = typeof(view(charinfos, last_line_start:last_line_start))
-        lineinfos = ViewType[]
-
-        last_space_local_idx = 0
-        last_space_global_idx = 0
-        newline_offset = 0f0
-        x = 0f0
-        xs = [Float32[]]
-
-        # If word_wrap_width > 0:
-        # Whenever a space is hit, record its index in last_space_local_idx and
-        # last_space_global_index. If there is already a space on record and the
-        # current word overflows word_wrap_width, replace the last space with
-        # a newline. newline character unset the last space index
-        # word{space}word{space}word{space}
-        #        ↑      ↑   ↑
-        #        |     i-1  i
-        # last_space_idx
-
-        for (i, ci) in enumerate(charinfos)
-            push!(xs[end], x)
-            x += ci.extent.hadvance * first(ci.scale)
-
-            if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
-                    ((ci.char in (' ', '\n')) || i == length(charinfos))
-
-                newline_offset = xs[end][last_space_local_idx + 1]
-                push!(xs, xs[end][last_space_local_idx+1:end] .- newline_offset)
-                xs[end-1] = xs[end-1][1:last_space_local_idx]
-                push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
-                last_line_start = last_space_global_idx+1
-                x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
-
-                # TODO Do we need to redo the metrics for newlines?
-                charinfos[last_space_global_idx] = let
-                    _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
-                    (char = '\n', font = font, scale = scale,
-                        lineheight = lineheight, extent = extent)
-                end
-            end
-
-            if ci.char == '\n'
-                push!(xs, Float32[])
-                push!(lineinfos, view(charinfos, last_line_start:i))
-                last_space_local_idx = 0
-                last_line_start = i+1
-                x = 0f0
-            elseif i == length(charinfos)
-                push!(lineinfos, view(charinfos, last_line_start:i))
-            end
-
-            if 0 < word_wrap_width && ci.char == ' '
-                last_space_local_idx = length(last(xs))
-                last_space_global_idx = i
-            end
-        end
-
-        lineinfos, xs
-    end
+    lineinfos, xs = create_lineinfos(charinfos, word_wrap_width)
 
     # calculate linewidths as the last origin plus hadvance for each line
     linewidths = map(lineinfos, xs) do line, xx
@@ -164,19 +177,7 @@ function glyph_collection(
 
     # shift all x values by the justification amount needed for each line
     # if justification is automatic it depends on alignment
-    float_justification = if justification === automatic
-        if halign === :left || halign == 0
-            0.0f0
-        elseif halign === :right || halign == 1
-            1.0f0
-        elseif halign === :center || halign == 0.5
-            0.5f0
-        else
-            0.5f0
-        end
-    else
-        halign2num(justification, "Invalid justification $justification. Valid values are <:Real, :left, :center and :right.")
-    end
+    float_justification = justification2float(justification, halign)
 
     xs_justified = map(xs, width_differences) do xsgroup, wd
         xsgroup .+ wd * float_justification
@@ -226,19 +227,11 @@ function glyph_collection(
     # these values should be enough to draw characters correctly,
     # compute boundingboxes without relayouting and maybe implement
     # interactive features that need to know where characters begin and end
-    function scalar_or_vec(attr)
-        attr # attribute_per_char returns generators
-    end
-    return GlyphCollection(
-        [FreeTypeAbstraction.glyph_index(x.font, x.char) for x in charinfos],
-        font_per_char,
-        reduce(vcat, charorigins),
-        [x.extent for x in charinfos],
-        fontscale_px,
-        scalar_or_vec(rotation), # rotations is used as one rotation per string above. TODO, allow one rotation per char
-        scalar_or_vec(color),
-        scalar_or_vec(strokecolor),
-        scalar_or_vec(strokewidth)
+    return (
+        glyphindices = map(x-> glyph_index(x.font, x.char), charinfos),
+        font_per_char = map(x-> x.font, charinfos),
+        char_origins = reduce(vcat, charorigins),
+        glyph_extents = map(x-> x.extent, charinfos),
     )
 end
 
@@ -283,8 +276,8 @@ Returns:
 - uv coordinates (packed origin, widths) in the atlas for each glyph/character
 - size of each quad
 """
-function text_quads(atlas::TextureAtlas, position::VecTypes, gc::GlyphCollection, offset)
-    pos = [to_ndim(Point3f, position, 0) for _ in gc.origins]
+function text_quads(atlas::TextureAtlas, position::VecTypes, glyphs, origins, fonts, scales, offset)
+    pos = [to_ndim(Point3f, position, 0) for _ in origins]
 
     pad = atlas.glyph_padding / atlas.pix_per_glyph
     off = _offset_to_vec(offset)

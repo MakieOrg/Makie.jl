@@ -611,7 +611,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :gl_color)
     inputs = [
-        :gl_position,
+        :positions_transformed_f32c,
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
         :gl_rotation, :gl_stroke_color, # TODO: do these even work per glyph?
         :quad_scale, :quad_offset, :sdf_uv, :sdf_marker_shape, :marker_offset,

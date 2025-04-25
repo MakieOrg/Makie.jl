@@ -423,7 +423,7 @@ function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
     space = attr[:space][]
     markerspace = attr[:markerspace][]
     colormap = args.alpha_colormap
-    color = args.gl_color
+    color = args.text_color
     colornorm = args.scaled_colorrange
     distancefield = get_texture!(screen.glscreen, args.atlas)
 
@@ -452,22 +452,19 @@ function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
         data[get(input2glname, name, name)] = args[name]
     end
     # pass nothing to avoid going into image generating functions
-    return draw_scatter(screen, (nothing, data[:position]), data)
+    return draw_scatter(screen, (nothing, data[:text_positions]), data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     attr = generic_robj_setup(screen, scene, plot)
 
     # add atlas, run text_quads, attributes duplication
-    Makie.register_quad_computations!(attr, 2048, 64)
-
-
     if haskey(attr, :depthsorting) && attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
         haskey(attr, :projectionview) || add_input!(attr, :projectionview, scene.camera.projectionview)
 
         register_computation!(attr,
-            [:gl_position, :projectionview, :space, :model_f32c],
+            [:text_positions, :projectionview, :space, :model_f32c],
             [:gl_depth_cache, :gl_indices]
         ) do (pos, _, space, model), changed, last
             pvm = Makie.space_to_clip(scene.camera, space) * model
@@ -476,12 +473,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             return depthsort!(pos[], depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:gl_position], [:gl_indices]) do (ps,), changed, last
+        register_computation!(attr, [:text_positions], [:gl_indices]) do (ps,), changed, last
             return (length(ps),)
         end
     end
 
-    register_computation!(attr, [:gl_position], [:gl_len]) do (ps,), changed, last
+    register_computation!(attr, [:text_positions], [:gl_len]) do (ps,), changed, last
         return (Int32(length(ps)),)
     end
 
@@ -489,13 +486,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         # Special
         :atlas,
         # Needs explicit handling
-        :alpha_colormap, :gl_color, :scaled_colorrange,
+        :alpha_colormap, :text_color, :scaled_colorrange,
     ]
 
     # Simple forwards
     uniforms = [
-        :gl_position, # :gl_color,
-        :gl_stroke_color, :gl_rotation,
+        :text_positions, # :text_color,
+        :text_strokecolor, :rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
@@ -516,17 +513,16 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
-        :gl_position => :position,
+        :positions => :text_positions,
         :alpha_colormap => :color_map,
         :scaled_colorrange => :color_norm,
-        :gl_color => :color,
+        :text_color => :color,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
         :quad_scale => :scale,
         :quad_offset => :quad_offset,
-        :gl_rotation => :rotation,
         :marker_offset => :marker_offset,
-        :gl_stroke_color => :stroke_color, :strokewidth => :stroke_width,
+        :text_strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
@@ -899,14 +895,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     ]
     uniforms = [
         :positions_transformed_f32c, :indices,
-        :uniform_pattern, :uniform_pattern_length, :linecap, :synched_linewidth,
+        :uniform_pattern, :uniform_pattern_length, :linecap, :uniform_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :vertex,
-        :synched_linewidth => :thickness, :model_f32c => :model,
+        :uniform_linewidth => :thickness, :model_f32c => :model,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
