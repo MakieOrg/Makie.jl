@@ -31,18 +31,151 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
+    # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
 ])
 
 Makie.inline!(Makie.automatic)
 edisplay = Bonito.use_electron_display(devtools=true)
 
 @testset "reference tests" begin
+    WGLMakie.activate!()
     @testset "refimages" begin
-        WGLMakie.activate!()
         ReferenceTests.mark_broken_tests(excludes)
         recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
         missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
         ReferenceTests.test_comparison(scores; threshold = 0.05)
+    end
+
+    @testset "window open/closed" begin
+        f, a, p = scatter(rand(10));
+        @test events(f).window_open[] == false
+        @test Makie.isclosed(f.scene) == false
+        @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
+        # This may take a bit
+        @testset "screen closing after not begin displayed anymore" begin
+            display(edisplay, App(f))
+            Bonito.wait_for(() -> events(f).window_open[])
+            @test !isempty(f.scene.current_screens)
+            screen = f.scene.current_screens[1]
+            @test events(f).window_open[] == true
+            @test Makie.isclosed(f.scene) == false
+            @test isopen(screen)
+            display(edisplay, App(nothing))
+            Bonito.wait_for(() -> events(f).window_open[] == false)
+            @test !isopen(screen)
+            @test events(f).window_open[] == false
+            @test Makie.isclosed(f.scene) == true
+        end
+        @testset "screen with explicit close" begin
+            f, a, p = scatter(rand(10))
+            display(edisplay, App(f))
+            Bonito.wait_for(() -> events(f).window_open[])
+            @test !isempty(f.scene.current_screens)
+            screen = f.scene.current_screens[1]
+            @test events(f).window_open[] == true
+            @test Makie.isclosed(f.scene) == false
+            close(f.scene.current_screens[1])
+            @test events(f).window_open[] == false
+            @test Makie.isclosed(f.scene) == true
+            @test Makie.isopen(f.scene) == false
+        end
+    end
+
+
+    @testset "Tick Events" begin
+        function check_tick(tick, state, count)
+            @test tick.state == state
+            @test tick.count == count
+            @test tick.time > 1e-9
+            @test tick.delta_time > 1e-9
+        end
+
+        @testset "save()" begin
+            f, a, p = scatter(rand(10));
+            @test events(f).tick[] == Makie.Tick()
+
+            filename = "$(tempname()).png"
+            try
+                tick_record = Makie.Tick[]
+                on(tick -> push!(tick_record, tick), events(f).tick)
+                save(filename, f)
+                idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+                tick = tick_record[idx]
+                @test tick.state == Makie.OneTimeRenderTick
+                @test tick.count == 0
+                @test tick.time == 0.0
+                @test tick.delta_time == 0.0
+            finally
+                close(f.scene.current_screens[1])
+                rm(filename)
+            end
+        end
+
+        @testset "record()" begin
+            f, a, p = scatter(rand(10));
+            filename = "$(tempname()).mp4"
+            try
+                tick_record = Makie.Tick[]
+                on(tick -> push!(tick_record, tick), events(f).tick)
+                record(_ -> nothing, f, filename, 1:10, framerate = 30)
+
+                start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
+                dt = 1.0 / 30.0
+
+                for (i, tick) in enumerate(tick_record[start:end])
+                    @test tick.state == Makie.OneTimeRenderTick
+                    @test tick.count == i-1
+                    @test tick.time ≈ dt * (i-1)
+                    @test tick.delta_time ≈ dt
+                end
+            finally
+                rm(filename)
+            end
+
+            # test destruction of tick overwrite
+            f, a, p = scatter(rand(10));
+            colorbuffer(f) # trigger screen creation
+
+            let
+                io = VideoStream(f)
+                @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
+                nothing
+            end
+            tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
+            events(f).tick[] = tick
+            @test events(f).tick[] == tick
+        end
+
+
+        @testset "normal render()" begin
+            f, a, p = scatter(rand(10));
+            tick_record = Makie.Tick[]
+            on(t -> push!(tick_record, t), events(f).tick)
+            sleep(0.2)
+
+            # should be empty (or at least not contain Render ticks yet?)
+            @test isempty(tick_record)
+            # @test all(tick -> tick.state == Makie.UnknownTickState, tick_record)
+
+            t0 = time()
+            colorbuffer(f)
+            sleep(1)
+            close(f.scene.current_screens[1])
+            dt_max = time() - t0
+            sleep(1)
+
+            # tests don't make this easy...
+            @test 28 <= length(tick_record) <= round(Int, 30dt_max) + 2
+            t = 0.0
+            for (i, tick) in enumerate(tick_record)
+                @test tick.state == Makie.RegularRenderTick
+                @test tick.count == i
+                @test tick.time > t
+                t = tick.time
+            end
+            # first tick is arbitrary
+            @test Makie.mean([tick.delta_time for tick in tick_record[2:end]]) ≈ 0.033 atol = 0.001
+        end
     end
 
     @testset "memory leaks" begin
@@ -100,65 +233,4 @@ edisplay = Bonito.use_electron_display(devtools=true)
         @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
     end
 
-    @testset "Tick Events" begin
-        function check_tick(tick, state, count)
-            @test tick.state == state
-            @test tick.count == count
-            @test tick.time > 1e-9
-            @test tick.delta_time > 1e-9
-        end
-
-        f, a, p = scatter(rand(10));
-        @test events(f).tick[] == Makie.Tick()
-
-        filename = "$(tempname()).png"
-        try
-            tick_record = Makie.Tick[]
-            on(tick -> push!(tick_record, tick), events(f).tick)
-            save(filename, f)
-            idx = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
-            tick = tick_record[idx]
-            @test tick.state == Makie.OneTimeRenderTick
-            @test tick.count == 0
-            @test tick.time == 0.0
-            @test tick.delta_time == 0.0
-        finally
-            close(f.scene.current_screens[1])
-            rm(filename)
-        end
-
-
-        f, a, p = scatter(rand(10));
-        filename = "$(tempname()).mp4"
-        try
-            tick_record = Makie.Tick[]
-            on(tick -> push!(tick_record, tick), events(f).tick)
-            record(_ -> nothing, f, filename, 1:10, framerate = 30)
-
-            start = findfirst(tick -> tick.state == Makie.OneTimeRenderTick, tick_record)
-            dt = 1.0 / 30.0
-
-            for (i, tick) in enumerate(tick_record[start:end])
-                @test tick.state == Makie.OneTimeRenderTick
-                @test tick.count == i-1
-                @test tick.time ≈ dt * (i-1)
-                @test tick.delta_time ≈ dt
-            end
-        finally
-            rm(filename)
-        end
-
-        # test destruction of tick overwrite
-        f, a, p = scatter(rand(10));
-        let
-            io = VideoStream(f)
-            @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
-            nothing
-        end
-        tick = Makie.Tick(Makie.UnknownTickState, 1, 1.0, 1.0)
-        events(f).tick[] = tick
-        @test events(f).tick[] == tick
-
-        # TODO: test normal rendering
-    end
 end

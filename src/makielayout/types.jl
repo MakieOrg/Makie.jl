@@ -63,7 +63,7 @@ Like LinearTicks but for multiples of `multiple`.
 Example where approximately 5 numbers should be found
 that are multiples of pi, printed like "1π", "2π", etc.:
 
-```
+```julia
 MultiplesTicks(5, pi, "π")
 ```
 
@@ -1679,6 +1679,8 @@ end
             a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
+        "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
+        clip::Bool = true
         "The background color"
         backgroundcolor = :transparent
         "The x label"

@@ -17,18 +17,18 @@
     higher numbers giving lower quality and smaller file sizes (higher compression). The
     minimum value is `0` (lossless encoding).
     - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-    `profile = "high444"`.
+      `profile = "high444"`.
     - For `webm`, `63` is the maximum.
     - `compression` has no effect on `mkv` and `gif` outputs.
 - `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
-you have issues playing a video, try `profile = "high"` or `profile = "main"`.
+  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+  applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
-means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
-means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
+  means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
+  means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
-    !!! warning
+!!! warning
     `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
     is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
     valid when `format` is `"mp4"` or `"webm"`.

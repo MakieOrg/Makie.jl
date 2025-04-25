@@ -431,6 +431,8 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
         positions = apply_transform_and_f32_conversion(plot, f32c, positions)
         cam = scene.camera
 
+        Makie.add_f32c_scale!(gl_attributes, scene, plot, f32c)
+
         if plot isa Scatter
             mspace = plot.markerspace
             gl_attributes[:preprojection] = lift(plot, space, mspace, cam.projectionview,
@@ -451,7 +453,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
                         return nothing
                     end
                 end
-                font = get(gl_attributes, :font, Observable(Makie.defaultfont()))
+                font = map(to_font, pop!(gl_attributes, :font))
                 gl_attributes[:uv_offset_width][] == Vec4f(0) && delete!(gl_attributes, :uv_offset_width)
                 get!(gl_attributes, :uv_offset_width) do
                     return Makie.primitive_uv_offset_width(atlas, marker, font)
@@ -466,8 +468,10 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             if haskey(gl_attributes, :intensity)
                 gl_attributes[:color] = pop!(gl_attributes, :intensity)
             end
-            to_keep = Set([:color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
-                             :projectionview, :projection, :view, :visible, :resolution, :transparency])
+            to_keep = Set([
+                :color_map, :color, :color_norm, :px_per_unit, :scale, :model, :marker_offset,
+                :projectionview, :projection, :view, :visible, :resolution, :transparency, :f32c_scale
+            ])
             filter!(gl_attributes) do (k, v,)
                 return (k in to_keep)
             end
@@ -481,23 +485,6 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Union{Sca
             return draw_pixel_scatter(screen, positions, gl_attributes)
         else
             if plot isa MeshScatter
-                # If the vertices of the scattered mesh, markersize and (if it applies) model
-                # are float32 safe we should be able to just correct for any scaling from
-                # float32convert in the shader, after those conversions.
-                # We should also be fine as long as rotation = identity (also in model).
-                # If neither is the case we would have to combine vertices with positions and
-                # transform them to world space (post float32convert) on the CPU. We then can't
-                # do instancing anymore, so meshscatter becomes pointless.
-                if !isnothing(scene.float32convert)
-                    gl_attributes[:f32c_scale] = map(plot, f32c, scene.float32convert.scaling, plot.transform_marker) do new_f32c, old_f32c, transform_marker
-                        # we must use new_f32c with transform_marker = true,
-                        # because model might be merged into f32c (robj.model = I)
-                        # with transform_marker = false we must use the old f32c
-                        # as we don't want model to apply
-                        return Vec3f(transform_marker ? new_f32c.scale : old_f32c.scale)
-                    end
-                end
-
                 if haskey(gl_attributes, :color)
                     if to_value(gl_attributes[:color]) isa Makie.AbstractPattern
                         pattern_img = lift(x -> el32convert(Makie.to_image(x)), plot, gl_attributes[:color])
@@ -567,7 +554,7 @@ function draw_atomic(screen::Screen, scene::Scene, @nospecialize(plot::Lines))
             end
             transform_func = transform_func_obs(plot)
             positions = lift(plot, transform_func, positions, space, pvm) do f, ps, space, pvm
-                transformed = apply_transform(f, ps, space)
+                transformed = apply_transform(f, ps)
                 output = Vector{Point4f}(undef, length(transformed))
                 for i in eachindex(transformed)
                     output[i] = pvm * to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0.0), 1.0)
@@ -612,7 +599,8 @@ function draw_atomic(screen::Screen, scene::Scene,
     return cached_robj!(screen, scene, plot) do gl_attributes
         glyphcollection = plot[1]
 
-        pos = apply_transform_and_f32_conversion(plot, pop!(gl_attributes, :f32c), gl_attributes[:position])
+        f32c = pop!(gl_attributes, :f32c)
+        pos = apply_transform_and_f32_conversion(plot, f32c, gl_attributes[:position])
         space = plot.space
         markerspace = plot.markerspace
         offset = pop!(gl_attributes, :offset, Vec2f(0))
@@ -677,6 +665,8 @@ function draw_atomic(screen::Screen, scene::Scene,
         gl_attributes[:preprojection] = lift(plot, space, markerspace, cam.projectionview, cam.resolution) do s, ms, pv, res
             Mat4f(Makie.clip_to_space(cam, ms) * Makie.space_to_clip(cam, s))
         end
+
+        Makie.add_f32c_scale!(gl_attributes, scene, plot, f32c)
 
         return draw_scatter(screen, (DISTANCEFIELD, positions), gl_attributes)
     end
@@ -869,20 +859,20 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
                     return (x, y)
                 elseif Makie.is_translation_scale_matrix(model)
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y), space), space)
+                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y)), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y), space), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y)), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), space, Point2d), space)
+                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), Point2d), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), space, Point2d), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), Point2d), space) for x in x, y in y]
                     end
                     return (first.(matrix), last.(matrix))
                 end
@@ -959,6 +949,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         if haskey(gl_attributes, :intensity)
             intensity = pop!(gl_attributes, :intensity)
             return draw_volume(screen, Tex(intensity), gl_attributes)
+        elseif haskey(gl_attributes, :color)
+            color = pop!(gl_attributes, :color)
+            return draw_volume(screen, Tex(color), gl_attributes)
         else
             return draw_volume(screen, Tex(plot[4]), gl_attributes)
         end
@@ -1044,15 +1037,36 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         get!(gl_attributes, :color_map, nothing)
 
         # process texture mapping
-        uv_map = pop!(gl_attributes, :uvmap)
-        if !isnothing(to_value(uv_map))
-            gl_attributes[:uv_map] = Texture(screen.glscreen, uv_map, minfilter = :nearest)
+        uv_map = pop!(gl_attributes, :uvmap, nothing)
+        uv_transform = pop!(gl_attributes, :uv_transform)
+
+        if !isnothing(to_value(uv_map)) || !isnothing(to_value(uv_transform))
+            if !(to_value(gl_attributes[:color]) isa Matrix{<: Colorant})
+                error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+            end
+
+            if !isnothing(to_value(uv_transform))
+                # new
+                packed = map(Makie.pack_voxel_uv_transform, uv_transform)
+            else
+                # old, deprecated
+                @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+                packed = map(uv_map) do uvmap
+                    raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+                    converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+                    return Makie.pack_voxel_uv_transform(converted_uvt)
+                end
+            end
+            gl_attributes[:uv_transform] = Texture(screen.glscreen, packed, minfilter = :nearest)
 
             interp = to_value(pop!(gl_attributes, :interpolate))
             interp = interp ? :linear : :nearest
             color = gl_attributes[:color]
             gl_attributes[:color] = Texture(screen.glscreen, color, minfilter = interp)
         elseif !isnothing(to_value(gl_attributes[:color]))
+            if to_value(gl_attributes[:color]) isa Matrix{<: Colorant}
+                error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+            end
             gl_attributes[:color] = Texture(screen.glscreen, gl_attributes[:color], minfilter = :nearest)
         end
 

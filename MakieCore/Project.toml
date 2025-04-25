@@ -1,7 +1,7 @@
 name = "MakieCore"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 authors = ["Simon Danisch"]
-version = "0.9.0"
+version = "0.9.2"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"

@@ -57,6 +57,20 @@ function intensity_convert_tex(context, intensity::VecOrSignal{T}, verts) where 
     end
 end
 
+function position_calc(
+        position_xyz::VectorTypes{T}, target::Type{TextureBuffer}
+    ) where T <: StaticVector
+    return "pos = texelFetch(position, index).xyz;"
+end
+
+function position_calc(
+        position_xyz::VectorTypes{T}, target::Type{GLBuffer}
+    ) where T <: StaticVector
+    len = length(T)
+    filler = join(ntuple(x->0, 3-len), ", ")
+    needs_comma = len != 3 ? ", " : ""
+    return "pos = vec3(position $needs_comma $filler);"
+end
 
 
 @nospecialize
@@ -116,7 +130,7 @@ function draw_mesh_particle(screen, p, data)
             "util.vert", "particles.vert",
             "fragment_output.frag", "lighting.frag", "mesh.frag",
             view = Dict(
-                "position_calc" => position_calc(position, nothing, nothing, nothing, TextureBuffer),
+                "position_calc" => position_calc(position, TextureBuffer),
                 "shading" => light_calc(shading),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
@@ -145,6 +159,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         marker_offset = Vec3f(0) => GLBuffer
         color_norm   = nothing
         scale        = 2f0
+        f32c_scale   = Vec3f(1)
         transparency = false
         shader       = GLVisualizeShader(
             screen,
@@ -258,6 +273,7 @@ function draw_scatter(screen, (marker, position), data)
         stroke_width    = 0f0
         glow_width      = 0f0
         uv_offset_width = Vec4f(0) => GLBuffer
+        f32c_scale      = Vec3f(1)
 
         distancefield   = nothing => Texture
         indices         = const_lift(length, position) => to_index_buffer
@@ -270,7 +286,7 @@ function draw_scatter(screen, (marker, position), data)
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
             view = Dict(
-                "position_calc" => position_calc(position, nothing, nothing, nothing, GLBuffer),
+                "position_calc" => position_calc(position, GLBuffer),
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

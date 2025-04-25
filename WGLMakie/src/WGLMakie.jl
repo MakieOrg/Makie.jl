@@ -32,7 +32,7 @@ using Makie: apply_transform_and_f32_conversion, f32_conversion_obs, f32_convert
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
 const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
-# Main.download("https://cdn.esm.sh/v66/three@0.157/es2021/three.js", joinpath(@__DIR__, "THREE.js"))
+# using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
 include("display.jl")
 include("three_plot.jl")

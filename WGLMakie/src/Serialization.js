@@ -1,4 +1,4 @@
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import * as Camera from "./Camera.js";
 import { create_line, create_linesegments } from "./Lines.js";
 

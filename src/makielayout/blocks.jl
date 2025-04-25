@@ -738,3 +738,7 @@ function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e
     notify(b.blockscene.events.mouseposition)
     return tt
 end
+
+# collect() doesn't seem to be necessary but the propertynames docstring says
+# "tuple or vector" so lets not return a KeySet
+Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))

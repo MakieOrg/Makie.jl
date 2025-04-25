@@ -7,6 +7,13 @@ surface
 
 ## Examples
 
+### Gridded surfaces
+
+By default surface data is placed on a grid matching the size of the input data.
+The grid can be specified explicitly by passing a Range or Vector of values as the X and Y arguments.
+The positions/vertices of the surface are then effectively derived as `Point.(X, Y', Z)`.
+Intervals (e.g `0..1`) can be used to specify the start and endpoint only, implying a linear range in between.
+
 ```@figure backend=GLMakie
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -69,6 +76,56 @@ data = 0.1randn(d,d) + reshape(
 
 surface(data; shading = NoShading, colormap = :deep)
 surface(data; shading = NoShading, colormap = :deep)
+```
+
+### Quad Mesh surface
+
+X and Y values can also be given as a Matrix.
+In this case the surface positions follow as `Point.(X, Y, Z)` so the surface is no longer restricted to an XY grid.
+
+```@figure backend=GLMakie
+rs = 1:10
+thetas = 0:10:360
+
+xs = rs .* cosd.(thetas')
+ys = rs .* sind.(thetas')
+zs = sin.(rs) .* cosd.(thetas')
+
+surface(xs, ys, zs)
+```
+
+### NaN Handling
+
+If a vertex of the surface is NaN, meaning that either X, Y or Z contribute NaN to it, all connected faces can not be drawn.
+Thus the surface will have a hole around a NaN vertex.
+If just a color is NaN it will be drawn with `nan_color`.
+
+```@figure backend=GLMakie
+xs = ys = vcat(1:9, NaN, 11:30)
+zs = [2 * sin(x+y) for x in range(-3, 3, length=30), y in range(-3, 3, length=30)]
+zs_nan = copy(zs)
+zs_nan[25, 25] = NaN
+
+f = Figure(size = (600, 300))
+surface(f[1, 1], xs, ys, zs_nan, axis = (show_axis = false,))
+surface(f[1, 2], 1:30, 1:30, zs, color = zs_nan, nan_color = :red, axis = (show_axis = false,))
+f
+```
+
+### 2D Surface
+
+A surface plot can act as an off-grid version of heatmap or image in 2D.
+For this it is recommended to pass data through `color` instead of the Z argument to avoid the plot interfering with others based on its Z values.
+
+```@figure backend=GLMakie
+rs = 1:10
+thetas = 0:10:360
+
+xs = rs .* cosd.(thetas')
+ys = rs .* sind.(thetas')
+zs = sin.(rs) .* cosd.(thetas')
+
+surface(xs, ys, zeros(size(zs)), color = zs, shading = NoShading)
 ```
 
 ## Attributes

@@ -77,6 +77,17 @@ end
     f
 end
 
+@reference_test "Volume absorption" begin
+    f = Figure(size = (600, 300))
+    r = range(-5, 5, length=31)
+    data = [cos(x*x + y*y + z*z)^2 for x in r, y in r, z in r]
+    absorption = 5.0
+    volume(f[1, 1], data, algorithm = :absorption; absorption)
+    volume(f[1, 2], 128 .+ 120 .* data, algorithm = :indexedabsorption; absorption)
+    volume(f[1, 3], HSV.(180 .* data, 0.8, 0.9), algorithm = :absorptionrgba; absorption)
+    f
+end
+
 @reference_test "Textured meshscatter" begin
     catmesh = loadasset("cat.obj")
     img = loadasset("diffusemap.png")
@@ -203,6 +214,20 @@ end
     pts = SphericalToCartesian(r, θ, φ)
     arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize=0.02, linecolor=:green, arrowcolor=:darkblue)
 end
+
+@reference_test "Arrows 3D marker_transform" begin
+    f = Figure()
+    a = Axis3(f[1,1])
+    r = range(-1, 1, length = 5)
+    arrows!(a, Point3f[(1, 0, 0), (0,0,0)], Point3f[(0,0,0.1), (1,0,0)], color = :gray)
+    arrows!(a, Point3f[(-1, 1, 0), (0,0,0)], Point3f[(0,0,0.1), (-1,1,0)], color = :lightblue,
+        transform_marker = false)
+    arrows!(a, Point3f[(1, -1, 0), (0,0,0)], Point3f[(0,0,0.1), (1,-1,0)], color = :yellow,
+        transform_marker = true)
+    mesh!(a, Rect2f(-1,-1,2,2), color = (:red, 0.5), transparency = true)
+    f
+end
+
 
 @reference_test "Image on Surface Sphere" begin
     n = 20
@@ -661,11 +686,15 @@ end
 end
 
 @reference_test "Clip planes - volume" begin
-    f = Figure(size = (600, 400))
+    f = Figure(size = (600, 400), backgroundcolor = :black)
     r = -10:10
     data = [1 - (1 + cos(x^2) + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
-    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
+    index_data = round.(Int, 10 .* abs.(data))
+    N = maximum(index_data)
+    density_data = 0.005 .* abs.(data)
+    rgba_data = [RGBAf(cos(x^2)^2, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
+    clip_planes = [Plane3f(Vec3f(-1), 0.0)]
     attr = (clip_planes = clip_planes, axis = (show_axis = false,))
 
     volume(f[1, 1], -10..10, -10..10, -10..10, data; attr...,
@@ -675,13 +704,14 @@ end
 
     volume(f[1, 2], -10..10, -10..10, -10..10, data; attr...,
         algorithm = :mip)
-    volume(f[2, 2], -10..10, -10..10, -10..10, data; attr...,
+    volume(f[2, 2], -10..10, -10..10, -10..10, rgba_data; attr...,
         algorithm = :absorptionrgba)
 
-    volume(f[1, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :additive)
-    volume(f[2, 3], -10..10, -10..10, -10..10, data; attr...,
-        algorithm = :indexedabsorption)
+    # TODO: doesn't work as intended anymore?
+    volume(f[1, 3], -10..10, -10..10, -10..10, rgba_data; attr...,
+        algorithm = :additive, alpha = 0.01)
+    volume(f[2, 3], -10..10, -10..10, -10..10, index_data; attr...,
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N))
 
     f
 end
