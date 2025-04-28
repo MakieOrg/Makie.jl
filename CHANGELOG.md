@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 
 ## [0.22.4] - 2025-04-11
 
@@ -20,7 +21,6 @@
 - Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
-- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 - Fixed the computed `colorrange` being out of order with `colorscale = -` or similar colorscale functions that break sorting [#4884](https://github.com/MakieOrg/Makie.jl/pull/4884)
 - Added `transform_marker` to arrows [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
 - Reverted change in `meshscatter` transformation behavior by using `transform_marker = true` as the default [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
