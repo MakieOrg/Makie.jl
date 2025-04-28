@@ -118,15 +118,15 @@ function create_wgl_renderobject(callback, attr, inputs)
 end
 
 function assemble_particle_robj!(attr, data)
-    if haskey(attr, :gl_position)
-        data[:positions_transformed_f32c] = attr.gl_position
+    if haskey(attr, :text_positions)
+        data[:positions_transformed_f32c] = attr.text_positions
     else
         data[:positions_transformed_f32c] = attr.positions_transformed_f32c
     end
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = haskey(attr, :gl_rotation) ? attr.gl_rotation : attr.rotation
+    data[:rotation] = attr.rotation
     data[:f32c_scale] = attr.f32c_scale
 
     # Uniforms will be set in JavaScript
@@ -155,7 +155,6 @@ function assemble_particle_robj!(attr, data)
         lens = [k => length(v) for (k, v) in per_instance]
         error("Not all have the same length: $(lens)")
     end
-
     return VertexArray(; per_instance...), data
 end
 
@@ -200,7 +199,7 @@ function scatter_program(attr)
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => get(()-> attr.gl_rotation, attr, :rotation) isa Billboard,
+        :billboard => attr.rotation isa Billboard,
         :distancefield => distancefield,
 
         :quad_scale => attr.quad_scale,
@@ -208,13 +207,12 @@ function scatter_program(attr)
         :sdf_uv => attr.sdf_uv,
         :sdf_marker_shape => attr.sdf_marker_shape,
         :strokewidth => attr.strokewidth,
-        :strokecolor => get(()-> attr.gl_stroke_color, attr, :strokecolor),
+        :strokecolor => get(()-> attr.text_strokecolor, attr, :strokecolor),
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
     )
     per_instance, uniforms = assemble_particle_robj!(attr, data)
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
-    @assert haskey(per_instance.buffers, :strokecolor) || haskey(uniforms, :strokecolor)
     return InstancedProgram(
         WebGL(),
         lasset("sprites.vert"),
@@ -606,14 +604,13 @@ function create_shader(scene::Scene, plot::Makie.Text)
     # TODO: color processing incorrect, processed per-glyphcollection/global
     #       colors instead of per glyph
     attr = plot.args[1]
-    Makie.register_quad_computations!(attr, 1024, 32)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    backend_colors!(attr, :gl_color)
+    backend_colors!(attr, :text_color)
     inputs = [
         :positions_transformed_f32c,
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
-        :gl_rotation, :gl_stroke_color, # TODO: do these even work per glyph?
+        :rotation, :text_strokecolor, # TODO: do these even work per glyph?
         :quad_scale, :quad_offset, :sdf_uv, :sdf_marker_shape, :marker_offset,
         :strokewidth, :glowwidth, :glowcolor,
         :depth_shift, :atlas, :markerspace,

@@ -50,11 +50,6 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
 
-    # # remap positions to be per glyph first
-    # @assert !haskey(attr, :positions_transformed_f32c)
-    # or don't because it generates quite a few redundant transform and f32c applications
-    register_position_transforms!(attr)
-
     return
 end
 
@@ -146,10 +141,10 @@ function register_text_computations!(attr::ComputeGraph)
     register_computation!(attr, [:atlas, :glyph_boundingboxes, :fontsize], [:quad_offset, :quad_scale]) do (atlas, glyph_bb, fontsize), changed, cached
         pad = atlas.glyph_padding / atlas.pix_per_glyph
         quad_offsets = broadcast(glyph_bb, fontsize) do bb, fs
-            return minimum(bb) .- fs .* pad
+            return Vec2f(minimum(bb) .- fs .* pad)
         end
         quad_scales = broadcast(glyph_bb, fontsize) do bb, fs
-            return widths(bb) .+ fs * 2pad
+            return Vec2f(widths(bb) .+ fs * 2pad)
         end
         return (quad_offsets, quad_scales)
     end
@@ -161,6 +156,11 @@ function register_text_computations!(attr::ComputeGraph)
         length(blocks) == length(pos) || error("Text blocks and positions have different lengths")
         return ([p for (b, p) in zip(blocks, pos) for i in b],)
     end
+
+        # # remap positions to be per glyph first
+    # @assert !haskey(attr, :positions_transformed_f32c)
+    # or don't because it generates quite a few redundant transform and f32c applications
+    register_position_transforms!(attr, :text_positions)
     return
 end
 
