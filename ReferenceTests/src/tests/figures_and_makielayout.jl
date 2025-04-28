@@ -286,8 +286,8 @@ end
     as = []
     for (i, mirror) in enumerate([false, true])
         for (j, dir) in enumerate([1, -1])
-            a = PolarAxis(f[i, j],
-                title = "mirror = $mirror, dir = $dir",
+            Label(f[i, j][1, 1], "mirror = $mirror, dir = $dir", tellwidth = false)
+            a = PolarAxis(f[i, j][2, 1],
                 # thetaticks = Makie.LinearTicks(4),
                 thetaticks = Makie.MultiplesTicks(4, pi/180, "°"),
                 rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red,
