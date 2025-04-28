@@ -296,7 +296,7 @@ end
 
 function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
-    if event.type !== MouseEventTypes.rightdrag
+    if event.type !== to_drag_event(ax.panbutton[])
         return Consume(false)
     end
 

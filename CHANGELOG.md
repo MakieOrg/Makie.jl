@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+- Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
 
 ## [0.22.4] - 2025-04-11
 
