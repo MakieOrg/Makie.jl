@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+
+## [0.22.4] - 2025-04-11
+
+- Re-added the `apply_transform(f, data, space)` method that was removed in v0.22.3 with a deprecation warning. It will be removed in the next breaking version. [#4916](https://github.com/MakieOrg/Makie.jl/pull/4916)
+
+## [0.22.3] - 2025-04-08
+
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
 - Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
 - Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
@@ -20,6 +28,7 @@
 - Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
 - Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
+- Switched to Julia 1.10 for GLMakie CI due to issues with OpenGL on ubuntu-latest. This may cause GLMakie compatibility with the Julia 1.6 to degrade in the future. [#4913](https://github.com/MakieOrg/Makie.jl/pull/4913)
 
 ## [0.22.2] - 2025-02-26
 
@@ -68,7 +77,7 @@
   - Changed the order of `Rect2` coordinates to be counter-clockwise.
   - Updated `Cylinder` to avoid visually rounding off the top and bottom.
   - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
-  - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
+  - Fix `Tessellation/tessellation` spelling [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
 - Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
 - `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
 - `contour` now supports _curvilinear_ grids, where `x` and `y` are matrices [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
@@ -777,7 +786,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...HEAD
+[0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
+[0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
 [0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0

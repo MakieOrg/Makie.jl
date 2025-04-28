@@ -65,7 +65,7 @@ not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
-```
+```julia
 on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
