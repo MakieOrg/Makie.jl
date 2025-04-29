@@ -218,3 +218,258 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: VecTypes{N}}, V}}) w
     end
 
 end
+
+################################################################################
+
+
+"""
+    arrows(points, directions; kwargs...)
+    arrows(x, y, u, v)
+    arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    arrows(x, y, z, u, v, w)
+    arrows(x, y, [z], f::Function)
+
+Plots arrows at the specified points with the specified components.
+`u` and `v` are interpreted as vector components (`u` being the x
+and `v` being the y), and the vectors are plotted with the tails at
+`x`, `y`.
+
+If `x, y, u, v` are `<: AbstractVector`, then each 'row' is plotted
+as a single vector.
+
+If `u, v` are `<: AbstractMatrix`, then `x` and `y` are interpreted as
+specifications for a grid, and `u, v` are plotted as arrows along the
+grid.
+
+`arrows` can also work in three dimensions.
+
+If a `Function` is provided in place of `u, v, [w]`, then it must accept
+a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
+or other array-like output.
+"""
+@recipe Arrows2D (points, directions) begin
+    "Sets the shape of the arrow tail in units relative to the tailwidth and taillength."
+    tail = Rect2f(0,0,1,1) # TODO: placeholder
+    "Sets the shape of the arrow shaft in units relative to the shaftwidth and shaftlength."
+    shaft = Rect2f(0,0,1,1)
+    "Sets the shape of the arrow tip in units relative to the tipwidth and tiplength."
+    tip = Point2f[(0, 0), (1, 0.5), (0, 1)]
+
+    """
+    Sets the width of the arrow tail. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    tailwidth = 14
+    """
+    Sets the length of the arrow tail. This length may get scaled down if the total arrow length
+    exceeds the available space for the arrow. Setting this to 0 will result in no tail being drawn.
+    """
+    taillength = 0
+    """
+    Sets the width of the arrow shaft. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    shaftwidth = 3
+    """
+    Sets the length of the arrow shaft. When set to `automatic` the length of the shaft will be
+    derived from the length of the arrow, the `taillength` and the `tiplength`. If the result falls
+    below `minshaftlength`, that value is used instead and all lengths and widths are scaled to fit.
+    If the `shaftlength` is set to a value, the lengths and widths of the arrow are always scaled.
+    """
+    shaftlength = automatic
+    "Sets the minimum shaft length, see `shaftlength`."
+    minshaftlength = 10
+    """
+    Sets the width of the arrow tip. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    tipwidth = 14
+    """
+    Sets the length of the arrow tip. This length may get scaled down if the total arrow length
+    exceeds the available space for the arrow. Setting this to 0 will result in no tip being drawn.
+    """
+    tiplength = 8
+
+    "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
+    color = :black
+    "Sets the color of the arrow tail. Defaults to `color`"
+    tailcolor = automatic
+    "Sets the color of the arrow shaft. Defaults to `color`"
+    shaftcolor = automatic
+    "Sets the color of the arrow tip. Defaults to `color`"
+    tipcolor = automatic
+
+    """
+    Sets the alignment of the arrow, i.e. which part of the arrow is placed at the given positions.
+    - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
+    - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
+    - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
+
+    Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
+    """
+    align = :tail
+    """
+    Scales the length of the arrow (as calculated from directions) by some factor.
+    """
+    lengthscale = 1f0
+    """
+    By default each arrow length is derived as the norm (length) of the corresponding direction.
+    Setting `normalize = true` disables this, so that each arrow has the same length. The arrow
+    metrics follow directly from tail/shaft/tip- length/width (and minshaftlength if shaftlength
+    is automatic).
+    """
+    normalize = false
+
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
+end
+
+convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args...)
+
+
+function _get_arrow_shape(x, len, width, shaftwidth, color)
+    if len == 0 || width == 0
+        return GeometryBasics.Mesh(Point2f[], GLTriangleFace[], color = RGBAf[])
+    else
+        m = _get_arrow_shape(x, len, width, shaftwidth)
+        cs = fill(color, length(coordinates(m)))
+        for i in eachindex(m.position)
+            m.position[i] -= Vec2f(0, 0.5 * width) # center width
+        end
+        return GeometryBasics.mesh(m, color = cs)
+    end
+end
+
+_get_arrow_shape(f::Function, length, width, shaftwidth) = poly_convert(f(length, width, shaftwidth))
+function _get_arrow_shape(polylike, length, width, shaftwidth)
+    # deepcopy so each each meshes positions are independent
+    mesh = deepcopy(poly_convert(polylike))
+    for i in eachindex(mesh.position)
+        mesh.position[i] = (length, width) .* mesh.position[i] # scale
+    end
+    return mesh
+end
+
+function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
+    for i in eachindex(m.position)
+        m.position[i] = origin + R * (m.position[i] .+ (offset, 0))
+    end
+    return
+end
+
+function plot!(plot::Arrows2D)
+    @extract plot (
+        points, directions,
+        colormap, colorscale, normalize, align, lengthscale,
+        tail, taillength, tailwidth,
+        shaft, shaftlength, minshaftlength, shaftwidth,
+        tip, tiplength, tipwidth,
+        transparency, visible, inspectable
+    )
+
+    tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
+    shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
+    tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
+
+    # TODO: Think about normalize
+
+    arrowpoints = map(plot, points, directions, align) do points, directions, align
+        if align === :tail
+            align_val = 0.0
+        elseif align === :center
+            align_val = 0.5
+        elseif align === :tip
+            align_val = 1.0
+        else
+            align_val = Float64(align)
+        end
+
+        output = similar(points, 2 * length(points))
+        for i in eachindex(points)
+            # startpoint, endpoint
+            output[2*i-1] = points[i] - align_val * directions[i]
+            output[2*i] = points[i] + (1 - align_val) * directions[i]
+        end
+        return output
+    end
+
+    scene = parent_scene(plot)
+    arrowpoints_px = map(plot,
+            arrowpoints, transform_func_obs(plot), plot.model, plot.space, scene.camera.projectionview, scene.viewport
+        ) do ps, tf, model, space, pv, vp
+        return plot_to_screen(plot, ps)
+    end
+
+    arrow_metrics = map(
+        plot, arrowpoints_px, normalize, lengthscale,
+        taillength, tailwidth,
+        shaftlength, minshaftlength, shaftwidth,
+        tiplength, tipwidth,
+    ) do points, normalize, lengthscale, taillength, tailwidth,
+        shaftlength, minshaftlength, shaftwidth,
+        tiplength, tipwidth
+
+        metrics = Vector{NTuple{6, Float64}}(undef, div(length(points), 2))
+        for i in eachindex(metrics)
+            target_length = lengthscale * norm(points[2i] - points[2i-1])
+            target_shaftlength = if shaftlength === automatic
+                max(minshaftlength, target_length - taillength - tiplength)
+            else
+                shaftlength
+            end
+            arrow_length = target_shaftlength + taillength + tiplength
+            arrow_scaling = target_length / arrow_length
+            metrics[i] = arrow_scaling .* (taillength, tailwidth, target_shaftlength, shaftwidth, tiplength, tipwidth)
+        end
+
+        return metrics
+    end
+
+    # skip arrow_metrics input to avoid double update (let arrow metrics trigger)
+    merged_mesh = map(plot,
+            arrow_metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
+        ) do metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
+
+        arrow_points = arrowpoints_px[]
+        tailc = to_color(tailcolor)
+        shaftc = to_color(shaftcolor)
+        tipc = to_color(tipcolor)
+        merged_mesh = GeometryBasics.Mesh(Point2f[], GLTriangleFace[], color = RGBAf[])
+
+        meshes = [merged_mesh, merged_mesh, merged_mesh, merged_mesh]
+
+        for i in eachindex(metrics)
+            # scale and add color
+            taillength, tailwidth, shaftlength, shaftwidth, tiplength, tipwidth = metrics[i]
+            tail_m  = _get_arrow_shape(tail,  taillength,  tailwidth,  shaftwidth, tailc)
+            shaft_m = _get_arrow_shape(shaft, shaftlength, shaftwidth, shaftwidth, shaftc)
+            tip_m   = _get_arrow_shape(tip,   tiplength,   tipwidth,   shaftwidth, tipc)
+
+            # rotate + translate
+            startpoint = arrow_points[2i-1]
+            endpoint = arrow_points[2i]
+            direction = endpoint - startpoint
+            angle = atan(direction[2], direction[1])
+            R = rotmatrix2d(angle)
+
+            _apply_arrow_transform!(tail_m, R, startpoint, 0.0)
+            _apply_arrow_transform!(shaft_m, R, startpoint, taillength)
+            _apply_arrow_transform!(tip_m, R, startpoint, taillength + shaftlength)
+
+            meshes[1] = merged_mesh
+            meshes[2] = tail_m
+            meshes[3] = shaft_m
+            meshes[4] = tip_m
+
+            merged_mesh = merge(meshes)
+        end
+
+        return merged_mesh
+    end
+
+    mesh!(plot, merged_mesh, space = :pixel)
+
+end
+
+data_limits(p::Arrows2D) = update_boundingbox(Rect3d(p[1][]), Rect3d(p[1][] .+ p[2][]))
+boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
