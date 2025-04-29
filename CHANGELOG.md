@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 - Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)

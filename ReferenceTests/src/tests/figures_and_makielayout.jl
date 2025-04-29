@@ -221,6 +221,67 @@ end
     f
 end
 
+@reference_test "Legend visibility toggles" begin
+    f = Figure(size = (500, 500))
+
+    ax  = Axis(f[1,1])
+    lb = lines!(ax, 0:4, 0:4, linewidth = 10, color=:blue, label="lines 1")
+    lo = lines!(ax, 0:4, -4:0, linewidth = 10, color=:orange, label="lines 2")
+    sb = scatter!(ax, range(0, 4, length=10), fill(3, 10), markersize = 10, color=:blue, label="scatter 1")
+    so = scatter!(ax, range(0, 4, length=10), fill(2, 10), markersize = 10, color=:orange, label="scatter 2")
+    x = LinRange(0, 4, 100)
+    slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color=:blue, label="band 1")
+    slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color=:orange, label="band 2")
+
+    ax2 = Axis(f[2,1])
+    x = 1:2:20
+    y = 5 * (0.5 .+ sin.(x).^2)
+    bb = barplot!(ax2, x, y; strokewidth = 1, color = :blue, label="barplot 1")
+    bo = barplot!(ax2, x, -y; strokewidth = 1, color = :orange, label="barplot 2")
+
+    l1 = Legend(f[1,2], ax)
+    l2 = Legend(f[2,2],
+        [ PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            PolyElement(plots = [lo, so, slo, bo], color = :orange) ],
+        [ "blue", "orange" ], "Colors" )
+
+    st = Makie.Stepper(f)
+    e = events(f)
+
+    click(e, 450, 440) # turn blue line off, blue off + dashed
+    Makie.step!(st)
+
+    click(e, 450, 330) # turn orange band off, two dashed
+    Makie.step!(st)
+
+    click(e, 450, 400, Mouse.right) # invert
+    Makie.step!(st)
+
+    click(e, 450, 380)
+    click(e, 450, 420) # reenable all orange, blue scatter + band off, blue dashed, all orange free
+    Makie.step!(st)
+
+    click(e, 450, 120) # turn off orange in second (should turn off all orange)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset (all on)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # swap (all off)
+    Makie.step!(st)
+
+    click(e, 450, 140) # turn on (all) blue
+    Makie.step!(st)
+
+    click(e, 450, 110, Mouse.right) # swap (all orange)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite previous states)
+    Makie.step!(st)
+
+    st
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
@@ -594,29 +655,28 @@ end
 
 @reference_test "Textbox" begin
     f = Figure()
+    e = events(f)
 
     tb1 = Makie.Textbox(f[1,1])
     Makie.set!(tb1, "1234567890qwertyuiop")
     Makie.focus!(tb1)
-    f.scene.events.mouseposition[] = (297, 221)
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    click(e, 297, 221)
     Makie.defocus!(tb1)
 
     tb2 = Makie.Textbox(f[2,1], width=100)
     Makie.set!(tb2, "1234567890qwertyuiop")
     tb2.cursorindex[] = 20
     Makie.focus!(tb2)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
     tb3 = Makie.Textbox(f[3,1], width=100)
     Makie.set!(tb3, "1234567890qwertyuiop")
     tb3.cursorindex[] = 20
     Makie.focus!(tb3)
-    f.scene.events.mouseposition[] = (259, 173)  # between 7 and 8
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    click(e, 259, 173) # between 7 and 8
+    send(e, Keyboard.left)
+    send(e, Keyboard.left)
     Makie.defocus!(tb3)
 
     tb4 = Makie.Textbox(f[4,1], width=100)
@@ -625,7 +685,7 @@ end
     tb4.cursorindex[] = 10
     Makie.focus!(tb4)
     for _ in 1:8
-        f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+        send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
 

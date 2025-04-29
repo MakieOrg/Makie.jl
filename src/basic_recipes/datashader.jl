@@ -492,12 +492,12 @@ Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key
 
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
-        return FakePlot(Attributes(; label=name, color=color))
+        return FakePlot(Attributes(; plot=plot, label=name, color=color))
     end
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+    return [PolyElement(; plots=plot.attributes.plot[], color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,
