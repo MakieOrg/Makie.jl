@@ -8,12 +8,11 @@ function get_n_visible(entry::LegendEntry)
     return n_visible[], n_total[]
 end
 
-function _toggle_over_mouse!(mpos, entry_groups, entryshades)
+function _toggle_hovered_legend_visibilities!(mpos, entry_groups, entryshades)
     for ((title, entries), shades) in zip(entry_groups, entryshades)
         for (entry, shade) in zip(entries, shades)
             # shade and halfshade are Box()es covering the entry
-            bbox = shade.layoutobservables.computedbbox[]
-            if mpos in bbox
+            if mpos in shade.layoutobservables.computedbbox[]
                 # determine number of currently visible plot elements
                 n_visible, n_total = get_n_visible(entry)
                 n_total == 0 && return
@@ -27,7 +26,7 @@ function _toggle_over_mouse!(mpos, entry_groups, entryshades)
     return
 end
 
-function _set_visibility_ored!(entry_groups)
+function _toggle_all_legend_visibilities_synchronized!(entry_groups)
     sync_to_visible = false
     for (_, entries) in entry_groups, e in entries
         n_visible, n_total = get_n_visible(e)
@@ -305,6 +304,7 @@ function initialize_block!(leg::Legend; entrygroups)
 
                 # TODO: Should this be connected to scene/blockscene for cleanup?
                 # Probably not plots since plot deletion needs to trigger relayout anyway
+
                 # listen to visibilty attributes of plot elements to toggle shades below
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
@@ -342,16 +342,19 @@ function initialize_block!(leg::Legend; entrygroups)
         mpos = sevents.mouseposition[]
         if (event.action == Mouse.release) && in(mpos, legend_area[])
             if event.button == Mouse.left
-                # Find hovered entry
-                _toggle_over_mouse!(mpos, entry_groups[], entryshades)
+                # Find hovered entry and toggle visibility for all connected plots
+                _toggle_hovered_legend_visibilities!(mpos, entry_groups[], entryshades)
             elseif event.button == Mouse.right
-                # Toggle all
+                # Toggle all connected plot visibilities without synchronization
                 for (_, entries) in entry_groups[], e in entries
                     toggle_visibility!(e)
                 end
             elseif event.button == Mouse.middle
-                # Same as left click, but effectively or-ed for every entry
-                _set_visibility_ored!(entry_groups[])
+                # Synchronized toggle of all connected plot visibilities
+                # (if they differ synchronize all to true, otherwise toggle)
+                _toggle_all_legend_visibilities_synchronized!(entry_groups[])
+            else
+                return Consume(false)
             end
             return Consume(true)
         end

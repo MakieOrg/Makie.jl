@@ -248,35 +248,35 @@ end
     st = Makie.Stepper(f)
     e = events(f)
 
-    click(e, 450, 440) # turn one off, single dashed
+    click(e, 450, 440) # turn blue line off, blue off + dashed
     Makie.step!(st)
 
-    click(e, 450, 330) # turn another off, two dashed
+    click(e, 450, 330) # turn orange band off, two dashed
     Makie.step!(st)
 
     click(e, 450, 400, Mouse.right) # invert
     Makie.step!(st)
 
     click(e, 450, 380)
-    click(e, 450, 420) # clear one dashed
+    click(e, 450, 420) # reenable all orange, blue scatter + band off, blue dashed, all orange free
     Makie.step!(st)
 
-    click(e, 450, 120) # second legend off
+    click(e, 450, 120) # turn off orange in second (should turn off all orange)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # full reset
+    click(e, 450, 120, Mouse.middle) # full reset (all on)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # swap
+    click(e, 450, 120, Mouse.middle) # swap (all off)
     Makie.step!(st)
 
-    click(e, 450, 140) # turn on
+    click(e, 450, 140) # turn on (all) blue
     Makie.step!(st)
 
-    click(e, 450, 110, Mouse.right)
+    click(e, 450, 110, Mouse.right) # swap (all orange)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite privous states)
+    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite previous states)
     Makie.step!(st)
 
     st
