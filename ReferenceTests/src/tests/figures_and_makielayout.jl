@@ -342,6 +342,46 @@ end
     f
 end
 
+@reference_test "PolarAxis ticks" begin
+    f = Figure(size = (600, 600))
+    as = []
+    for (i, mirror) in enumerate([false, true])
+        for (j, dir) in enumerate([1, -1])
+            Label(f[i, j][1, 1], "mirror = $mirror, dir = $dir", tellwidth = false)
+            a = PolarAxis(f[i, j][2, 1],
+                # thetaticks = Makie.LinearTicks(4),
+                thetaticks = Makie.MultiplesTicks(4, pi/180, "°"),
+                rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red,
+                thetaticksvisible = true, thetaticksize = 12, thetatickwidth = 4, thetatickcolor = :blue,
+                rminorgridvisible = true, thetaminorgridvisible = true,
+                rminorticksvisible = true, rminorticksize = 8, rminortickwidth = 3, rminortickcolor = :orange,
+                thetaminorticksvisible = true, thetaminorticksize = 8, thetaminortickwidth = 3, thetaminortickcolor = :cyan,
+                rticksmirrored = mirror, thetaticksmirrored = mirror,
+                rticklabelrotation = :aligned,
+                direction = dir
+            )
+            phi = pi/8 + i * pi/2 + (j-1) * pi
+            thetalims!(a, phi, phi + pi/4)
+            rlims!(a, 0.5, 0.9)
+            push!(as, a)
+        end
+    end
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    for a in as
+        a.rtickalign[] = 0.5
+        a.thetatickalign[] = 0.5
+        a.rminortickalign[] = 1
+        a.thetaminortickalign[] = 1
+    end
+
+    Makie.step!(st)
+
+    st
+end
+
 @reference_test "PolarAxis limits" begin
     f = Figure(size = (800, 600))
     for (i, theta_0) in enumerate((0, -pi/6, pi/2))
