@@ -22422,6 +22422,100 @@ class MakieCamera {
         }
     }
 }
+function uv_to_pixel_bounds(uv, tex_width, tex_height) {
+    const tex_size = new T(tex_width, tex_height);
+    const uv_left_bottom = new T(uv.x, uv.y);
+    const uv_right_top = new T(uv.z, uv.w);
+    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).subScalar(0.5).floor();
+    const px_right_top = uv_right_top.clone().multiply(tex_size).addScalar(0.5).ceil();
+    const wx = Math.abs(px_right_top.x - px_left_bottom.x);
+    const wy = Math.abs(px_right_top.y - px_left_bottom.y);
+    return [
+        px_left_bottom,
+        new T(wx, wy)
+    ];
+}
+class TextureAtlas {
+    constructor(width, pix_per_glyph, glyph_padding){
+        console.log("Creating texture atlas");
+        this.pix_per_glyph = pix_per_glyph;
+        this.glyph_padding = glyph_padding;
+        this.width = width;
+        this.height = width;
+        this.data = new Float32Array(width * width);
+        for(let i = 0; i < this.data.length; i++){
+            this.data[i] = 0.0;
+        }
+        this.glyph_data = new Map();
+        this.textures = new Map();
+    }
+    insert_glyph(hash, glyph_data, uv_pos, origin, width, minimum) {
+        console.log("Insert glyph", hash);
+        this.glyph_data.set(hash, [
+            uv_pos,
+            origin,
+            width,
+            minimum
+        ]);
+        const [px_start, px_width] = uv_to_pixel_bounds(uv_pos, this.width, this.height);
+        for(let col = 0; col < px_width.y; col++){
+            for(let row = 0; row < px_width.x; row++){
+                const glyph_index = col * px_width.x + row;
+                const atlas_index = (px_start.y + col) * this.height + (px_start.x + row);
+                this.data[atlas_index] = glyph_data.array[glyph_index];
+            }
+        }
+    }
+    get_glyph_data(hash, scale, offset) {
+        const [uv_offset_width, origin, width, mini] = this.glyph_data.get(hash.toString());
+        const pad = this.glyph_padding / this.pix_per_glyph;
+        const scaled_pad = scale.clone().multiplyScalar(2 * pad);
+        const scales = width.clone().add(scaled_pad);
+        const char_offsets = new T(origin.x, origin.y).add(offset);
+        const quad_offsets = mini.clone().sub(scale.clone().multiplyScalar(pad));
+        return [
+            uv_offset_width,
+            scales,
+            char_offsets,
+            quad_offsets
+        ];
+    }
+    get_texture(renderer) {
+        console.log("Creating texture");
+        if (this.textures.has(renderer)) {
+            return this.textures.get(renderer);
+        }
+        const texture = new Lt(this.data, this.width, this.height, Tl, pi);
+        texture.magFilter = Ut;
+        texture.minFilter = Ut;
+        texture.wrapS = Ht;
+        texture.wrapT = Ht;
+        this.textures.set(renderer, texture);
+        return texture;
+    }
+    upload_tex_data(scene) {
+        const { tex_atlas  } = scene.screen;
+        tex_atlas.notify(this.data);
+        console.log("Uploading texture data");
+        for (const [renderer, texture] of this.textures.entries()){
+            console.log(texture);
+            if (!texture.image) {
+                this.textures.delete(renderer);
+                continue;
+            }
+            texture.image.data.set(this.data);
+            texture.needsUpdate = true;
+        }
+    }
+}
+const TEXTURE_ATLAS = [];
+function get_texture_atlas() {
+    if (TEXTURE_ATLAS.length === 0) {
+        const atlas = new TextureAtlas(2048, 64, 12);
+        TEXTURE_ATLAS.push(atlas);
+    }
+    return TEXTURE_ATLAS[0];
+}
 function update_uniform(uniform, new_value) {
     if (uniform.value.isTexture) {
         const im_data = uniform.value.image;
@@ -23528,6 +23622,9 @@ class Plot {
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
             this.mesh = create_linesegments(scene, this.plot_data);
+        } else if (data.plot_type === "text") {
+            this.is_instanced = true;
+            this.mesh = create_text_mesh(scene, this.plot_data);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -23616,7 +23713,7 @@ class Plot {
 }
 const scene_cache = {};
 const plot_cache = {};
-const TEXTURE_ATLAS = [
+const TEXTURE_ATLAS1 = [
     undefined
 ];
 function add_scene(scene_id, three_scene) {
@@ -23697,20 +23794,7 @@ function to_uniform(scene, data) {
         if (!data.every((x1)=>typeof x1 === "number")) {
             return data;
         }
-        if (data.length == 2) {
-            return new mod.Vector2().fromArray(data);
-        }
-        if (data.length == 3) {
-            return new mod.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new mod.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new mod.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
+        return to_three_vector(data);
     }
     return data;
 }
@@ -23823,24 +23907,14 @@ function create_texture_from_data(data) {
 function create_texture(scene, data) {
     const buffer1 = data.data;
     if (buffer1 == "texture_atlas") {
-        const { texture_atlas  } = scene.screen;
-        if (texture_atlas) {
-            return texture_atlas;
-        } else {
-            data.data = TEXTURE_ATLAS[0].value;
-            const texture = create_texture_from_data(data);
-            scene.screen.texture_atlas = texture;
-            TEXTURE_ATLAS[0].on((new_data)=>{
-                if (new_data === texture) {
-                    return false;
-                } else {
-                    texture.image.data.set(new_data);
-                    texture.needsUpdate = true;
-                    return;
-                }
-            });
-            return texture;
+        const { texture_atlas , renderer , tex_atlas  } = scene.screen;
+        if (!texture_atlas) {
+            const atlas = get_texture_atlas();
+            console.log("Setting atlas from JS");
+            tex_atlas.notify(atlas.data);
+            scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
+        return scene.screen.texture_atlas;
     } else {
         return create_texture_from_data(data);
     }
@@ -23957,6 +24031,103 @@ function create_mesh(scene, program) {
         mesh.geometry.setIndex(new mod.BufferAttribute(x1, 1));
     });
     return mesh;
+}
+function broadcast_getindex(a, x1, i) {
+    if (a.length == x1.length / 2) {
+        return new mod.Vector2(x1[i * 2], x1[i * 2 + 1]);
+    } else if (x1.length == 2) {
+        return new mod.Vector2(x1[0], x1[1]);
+    } else {
+        throw new Error(`broadcast_getindex: x has length ${x1.length}, but a has length ${a.length}`);
+    }
+}
+function per_glyph_data(glyph_hashes, scales, offsets) {
+    const atlas = get_texture_atlas();
+    const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
+    const markersize = new Float32Array(glyph_hashes.length * 2);
+    const char_offsets = new Float32Array(glyph_hashes.length * 2);
+    const quad_offsets = new Float32Array(glyph_hashes.length * 2);
+    for(let i = 0; i < glyph_hashes.length; i++){
+        const hash = glyph_hashes[i];
+        const [uv, c_width, c_offset, q_offset] = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i), broadcast_getindex(glyph_hashes, offsets, i));
+        uv_offset_width.set(uv.toArray(), i * 4);
+        markersize.set(c_width.toArray(), i * 2);
+        char_offsets.set(c_offset.toArray(), i * 2);
+        quad_offsets.set(q_offset.toArray(), i * 2);
+    }
+    return [
+        uv_offset_width,
+        markersize,
+        char_offsets,
+        quad_offsets
+    ];
+}
+function to_three_vector(data) {
+    if (data.length == 2) {
+        return new mod.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new mod.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new mod.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new mod.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data;
+}
+function update_glyph_data(scene, glyph_data) {
+    const atlas = get_texture_atlas();
+    Object.keys(glyph_data).forEach((hash)=>{
+        const [uv, sdf, origin, width, minimum] = glyph_data[hash];
+        atlas.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(origin), to_three_vector(width), to_three_vector(minimum));
+    });
+    if (Object.keys(glyph_data).length > 0) {
+        atlas.upload_tex_data(scene);
+    }
+}
+function get_glyph_data_attributes(scene, glyph_data) {
+    const { glyph_hashes , atlas_updates , offsets , scales  } = glyph_data;
+    update_glyph_data(scene, atlas_updates);
+    const [uv_offset_width, markersize, marker_offset, quad_offset] = per_glyph_data(glyph_hashes, scales, offsets);
+    return {
+        uv_offset_width,
+        markersize,
+        marker_offset,
+        quad_offset
+    };
+}
+function create_text_mesh(scene, program) {
+    const glyph_obs = program.glyph_data;
+    const updater = program.attribute_updater;
+    const lengths = {
+        uv_offset_width: 4
+    };
+    glyph_obs.on((glyph_data)=>{
+        const data = get_glyph_data_attributes(scene, glyph_data);
+        for(const name in data){
+            const buff = data[name];
+            const len = lengths[name] || 2;
+            updater.notify([
+                name,
+                buff,
+                buff.length / len
+            ]);
+        }
+    });
+    const gdata = get_glyph_data_attributes(scene, glyph_obs.value);
+    for(const name in gdata){
+        const buff = gdata[name];
+        const len = lengths[name] || 2;
+        program.vertexarrays[name] = {
+            flat: buff,
+            type_length: len
+        };
+    }
+    return create_instanced_mesh(scene, program);
 }
 function create_instanced_mesh(scene, program) {
     const buffer_geometry = new mod.InstancedBufferGeometry();
@@ -24109,9 +24280,8 @@ function dispose_screen(screen) {
         renderer.dispose();
     }
     if (screen.texture_atlas) {
-        const data = TEXTURE_ATLAS[0].value;
-        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
-        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas.dispose();
+        screen.texture_atlas.image = null;
         screen.texture_atlas = undefined;
     }
     if (root_scene) {
@@ -24429,7 +24599,7 @@ function add_picking_target(screen) {
     });
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, tex_atlas, fps, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -24437,7 +24607,6 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit = scalefactor;
     }
     const renderer = threejs_module(canvas);
-    TEXTURE_ATLAS[0] = texture_atlas_obs;
     if (!renderer) {
         const warning = getWebGLErrorMessage();
         wrapper.appendChild(warning);
@@ -24454,6 +24623,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit,
         scalefactor,
         winscale,
+        tex_atlas,
         texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);
@@ -24764,7 +24934,7 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    TEXTURE_ATLAS
+    TEXTURE_ATLAS: TEXTURE_ATLAS1
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert };
 export { render_scene as render_scene };

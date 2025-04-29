@@ -204,7 +204,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
         session_size = Base.summarysize(session) / 10^6
         texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
 
-        @test length(WGLMakie.TEXTURE_ATLAS.listeners) == 1 # Only one from permanent Retain
         @test length(session.session_objects) == 1 # Also texture atlas because of Retain
         @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
             @test isempty(getfield(session, field))
@@ -215,8 +214,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
         @test length(server.routes.table) == 2
         @test server.routes.table[1][1] == "/browser-display"
         @test server.routes.table[2][2] isa HTTPAssetServer
-        @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
-        @show length(WGLMakie.TEXTURE_ATLAS.listeners)
         @show session_size texture_atlas_size
 
         # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
@@ -230,7 +227,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
         # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
         # we used Retain for global_obs, so it should stay as long as root session is open
-        @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
     end
 
 end

@@ -135,9 +135,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:shading] = map(x -> x != NoShading, plot.shading)
 
     uniform_dict[:model] = model
-
-    return InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
+    program = InstancedProgram(WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
+    return program, nothing
 end
 
 using Makie: to_spritemarker
@@ -174,7 +174,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     uniform_dict = Dict{Symbol,Any}()
     uniform_dict[:image] = false
     marker = nothing
-    atlas = wgl_texture_atlas()
+    atlas = Makie.get_texture_atlas()
     if haskey(attributes, :marker)
         font = map(Makie.to_font, pop!(attributes, :font))
         marker = lift(plot, attributes[:marker]) do marker
@@ -224,7 +224,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     if uniform_dict[:shape_type][] == 3
-        atlas = wgl_texture_atlas()
+        atlas = Makie.get_texture_atlas()
         uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
@@ -254,12 +254,13 @@ function scatter_shader(scene::Scene, attributes, plot)
     get!(uniform_dict, :glowwidth, 0f0)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
     _, arr = first(per_instance)
-    if any(v-> length(arr) != length(v), values(per_instance))
-        lens = [k => length(v) for (k, v) in per_instance]
-        error("Not all have the same length: $(lens)")
-    end
-    return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
+    # if any(v-> length(arr) != length(v), values(per_instance))
+    #     lens = [k => length(v) for (k, v) in per_instance]
+    #     error("Not all have the same length: $(lens)")
+    # end
+    program = InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...), uniform_dict)
+    return program
 end
 
 function create_shader(scene::Scene, plot::Scatter)
@@ -283,7 +284,7 @@ function create_shader(scene::Scene, plot::Scatter)
 
     delete!(attributes, :uv_offset_width)
     filter!(kv -> !(kv[2] isa Function), attributes)
-    return scatter_shader(scene, attributes, plot)
+    return scatter_shader(scene, attributes, plot), nothing
 end
 
 value_or_first(x::AbstractArray) = first(x)
@@ -291,51 +292,132 @@ value_or_first(x::StaticVector) = x
 value_or_first(x::Mat) = x
 value_or_first(x) = x
 
+
+const SCENE_ATLASES = Dict{Scene, Set{UInt32}}()
+
+function get_atlas_tracker(scene::Scene)
+    if haskey(SCENE_ATLASES, scene)
+        return SCENE_ATLASES[scene]
+    else
+        atlas = Set{UInt32}()
+        SCENE_ATLASES[scene] = atlas
+        return atlas
+    end
+end
+
+
+function glyph_boundingobx(glyphindex, font)
+    extent = FreeTypeAbstraction.get_extent(font, glyphindex)
+    return FreeTypeAbstraction.boundingbox(extent)
+end
+
+
+
+function get_glyph_data(scene::Scene, glyphs, fonts, origins)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    new_glyphs = Dict{UInt32, Any}()
+    glyph_hashes = UInt32[]
+    for (g, f, o) in zip(glyphs, fonts, origins)
+        hash = Makie.fast_stable_hash((g, FreeTypeAbstraction.fontname(f)))
+        push!(glyph_hashes, hash)
+        if !(hash in tracker)
+            push!(tracker, hash)
+            glyph_bb = glyph_boundingobx(g, f)
+            w, mini = widths(glyph_bb), minimum(glyph_bb)
+            uv = Makie.glyph_uv_width!(atlas, g, f)
+            data = Makie.get_glyph_data(atlas, hash)
+            new_glyphs[hash] = [uv, data, o, w, mini]
+        end
+    end
+    return glyph_hashes, new_glyphs
+end
+
+
+function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
+    result = Typ[]
+    for g in glyphcollection
+        arr = getfield(g, name)
+        if arr isa Vector
+            append!(result, arr)
+        else
+            _arr = arr.sv
+            if _arr isa Vector
+                append!(result, _arr)
+            else
+                append!(result, (_arr for i in 1:length(g.glyphs)))
+            end
+        end
+    end
+    return result
+end
+
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
     f32c, model = Makie.patch_model(plot)
     pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
-    offset = plot.offset
 
-    atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
-        Makie.text_quads(atlas, pos, to_value(gc), offset)
+    # Extract, so they only change when the extracted values change
+    glyph_input = lift(plot, glyphcollection; ignore_equal_values=true) do gc
+        glyphs = get_from_collection(gc, :glyphs, UInt64)
+        fonts = get_from_collection(gc, :fonts, Makie.NativeFont)
+        origins = get_from_collection(gc, :origins, Point3f)
+
+        return (glyphs, fonts, origins)
     end
 
-    # unpack values from the one signal:
-    positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        return lift(getindex, plot, glyph_data, i; ignore_equal_values=true)
+    glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
+        get_glyph_data(scene, args...)
+    end
+
+    all_glyph_data = lift(plot, glyph_data, plot.offset, plot.fontsize) do data, offset, scale
+        if !isempty(data[2])
+            @show last(first(data[2]))[[1, 3, 4, 5]]
+        end
+        Dict(
+            :glyph_hashes => data[1],
+            :atlas_updates => data[2],
+            :offsets => offset,
+            :scales => convert_attribute(scale, key"markersize"(), key"scatter"())
+        )
     end
 
     uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
+        get_from_collection(gc, :colors, RGBAf)
+    end
+
+    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
+        get_from_collection(gc, :rotations, Quaternionf)
+    end
+    glyph_lengths = lift(glyphcollection) do gc
         if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
-                    init=RGBAf[])
+            return [length(g.glyphs) for g in gc]
         else
-            gc.colors.sv
+            return length(gc.glyphs)
         end
     end
-    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
-        if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
-                    init=Quaternionf[])
-        else
-            gc.rotations.sv
-        end
+
+    positions = lift(plot, glyph_lengths, pos; ignore_equal_values=true) do lengths, positions
+        _pos = lengths isa Vector ? positions : [positions] # assuming they match?
+        return [to_ndim(Point3f, p, 0) for (p, len) in zip(_pos, lengths) for _ in 1:len]
     end
 
     plot_attributes = copy(plot.attributes)
     plot_attributes.attributes[:calculated_colors] = uniform_color
+
     uniforms = Dict(
         :model => model,
         :shape_type => Observable(Cint(3)),
         :rotation => uniform_rotation,
         :pos => positions,
-        :marker_offset => char_offset,
-        :quad_offset => quad_offset,
-        :markersize => scale,
+
+        # will be set in JS from glyph_data
+        :marker_offset => Vec2f[],
+        :quad_offset => Vec2f[],
+        :markersize => Vec2f[],
+        :uv_offset_width => Vec4f[],
+
         :preprojection => Mat4f(I),
-        :uv_offset_width => uv_offset_width,
         :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
         :billboard => Observable(false),
         :depth_shift => get(plot, :depth_shift, Observable(0f0)),
@@ -344,6 +426,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     )
 
     Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
-
-    return scatter_shader(scene, uniforms, plot_attributes)
+    additional = Dict(:glyph_data => all_glyph_data, :plot_type => "text")
+    return scatter_shader(scene, uniforms, plot_attributes), additional
 end

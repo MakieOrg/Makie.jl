@@ -309,6 +309,34 @@ function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{Be
     end
 end
 
+
+function sdf_uv_to_pixel(atlas::TextureAtlas, uv_width::Vec4f)
+    tex_size = Vec2f(size(atlas.data)) # (width, height)
+    # uv: (left, bottom, right, top)
+    uv_left_bottom = Vec2f(uv_width[1], uv_width[2])
+    uv_right_top = Vec2f(uv_width[3], uv_width[4])
+
+    # reverse the normalization to get pixel coordinates
+    px_left_bottom = floor.(Int, uv_left_bottom .* tex_size .- 0.5)
+    px_right_top = ceil.(Int, uv_right_top .* tex_size .+ 0.5)
+
+    # create pixel ranges
+    x_range = (px_left_bottom[1] + 1):(px_right_top[1])
+    y_range = (px_left_bottom[2] + 1):(px_right_top[2])
+    return x_range, y_range
+end
+
+function get_glyph_data(atlas::TextureAtlas, hash::UInt32)
+    index = atlas.mapping[hash]
+    uv = atlas.uv_rectangles[index]
+    # create pixel ranges
+    x_range, y_range = sdf_uv_to_pixel(atlas, uv)
+    @show x_range y_range
+    # slice the data
+    return atlas.data[x_range, y_range]
+end
+
+
 """
     sdistancefield(img, downsample, pad)
 Calculates a distance fields, that is downsampled `downsample` time,

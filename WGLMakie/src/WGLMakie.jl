@@ -68,21 +68,11 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     return
 end
 
-const TEXTURE_ATLAS = Observable(Float32[])
-
-wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
+wgl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    # We need to update the texture atlas whenever it changes!
-    # We do this in three_plot!
-    atlas = wgl_texture_atlas()
-    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-    Makie.font_render_callback!(atlas) do sd, uv
-        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-        return
-    end
     DISABLE_JS_FINALZING[] = false
     return
 end

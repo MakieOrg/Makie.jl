@@ -32,8 +32,6 @@ let
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
         Makie.CURRENT_FIGURE[] = nothing
-        Observables.clear(TEXTURE_ATLAS)
-        TEXTURE_ATLAS[] = Float32[]
         # This should happen in atexit in Bonito, but on Julia versions below v1.11
         # atexit isn't called
         for (task, (task, close_ref)) in Bonito.SERVER_CLEANUP_TASKS

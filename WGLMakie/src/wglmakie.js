@@ -16,6 +16,7 @@ import {
 } from "./Serialization.js";
 
 import { events2unitless } from "./Camera.js";
+import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
@@ -32,12 +33,8 @@ function dispose_screen(screen) {
     }
 
     if (screen.texture_atlas) {
-        // we need a better observable API to deregister callbacks,
-        // Right now one can only deregister a callback from within the callback by returning false.
-        // So we notify the whole texture atlas with the texture that needs to go & deregister.
-        const data = TEXTURE_ATLAS[0].value;
-        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
-        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas.dispose(); // Frees GPU memory
+        screen.texture_atlas.image = null;
         screen.texture_atlas = undefined;
     }
     if (root_scene) {
@@ -456,7 +453,7 @@ function create_scene(
     comm,
     width,
     height,
-    texture_atlas_obs,
+    tex_atlas,
     fps,
     resize_to,
     px_per_unit,
@@ -471,8 +468,6 @@ function create_scene(
 
     const renderer = threejs_module(canvas);
 
-    TEXTURE_ATLAS[0] = texture_atlas_obs;
-
     if (!renderer) {
         const warning = getWebGLErrorMessage();
         // wrapper.removeChild(canvas)
@@ -483,6 +478,7 @@ function create_scene(
     camera.updateProjectionMatrix();
     const pixel_ratio = window.devicePixelRatio || 1.0;
     const winscale = scalefactor / pixel_ratio;
+
     const screen = {
         renderer,
         camera,
@@ -491,7 +487,8 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
-        texture_atlas: undefined
+        tex_atlas,
+        texture_atlas: undefined,
     };
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
