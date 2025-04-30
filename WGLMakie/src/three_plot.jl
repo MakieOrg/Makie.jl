@@ -28,7 +28,6 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
-global TEX_OBS = Observable{Matrix{Float32}}()
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
     scene_serialized = serialize_scene(scene)
@@ -47,22 +46,16 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     comm = Observable(Dict{String,Any}())
     done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    tex_obs = Observable{Any}(Float32[])
-    on(session, tex_obs) do atlas
-        data = Bonito.decode_extension_and_addbits(atlas)
-        TEX_OBS[] = reshape(data, (2048, 2048))
-    end
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
-            window.TEXTURE_ATLAS = $(tex_obs)
             const wrapper = $wrapper
             const canvas = $canvas
             if (wrapper == null || canvas == null) {
                 return
             }
             const renderer = WGL.create_scene(
-                wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height, $(tex_obs),
+                wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
                 $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
             )
             const gl = renderer.getContext()

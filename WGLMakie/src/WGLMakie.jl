@@ -68,7 +68,9 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     return
 end
 
-wgl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
+# This is deprecated, but we'll leave it here for now
+# until the next breaking release.
+const TEXTURE_ATLAS = Observable(Float32[])
 
 function __init__()
     # Activate WGLMakie as backend!

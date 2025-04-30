@@ -184,11 +184,11 @@ function scatter_shader(scene::Scene, attributes, plot)
         end
 
         markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
-
         msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
         attributes[:markersize] = msize
         attributes[:quad_offset] = offset
         attributes[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
+
         if to_value(marker) isa AbstractMatrix
             uniform_dict[:image] = Sampler(lift(el32convert, plot, marker))
         end
@@ -253,7 +253,9 @@ function scatter_shader(scene::Scene, attributes, plot)
     get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
     get!(uniform_dict, :glowwidth, 0f0)
     get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
-    _, arr = first(per_instance)
+
+    # TODO, bring back in observable refactor
+    # _, arr = first(per_instance)
     # if any(v-> length(arr) != length(v), values(per_instance))
     #     lens = [k => length(v) for (k, v) in per_instance]
     #     error("Not all have the same length: $(lens)")
@@ -284,7 +286,18 @@ function create_shader(scene::Scene, plot::Scatter)
 
     delete!(attributes, :uv_offset_width)
     filter!(kv -> !(kv[2] isa Function), attributes)
-    return scatter_shader(scene, attributes, plot), nothing
+    program = scatter_shader(scene, attributes, plot)
+    if program.program.uniforms[:shape_type][] == 3
+        glyph_data = lift(plot, plot.marker, plot.font) do marker, font
+            f = Makie.to_font(font)
+            data = get_scatter_data(scene, to_spritemarker(marker), f)
+            return Dict("atlas_updates" => data)
+        end
+        additional = Dict(:glyph_data => glyph_data)
+    else
+        additional = nothing
+    end
+    return program, additional
 end
 
 value_or_first(x::AbstractArray) = first(x)
@@ -293,46 +306,104 @@ value_or_first(x::Mat) = x
 value_or_first(x) = x
 
 
-const SCENE_ATLASES = Dict{Scene, Set{UInt32}}()
+const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
 
 function get_atlas_tracker(scene::Scene)
-    if haskey(SCENE_ATLASES, scene)
-        return SCENE_ATLASES[scene]
+    screen = Makie.getscreen(scene, WGLMakie)
+    # Can session be nothing?
+    session = Bonito.root_session(screen.session)
+    if haskey(SCENE_ATLASES, session)
+        return SCENE_ATLASES[session]
     else
         atlas = Set{UInt32}()
-        SCENE_ATLASES[scene] = atlas
+        SCENE_ATLASES[session] = atlas
         return atlas
     end
 end
 
+function glyph_boundingobx(::BezierPath, ::Makie.NativeFont)
+    # TODO, implement this
+    # Main blocker is the JS side since this is a bit more complicated.
+    return (Vec2f(0), Vec2f(0))
+end
 
-function glyph_boundingobx(glyphindex, font)
-    extent = FreeTypeAbstraction.get_extent(font, glyphindex)
-    return FreeTypeAbstraction.boundingbox(extent)
+function glyph_boundingobx(gi::UInt64, font::Makie.NativeFont)
+    extent = FreeTypeAbstraction.get_extent(font, gi)
+    glyph_bb = FreeTypeAbstraction.boundingbox(extent)
+    w, mini = widths(glyph_bb), minimum(glyph_bb)
+    return (w, mini)
 end
 
 
-
-function get_glyph_data(scene::Scene, glyphs, fonts, origins)
+function get_glyph_data(scene::Scene, glyphs, fonts)
     tracker = get_atlas_tracker(Makie.root(scene))
     atlas = Makie.get_texture_atlas()
     new_glyphs = Dict{UInt32, Any}()
     glyph_hashes = UInt32[]
-    for (g, f, o) in zip(glyphs, fonts, origins)
+    for (g, f) in zip(glyphs, fonts)
         hash = Makie.fast_stable_hash((g, FreeTypeAbstraction.fontname(f)))
         push!(glyph_hashes, hash)
         if !(hash in tracker)
             push!(tracker, hash)
-            glyph_bb = glyph_boundingobx(g, f)
-            w, mini = widths(glyph_bb), minimum(glyph_bb)
+            w, mini = glyph_boundingobx(g, f)
             uv = Makie.glyph_uv_width!(atlas, g, f)
             data = Makie.get_glyph_data(atlas, hash)
-            new_glyphs[hash] = [uv, data, o, w, mini]
+            new_glyphs[hash] = [uv, data, w, mini]
         end
     end
     return glyph_hashes, new_glyphs
 end
 
+function get_marker_hash(atlas::Makie.TextureAtlas, ::Makie.NativeFont, marker::BezierPath)
+    hash = Makie.fast_stable_hash(marker)
+    Makie.insert_glyph!(atlas, hash, marker)
+    return hash, marker
+end
+
+function get_marker_hash(atlas::Makie.TextureAtlas, font::Makie.NativeFont, marker::Char)
+    gi = FreeTypeAbstraction.glyph_index(font, marker)
+    hash = Makie.fast_stable_hash((gi, FreeTypeAbstraction.fontname(font)))
+    Makie.insert_glyph!(atlas, hash, (gi, font))
+    return hash, gi
+end
+
+get_marker_hash(::Makie.TextureAtlas, ::Makie.NativeFont, ::Any) = nothing
+
+function _get_scatter_data(atlas, tracker,  marker, font)
+    hash, tex_marker = get_marker_hash(atlas, font, marker)
+    hash === nothing && return Dict()
+    if !(hash in tracker)
+        push!(tracker, hash)
+        uv = Makie.primitive_uv_offset_width(atlas, marker, font)
+        data = Makie.get_glyph_data(atlas, hash)
+        w, mini = glyph_boundingobx(tex_marker, font)
+        return Dict(hash => [uv, data, w, mini])
+    end
+    return Dict()
+end
+
+function _get_scatter_data(atlas, tracker, markers::AbstractVector, fonts)
+    new_glyphs = Dict{UInt32, Any}()
+    for (i, marker) in enumerate(markers)
+        font = Makie.sv_getindex(fonts, i)
+        hash, tex_marker = get_marker_hash(atlas, font, marker)
+        hash === nothing && continue
+        if !(hash in tracker)
+            push!(tracker, hash)
+            uv = Makie.primitive_uv_offset_width(atlas, marker, font)
+            data = Makie.get_glyph_data(atlas, hash)
+            w, mini = glyph_boundingobx(tex_marker, font)
+            new_glyphs[hash] = [uv, data, w, mini]
+        end
+    end
+    return new_glyphs
+end
+
+function get_scatter_data(scene::Scene, markers, fonts)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    return _get_scatter_data(atlas, tracker, markers, fonts)
+end
 
 function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
     result = Typ[]
@@ -361,22 +432,21 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     glyph_input = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         glyphs = get_from_collection(gc, :glyphs, UInt64)
         fonts = get_from_collection(gc, :fonts, Makie.NativeFont)
+        scales = get_from_collection(gc, :scales, Vec2f)
+        return (glyphs, fonts), scales
+    end
+
+    marker_offset = lift(plot, glyphcollection, plot.offset; ignore_equal_values=true) do gc, offset
         origins = get_from_collection(gc, :origins, Point3f)
-
-        return (glyphs, fonts, origins)
+        return map(((i,o),)-> Vec2f(Vec2f(o) .+ Makie.sv_getindex(offset, i)), enumerate(origins))
     end
 
-    glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
-        get_glyph_data(scene, args...)
-    end
-
-    all_glyph_data = lift(plot, glyph_data, plot.offset, plot.fontsize) do data, offset, scale
-        scales = convert_attribute(scale, key"markersize"(), key"scatter"())
-        Dict(
+    all_glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
+        data = get_glyph_data(scene, args[1]...)
+        return Dict(
             :glyph_hashes => data[1],
             :atlas_updates => data[2],
-            :offsets => offset,
-            :scales => scales
+            :scales => serialize_three(args[2])
         )
     end
 
@@ -387,6 +457,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
         get_from_collection(gc, :rotations, Quaternionf)
     end
+
     glyph_lengths = lift(glyphcollection) do gc
         if gc isa AbstractArray
             return [length(g.glyphs) for g in gc]
@@ -410,7 +481,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         :pos => positions,
 
         # will be set in JS from glyph_data
-        :marker_offset => Vec2f[],
+        :marker_offset => marker_offset,
         :quad_offset => Vec2f[],
         :markersize => Vec2f[],
         :uv_offset_width => Vec4f[],
@@ -424,6 +495,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     )
 
     Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
-    additional = Dict(:glyph_data => all_glyph_data, :plot_type => "text")
+    additional = Dict(:glyph_data => all_glyph_data)
     return scatter_shader(scene, uniforms, plot_attributes), additional
 end

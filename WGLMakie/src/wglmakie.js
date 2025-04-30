@@ -453,7 +453,6 @@ function create_scene(
     comm,
     width,
     height,
-    tex_atlas,
     fps,
     resize_to,
     px_per_unit,
@@ -487,7 +486,6 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
-        tex_atlas,
         texture_atlas: undefined,
     };
     add_canvas_events(screen, comm, resize_to);

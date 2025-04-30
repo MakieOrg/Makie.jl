@@ -47,10 +47,9 @@ class Plot {
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
             this.mesh = create_linesegments(scene, this.plot_data);
-        } else if (data.plot_type === "text") {
+        } else if ("glyph_data" in data) {
             this.is_instanced = true;
             this.mesh = create_text_mesh(scene, this.plot_data);
-            console.log(this.mesh)
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -397,10 +396,9 @@ function create_texture(scene, data) {
     // Special care has to be taken to deregister the callback when the context gets destroyed
     // Since TEXTURE_ATLAS uses "Bonito.Retain" and will live for the whole browser session.
     if (buffer == "texture_atlas") {
-        const { texture_atlas, renderer, tex_atlas } = scene.screen;
+        const { texture_atlas, renderer } = scene.screen;
         if (!texture_atlas) {
             const atlas = get_texture_atlas();
-            tex_atlas.notify(atlas.data)
             scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
         return scene.screen.texture_atlas;
@@ -560,26 +558,23 @@ function broadcast_getindex(a, x, i) {
     }
 }
 
-function per_glyph_data(glyph_hashes, scales, offsets) {
+function per_glyph_data(glyph_hashes, scales) {
     const atlas = get_texture_atlas();
     const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
     const markersize = new Float32Array(glyph_hashes.length * 2);
-    const char_offsets = new Float32Array(glyph_hashes.length * 2);
     const quad_offsets = new Float32Array(glyph_hashes.length * 2);
     for (let i = 0; i < glyph_hashes.length; i++) {
         const hash = glyph_hashes[i];
-        const [uv, c_width, c_offset, q_offset] = atlas.get_glyph_data(
+        const [uv, c_width, q_offset] = atlas.get_glyph_data(
             hash,
             broadcast_getindex(glyph_hashes, scales, i),
-            broadcast_getindex(glyph_hashes, offsets, i)
         );
         uv_offset_width.set(uv.toArray(), i * 4);
         markersize.set(c_width.toArray(), i * 2);
-        char_offsets.set(c_offset.toArray(), i * 2);
         quad_offsets.set(q_offset.toArray(), i * 2);
     }
 
-    return [uv_offset_width, markersize, char_offsets, quad_offsets];
+    return [uv_offset_width, markersize, quad_offsets];
 }
 
 function to_three_vector(data) {
@@ -603,12 +598,11 @@ function to_three_vector(data) {
 function update_glyph_data(scene, glyph_data) {
     const atlas = get_texture_atlas();
     Object.keys(glyph_data).forEach((hash) => {
-        const [uv, sdf, origin, width, minimum] = glyph_data[hash];
+        const [uv, sdf, width, minimum] = glyph_data[hash];
         atlas.insert_glyph(
             hash,
             sdf,
             to_three_vector(uv),
-            to_three_vector(origin),
             to_three_vector(width),
             to_three_vector(minimum)
         );
@@ -618,13 +612,17 @@ function update_glyph_data(scene, glyph_data) {
     }
 }
 
-
 function get_glyph_data_attributes(scene, glyph_data) {
-    const { glyph_hashes, atlas_updates, offsets, scales } = glyph_data;
+    const { glyph_hashes, atlas_updates, scales } = glyph_data;
     update_glyph_data(scene, atlas_updates);
-    const [uv_offset_width, markersize, marker_offset, quad_offset] =
-        per_glyph_data(glyph_hashes, scales, offsets);
-    return { uv_offset_width, markersize, marker_offset, quad_offset };
+    if (glyph_hashes) {
+        const [uv_offset_width, markersize, quad_offset] = per_glyph_data(
+            glyph_hashes,
+            scales
+        );
+        return { uv_offset_width, markersize, quad_offset };
+    }
+    return {}
 }
 
 function create_text_mesh(scene, program) {
@@ -645,7 +643,6 @@ function create_text_mesh(scene, program) {
         const len = lengths[name] || 2;
         program.instance_attributes[name] = { flat: buff, type_length: len };
     }
-
     return create_instanced_mesh(scene, program);
 }
 

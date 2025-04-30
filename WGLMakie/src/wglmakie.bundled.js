@@ -22437,7 +22437,6 @@ function uv_to_pixel_bounds(uv, tex_width, tex_height) {
 }
 class TextureAtlas {
     constructor(width, pix_per_glyph, glyph_padding){
-        console.log("Creating texture atlas");
         this.pix_per_glyph = pix_per_glyph;
         this.glyph_padding = glyph_padding;
         this.width = width;
@@ -22449,10 +22448,9 @@ class TextureAtlas {
         this.glyph_data = new Map();
         this.textures = new Map();
     }
-    insert_glyph(hash, glyph_data, uv_pos, origin, width, minimum) {
+    insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
         this.glyph_data.set(hash, [
             uv_pos,
-            origin,
             width,
             minimum
         ]);
@@ -22465,29 +22463,21 @@ class TextureAtlas {
             }
         }
     }
-    get_glyph_data(hash, scale, offset) {
-        const [uv_offset_width, origin, width, mini] = this.glyph_data.get(hash.toString());
+    get_glyph_data(hash, scale) {
+        const [uv_offset_width, width, mini] = this.glyph_data.get(hash.toString());
         const w_scaled = width.clone().multiply(scale);
         const mini_scaled = mini.clone().multiply(scale);
         const pad = this.glyph_padding / this.pix_per_glyph;
         const scaled_pad = scale.clone().multiplyScalar(2 * pad);
         const scales = w_scaled.clone().add(scaled_pad);
-        const char_offsets = new T(origin.x, origin.y).add(offset);
         const quad_offsets = mini_scaled.clone().sub(scale.clone().multiplyScalar(pad));
-        console.log({
-            scales,
-            char_offsets,
-            quad_offsets
-        });
         return [
             uv_offset_width,
             scales,
-            char_offsets,
             quad_offsets
         ];
     }
     get_texture(renderer) {
-        console.log("Creating texture");
         if (this.textures.has(renderer)) {
             return this.textures.get(renderer);
         }
@@ -22500,11 +22490,7 @@ class TextureAtlas {
         return texture;
     }
     upload_tex_data(scene) {
-        const { tex_atlas  } = scene.screen;
-        tex_atlas.notify(this.data);
-        console.log("Uploading texture data");
         for (const [renderer, texture] of this.textures.entries()){
-            console.log(texture);
             if (!texture.image) {
                 this.textures.delete(renderer);
                 continue;
@@ -23628,10 +23614,9 @@ class Plot {
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
             this.mesh = create_linesegments(scene, this.plot_data);
-        } else if (data.plot_type === "text") {
+        } else if ("glyph_data" in data) {
             this.is_instanced = true;
             this.mesh = create_text_mesh(scene, this.plot_data);
-            console.log(this.mesh);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -23914,11 +23899,9 @@ function create_texture_from_data(data) {
 function create_texture(scene, data) {
     const buffer1 = data.data;
     if (buffer1 == "texture_atlas") {
-        const { texture_atlas , renderer , tex_atlas  } = scene.screen;
+        const { texture_atlas , renderer  } = scene.screen;
         if (!texture_atlas) {
             const atlas = get_texture_atlas();
-            console.log("Setting atlas from JS");
-            tex_atlas.notify(atlas.data);
             scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
         return scene.screen.texture_atlas;
@@ -24048,24 +24031,21 @@ function broadcast_getindex(a, x1, i) {
         throw new Error(`broadcast_getindex: x has length ${x1.length}, but a has length ${a.length}`);
     }
 }
-function per_glyph_data(glyph_hashes, scales, offsets) {
+function per_glyph_data(glyph_hashes, scales) {
     const atlas = get_texture_atlas();
     const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
     const markersize = new Float32Array(glyph_hashes.length * 2);
-    const char_offsets = new Float32Array(glyph_hashes.length * 2);
     const quad_offsets = new Float32Array(glyph_hashes.length * 2);
     for(let i = 0; i < glyph_hashes.length; i++){
         const hash = glyph_hashes[i];
-        const [uv, c_width, c_offset, q_offset] = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i), broadcast_getindex(glyph_hashes, offsets, i));
+        const [uv, c_width, q_offset] = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i));
         uv_offset_width.set(uv.toArray(), i * 4);
         markersize.set(c_width.toArray(), i * 2);
-        char_offsets.set(c_offset.toArray(), i * 2);
         quad_offsets.set(q_offset.toArray(), i * 2);
     }
     return [
         uv_offset_width,
         markersize,
-        char_offsets,
         quad_offsets
     ];
 }
@@ -24089,23 +24069,25 @@ function to_three_vector(data) {
 function update_glyph_data(scene, glyph_data) {
     const atlas = get_texture_atlas();
     Object.keys(glyph_data).forEach((hash)=>{
-        const [uv, sdf, origin, width, minimum] = glyph_data[hash];
-        atlas.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(origin), to_three_vector(width), to_three_vector(minimum));
+        const [uv, sdf, width, minimum] = glyph_data[hash];
+        atlas.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
     });
     if (Object.keys(glyph_data).length > 0) {
         atlas.upload_tex_data(scene);
     }
 }
 function get_glyph_data_attributes(scene, glyph_data) {
-    const { glyph_hashes , atlas_updates , offsets , scales  } = glyph_data;
+    const { glyph_hashes , atlas_updates , scales  } = glyph_data;
     update_glyph_data(scene, atlas_updates);
-    const [uv_offset_width, markersize, marker_offset, quad_offset] = per_glyph_data(glyph_hashes, scales, offsets);
-    return {
-        uv_offset_width,
-        markersize,
-        marker_offset,
-        quad_offset
-    };
+    if (glyph_hashes) {
+        const [uv_offset_width, markersize, quad_offset] = per_glyph_data(glyph_hashes, scales);
+        return {
+            uv_offset_width,
+            markersize,
+            quad_offset
+        };
+    }
+    return {};
 }
 function create_text_mesh(scene, program) {
     const glyph_obs = program.glyph_data;
@@ -24126,13 +24108,9 @@ function create_text_mesh(scene, program) {
         }
     });
     const gdata = get_glyph_data_attributes(scene, glyph_obs.value);
-    console.log({
-        ...program.instance_attributes
-    });
     for(const name in gdata){
         const buff = gdata[name];
         const len = lengths[name] || 2;
-        console.log(`replacing ${name} with length ${buff.length}`, buff);
         program.instance_attributes[name] = {
             flat: buff,
             type_length: len
@@ -24610,7 +24588,7 @@ function add_picking_target(screen) {
     });
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, tex_atlas, fps, resize_to, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -24634,7 +24612,6 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit,
         scalefactor,
         winscale,
-        tex_atlas,
         texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);

@@ -35,7 +35,6 @@ export class TextureAtlas {
      * @param {number} height - Height of the texture atlas.
      */
     constructor(width, pix_per_glyph, glyph_padding) {
-        console.log("Creating texture atlas");
         this.pix_per_glyph = pix_per_glyph; // Pixels per glyph
         this.glyph_padding = glyph_padding; // Padding around each glyph
         this.width = width;
@@ -53,12 +52,11 @@ export class TextureAtlas {
      * @param {number} hash - UInt32 hash of the glyph.
      * @param {Float32Array} glyph_data - Flattened glyph pixel data (single channel).
      * @param {THREE.Vector4} uv_pos - UV coordinates of the glyph in the atlas.
-     * @param {THREE.Vector2} origin - origins for each character by rotating each character around the common origin.
      * @param {THREE.Vector2} width - with of the glyph boundingbox
      * @param {THREE.Vector2} minimum - minimum of the glyph boundingbox
      */
-    insert_glyph(hash, glyph_data, uv_pos, origin, width, minimum) {
-        this.glyph_data.set(hash, [uv_pos, origin, width, minimum]);
+    insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
+        this.glyph_data.set(hash, [uv_pos, width, minimum]);
 
         const [px_start, px_width] = uv_to_pixel_bounds(
             uv_pos,
@@ -82,8 +80,8 @@ export class TextureAtlas {
      * @param {number} hash - UInt32 hash of the glyph.
      * @returns {{ uv: THREE.Vector4, offset: THREE.Vector2 } | null}
      */
-    get_glyph_data(hash, scale, offset) {
-        const [uv_offset_width, origin, width, mini] = this.glyph_data.get(
+    get_glyph_data(hash, scale) {
+        const [uv_offset_width, width, mini] = this.glyph_data.get(
             hash.toString()
         );
         const w_scaled = width.clone().multiply(scale);
@@ -92,13 +90,11 @@ export class TextureAtlas {
         const scaled_pad = scale.clone().multiplyScalar(2 * pad);
         const scales = w_scaled.clone().add(scaled_pad);
 
-        const char_offsets = new THREE.Vector2(origin.x, origin.y).add(offset);
-
         const quad_offsets = mini_scaled
             .clone()
             .sub(scale.clone().multiplyScalar(pad));
 
-        return [uv_offset_width, scales, char_offsets, quad_offsets];
+        return [uv_offset_width, scales, quad_offsets];
     }
 
     /**
@@ -107,7 +103,7 @@ export class TextureAtlas {
      * @returns {THREE.DataTexture}
      */
     get_texture(renderer) {
-        console.log("Creating texture");
+
         if (this.textures.has(renderer)) {
             return this.textures.get(renderer);
         }
@@ -139,12 +135,8 @@ export class TextureAtlas {
      * @param {Float32Array} glyph_data - Flattened glyph pixel data to upload.
      */
     upload_tex_data(scene) {
-        const { tex_atlas } = scene.screen;
-        tex_atlas.notify(this.data);
-        console.log("Uploading texture data");
         // Update all GPU textures
         for (const [renderer, texture] of this.textures.entries()) {
-            console.log(texture);
             if (!texture.image) {
                 this.textures.delete(renderer);
                 continue;
