@@ -431,6 +431,17 @@ function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
     return result
 end
 
+expand_to_collection(::AbstractVector, vec::StaticVector) = vec
+expand_to_collection(::Union{AbstractVector, Makie.GlyphCollection}, vec::Union{StaticVector, AbstractVector}) = vec
+expand_to_collection(::Makie.GlyphCollection, arraylike) = arraylike
+function expand_to_collection(glyphcollection::AbstractVector, arraylike::AbstractVector)
+    if length(glyphcollection) !== length(arraylike)
+        error("Length of glyphcollection and arraylike don't match")
+    end
+
+    return [arraylike[i] for (i, gc) in enumerate(glyphcollection) for _ in 1:length(gc.glyphs)]
+end
+
 function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
     glyphcollection = plot[1]
     f32c, model = Makie.patch_model(plot)
@@ -446,7 +457,8 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
 
     marker_offset = lift(plot, glyphcollection, plot.offset; ignore_equal_values=true) do gc, offset
         origins = get_from_collection(gc, :origins, Point3f)
-        return map(((i,o),)-> Vec2f(Vec2f(o) .+ Makie.sv_getindex(offset, i)), enumerate(origins))
+        offsets = expand_to_collection(gc, Makie.to_2d_scale(offset))
+        return map(((i,o),)-> Vec2f(Vec2f(o) .+ Makie.sv_getindex(offsets, i)), enumerate(origins))
     end
 
     all_glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
