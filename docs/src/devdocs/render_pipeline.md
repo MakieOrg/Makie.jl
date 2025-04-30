@@ -6,7 +6,7 @@ This section aims to summarize how they work and what you can influence to poten
 Note that this is a fairly in-depth topic that you should usually not need to deal with.
 Note as well that we may change pipelines in the future to improve the quality of a backend or the consistency between backends.
 
-## CairoMakie
+## CairoMakie Rendering
 
 CairoMakie's pipeline is the simplest out of the backends.
 It first draws the backgrounds of each scene with `scene.clear[] == true` recursively, starting with the root scene of the scene tree.
@@ -40,7 +40,7 @@ Therefore z order is generally limited to be per-plot.
 Some mesh plots additionally sort triangles based on their average depth to improve on this.
 This however is limited to each plot, i.e. another plot will either be completely below or above.
 
-## GLMakie
+## GLMakie Rendering
 
 In GLMakie each frame begins by clearing a color buffer, depth buffer and objectid buffer.
 Next we go through all scenes in the scene tree recursively and draw their backgrounds to the initial color buffer if `scene.clear[] == true`.
@@ -249,7 +249,7 @@ cow = load(Makie.assetpath("cow.png"))
 image(rotr90(cow))
 ```
 
-## WGLMakie
+## WGLMakie Rendering
 
 WGLMakie does not (yet) support the RenderPipeline.
 Instead it relies on Three.js for rendering and adjusts a few settings.
