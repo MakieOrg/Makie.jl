@@ -630,15 +630,13 @@ end
 update_cam!(x, bb::AbstractCamera, rect) = update_cam!(get_scene(x), bb, rect)
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
-function not_in_data_space(p)
-    !is_data_space(to_value(get(p, :space, :data)))
-end
+not_in_data_space(p) = !is_data_space(p)
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
-    padd = w .* padding
-    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
+    pad = w .* padding
+    bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
     scene
 end

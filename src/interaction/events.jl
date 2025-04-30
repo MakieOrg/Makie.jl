@@ -249,8 +249,8 @@ create_sets(s::Set) = [Set{Union{Keyboard.Button, Mouse.Button}}(s)]
 # ispressed and logic evaluation
 
 """
-ispressed(parent, result::Bool[, waspressed = nothing])
-ispressed(parent, button::Union{Mouse.Button, Keyboard.Button[, waspressed = nothing])
+    ispressed(parent, result::Bool[, waspressed = nothing])
+    ispressed(parent, button::Union{Mouse.Button, Keyboard.Button[, waspressed = nothing])
     ispressed(parent, collection::Union{Set, Vector, Tuple}[, waspressed = nothing])
     ispressed(parent, op::BooleanOperator[, waspressed = nothing])
 

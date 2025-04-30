@@ -265,13 +265,13 @@ Nested attributes are either also updated incrementally, or replaced if they are
 # Example
 To change the default colormap to `:greys`, you can pass that attribute as
 a keyword argument to `update_theme!` as demonstrated below.
-```
+```julia
 update_theme!(colormap=:greys)
 ```
 
 This can also be achieved by passing an object of types `Attributes` or `Theme`
 as the first and only positional argument:
-```
+```julia
 update_theme!(Attributes(colormap=:greys))
 update_theme!(Theme(colormap=:greys))
 ```

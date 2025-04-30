@@ -109,7 +109,7 @@ Makie.@noconstprop function Texture(
     texture::Texture{T, NDim}
 end
 export resize_nocopy!
-function resize_nocopy!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
+function resize_nocopy!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
     switch_context!(t.context)
     bind(t)
     glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
@@ -337,9 +337,9 @@ function gpu_setindex!{T}(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGe
 end
 =#
 # Implementing the GPUArray interface
-function gpu_data(t::Texture{T, ND}) where {T, ND}
+function gpu_data(t::Texture{T, NDim}) where {T, NDim}
     switch_context!(t.context)
-    result = Array{T, ND}(undef, size(t))
+    result = Array{T, NDim}(undef, size(t))
     unsafe_copy!(result, t)
     return result
 end
@@ -386,7 +386,7 @@ function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     t
 end
 # Resize Texture
-function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
+function gpu_resize!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
     switch_context!(t.context)
     # dangerous code right here...Better write a few tests for this
     newtex = similar(t, newdims)
