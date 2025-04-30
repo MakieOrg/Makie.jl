@@ -458,7 +458,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     marker_offset = lift(plot, glyphcollection, plot.offset; ignore_equal_values=true) do gc, offset
         origins = get_from_collection(gc, :origins, Point3f)
         offsets = expand_to_collection(gc, Makie.to_2d_scale(offset))
-        return map(((i,o),)-> Vec2f(Vec2f(o) .+ Makie.sv_getindex(offsets, i)), enumerate(origins))
+        return map(((i,o),)-> Vec3f(Vec3f(o) .+ to_ndim(Vec3f, Makie.sv_getindex(offsets, i), 0f9)), enumerate(origins))
     end
     all_glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
         data = get_glyph_data(scene, args[1]...)
