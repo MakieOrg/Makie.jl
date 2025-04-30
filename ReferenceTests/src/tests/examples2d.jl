@@ -852,7 +852,7 @@ end
     y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
     @. f1(x,y) = x^2 + y^2;
     z = f1(x,y);
-    
+
     f = Figure()
     ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
     ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
@@ -1001,8 +1001,6 @@ end
     f
 end
 
-
-
 @reference_test "hexbin two cellsizes" begin
     f = Figure(size = (800, 800))
 
@@ -1015,7 +1013,6 @@ end
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
-
     f
 end
 

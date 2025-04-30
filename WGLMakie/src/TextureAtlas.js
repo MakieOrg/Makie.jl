@@ -81,9 +81,14 @@ export class TextureAtlas {
      * @returns {{ uv: THREE.Vector4, offset: THREE.Vector2 } | null}
      */
     get_glyph_data(hash, scale) {
-        const [uv_offset_width, width, mini] = this.glyph_data.get(
-            hash.toString()
-        );
+        const data = this.glyph_data.get(hash.toString());
+        if (!data) {
+            console.warn(
+                `Glyph with hash ${hash} not found in the atlas.`
+            );
+            return null;
+        }
+        const [uv_offset_width, width, mini] = data;
         const w_scaled = width.clone().multiply(scale);
         const mini_scaled = mini.clone().multiply(scale);
         const pad = this.glyph_padding / this.pix_per_glyph;
@@ -134,7 +139,7 @@ export class TextureAtlas {
      * @param {number} height - Height of the updated region in pixels.
      * @param {Float32Array} glyph_data - Flattened glyph pixel data to upload.
      */
-    upload_tex_data(scene) {
+    upload_tex_data() {
         // Update all GPU textures
         for (const [renderer, texture] of this.textures.entries()) {
             if (!texture.image) {

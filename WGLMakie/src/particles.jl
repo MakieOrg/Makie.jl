@@ -460,7 +460,6 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
         offsets = expand_to_collection(gc, Makie.to_2d_scale(offset))
         return map(((i,o),)-> Vec2f(Vec2f(o) .+ Makie.sv_getindex(offsets, i)), enumerate(origins))
     end
-
     all_glyph_data = lift(plot, glyph_input; ignore_equal_values=true) do args
         data = get_glyph_data(scene, args[1]...)
         return Dict(

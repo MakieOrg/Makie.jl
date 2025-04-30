@@ -565,13 +565,19 @@ function per_glyph_data(glyph_hashes, scales) {
     const quad_offsets = new Float32Array(glyph_hashes.length * 2);
     for (let i = 0; i < glyph_hashes.length; i++) {
         const hash = glyph_hashes[i];
-        const [uv, c_width, q_offset] = atlas.get_glyph_data(
+        const data = atlas.get_glyph_data(
             hash,
             broadcast_getindex(glyph_hashes, scales, i),
         );
+        const [uv, c_width, q_offset] = data ?? [
+            new THREE.Vector4(0, 0, 0, 0),
+            new THREE.Vector2(0, 0),
+            new THREE.Vector2(0, 0),
+        ];
         uv_offset_width.set(uv.toArray(), i * 4);
         markersize.set(c_width.toArray(), i * 2);
         quad_offsets.set(q_offset.toArray(), i * 2);
+
     }
 
     return [uv_offset_width, markersize, quad_offsets];
@@ -595,7 +601,7 @@ function to_three_vector(data) {
     return data
 }
 
-function update_glyph_data(scene, glyph_data) {
+function update_glyph_data(glyph_data) {
     const atlas = get_texture_atlas();
     Object.keys(glyph_data).forEach((hash) => {
         const [uv, sdf, width, minimum] = glyph_data[hash];
@@ -608,13 +614,13 @@ function update_glyph_data(scene, glyph_data) {
         );
     });
     if (Object.keys(glyph_data).length > 0) {
-        atlas.upload_tex_data(scene);
+        atlas.upload_tex_data();
     }
 }
 
 function get_glyph_data_attributes(scene, glyph_data) {
     const { glyph_hashes, atlas_updates, scales } = glyph_data;
-    update_glyph_data(scene, atlas_updates);
+    // update_glyph_data(scene, atlas_updates);
     if (glyph_hashes) {
         const [uv_offset_width, markersize, quad_offset] = per_glyph_data(
             glyph_hashes,
@@ -741,11 +747,32 @@ function connect_attributes(mesh, updater) {
     });
 }
 
-export function deserialize_scene(data, screen) {
+// the plot order is different in WGLMakie (js) compared to serialization order
+// In julia, so we need to first go through all plots and update the glyphs.
+// Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
+// If plotb gets serialized first, the glyphs from plota will be missing.
+function add_glyphs_from_plots(scene_data) {
+    scene_data.plots.forEach((plot_data) => {
+        if (plot_data.glyph_data) {
+            const glyph_data = plot_data.glyph_data.value;
+            const { atlas_updates } = glyph_data;
+            if (atlas_updates) {
+                update_glyph_data(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child) => {
+        add_glyphs_from_plots(child);
+    });
+}
+
+
+
+export function deserialize_scene_recursive(data, screen) {
     const scene = new THREE.Scene();
     scene.screen = screen;
-    const { canvas } = screen;
     add_scene(data.uuid, scene);
+    const { canvas } = screen;
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
     scene.viewport = data.viewport;
@@ -801,10 +828,15 @@ export function deserialize_scene(data, screen) {
         add_plot(scene, plot_data);
     });
     scene.scene_children = data.children.map((child) => {
-        const childscene = deserialize_scene(child, screen);
+        const childscene = deserialize_scene_recursive(child, screen);
         return childscene;
     });
     return scene;
+}
+
+export function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
 }
 
 export function delete_plot(plot) {

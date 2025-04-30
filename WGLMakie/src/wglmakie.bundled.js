@@ -22449,6 +22449,7 @@ class TextureAtlas {
         this.textures = new Map();
     }
     insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
+        console.log(`inserting: ${hash}`);
         this.glyph_data.set(hash, [
             uv_pos,
             width,
@@ -22464,7 +22465,12 @@ class TextureAtlas {
         }
     }
     get_glyph_data(hash, scale) {
-        const [uv_offset_width, width, mini] = this.glyph_data.get(hash.toString());
+        const data = this.glyph_data.get(hash.toString());
+        if (!data) {
+            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
+            return null;
+        }
+        const [uv_offset_width, width, mini] = data;
         const w_scaled = width.clone().multiply(scale);
         const mini_scaled = mini.clone().multiply(scale);
         const pad = this.glyph_padding / this.pix_per_glyph;
@@ -22489,7 +22495,7 @@ class TextureAtlas {
         this.textures.set(renderer, texture);
         return texture;
     }
-    upload_tex_data(scene) {
+    upload_tex_data() {
         for (const [renderer, texture] of this.textures.entries()){
             if (!texture.image) {
                 this.textures.delete(renderer);
@@ -24038,7 +24044,12 @@ function per_glyph_data(glyph_hashes, scales) {
     const quad_offsets = new Float32Array(glyph_hashes.length * 2);
     for(let i = 0; i < glyph_hashes.length; i++){
         const hash = glyph_hashes[i];
-        const [uv, c_width, q_offset] = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i));
+        const data = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i));
+        const [uv, c_width, q_offset] = data ?? [
+            new mod.Vector4(0, 0, 0, 0),
+            new mod.Vector2(0, 0),
+            new mod.Vector2(0, 0)
+        ];
         uv_offset_width.set(uv.toArray(), i * 4);
         markersize.set(c_width.toArray(), i * 2);
         quad_offsets.set(q_offset.toArray(), i * 2);
@@ -24066,19 +24077,18 @@ function to_three_vector(data) {
     }
     return data;
 }
-function update_glyph_data(scene, glyph_data) {
+function update_glyph_data(glyph_data) {
     const atlas = get_texture_atlas();
     Object.keys(glyph_data).forEach((hash)=>{
         const [uv, sdf, width, minimum] = glyph_data[hash];
         atlas.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
     });
     if (Object.keys(glyph_data).length > 0) {
-        atlas.upload_tex_data(scene);
+        atlas.upload_tex_data();
     }
 }
 function get_glyph_data_attributes(scene, glyph_data) {
     const { glyph_hashes , atlas_updates , scales  } = glyph_data;
-    update_glyph_data(scene, atlas_updates);
     if (glyph_hashes) {
         const [uv_offset_width, markersize, quad_offset] = per_glyph_data(glyph_hashes, scales);
         return {
@@ -24199,11 +24209,25 @@ function connect_attributes(mesh, updater) {
         }
     });
 }
-function deserialize_scene(data, screen) {
+function add_glyphs_from_plots(scene_data) {
+    scene_data.plots.forEach((plot_data1)=>{
+        if (plot_data1.glyph_data) {
+            const glyph_data = plot_data1.glyph_data.value;
+            const { atlas_updates  } = glyph_data;
+            if (atlas_updates) {
+                update_glyph_data(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child)=>{
+        add_glyphs_from_plots(child);
+    });
+}
+function deserialize_scene_recursive(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
-    const { canvas  } = screen;
     add_scene(data.uuid, scene);
+    const { canvas  } = screen;
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
     scene.viewport = data.viewport;
@@ -24241,10 +24265,14 @@ function deserialize_scene(data, screen) {
         add_plot(scene, plot_data1);
     });
     scene.scene_children = data.children.map((child)=>{
-        const childscene = deserialize_scene(child, screen);
+        const childscene = deserialize_scene_recursive(child, screen);
         return childscene;
     });
     return scene;
+}
+function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
 }
 function delete_plot(plot) {
     plot.plot_object.dispose();
