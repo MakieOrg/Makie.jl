@@ -50,6 +50,7 @@ class Plot {
         } else if (data.plot_type === "text") {
             this.is_instanced = true;
             this.mesh = create_text_mesh(scene, this.plot_data);
+            console.log(this.mesh)
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -399,7 +400,6 @@ function create_texture(scene, data) {
         const { texture_atlas, renderer, tex_atlas } = scene.screen;
         if (!texture_atlas) {
             const atlas = get_texture_atlas();
-            console.log("Setting atlas from JS")
             tex_atlas.notify(atlas.data)
             scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
@@ -643,7 +643,7 @@ function create_text_mesh(scene, program) {
     for (const name in gdata) {
         const buff = gdata[name];
         const len = lengths[name] || 2;
-        program.vertexarrays[name] = { flat: buff, type_length: len };
+        program.instance_attributes[name] = { flat: buff, type_length: len };
     }
 
     return create_instanced_mesh(scene, program);

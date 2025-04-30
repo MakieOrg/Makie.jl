@@ -58,7 +58,6 @@ export class TextureAtlas {
      * @param {THREE.Vector2} minimum - minimum of the glyph boundingbox
      */
     insert_glyph(hash, glyph_data, uv_pos, origin, width, minimum) {
-        console.log("Insert glyph", hash);
         this.glyph_data.set(hash, [uv_pos, origin, width, minimum]);
 
         const [px_start, px_width] = uv_to_pixel_bounds(
@@ -87,13 +86,15 @@ export class TextureAtlas {
         const [uv_offset_width, origin, width, mini] = this.glyph_data.get(
             hash.toString()
         );
+        const w_scaled = width.clone().multiply(scale);
+        const mini_scaled = mini.clone().multiply(scale);
         const pad = this.glyph_padding / this.pix_per_glyph;
         const scaled_pad = scale.clone().multiplyScalar(2 * pad);
-        const scales = width.clone().add(scaled_pad);
+        const scales = w_scaled.clone().add(scaled_pad);
 
         const char_offsets = new THREE.Vector2(origin.x, origin.y).add(offset);
 
-        const quad_offsets = mini
+        const quad_offsets = mini_scaled
             .clone()
             .sub(scale.clone().multiplyScalar(pad));
 

@@ -331,7 +331,6 @@ function get_glyph_data(atlas::TextureAtlas, hash::UInt32)
     uv = atlas.uv_rectangles[index]
     # create pixel ranges
     x_range, y_range = sdf_uv_to_pixel(atlas, uv)
-    @show x_range y_range
     # slice the data
     return atlas.data[x_range, y_range]
 end

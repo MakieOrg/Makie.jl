@@ -371,14 +371,12 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     end
 
     all_glyph_data = lift(plot, glyph_data, plot.offset, plot.fontsize) do data, offset, scale
-        if !isempty(data[2])
-            @show last(first(data[2]))[[1, 3, 4, 5]]
-        end
+        scales = convert_attribute(scale, key"markersize"(), key"scatter"())
         Dict(
             :glyph_hashes => data[1],
             :atlas_updates => data[2],
             :offsets => offset,
-            :scales => convert_attribute(scale, key"markersize"(), key"scatter"())
+            :scales => scales
         )
     end
 

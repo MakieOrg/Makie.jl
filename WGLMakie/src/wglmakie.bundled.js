@@ -22450,7 +22450,6 @@ class TextureAtlas {
         this.textures = new Map();
     }
     insert_glyph(hash, glyph_data, uv_pos, origin, width, minimum) {
-        console.log("Insert glyph", hash);
         this.glyph_data.set(hash, [
             uv_pos,
             origin,
@@ -22468,11 +22467,18 @@ class TextureAtlas {
     }
     get_glyph_data(hash, scale, offset) {
         const [uv_offset_width, origin, width, mini] = this.glyph_data.get(hash.toString());
+        const w_scaled = width.clone().multiply(scale);
+        const mini_scaled = mini.clone().multiply(scale);
         const pad = this.glyph_padding / this.pix_per_glyph;
         const scaled_pad = scale.clone().multiplyScalar(2 * pad);
-        const scales = width.clone().add(scaled_pad);
+        const scales = w_scaled.clone().add(scaled_pad);
         const char_offsets = new T(origin.x, origin.y).add(offset);
-        const quad_offsets = mini.clone().sub(scale.clone().multiplyScalar(pad));
+        const quad_offsets = mini_scaled.clone().sub(scale.clone().multiplyScalar(pad));
+        console.log({
+            scales,
+            char_offsets,
+            quad_offsets
+        });
         return [
             uv_offset_width,
             scales,
@@ -23625,6 +23631,7 @@ class Plot {
         } else if (data.plot_type === "text") {
             this.is_instanced = true;
             this.mesh = create_text_mesh(scene, this.plot_data);
+            console.log(this.mesh);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -24119,10 +24126,14 @@ function create_text_mesh(scene, program) {
         }
     });
     const gdata = get_glyph_data_attributes(scene, glyph_obs.value);
+    console.log({
+        ...program.instance_attributes
+    });
     for(const name in gdata){
         const buff = gdata[name];
         const len = lengths[name] || 2;
-        program.vertexarrays[name] = {
+        console.log(`replacing ${name} with length ${buff.length}`, buff);
+        program.instance_attributes[name] = {
             flat: buff,
             type_length: len
         };
