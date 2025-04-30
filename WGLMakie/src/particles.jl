@@ -309,8 +309,16 @@ value_or_first(x) = x
 const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
 
 function get_atlas_tracker(scene::Scene)
+    for (s, _) in SCENE_ATLASES
+        Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
+    end
     screen = Makie.getscreen(scene, WGLMakie)
-    # Can session be nothing?
+    if isnothing(screen.session)
+        @warn "No session found, returning empty atlas tracker"
+        # TODO, it's not entirely clear in which case this can happen,
+        # which is why we don't just error, but just assume there isn't anything tracked
+        return Set{UInt32}()
+    end
     session = Bonito.root_session(screen.session)
     if haskey(SCENE_ATLASES, session)
         return SCENE_ATLASES[session]
