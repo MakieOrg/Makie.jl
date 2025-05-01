@@ -326,8 +326,8 @@ end
 
 convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args...)
 
-
-function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align, normalize)
+_arrow_directions(dirs, norm::Bool) = norm ? normalize.(dirs) : dirs
+function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align) where N
     if align === :tail
         align_val = 0.0
     elseif align === :center
@@ -338,14 +338,7 @@ function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vecto
         align_val = Float64(align)
     end
 
-    output = similar(points, 2 * length(points))
-    for i in eachindex(points)
-        dir = normalize ? directions[i] : normalize(directions[i])
-        # startpoint, endpoint
-        output[2*i-1] = points[i] - align_val * dir
-        output[2*i] = points[i] + (1 - align_val) * dir
-    end
-    return output
+    return points .- align_val .* directions
 end
 
 function _get_arrow_shape(x, len, width, shaftwidth, color)
@@ -380,7 +373,6 @@ end
 
 function plot!(plot::Arrows2D)
     @extract plot (
-        points, directions,
         colormap, colorscale, normalize, align, lengthscale,
         tail, taillength, tailwidth,
         shaft, shaftlength, minshaftlength, shaftwidth,
@@ -392,29 +384,33 @@ function plot!(plot::Arrows2D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    # TODO: Think about normalize
-
-    arrowpoints = map(_aligned_arrow_points, plot, points, directions, align, normalize)
+    directions = map(_arrow_directions, plot, plot.directions, normalize)
+    startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
 
     scene = parent_scene(plot)
     arrowpoints_px = map(plot,
-            arrowpoints, transform_func_obs(plot), plot.model, plot.space, scene.camera.projectionview, scene.viewport
+            startpoints, transform_func_obs(plot), plot.model, plot.space,
+            scene.camera.projectionview, scene.viewport
         ) do ps, tf, model, space, pv, vp
-        return plot_to_screen(plot, ps)
+        # directions always triggers startpoints so we can update on just startpoints
+        dirs = directions[]
+        startpoints = plot_to_screen(plot, ps)
+        endpoints = plot_to_screen(plot, ps .+ dirs)
+        return (startpoints, endpoints .- startpoints)
     end
 
     arrow_metrics = map(
-        plot, arrowpoints_px, normalize, lengthscale,
+        plot, arrowpoints_px, lengthscale,
         taillength, tailwidth,
         shaftlength, minshaftlength, shaftwidth,
         tiplength, tipwidth,
-    ) do points, normalize, lengthscale, taillength, tailwidth,
+    ) do (startpoints, directions), lengthscale, taillength, tailwidth,
         shaftlength, minshaftlength, shaftwidth,
         tiplength, tipwidth
 
-        metrics = Vector{NTuple{6, Float64}}(undef, div(length(points), 2))
+        metrics = Vector{NTuple{6, Float64}}(undef, length(startpoints))
         for i in eachindex(metrics)
-            target_length = lengthscale * norm(points[2i] - points[2i-1])
+            target_length = lengthscale * norm(directions[i])
             target_shaftlength = if shaftlength === automatic
                 max(minshaftlength, target_length - taillength - tiplength)
             else
@@ -428,12 +424,12 @@ function plot!(plot::Arrows2D)
         return metrics
     end
 
-    # skip arrow_metrics input to avoid double update (let arrow metrics trigger)
+    # skip arrowpoints_px input to avoid double update (let arrow metrics trigger)
     merged_mesh = map(plot,
             arrow_metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
         ) do metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
 
-        arrow_points = arrowpoints_px[]
+        ps, dirs = arrowpoints_px[]
         tailc = to_color(tailcolor)
         shaftc = to_color(shaftcolor)
         tipc = to_color(tipcolor)
@@ -449,9 +445,8 @@ function plot!(plot::Arrows2D)
             tip_m   = _get_arrow_shape(tip,   tiplength,   tipwidth,   shaftwidth, tipc)
 
             # rotate + translate
-            startpoint = arrow_points[2i-1]
-            endpoint = arrow_points[2i]
-            direction = endpoint - startpoint
+            startpoint = ps[i]
+            direction = dirs[i]
             angle = atan(direction[2], direction[1])
             R = rotmatrix2d(angle)
 
