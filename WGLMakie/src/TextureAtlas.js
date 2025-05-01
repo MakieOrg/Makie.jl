@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
+import { to_three_vector } from "./Serialization.js";
 
 /**
  * Converts a UV rectangle to pixel bounds.
@@ -72,6 +73,29 @@ export class TextureAtlas {
                     (px_start.y + col) * this.height + (px_start.x + row);
                 this.data[atlas_index] = glyph_data.array[glyph_index];
             }
+        }
+    }
+    insert_glyphs(glyph_data) {
+        let written = false;
+        Object.keys(glyph_data).forEach((hash) => {
+            if (this.glyph_data.has(hash)) {
+                // TODO, be more careful to not update the same glyphs
+                // (e.g. in deserialize_scene and in the plots code)
+                return;
+            }
+            const [uv, sdf, width, minimum] = glyph_data[hash];
+            this.insert_glyph(
+                hash,
+                sdf,
+                to_three_vector(uv),
+                to_three_vector(width),
+                to_three_vector(minimum)
+            );
+            written = true;
+            return;
+        });
+        if (written) {
+            this.upload_tex_data();
         }
     }
 

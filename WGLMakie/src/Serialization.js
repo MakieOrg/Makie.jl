@@ -583,7 +583,7 @@ function per_glyph_data(glyph_hashes, scales) {
     return [uv_offset_width, markersize, quad_offsets];
 }
 
-function to_three_vector(data) {
+export function to_three_vector(data) {
     if (data.length == 2) {
         return new THREE.Vector2().fromArray(data);
     }
@@ -601,26 +601,9 @@ function to_three_vector(data) {
     return data
 }
 
-function update_glyph_data(glyph_data) {
-    const atlas = get_texture_atlas();
-    Object.keys(glyph_data).forEach((hash) => {
-        const [uv, sdf, width, minimum] = glyph_data[hash];
-        atlas.insert_glyph(
-            hash,
-            sdf,
-            to_three_vector(uv),
-            to_three_vector(width),
-            to_three_vector(minimum)
-        );
-    });
-    if (Object.keys(glyph_data).length > 0) {
-        atlas.upload_tex_data();
-    }
-}
-
-function get_glyph_data_attributes(scene, glyph_data) {
+function get_glyph_data_attributes(atlas, glyph_data) {
     const { glyph_hashes, atlas_updates, scales } = glyph_data;
-    // update_glyph_data(scene, atlas_updates);
+    atlas.insert_glyphs(atlas_updates);
     if (glyph_hashes) {
         const [uv_offset_width, markersize, quad_offset] = per_glyph_data(
             glyph_hashes,
@@ -635,15 +618,16 @@ function create_text_mesh(scene, program) {
     const glyph_obs = program.glyph_data;
     const updater = program.attribute_updater;
     const lengths = { uv_offset_width: 4 };
+    const atlas = get_texture_atlas();
     glyph_obs.on((glyph_data) => {
-        const data = get_glyph_data_attributes(scene, glyph_data);
+        const data = get_glyph_data_attributes(atlas, glyph_data);
         for (const name in data) {
             const buff = data[name];
             const len = lengths[name] || 2;
             updater.notify([name, buff, buff.length / len]);
         }
     });
-    const gdata = get_glyph_data_attributes(scene, glyph_obs.value);
+    const gdata = get_glyph_data_attributes(atlas, glyph_obs.value);
     for (const name in gdata) {
         const buff = gdata[name];
         const len = lengths[name] || 2;
@@ -752,12 +736,13 @@ function connect_attributes(mesh, updater) {
 // Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
 // If plotb gets serialized first, the glyphs from plota will be missing.
 function add_glyphs_from_plots(scene_data) {
+    const atlas = get_texture_atlas();
     scene_data.plots.forEach((plot_data) => {
         if (plot_data.glyph_data) {
             const glyph_data = plot_data.glyph_data.value;
             const { atlas_updates } = glyph_data;
             if (atlas_updates) {
-                update_glyph_data(atlas_updates);
+                atlas.insert_glyphs(atlas_updates);
             }
         }
     });
