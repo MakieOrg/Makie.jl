@@ -390,6 +390,16 @@ function plot!(plot::Arrows2D)
         transparency, visible, inspectable
     )
 
+    generic_attributes = copy(Attributes(plot))
+    foreach(k -> delete!(generic_attributes, k), [
+        :normalize, :align, :lengthscale, :markerscale,
+        :tail, :taillength, :tailwidth,
+        :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
+        :tip, :tiplength, :tipwidth,
+        :space,
+        :tailcolor, :shaftcolor, :tipcolor, :color
+    ])
+
     tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
@@ -475,8 +485,9 @@ function plot!(plot::Arrows2D)
         return merged_mesh
     end
 
-    mesh!(plot, merged_mesh, space = :pixel)
+    poly!(plot, merged_mesh, space = :pixel; generic_attributes...)
 
+    return plot
 end
 
 
@@ -584,12 +595,22 @@ convert_arguments(::Type{<: Arrows3D}, args...) = convert_arguments(Arrows, args
 
 function plot!(plot::Arrows3D)
     @extract plot (
-        colormap, colorscale, normalize, align, lengthscale, markerscale,
+        normalize, align, lengthscale, markerscale,
         tail, taillength, tailradius,
         shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tip, tiplength, tipradius,
-        transparency, visible, inspectable
+        visible
     )
+
+    generic_attributes = copy(Attributes(plot))
+    foreach(k -> delete!(generic_attributes, k), [
+        :normalize, :align, :lengthscale, :markerscale,
+        :tail, :taillength, :tailradius,
+        :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftradius,
+        :tip, :tiplength, :tipradius,
+        :visible,
+        :tailcolor, :shaftcolor, :tipcolor, :color
+    ])
 
     tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
@@ -665,23 +686,20 @@ function plot!(plot::Arrows3D)
     tip_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
     tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
 
-    # TODO: generics
     meshscatter!(plot,
         startpoints, marker = tail, markersize = tail_scale, rotation = rot,
-        color = tailcolor, visible = tail_visible, transparency = transparency,
-        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+        color = tailcolor, visible = tail_visible; generic_attributes...
     )
     meshscatter!(plot,
         shaft_pos, marker = shaft, markersize = shaft_scale, rotation = rot,
-        color = shaftcolor, visible = visible, transparency = transparency,
-        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+        color = shaftcolor, visible = visible; generic_attributes...
     )
     meshscatter!(plot,
         tip_pos, marker = tip, markersize = tip_scale, rotation = rot,
-        color = tipcolor, visible = tip_visible, transparency = transparency,
-        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+        color = tipcolor, visible = tip_visible; generic_attributes...
     )
 
+    return plot
 end
 
 function data_limits(p::Union{Arrows2D, Arrows3D})
