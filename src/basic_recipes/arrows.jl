@@ -329,7 +329,9 @@ end
 
 convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args...)
 
-_arrow_directions(dirs, norm::Bool) = norm ? normalize.(dirs) : dirs
+function _arrow_directions(dirs, lengthscale::Real, norm::Bool)
+    return lengthscale .* (norm ? normalize.(dirs) : dirs)
+end
 function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align) where N
     if align === :tail
         align_val = 0.0
@@ -387,7 +389,7 @@ function plot!(plot::Arrows2D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    directions = map(_arrow_directions, plot, plot.directions, normalize)
+    directions = map(_arrow_directions, plot, plot.directions, lengthscale, normalize)
     startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
 
     scene = parent_scene(plot)
@@ -403,17 +405,17 @@ function plot!(plot::Arrows2D)
     end
 
     arrow_metrics = map(
-        plot, arrowpoints_px, lengthscale,
+        plot, arrowpoints_px,
         taillength, tailwidth,
         shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tiplength, tipwidth,
-    ) do (startpoints, directions), lengthscale, taillength, tailwidth,
+    ) do (startpoints, directions), taillength, tailwidth,
         shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tiplength, tipwidth
 
         metrics = Vector{NTuple{6, Float64}}(undef, length(startpoints))
         for i in eachindex(metrics)
-            target_length = lengthscale * norm(directions[i])
+            target_length = norm(directions[i])
             target_shaftlength = if shaftlength === automatic
                 clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
             else
@@ -549,6 +551,13 @@ or other array-like output.
     """
     tiplength = 0.06
 
+    """
+    Scales all arrow components, i.e. all radii and lengths (including min/maxshaftlength).
+    When set to `automatic` the scaling factor is based on the boundingbox of the given data.
+    This does not affect the mapping between arrows and directions.
+    """
+    markerscale = automatic
+
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
@@ -558,7 +567,7 @@ convert_arguments(::Type{<: Arrows3D}, args...) = convert_arguments(Arrows, args
 
 function plot!(plot::Arrows3D)
     @extract plot (
-        colormap, colorscale, normalize, align, lengthscale,
+        colormap, colorscale, normalize, align, lengthscale, markerscale,
         tail, taillength, tailradius,
         shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tip, tiplength, tipradius,
@@ -570,39 +579,46 @@ function plot!(plot::Arrows3D)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
     # TODO: Think about normalize
-    directions = map(_arrow_directions, plot, plot.directions, normalize)
+    directions = map(_arrow_directions, plot, plot.directions, lengthscale, normalize)
     startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
 
-    bbox = map(plot, startpoints) do ps
-        return update_boundingbox(Rect3d(ps), Rect3d(ps .+ directions[]))
+    arrowscale = map(plot, startpoints, markerscale) do ps, ms
+        if ms === automatic
+            # TODO: maybe maximum? or max of each 2d norm?
+            bbox = update_boundingbox(Rect3d(ps), Rect3d(ps .+ directions[]))
+            scale = norm(widths(bbox))
+            return ifelse(scale == 0.0, 1.0, scale)
+        else
+            return Float64(ms)
+        end
     end
 
     arrow_metrics = map(
-        plot, directions, bbox, lengthscale,
+        plot, directions, arrowscale, shaftlength,
         taillength, tailradius,
-        shaftlength, minshaftlength, maxshaftlength, shaftradius,
+        minshaftlength, maxshaftlength, shaftradius,
         tiplength, tipradius,
-    ) do directions, bbox, lengthscale, taillength, tailradius,
-        shaftlength, minshaftlength, maxshaftlength, shaftradius,
-        tiplength, tipradius
+    ) do directions, arrowscale, _shaftlength, user_metrics...
 
-        # TODO: maybe maximum? or max of each 2d norm?
-        bb_scale = norm(widths(bbox))
-        rel_scale = lengthscale / bb_scale
+        # apply scaling factor to all user metrics
+        taillength, tailradius, minshaftlength, maxshaftlength, shaftradius,
+            tiplength, tipradius = arrowscale .* user_metrics
+        shaftlength = _shaftlength === automatic ? _shaftlength : arrowscale * _shaftlength
 
+        constlength = taillength + tiplength
+
+        # scale arrow matrics to direction, either by scaling shaftlength or all metrics
         metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
         for i in eachindex(metrics)
-            # scale space to a space relative to bb_scale, resolve arrow metrics,
-            # revert to unscaled space
-            target_length = rel_scale * norm(directions[i])
+            target_length = norm(directions[i])
             target_shaftlength = if shaftlength === automatic
-                clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
+                clamp(target_length - constlength, minshaftlength, maxshaftlength)
             else
                 shaftlength
             end
-            arrow_length = target_shaftlength + taillength + tiplength
+            arrow_length = target_shaftlength + constlength
             arrow_scaling = target_length / arrow_length
-            metrics[i] = arrow_scaling * bb_scale .*
+            metrics[i] = arrow_scaling .*
                 (taillength, tailradius, target_shaftlength, shaftradius, tiplength, tipradius)
         end
 
@@ -612,7 +628,7 @@ function plot!(plot::Arrows3D)
     rot = map((dirs, n) -> n ? dirs : LinearAlgebra.normalize.(dirs), plot, directions, normalize)
 
     tail_scale = map(metrics -> [Vec3f(r, r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
-    tail_visible = map((l, v) -> !iszero(l) && v, plot, taillength, visible)
+    tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
     shaft_pos = map(plot, arrow_metrics) do metrics
