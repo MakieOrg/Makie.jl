@@ -36,13 +36,13 @@ function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
 end
 
 """
-    default_automatic(a, b)
+    default_automatic(a, default)
 
-Returns whichever of a and b is not automatic.
+Returns `default` if `a == automatic` and `a` otherwise.
 """
 default_automatic(::Automatic, b) = b
-default_automatic(a, ::Automatic) = a
-default_automatic(::Automatic, ::Automatic) = error("Cannot set default for `automatic` - both values are `automatic`.")
+default_automatic(a, b) = a
+default_automatic(x, ::Automatic) = throw(MethodError(default_automatic, (x, automatic)))
 
 """
 Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
