@@ -222,6 +222,36 @@ end
 ################################################################################
 
 
+function mixin_arrow_attributes()
+    MakieCore.@DocumentedAttributes begin
+        "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
+        color = :black
+        "Sets the color of the arrow tail. Defaults to `color`"
+        tailcolor = automatic
+        "Sets the color of the arrow shaft. Defaults to `color`"
+        shaftcolor = automatic
+        "Sets the color of the arrow tip. Defaults to `color`"
+        tipcolor = automatic
+
+        """
+        Sets the alignment of the arrow, i.e. which part of the arrow is placed at the given positions.
+        - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
+        - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
+        - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
+
+        Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
+        """
+        align = :tail
+        """
+        Scales the length of the arrow (as calculated from directions) by some factor.
+        """
+        lengthscale = 1f0
+        "If set to true, normalizes `directions`."
+        normalize = false
+    end
+end
+
+
 """
     arrows(points, directions; kwargs...)
     arrows(x, y, u, v)
@@ -272,13 +302,15 @@ or other array-like output.
     shaftwidth = 3
     """
     Sets the length of the arrow shaft. When set to `automatic` the length of the shaft will be
-    derived from the length of the arrow, the `taillength` and the `tiplength`. If the result falls
-    below `minshaftlength`, that value is used instead and all lengths and widths are scaled to fit.
+    derived from the length of the arrow, the `taillength` and the `tiplength`. If the results falls
+    outside `minshaftlength` to `maxshaftlength` it is clamped and  all lengths and widths are scaled to fit.
     If the `shaftlength` is set to a value, the lengths and widths of the arrow are always scaled.
     """
     shaftlength = automatic
     "Sets the minimum shaft length, see `shaftlength`."
     minshaftlength = 10
+    "Sets the maximum shaft length, see `shaftlength`."
+    maxshaftlength = Inf
     """
     Sets the width of the arrow tip. This width may get scaled down if the total arrow length
     exceeds the available space for the arrow.
@@ -290,36 +322,7 @@ or other array-like output.
     """
     tiplength = 8
 
-    "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
-    color = :black
-    "Sets the color of the arrow tail. Defaults to `color`"
-    tailcolor = automatic
-    "Sets the color of the arrow shaft. Defaults to `color`"
-    shaftcolor = automatic
-    "Sets the color of the arrow tip. Defaults to `color`"
-    tipcolor = automatic
-
-    """
-    Sets the alignment of the arrow, i.e. which part of the arrow is placed at the given positions.
-    - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
-    - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
-    - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
-
-    Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
-    """
-    align = :tail
-    """
-    Scales the length of the arrow (as calculated from directions) by some factor.
-    """
-    lengthscale = 1f0
-    """
-    By default each arrow length is derived as the norm (length) of the corresponding direction.
-    Setting `normalize = true` disables this, so that each arrow has the same length. The arrow
-    metrics follow directly from tail/shaft/tip- length/width (and minshaftlength if shaftlength
-    is automatic).
-    """
-    normalize = false
-
+    mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
@@ -375,7 +378,7 @@ function plot!(plot::Arrows2D)
     @extract plot (
         colormap, colorscale, normalize, align, lengthscale,
         tail, taillength, tailwidth,
-        shaft, shaftlength, minshaftlength, shaftwidth,
+        shaft, shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tip, tiplength, tipwidth,
         transparency, visible, inspectable
     )
@@ -402,17 +405,17 @@ function plot!(plot::Arrows2D)
     arrow_metrics = map(
         plot, arrowpoints_px, lengthscale,
         taillength, tailwidth,
-        shaftlength, minshaftlength, shaftwidth,
+        shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tiplength, tipwidth,
     ) do (startpoints, directions), lengthscale, taillength, tailwidth,
-        shaftlength, minshaftlength, shaftwidth,
+        shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tiplength, tipwidth
 
         metrics = Vector{NTuple{6, Float64}}(undef, length(startpoints))
         for i in eachindex(metrics)
             target_length = lengthscale * norm(directions[i])
             target_shaftlength = if shaftlength === automatic
-                max(minshaftlength, target_length - taillength - tiplength)
+                clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
             else
                 shaftlength
             end
@@ -526,13 +529,15 @@ or other array-like output.
     shaftradius = 0.03
     """
     Sets the length of the arrow shaft. When set to `automatic` the length of the shaft will be
-    derived from the length of the arrow, the `taillength` and the `tiplength`. If the result falls
-    below `minshaftlength`, that value is used instead and all lengths and widths are scaled to fit.
+    derived from the length of the arrow, the `taillength` and the `tiplength`. If the results falls
+    outside `minshaftlength` to `maxshaftlength` it is clamped and  all lengths and widths are scaled to fit.
     If the `shaftlength` is set to a value, the lengths and widths of the arrow are always scaled.
     """
     shaftlength = automatic
     "Sets the minimum shaft length, see `shaftlength`."
     minshaftlength = 0.12
+    "Sets the maximum shaft length, see `shaftlength`"
+    maxshaftlength = Inf
     """
     Sets the width of the arrow tip. This width may get scaled down if the total arrow length
     exceeds the available space for the arrow.
@@ -544,36 +549,7 @@ or other array-like output.
     """
     tiplength = 0.06
 
-    "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
-    color = :black
-    "Sets the color of the arrow tail. Defaults to `color`"
-    tailcolor = automatic
-    "Sets the color of the arrow shaft. Defaults to `color`"
-    shaftcolor = automatic
-    "Sets the color of the arrow tip. Defaults to `color`"
-    tipcolor = automatic
-
-    """
-    Sets the alignment of the arrow, i.e. which part of the arrow is placed at the given positions.
-    - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
-    - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
-    - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
-
-    Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
-    """
-    align = :tail
-    """
-    Scales the length of the arrow (as calculated from directions) by some factor.
-    """
-    lengthscale = 1f0
-    """
-    By default each arrow length is derived as the norm (length) of the corresponding direction.
-    Setting `normalize = true` disables this, so that each arrow has the same length. The arrow
-    metrics follow directly from tail/shaft/tip- length/width (and minshaftlength if shaftlength
-    is automatic).
-    """
-    normalize = false
-
+    mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
 end
@@ -584,7 +560,7 @@ function plot!(plot::Arrows3D)
     @extract plot (
         colormap, colorscale, normalize, align, lengthscale,
         tail, taillength, tailradius,
-        shaft, shaftlength, minshaftlength, shaftradius,
+        shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tip, tiplength, tipradius,
         transparency, visible, inspectable
     )
@@ -604,10 +580,10 @@ function plot!(plot::Arrows3D)
     arrow_metrics = map(
         plot, directions, bbox, lengthscale,
         taillength, tailradius,
-        shaftlength, minshaftlength, shaftradius,
+        shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tiplength, tipradius,
     ) do directions, bbox, lengthscale, taillength, tailradius,
-        shaftlength, minshaftlength, shaftradius,
+        shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tiplength, tipradius
 
         # TODO: maybe maximum? or max of each 2d norm?
@@ -620,7 +596,7 @@ function plot!(plot::Arrows3D)
             # revert to unscaled space
             target_length = rel_scale * norm(directions[i])
             target_shaftlength = if shaftlength === automatic
-                max(minshaftlength, target_length - taillength - tiplength)
+                clamp(target_length - taillength - tiplength, minshaftlength, maxshaftlength)
             else
                 shaftlength
             end
