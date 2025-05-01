@@ -507,18 +507,33 @@ a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
 or other array-like output.
 """
 @recipe Arrows3D (points, directions) begin
-    "Sets the shape of the arrow tail in units relative to the tailwidth and taillength."
+    """
+    Sets the mesh of the arrow tail. The mesh should be defined in a
+    Rect3(-0.5, -0.5, 0.0, 1, 1, 1) bounding box where +z is direction of the
+    arrow. Anything outside this box will extend outside the area designated
+    to the arrow tail.
+    """
     tail = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
-    "Sets the shape of the arrow shaft in units relative to the shaftwidth and shaftlength."
+    """
+    Sets the mesh of the arrow shaft. The mesh should be defined in a
+    Rect3(-0.5, -0.5, 0.0, 1, 1, 1) bounding box where +z is direction of the
+    arrow. Anything outside this box will extend outside the area designated
+    to the arrow shaft.
+    """
     shaft = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
-    "Sets the shape of the arrow tip in units relative to the tipwidth and tiplength."
+    """
+    Sets the mesh of the arrow tip. The mesh should be defined in a
+    Rect3(-0.5, -0.5, 0.0, 1, 1, 1) bounding box where +z is direction of the
+    arrow. Anything outside this box will extend outside the area designated
+    to the arrow tip.
+    """
     tip = Cone(Point3f(0,0,0), Point3f(0,0,1), 0.5)
 
     """
     Sets the width of the arrow tail. This width may get scaled down if the total arrow length
     exceeds the available space for the arrow.
     """
-    tailradius = 0.06
+    tailradius = 0.15
     """
     Sets the length of the arrow tail. This length may get scaled down if the total arrow length
     exceeds the available space for the arrow. Setting this to 0 will result in no tail being drawn.
@@ -528,7 +543,7 @@ or other array-like output.
     Sets the width of the arrow shaft. This width may get scaled down if the total arrow length
     exceeds the available space for the arrow.
     """
-    shaftradius = 0.03
+    shaftradius = 0.05
     """
     Sets the length of the arrow shaft. When set to `automatic` the length of the shaft will be
     derived from the length of the arrow, the `taillength` and the `tiplength`. If the results falls
@@ -537,19 +552,19 @@ or other array-like output.
     """
     shaftlength = automatic
     "Sets the minimum shaft length, see `shaftlength`."
-    minshaftlength = 0.12
+    minshaftlength = 0.6
     "Sets the maximum shaft length, see `shaftlength`"
     maxshaftlength = Inf
     """
     Sets the width of the arrow tip. This width may get scaled down if the total arrow length
     exceeds the available space for the arrow.
     """
-    tipradius = 0.06
+    tipradius = 0.15
     """
     Sets the length of the arrow tip. This length may get scaled down if the total arrow length
     exceeds the available space for the arrow. Setting this to 0 will result in no tip being drawn.
     """
-    tiplength = 0.06
+    tiplength = 0.4
 
     """
     Scales all arrow components, i.e. all radii and lengths (including min/maxshaftlength).
@@ -627,7 +642,7 @@ function plot!(plot::Arrows3D)
 
     rot = map((dirs, n) -> n ? dirs : LinearAlgebra.normalize.(dirs), plot, directions, normalize)
 
-    tail_scale = map(metrics -> [Vec3f(r, r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
+    tail_scale = map(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
     tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
@@ -637,7 +652,7 @@ function plot!(plot::Arrows3D)
             return pos + taillength * dir
         end
     end
-    shaft_scale = map(metrics -> [Vec3f(r, r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
+    shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
 
     tip_pos = map(plot, arrow_metrics) do metrics
         map(metrics, startpoints[], rot[]) do metric, pos, dir
@@ -645,7 +660,7 @@ function plot!(plot::Arrows3D)
             return pos + (taillength + shaftlength) * dir
         end
     end
-    tip_scale = map(metrics -> [Vec3f(r, r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
+    tip_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
     tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
 
     # TODO: generics
