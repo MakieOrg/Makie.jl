@@ -327,6 +327,27 @@ end
 convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args...)
 
 
+function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align, normalize)
+    if align === :tail
+        align_val = 0.0
+    elseif align === :center
+        align_val = 0.5
+    elseif align === :tip
+        align_val = 1.0
+    else
+        align_val = Float64(align)
+    end
+
+    output = similar(points, 2 * length(points))
+    for i in eachindex(points)
+        dir = normalize ? directions[i] : normalize(directions[i])
+        # startpoint, endpoint
+        output[2*i-1] = points[i] - align_val * dir
+        output[2*i] = points[i] + (1 - align_val) * dir
+    end
+    return output
+end
+
 function _get_arrow_shape(x, len, width, shaftwidth, color)
     if len == 0 || width == 0
         return GeometryBasics.Mesh(Point2f[], GLTriangleFace[], color = RGBAf[])
@@ -373,25 +394,7 @@ function plot!(plot::Arrows2D)
 
     # TODO: Think about normalize
 
-    arrowpoints = map(plot, points, directions, align) do points, directions, align
-        if align === :tail
-            align_val = 0.0
-        elseif align === :center
-            align_val = 0.5
-        elseif align === :tip
-            align_val = 1.0
-        else
-            align_val = Float64(align)
-        end
-
-        output = similar(points, 2 * length(points))
-        for i in eachindex(points)
-            # startpoint, endpoint
-            output[2*i-1] = points[i] - align_val * directions[i]
-            output[2*i] = points[i] + (1 - align_val) * directions[i]
-        end
-        return output
-    end
+    arrowpoints = map(_aligned_arrow_points, plot, points, directions, align, normalize)
 
     scene = parent_scene(plot)
     arrowpoints_px = map(plot,
