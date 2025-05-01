@@ -332,17 +332,22 @@ convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args
 function _arrow_directions(dirs, lengthscale::Real, norm::Bool)
     return lengthscale .* (norm ? normalize.(dirs) : dirs)
 end
-function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align) where N
-    if align === :tail
-        align_val = 0.0
-    elseif align === :center
-        align_val = 0.5
-    elseif align === :tip
-        align_val = 1.0
-    else
-        align_val = Float64(align)
-    end
 
+function _arrow_align_val(align::Symbol)
+    if align === :tail
+        return 0.0
+    elseif align === :center
+        return 0.5
+    elseif align === :tip
+        return 1.0
+    else
+        error("align = $align not recognized. Use :tail, :center, :tip or a fraction.")
+    end
+end
+_arrow_align_val(align::Real) = Float64(align)
+
+function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align) where N
+    align_val = _arrow_align_val(align)
     return points .- align_val .* directions
 end
 
@@ -473,9 +478,6 @@ function plot!(plot::Arrows2D)
     mesh!(plot, merged_mesh, space = :pixel)
 
 end
-
-data_limits(p::Arrows2D) = update_boundingbox(Rect3d(p[1][]), Rect3d(p[1][] .+ p[2][]))
-boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
 
 ################################################################################
@@ -682,5 +684,11 @@ function plot!(plot::Arrows3D)
 
 end
 
-data_limits(p::Arrows3D) = update_boundingbox(Rect3d(p[1][]), Rect3d(p[1][] .+ p[2][]))
-boundingbox(p::Arrows3D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+function data_limits(p::Union{Arrows2D, Arrows3D})
+    align_val = _arrow_align_val(p.align[])
+    return update_boundingbox(
+        Rect3d(p[1][] .- align_val .* p[2][]),
+        Rect3d(p[1][] .+ (1 - align_val) .* p[2][])
+    )
+end
+boundingbox(p::Union{Arrows2D, Arrows3D}, space::Symbol) = apply_transform_and_model(p, data_limits(p))
