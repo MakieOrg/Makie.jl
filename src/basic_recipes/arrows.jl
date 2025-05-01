@@ -471,3 +471,209 @@ end
 
 data_limits(p::Arrows2D) = update_boundingbox(Rect3d(p[1][]), Rect3d(p[1][] .+ p[2][]))
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+
+
+################################################################################
+
+
+"""
+    arrows(points, directions; kwargs...)
+    arrows(x, y, u, v)
+    arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    arrows(x, y, z, u, v, w)
+    arrows(x, y, [z], f::Function)
+
+Plots arrows at the specified points with the specified components.
+`u` and `v` are interpreted as vector components (`u` being the x
+and `v` being the y), and the vectors are plotted with the tails at
+`x`, `y`.
+
+If `x, y, u, v` are `<: AbstractVector`, then each 'row' is plotted
+as a single vector.
+
+If `u, v` are `<: AbstractMatrix`, then `x` and `y` are interpreted as
+specifications for a grid, and `u, v` are plotted as arrows along the
+grid.
+
+`arrows` can also work in three dimensions.
+
+If a `Function` is provided in place of `u, v, [w]`, then it must accept
+a `Point` as input, and return an appropriately dimensioned `Point`, `Vec`,
+or other array-like output.
+"""
+@recipe Arrows3D (points, directions) begin
+    "Sets the shape of the arrow tail in units relative to the tailwidth and taillength."
+    tail = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+    "Sets the shape of the arrow shaft in units relative to the shaftwidth and shaftlength."
+    shaft = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+    "Sets the shape of the arrow tip in units relative to the tipwidth and tiplength."
+    tip = Cone(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+
+    """
+    Sets the width of the arrow tail. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    tailradius = 0.06
+    """
+    Sets the length of the arrow tail. This length may get scaled down if the total arrow length
+    exceeds the available space for the arrow. Setting this to 0 will result in no tail being drawn.
+    """
+    taillength = 0
+    """
+    Sets the width of the arrow shaft. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    shaftradius = 0.03
+    """
+    Sets the length of the arrow shaft. When set to `automatic` the length of the shaft will be
+    derived from the length of the arrow, the `taillength` and the `tiplength`. If the result falls
+    below `minshaftlength`, that value is used instead and all lengths and widths are scaled to fit.
+    If the `shaftlength` is set to a value, the lengths and widths of the arrow are always scaled.
+    """
+    shaftlength = automatic
+    "Sets the minimum shaft length, see `shaftlength`."
+    minshaftlength = 0.12
+    """
+    Sets the width of the arrow tip. This width may get scaled down if the total arrow length
+    exceeds the available space for the arrow.
+    """
+    tipradius = 0.06
+    """
+    Sets the length of the arrow tip. This length may get scaled down if the total arrow length
+    exceeds the available space for the arrow. Setting this to 0 will result in no tip being drawn.
+    """
+    tiplength = 0.06
+
+    "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
+    color = :black
+    "Sets the color of the arrow tail. Defaults to `color`"
+    tailcolor = automatic
+    "Sets the color of the arrow shaft. Defaults to `color`"
+    shaftcolor = automatic
+    "Sets the color of the arrow tip. Defaults to `color`"
+    tipcolor = automatic
+
+    """
+    Sets the alignment of the arrow, i.e. which part of the arrow is placed at the given positions.
+    - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
+    - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
+    - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
+
+    Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
+    """
+    align = :tail
+    """
+    Scales the length of the arrow (as calculated from directions) by some factor.
+    """
+    lengthscale = 1f0
+    """
+    By default each arrow length is derived as the norm (length) of the corresponding direction.
+    Setting `normalize = true` disables this, so that each arrow has the same length. The arrow
+    metrics follow directly from tail/shaft/tip- length/width (and minshaftlength if shaftlength
+    is automatic).
+    """
+    normalize = false
+
+    MakieCore.mixin_generic_plot_attributes()...
+    MakieCore.mixin_colormap_attributes()...
+end
+
+convert_arguments(::Type{<: Arrows3D}, args...) = convert_arguments(Arrows, args...)
+
+function plot!(plot::Arrows3D)
+    @extract plot (
+        colormap, colorscale, normalize, align, lengthscale,
+        tail, taillength, tailradius,
+        shaft, shaftlength, minshaftlength, shaftradius,
+        tip, tiplength, tipradius,
+        transparency, visible, inspectable
+    )
+
+    tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
+    shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
+    tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
+
+    # TODO: Think about normalize
+    directions = map(_arrow_directions, plot, plot.directions, normalize)
+    startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
+
+    bbox = map(plot, startpoints) do ps
+        return update_boundingbox(Rect3d(ps), Rect3d(ps .+ directions[]))
+    end
+
+    arrow_metrics = map(
+        plot, directions, bbox, lengthscale,
+        taillength, tailradius,
+        shaftlength, minshaftlength, shaftradius,
+        tiplength, tipradius,
+    ) do directions, bbox, lengthscale, taillength, tailradius,
+        shaftlength, minshaftlength, shaftradius,
+        tiplength, tipradius
+
+        # TODO: maybe maximum? or max of each 2d norm?
+        bb_scale = norm(widths(bbox))
+        rel_scale = lengthscale / bb_scale
+
+        metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
+        for i in eachindex(metrics)
+            # scale space to a space relative to bb_scale, resolve arrow metrics,
+            # revert to unscaled space
+            target_length = rel_scale * norm(directions[i])
+            target_shaftlength = if shaftlength === automatic
+                max(minshaftlength, target_length - taillength - tiplength)
+            else
+                shaftlength
+            end
+            arrow_length = target_shaftlength + taillength + tiplength
+            arrow_scaling = target_length / arrow_length
+            metrics[i] = arrow_scaling * bb_scale .*
+                (taillength, tailradius, target_shaftlength, shaftradius, tiplength, tipradius)
+        end
+
+        return metrics
+    end
+
+    rot = map((dirs, n) -> n ? dirs : LinearAlgebra.normalize.(dirs), plot, directions, normalize)
+
+    tail_scale = map(metrics -> [Vec3f(r, r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
+    tail_visible = map((l, v) -> !iszero(l) && v, plot, taillength, visible)
+
+    # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
+    shaft_pos = map(plot, arrow_metrics) do metrics
+        map(metrics, startpoints[], rot[]) do metric, pos, dir
+            taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
+            return pos + taillength * dir
+        end
+    end
+    shaft_scale = map(metrics -> [Vec3f(r, r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
+
+    tip_pos = map(plot, arrow_metrics) do metrics
+        map(metrics, startpoints[], rot[]) do metric, pos, dir
+            taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
+            return pos + (taillength + shaftlength) * dir
+        end
+    end
+    tip_scale = map(metrics -> [Vec3f(r, r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
+    tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
+
+    # TODO: generics
+    meshscatter!(plot,
+        startpoints, marker = tail, markersize = tail_scale, rotation = rot,
+        color = tailcolor, visible = tail_visible, transparency = transparency,
+        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+    )
+    meshscatter!(plot,
+        shaft_pos, marker = shaft, markersize = shaft_scale, rotation = rot,
+        color = shaftcolor, visible = visible, transparency = transparency,
+        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+    )
+    meshscatter!(plot,
+        tip_pos, marker = tip, markersize = tip_scale, rotation = rot,
+        color = tipcolor, visible = tip_visible, transparency = transparency,
+        inspectable = inspectable, #fxaa = fxaa, ssao = ssao
+    )
+
+end
+
+data_limits(p::Arrows3D) = update_boundingbox(Rect3d(p[1][]), Rect3d(p[1][] .+ p[2][]))
+boundingbox(p::Arrows3D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
