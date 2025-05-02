@@ -192,10 +192,11 @@ function register_text_computations!(attr::ComputeGraph)
     register_computation!(attr, [:atlas, :glyphindices, :font_per_char], [:sdf_uv]) do (atlas, gi, fonts), changed, cached
         return (glyph_uv_width!.((atlas,), gi, fonts),)
     end
-    register_computation!(attr, [:glyph_origins, :offset], [:marker_offset]) do (origins, offset), changed, cached
-        return (origins .+ (offset,),)
+    register_computation!(attr, [:glyph_origins, :offset, :text_blocks], [:marker_offset]) do (origins, offset, blocks), changed, cached
+        return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r], )
     end
-    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :fontsize], [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :fontsize],
+            [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
         glyph_boundingboxes = Rect2d[]
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
