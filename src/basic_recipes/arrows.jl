@@ -464,16 +464,26 @@ function plot!(plot::Arrows2D)
             _apply_arrow_transform!(shaft_m, R, startpoint, taillength)
             _apply_arrow_transform!(tip_m, R, startpoint, taillength + shaftlength)
 
-            push!(meshes, tail_m, shaft_m, tip_m)
+            for m in (tail_m, shaft_m, tip_m)
+                if !isempty(coordinates(m))
+                    push!(meshes, m)
+                end
+            end
         end
 
         return meshes
     end
 
-    colors = map(plot, arrow_metrics, tailcolor, shaftcolor, tipcolor) do metrics, c1, c2, c3
+    colors = map(plot, arrow_metrics, tailcolor, shaftcolor, tipcolor) do metrics, cs...
         output = []
         for i in eachindex(metrics)
-            push!(output, sv_getindex(c1, i), sv_getindex(c2, i), sv_getindex(c3, i))
+            for j in 1:3
+                len = metrics[i][2j-1]
+                width = metrics[i][2j]
+                if len != 0 && width != 0
+                    push!(output, sv_getindex(cs[j], i))
+                end
+            end
         end
         return output
     end
