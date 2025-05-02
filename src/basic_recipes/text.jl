@@ -24,16 +24,16 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
     # position and text attributes supplementing data not in arguments.
     # For conversion we want to move position data into the argument pipeline
     # and String-like data into attributes. Do this here:
-    pushfirst!(inputs, :text)
+    pushfirst!(inputs, :position, :text)
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
-        a_text, args... = values(inputs)
+        a_pos, a_text, args... = values(inputs)
         # Note: Could add RichText
         if args isa Tuple{<: AbstractString}
-            # position data will allways be wrapped in a Vector, so strings should too
-            return ((Point2f(0),), [args[1]])
+            # position data will always be wrapped in a Vector, so strings should too
+            return ((a_pos,), [args[1]])
 
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
-            return ((Point2f(0),), args[1])
+            return ((a_pos,), args[1])
 
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
