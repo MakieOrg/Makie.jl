@@ -351,21 +351,20 @@ function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vecto
     return points .- align_val .* directions
 end
 
-function _get_arrow_shape(x, len, width, shaftwidth, color)
+function _get_arrow_shape(x, len, width, shaftwidth)
     if len == 0 || width == 0
-        return GeometryBasics.Mesh(Point2f[], GLTriangleFace[], color = RGBAf[])
+        return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
     else
-        m = _get_arrow_shape(x, len, width, shaftwidth)
-        cs = fill(color, length(coordinates(m)))
+        m = __get_arrow_shape(x, len, width, shaftwidth)
         for i in eachindex(m.position)
             m.position[i] -= Vec2f(0, 0.5 * width) # center width
         end
-        return GeometryBasics.mesh(m, color = cs)
+        return m
     end
 end
 
-_get_arrow_shape(f::Function, length, width, shaftwidth) = poly_convert(f(length, width, shaftwidth))
-function _get_arrow_shape(polylike, length, width, shaftwidth)
+__get_arrow_shape(f::Function, length, width, shaftwidth) = poly_convert(f(length, width, shaftwidth))
+function __get_arrow_shape(polylike, length, width, shaftwidth)
     # deepcopy so each each meshes positions are independent
     mesh = deepcopy(poly_convert(polylike))
     for i in eachindex(mesh.position)
@@ -444,25 +443,16 @@ function plot!(plot::Arrows2D)
         return metrics
     end
 
-    # skip arrowpoints_px input to avoid double update (let arrow metrics trigger)
-    merged_mesh = map(plot,
-            arrow_metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
-        ) do metrics, tail, shaft, tip, tailcolor, shaftcolor, tipcolor
-
+    meshes = map(plot, arrow_metrics, tail, shaft, tip) do metrics, tail, shaft, tip
         ps, dirs = arrowpoints_px[]
-        tailc = to_color(tailcolor)
-        shaftc = to_color(shaftcolor)
-        tipc = to_color(tipcolor)
-        merged_mesh = GeometryBasics.Mesh(Point2f[], GLTriangleFace[], color = RGBAf[])
-
-        meshes = [merged_mesh, merged_mesh, merged_mesh, merged_mesh]
+        meshes = GeometryBasics.Mesh[]
 
         for i in eachindex(metrics)
             # scale and add color
             taillength, tailwidth, shaftlength, shaftwidth, tiplength, tipwidth = metrics[i]
-            tail_m  = _get_arrow_shape(tail,  taillength,  tailwidth,  shaftwidth, tailc)
-            shaft_m = _get_arrow_shape(shaft, shaftlength, shaftwidth, shaftwidth, shaftc)
-            tip_m   = _get_arrow_shape(tip,   tiplength,   tipwidth,   shaftwidth, tipc)
+            tail_m  = _get_arrow_shape(tail,  taillength,  tailwidth,  shaftwidth)
+            shaft_m = _get_arrow_shape(shaft, shaftlength, shaftwidth, shaftwidth)
+            tip_m   = _get_arrow_shape(tip,   tiplength,   tipwidth,   shaftwidth)
 
             # rotate + translate
             startpoint = ps[i]
@@ -474,18 +464,21 @@ function plot!(plot::Arrows2D)
             _apply_arrow_transform!(shaft_m, R, startpoint, taillength)
             _apply_arrow_transform!(tip_m, R, startpoint, taillength + shaftlength)
 
-            meshes[1] = merged_mesh
-            meshes[2] = tail_m
-            meshes[3] = shaft_m
-            meshes[4] = tip_m
-
-            merged_mesh = merge(meshes)
+            push!(meshes, tail_m, shaft_m, tip_m)
         end
 
-        return merged_mesh
+        return meshes
     end
 
-    poly!(plot, merged_mesh, space = :pixel; generic_attributes...)
+    colors = map(plot, arrow_metrics, tailcolor, shaftcolor, tipcolor) do metrics, c1, c2, c3
+        output = []
+        for i in eachindex(metrics)
+            push!(output, sv_getindex(c1, i), sv_getindex(c2, i), sv_getindex(c3, i))
+        end
+        return output
+    end
+
+    poly!(plot, meshes, space = :pixel, color = colors; generic_attributes...)
 
     return plot
 end
