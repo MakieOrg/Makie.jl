@@ -345,32 +345,28 @@ function _arrow_align_val(align::Symbol)
 end
 _arrow_align_val(align::Real) = Float64(align)
 
-function _process_arrow_arguments(plot)
-    return map(plot,
-            plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
-        ) do pos, pos_or_dir, align, lengthscale, norm, argmode
-
-        align_val = _arrow_align_val(align)
-        if argmode in (:endpoint, :endpoints)
-            # keep lerp(plot[1], plot[2], align_val) consistent, i.e.
-            # that point is corresponds to the align_val fraction of the drawn arrow
-            dirs = pos_or_dir .- pos
-            origins = pos .+ align_val .* dirs
-            if norm
-                dirs .= normalize(dirs)
-            end
-            dirs .*= lengthscale
-            startpoints = origins .- align_val .* dirs
-            return startpoints, dirs
-
-        elseif argmode in (:direction, :directions)
-            # compute startpoint such that plot[1] is at the align_val fraction of the drawn arrow
-            dirs = lengthscale .* (norm ? normalize.(pos_or_dir) : pos_or_dir)
-            startpoints = pos .- align_val .* dirs
-            return startpoints, dirs
-        else
-            error("Did not recognize argmode = :$argmode - must be :endpoint or :direction")
+function _process_arrow_arguments(pos, pos_or_dir, align, lengthscale, norm, argmode)
+    align_val = _arrow_align_val(align)
+    if argmode in (:endpoint, :endpoints)
+        # keep lerp(plot[1], plot[2], align_val) consistent, i.e.
+        # that point is corresponds to the align_val fraction of the drawn arrow
+        dirs = pos_or_dir .- pos
+        origins = pos .+ align_val .* dirs
+        if norm
+            dirs .= normalize(dirs)
         end
+        dirs .*= lengthscale
+        startpoints = origins .- align_val .* dirs
+        return startpoints, dirs
+
+    elseif argmode in (:direction, :directions)
+        # compute startpoint such that plot[1] is at the align_val fraction of the drawn arrow
+        dirs = lengthscale .* (norm ? normalize.(pos_or_dir) : pos_or_dir)
+        startpoints = pos .- align_val .* dirs
+        return startpoints, dirs
+
+    else
+        error("Did not recognize argmode = :$argmode - must be :endpoint or :direction")
     end
 end
 
@@ -426,7 +422,10 @@ function plot!(plot::Arrows2D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    startpoints_directions = _process_arrow_arguments(plot)
+    startpoints_directions = map(
+        _process_arrow_arguments, plot,
+        plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
+    )
 
     scene = parent_scene(plot)
     arrowpoints_px = map(plot,
@@ -639,7 +638,10 @@ function plot!(plot::Arrows3D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    startpoints_directions = _process_arrow_arguments(plot)
+    startpoints_directions = map(
+        _process_arrow_arguments, plot,
+        plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
+    )
 
     arrowscale = map(plot, startpoints_directions, markerscale) do (ps, dirs), ms
         if ms === automatic
@@ -724,11 +726,14 @@ function plot!(plot::Arrows3D)
     return plot
 end
 
-function data_limits(p::Union{Arrows2D, Arrows3D})
-    align_val = _arrow_align_val(p.align[])
+function data_limits(plot::Union{Arrows2D, Arrows3D})
+    startpoints, directions = _process_arrow_arguments(
+        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
+    )
+
     return update_boundingbox(
-        Rect3d(p[1][] .- align_val .* p[2][]),
-        Rect3d(p[1][] .+ (1 - align_val) .* p[2][])
+        Rect3d(startpoints),
+        Rect3d(startpoints .+ directions)
     )
 end
 boundingbox(p::Union{Arrows2D, Arrows3D}, space::Symbol) = apply_transform_and_model(p, data_limits(p))
