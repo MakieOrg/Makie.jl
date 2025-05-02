@@ -235,7 +235,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         session_size = Base.summarysize(session) / 10^6
         texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
 
-        @test length(session.session_objects) == 1 # Also texture atlas because of Retain
+        @test length(session.session_objects) == 0
         @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
             @test isempty(getfield(session, field))
         end
