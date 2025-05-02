@@ -48,6 +48,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
     @testset "js texture atlas" begin
         atlas = Makie.get_texture_atlas()
+        marker = collect(keys(atlas.mapping))
+
         positions = map(enumerate(marker)) do (i, m)
             Point2f((i % 19) * 50, (i ÷ 19) * 50)
         end
