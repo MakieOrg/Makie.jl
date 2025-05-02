@@ -22458,8 +22458,8 @@ function uv_to_pixel_bounds(uv, tex_width, tex_height) {
     const tex_size = new T(tex_width, tex_height);
     const uv_left_bottom = new T(uv.x, uv.y);
     const uv_right_top = new T(uv.z, uv.w);
-    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).subScalar(0.5).floor();
-    const px_right_top = uv_right_top.clone().multiply(tex_size).addScalar(0.5).ceil();
+    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).floor();
+    const px_right_top = uv_right_top.clone().multiply(tex_size).ceil();
     const wx = Math.abs(px_right_top.x - px_left_bottom.x);
     const wy = Math.abs(px_right_top.y - px_left_bottom.y);
     return [

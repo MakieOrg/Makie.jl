@@ -300,12 +300,15 @@ function sdf_uv_to_pixel(atlas::TextureAtlas, uv_width::Vec4f)
     uv_right_top = Vec2f(uv_width[3], uv_width[4])
 
     # reverse the normalization to get pixel coordinates
-    px_left_bottom = floor.(Int, uv_left_bottom .* tex_size .- 0.5)
-    px_right_top = ceil.(Int, uv_right_top .* tex_size .+ 0.5)
+    # Note: all uvs are pixel centered, so uv * size = integer + 0.5
+    # taking the floor returns the left pixel border, equivalent to 0-based indices
+    # taking the ceil return the right border, equivalent to 1-based indices
+    px_left_bottom = ceil.(Int, uv_left_bottom .* tex_size)
+    px_right_top = ceil.(Int, uv_right_top .* tex_size)
 
     # create pixel ranges
-    x_range = (px_left_bottom[1] + 1):(px_right_top[1])
-    y_range = (px_left_bottom[2] + 1):(px_right_top[2])
+    x_range = px_left_bottom[1] : px_right_top[1]
+    y_range = px_left_bottom[2] : px_right_top[2]
     return x_range, y_range
 end
 
