@@ -686,15 +686,17 @@ function plot!(plot::Arrows3D)
         return metrics
     end
 
-    # always normalized
-    rot = map((dirs, n) -> n ? dirs : LinearAlgebra.normalize.(dirs), plot, directions, normalize)
+    # normalize if not yet normalized
+    rot = map(plot, startpoints_directions, normalize) do (pos, dirs), normalized
+        return normalized ? dirs : LinearAlgebra.normalize.(dirs)
+    end
 
     tail_scale = map(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
     tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
     shaft_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints_directions[], rot[]) do metric, (pos, _), dir
+        map(metrics, startpoints_directions[][1], rot[]) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + taillength * dir
         end
@@ -702,7 +704,7 @@ function plot!(plot::Arrows3D)
     shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
 
     tip_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints_directions[], rot[]) do metric, (pos, _), dir
+        map(metrics, startpoints_directions[][1], rot[]) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + (taillength + shaftlength) * dir
         end
