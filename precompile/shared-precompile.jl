@@ -3,7 +3,6 @@ using GeometryBasics
 # macro compile(ex)
 #     :(display($ex))
 # end
-
 @compile scatter(1:4; color=1:4, colormap=:turbo, markersize=20, visible=true)
 
 @compile poly(Recti(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
@@ -48,9 +47,9 @@ end
     )
 end
 
-@compile begin
-    heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
-end
+# @compile begin
+#     heatmap(rand(10, 5), axis = (yscale = log10, xscale=log10))
+# end
 
 @compile begin
     x = [1 0
@@ -96,7 +95,7 @@ end
     Makie.Toggle(f)
     Makie.Slider(f)
     Makie.LScene(f)
-    Makie.PolarAxis(f)
+    # Makie.PolarAxis(f)
     Makie.IntervalSlider(f)
     lines!(ax, 1:2, label = "Line")
     # Makie.Legend(f, ax, "Default", nbanks = 2) TODO
