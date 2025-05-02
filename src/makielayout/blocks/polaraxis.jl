@@ -555,7 +555,8 @@ end
 
 
 function draw_axis!(po::PolarAxis)
-    rtick_pos_lbl = Observable(Tuple{Any, Point2f}[])
+    _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
+    rtick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
     rticklabelalign = Observable{Point2f}()
     rticklabeloffset = Observable{Point2f}()
     rticklabelrotation = Observable{Float32}()
@@ -664,7 +665,8 @@ function draw_axis!(po::PolarAxis)
     end
 
 
-    thetatick_pos_lbl = Tuple{Any, Point2f}[]
+    _, sample_labels = get_ticks(po.thetaticks[], identity, po.thetatickformat[], po.target_thetalims[]...)
+    thetatick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
     thetaticklabelalign = Point2f[]
     thetaticklabeloffset = Point2f[]
     thetagridpoints = Observable{Vector{Point2f}}()
@@ -677,7 +679,7 @@ function draw_axis!(po::PolarAxis)
     end
 
     thetaticklabelplot = text!(
-        po.overlay, thetatick_pos_lbl;
+        po.overlay, thetatick_pos_lbl[];
         fontsize = po.thetaticklabelsize,
         font = po.thetaticklabelfont,
         color = po.thetaticklabelcolor,
@@ -719,10 +721,10 @@ function draw_axis!(po::PolarAxis)
         rmin = (rlims[1] - r0) / (rlims[2] - r0)
 
         r = ifelse(mirror, rmin, 1)
-        thetatick_pos_lbl = tuple.(_thetaticklabels, Point2f.(r, _thetatickvalues))
+        thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(r, _thetatickvalues))
 
         # synchronized update
-        update!(thetaticklabelplot, arg1 = thetatick_pos_lbl, align = thetaticklabelalign, offset = thetaticklabeloffset)
+        update!(thetaticklabelplot, arg1 = thetatick_pos_lbl[], align = thetaticklabelalign, offset = thetaticklabeloffset)
 
         # Grid lines
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
@@ -888,7 +890,7 @@ function draw_axis!(po::PolarAxis)
     thetatickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetatickpos, po.thetaticksmirrored) do t0, d, p, m
         return tick_angle(t0 + d * pi/2, d, p, m)
     end
-    @show thetatickpos
+
     thetatickplot = scatter!(
         po.overlay, thetatickpos,
         marker = Rect,
