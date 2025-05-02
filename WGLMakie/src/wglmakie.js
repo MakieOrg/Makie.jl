@@ -8,7 +8,6 @@ import {
     delete_three_scene,
     find_plots,
     deserialize_scene,
-    TEXTURE_ATLAS,
     on_next_insert,
     scene_cache,
     plot_cache,
@@ -818,7 +817,7 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    TEXTURE_ATLAS,
+    get_texture_atlas,
 };
 
 export {
@@ -836,4 +835,5 @@ export {
     create_scene,
     events2unitless,
     on_next_insert,
+    get_texture_atlas,
 };

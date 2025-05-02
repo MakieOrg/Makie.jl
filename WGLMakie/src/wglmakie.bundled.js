@@ -23632,9 +23632,6 @@ class Plot {
 }
 const scene_cache = {};
 const plot_cache = {};
-const TEXTURE_ATLAS = [
-    undefined
-];
 function add_scene(scene_id, three_scene) {
     scene_cache[scene_id] = three_scene;
 }
@@ -23824,11 +23821,11 @@ function create_texture_from_data(data) {
     }
 }
 function get_texture_atlas() {
-    if (TEXTURE_ATLAS1.length === 0) {
+    if (TEXTURE_ATLAS.length === 0) {
         const atlas = new TextureAtlas(2048, 64, 12);
-        TEXTURE_ATLAS1.push(atlas);
+        TEXTURE_ATLAS.push(atlas);
     }
-    return TEXTURE_ATLAS1[0];
+    return TEXTURE_ATLAS[0];
 }
 function create_texture(scene, data) {
     const buffer1 = data.data;
@@ -24034,6 +24031,8 @@ class TextureAtlas {
         }
     }
     insert_glyphs(glyph_data) {
+        console.log("Inserting glyphs into atlas");
+        console.log(Object.keys(glyph_data));
         let written = false;
         Object.keys(glyph_data).forEach((hash)=>{
             if (this.glyph_data.has(hash)) {
@@ -24090,7 +24089,7 @@ class TextureAtlas {
         }
     }
 }
-const TEXTURE_ATLAS1 = [];
+const TEXTURE_ATLAS = [];
 function get_glyph_data_attributes(atlas, glyph_data) {
     const { glyph_hashes , atlas_updates , scales  } = glyph_data;
     atlas.insert_glyphs(atlas_updates);
@@ -24957,9 +24956,9 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    TEXTURE_ATLAS
+    get_texture_atlas
 };
-export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert };
+export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };

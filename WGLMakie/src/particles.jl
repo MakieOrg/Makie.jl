@@ -265,6 +265,20 @@ function scatter_shader(scene::Scene, attributes, plot)
     return program
 end
 
+function get_scatter_data(scene::Scene, markers, fonts)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
+    return new_glyphs
+end
+
+function get_glyph_data(scene::Scene, glyphs, fonts)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
+    return glyph_hashes, new_glyphs
+end
+
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
     # create new dict so we don't automatically convert to observables
@@ -327,90 +341,6 @@ function get_atlas_tracker(scene::Scene)
         SCENE_ATLASES[session] = atlas
         return atlas
     end
-end
-
-function glyph_boundingobx(::BezierPath, ::Makie.NativeFont)
-    # TODO, implement this
-    # Main blocker is the JS side since this is a bit more complicated.
-    return (Vec2f(0), Vec2f(0))
-end
-
-function glyph_boundingobx(gi::UInt64, font::Makie.NativeFont)
-    extent = FreeTypeAbstraction.get_extent(font, gi)
-    glyph_bb = FreeTypeAbstraction.boundingbox(extent)
-    w, mini = widths(glyph_bb), minimum(glyph_bb)
-    return (w, mini)
-end
-
-
-function get_glyph_data(scene::Scene, glyphs, fonts)
-    tracker = get_atlas_tracker(Makie.root(scene))
-    atlas = Makie.get_texture_atlas()
-    new_glyphs = Dict{UInt32, Any}()
-    glyph_hashes = UInt32[]
-    for (g, f) in zip(glyphs, fonts)
-        hash = Makie.fast_stable_hash((g, FreeTypeAbstraction.fontname(f)))
-        push!(glyph_hashes, hash)
-        if !(hash in tracker)
-            push!(tracker, hash)
-            w, mini = glyph_boundingobx(g, f)
-            uv = Makie.glyph_uv_width!(atlas, g, f)
-            data = Makie.get_glyph_data(atlas, hash)
-            new_glyphs[hash] = [uv, data, w, mini]
-        end
-    end
-    return glyph_hashes, new_glyphs
-end
-
-function get_marker_hash(atlas::Makie.TextureAtlas, ::Makie.NativeFont, marker::BezierPath)
-    hash = Makie.fast_stable_hash(marker)
-    Makie.insert_glyph!(atlas, hash, marker)
-    return hash, marker
-end
-
-function get_marker_hash(atlas::Makie.TextureAtlas, font::Makie.NativeFont, marker::Char)
-    gi = FreeTypeAbstraction.glyph_index(font, marker)
-    hash = Makie.fast_stable_hash((gi, FreeTypeAbstraction.fontname(font)))
-    Makie.insert_glyph!(atlas, hash, (gi, font))
-    return hash, gi
-end
-
-get_marker_hash(::Makie.TextureAtlas, ::Makie.NativeFont, ::Any) = nothing
-
-function _get_scatter_data(atlas, tracker,  marker, font)
-    hash, tex_marker = get_marker_hash(atlas, font, marker)
-    hash === nothing && return Dict()
-    if !(hash in tracker)
-        push!(tracker, hash)
-        uv = Makie.primitive_uv_offset_width(atlas, marker, font)
-        data = Makie.get_glyph_data(atlas, hash)
-        w, mini = glyph_boundingobx(tex_marker, font)
-        return Dict(hash => [uv, data, w, mini])
-    end
-    return Dict()
-end
-
-function _get_scatter_data(atlas, tracker, markers::AbstractVector, fonts)
-    new_glyphs = Dict{UInt32, Any}()
-    for (i, marker) in enumerate(markers)
-        font = Makie.sv_getindex(fonts, i)
-        hash, tex_marker = get_marker_hash(atlas, font, marker)
-        hash === nothing && continue
-        if !(hash in tracker)
-            push!(tracker, hash)
-            uv = Makie.primitive_uv_offset_width(atlas, marker, font)
-            data = Makie.get_glyph_data(atlas, hash)
-            w, mini = glyph_boundingobx(tex_marker, font)
-            new_glyphs[hash] = [uv, data, w, mini]
-        end
-    end
-    return new_glyphs
-end
-
-function get_scatter_data(scene::Scene, markers, fonts)
-    tracker = get_atlas_tracker(Makie.root(scene))
-    atlas = Makie.get_texture_atlas()
-    return _get_scatter_data(atlas, tracker, markers, fonts)
 end
 
 function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
