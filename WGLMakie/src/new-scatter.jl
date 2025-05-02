@@ -126,7 +126,7 @@ function assemble_particle_robj!(attr, data)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = attr.rotation
+    data[:rotation] = get(()-> attr.text_rotation, attr, :rotation)
     data[:f32c_scale] = attr.f32c_scale
 
     # Uniforms will be set in JavaScript
@@ -181,7 +181,7 @@ const SCATTER_INPUTS = [
     :glowwidth,
     :glowcolor,
     :depth_shift,
-    :atlas_1024_32,
+    :atlas,
     :markerspace,
 
     :visible,
@@ -192,14 +192,14 @@ const SCATTER_INPUTS = [
 
 function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
-    atlas = get(()-> attr.atlas, attr, :atlas_1024_32)
+    atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
     data = Dict(
         :marker_offset => Vec3f(0),
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => attr.rotation isa Billboard,
+        :billboard => get(()-> attr.text_rotation, attr, :rotation) isa Billboard,
         :distancefield => distancefield,
 
         :quad_scale => attr.quad_scale,
@@ -226,7 +226,7 @@ end
 
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
-    Makie.all_marker_computations!(attr, 1024, 32)
+    Makie.all_marker_computations!(attr)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)
@@ -610,7 +610,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
     inputs = [
         :positions_transformed_f32c,
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
-        :rotation, :text_strokecolor, # TODO: do these even work per glyph?
+        :text_rotation, :text_strokecolor, # TODO: do these even work per glyph?
         :quad_scale, :quad_offset, :sdf_uv, :sdf_marker_shape, :marker_offset,
         :strokewidth, :glowwidth, :glowcolor,
         :depth_shift, :atlas, :markerspace,

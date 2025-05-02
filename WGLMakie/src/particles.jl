@@ -155,7 +155,7 @@ function scatter_shader(scene::Scene, attributes, plot)
                          :uv_offset_width, :quad_scale, :quad_offset, :marker_offset, :sdf_uv]
     data = Dict{Symbol,Any}()
     marker = nothing
-    atlas = wgl_texture_atlas()
+    atlas = Makie.get_texture_atlas()
     if haskey(attributes, :marker)
         font =  attributes.font[]
         marker = lift(plot, attributes[:marker]) do marker
@@ -212,7 +212,7 @@ function scatter_shader(scene::Scene, attributes, plot)
     end
 
     if uniform_dict[:sdf_marker_shape][] == 3
-        atlas = wgl_texture_atlas()
+        atlas = Makie.get_texture_atlas()
         uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
         uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
@@ -263,7 +263,7 @@ function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.Gl
     pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
     offset = plot.offset
 
-    atlas = wgl_texture_atlas()
+    atlas = Makie.get_texture_atlas()
     glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
         Makie.text_quads(atlas, pos, to_value(gc), offset)
     end
