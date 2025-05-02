@@ -1,3 +1,43 @@
+function get_n_visible(entry::LegendEntry)
+    n_visible = Ref(0)
+    n_total = Ref(0)
+    foreach_plot_visibility(entry) do vis
+        n_visible[] += Int64(vis[])
+        n_total[] += 1
+    end
+    return n_visible[], n_total[]
+end
+
+function _toggle_hovered_legend_visibilities!(mpos, entry_groups, entryshades)
+    for ((title, entries), shades) in zip(entry_groups, entryshades)
+        for (entry, shade) in zip(entries, shades)
+            # shade and halfshade are Box()es covering the entry
+            if mpos in shade.layoutobservables.computedbbox[]
+                # determine number of currently visible plot elements
+                n_visible, n_total = get_n_visible(entry)
+                n_total == 0 && return
+                # if not all attached plots have the same state we set all to visible
+                sync_to_visible = n_visible != n_total
+                toggle_visibility!(entry, sync_to_visible)
+                return
+            end
+        end
+    end
+    return
+end
+
+function _toggle_all_legend_visibilities_synchronized!(entry_groups)
+    sync_to_visible = false
+    for (_, entries) in entry_groups, e in entries
+        n_visible, n_total = get_n_visible(e)
+        sync_to_visible |= n_visible != n_total
+        sync_to_visible && break
+    end
+    for (_, entries) in entry_groups, e in entries
+        toggle_visibility!(e, sync_to_visible)
+    end
+end
+
 function initialize_block!(leg::Legend; entrygroups)
     entry_groups = convert(Observable{Vector{Tuple{Any,Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
@@ -63,6 +103,8 @@ function initialize_block!(leg::Legend; entrygroups)
     entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [Box[]]
+    entryshades = [Box[]]
+    entryhalfshades = [Box[]]
 
     function relayout()
         manipulating_grid[] = true
@@ -78,6 +120,8 @@ function initialize_block!(leg::Legend; entrygroups)
             title = titletexts[g]
             etexts = entrytexts[g]
             erects = entryrects[g]
+            eshades = entryshades[g]
+            ehalfshades = entryhalfshades[g]
 
             subgl = if leg.orientation[] === :vertical
                 if leg.titleposition[] === :left
@@ -97,10 +141,12 @@ function initialize_block!(leg::Legend; entrygroups)
                 end
             end
 
-            for (n, (et, er)) in enumerate(zip(etexts, erects))
+            for (n, (et, er, es, ehs)) in enumerate(zip(etexts, erects, eshades, ehalfshades))
                 i, j = leg.orientation[] === :vertical ? rowcol(n) : reverse(rowcol(n))
                 subgl[i, 2j-1] = er
                 subgl[i, 2j] = et
+                subgl[i, 2j-1:2j] = es
+                subgl[i, 2j-1:2j] = ehs
             end
 
             rowgap!(subgl, leg.rowgap[])
@@ -162,6 +208,14 @@ function initialize_block!(leg::Legend; entrygroups)
         return
     end
 
+    shade_color = RGBAf(0.9,0.9,0.9,0.65)
+    hatch_width = leg.labelsize[]
+    halfshade_color = LinePattern(direction=Vec2f(1), width=hatch_width/2,
+            tilesize=(hatch_width,hatch_width), linecolor=shade_color)
+
+    # For cleaning up visible listeners on relayouting
+    entry_observer_funcs = Observable[]
+
     on(blockscene, entry_groups) do entry_groups
         # first delete all existing labels and patches
 
@@ -170,10 +224,10 @@ function initialize_block!(leg::Legend; entrygroups)
         end
         empty!(titletexts)
 
-        [delete!.(etexts) for etexts in entrytexts]
+        foreach(texts -> foreach(delete!, texts), entrytexts)
         empty!(entrytexts)
 
-        [delete!.(erects) for erects in entrytexts]
+        foreach(rects -> foreach(delete!, rects), entryrects)
         empty!(entryrects)
 
         # delete patch plots
@@ -184,6 +238,14 @@ function initialize_block!(leg::Legend; entrygroups)
             end
         end
         empty!(entryplots)
+
+        foreach(shade_rects -> foreach(delete!, shade_rects), entryshades)
+        empty!(entryshades)
+        foreach(halfshade_rects -> foreach(delete!, halfshade_rects), entryhalfshades)
+        empty!(entryhalfshades)
+
+        foreach(off, entry_observer_funcs)
+        empty!(entry_observer_funcs)
 
         # the attributes for legend entries that the legend itself carries
         # these serve as defaults unless the legendentry gets its own value set
@@ -200,45 +262,104 @@ function initialize_block!(leg::Legend; entrygroups)
                     fontsize = leg.titlesize, halign = leg.titlehalign, valign = leg.titlevalign))
             end
 
+            # e for entry
             etexts = []
             erects = []
             eplots = []
-            for (i, e) in enumerate(entries)
-                # fill missing entry attributes with those carried by the legend
-                merge!(e.attributes, preset_attrs)
+            eshades = []
+            ehalfshades = []
 
-                isnothing(e.label[]) && continue
+            for (i, entry) in enumerate(entries)
+
+                # fill missing entry attributes with those carried by the legend
+                merge!(entry.attributes, preset_attrs)
+
+                isnothing(entry.label[]) && continue
 
                 # create the label
-                justification = map(leg.labeljustification, e.labelhalign) do lj, lha
+                justification = map(leg.labeljustification, entry.labelhalign) do lj, lha
                     return lj isa Automatic ? lha : lj
                 end
                 push!(etexts,
-                      Label(scene; text=e.label, fontsize=e.labelsize, font=e.labelfont, justification=justification,
-                            color=e.labelcolor, halign=e.labelhalign, valign=e.labelvalign))
+                      Label(scene; text = entry.label, fontsize = entry.labelsize,
+                        font = entry.labelfont, justification = justification,
+                        color = entry.labelcolor,
+                        halign = entry.labelhalign, valign = entry.labelvalign))
 
                 # create the patch rectangle
-                rect = Box(scene; color=e.patchcolor, strokecolor=e.patchstrokecolor, strokewidth=e.patchstrokewidth,
-                           width=lift(x -> x[1], blockscene, e.patchsize), height=lift(x -> x[2], blockscene, e.patchsize))
+                rect = Box(scene; color = entry.patchcolor,
+                    strokecolor = entry.patchstrokecolor, strokewidth = entry.patchstrokewidth,
+                    width = lift(x -> x[1], blockscene, entry.patchsize),
+                    height = lift(x -> x[2], blockscene, entry.patchsize))
                 push!(erects, rect)
                 translate!(rect.blockscene, 0, 0, -5) # patches before background but behind legend elements (legend is at +10)
 
                 # plot the symbols belonging to this entry
                 symbolplots = AbstractPlot[]
-                for element in e.elements
+                for element in entry.elements
                     append!(symbolplots,
-                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, e.attributes))
+                            legendelement_plots!(scene, element, rect.layoutobservables.computedbbox, entry.attributes))
                 end
-
                 push!(eplots, symbolplots)
+
+                # TODO: Should this be connected to scene/blockscene for cleanup?
+                # Probably not plots since plot deletion needs to trigger relayout anyway
+
+                # listen to visibilty attributes of plot elements to toggle shades below
+                visibilities = get_plot_visibilities(entry)
+                shade_visible = Observable{Bool}(false)
+                halfshade_visible = Observable{Bool}(false)
+                obsfunc = onany(visibilities...) do vis...
+                    mode = shade_visible_mode(vis)
+                    shade_vis = mode === :show
+                    shade_visible[] != shade_vis && (shade_visible[] = shade_vis)
+                    halfshade_vis = mode === :halfshow
+                    halfshade_visible[] != halfshade_vis && (halfshade_visible[] = halfshade_vis)
+                    return
+                end
+                append!(entry_observer_funcs, obsfunc)
+
+                # create a shade on top of label and marker to indicate hidden plots
+                shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0)
+                push!(eshades, shade)
+                halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0)
+                push!(ehalfshades, halfshade)
             end
+
             push!(entrytexts, etexts)
             push!(entryrects, erects)
             push!(entryplots, eplots)
+            push!(entryshades, eshades)
+            push!(entryhalfshades, ehalfshades)
         end
+
         relayout()
     end
 
+    # Process hide/show events
+    sevents = events(blockscene)
+    on(scene, sevents.mousebutton, priority = 1) do event
+        mpos = sevents.mouseposition[]
+        if (event.action == Mouse.release) && in(mpos, legend_area[])
+            if event.button == Mouse.left
+                # Find hovered entry and toggle visibility for all connected plots
+                _toggle_hovered_legend_visibilities!(mpos, entry_groups[], entryshades)
+            elseif event.button == Mouse.right
+                # Toggle all connected plot visibilities without synchronization
+                for (_, entries) in entry_groups[], e in entries
+                    toggle_visibility!(e)
+                end
+            elseif event.button == Mouse.middle
+                # Synchronized toggle of all connected plot visibilities
+                # (if they differ synchronize all to true, otherwise toggle)
+                _toggle_all_legend_visibilities_synchronized!(entry_groups[])
+            else
+                return Consume(false)
+            end
+            return Consume(true)
+        end
+        return Consume(false)
+    end
 
     # trigger suggestedbbox
     notify(leg.layoutobservables.suggestedbbox)
@@ -410,22 +531,25 @@ function LegendEntry(label, content, legend; kwargs...)
     LegendEntry(elems, attrs)
 end
 
-
-function LineElement(;kwargs...)
-    _legendelement(LineElement, Attributes(kwargs))
+function LineElement(; plots=Plot[], kwargs...)
+    _legendelement(LineElement, plots, Attributes(kwargs))
 end
 
-function MarkerElement(;kwargs...)
-    _legendelement(MarkerElement, Attributes(kwargs))
+function MarkerElement(; plots=Plot[], kwargs...)
+    _legendelement(MarkerElement, plots, Attributes(kwargs))
 end
 
-function PolyElement(;kwargs...)
-    _legendelement(PolyElement, Attributes(kwargs))
+function PolyElement(; plots=Plot[], kwargs...)
+    _legendelement(PolyElement, plots, Attributes(kwargs))
 end
 
-function _legendelement(T::Type{<:LegendElement}, a::Attributes)
+function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
+    if !(plot isa AbstractVector{Plot} || plot isa Plot)
+        error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well. Found: $(typeof(plot))")
+    end
+    ps = plot isa AbstractVector ? plot : [plot]
     _rename_attributes!(T, a)
-    T(a)
+    T(ps, a)
 end
 
 _renaming_mapping(::Type{LineElement}) = Dict(
@@ -475,17 +599,19 @@ end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
+        plots = plot,
         color = extract_color(plot, legend[:linecolor]),
         linestyle = choose_scalar(plot.linestyle, legend[:linestyle]),
         linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
-        alpha = plot.alpha,
+        alpha = plot.alpha
     )]
 end
 
 function legendelements(plot::Scatter, legend)
     LegendElement[MarkerElement(
+        plots = plot,
         color = extract_color(plot, legend[:markercolor]),
         marker = choose_scalar(plot.marker, legend[:marker]),
         markersize = choose_scalar(plot.markersize, legend[:markersize]),
@@ -500,6 +626,7 @@ end
 function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
     color = extract_color(plot, legend[:polycolor])
     LegendElement[PolyElement(
+        plots = plot,
         color = color,
         strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
         strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
@@ -512,6 +639,7 @@ end
 function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
     return LegendElement[PolyElement(;
+        plots = plot,
         polycolor = choose_scalar(
             plot.color,
             legend[:polystrokecolor]
@@ -527,6 +655,7 @@ end
 function legendelements(plot::Union{Poly, Density}, legend)
     color = Makie.extract_color(plot, legend[:polycolor])
     LegendElement[Makie.PolyElement(
+        plots = plot,
         color = color,
         strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
         strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
@@ -792,6 +921,44 @@ end
 
 function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
+end
+
+function foreach_plot_visibility(f, entry::LegendEntry)
+    for element in entry.elements
+        if !isnothing(element)
+            for p in get_plots(element)
+                if hasproperty(p, :visible)
+                    f(p.visible)
+                end
+            end
+        end
+    end
+end
+
+function toggle_visibility!(entry::LegendEntry, sync = false)
+    foreach_plot_visibility(entry) do visible
+        visible[] = sync ? true : !visible[]
+    end
+    return
+end
+
+function get_plot_visibilities(entry::LegendEntry)
+    visibilities = Observable{Bool}[]
+    foreach_plot_visibility(x -> push!(visibilities, x), entry)
+    return visibilities
+end
+
+function shade_visible_mode(visibilities)
+    n_visible = sum(s -> Int64(s), visibilities)
+    n_total = length(visibilities)
+    # ignore shade if there is nothing to hide
+    n_total == 0 && return :hide
+    # hide shade if all are visible
+    n_visible == n_total && return :hide
+    # show shade if all are invisible
+    n_visible == 0 && return :show
+    # partly show shade if some but not all are visible
+    return :halfshow
 end
 
 function attribute_examples(::Type{Legend})
