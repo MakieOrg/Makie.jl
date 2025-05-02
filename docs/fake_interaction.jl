@@ -9,6 +9,7 @@ export MouseTo
 export LeftClick
 export LeftDown
 export LeftUp
+export RightClick, MiddleClick
 export Lazy
 export Wait
 export relative_pos
@@ -48,7 +49,7 @@ function Makie.plot!(p::Cursor)
 
     scatter!(p, p[1], marker = poly, markersize = p.multiplier, color = p.color, strokecolor = p.strokecolor, strokewidth = p.strokewidth,
         glowcolor = (:black, 0.10), glowwidth = 2, transform_marker = true)
-    
+
     return p
 end
 
@@ -105,6 +106,19 @@ struct LeftUp end
 
 duration(::LeftUp, _) = 0.0
 mouseevents_start(l::LeftUp) = [Makie.MouseButtonEvent(Mouse.left, Mouse.release)]
+
+struct RightClick end
+
+duration(::RightClick, _) = 0.15
+mouseevents_start(l::RightClick) = [Makie.MouseButtonEvent(Mouse.right, Mouse.press)]
+mouseevents_end(l::RightClick) = [Makie.MouseButtonEvent(Mouse.right, Mouse.release)]
+
+struct MiddleClick end
+
+duration(::MiddleClick, _) = 0.15
+mouseevents_start(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.press)]
+mouseevents_end(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.release)]
+
 
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
