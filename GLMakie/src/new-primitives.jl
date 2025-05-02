@@ -453,7 +453,7 @@ function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
         data[get(input2glname, name, name)] = args[name]
     end
     # pass nothing to avoid going into image generating functions
-    return draw_scatter(screen, (nothing, data[:positions_transformed_f32c]), data)
+    return draw_scatter(screen, (nothing, data[:position]), data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Text)
@@ -514,8 +514,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
-        :rotation => :text_rotation,
-        :positions => :positions_transformed_f32c,
+        :text_rotation => :rotation,
+        :positions_transformed_f32c => :position,
         :alpha_colormap => :color_map,
         :scaled_colorrange => :color_norm,
         :text_color => :color,
