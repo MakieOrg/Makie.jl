@@ -248,6 +248,8 @@ function mixin_arrow_attributes()
         lengthscale = 1f0
         "If set to true, normalizes `directions`."
         normalize = false
+        "Controls whether the second argument is interpreted as a :direction or as an :endpoint."
+        argmode = :direction
     end
 end
 
@@ -329,9 +331,6 @@ end
 
 convert_arguments(::Type{<: Arrows2D}, args...) = convert_arguments(Arrows, args...)
 
-function _arrow_directions(dirs, lengthscale::Real, norm::Bool)
-    return lengthscale .* (norm ? normalize.(dirs) : dirs)
-end
 
 function _arrow_align_val(align::Symbol)
     if align === :tail
@@ -346,9 +345,33 @@ function _arrow_align_val(align::Symbol)
 end
 _arrow_align_val(align::Real) = Float64(align)
 
-function _aligned_arrow_points(points::Vector{<: VecTypes{N}}, directions::Vector{<: VecTypes{N}}, align) where N
-    align_val = _arrow_align_val(align)
-    return points .- align_val .* directions
+function _process_arrow_arguments(plot)
+    return map(plot,
+            plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
+        ) do pos, pos_or_dir, align, lengthscale, norm, argmode
+
+        align_val = _arrow_align_val(align)
+        if argmode in (:endpoint, :endpoints)
+            # keep lerp(plot[1], plot[2], align_val) consistent, i.e.
+            # that point is corresponds to the align_val fraction of the drawn arrow
+            dirs = pos_or_dir .- pos
+            origins = pos .+ align_val .* dirs
+            if norm
+                dirs .= normalize(dirs)
+            end
+            dirs .*= lengthscale
+            startpoints = origins .- align_val .* dirs
+            return startpoints, dirs
+
+        elseif argmode in (:direction, :directions)
+            # compute startpoint such that plot[1] is at the align_val fraction of the drawn arrow
+            dirs = lengthscale .* (norm ? normalize.(pos_or_dir) : pos_or_dir)
+            startpoints = pos .- align_val .* dirs
+            return startpoints, dirs
+        else
+            error("Did not recognize argmode = :$argmode - must be :endpoint or :direction")
+        end
+    end
 end
 
 function _get_arrow_shape(x, len, width, shaftwidth)
@@ -391,7 +414,7 @@ function plot!(plot::Arrows2D)
 
     generic_attributes = copy(Attributes(plot))
     foreach(k -> delete!(generic_attributes, k), [
-        :normalize, :align, :lengthscale, :markerscale,
+        :normalize, :align, :lengthscale, :markerscale, :argmode,
         :tail, :taillength, :tailwidth,
         :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
         :tip, :tiplength, :tipwidth,
@@ -403,16 +426,13 @@ function plot!(plot::Arrows2D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    directions = map(_arrow_directions, plot, plot.directions, lengthscale, normalize)
-    startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
+    startpoints_directions = _process_arrow_arguments(plot)
 
     scene = parent_scene(plot)
     arrowpoints_px = map(plot,
-            startpoints, transform_func_obs(plot), plot.model, plot.space,
+            startpoints_directions, transform_func_obs(plot), plot.model, plot.space,
             scene.camera.projectionview, scene.viewport
-        ) do ps, tf, model, space, pv, vp
-        # directions always triggers startpoints so we can update on just startpoints
-        dirs = directions[]
+        ) do (ps, dirs), tf, model, space, pv, vp
         startpoints = plot_to_screen(plot, ps)
         endpoints = plot_to_screen(plot, ps .+ dirs)
         return (startpoints, endpoints .- startpoints)
@@ -607,7 +627,7 @@ function plot!(plot::Arrows3D)
 
     generic_attributes = copy(Attributes(plot))
     foreach(k -> delete!(generic_attributes, k), [
-        :normalize, :align, :lengthscale, :markerscale,
+        :normalize, :align, :lengthscale, :markerscale, :argmode,
         :tail, :taillength, :tailradius,
         :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftradius,
         :tip, :tiplength, :tipradius,
@@ -619,14 +639,12 @@ function plot!(plot::Arrows3D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    # TODO: Think about normalize
-    directions = map(_arrow_directions, plot, plot.directions, lengthscale, normalize)
-    startpoints = map(_aligned_arrow_points, plot, plot.points, directions, align)
+    startpoints_directions = _process_arrow_arguments(plot)
 
-    arrowscale = map(plot, startpoints, markerscale) do ps, ms
+    arrowscale = map(plot, startpoints_directions, markerscale) do (ps, dirs), ms
         if ms === automatic
             # TODO: maybe maximum? or max of each 2d norm?
-            bbox = update_boundingbox(Rect3d(ps), Rect3d(ps .+ directions[]))
+            bbox = update_boundingbox(Rect3d(ps), Rect3d(ps .+ dirs))
             scale = norm(widths(bbox))
             return ifelse(scale == 0.0, 1.0, scale)
         else
@@ -635,11 +653,11 @@ function plot!(plot::Arrows3D)
     end
 
     arrow_metrics = map(
-        plot, directions, arrowscale, shaftlength,
+        plot, startpoints_directions, arrowscale, shaftlength,
         taillength, tailradius,
         minshaftlength, maxshaftlength, shaftradius,
         tiplength, tipradius,
-    ) do directions, arrowscale, _shaftlength, user_metrics...
+    ) do (_, directions), arrowscale, _shaftlength, user_metrics...
 
         # apply scaling factor to all user metrics
         taillength, tailradius, minshaftlength, maxshaftlength, shaftradius,
@@ -666,6 +684,7 @@ function plot!(plot::Arrows3D)
         return metrics
     end
 
+    # always normalized
     rot = map((dirs, n) -> n ? dirs : LinearAlgebra.normalize.(dirs), plot, directions, normalize)
 
     tail_scale = map(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
@@ -673,7 +692,7 @@ function plot!(plot::Arrows3D)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
     shaft_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints[], rot[]) do metric, pos, dir
+        map(metrics, startpoints_directions[], rot[]) do metric, (pos, _), dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + taillength * dir
         end
@@ -681,7 +700,7 @@ function plot!(plot::Arrows3D)
     shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
 
     tip_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints[], rot[]) do metric, pos, dir
+        map(metrics, startpoints_directions[], rot[]) do metric, (pos, _), dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + (taillength + shaftlength) * dir
         end
@@ -690,7 +709,7 @@ function plot!(plot::Arrows3D)
     tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
 
     meshscatter!(plot,
-        startpoints, marker = tail, markersize = tail_scale, rotation = rot,
+        map(first, plot, startpoints_directions), marker = tail, markersize = tail_scale, rotation = rot,
         color = tailcolor, visible = tail_visible; generic_attributes...
     )
     meshscatter!(plot,
