@@ -364,7 +364,7 @@ function ColorMapping(
     T = _array_value_type(color)
     color_tight = Observable{T}(color)
     # We need to copy, to check for changes
-    # Since users may re-use the array when pushing updates
+    # Since users may reuse the array when pushing updates
     on(colors_obs) do new_colors
         if color_tight[] === new_colors || color_tight[] != new_colors
             color_tight[] = new_colors

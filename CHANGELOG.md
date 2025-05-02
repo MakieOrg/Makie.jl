@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
+- Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
+- Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
+
 ## [0.22.4] - 2025-04-11
 
 - Re-added the `apply_transform(f, data, space)` method that was removed in v0.22.3 with a deprecation warning. It will be removed in the next breaking version. [#4916](https://github.com/MakieOrg/Makie.jl/pull/4916)
@@ -74,7 +79,7 @@
   - Changed the order of `Rect2` coordinates to be counter-clockwise.
   - Updated `Cylinder` to avoid visually rounding off the top and bottom.
   - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
-  - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
+  - Fix `Tessellation/tessellation` spelling [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
 - Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
 - `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
 - `contour` now supports _curvilinear_ grids, where `x` and `y` are matrices [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
