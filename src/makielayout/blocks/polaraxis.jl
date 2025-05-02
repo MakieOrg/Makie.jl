@@ -716,6 +716,7 @@ function draw_axis!(po::PolarAxis)
             thetatickoffset = ifelse(tvis, (1-talign) * tlength, 0)
             thetaticklabeloffset[i] = (thetatickoffset + px_pad) * Point2f(c, s)
         end
+        rmin = (rlims[1] - r0) / (rlims[2] - r0)
 
         r = ifelse(mirror, rmin, 1)
         thetatick_pos_lbl = tuple.(_thetaticklabels, Point2f.(r, _thetatickvalues))
@@ -724,7 +725,6 @@ function draw_axis!(po::PolarAxis)
         update!(thetaticklabelplot, arg1 = thetatick_pos_lbl, align = thetaticklabelalign, offset = thetaticklabeloffset)
 
         # Grid lines
-        rmin = (rlims[1] - r0) / (rlims[2] - r0)
         thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
 
         _thetaminortickvalues = get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
@@ -888,6 +888,7 @@ function draw_axis!(po::PolarAxis)
     thetatickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetatickpos, po.thetaticksmirrored) do t0, d, p, m
         return tick_angle(t0 + d * pi/2, d, p, m)
     end
+    @show thetatickpos
     thetatickplot = scatter!(
         po.overlay, thetatickpos,
         marker = Rect,

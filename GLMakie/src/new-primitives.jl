@@ -368,7 +368,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
 
     else
-        Makie.all_marker_computations!(attr, 2048, 64)
+        Makie.all_marker_computations!(attr)
 
         # Simple forwards
         uniforms = [
@@ -436,6 +436,7 @@ function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
         :overdraw => attr[:overdraw][],
         :shape => Cint(DISTANCEFIELD),
         :image => nothing,
+        :rotation => args.text_rotation,
     )
 
     add_color_attributes!(data, color, colormap, colornorm)
@@ -492,7 +493,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # Simple forwards
     uniforms = [
         :positions_transformed_f32c, # :text_color,
-        :text_strokecolor, :rotation,
+        :text_strokecolor, :text_rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
@@ -513,6 +514,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
+        :rotation => :text_rotation,
         :positions => :positions_transformed_f32c,
         :alpha_colormap => :color_map,
         :scaled_colorrange => :color_norm,

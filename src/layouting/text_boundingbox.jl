@@ -68,11 +68,8 @@ end
 # Utility
 function text_bb(str, font, size)
     rot = Quaternionf(0,0,0,1)
-    fonts = nothing # TODO: remove the arg if possible
-    layout = layout_text(
-        str, size, font, fonts, Vec2f(0), rot, 0.5, 1.0,
-        RGBAf(0, 0, 0, 0), RGBAf(0, 0, 0, 0), 0f0, 0f0)
-    return string_boundingbox(layout, Point3d(0), rot)
+    layout = glyph_collection(str, font, size, 0f0, 0f0, 0f0, 0f0, -1, rot)
+    return unchecked_boundingbox(layout.glyphindices, layout.char_origins, size, layout.glyph_extents, rot)
 end
 
 
@@ -90,6 +87,22 @@ function unchecked_boundingbox(glyphcollection::GlyphCollection, rotation::Quate
 
     bb = Rect3d()
     for (charo, glyphbb) in zip(glyphorigins, glyphbbs)
+        glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+        charbb = rotate_bbox(glyphbb3, rotation) + charo
+        if !isfinite_rect(bb)
+            bb = charbb
+        else
+            bb = union(bb, charbb)
+        end
+    end
+    return bb
+end
+
+function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
+    isempty(glyphs) && return Rect3d(Point3d(0), Vec3d(0))
+    glyphbbs = gl_bboxes(glyphs, scales, extents)
+    bb = Rect3d()
+    broadcast_foreach(origins, glyphbbs, rotation) do charo, glyphbb, rotation
         glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
         charbb = rotate_bbox(glyphbb3, rotation) + charo
         if !isfinite_rect(bb)
@@ -120,13 +133,17 @@ end
 
 # used
 
-function gl_bboxes(gl::GlyphCollection)
-    scales = gl.scales.sv isa Vec2 ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
-    map(gl.glyphs, gl.extents, scales) do c, ext, scale
+function gl_bboxes(glyphs, scales, extents)
+    broadcast(glyphs, extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
         # TODO c != 0 filters out all non renderables, which is not always desired
         return Rect2d(origin(hi_bb) * scale, (c != 0) * widths(hi_bb) * scale)
     end
+end
+
+function gl_bboxes(gl::GlyphCollection)
+    scales = gl.scales.sv isa Vec2 ? (gl.scales.sv for _ in gl.extents) : gl.scales.sv
+    gl_bboxes(gl.glyphs, scales, gl.extents)
 end
 
 # tested but not used?

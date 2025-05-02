@@ -82,6 +82,69 @@ function convert_text_arguments(text::AbstractVector{<:AbstractString}, fontsize
     return (glyphindices, font_per_char, char_origins, glyph_extents, text_blocks)
 end
 
+
+function per_glyph_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
+    if isscalar(x)
+        return x
+    elseif isa(x, AbstractVector)
+        if length(x) == length(glyphs)
+            return x[gi] # use per glyph index
+        elseif length(x) == length(text_blocks)
+            return x[bi] # use per text block index
+        else
+            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
+        end
+    else
+        return x
+    end
+end
+
+function per_text_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, bi::Int)
+    if isscalar(x)
+        return x
+    elseif isa(x, AbstractVector)
+        # data is per glyph
+        if length(x) == length(glyphs)
+            return view(x, text_blocks[bi]) # use per glyph index
+        elseif length(x) == length(text_blocks)
+            return x[bi] # use per text block index
+        else
+            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
+        end
+    else
+        return x
+    end
+end
+
+function per_text_block(f, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+    _getindex(x, bi) = per_text_getindex(x, glyphs, text_blocks, bi)
+    for block_idx in eachindex(text_blocks)
+        block = text_blocks[block_idx]
+        f(view(glyphs, block), _getindex.(args, block_idx)...)
+    end
+end
+
+function per_glyph_attributes(f, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+    _getindex(x, gi, bi) = per_glyph_getindex(x, glyphs, text_blocks, gi, bi)
+    glyph_idx = 1
+    for block_idx in eachindex(text_blocks)
+        for _ in text_blocks[block_idx]
+            f(glyphs[glyph_idx], _getindex.(args, glyph_idx, block_idx)...)
+            glyph_idx += 1
+        end
+    end
+end
+
+function map_per_glyph(glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, Typ, arg)
+    isscalar(arg) && return arg
+    result = Typ[]
+    per_glyph_attributes(glyphs, text_blocks, (arg,)) do g, a
+        push!(result, a)
+    end
+    return result
+end
+
+
 # TODO: is this needed in CairoMakie?
 #       Do it earlier then
 function per_glyph_data((text, attribute), changed, cached)
@@ -90,6 +153,7 @@ end
 function per_glyph_data((text, attribute)::Tuple{AbstractVector{<:AbstractString}, Any}, changed, cached)
     return (attribute,)
 end
+
 
 function register_text_computations!(attr::ComputeGraph)
     if haskey(attr, :atlas)
@@ -131,27 +195,33 @@ function register_text_computations!(attr::ComputeGraph)
     register_computation!(attr, [:glyph_origins, :offset], [:marker_offset]) do (origins, offset), changed, cached
         return (origins .+ (offset,),)
     end
-    register_computation!(attr, [:glyphindices, :font_per_char, :fontsize], [:glyph_boundingboxes]) do (gi, fonts, fontsize), changed, cached
-        glyph_boundingboxes = broadcast(gi, fonts, fontsize) do g, f, fs
-            FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
-        end
-        return (glyph_boundingboxes,)
-    end
-
-    register_computation!(attr, [:atlas, :glyph_boundingboxes, :fontsize], [:quad_offset, :quad_scale]) do (atlas, glyph_bb, fontsize), changed, cached
+    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :fontsize], [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+        glyph_boundingboxes = Rect2d[]
+        quad_offsets = Vec2f[]
+        quad_scales = Vec2f[]
         pad = atlas.glyph_padding / atlas.pix_per_glyph
-        quad_offsets = broadcast(glyph_bb, fontsize) do bb, fs
-            return Vec2f(minimum(bb) .- fs .* pad)
+        per_glyph_attributes(gi, text_blocks, (fonts, fontsize)) do g, f, fs
+            bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
+            quad_offset = Vec2f(minimum(bb) .- fs .* pad)
+            quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
+            push!(glyph_boundingboxes, bb)
+            push!(quad_offsets, quad_offset)
+            push!(quad_scales, quad_scale)
         end
-        quad_scales = broadcast(glyph_bb, fontsize) do bb, fs
-            return Vec2f(widths(bb) .+ fs * 2pad)
-        end
-        return (quad_offsets, quad_scales)
+        return (glyph_boundingboxes, quad_offsets, quad_scales)
     end
-    # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
-    register_computation!(per_glyph_data, attr, [:input_text, :color], [:text_color])
-    register_computation!(per_glyph_data, attr, [:input_text, :strokecolor], [:text_strokecolor])
 
+
+    # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
+    register_computation!(attr, [:glyphindices, :text_blocks, :color], [:text_color]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.color),)
+    end
+    register_computation!(attr, [:glyphindices, :text_blocks, :strokecolor], [:text_strokecolor]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.strokecolor),)
+    end
+        register_computation!(attr, [:glyphindices, :text_blocks, :rotation], [:text_rotation]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, Quaternionf, inputs.rotation),)
+    end
     register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
         length(blocks) == length(pos) || error("Text blocks and positions have different lengths")
         return ([p for (b, p) in zip(blocks, pos) for i in b],)
@@ -177,18 +247,20 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
 
     # TODO: naming...?
     # markerspace bounding boxes of elements (i.e. each string passed to text)
-    register_computation!(attr, [:glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :fontsize, :rotation], [:element_bbs]) do (gi, fonts, go, ge, fs, rotation), changed, last
-        c = to_color(:transparent)
-        gcs = GlyphCollection(gi, fonts, go, ge, fs, rotation, c, c, 0f0)
-        bbs = [unchecked_boundingbox(gcs, rotation)]
-        return (bbs,)
+    register_computation!(attr, [:glyphindices, :text_blocks, :glyph_origins, :fontsize, :glyph_extents, :rotation], [:per_string_bb]) do args, changed, last
+        b_args = (args.glyph_origins, args.fontsize, args.glyph_extents, args.rotation)
+        result = Rect3d[]
+        per_text_block(args.glyphindices, args.text_blocks, b_args) do glyphs, origins, fontsizes, extents, rotation # per text
+            push!(result, unchecked_boundingbox(glyphs, origins, fontsizes, extents, rotation))
+        end
+        return (result,)
     end
 
     # TODO: There is a :position attribute and a :positions Computed (after dim converts)
     #       This seems quite error prone...
 
     # data_limits()
-    register_computation!(attr, [:element_bbs, :positions, :space, :markerspace], [:data_limits]) do inputs, changed, last
+    register_computation!(attr, [:per_string_bb, :positions, :space, :markerspace], [:data_limits]) do inputs, changed, last
         bbs, pos, space, markerspace = inputs
         # TODO: technically this should also verify transform_func === identity
         # TODO: technically this should consider scene space if space == :data
@@ -222,7 +294,8 @@ Returns the markerspace size for each text element drawn by the given text plot.
 This is the width and height of the bounding box each individual glyph collection,
 in markerspace.
 """
-string_widths(plot) = widths.(plot.element_bbs[]) # These do not include positions
+string_widths(plot) = widths.(plot.per_string_bb[]) # These do not include positions
+
 """
     maximum_string_widths(plot::Text)
 
@@ -244,7 +317,7 @@ function string_boundingbox(plot::Text)
     end
 
     total_bb = Rect3d()
-    for (bb, p) in zip(plot.element_bbs[], pos)
+    for (bb, p) in zip(plot.per_string_bb[], pos)
         total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
     end
     return (total_bb,)

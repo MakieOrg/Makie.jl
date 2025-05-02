@@ -534,14 +534,13 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
     end
 end
 
-function all_marker_computations!(attr, atlas_res=1024, atlas_ppg=32)
-    atlas_sym = Symbol("atlas_$(atlas_res)_$(atlas_ppg)")
-    if !haskey(attr, atlas_sym)
-        register_computation!(attr, Symbol[], [atlas_sym]) do _, changed, last
-            (get_texture_atlas(atlas_res, atlas_ppg),)
+function all_marker_computations!(attr)
+    if !haskey(attr, :atlas)
+        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
+            (get_texture_atlas(),)
         end
     end
-    inputs = [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
+    inputs = [:atlas, :uv_offset_width, :marker, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     register_computation!(
         compute_marker_attributes, attr, inputs, outputs
