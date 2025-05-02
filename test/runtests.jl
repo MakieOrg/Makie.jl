@@ -23,6 +23,7 @@ using Makie: volume
         include("isolated/observables.jl")
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
+        include("isolated/texture_atlas.jl")
     end
 
     @testset "Plots" begin
