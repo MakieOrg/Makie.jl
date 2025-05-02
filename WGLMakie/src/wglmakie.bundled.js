@@ -24010,7 +24010,7 @@ class TextureAtlas {
         this.height = width;
         this.data = new Float32Array(width * width);
         for(let i = 0; i < this.data.length; i++){
-            this.data[i] = 0.0;
+            this.data[i] = 0.5 * pix_per_glyph + glyph_padding;
         }
         this.glyph_data = new Map();
         this.textures = new Map();
@@ -24031,8 +24031,6 @@ class TextureAtlas {
         }
     }
     insert_glyphs(glyph_data) {
-        console.log("Inserting glyphs into atlas");
-        console.log(Object.keys(glyph_data));
         let written = false;
         Object.keys(glyph_data).forEach((hash)=>{
             if (this.glyph_data.has(hash)) {

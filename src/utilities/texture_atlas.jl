@@ -414,7 +414,7 @@ returns the Shape type for the distancefield shader
 marker_to_sdf_shape(x) = error("$(x) is not a valid scatter marker shape.")
 
 marker_to_sdf_shape(::AbstractMatrix) = RECTANGLE # Image marker
-marker_to_sdf_shape(::Union{BezierPath, Char}) = DISTANCEFIELD
+marker_to_sdf_shape(::Union{BezierPath, Char, UInt32}) = DISTANCEFIELD
 marker_to_sdf_shape(::Type{T}) where {T <: Circle} = CIRCLE
 marker_to_sdf_shape(::Type{T}) where {T <: Rect} = RECTANGLE
 marker_to_sdf_shape(x::Shape) = x
@@ -448,6 +448,7 @@ Extracts the uv offset and width from a primitive.
 primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
+primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
 primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map(m-> primitive_uv_offset_width(atlas, m, font), x)
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
@@ -617,6 +618,17 @@ function get_marker_hash(atlas::Makie.TextureAtlas, marker::Union{UInt64, Char},
 end
 
 get_marker_hash(::Makie.TextureAtlas, f::Makie.NativeFont, x::Any) = nothing, x, f
+
+
+function inner_get_glyph_data(atlas::TextureAtlas, tracker, hash::UInt32, font::NativeFont)
+    if !(hash in tracker)
+        push!(tracker, hash)
+        uv = atlas.uv_rectangles[atlas.mapping[hash]]
+        sdf = get_glyph_sdf(atlas, hash)
+        return (hash, [uv, sdf, Vec2f(0), Vec2f(0)])
+    end
+    return (hash, nothing)
+end
 
 function inner_get_glyph_data(atlas::TextureAtlas, tracker, marker::Union{BezierPath, UInt64, Char}, font::NativeFont)
     hash, tex_marker, ffont = get_marker_hash(atlas, marker, font)

@@ -42,7 +42,7 @@ export class TextureAtlas {
         this.height = width;
         this.data = new Float32Array(width * width); // Flat 1-channel data
         for (let i = 0; i < this.data.length; i++) {
-            this.data[i] = 0.0; //0.5 * pix_per_glyph + glyph_padding;
+            this.data[i] = 0.5 * pix_per_glyph + glyph_padding;
         }
         this.glyph_data = new Map(); // Map<UInt32, THREE.Vector4>
         this.textures = new Map(); // Map<WebGLContext, THREE.DataTexture>

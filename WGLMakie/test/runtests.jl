@@ -46,6 +46,35 @@ edisplay = Bonito.use_electron_display(devtools=true)
         ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
 
+    @testset "js texture atlas" begin
+        atlas = Makie.get_texture_atlas()
+        positions = map(enumerate(marker)) do (i, m)
+            Point2f((i % 19) * 50, (i ÷ 19) * 50)
+        end
+        msize = map(marker) do m
+            uv = atlas.uv_rectangles[atlas.mapping[m]]
+            reverse(Vec2f((uv[Vec(3, 4)] .- uv[Vec(1, 2)]) .* 2048))
+        end
+        # Make sure all sdfs inside texture atlas are send to JS!
+        s = Scene()
+        cam2d!(s)
+        scatter!(s, positions, marker=marker, markersize=msize, markerspace=:data)
+        center!(s)
+        img = colorbuffer(s)
+
+        js_tex_atlas = evaljs_value(s.current_screens[1].session, js"WGL.get_texture_atlas().data")
+        js_atlas_data = reshape(Bonito.decode_extension_and_addbits(js_tex_atlas), (2048, 2048))
+        # Code to look at the atlas (reference test?)
+        # f, ax, pl = contour(js_atlas_data, color=:red, levels=[0.0, 15.0], alpha=0.5)
+        # hidedecorations!(ax)
+        # pl = contour!(ax, atlas.data, color=:black, levels=[0.0, 15.0], alpha=1.0)
+        # ax3, pl = image(f[1, 2], img, uv_transform=Mat{2,3,Float32}(0, 1, 1, 0, 0, 0))
+        # hidedecorations!(ax3)
+        # f
+        @test atlas.data  ≈ js_atlas_data
+    end
+
+
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10));
         @test events(f).window_open[] == false
