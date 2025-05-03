@@ -118,11 +118,7 @@ function create_wgl_renderobject(callback, attr, inputs)
 end
 
 function assemble_particle_robj!(attr, data)
-    if haskey(attr, :text_positions)
-        data[:positions_transformed_f32c] = attr.text_positions
-    else
-        data[:positions_transformed_f32c] = attr.positions_transformed_f32c
-    end
+    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
     handle_color!(data, attr)
     handle_color_getter!(data)
 
@@ -140,7 +136,7 @@ function assemble_particle_robj!(attr, data)
 
     per_instance_keys = Set([
         :positions_transformed_f32c, :rotation, :quad_offset, :quad_offset, :quad_scale, :vertex_color,
-        :intensity, :sdf_uv, :strokecolor
+        :intensity, :sdf_uv, :strokecolor, :marker_offset
     ])
 
     per_instance = filter(data) do (k, v)
@@ -188,6 +184,7 @@ const SCATTER_INPUTS = [
     :transform_marker,
     :f32c_scale,
     :model_f32c,
+    :marker_offset
 ]
 
 function scatter_program(attr)
@@ -195,7 +192,7 @@ function scatter_program(attr)
     atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
     data = Dict(
-        :marker_offset => Vec3f(0),
+        :marker_offset => attr.marker_offset,
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),

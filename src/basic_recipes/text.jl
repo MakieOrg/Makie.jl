@@ -228,9 +228,8 @@ function register_text_computations!(attr::ComputeGraph)
         return ([p for (b, p) in zip(blocks, pos) for i in b],)
     end
 
-        # # remap positions to be per glyph first
-    # @assert !haskey(attr, :positions_transformed_f32c)
-    # or don't because it generates quite a few redundant transform and f32c applications
+    # TODO: remapping positions to be per glyph first generates quite a few
+    # redundant transform applications and projections in CairoMakie
     register_position_transforms!(attr, :text_positions)
     return
 end
