@@ -93,6 +93,45 @@ function cairo_transform_to_world(scene::Scene, @nospecialize(plot::Plot), pos::
 end
 
 
+# TODO: This stack should be generalized and moved to Makie
+function cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type = Point3f)
+    # the existing methods include f32convert matrices which are already
+    # applied in :positions_transformed_f32c (using this makes CairoMakie
+    # less performant (extra O(N) step) but allows code reuse with other backends)
+    M = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space) * model
+    return project_position(output_type, M, pos, eachindex(pos))
+end
+
+function cairo_project_to_markerspace(
+        scene::Scene, @nospecialize(plot::Plot);
+        input_name = :positions_transformed_f32c, output_type = Point3d
+    )
+
+    attr = plot.args[1]::Makie.ComputeGraph
+
+    Makie.register_computation!(attr,
+            [input_name, :space, :markerspace, :model_f32c], [:cairo_markerspace_pos]
+        ) do (pos, space, markerspace, model), changed, cached
+
+        output = cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type)
+        return (output,)
+    end
+
+    return attr[:cairo_markerspace_pos][]
+end
+
+function cairo_unclipped_indices(attr::Makie.ComputeGraph)
+    Makie.register_computation!(attr,
+        [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
+        [:unclipped_indices]
+    ) do (transformed, model, space, clip_planes), changed, outputs
+        return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
+    end
+
+    return attr[:unclipped_indices][]
+end
+
+
 ################################################################################
 #                             Lines, LineSegments                              #
 ################################################################################
@@ -192,40 +231,25 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
-    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
-           p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
+    isempty(p.positions_transformed_f32c[]) && return
 
-    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-    transform_marker, model, markerspace, space, clip_planes = args
+    @get_attribute(p, (
+        markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+        transform_marker, model, markerspace, space, clip_planes
+    ))
 
     attr = p.args[1]
+
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker),)
     end
 
-    if !haskey(attr.outputs, :cairo_indices) # TODO: Why is this necessary? Is it still necessary?
-        Makie.register_computation!(attr,
-            [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
-            [:cairo_indices]
-        ) do (transformed, model, space, clip_planes), changed, outputs
-            return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
-        end
-    end
-
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
     #       the output can becomes invalid from render to render.
-    # Makie.register_computation!(attr,
-    #     [:positions_transformed_f32c, :cairo_indices, :model_f32c, :projectionview, :resolution, :space],
-    #     [:cairo_positions_px]
-    # ) do (transformed, indices, model, pv, res, space), changed, outputs
-    #     pos = project_position(scene, space[], transformed[], indices[], model[])
-    #     return (pos,)
-    # end
-    indices = p.cairo_indices[]
-    transform = Makie.clip_to_space(scene.camera, p.markerspace[]) *
-        Makie.space_to_clip(scene.camera, p.space[]) * p.model_f32c[]
-    positions = p.positions_transformed_f32c[]
-    isempty(positions) && return
+    indices = cairo_unclipped_indices(attr)
+    markerspace_pos = cairo_project_to_markerspace(scene, p)
+    # ^ if some positions get clipped they still get transformed here because they
+    # need to synchronize with other attributes
 
     marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
@@ -236,7 +260,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     billboard = p.rotation[] isa Billboard
 
     return draw_atomic_scatter(
-        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        scene, ctx, markerspace_pos, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
         )
 end
@@ -254,20 +278,19 @@ function is_degenerate(M::Mat2f)
 end
 
 function draw_atomic_scatter(
-        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        scene, ctx, markerspace_positions, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
     )
 
-    Makie.broadcast_foreach_index(positions, indices, colors, markersize, strokecolor,
-        strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
+    Makie.broadcast_foreach_index(markerspace_positions, indices, colors, markersize, strokecolor,
+        strokewidth, marker, marker_offset, remove_billboard(rotation)) do ms_pos, col,
         markersize, strokecolor, strokewidth, m, mo, rotation
 
-        isnan(pos) && return
+        isnan(ms_pos) && return
         isnan(rotation) && return # matches GLMakie
         (isnan(markersize) || is_approx_zero(markersize)) && return
 
-        p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1) # to markerspace
-        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ size_model * to_ndim(Vec3d, mo, 0)
+        o = ms_pos .+ size_model * to_ndim(Vec3d, mo, 0)
         proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
             markersize, rotation, size_model, billboard) # to pixel space
 
