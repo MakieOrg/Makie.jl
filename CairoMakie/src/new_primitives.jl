@@ -244,6 +244,15 @@ end
 is_approx_zero(x) = isapprox(x, 0)
 is_approx_zero(v::VecTypes) = any(x -> isapprox(x, 0), v)
 
+function is_degenerate(M::Mat2f)
+    v1 = M[Vec(1,2), 1]
+    v2 = M[Vec(1,2), 2]
+    l1 = dot(v1, v1)
+    l2 = dot(v2, v2)
+    # Bad cases:   nan   ||     0 vector     ||   linearly dependent
+    return any(isnan, M) || l1 ≈ 0 || l2 ≈ 0 || dot(v1, v2)^2 ≈ l1 * l2
+end
+
 function draw_atomic_scatter(
         scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
@@ -269,8 +278,8 @@ function draw_atomic_scatter(
         # could be projected more accurately by projecting each point individually
         # and then building the shape.
 
-        # Enclosed area of the marker must be at least 1 pixel?
-        (abs(det(jl_mat)) < 1) && return
+        # make sure the matrix is not degenerate
+        is_degenerate(jl_mat) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         Cairo.save(ctx)
