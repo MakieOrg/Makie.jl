@@ -324,128 +324,97 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text))
+    # :text_strokewidth # TODO: missing, but does per-glyph strokewidth even work? Same for strokecolor?
+    @get_attribute(primitive, (
+        text_blocks,
+        font_per_char,
+        glyphindices,
+        marker_offset,
+        text_rotation,
+        text_color,
+        fontsize,
+        strokewidth,
+        text_strokecolor,
+        markerspace,
+        transform_marker,
+    ))
+
     ctx = screen.context
-    @get_attribute(primitive, (rotation, model, space, markerspace, offset, clip_planes))
-    transform_marker = to_value(get(primitive, :transform_marker, true))::Bool
+    attr = primitive.args[1]::Makie.ComputeGraph
 
-    position = primitive.positions[]
-    # use cached glyph info
-    glyph_collection = primitive.glyph_collections[]
+    # input -> markerspace
+    # TODO: This sucks, we're doing per-string/glyphcollection work per glyph here
+    valid_indices = cairo_unclipped_indices(attr)
+    markerspace_positions = cairo_project_to_markerspace(scene, primitive)
 
-    draw_glyph_collection(
-        scene, ctx, position, glyph_collection, rotation,
-        model::Mat4d, space::Symbol, markerspace::Symbol, offset,
-        primitive.transformation::Makie.Transformation,
-        transform_marker, clip_planes::Vector{Plane3f}
-    )
-
-    nothing
-end
-
-# NOTE: Unchanged so far (copied to make changes visible later)
-
-function draw_glyph_collection(
-        scene, ctx, positions, glyph_collections::AbstractArray, rotation,
-        model, space, markerspace, offset, transformation, transform_marker,
-        clip_planes
-    )
-
-    # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
-    broadcast_foreach(positions, glyph_collections, rotation, Ref(model), space,
-        markerspace, offset) do pos, glayout, ro, mo, sp, msp, off
-
-        draw_glyph_collection(scene, ctx, pos, glayout, ro, mo, sp, msp, off, transformation, transform_marker, clip_planes)
-    end
-end
-
-_deref(x) = x
-_deref(x::Ref) = x[]
-
-function draw_glyph_collection(
-        scene, ctx, position, glyph_collection, rotation, _model, space,
-        markerspace, offsets, transformation, transform_marker, clip_planes)
-
-    glyphs = glyph_collection.glyphs
-    glyphoffsets = glyph_collection.origins
-    fonts = glyph_collection.fonts
-    rotations = glyph_collection.rotations
-    scales = glyph_collection.scales
-    colors = glyph_collection.colors
-    strokewidths = glyph_collection.strokewidths
-    strokecolors = glyph_collection.strokecolors
-
-    model = _deref(_model)
-    model33 = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
+    model33 = transform_marker ? primitive.model[][Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
     if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
         model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
     end
 
-    glyph_pos = let
-        # TODO: f32convert may run into issues here if markerspace is :data or
-        #       :transformed (repeated application in glyphpos etc)
-        transform_func = transformation.transform_func[]
-        transformed = apply_transform(transform_func, position)
-        p = model * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
-
-        Makie.is_data_space(space) && is_clipped(clip_planes, p) && return
-
-        Makie.clip_to_space(scene.camera, markerspace) *
-        Makie.space_to_clip(scene.camera, space) *
-        Makie.f32_convert_matrix(scene.float32convert, space) *
-        p
-    end
-
-    Cairo.save(ctx)
-
-    broadcast_foreach(glyphs, glyphoffsets, fonts, rotations, scales, colors, strokewidths, strokecolors, offsets) do glyph,
-        glyphoffset, font, rotation, scale, color, strokewidth, strokecolor, offset
-
-        cairoface = set_ft_font(ctx, font)
-        old_matrix = get_font_matrix(ctx)
-
-        p3_offset = to_ndim(Point3f, offset, 0)
-
-        # Not renderable by font (e.g. '\n')
-        # TODO, filter out \n in GlyphCollection, and render unrenderables as box
-        glyph == 0 && return
+    for (block_idx, glyph_indices) in enumerate(text_blocks)
 
         Cairo.save(ctx)
-        Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        # offsets and scale apply in markerspace
-        gp3 = glyph_pos[Vec(1, 2, 3)] ./ glyph_pos[4] .+ model33 * (glyphoffset .+ p3_offset)
+        for glyph_idx in glyph_indices
+            glyph_idx in valid_indices || continue
 
-        if any(isnan, gp3)
-            Cairo.restore(ctx)
-            return
-        end
+            glyph = glyphindices[glyph_idx]
+            offset = marker_offset[glyph_idx]
+            font = font_per_char[glyph_idx]
+            rotation = Makie.sv_getindex(text_rotation, glyph_idx)
+            color = Makie.sv_getindex(text_color, glyph_idx)
+            strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
+            scale = Makie.per_glyph_getindex(fontsize, glyphindices, text_blocks, glyph_idx, block_idx)
 
-        scale2 = scale isa Number ? Vec2d(scale, scale) : scale
-        glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
+            glyph_pos = markerspace_positions[glyph_idx]
 
-        Cairo.save(ctx)
-        set_font_matrix(ctx, mat)
-        show_glyph(ctx, glyph, glyphpos...)
-        Cairo.restore(ctx)
+            # Not renderable by font (e.g. '\n')
+            # TODO, filter out \n in GlyphCollection, and render unrenderables as box
+            glyph == 0 && return
 
-        if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
+            cairoface = set_ft_font(ctx, font)
+            old_matrix = get_font_matrix(ctx)
+
             Cairo.save(ctx)
-            Cairo.move_to(ctx, glyphpos...)
-            set_font_matrix(ctx, mat)
-            glyph_path(ctx, glyph, glyphpos...)
-            Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-            Cairo.set_line_width(ctx, strokewidth)
-            Cairo.stroke(ctx)
-            Cairo.restore(ctx)
-        end
-        Cairo.restore(ctx)
+            Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
-        cairo_font_face_destroy(cairoface)
-        set_font_matrix(ctx, old_matrix)
+            # offsets and scale apply in markerspace
+            gp3 = glyph_pos .+ model33 * offset
+
+            if any(isnan, gp3)
+                Cairo.restore(ctx)
+                continue
+            end
+
+            scale2 = scale isa Number ? Vec2d(scale, scale) : scale
+            glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
+
+            Cairo.save(ctx)
+            set_font_matrix(ctx, mat)
+            show_glyph(ctx, glyph, glyphpos...)
+            Cairo.restore(ctx)
+
+            if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
+                Cairo.save(ctx)
+                Cairo.move_to(ctx, glyphpos...)
+                set_font_matrix(ctx, mat)
+                glyph_path(ctx, glyph, glyphpos...)
+                Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+                Cairo.set_line_width(ctx, strokewidth)
+                Cairo.stroke(ctx)
+                Cairo.restore(ctx)
+            end
+            Cairo.restore(ctx)
+
+            cairo_font_face_destroy(cairoface)
+            set_font_matrix(ctx, old_matrix)
+        end
+
+        Cairo.restore(ctx)
     end
 
-    Cairo.restore(ctx)
-    return
+    nothing
 end
 
 
