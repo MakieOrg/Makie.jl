@@ -814,7 +814,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         # uniforms getting passed through
     uniforms = [
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
-        :uniform_pattern, :uniform_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :linewidth,
+        :uniform_pattern, :uniform_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :uniform_linewidth,
         :scene_origin, :px_per_unit, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
@@ -822,7 +822,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     input2glname = Dict(
         positions => :vertex, :gl_indices => :indices, :gl_valid_vertex => :valid_vertex,
         :gl_total_length => :total_length, :gl_last_length => :lastlen,
-        :gl_miter_limit => :miter_limit, :linewidth => :thickness,
+        :gl_miter_limit => :miter_limit, :uniform_linewidth => :thickness,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :model_f32c => :model,

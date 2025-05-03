@@ -632,6 +632,7 @@ function compute_plot(::Type{Lines}, args::Tuple, user_kw::Dict{Symbol,Any})
     add_attributes!(Lines, attr, user_kw)
     register_arguments!(Lines, attr, user_kw, args...)
     register_colormapping!(attr)
+    ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions),)
     end

@@ -585,7 +585,6 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     if islines
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
-        ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
     end
     dict = create_wgl_renderobject(args-> create_lines_data(islines, args), attr, inputs)
     dict[:uuid] = js_uuid(plot)
