@@ -138,8 +138,8 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
-    linewidth = PT <: Lines ? plot.linewidth[] : plot.synched_linewidth[]
-    color = PT <: Lines ? plot.scaled_color[] : plot.synched_color[]
+    linewidth = plot.uniform_linewidth[]
+    color = plot.scaled_color[]
     linestyle, space, model = plot.linestyle[], plot.space[], plot.model[]
     ctx = screen.context
     positions = plot.positions[]
