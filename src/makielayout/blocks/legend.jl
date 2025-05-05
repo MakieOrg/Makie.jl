@@ -757,6 +757,7 @@ end
 
 function legendelements(plot::Mesh, legend)
     LegendElement[MeshElement(
+        plots = plot,
         mesh = legend[:mesh],
         color = legend[:meshcolor],
         alpha = plot.alpha,
@@ -773,6 +774,7 @@ function legendelements(plot::Surface, legend)
         return vals === automatic ? xyzs[end] : vals
     end
     LegendElement[MeshElement(
+        plots = plot,
         mesh = mesh,
         color = color,
         colormap = plot.colormap,
@@ -785,6 +787,7 @@ end
 
 function legendelements(plot::Image, legend)
     LegendElement[ImageElement(
+        plots = plot,
         limits = legend[:imagelimits],
         data = legend[:imagevalues],
         colormap = plot.colormap,
@@ -795,6 +798,7 @@ end
 
 function legendelements(plot::Heatmap, legend)
     LegendElement[ImageElement(
+        plots = plot,
         limits = legend[:heatmaplimits],
         data = legend[:heatmapvalues],
         colormap = plot.colormap,
@@ -805,6 +809,7 @@ end
 
 function legendelements(plot::MeshScatter, legend)
     LegendElement[MeshScatterElement(
+        plots = plot,
         position = legend.meshscatterpoints,
         color = extract_color(plot, legend[:meshscattercolor]),
         marker = legend[:meshscattermarker],
