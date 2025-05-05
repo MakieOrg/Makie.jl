@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 - Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
+- Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
+- Moved some of the TextureAtlas logic to JS, speeding up text updates and fixing texture atlas updates [4942](https://github.com/MakieOrg/Makie.jl/pull/4942).
 - Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
@@ -24,6 +26,7 @@
 - Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
+- Added `textlabel!()` recipe for plotting text with a background [#4879](https://github.com/MakieOrg/Makie.jl/pull/4879)
 - Fixed the computed `colorrange` being out of order with `colorscale = -` or similar colorscale functions that break sorting [#4884](https://github.com/MakieOrg/Makie.jl/pull/4884)
 - Added `transform_marker` to arrows [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
 - Reverted change in `meshscatter` transformation behavior by using `transform_marker = true` as the default [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)

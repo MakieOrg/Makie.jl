@@ -24,6 +24,7 @@ using Makie: volume
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
         include("isolated/render_pipeline.jl")
+        include("isolated/texture_atlas.jl")
     end
 
     @testset "Plots" begin
