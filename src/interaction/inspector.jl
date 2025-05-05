@@ -868,32 +868,63 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     return true
 end
 
-# function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
-#     return show_data(inspector, plot, div(idx+1, 2), nothing)
-# end
+function show_data(inspector::DataInspector, plot::Arrows3D, idx, source)
+    a = inspector.attributes
+    tt = inspector.plot
+    pos = plot[1][][idx]
 
-# function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-#     a = inspector.attributes
-#     tt = inspector.plot
-#     pos = plot[1][][idx]
+    mpos = Point2f(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, mpos)
 
-#     mpos = Point2f(mouseposition_px(inspector.root))
-#     update_tooltip_alignment!(inspector, mpos)
+    p = vec2string(pos)
+    v = vec2string(plot[2][][idx])
 
-#     p = vec2string(pos)
-#     v = vec2string(plot[2][][idx])
+    tt[1][] = mpos
+    if to_value(get(plot, :inspector_label, automatic)) == automatic
+        second = plot.argmode[] in (:direction, :directions) ? "Direction" : "Endpoint"
+        tt.text[] = "Position:\n  $p\n$second:\n  $v"
+    else
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    end
+    tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
 
-#     tt[1][] = mpos
-#     if to_value(get(plot, :inspector_label, automatic)) == automatic
-#         tt.text[] = "Position:\n  $p\nDirection:\n  $v"
-#     else
-#         tt.text[] = plot[:inspector_label][](plot, idx, pos)
-#     end
-#     tt.visible[] = true
-#     a.indicator_visible[] && (a.indicator_visible[] = false)
+    return true
+end
 
-#     return true
-# end
+function show_data(inspector::DataInspector, plot::Arrows2D, _idx, source)
+    a = inspector.attributes
+    tt = inspector.plot
+
+    # number of vertices per arrow
+    N = plot.taillength[] > 0 && plot.tailwidth[] > 0 ? length(coordinates(plot.tail[])) : 0
+    N += plot.shaftwidth[] > 0 ? length(coordinates(plot.shaft[])) : 0
+    N += plot.tiplength[] > 0 && plot.tipwidth[] > 0 ? length(coordinates(plot.tip[])) : 0
+    @assert N != 0
+
+    # arrow index
+    idx = fld1(_idx, N)
+
+    pos = plot[1][][idx]
+
+    mpos = Point2f(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, mpos)
+
+    p = vec2string(pos)
+    v = vec2string(plot[2][][idx])
+
+    tt[1][] = mpos
+    if to_value(get(plot, :inspector_label, automatic)) == automatic
+        second = plot.argmode[] in (:direction, :directions) ? "Direction" : "Endpoint"
+        tt.text[] = "Position:\n  $p\n$second:\n  $v"
+    else
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    end
+    tt.visible[] = true
+    a.indicator_visible[] && (a.indicator_visible[] = false)
+
+    return true
+end
 
 # This should work if contourf would place computed levels in colors and let the
 # backend handle picking colors from a colormap
