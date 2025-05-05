@@ -223,16 +223,29 @@ end
 
 @reference_test "Legend Image-, Mesh- and MeshScatterElements" begin
     f = Figure(size = (400, 400))
-    a,p = heatmap(f[1, 1:2], rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
-    image!(10.5..20.5, 0.5..10.5, rand(10, 10), label = "Image" => (colormap = :viridis,))
+    a,p = heatmap(f[1, 1:2], RNG.rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
+    image!(10.5..20.5, 0.5..10.5, RNG.rand(10, 10), label = "Image" => (colormap = :viridis,))
     axislegend(a)
 
-    a,p = meshscatter(f[2, 1], rand(Point3f, 10), label = "MeshScatter" => (color = :orange,))
+    a,p = meshscatter(f[2, 1], [RNG.rand(Point3f) + Vec3f(0,0,1) for i in 1:10] , label = "MeshScatter" => (color = :orange,))
     mesh!(Rect3f(0,0,0,1,1,1), label = "Mesh" => (color = :lightblue,))
-    surface!(rand(10, 10), label = "Surface" => (colormap = :magma,))
+    surface!(-1..2, -1..2, RNG.rand(10, 10), label = "Surface" => (colormap = :magma,))
     Legend(f[2, 2], a, tellwidth = false)
-
     f
+
+    st = Makie.Stepper(f)
+    e = events(f)
+    Makie.step!(st)
+
+    # verify that all elements can be turned invisible
+    click(e, 340, 360)
+    click(e, 340, 335)
+    click(e, 300, 125)
+    click(e, 300, 100)
+    click(e, 300, 75)
+    Makie.step!(st)
+
+    st
 end
 
 @reference_test "Legend visibility toggles" begin
@@ -258,6 +271,7 @@ end
         [ PolyElement(plots = [lb, sb, slb, bb], color = :blue),
             PolyElement(plots = [lo, so, slo, bo], color = :orange) ],
         [ "blue", "orange" ], "Colors" )
+    f
 
     st = Makie.Stepper(f)
     e = events(f)
