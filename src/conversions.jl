@@ -634,23 +634,6 @@ end
 #                             Function Conversions                             #
 ################################################################################
 
-
-# Allow the user to pass a function to `arrows` which determines the direction
-# and magnitude of the arrows.  The function must accept `Point2f` as input.
-# and return Point2f or Vec2f or some array like structure as output.
-function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, f::Function)
-    points = Point2{float_type(x, y)}.(x, y')
-    f_out = Vec2{float_type(x, y)}.(f.(points))
-    return (vec(points), vec(f_out))
-end
-
-function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::RealVector,
-                           f::Function)
-    points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
-    f_out = Vec3{float_type(x, y, z)}.(f.(points))
-    return (vec(points), vec(f_out))
-end
-
 # Note: AbstractRange must be linear
 is_regularly_spaced(x::AbstractRange) = true
 function is_regularly_spaced(x::AbstractVector)
