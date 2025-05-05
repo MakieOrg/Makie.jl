@@ -276,15 +276,11 @@ conversion_trait(::Type{<: Arrows2D}) = ArrowLike()
 
 
 function _get_arrow_shape(x, len, width, shaftwidth)
-    if len == 0 || width == 0
-        return GeometryBasics.Mesh(Point2f[], GLTriangleFace[])
-    else
-        m = __get_arrow_shape(x, len, width, shaftwidth)
-        for i in eachindex(m.position)
-            m.position[i] -= Vec2f(0, 0.5 * width) # center width
-        end
-        return m
+    m = __get_arrow_shape(x, len, width, shaftwidth)
+    for i in eachindex(m.position)
+        m.position[i] -= Vec2f(0, 0.5 * width) # center width
     end
+    return m
 end
 
 __get_arrow_shape(f::Function, length, width, shaftwidth) = poly_convert(f(length, width, shaftwidth))
@@ -367,31 +363,34 @@ function plot!(plot::Arrows2D)
         return metrics
     end
 
-    meshes = map(plot, arrow_metrics, tail, shaft, tip) do metrics, tail, shaft, tip
+    meshes = map(plot, arrow_metrics, tail, shaft, tip) do metrics, shapes...
         ps, dirs = arrowpoints_px[]
         meshes = GeometryBasics.Mesh[]
 
-        for i in eachindex(metrics)
-            # scale and add color
-            taillength, tailwidth, shaftlength, shaftwidth, tiplength, tipwidth = metrics[i]
-            tail_m  = _get_arrow_shape(tail,  taillength,  tailwidth,  shaftwidth)
-            shaft_m = _get_arrow_shape(shaft, shaftlength, shaftwidth, shaftwidth)
-            tip_m   = _get_arrow_shape(tip,   tiplength,   tipwidth,   shaftwidth)
+        # Do this statically so it's easier for DataInspector to reason about.
+        # These all trigger arrow_metrics
+        should_render = (
+            taillength[] > 0 && tailwidth[] > 0,
+            shaftwidth[] > 0,
+            tiplength[] > 0 && tipwidth[] > 0
+        )
 
+        for i in eachindex(metrics)
             # rotate + translate
             startpoint = ps[i]
             direction = dirs[i]
             angle = atan(direction[2], direction[1])
             R = rotmatrix2d(angle)
+            offset = 0.0
 
-            _apply_arrow_transform!(tail_m, R, startpoint, 0.0)
-            _apply_arrow_transform!(shaft_m, R, startpoint, taillength)
-            _apply_arrow_transform!(tip_m, R, startpoint, taillength + shaftlength)
+            for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
+                render || continue
 
-            for m in (tail_m, shaft_m, tip_m)
-                if !isempty(coordinates(m))
-                    push!(meshes, m)
-                end
+                mesh  = _get_arrow_shape(shape, len, width, shaftwidth)
+                _apply_arrow_transform!(mesh, R, startpoint, offset)
+                push!(meshes, mesh)
+
+                offset += len
             end
         end
 
@@ -400,11 +399,14 @@ function plot!(plot::Arrows2D)
 
     colors = map(plot, arrow_metrics, tailcolor, shaftcolor, tipcolor) do metrics, cs...
         output = []
+        should_render = (
+            taillength[] > 0 && tailwidth[] > 0,
+            shaftwidth[] > 0,
+            tiplength[] > 0 && tipwidth[] > 0
+        )
         for i in eachindex(metrics)
             for j in 1:3
-                len = metrics[i][2j-1]
-                width = metrics[i][2j]
-                if len != 0 && width != 0
+                if should_render[j]
                     push!(output, sv_getindex(cs[j], i))
                 end
             end
