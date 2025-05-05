@@ -34,7 +34,7 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     end
 end
 
-function extract_colormap(plot::Union{Arrows, StreamPlot})
+function extract_colormap(plot::Union{Arrows2D, Arrows3D, StreamPlot})
     return extract_colormap(plot.plots[1])
 end
 

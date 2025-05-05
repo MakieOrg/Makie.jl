@@ -2,13 +2,6 @@
 ### Generic
 ################################################################################
 
-
-# For the matlab/matplotlib users
-const quiver = arrows
-const quiver! = arrows!
-export quiver, quiver!
-
-
 struct ArrowLike <: ConversionTrait end
 
 # vec(::Point) and vec(::Vec) works (returns input), but vec(::Tuple) errors
@@ -147,6 +140,60 @@ arrow `position::Point`.
 Note that direction can also be interpreted as end points with `argmode = :endpoint`.
 """
 
+arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Attributes(kwargs))
+arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Attributes(kwargs))
+
+# For the matlab/matplotlib users
+const quiver = arrows
+const quiver! = arrows!
+export quiver, quiver!
+
+_is_3d_arrows(::Union{Scene, Block, GridPosition}, args...) = _is_3d_arrows(args...)
+_is_3d_arrows(::VecTypes{2}, ::VecTypes{2}) = false
+_is_3d_arrows(::VecTypes{3}, ::VecTypes{3}) = true
+_is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::AbstractArray{<: VecTypes{2}}) = false
+_is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::AbstractArray{<: VecTypes{3}}) = true
+_is_3d_arrows(x,y, u,::AbstractArray) = false
+_is_3d_arrows(x,y,z, u,v,w) = true
+_is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::Function) = false
+_is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::Function) = true
+_is_3d_arrows(x,y, ::Function) = false
+_is_3d_arrows(x,y,z, ::Function) = true
+
+function resolve_arrows_deprecation(mutating, args, kwargs)
+    is3d = _is_3d_arrows(args...)
+    if is3d
+        func = mutating ? arrows3d! : arrows3d
+        removed = Set([:markerspace, :linestyle])
+    else
+        func = mutating ? arrows2d! : arrows2d
+        removed = Set([:quality, :markerspace, :linestyle, :transform_marker])
+    end
+
+    renamed = Dict(
+        :arrowhead => :tip, :arrowtail => :shaft,
+        :arrowcolor => :tipcolor, :linecolor => :shaftcolor,
+        :linewidth => ifelse(is3d, :shaftradius, :shaftwidth)
+    )
+
+    for k in keys(kwargs)
+        if k in removed
+            throw(ArgumentError("Attribute $k has been removed."))
+        elseif haskey(renamed, k)
+            new = renamed[k]
+            @warn "$k has been renamed to $new."
+            kwargs[new] = pop!(kwargs, k)
+        elseif k === :arrowsize
+            radius = is3d ? (:tipradius) : (:tipwidth)
+            @warn "arrowsize has been deprecated in favor of $radius and tiplength."
+            size3d = map(to_3d_scale, convert(Observable{Any}, pop!(kwargs, :arrowsize)))
+            kwargs[radius] = map(first, size3d)
+            kwargs[:tiplength] = map(last, size3d)
+        end
+    end
+
+    return func(args...; kwargs...)
+end
 
 ################################################################################
 ### 2D Arrows
@@ -451,6 +498,8 @@ $_arrow_args_docs
     More vertices will improve the roundness of the mesh but be more costly.
     """
     quality = 32
+    "Controls whether marker attributes get transformed by the model matrix."
+    transform_marker = true
 
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
