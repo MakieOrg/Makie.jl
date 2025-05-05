@@ -2001,6 +2001,8 @@ convert_attribute(value, ::key"specular") = Vec3f(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 
+convert_attribute(value, ::key"depth_shift") = Float32(value)
+
 
 # SAMPLER overloads
 
