@@ -168,7 +168,7 @@ $_arrow_args_docs
     The arrow shape extends left to right (towards increasing x) and should be defined
     from 0..1 in both dimensions.
     """
-    tail = Rect2f(0,0,1,1) # TODO: placeholder
+    tail = Rect2f(0,0,1,1)
     """
     Sets the shape of the arrow shaft in units relative to the shaftwidth and shaftlength.
     The arrow shape extends left to right (towards increasing x) and should be defined
@@ -446,6 +446,11 @@ $_arrow_args_docs
     This does not affect the mapping between arrows and directions.
     """
     markerscale = automatic
+    """
+    Sets the number of vertices used when generating meshes for the arrow tail, shaft and cone.
+    More vertices will improve the roundness of the mesh but be more costly.
+    """
+    quality = 32
 
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
@@ -454,9 +459,12 @@ end
 
 conversion_trait(::Type{<: Arrows3D}) = ArrowLike()
 
+to_mesh(m::GeometryBasics.Mesh, n) = m
+to_mesh(prim::GeometryBasics.GeometryPrimitive, n) = normal_mesh(Tessellation(prim, n))
+
 function plot!(plot::Arrows3D)
     @extract plot (
-        normalize, align, lengthscale, markerscale,
+        normalize, align, lengthscale, markerscale, quality,
         tail, taillength, tailradius,
         shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tip, tiplength, tipradius,
@@ -465,7 +473,7 @@ function plot!(plot::Arrows3D)
 
     generic_attributes = copy(Attributes(plot))
     foreach(k -> delete!(generic_attributes, k), [
-        :normalize, :align, :lengthscale, :markerscale, :argmode,
+        :normalize, :align, :lengthscale, :markerscale, :argmode, :quality,
         :tail, :taillength, :tailradius,
         :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftradius,
         :tip, :tiplength, :tipradius,
@@ -551,16 +559,20 @@ function plot!(plot::Arrows3D)
     tip_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
     tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
 
+    tail_m = map(to_mesh, plot, tail, quality)
+    shaft_m = map(to_mesh, plot, shaft, quality)
+    tip_m = map(to_mesh, plot, tip, quality)
+
     meshscatter!(plot,
-        map(first, plot, startpoints_directions), marker = tail, markersize = tail_scale, rotation = rot,
+        map(first, plot, startpoints_directions), marker = tail_m, markersize = tail_scale, rotation = rot,
         color = tailcolor, visible = tail_visible; generic_attributes...
     )
     meshscatter!(plot,
-        shaft_pos, marker = shaft, markersize = shaft_scale, rotation = rot,
+        shaft_pos, marker = shaft_m, markersize = shaft_scale, rotation = rot,
         color = shaftcolor, visible = visible; generic_attributes...
     )
     meshscatter!(plot,
-        tip_pos, marker = tip, markersize = tip_scale, rotation = rot,
+        tip_pos, marker = tip_m, markersize = tip_scale, rotation = rot,
         color = tipcolor, visible = tip_visible; generic_attributes...
     )
 
