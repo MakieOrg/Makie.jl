@@ -928,6 +928,8 @@ end
         tellheight = true
         "The align mode of the rectangle in its parent GridLayout."
         alignmode = Inside()
+        "Sets the z value of the Box"
+        z = 0.0
     end
 end
 
