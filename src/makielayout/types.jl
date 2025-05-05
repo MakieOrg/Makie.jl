@@ -1337,33 +1337,52 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct ImageElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshScatterElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
+end
+
+function get_plots(le::LegendElement)
+    if hasfield(typeof(le), :plots)
+        return le.plots
+    else
+        @warn """LegendElements should now keep track of the plots they respresent in a `plots` field.
+        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
+        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
+        """
+        return Plot[]
+    end
 end
 
 struct LegendEntry
     elements::Vector{LegendElement}
     attributes::Attributes
 end
+
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
@@ -2107,8 +2126,34 @@ end
 
         "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
         rticks = LinearTicks(4)
+        "If set to true and theta range is below 2pi, mirrors r ticks to the other side in a PolarAxis."
+        rticksmirrored = false
+
+        "The size of the rtick marks."
+        rticksize::Float64 = 5f0
+        "Controls if the rtick marks are visible."
+        rticksvisible::Bool = false
+        "The alignment of the rtick marks relative to the axis spine (0 = out, 1 = in)."
+        rtickalign::Float64 = 0f0
+        "The width of the rtick marks."
+        rtickwidth::Float64 = 1f0
+        "The color of the rtick marks."
+        rtickcolor = RGBf(0, 0, 0)
+
         "The specifier for the minor `r` ticks."
         rminorticks = IntervalsBetween(2)
+
+        "Controls if minor ticks on the r axis are visible"
+        rminorticksvisible::Bool = false
+        "The alignment of r minor ticks on the axis spine"
+        rminortickalign::Float64 = 0f0
+        "The tick size of r minor ticks"
+        rminorticksize::Float64 = 3f0
+        "The tick width of r minor ticks"
+        rminortickwidth::Float64 = 1f0
+        "The tick color of r minor ticks"
+        rminortickcolor = :black
+
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
@@ -2143,8 +2188,34 @@ end
 
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
         thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        "If set to true and rmin > 0, mirrors theta ticks to the other side of the PolarAxis."
+        thetaticksmirrored = false
+
+        "The size of the theta tick marks."
+        thetaticksize::Float64 = 5f0
+        "Controls if the theta tick marks are visible."
+        thetaticksvisible::Bool = false
+        "The alignment of the theta tick marks relative to the axis spine (0 = out, 1 = in)."
+        thetatickalign::Float64 = 0f0
+        "The width of the theta tick marks."
+        thetatickwidth::Float64 = 1f0
+        "The color of the theta tick marks."
+        thetatickcolor = RGBf(0, 0, 0)
+
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
+
+        "Controls if minor ticks on the theta axis are visible"
+        thetaminorticksvisible::Bool = false
+        "The alignment of theta minor ticks on the axis spine"
+        thetaminortickalign::Float64 = 0f0
+        "The tick size of theta minor ticks"
+        thetaminorticksize::Float64 = 3f0
+        "The tick width of theta minor ticks"
+        thetaminortickwidth::Float64 = 1f0
+        "The tick color of theha minor ticks"
+        thetaminortickcolor = :black
+
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."

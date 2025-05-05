@@ -1942,6 +1942,7 @@ to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = BezierPath(b)
 to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
 to_spritemarker(x::Shape) = x
+to_spritemarker(x::UInt32) = x # Texture atlas hash
 
 function to_spritemarker(str::String)
     error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
@@ -1977,8 +1978,6 @@ function to_spritemarker(marker::Symbol)
 end
 
 
-
-
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
@@ -2001,6 +2000,8 @@ convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
+
+convert_attribute(value, ::key"depth_shift") = Float32(value)
 
 
 # SAMPLER overloads

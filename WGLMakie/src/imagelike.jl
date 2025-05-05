@@ -51,7 +51,7 @@ function create_shader(mscene::Scene, plot::Surface)
         end
     end
 
-    return draw_mesh(mscene, per_vertex, plot, uniforms)
+    return draw_mesh(mscene, per_vertex, plot, uniforms), nothing
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
@@ -83,7 +83,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         uniforms[:uv_transform] = Observable(Mat3f(0,1,0, -1,0,0, 1,0,1))
     end
 
-    return draw_mesh(mscene, mesh, plot, uniforms)
+    return draw_mesh(mscene, mesh, plot, uniforms), nothing
 end
 
 function create_shader(mscene::Scene, plot::Volume)
@@ -129,7 +129,7 @@ function create_shader(mscene::Scene, plot::Volume)
     )
 
     handle_color!(plot, uniforms, nothing, :volumedata; permute_tex=false)
-    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
+    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms), nothing
 end
 
 

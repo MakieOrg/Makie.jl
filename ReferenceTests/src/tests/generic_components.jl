@@ -39,8 +39,8 @@
 
     # verify that heatmap path is used for heatmaps
     if Symbol(Makie.current_backend()) == :WGLMakie
-        @test length(WGLMakie.create_shader(scene, hm).vertexarray.buffers[:faces]) > 2
-        @test length(WGLMakie.create_shader(scene, hm2).vertexarray.buffers[:faces]) > 2
+        @test length(WGLMakie.create_shader(scene, hm)[1].vertexarray.buffers[:faces]) > 2
+        @test length(WGLMakie.create_shader(scene, hm2)[1].vertexarray.buffers[:faces]) > 2
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)

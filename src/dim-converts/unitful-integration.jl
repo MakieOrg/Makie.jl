@@ -112,7 +112,7 @@ end
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
-    return Float64(ustrip(conv))
+    return float(ustrip(conv))
 end
 
 
