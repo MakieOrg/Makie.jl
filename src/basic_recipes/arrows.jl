@@ -35,20 +35,20 @@ end
 
 function convert_arguments(::ArrowLike, pos::AbstractArray, f::Function)
     points = convert_arguments(PointBased(), pos)[1]
-    f_out = Vec2{eltype(points)}.(f.(points))
+    f_out = Point2{eltype(points)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 
 function convert_arguments(::ArrowLike, x::RealVector, y::RealVector, f::Function)
     points = Point2{float_type(x, y)}.(x, y')
-    f_out = Vec2{float_type(x, y)}.(f.(points))
+    f_out = Point2{float_type(x, y)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 
 function convert_arguments(::ArrowLike, x::RealVector, y::RealVector, z::RealVector,
                            f::Function)
     points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
-    f_out = Vec3{float_type(x, y, z)}.(f.(points))
+    f_out = Point3{float_type(x, y, z)}.(f.(points))
     return (vec(points), vec(f_out))
 end
 

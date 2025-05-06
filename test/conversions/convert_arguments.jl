@@ -380,11 +380,11 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 end
 
                 @testset "Arrows" begin
-                    @test apply_conversion(Arrows, xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Point3{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Point3{T_out}}}
                 end
 
                 @testset "Band" begin
