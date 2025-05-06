@@ -95,3 +95,23 @@ function fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
 end
 
 export fill_between!
+
+function attribute_examples(::Type{Scatter})
+    Dict(
+        :direction => [
+            Example(
+                code = """
+                    fig = Figure()
+                    location = range(0, 4pi, length = 200)
+                    lower =   cos.(location) .- location
+                    upper = .-cos.(location) .+ location .+ 5
+                    band(fig[1, 1], location, lower, upper,
+                        axis = (; title = "direction = :x"))
+                    band(fig[1, 2], location, lower, upper, direction = :y,
+                        axis = (; title = "direction = :y"))
+                    fig
+                    """
+            )
+        ],
+    )
+end
