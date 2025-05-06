@@ -286,6 +286,13 @@ $_arrow_args_docs
     """
     tiplength = 8
 
+    """
+    Arrows2D relies on mesh rendering to draw arrows, which doesn't anti-alias well when the
+    mesh gets thin. To mask this issue an outline is drawn over the mesh with lines. The width
+    of that outline is given by `strokemask`. Setting this to `0` may improve transparent arrows.
+    """
+    strokemask = 0.75
+
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
@@ -348,10 +355,9 @@ function plot!(plot::Arrows2D)
         :tail, :taillength, :tailwidth,
         :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
         :tip, :tiplength, :tipwidth,
-        :space,
         :tailcolor, :shaftcolor, :tipcolor, :color,
         :calculated_tailcolor, :calculated_shaftcolor, :calculated_tipcolor,
-        :alpha
+        :space, :alpha, :strokemask
     ])
 
     startpoints_directions = map(
@@ -394,7 +400,7 @@ function plot!(plot::Arrows2D)
         return metrics
     end
 
-    meshes = map(plot, arrow_metrics, tail, shaft, tip) do metrics, shapes...
+    meshes = map(plot, arrow_metrics, plot.strokemask, tail, shaft, tip) do metrics, mask, shapes...
         ps, dirs = arrowpoints_px[]
         meshes = GeometryBasics.Mesh[]
 
@@ -416,7 +422,7 @@ function plot!(plot::Arrows2D)
 
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
-                mesh  = _get_arrow_shape(shape, len, max(0, width - 0.75), shaftwidth)
+                mesh  = _get_arrow_shape(shape, len, max(0, width - mask), shaftwidth)
                 _apply_arrow_transform!(mesh, R, startpoint, offset)
                 push!(meshes, mesh)
 
@@ -452,7 +458,7 @@ function plot!(plot::Arrows2D)
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
     poly!(plot, meshes, space = :pixel, color = calc_colors,
-        strokecolor = calc_colors, strokewidth = 0.75; generic_attributes...)
+        strokecolor = calc_colors, strokewidth = plot.strokemask; generic_attributes...)
 
     return plot
 end
