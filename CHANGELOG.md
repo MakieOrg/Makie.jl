@@ -8,6 +8,7 @@
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 - Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
+- Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
 
 ## [0.22.4] - 2025-04-11
 
