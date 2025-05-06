@@ -264,8 +264,10 @@ function draw_plot(scene::Scene, screen::Screen,
         model = band.model[]
         space = band.space[]
 
-        upperpoints = band[1][]
-        lowerpoints = band[2][]
+        xdir::Bool = band.direction[] === :x
+
+        upperpoints = xdir ? band[1][] : reverse.(band[1][])
+        lowerpoints = xdir ? band[2][] : reverse.(band[2][])
 
         for rng in band_segment_ranges(lowerpoints, upperpoints)
             points = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))

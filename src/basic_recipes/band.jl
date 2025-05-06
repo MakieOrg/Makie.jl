@@ -9,6 +9,8 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
 """
 @recipe Band (lowerpoints, upperpoints) begin
     MakieCore.documented_attributes(Mesh)...
+    "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
+    direction = :x
     shading = NoShading
 end
 
@@ -29,10 +31,14 @@ function Makie.plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
     nanpoint(::Type{<:Point3}) = Point3(NaN)
     nanpoint(::Type{<:Point2}) = Point2(NaN)
-    coordinates = lift(plot, lowerpoints, upperpoints) do lowerpoints, upperpoints
+    coordinates = lift(plot, lowerpoints, upperpoints, plot.direction) do lowerpoints, upperpoints, direction
         n = length(lowerpoints)
         @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
         concat = [lowerpoints; upperpoints]
+        direction in (:x, :y) || error("Invalid band direction $(repr(direction)). Allowed values are :x and :y.")
+        if direction === :y && eltype(concat) <: Point2
+            concat .= reverse.(concat)
+        end
         # if either x, upper or lower is NaN, all of them should be NaN to cut out a whole band segment and not just a triangle
         for i in 1:n
             if isnan(lowerpoints[i]) || isnan(upperpoints[i])
@@ -44,7 +50,8 @@ function Makie.plot!(plot::Band)
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
-    attr = Attributes(plot)
+    attr = copy(Attributes(plot))
+    pop!(attr, :direction)
 
     attr[:color] = lift(plot, plot.color) do c
         if c isa AbstractVector
