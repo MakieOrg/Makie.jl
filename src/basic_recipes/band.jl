@@ -96,7 +96,7 @@ end
 
 export fill_between!
 
-function attribute_examples(::Type{Scatter})
+function attribute_examples(::Type{Band})
     Dict(
         :direction => [
             Example(
