@@ -365,7 +365,7 @@ end
             Point3f(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
             1f0
         )
-        Q = GeometryBasics.rotation(ct)
+        Q = GeometryBasics.cylinder_rotation_matrix(GeometryBasics.direction(ct))
         r = 0.5 * sqrt(1 .+ Q[1, 1] .+ Q[2, 2] .+ Q[3, 3]); Qlist[k, 4] = r
         Qlist[k, 1] = (Q[3, 2] .- Q[2, 3]) / (4 .* r)
         Qlist[k, 2] = (Q[1, 3] .- Q[3, 1]) / (4 .* r)
