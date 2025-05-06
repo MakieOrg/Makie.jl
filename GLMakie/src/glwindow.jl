@@ -25,6 +25,16 @@ GLAbstraction.get_buffer(fb::FramebufferFactory, idx::Int) = fb.buffers[idx]
 GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
 
 Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
+    return FramebufferFactory(create_main_framebuffer(context, fb_size), Texture[], GLFramebuffer[])
+end
+
+function reset_main_framebuffer!(factory::FramebufferFactory)
+    @assert factory.fb.id == 0 "Main framebuffer must be destroyed before being reset"
+    factory.fb = create_main_framebuffer(factory.fb.context, factory.fb.size)
+    return factory
+end
+
+function create_main_framebuffer(context, fb_size)
     ShaderAbstractions.switch_context!(context)
     require_context(context)
 
@@ -38,8 +48,7 @@ Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
 
     fb = GLFramebuffer(context, fb_size)
     attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
-
-    return FramebufferFactory(fb, Texture[], GLFramebuffer[])
+    return fb
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
@@ -49,23 +58,6 @@ function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
     filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok for cleanup?
     foreach(fb -> resize!(fb, w, h), fb.children)
     return
-end
-
-# destroys all additional framebuffers and attachments and resets the main framebuffer
-function Base.empty!(factory::FramebufferFactory)
-    ctx = factory.fb.context
-    ShaderAbstractions.switch_context!(ctx)
-    # avoid try .. catch at call site, and allow cleanup to run
-    GLAbstraction.require_context_no_error(ctx)
-    GLAbstraction.free.(factory.buffers)
-    GLAbstraction.free.(factory.children)
-
-    empty!(factory.buffers)
-    empty!(factory.children)
-    fb = GLFramebuffer(size(factory))
-    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
-    factory.fb = fb
-    return factory
 end
 
 # destroys everything
