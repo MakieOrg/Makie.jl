@@ -406,7 +406,7 @@ function plot!(plot::Arrows2D)
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
 
-                mesh  = _get_arrow_shape(shape, len, width, shaftwidth)
+                mesh  = _get_arrow_shape(shape, len, max(0, width - 0.5), shaftwidth)
                 _apply_arrow_transform!(mesh, R, startpoint, offset)
                 push!(meshes, mesh)
 
@@ -434,7 +434,8 @@ function plot!(plot::Arrows2D)
         return output
     end
 
-    poly!(plot, meshes, space = :pixel, color = colors; generic_attributes...)
+    poly!(plot, meshes, space = :pixel, color = colors, strokecolor = colors, strokewidth = 0.5; generic_attributes...)
+    # poly!(plot, meshes, space = :pixel, color = colors; generic_attributes...)
 
     return plot
 end
@@ -605,16 +606,17 @@ function plot!(plot::Arrows3D)
     end
 
     # normalize if not yet normalized
-    rot = map(plot, startpoints_directions, normalize) do (pos, dirs), normalized
+    normalized_dir = map(plot, startpoints_directions, normalize) do (pos, dirs), normalized
         return normalized ? dirs : LinearAlgebra.normalize.(dirs)
     end
+    rot = map(dirs -> to_ndim.(Vec3f, dirs, 0), plot, normalized_dir)
 
     tail_scale = map(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
     tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
     shaft_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints_directions[][1], rot[]) do metric, pos, dir
+        map(metrics, startpoints_directions[][1], normalized_dir[]) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + taillength * dir
         end
@@ -622,7 +624,7 @@ function plot!(plot::Arrows3D)
     shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
 
     tip_pos = map(plot, arrow_metrics) do metrics
-        map(metrics, startpoints_directions[][1], rot[]) do metric, pos, dir
+        map(metrics, startpoints_directions[][1], normalized_dir[]) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + (taillength + shaftlength) * dir
         end
