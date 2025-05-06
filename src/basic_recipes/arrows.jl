@@ -405,8 +405,7 @@ function plot!(plot::Arrows2D)
 
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
-
-                mesh  = _get_arrow_shape(shape, len, max(0, width - 0.5), shaftwidth)
+                mesh  = _get_arrow_shape(shape, len, max(0, width - 0.75), shaftwidth)
                 _apply_arrow_transform!(mesh, R, startpoint, offset)
                 push!(meshes, mesh)
 
@@ -434,8 +433,11 @@ function plot!(plot::Arrows2D)
         return output
     end
 
-    poly!(plot, meshes, space = :pixel, color = colors, strokecolor = colors, strokewidth = 0.5; generic_attributes...)
-    # poly!(plot, meshes, space = :pixel, color = colors; generic_attributes...)
+    # mesh anti-aliasing in GLMakie gets pretty bad when the mesh becomes very
+    # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
+    # further and add some stroke (lines) instead.
+    poly!(plot, meshes, space = :pixel, color = colors,
+        strokecolor = colors, strokewidth = 0.75; generic_attributes...)
 
     return plot
 end
