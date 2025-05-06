@@ -140,40 +140,50 @@ arrow `position::Point`.
 Note that direction can also be interpreted as end points with `argmode = :endpoint`.
 """
 
-arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Attributes(kwargs))
-arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Attributes(kwargs))
+arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
+arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
 
 # For the matlab/matplotlib users
 const quiver = arrows
 const quiver! = arrows!
 export quiver, quiver!
 
-_is_3d_arrows(::Union{Scene, Block, GridPosition}, args...) = _is_3d_arrows(args...)
+_is_3d_arrows(::Union{Scene, Block, GridLayoutBase.GridPosition}, args...) = _is_3d_arrows(args...)
 _is_3d_arrows(::VecTypes{2}, ::VecTypes{2}) = false
 _is_3d_arrows(::VecTypes{3}, ::VecTypes{3}) = true
 _is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::AbstractArray{<: VecTypes{2}}) = false
 _is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::AbstractArray{<: VecTypes{3}}) = true
-_is_3d_arrows(x,y, u,::AbstractArray) = false
-_is_3d_arrows(x,y,z, u,v,w) = true
+_is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray) = false
+_is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray) = true
 _is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::Function) = false
 _is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::Function) = true
-_is_3d_arrows(x,y, ::Function) = false
-_is_3d_arrows(x,y,z, ::Function) = true
+_is_3d_arrows(::AbstractArray, ::AbstractArray, ::Function) = false
+_is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::Function) = true
 
 function resolve_arrows_deprecation(mutating, args, kwargs)
     is3d = _is_3d_arrows(args...)
     if is3d
         func = mutating ? arrows3d! : arrows3d
         removed = Set([:markerspace, :linestyle])
+
+        # Old 3d defaults
+        get!(kwargs, :markerscale, 1.0)
+        get!(kwargs, :tipradius, 0.1)
+        get!(kwargs, :tiplength, 0.3)
     else
         func = mutating ? arrows2d! : arrows2d
         removed = Set([:quality, :markerspace, :linestyle, :transform_marker])
+
+        # Old 2d defaults
+        theme = current_default_theme()
+        get!(kwargs,:shaftwidth, 1.0)
+        get!(kwargs, :tipwidth, 0.45 * theme[:markersize][])
+        get!(kwargs, :tiplength, 0.45 * theme[:markersize][])
     end
 
     renamed = Dict(
         :arrowhead => :tip, :arrowtail => :shaft,
         :arrowcolor => :tipcolor, :linecolor => :shaftcolor,
-        :linewidth => ifelse(is3d, :shaftradius, :shaftwidth)
     )
 
     for k in keys(kwargs)
@@ -183,14 +193,24 @@ function resolve_arrows_deprecation(mutating, args, kwargs)
             new = renamed[k]
             @warn "$k has been renamed to $new."
             kwargs[new] = pop!(kwargs, k)
+        elseif k === :linewidth
+            radius = is3d ? (:shaftradius) : (:shaftwidth)
+            obs = convert(Observable{Any}, pop!(kwargs, :linewidth))
+            kwargs[radius] = map(x -> 0.5 * first(x), obs)
         elseif k === :arrowsize
             radius = is3d ? (:tipradius) : (:tipwidth)
             @warn "arrowsize has been deprecated in favor of $radius and tiplength."
             size3d = map(to_3d_scale, convert(Observable{Any}, pop!(kwargs, :arrowsize)))
-            kwargs[radius] = map(first, size3d)
-            kwargs[:tiplength] = map(last, size3d)
+            kwargs[radius] = map(x -> (is3d ? 0.5 : 0.75) * first(x), size3d)
+            kwargs[:tiplength] = map(x -> (is3d ? 1.0 : 0.75) * last(x), size3d)
         end
     end
+
+    # Set up some old defaults
+    if is3d
+        get!(kwargs, :shaftradius, map(x -> 0.5*x, kwargs[:tipradius]))
+    end
+    get!(kwargs, :minshaftlength, 0.0)
 
     return func(args...; kwargs...)
 end
@@ -630,7 +650,7 @@ function plot!(plot::Arrows3D)
     return plot
 end
 
-function data_limits(plot::Union{Arrows2D, Arrows3D})
+function data_limits(plot::Arrows2D)
     startpoints, directions = _process_arrow_arguments(
         plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
     )
@@ -640,4 +660,4 @@ function data_limits(plot::Union{Arrows2D, Arrows3D})
         Rect3d(startpoints .+ directions)
     )
 end
-boundingbox(p::Union{Arrows2D, Arrows3D}, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
