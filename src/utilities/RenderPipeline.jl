@@ -117,10 +117,10 @@ end
 struct Stage
     name::Symbol
 
-    # order matters for outputs
     # these are "const" after init
     inputs::Dict{Symbol, Int}
     outputs::Dict{Symbol, Int}
+    # order matters for outputs
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
 
@@ -417,8 +417,6 @@ function generate_buffers(pipeline::RenderPipeline)
     conn2merged = fill(-1, length(pipeline.formats))
     needs_buffer = Int[]
     available = Int[]
-
-    # Let's simplify to get correct behavior first...
 
     for i in eachindex(usage_per_transfer)
         # prepare:

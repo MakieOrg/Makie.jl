@@ -51,7 +51,15 @@ function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
     return
 end
 
-function unsafe_empty!(factory::FramebufferFactory)
+# destroys all additional framebuffers and attachments and resets the main framebuffer
+function Base.empty!(factory::FramebufferFactory)
+    ctx = factory.fb.context
+    ShaderAbstractions.switch_context!(ctx)
+    # avoid try .. catch at call site, and allow cleanup to run
+    GLAbstraction.require_context_no_error(ctx)
+    GLAbstraction.free.(factory.buffers)
+    GLAbstraction.free.(factory.children)
+
     empty!(factory.buffers)
     empty!(factory.children)
     fb = GLFramebuffer(size(factory))
@@ -60,6 +68,7 @@ function unsafe_empty!(factory::FramebufferFactory)
     return factory
 end
 
+# destroys everything
 function destroy!(factory::FramebufferFactory)
     ctx = factory.fb.context
     ShaderAbstractions.switch_context!(ctx)
