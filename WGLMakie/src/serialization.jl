@@ -324,8 +324,11 @@ end
 
 # TODO: lines overwrites this
 function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
-    program = create_shader(scene, plot)
+    program, additional = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+    if additional !== nothing
+        merge!(mesh, additional)
+    end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
