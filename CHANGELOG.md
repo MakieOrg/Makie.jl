@@ -9,6 +9,8 @@
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 - Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
 - Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
+- Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
+- Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
 
 ## [0.22.4] - 2025-04-11
 
