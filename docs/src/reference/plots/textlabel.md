@@ -77,7 +77,10 @@ If `shape_limits = Rect2f(0,0,1,1)` those are the origin and size of text boundi
 This can be used, for example, to construct a circle that more tightly fits the text bounding box:
 
 ```@figure
+using CairoMakie
+using GeometryBasics
 using LinearAlgebra
+
 function build_shape(origin, size)
     radius = norm(0.5 * size)
     center = Point2f(origin + 0.5 * size)
