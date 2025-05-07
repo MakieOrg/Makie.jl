@@ -105,5 +105,5 @@ f
 ## Attributes
 
 ```@attrdocs
-textlabel
+TextLabel
 ```
