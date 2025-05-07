@@ -319,10 +319,10 @@ function initialize_block!(leg::Legend; entrygroups)
                 end
                 append!(entry_observer_funcs, obsfunc)
 
-                # create a shade on top of label and marker to indicate hidden plots
-                shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0)
+                # create a shade on top of label and marker to indicate hidden plots (base scene is at +10)
+                shade = Box(scene; color=shade_color, visible=shade_visible, strokewidth=0, z = 9_990)
                 push!(eshades, shade)
-                halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0)
+                halfshade = Box(scene; color=halfshade_color, visible=halfshade_visible, strokewidth=0, z = 9_990)
                 push!(ehalfshades, halfshade)
             end
 
@@ -437,6 +437,71 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
     return [pol]
 end
 
+function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    lims = map(scene, bbox, attr.limits) do bb, lims
+        x0, y0 = minimum(bb)
+        w, h = widths(bb)
+        xl0, xl1 = extrema(lims[1])
+        yl0, yl1 = extrema(lims[2])
+        return x0 + w * xl0 .. x0 + w * xl1, y0 + h * yl0 .. y0 + h * yl1
+    end
+    plt = image!(scene, map(first, scene, lims), map(last, scene, lims),
+        attr.data, colormap = attr.colormap, colorrange = attr.colorrange,
+        inspectable = false, alpha = attr.alpha, interpolate = attr.interpolate)
+
+    return [plt]
+end
+
+function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    plt = meshscatter!(scene, attr.position,
+        marker = attr.marker, markersize = attr.markersize, rotation = attr.rotation,
+        colormap = attr.colormap, colorrange = attr.colorrange,
+        color = attr.color, alpha = attr.alpha,
+        inspectable = false)
+
+    # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
+    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rotate!(plt, rot)
+
+    on(scene, bbox, update = true) do bb
+        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
+        ws = Vec3f(0.5 * minimum(widths(bb)))
+        translate!(plt, c)
+        scale!(plt, ws)
+        return
+    end
+
+    return [plt]
+end
+
+function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attr = element.attributes
+    plt = mesh!(scene, attr.mesh,
+        colormap = attr.colormap, colorrange = attr.colorrange,
+        color = attr.color, alpha = attr.alpha,
+        inspectable = false, uv_transform = attr.uv_transform
+    )
+
+    # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
+    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rotate!(plt, rot)
+
+    on(scene, bbox, update = true) do bb
+        c = to_ndim(Point3f, minimum(bb) .+ 0.5 .* widths(bb), 0)
+        ws = Vec3f(0.5 * minimum(widths(bb)))
+        translate!(plt, c)
+        scale!(plt, ws)
+        return
+    end
+
+    return [plt]
+end
+
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
     if s in fieldnames(LegendEntry)
         getfield(lentry, s)
@@ -497,6 +562,23 @@ function apply_legend_override!(le::PolyElement, override::LegendOverride)
     end
 end
 
+function apply_legend_override!(le::T, override::LegendOverride) where {T <: LegendElement}
+    old2new = _renaming_mapping(T)
+
+    for (k, v) in override.overrides
+        if haskey(old2new, k)
+            key = old2new[k]
+            @assert !haskey(override.overrides, key) "Key $key with alias $k doubly defined."
+        else
+            key = k
+        end
+
+        if haskey(le.attributes, key)
+            le.attributes[key] = v
+        end
+    end
+end
+
 function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
     attrs = Attributes(; label)
 
@@ -543,6 +625,10 @@ function PolyElement(; plots=Plot[], kwargs...)
     _legendelement(PolyElement, plots, Attributes(kwargs))
 end
 
+ImageElement(; plots=Plot[], kwargs...) = _legendelement(ImageElement, plots, Attributes(kwargs))
+MeshScatterElement(; plots=Plot[], kwargs...) = _legendelement(MeshScatterElement, plots, Attributes(kwargs))
+MeshElement(; plots=Plot[], kwargs...) = _legendelement(MeshElement, plots, Attributes(kwargs))
+
 function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
     if !(plot isa AbstractVector{Plot} || plot isa Plot)
         error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well. Found: $(typeof(plot))")
@@ -574,6 +660,9 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :colormap => :polycolormap,
     :colorrange => :polycolorrange,
 )
+_renaming_mapping(::Type{MeshElement}) = Dict()
+_renaming_mapping(::Type{ImageElement}) = Dict()
+_renaming_mapping(::Type{MeshScatterElement}) = Dict()
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -665,6 +754,73 @@ function legendelements(plot::Union{Poly, Density}, legend)
         alpha = get(plot, :alpha, 1f0)
     )]
 end
+
+function legendelements(plot::Mesh, legend)
+    LegendElement[MeshElement(
+        plots = plot,
+        mesh = legend[:mesh],
+        color = legend[:meshcolor],
+        alpha = plot.alpha,
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        uv_transform = automatic,
+    )]
+end
+
+function legendelements(plot::Surface, legend)
+    xyzs = map(args -> convert_arguments(Surface, args...), legend[:surfacedata])
+    mesh = map(xyzs -> surface2mesh(xyzs...), xyzs)
+    color = map(xyzs, legend.surfacevalues) do xyzs, vals
+        return vals === automatic ? xyzs[end] : vals
+    end
+    LegendElement[MeshElement(
+        plots = plot,
+        mesh = mesh,
+        color = color,
+        colormap = plot.colormap,
+        colorrange = legend[:surfacecolorrange],
+        alpha = plot.alpha,
+        uv_transform = identity, # otherwise color values don't line up with mesh
+    )]
+end
+
+
+function legendelements(plot::Image, legend)
+    LegendElement[ImageElement(
+        plots = plot,
+        limits = legend[:imagelimits],
+        data = legend[:imagevalues],
+        colormap = plot.colormap,
+        colorrange = legend.imagecolorrange,
+        interpolate = true
+    )]
+end
+
+function legendelements(plot::Heatmap, legend)
+    LegendElement[ImageElement(
+        plots = plot,
+        limits = legend[:heatmaplimits],
+        data = legend[:heatmapvalues],
+        colormap = plot.colormap,
+        colorrange = legend.heatmapcolorrange,
+        interpolate = false
+    )]
+end
+
+function legendelements(plot::MeshScatter, legend)
+    LegendElement[MeshScatterElement(
+        plots = plot,
+        position = legend.meshscatterpoints,
+        color = extract_color(plot, legend[:meshscattercolor]),
+        marker = legend[:meshscattermarker],
+        markersize = legend[:meshscattersize],
+        rotation = legend[:meshscatterrotation],
+        colormap = plot.colormap,
+        colorrange = plot.colorrange,
+        alpha = plot.alpha,
+    )]
+end
+
 
 
 # if there is no specific overload available, we go through the child plots and just stack

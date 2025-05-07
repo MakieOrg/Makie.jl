@@ -126,6 +126,7 @@ pages = [
             "reference/plots/streamplot.md",
             "reference/plots/surface.md",
             "reference/plots/text.md",
+            "reference/plots/textlabel.md",
             "reference/plots/tooltip.md",
             "reference/plots/tricontourf.md",
             "reference/plots/triplot.md",

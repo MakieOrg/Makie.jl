@@ -928,6 +928,8 @@ end
         tellheight = true
         "The align mode of the rectangle in its parent GridLayout."
         alignmode = Inside()
+        "Sets the z value of the Box"
+        z = 0.0
     end
 end
 
@@ -1351,6 +1353,21 @@ struct PolyElement <: LegendElement
     attributes::Attributes
 end
 
+struct ImageElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
+struct MeshElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
+struct MeshScatterElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
 function get_plots(le::LegendElement)
     if hasfield(typeof(le), :plots)
         return le.plots
@@ -1448,6 +1465,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         rowgap = 3
         "The gap between the patch and the label of each legend entry."
         patchlabelgap = 5
+
         "The default points used for LineElements in normalized coordinates relative to each label patch."
         linepoints = [Point2f(0, 0.5), Point2f(1, 0.5)]
         "The default line width used for LineElements."
@@ -1460,6 +1478,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
         "The default marker colormap for MarkerElements"
@@ -1476,6 +1495,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         markerstrokewidth = theme(scene, :markerstrokewidth)
         "The default marker stroke color used for MarkerElements."
         markerstrokecolor = theme(scene, :markerstrokecolor)
+
         "The default poly points used for PolyElements in normalized coordinates relative to each label patch."
         polypoints = [Point2f(0, 0), Point2f(1, 0), Point2f(1, 1), Point2f(0, 1)]
         "The default poly stroke width used for PolyElements."
@@ -1488,6 +1508,66 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+
+        """
+        The default mesh used for MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        mesh = Rect3f(Point3f(-0.7), Vec3f(1.4))
+        "The default mesh color used for MeshElements."
+        meshcolor = wong_colors()[1]
+        "The default colormap for MeshElements"
+        meshcolormap = theme(scene, :colormap)
+        "The default colorrange for MeshElements."
+        meshcolorrange = automatic
+
+        """
+        The default (x, y, z) data used for surface-based MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        surfacedata = (-0.7..0.7, -0.7..0.7, [-0.007 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
+        """
+        The default values/colors used for surface-based MeshElements. These need to match the size of zs.
+        If not set the z values will be used.
+        """
+        surfacevalues = automatic
+        "The default colormap for surface-based MeshElements"
+        surfacecolormap = theme(scene, :colormap)
+        "The default colorrange for surface-based MeshElements. If not set this will be derived from surfacevalues."
+        surfacecolorrange = automatic
+
+        "The default (x, y) limits used for ImageElements in normalized coordinates relative to each label patch."
+        imagelimits = (0..1, 0..1)
+        "The default values (or colors) used for ImageElements."
+        imagevalues = [0 0.3; 0.6 1]
+        "The default colorrange for ImageElements. If not set this will be derived from imagevalues."
+        imagecolorrange = automatic
+
+        "The default (x, y) limits (or vectors) used for HeatmapElements in normalized coordinates relative to each label patch."
+        heatmaplimits = (0..1, 0..1)
+        "The default values used for HeatmapElements."
+        heatmapvalues = [0 0.3; 0.6 1]
+        "The default colorrange for HeatmapElements. If not set this will be derived from heatmapvalues."
+        heatmapcolorrange = automatic
+
+        "The default marker color for MeshScatterElements"
+        meshscattercolor = theme(scene, :markercolor)
+        "The default marker colormap for MeshScatterElements"
+        meshscattercolormap = theme(scene, :colormap)
+        "The default marker colorrange for MeshScatterElements"
+        meshscattercolorrange = automatic
+        "The default marker for MeshScatterElements"
+        meshscattermarker = Sphere(Point3f(0), 1f0)
+        """
+        The default marker points used for MeshScatterElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        meshscatterpoints = [Point3f(0)]
+        "The default marker size used for MeshScatterElements."
+        meshscattersize = 0.8
+        "The default marker rotation used for MeshScatterElements."
+        meshscatterrotation = Quaternionf(0,0,0,1)
+
         "The default alpha for legend elements"
         alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."

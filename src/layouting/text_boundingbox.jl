@@ -42,7 +42,7 @@ function string_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
         pos = to_ndim(Point3d, x.position[], 0)
     else
         cam = parent_scene(x).camera
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        transformed = apply_transform_and_model(x, x.position[])
         pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
     end
     return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
@@ -53,7 +53,7 @@ function string_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}
         pos = to_ndim.(Point3d, x.position[], 0)
     else
         cam = (parent_scene(x).camera,)
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        transformed = apply_transform_and_model(x, x.position[])
         pos = Makie.project.(cam, x.space[], x.markerspace[], transformed) # TODO: vectorized project
     end
     return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
