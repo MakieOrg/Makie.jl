@@ -21407,6 +21407,439 @@ function getErrorMessage(version) {
     element.innerHTML = message;
     return element;
 }
+function uv_to_pixel_bounds(uv, tex_width, tex_height) {
+    const tex_size = new T(tex_width, tex_height);
+    const uv_left_bottom = new T(uv.x, uv.y);
+    const uv_right_top = new T(uv.z, uv.w);
+    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).floor();
+    const px_right_top = uv_right_top.clone().multiply(tex_size).ceil();
+    const wx = Math.abs(px_right_top.x - px_left_bottom.x);
+    const wy = Math.abs(px_right_top.y - px_left_bottom.y);
+    return [
+        px_left_bottom,
+        new T(wx, wy)
+    ];
+}
+function is_three_fixed_array(value) {
+    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
+}
+function to_three_vector(data) {
+    if (data.length == 2) {
+        return new mod.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new mod.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new mod.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new mod.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data;
+}
+function typedarray_to_vectype(typedArray, ndim) {
+    if (typedArray instanceof Float32Array) {
+        if (ndim === 1) {
+            return "float";
+        } else {
+            return "vec" + ndim;
+        }
+    } else if (typedArray instanceof Int32Array) {
+        if (ndim === 1) {
+            return "int";
+        } else {
+            return "ivec" + ndim;
+        }
+    } else if (typedArray instanceof Uint32Array) {
+        if (ndim === 1) {
+            return "uint";
+        } else {
+            return "uvec" + ndim;
+        }
+    } else {
+        return;
+    }
+}
+function attribute_type(attribute) {
+    if (attribute) {
+        return typedarray_to_vectype(attribute.array, attribute.itemSize);
+    } else {
+        return;
+    }
+}
+function uniform_type(obj) {
+    if (obj instanceof mod.Uniform) {
+        return uniform_type(obj.value);
+    } else if (typeof obj === "number") {
+        return "float";
+    } else if (typeof obj === "boolean") {
+        return "bool";
+    } else if (obj instanceof mod.Vector2) {
+        return "vec2";
+    } else if (obj instanceof mod.Vector3) {
+        return "vec3";
+    } else if (obj instanceof mod.Vector4) {
+        return "vec4";
+    } else if (obj instanceof mod.Color) {
+        return "vec4";
+    } else if (obj instanceof mod.Matrix3) {
+        return "mat3";
+    } else if (obj instanceof mod.Matrix4) {
+        return "mat4";
+    } else if (obj instanceof mod.Texture) {
+        return "sampler2D";
+    } else {
+        return "invalid";
+    }
+}
+function uniforms_to_type_declaration(uniform_dict) {
+    let result = "";
+    for(const name in uniform_dict){
+        const uniform = uniform_dict[name];
+        const type = uniform_type(uniform);
+        if (type != "invalid") result += `uniform ${type} ${name};\n`;
+    }
+    return result;
+}
+function attributes_to_type_declaration(attributes_dict) {
+    let result = "";
+    for(const name in attributes_dict){
+        const attribute = attributes_dict[name];
+        const type = attribute_type(attribute);
+        result += `in ${type} ${name};\n`;
+    }
+    return result;
+}
+function update_uniform(uniform, new_value) {
+    if (uniform.value.isTexture) {
+        const im_data = uniform.value.image;
+        const [size, tex_data] = new_value;
+        if (tex_data.length == im_data.data.length) {
+            im_data.data.set(tex_data);
+        } else {
+            const old_texture = uniform.value;
+            uniform.value = re_create_texture(old_texture, tex_data, size);
+            old_texture.dispose();
+        }
+        uniform.value.needsUpdate = true;
+    } else {
+        if (is_three_fixed_array(uniform.value)) {
+            uniform.value.fromArray(new_value);
+        } else {
+            uniform.value = new_value;
+        }
+    }
+}
+function re_create_buffer(buffer, is_segments) {
+    if (buffer instanceof mod.InterleavedBufferAttribute) {
+        return new mod.InterleavedBufferAttribute(buffer.data, buffer.itemSize, buffer.offset);
+    }
+    let { new_data  } = buffer;
+    if (!new_data) {
+        new_data = buffer.array;
+    }
+    let new_buffer;
+    if (buffer instanceof mod.InstancedInterleavedBuffer) {
+        new_buffer = new mod.InstancedInterleavedBuffer(new_data, buffer.stride, buffer.meshPerAttribute);
+        new_buffer.count = Math.max(0, is_segments ? Math.floor(new_buffer.count - 1) : new_buffer.count - 3);
+    } else if (buffer instanceof mod.InstancedBufferAttribute) {
+        new_buffer = new mod.InstancedBufferAttribute(new_data, buffer.itemSize, buffer.normalized, buffer.meshPerAttribute);
+    } else if (buffer instanceof mod.BufferAttribute) {
+        new_buffer = new mod.BufferAttribute(new_data, buffer.itemSize, buffer.normalized);
+    } else {
+        throw new Error("Unsupported buffer type. Must be THREE.BufferAttribute, THREE.InstancedBufferAttribute, or THREE.InstancedInterleavedBuffer.");
+    }
+    if (buffer.usage) {
+        new_buffer.usage = buffer.usage;
+    }
+    if (buffer.updateRange) {
+        new_buffer.updateRange = {
+            offset: buffer.updateRange.offset,
+            count: buffer.updateRange.count
+        };
+    }
+    return new_buffer;
+}
+function re_create_geometry(geometry, is_segments) {
+    let new_geometry;
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        new_geometry = new mod.InstancedBufferGeometry();
+    } else {
+        new_geometry = new mod.BufferGeometry();
+    }
+    new_geometry.boundingSphere = new mod.Sphere();
+    new_geometry.boundingSphere.radius = 10000000000000;
+    new_geometry.frustumCulled = false;
+    const interleaved_attributes = new Map();
+    let instance_count = geometry.instanceCount;
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        let new_attribute;
+        if (attribute.isInterleavedBufferAttribute) {
+            const old_buffer = attribute.data;
+            let new_buffer;
+            if (!interleaved_attributes.has(old_buffer)) {
+                new_buffer = re_create_buffer(old_buffer, is_segments);
+                interleaved_attributes.set(old_buffer, new_buffer);
+            } else {
+                new_buffer = interleaved_attributes.get(old_buffer);
+            }
+            attribute.data = new_buffer;
+            new_attribute = re_create_buffer(attribute, is_segments);
+            instance_count = new_attribute.count;
+        } else {
+            new_attribute = re_create_buffer(attribute, is_segments);
+        }
+        new_geometry.setAttribute(name, new_attribute);
+        if (new_attribute instanceof mod.InstancedBufferAttribute) {
+            instance_count = new_attribute.count;
+        }
+    }
+    if (geometry.interleaved_attributes) {
+        new_geometry.interleaved_attributes = {};
+        Object.keys(geometry.interleaved_attributes).forEach((name)=>{
+            const old = geometry.interleaved_attributes[name];
+            new_geometry.interleaved_attributes[name] = interleaved_attributes.get(old);
+        });
+    }
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        geometry.instanceCount = instance_count;
+    }
+    if (geometry.index) {
+        new_geometry.index = re_create_buffer(geometry.index, is_segments);
+    }
+    return new_geometry;
+}
+function find_interleaved_attribute(geometry, buffer) {
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        if (attribute.data === buffer) {
+            return attribute;
+        }
+    }
+    return null;
+}
+function convert_RGB_to_RGBA(rgbArray) {
+    const length = rgbArray.length;
+    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
+    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
+    for(let i = 0, j = 0; i < length; i += 3, j += 4){
+        rgbaArray[j] = rgbArray[i];
+        rgbaArray[j + 1] = rgbArray[i + 1];
+        rgbaArray[j + 2] = rgbArray[i + 2];
+        rgbaArray[j + 3] = a;
+    }
+    return rgbaArray;
+}
+function create_texture_from_data(data) {
+    let buffer = data.data;
+    if (data.size.length == 3) {
+        const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
+        tex.format = mod[data.three_format];
+        tex.type = mod[data.three_type];
+        return tex;
+    } else {
+        let format = mod[data.three_format];
+        if (data.three_format == "RGBFormat") {
+            buffer = convert_RGB_to_RGBA(buffer);
+            format = mod.RGBAFormat;
+        }
+        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
+    }
+}
+class TextureAtlas {
+    constructor(width, pix_per_glyph, glyph_padding){
+        this.pix_per_glyph = pix_per_glyph;
+        this.glyph_padding = glyph_padding;
+        this.width = width;
+        this.height = width;
+        this.data = new Float32Array(width * width);
+        for(let i = 0; i < this.data.length; i++){
+            this.data[i] = 0.0;
+        }
+        this.glyph_data = new Map();
+        this.textures = new Map();
+    }
+    insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
+        this.glyph_data.set(hash, [
+            uv_pos,
+            width,
+            minimum
+        ]);
+        const [px_start, px_width] = uv_to_pixel_bounds(uv_pos, this.width, this.height);
+        for(let col = 0; col < px_width.y; col++){
+            for(let row = 0; row < px_width.x; row++){
+                const glyph_index = col * px_width.x + row;
+                const atlas_index = (px_start.y + col) * this.height + (px_start.x + row);
+                this.data[atlas_index] = glyph_data.array[glyph_index];
+            }
+        }
+    }
+    insert_glyphs(glyph_data) {
+        let written = false;
+        Object.keys(glyph_data).forEach((hash)=>{
+            if (this.glyph_data.has(hash)) {
+                return;
+            }
+            const [uv, sdf, width, minimum] = glyph_data[hash];
+            this.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
+            written = true;
+            return;
+        });
+        if (written) {
+            this.upload_tex_data();
+        }
+    }
+    get_glyph_data(hash, scale) {
+        const data = this.glyph_data.get(hash.toString());
+        if (!data) {
+            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
+            return null;
+        }
+        const [uv_offset_width, width, mini] = data;
+        const w_scaled = width.clone().multiply(scale);
+        const mini_scaled = mini.clone().multiply(scale);
+        const pad = this.glyph_padding / this.pix_per_glyph;
+        const scaled_pad = scale.clone().multiplyScalar(2 * pad);
+        const scales = w_scaled.clone().add(scaled_pad);
+        const quad_offsets = mini_scaled.clone().sub(scale.clone().multiplyScalar(pad));
+        return [
+            uv_offset_width,
+            scales,
+            quad_offsets
+        ];
+    }
+    get_texture(renderer) {
+        if (this.textures.has(renderer)) {
+            return this.textures.get(renderer);
+        }
+        const texture = new Lt(this.data, this.width, this.height, Tl, pi);
+        texture.magFilter = Ut;
+        texture.minFilter = Ut;
+        texture.wrapS = Ht;
+        texture.wrapT = Ht;
+        this.textures.set(renderer, texture);
+        return texture;
+    }
+    upload_tex_data() {
+        for (const [renderer, texture] of this.textures.entries()){
+            if (!texture.image) {
+                this.textures.delete(renderer);
+                continue;
+            }
+            texture.image.data.set(this.data);
+            texture.needsUpdate = true;
+        }
+    }
+}
+const TEXTURE_ATLAS = [];
+function get_texture_atlas() {
+    if (TEXTURE_ATLAS.length === 0) {
+        const atlas = new TextureAtlas(2048, 64, 12);
+        TEXTURE_ATLAS.push(atlas);
+    }
+    return TEXTURE_ATLAS[0];
+}
+function create_texture(scene, data) {
+    const buffer = data.data;
+    if (buffer == "texture_atlas") {
+        const { texture_atlas , renderer  } = scene.screen;
+        if (!texture_atlas) {
+            const atlas = get_texture_atlas();
+            scene.screen.texture_atlas = atlas.get_texture(renderer);
+        }
+        return scene.screen.texture_atlas;
+    } else {
+        return create_texture_from_data(data);
+    }
+}
+function re_create_texture(old_texture, buffer, size) {
+    let tex;
+    if (size.length == 3) {
+        tex = new mod.Data3DTexture(buffer, size[0], size[1], size[2]);
+        tex.format = old_texture.format;
+        tex.type = old_texture.type;
+    } else {
+        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+    }
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
+    if (size.length > 1) {
+        tex.wrapT = old_texture.wrapT;
+    }
+    if (size.length > 2) {
+        tex.wrapR = old_texture.wrapR;
+    }
+    return tex;
+}
+function BufferAttribute(buffer) {
+    const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
+    jsbuff.setUsage(mod.DynamicDrawUsage);
+    return jsbuff;
+}
+function InstanceBufferAttribute(buffer) {
+    const jsbuff = new mod.InstancedBufferAttribute(buffer.flat, buffer.type_length);
+    jsbuff.setUsage(mod.DynamicDrawUsage);
+    return jsbuff;
+}
+function attach_geometry(buffer_geometry, vertexarrays, faces) {
+    for(const name in vertexarrays){
+        const buff = vertexarrays[name];
+        let buffer;
+        if (buff.to_update) {
+            buffer = new mod.BufferAttribute(buff.to_update, buff.itemSize);
+        } else {
+            buffer = BufferAttribute(buff);
+        }
+        buffer_geometry.setAttribute(name, buffer);
+    }
+    buffer_geometry.setIndex(faces);
+    buffer_geometry.boundingSphere = new mod.Sphere();
+    buffer_geometry.boundingSphere.radius = 10000000000000;
+    buffer_geometry.frustumCulled = false;
+    return buffer_geometry;
+}
+function attach_instanced_geometry(buffer_geometry, instance_attributes) {
+    for(const name in instance_attributes){
+        const buffer = InstanceBufferAttribute(instance_attributes[name]);
+        buffer_geometry.setAttribute(name, buffer);
+    }
+}
+function create_material(plot) {
+    const is_volume = "volumedata" in plot.deserialized_uniforms;
+    return new mod.RawShaderMaterial({
+        uniforms: plot.deserialized_uniforms,
+        vertexShader: plot.plot_data.vertex_source,
+        fragmentShader: plot.plot_data.fragment_source,
+        side: is_volume ? mod.BackSide : mod.DoubleSide,
+        transparent: true,
+        glslVersion: mod.GLSL3,
+        depthTest: !plot.plot_data.overdraw,
+        depthWrite: !plot.plot_data.transparency
+    });
+}
+function create_mesh(plot) {
+    const buffer_geometry = new mod.BufferGeometry();
+    const { plot_data: plot_data1  } = plot;
+    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
+    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
+    const material = create_material(plot);
+    const mesh = new mod.Mesh(buffer_geometry, material);
+    return mesh;
+}
+function create_instanced_mesh(plot) {
+    const { plot_data: plot_data1  } = plot;
+    const buffer_geometry = new mod.InstancedBufferGeometry();
+    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
+    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
+    attach_instanced_geometry(buffer_geometry, plot_data1.instance_attributes);
+    const material = create_material(plot);
+    const mesh = new mod.Mesh(buffer_geometry, material);
+    return mesh;
+}
 const _changeEvent = {
     type: "change"
 };
@@ -22386,7 +22819,7 @@ function connect_plot(scene, plot) {
     uniforms.px_per_unit = new Wh(px_per_unit);
     if (plot.plot_data.uniforms.preprojection) {
         const { space , markerspace  } = plot.plot_data;
-        uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
+        uniforms.preprojection = cam.preprojection_matrix(space, markerspace);
     }
     uniforms.light_direction = scene.light_direction;
 }
@@ -22459,245 +22892,6 @@ function delete_plots(plot_uuids) {
     const plots = find_plots(plot_uuids);
     plots.forEach(delete_plot);
 }
-function is_three_fixed_array(value) {
-    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
-}
-function typedarray_to_vectype(typedArray, ndim) {
-    if (typedArray instanceof Float32Array) {
-        if (ndim === 1) {
-            return "float";
-        } else {
-            return "vec" + ndim;
-        }
-    } else if (typedArray instanceof Int32Array) {
-        if (ndim === 1) {
-            return "int";
-        } else {
-            return "ivec" + ndim;
-        }
-    } else if (typedArray instanceof Uint32Array) {
-        if (ndim === 1) {
-            return "uint";
-        } else {
-            return "uvec" + ndim;
-        }
-    } else {
-        return;
-    }
-}
-function attribute_type(attribute) {
-    if (attribute) {
-        return typedarray_to_vectype(attribute.array, attribute.itemSize);
-    } else {
-        return;
-    }
-}
-function uniform_type(obj) {
-    if (obj instanceof mod.Uniform) {
-        return uniform_type(obj.value);
-    } else if (typeof obj === "number") {
-        return "float";
-    } else if (typeof obj === "boolean") {
-        return "bool";
-    } else if (obj instanceof mod.Vector2) {
-        return "vec2";
-    } else if (obj instanceof mod.Vector3) {
-        return "vec3";
-    } else if (obj instanceof mod.Vector4) {
-        return "vec4";
-    } else if (obj instanceof mod.Color) {
-        return "vec4";
-    } else if (obj instanceof mod.Matrix3) {
-        return "mat3";
-    } else if (obj instanceof mod.Matrix4) {
-        return "mat4";
-    } else if (obj instanceof mod.Texture) {
-        return "sampler2D";
-    } else {
-        return "invalid";
-    }
-}
-function uniforms_to_type_declaration(uniform_dict) {
-    let result = "";
-    for(const name in uniform_dict){
-        const uniform = uniform_dict[name];
-        const type = uniform_type(uniform);
-        if (type != "invalid") result += `uniform ${type} ${name};\n`;
-    }
-    return result;
-}
-function attributes_to_type_declaration(attributes_dict) {
-    let result = "";
-    for(const name in attributes_dict){
-        const attribute = attributes_dict[name];
-        const type = attribute_type(attribute);
-        result += `in ${type} ${name};\n`;
-    }
-    return result;
-}
-function update_uniform(uniform, new_value) {
-    if (uniform.value.isTexture) {
-        const im_data = uniform.value.image;
-        const [size, tex_data] = new_value;
-        if (tex_data.length == im_data.data.length) {
-            im_data.data.set(tex_data);
-        } else {
-            const old_texture = uniform.value;
-            uniform.value = re_create_texture(old_texture, tex_data, size);
-            old_texture.dispose();
-        }
-        uniform.value.needsUpdate = true;
-    } else {
-        if (is_three_fixed_array(uniform.value)) {
-            uniform.value.fromArray(new_value);
-        } else {
-            uniform.value = new_value;
-        }
-    }
-}
-function re_create_buffer(buffer, is_segments) {
-    if (buffer instanceof mod.InterleavedBufferAttribute) {
-        return new mod.InterleavedBufferAttribute(buffer.data, buffer.itemSize, buffer.offset);
-    }
-    let { new_data  } = buffer;
-    if (!new_data) {
-        new_data = buffer.array;
-    }
-    let new_buffer;
-    if (buffer instanceof mod.InstancedInterleavedBuffer) {
-        new_buffer = new mod.InstancedInterleavedBuffer(new_data, buffer.stride, buffer.meshPerAttribute);
-        new_buffer.count = Math.max(0, is_segments ? Math.floor(new_buffer.count - 1) : new_buffer.count - 3);
-    } else if (buffer instanceof mod.InstancedBufferAttribute) {
-        new_buffer = new mod.InstancedBufferAttribute(new_data, buffer.itemSize, buffer.normalized, buffer.meshPerAttribute);
-    } else if (buffer instanceof mod.BufferAttribute) {
-        new_buffer = new mod.BufferAttribute(new_data, buffer.itemSize, buffer.normalized);
-    } else {
-        throw new Error("Unsupported buffer type. Must be THREE.BufferAttribute, THREE.InstancedBufferAttribute, or THREE.InstancedInterleavedBuffer.");
-    }
-    if (buffer.usage) {
-        new_buffer.usage = buffer.usage;
-    }
-    if (buffer.updateRange) {
-        new_buffer.updateRange = {
-            offset: buffer.updateRange.offset,
-            count: buffer.updateRange.count
-        };
-    }
-    return new_buffer;
-}
-function re_create_geometry(geometry, is_segments) {
-    let new_geometry;
-    if (geometry instanceof mod.InstancedBufferGeometry) {
-        new_geometry = new mod.InstancedBufferGeometry();
-    } else {
-        new_geometry = new mod.BufferGeometry();
-    }
-    new_geometry.boundingSphere = new mod.Sphere();
-    new_geometry.boundingSphere.radius = 10000000000000;
-    new_geometry.frustumCulled = false;
-    const interleaved_attributes = new Map();
-    let instance_count = geometry.instanceCount;
-    for (const [name, attribute] of Object.entries(geometry.attributes)){
-        let new_attribute;
-        if (attribute.isInterleavedBufferAttribute) {
-            const old_buffer = attribute.data;
-            let new_buffer;
-            if (!interleaved_attributes.has(old_buffer)) {
-                new_buffer = re_create_buffer(old_buffer, is_segments);
-                interleaved_attributes.set(old_buffer, new_buffer);
-            } else {
-                new_buffer = interleaved_attributes.get(old_buffer);
-            }
-            attribute.data = new_buffer;
-            new_attribute = re_create_buffer(attribute, is_segments);
-            instance_count = new_attribute.count;
-        } else {
-            new_attribute = re_create_buffer(attribute, is_segments);
-        }
-        new_geometry.setAttribute(name, new_attribute);
-        if (new_attribute instanceof mod.InstancedBufferAttribute) {
-            instance_count = new_attribute.count;
-        }
-    }
-    if (geometry.interleaved_attributes) {
-        new_geometry.interleaved_attributes = {};
-        Object.keys(geometry.interleaved_attributes).forEach((name)=>{
-            const old = geometry.interleaved_attributes[name];
-            new_geometry.interleaved_attributes[name] = interleaved_attributes.get(old);
-        });
-    }
-    if (geometry instanceof mod.InstancedBufferGeometry) {
-        geometry.instanceCount = instance_count;
-    }
-    if (geometry.index) {
-        new_geometry.index = re_create_buffer(geometry.index, is_segments);
-    }
-    return new_geometry;
-}
-function find_interleaved_attribute(geometry, buffer) {
-    for (const [name, attribute] of Object.entries(geometry.attributes)){
-        if (attribute.data === buffer) {
-            return attribute;
-        }
-    }
-    return null;
-}
-function convert_RGB_to_RGBA(rgbArray) {
-    const length = rgbArray.length;
-    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
-    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
-    for(let i = 0, j = 0; i < length; i += 3, j += 4){
-        rgbaArray[j] = rgbArray[i];
-        rgbaArray[j + 1] = rgbArray[i + 1];
-        rgbaArray[j + 2] = rgbArray[i + 2];
-        rgbaArray[j + 3] = a;
-    }
-    return rgbaArray;
-}
-function create_texture_from_data(data) {
-    let buffer = data.data;
-    if (data.size.length == 3) {
-        const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
-        tex.format = mod[data.three_format];
-        tex.type = mod[data.three_type];
-        return tex;
-    } else {
-        let format = mod[data.three_format];
-        if (data.three_format == "RGBFormat") {
-            buffer = convert_RGB_to_RGBA(buffer);
-            format = mod.RGBAFormat;
-        }
-        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
-    }
-}
-const TEXTURE_ATLAS = [
-    undefined
-];
-function create_texture(scene, data) {
-    const buffer = data.data;
-    if (buffer == "texture_atlas") {
-        const { texture_atlas  } = scene.screen;
-        if (texture_atlas) {
-            return texture_atlas;
-        } else {
-            data.data = TEXTURE_ATLAS[0].value;
-            const texture = create_texture_from_data(data);
-            scene.screen.texture_atlas = texture;
-            TEXTURE_ATLAS[0].on((new_data)=>{
-                if (new_data === texture) {
-                    return false;
-                } else {
-                    texture.image.data.set(new_data);
-                    texture.needsUpdate = true;
-                    return;
-                }
-            });
-            return texture;
-        }
-    } else {
-        return create_texture_from_data(data);
-    }
-}
 function convert_texture(scene, data) {
     const tex = create_texture(scene, data);
     tex.needsUpdate = true;
@@ -22724,21 +22918,11 @@ function to_uniform(scene, data) {
         }
         throw new Error(`Type ${data.type} not known`);
     }
-    if (is_typed_array(data)) {
-        if (data.length == 2) {
-            return new mod.Vector2().fromArray(data);
+    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
+        if (!data.every((x1)=>typeof x1 === "number")) {
+            return data;
         }
-        if (data.length == 3) {
-            return new mod.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new mod.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new mod.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
+        return to_three_vector(data);
     }
     return data;
 }
@@ -22759,7 +22943,26 @@ const ON_NEXT_INSERT = new Set();
 function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
+function add_glyphs_from_plots(scene_data) {
+    const atlas = get_texture_atlas();
+    scene_data.plots.forEach((plot_data1)=>{
+        if (plot_data1.glyph_data) {
+            const glyph_data = plot_data1.glyph_data;
+            const { atlas_updates  } = glyph_data;
+            if (atlas_updates) {
+                atlas.insert_glyphs(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child)=>{
+        add_glyphs_from_plots(child);
+    });
+}
 function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
+}
+function deserialize_scene_recursive(data, screen) {
     const scene = new mod.Scene();
     scene.screen = screen;
     const { canvas  } = screen;
@@ -22801,7 +23004,7 @@ function deserialize_scene(data, screen) {
         add_plot(scene, plot_data1);
     });
     scene.scene_children = data.children.map((child)=>{
-        const childscene = deserialize_scene(child, screen);
+        const childscene = deserialize_scene_recursive(child, screen);
         return childscene;
     });
     return scene;
@@ -22843,10 +23046,7 @@ class Plot {
         this.mesh.matrixAutoUpdate = false;
         this.mesh.renderOrder = this.plot_data.zvalue;
         this.mesh.plot_object = this;
-        this.mesh.visible = this.plot_data.visible.value;
-        this.plot_data.visible.on((v)=>{
-            this.mesh.visible = v;
-        });
+        this.mesh.visible = this.plot_data.visible;
     }
     dispose() {
         delete plot_cache[this.uuid];
@@ -24082,92 +24282,6 @@ class Lines extends Plot {
         super.update(line_attr);
     }
 }
-function re_create_texture(old_texture, buffer, size) {
-    let tex;
-    if (size.length == 3) {
-        tex = new mod.Data3DTexture(buffer, size[0], size[1], size[2]);
-        tex.format = old_texture.format;
-        tex.type = old_texture.type;
-    } else {
-        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
-    }
-    tex.minFilter = old_texture.minFilter;
-    tex.magFilter = old_texture.magFilter;
-    tex.anisotropy = old_texture.anisotropy;
-    tex.wrapS = old_texture.wrapS;
-    if (size.length > 1) {
-        tex.wrapT = old_texture.wrapT;
-    }
-    if (size.length > 2) {
-        tex.wrapR = old_texture.wrapR;
-    }
-    return tex;
-}
-function BufferAttribute(buffer) {
-    const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
-    jsbuff.setUsage(mod.DynamicDrawUsage);
-    return jsbuff;
-}
-function InstanceBufferAttribute(buffer) {
-    const jsbuff = new mod.InstancedBufferAttribute(buffer.flat, buffer.type_length);
-    jsbuff.setUsage(mod.DynamicDrawUsage);
-    return jsbuff;
-}
-function attach_geometry(buffer_geometry, vertexarrays, faces) {
-    for(const name in vertexarrays){
-        const buff = vertexarrays[name];
-        let buffer;
-        if (buff.to_update) {
-            buffer = new mod.BufferAttribute(buff.to_update, buff.itemSize);
-        } else {
-            buffer = BufferAttribute(buff);
-        }
-        buffer_geometry.setAttribute(name, buffer);
-    }
-    buffer_geometry.setIndex(faces);
-    buffer_geometry.boundingSphere = new mod.Sphere();
-    buffer_geometry.boundingSphere.radius = 10000000000000;
-    buffer_geometry.frustumCulled = false;
-    return buffer_geometry;
-}
-function attach_instanced_geometry(buffer_geometry, instance_attributes) {
-    for(const name in instance_attributes){
-        const buffer = InstanceBufferAttribute(instance_attributes[name]);
-        buffer_geometry.setAttribute(name, buffer);
-    }
-}
-function create_material(plot) {
-    const is_volume = "volumedata" in plot.deserialized_uniforms;
-    return new mod.RawShaderMaterial({
-        uniforms: plot.deserialized_uniforms,
-        vertexShader: plot.plot_data.vertex_source,
-        fragmentShader: plot.plot_data.fragment_source,
-        side: is_volume ? mod.BackSide : mod.DoubleSide,
-        transparent: true,
-        glslVersion: mod.GLSL3,
-        depthTest: !plot.plot_data.overdraw.value,
-        depthWrite: !plot.plot_data.transparency.value
-    });
-}
-function create_mesh(plot) {
-    const buffer_geometry = new mod.BufferGeometry();
-    const { plot_data: plot_data1  } = plot;
-    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
-    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
-    const material = create_material(plot);
-    const mesh = new mod.Mesh(buffer_geometry, material);
-    return mesh;
-}
-function create_instanced_mesh(plot) {
-    const { plot_data: plot_data1  } = plot;
-    const buffer_geometry = new mod.InstancedBufferGeometry();
-    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
-    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, plot_data1.instance_attributes);
-    const material = create_material(plot);
-    const mesh = new mod.Mesh(buffer_geometry, material);
-    return mesh;
-}
 class Mesh extends Plot {
     constructor(scene, data){
         super(scene, data);
@@ -24178,6 +24292,91 @@ class Mesh extends Plot {
             this.mesh = create_mesh(this);
         }
         this.init_mesh();
+    }
+}
+function broadcast_getindex(a, x1, i) {
+    if (a.length == x1.length / 2) {
+        return new T(x1[i * 2], x1[i * 2 + 1]);
+    } else if (x1.length == 2) {
+        return new T(x1[0], x1[1]);
+    } else {
+        throw new Error(`broadcast_getindex: x has length ${x1.length}, but a has length ${a.length}`);
+    }
+}
+function per_glyph_data(glyph_hashes, scales) {
+    const atlas = get_texture_atlas();
+    const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
+    const markersize = new Float32Array(glyph_hashes.length * 2);
+    const quad_offsets = new Float32Array(glyph_hashes.length * 2);
+    for(let i = 0; i < glyph_hashes.length; i++){
+        const hash = glyph_hashes[i];
+        const data = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i));
+        const [uv, c_width, q_offset] = data ?? [
+            new ot(0, 0, 0, 0),
+            new T(0, 0),
+            new T(0, 0)
+        ];
+        uv_offset_width.set(uv.toArray(), i * 4);
+        markersize.set(c_width.toArray(), i * 2);
+        quad_offsets.set(q_offset.toArray(), i * 2);
+    }
+    return [
+        uv_offset_width,
+        markersize,
+        quad_offsets
+    ];
+}
+function get_glyph_data_attributes(atlas, glyph_data) {
+    if (glyph_data == null) {
+        return {};
+    }
+    const { glyph_hashes , atlas_updates , scales  } = glyph_data;
+    atlas.insert_glyphs(atlas_updates);
+    if (glyph_hashes) {
+        const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(glyph_hashes, scales);
+        return {
+            sdf_uv,
+            quad_scale,
+            quad_offset
+        };
+    }
+    return {};
+}
+class Scatter extends Plot {
+    constructor(scene, data){
+        const atlas = get_texture_atlas();
+        const lengths = {
+            sdf_uv: 4
+        };
+        if ("glyph_data" in data) {
+            const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
+            delete data.glyph_data;
+            for(const name in gdata){
+                const buff = gdata[name];
+                const len = lengths[name] || 2;
+                data.instance_attributes[name] = {
+                    flat: buff,
+                    type_length: len
+                };
+            }
+        }
+        console.log(data);
+        super(scene, data);
+        this.is_instanced = true;
+        this.atlas = atlas;
+        this.mesh = create_instanced_mesh(this);
+        this.init_mesh();
+    }
+    update(data_key_value_array) {
+        const dict = Object.fromEntries(data_key_value_array);
+        if ("glyph_data" in dict) {
+            const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
+            delete dict.glyph_data;
+            for (const [key, value] of Object.entries(data)){
+                dict[key] = value;
+            }
+        }
+        super.update(Object.entries(dict));
     }
 }
 function nan_free_points_indices(points, ndim) {
@@ -24232,7 +24431,8 @@ function approx_equal(a, b) {
 const mod1 = {
     Plot: Plot,
     Lines: Lines,
-    Mesh: Mesh
+    Mesh: Mesh,
+    Scatter: Scatter
 };
 window.THREE = mod;
 function dispose_screen(screen) {
@@ -24247,9 +24447,8 @@ function dispose_screen(screen) {
         renderer.dispose();
     }
     if (screen.texture_atlas) {
-        const data = TEXTURE_ATLAS[0].value;
-        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
-        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas.dispose();
+        screen.texture_atlas.image = null;
         screen.texture_atlas = undefined;
     }
     if (root_scene) {
@@ -24556,7 +24755,7 @@ function add_picking_target(screen) {
     });
     return;
 }
-function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, texture_atlas_obs, fps, resize_to, px_per_unit, scalefactor) {
+function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height, fps, resize_to, px_per_unit, scalefactor) {
     if (!scalefactor) {
         scalefactor = window.devicePixelRatio || 1.0;
     }
@@ -24564,7 +24763,6 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit = scalefactor;
     }
     const renderer = threejs_module(canvas);
-    TEXTURE_ATLAS[0] = texture_atlas_obs;
     if (!renderer) {
         const warning = getWebGLErrorMessage();
         wrapper.appendChild(warning);
@@ -24892,9 +25090,9 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    TEXTURE_ATLAS
+    get_texture_atlas
 };
-export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert };
+export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };

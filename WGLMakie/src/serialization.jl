@@ -2,34 +2,6 @@ using ShaderAbstractions: InstancedProgram, Program
 using Makie: Key, plotkey
 using Colors: N0f8
 
-function lift_convert(key, value, ::Attributes)
-    convert(value) = wgl_convert(value, Key{key}())
-    if value isa Observable
-        val = lift(convert, value)
-    else
-        val = convert(value)
-    end
-    if key === :colormap && val[] isa AbstractArray
-        return ShaderAbstractions.Sampler(val)
-    else
-        return val
-    end
-end
-
-
-function lift_convert(key, value, plot)
-    convert(value) = wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
-    if value isa Observable
-        val = lift(convert, plot, value)
-    else
-        val = convert(value)
-    end
-    if key === :colormap && val[] isa AbstractArray
-        return ShaderAbstractions.Sampler(val)
-    else
-        return val
-    end
-end
 
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
@@ -91,16 +63,18 @@ function three_repeat(s::Symbol)
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler",
-               :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...],
-               :three_format => three_format(T),
-               :three_type => three_type(eltype(T)),
-               :minFilter => three_filter(color.minfilter),
-               :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]),
-               :mipmap => color.mipmap,
-               :anisotropy => color.anisotropic)
+    tex = Dict(
+        :type => "Sampler",
+        :data => serialize_three(color.data),
+        :size => Int32[size(color.data)...],
+        :three_format => three_format(T),
+        :three_type => three_type(eltype(T)),
+        :minFilter => three_filter(color.minfilter),
+        :magFilter => three_filter(color.magfilter),
+        :wrapS => three_repeat(color.repeat[1]),
+        :mipmap => color.mipmap,
+        :anisotropy => color.anisotropic
+    )
     if N > 1
         tex[:wrapT] = three_repeat(color.repeat[2])
     end
@@ -115,12 +89,12 @@ function serialize_uniforms(dict::Dict)
     for (k, v) in dict
         # we don't send observables and instead use
         # uniform_updater(dict)
-        result[k] = serialize_three(to_value(v))
+        result[k] = serialize_three(v)
     end
     return result
 end
 
-
+serialize_three(x::Dict) = x
 
 """
     flatten_buffer(array::AbstractArray)
@@ -161,102 +135,15 @@ function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext
     return convert(Quaternion, t)
 end
 
-function wgl_convert(value, key1, key2...)
-    val = Makie.convert_attribute(value, key1, key2...)
-    return if val isa AbstractArray{<:Float64}
-        return Makie.el32convert(val)
-    else
-        return val
-    end
-end
-
-function wgl_convert(value::AbstractMatrix, ::key"colormap", key2...)
-    return ShaderAbstractions.Sampler(value)
-end
-
 function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
     return Dict(:flat => serialize_three(buffer), :type_length => tlength(T))
 end
 
-function serialize_named_buffer(va::ShaderAbstractions.VertexArray)
-    return Dict(map(ShaderAbstractions.buffers(va)) do (name, buff)
-                    return name => serialize_buffer_attribute(buff)
-                end)
-end
-
-function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, named_buffers::ShaderAbstractions.VertexArray)
-    for (name::Symbol, buffer::Buffer) in ShaderAbstractions.buffers(named_buffers)
-        on(plot, ShaderAbstractions.updater(buffer).update) do (f, args)
-            # update to replace the whole buffer!
-            if f === ShaderAbstractions.update!
-                new_array = args[1]
-                flat = flatten_buffer(new_array)
-                update_buffer[] = [name, serialize_three(flat), length(new_array)]
-            end
-            return
-        end
-    end
-    return update_buffer
-end
-
-function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::Program)
-    return register_geometry_updates(plot, update_buffer, program.vertexarray)
-end
-
-function register_geometry_updates(@nospecialize(plot), update_buffer::Observable, program::InstancedProgram)
-    return register_geometry_updates(plot, update_buffer, program.per_instance)
-end
-
-function uniform_updater(@nospecialize(plot), uniforms::Dict)
-    updater = Observable{Any}(Any[:none, []])
-    for (name, value) in uniforms
-        if value isa Sampler
-            on(plot, ShaderAbstractions.updater(value).update) do (f, args)
-                if f === ShaderAbstractions.update!
-                    update = [name, [Int32[size(value.data)...], serialize_three(args[1])]]
-                    updater[] = isdefined(Bonito, :LargeUpdate) ? Bonito.LargeUpdate(update) : update
-                end
-                return
-            end
-        else
-            value isa Observable || continue
-            on(plot, value) do value
-                updater[] = [name, serialize_three(value)]
-                return
-            end
-        end
-    end
-    return updater
-end
-
-function serialize_three(@nospecialize(plot), ip::InstancedProgram)
-    program = serialize_three(plot, ip.program)
-    program[:instance_attributes] = serialize_named_buffer(ip.per_instance)
-    register_geometry_updates(plot, program[:attribute_updater], ip)
-    return program
-end
 
 reinterpret_faces(p, faces::AbstractVector) = collect(reinterpret(UInt32, decompose(GLTriangleFace, faces)))
 
 function reinterpret_faces(@nospecialize(plot), faces::Buffer)
     return reinterpret_faces(plot, ShaderAbstractions.data(faces))
-end
-
-function serialize_three(@nospecialize(plot), program::Program)
-    facies = reinterpret_faces(plot, ShaderAbstractions.indexbuffer(program.vertexarray))
-    uniforms = serialize_uniforms(program.uniforms)
-    attribute_updater = Observable(["", [], 0])
-    register_geometry_updates(plot, attribute_updater, program)
-    # TODO, make this configurable in ShaderAbstractions
-    update_shader(x) = replace(x, "#version 300 es" => "")
-    return Dict(
-        :vertexarrays => serialize_named_buffer(program.vertexarray),
-        :faces => facies,
-        :uniforms => uniforms,
-        :vertex_source => update_shader(program.vertex_source),
-        :fragment_source => update_shader(program.fragment_source),
-        :uniform_updater => uniform_updater(plot, program.uniforms),
-        :attribute_updater => attribute_updater)
 end
 
 function serialize_scene(scene::Scene)
@@ -314,8 +201,11 @@ end
 
 # TODO: lines overwrites this
 function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
-    program = create_shader(scene, plot)
+    program, additional = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+    if additional !== nothing
+        merge!(mesh, additional)
+    end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible isa Observable ? plot.visible : Observable(plot.visible[])
     mesh[:uuid] = js_uuid(plot)

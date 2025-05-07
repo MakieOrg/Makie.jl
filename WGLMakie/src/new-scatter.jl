@@ -1,20 +1,25 @@
 using Makie: register_computation!
 
-function serialize_three(scene::Scene, plot::Makie.ComputePlots)
-    program = create_shader(scene, plot)
-    mesh = serialize_three(plot, program)
+js_plot_type(plot::Makie.AbstractPlot) = "Mesh"
+js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
+js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
-    mesh[:plot_type] = "Mesh"
+function serialize_three(scene::Scene, plot::Makie.ComputePlots)
+
+    mesh = create_shader(scene, plot)
+
+    mesh[:plot_type] = js_plot_type(plot)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = Observable(plot.visible[])
+    mesh[:visible] = plot.visible[]
     mesh[:uuid] = js_uuid(plot)
     mesh[:updater] = plot.args[1][:wgl_update_obs][]
-    mesh[:overdraw] = Observable(plot.overdraw[])
-    mesh[:transparency] = Observable(plot.transparency[])
-    mesh[:space] = Observable(plot.space[])
+
+    mesh[:overdraw] = plot.overdraw[]
+    mesh[:transparency] = plot.transparency[]
+    mesh[:space] = plot.space[]
 
     if haskey(plot, :markerspace)
-        mesh[:markerspace] = Observable(plot.markerspace[])
+        mesh[:markerspace] = plot.markerspace[]
         mesh[:cam_space] = plot.markerspace[]
     else
         mesh[:cam_space] = plot.space[]
@@ -23,7 +28,6 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
     mesh[:uniforms][:num_clip_planes] = serialize_three(0)
 
-    delete!(mesh, :uniform_updater)
     return mesh
 end
 
@@ -135,7 +139,7 @@ function assemble_particle_robj!(attr, data)
     data[:transform_marker] = attr.transform_marker
 
     per_instance_keys = Set([
-        :positions_transformed_f32c, :rotation, :quad_offset, :quad_offset, :quad_scale, :vertex_color,
+        :positions_transformed_f32c, :rotation, :quad_offset, :quad_scale, :vertex_color,
         :intensity, :sdf_uv, :strokecolor, :marker_offset
     ])
 
@@ -146,12 +150,8 @@ function assemble_particle_robj!(attr, data)
     filter!(data) do (k, v)
         return !(k in per_instance_keys && !(Makie.isscalar(v)))
     end
-    _, arr = first(per_instance)
-    if any(v -> length(arr) != length(v), values(per_instance))
-        lens = [k => length(v) for (k, v) in per_instance]
-        error("Not all have the same length: $(lens)")
-    end
-    return VertexArray(; per_instance...), data
+
+    return per_instance, data
 end
 
 const SCATTER_INPUTS = [
@@ -184,7 +184,8 @@ const SCATTER_INPUTS = [
     :transform_marker,
     :f32c_scale,
     :model_f32c,
-    :marker_offset
+    :marker_offset,
+    :glyph_data
 ]
 
 function scatter_program(attr)
@@ -192,43 +193,132 @@ function scatter_program(attr)
     atlas = attr.atlas
     distancefield = dfield ? NoDataTextureAtlas(size(atlas.data)) : false
     data = Dict(
-        :marker_offset => attr.marker_offset,
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
         :billboard => get(()-> attr.text_rotation, attr, :rotation) isa Billboard,
         :distancefield => distancefield,
 
-        :quad_scale => attr.quad_scale,
-        :quad_offset => attr.quad_offset,
-        :sdf_uv => attr.sdf_uv,
-        :sdf_marker_shape => attr.sdf_marker_shape,
+        :marker_offset => attr.marker_offset,
+        # Optional if glyph_data is provided
+        :sdf_uv => get(attr, :sdf_uv, Vec4f[]),
+        :quad_scale => get(attr, :quad_scale, Vec2f[]),
+        :quad_offset => get(attr, :quad_offset, Vec2f[]),
+        :sdf_marker_shape => get(attr, :sdf_marker_shape, Vec2f[]),
+
         :strokewidth => attr.strokewidth,
         :strokecolor => get(()-> attr.text_strokecolor, attr, :strokecolor),
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
     )
+
     per_instance, uniforms = assemble_particle_robj!(attr, data)
     instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1.0f0, 1.0f0))
-    return InstancedProgram(
-        WebGL(),
+
+    data = create_instanced_shader(
+        per_instance, instance, uniforms,
         lasset("sprites.vert"),
-        lasset("sprites.frag"),
-        instance,
-        per_instance,
-        uniforms,
+        lasset("sprites.frag")
     )
 
+    if haskey(attr, :glyph_data)
+        data[:glyph_data] = attr.glyph_data
+    end
+    return data
 end
 
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.args[1]
     Makie.all_marker_computations!(attr)
+    register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
+        shape != 3 && return nothing
+        data = get_scatter_data(scene, markers, fonts)
+        dict = Dict(:atlas_updates => data)
+        return (dict,)
+    end
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)
     return create_wgl_renderobject(scatter_program, attr, SCATTER_INPUTS)
 end
+
+const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
+
+function get_atlas_tracker(scene::Scene)
+    for (s, _) in SCENE_ATLASES
+        Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
+    end
+    screen = Makie.getscreen(scene, WGLMakie)
+    if isnothing(screen.session)
+        @warn "No session found, returning empty atlas tracker"
+        # TODO, it's not entirely clear in which case this can happen,
+        # which is why we don't just error, but just assume there isn't anything tracked
+        return Set{UInt32}()
+    end
+    session = Bonito.root_session(screen.session)
+    if haskey(SCENE_ATLASES, session)
+        return SCENE_ATLASES[session]
+    else
+        atlas = Set{UInt32}()
+        SCENE_ATLASES[session] = atlas
+        return atlas
+    end
+end
+
+function get_scatter_data(scene::Scene, markers, fonts)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
+    return new_glyphs
+end
+
+function get_glyph_data(scene::Scene, glyphs, fonts)
+    tracker = get_atlas_tracker(Makie.root(scene))
+    atlas = Makie.get_texture_atlas()
+    glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
+    return glyph_hashes, new_glyphs
+end
+
+function register_text_computation!(attr, scene)
+    register_computation!(attr, [:glyphindices, :text_blocks, :fontsize], [:glyph_scales]) do (glyphs, text_blocks, fontsize), changed, last
+        return (Makie.map_per_glyph(glyphs, text_blocks, Vec2f, Makie.to_2d_scale(fontsize)),)
+    end
+
+    register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs,fonts,glyph_scales), changed, last
+        hashes, updates = get_glyph_data(scene, glyphs, fonts)
+        dict = Dict(
+            :glyph_hashes => hashes,
+            :atlas_updates => updates,
+            :scales => serialize_three(glyph_scales)
+        )
+        return (dict,)
+    end
+end
+
+function create_shader(scene::Scene, plot::Makie.Text)
+    # TODO: color processing incorrect, processed per-glyphcollection/global
+    #       colors instead of per glyph
+    attr = plot.args[1]
+    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+    backend_colors!(attr, :text_color)
+    register_text_computation!(attr, scene)
+    inputs = [
+        :positions_transformed_f32c,
+
+        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
+        :strokewidth, :glowwidth, :glowcolor,
+
+        :text_rotation, :text_strokecolor, # TODO: do these even work per glyph?
+        :marker_offset, :sdf_marker_shape, :glyph_data,
+        # :quad_scale, :quad_offset, :sdf_uv,
+        :depth_shift, :atlas, :markerspace,
+
+        :visible, :transform_marker, :f32c_scale, :model_f32c
+    ]
+    return create_wgl_renderobject(scatter_program, attr, inputs)
+end
+
 
 function meshscatter_program(args)
     instance = args.marker
@@ -251,9 +341,10 @@ function meshscatter_program(args)
         :uv => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
-    return InstancedProgram(
-        WebGL(), lasset("particles.vert"), lasset("mesh.frag"),
-        instance, per_instance, uniforms
+    return create_instanced_shader(
+        per_instance, instance, uniforms,
+        lasset("particles.vert"),
+        lasset("mesh.frag")
     )
 end
 
@@ -305,6 +396,7 @@ function add_uv_mesh!(attr)
         Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
     end
 end
+
 to_3x3(mat::Mat{3, 3}) = mat
 function to_3x3(mat::Mat{2, 3})::Mat{3, 3}
     return Mat3f(mat[1, 1], mat[1, 2], 0, mat[2, 1], mat[2, 2], 0, 0, 0, 1)
@@ -332,6 +424,7 @@ function mesh_program(attr)
         :normalmatrix => attr.world_normalmatrix,
         :interpolate_in_fragment_shader => true
     )
+
     handle_color!(data, attr)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     data[:picking] = false
@@ -350,8 +443,10 @@ function mesh_program(attr)
     else
         uniforms[:uv] = Vec2f(0)
     end
-    vbo = VertexArray(; positions_transformed_f32c=attr.positions_transformed_f32c, faces=attr.faces, buffers...)
-    return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), vbo, uniforms)
+    buffers[:positions_transformed_f32c] = attr.positions_transformed_f32c
+    buffers[:faces] = attr.faces
+
+    return create_shader(buffers, uniforms, lasset("mesh.vert"), lasset("mesh.frag"))
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
@@ -371,8 +466,6 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
-
-
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
     attr = plot.args[1]
@@ -489,7 +582,7 @@ function create_volume_shader(attr)
         :object_id => UInt32(0)
     )
     handle_color!(uniforms, attr)
-    return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box, uniforms)
+    return create_shader(box, uniforms, lasset("volume.vert"), lasset("volume.frag"))
 end
 
 function create_shader(scene::Scene, plot::Volume)
@@ -570,6 +663,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     Makie.add_computation!(attr, scene, :scene_origin)
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
+
     islines = plot isa Lines
 
     inputs = [
@@ -591,26 +685,4 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:updater] = attr[:wgl_update_obs][]
     return dict
-end
-
-################################
-
-
-function create_shader(scene::Scene, plot::Makie.Text)
-    # TODO: color processing incorrect, processed per-glyphcollection/global
-    #       colors instead of per glyph
-    attr = plot.args[1]
-    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
-    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    backend_colors!(attr, :text_color)
-    inputs = [
-        :positions_transformed_f32c,
-        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
-        :text_rotation, :text_strokecolor, # TODO: do these even work per glyph?
-        :quad_scale, :quad_offset, :sdf_uv, :sdf_marker_shape, :marker_offset,
-        :strokewidth, :glowwidth, :glowcolor,
-        :depth_shift, :atlas, :markerspace,
-        :visible, :transform_marker, :f32c_scale, :model_f32c
-    ]
-    return create_wgl_renderobject(scatter_program, attr, inputs)
 end

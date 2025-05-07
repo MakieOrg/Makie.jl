@@ -1,10 +1,10 @@
-import * as Camera from "./Camera.js";
-import { undefined, delete_three_scene, delete_plot, add_plot, create_texture, add_scene, scene_cache } from "./Serialization.js";
 import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
+import { get_texture_atlas } from "./TextureAtlas.js";
 
 function first(x) {
     return x[Object.keys(x)[0]];
 }
+
 function is_three_fixed_array(value) {
     return (
         value instanceof THREE.Vector2 ||
@@ -12,6 +12,24 @@ function is_three_fixed_array(value) {
         value instanceof THREE.Vector4 ||
         value instanceof THREE.Matrix4
     );
+}
+
+export function to_three_vector(data) {
+    if (data.length == 2) {
+        return new THREE.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new THREE.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new THREE.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new THREE.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data;
 }
 
 function typedarray_to_vectype(typedArray, ndim) {
@@ -334,36 +352,15 @@ function create_texture_from_data(data) {
     }
 }
 
-const TEXTURE_ATLAS = [undefined];
-
 export function create_texture(scene, data) {
     const buffer = data.data;
-    // we allow to have a global texture atlas which gets only uploaded once to the browser
-    // it's not the nicest way, but by setting buffer to "texture_atlas" on the julia side
-    // instead of actual data, we just get the texture atlas from the global.
-    // Special care has to be taken to deregister the callback when the context gets destroyed
-    // Since TEXTURE_ATLAS uses "Bonito.Retain" and will live for the whole browser session.
     if (buffer == "texture_atlas") {
-        const { texture_atlas } = scene.screen;
-        if (texture_atlas) {
-            return texture_atlas;
-        } else {
-            data.data = TEXTURE_ATLAS[0].value;
-            const texture = create_texture_from_data(data);
-            scene.screen.texture_atlas = texture;
-            TEXTURE_ATLAS[0].on((new_data) => {
-                if (new_data === texture) {
-                    // if the data is our texture, it means the WGL context got destroyed and we want to deregister
-                    // TODO, better Observables.js API for this
-                    return false; // deregisters the callback
-                } else {
-                    texture.image.data.set(new_data);
-                    texture.needsUpdate = true;
-                    return;
-                }
-            });
-            return texture;
+        const { texture_atlas, renderer } = scene.screen;
+        if (!texture_atlas) {
+            const atlas = get_texture_atlas();
+            scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
+        return scene.screen.texture_atlas;
     } else {
         return create_texture_from_data(data);
     }
@@ -459,8 +456,8 @@ export function create_material(plot) {
         side: is_volume ? THREE.BackSide : THREE.DoubleSide,
         transparent: true,
         glslVersion: THREE.GLSL3,
-        depthTest: !plot.plot_data.overdraw.value,
-        depthWrite: !plot.plot_data.transparency.value,
+        depthTest: !plot.plot_data.overdraw,
+        depthWrite: !plot.plot_data.transparency,
     });
 }
 
@@ -562,5 +559,3 @@ export function connect_attributes(mesh, updater) {
         }
     });
 }
-
-export { TEXTURE_ATLAS };

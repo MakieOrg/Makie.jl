@@ -31,7 +31,7 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
     # linestyle/pattern handling
     register_computation!(
         attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
-    ) do (linestyle,), changed, last
+    ) do (linestyle,), changed, cached
         if isnothing(linestyle)
             sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
             len = 1.0f0 # should be irrelevant, compat for strictly solid lines
@@ -39,10 +39,10 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
             sdf = Makie.linestyle_to_sdf(linestyle)
             len = Float32(last(linestyle) - first(linestyle))
         end
-        if isnothing(last)
+        if isnothing(cached)
             tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
         else
-            tex = last.uniform_pattern
+            tex = cached.uniform_pattern
             ShaderAbstractions.update!(tex, sdf)
         end
         return (tex, len)

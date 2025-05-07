@@ -46,13 +46,15 @@ Base.size(x::NoDataTextureAtlas) = x.dims
 Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
-    tex = Dict(:type => "Sampler", :data => "texture_atlas",
-               :size => [fta.dims...], :three_format => three_format(Float16),
-               :three_type => three_type(Float16),
-               :minFilter => three_filter(:linear),
-               :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+    tex = Dict(
+        :type => "Sampler", :data => "texture_atlas",
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16f0
+    )
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
