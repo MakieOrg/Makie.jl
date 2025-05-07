@@ -116,7 +116,7 @@ float squared_partial_derivate(float center, vec2 df_uv) {
 // with some distortion, it will be picked up here and compensated in changes to
 // the anti-aliasing radius.
 float aspect_corrected_local_aa_radius(float signed_distance) {
-    return frag_uvscale * ANTIALIAS_RADIUS * sqrt(
+    return frag_uvscale * ANTIALIAS_RADIUS * M_SQRT_2 * sqrt(
         squared_partial_derivate(signed_distance, dFdx(frag_uv)) +
         squared_partial_derivate(signed_distance, dFdy(frag_uv))
     );
