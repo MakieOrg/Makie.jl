@@ -6,6 +6,20 @@ using Base: RefValue
 
 abstract type AbstractEdge end
 
+#=
+TODO, use this for Ref{NamedTuple} ?
+@generated function _setindex(nt::T, value, field::Symbol)::T where {T<:NamedTuple}
+    names = Base.fieldnames(T)
+    result = Expr(:tuple)
+    for name in names
+        qn = QuoteNode(name)
+        expr = Expr(:(=), name, :(($(qn) === field ? value : getfield(nt, $(qn)))::fieldtype(T, $(qn))))
+        push!(result.args, expr)
+    end
+    return result
+end
+=#
+
 """
     struct Computed
 
@@ -184,6 +198,16 @@ end
 
 function ComputeGraph()
     return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}())
+end
+
+_first_arg(args, changed, last) = (args[1],)
+
+function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
+    haskey(attr.inputs, key) || throw(KeyError(key))
+    haskey(attr.outputs, alias_key) && throw(KeyError(alias_key))
+    #TODO more efficient implementation!
+    register_computation!(_first_arg, attr, [key], [alias_key])
+    return attr
 end
 
 function isdirty(computed::Computed)

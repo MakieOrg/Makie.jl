@@ -505,7 +505,7 @@ struct GlyphCollection
         # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
-        @assert attr_broadcast_length(scales) in (n, 1)
+        @assert attr_broadcast_length(scales) in (n, 1) "$(typeof(scales)) has length $(length(scales)) but should have $n or 1"
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
         @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}

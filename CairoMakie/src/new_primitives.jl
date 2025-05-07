@@ -93,14 +93,53 @@ function cairo_transform_to_world(scene::Scene, @nospecialize(plot::Plot), pos::
 end
 
 
+# TODO: This stack should be generalized and moved to Makie
+function cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type = Point3f)
+    # the existing methods include f32convert matrices which are already
+    # applied in :positions_transformed_f32c (using this makes CairoMakie
+    # less performant (extra O(N) step) but allows code reuse with other backends)
+    M = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space) * model
+    return project_position(output_type, M, pos, eachindex(pos))
+end
+
+function cairo_project_to_markerspace(
+        scene::Scene, @nospecialize(plot::Plot);
+        input_name = :positions_transformed_f32c, output_type = Point3d
+    )
+
+    attr = plot.args[1]::Makie.ComputeGraph
+
+    Makie.register_computation!(attr,
+            [input_name, :space, :markerspace, :model_f32c], [:cairo_markerspace_pos]
+        ) do (pos, space, markerspace, model), changed, cached
+
+        output = cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type)
+        return (output,)
+    end
+
+    return attr[:cairo_markerspace_pos][]
+end
+
+function cairo_unclipped_indices(attr::Makie.ComputeGraph)
+    Makie.register_computation!(attr,
+        [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
+        [:unclipped_indices]
+    ) do (transformed, model, space, clip_planes), changed, outputs
+        return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
+    end
+
+    return attr[:unclipped_indices][]
+end
+
+
 ################################################################################
 #                             Lines, LineSegments                              #
 ################################################################################
 
 
 function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
-    linewidth = PT <: Lines ? plot.linewidth[] : plot.synched_linewidth[]
-    color = PT <: Lines ? plot.scaled_color[] : plot.synched_color[]
+    linewidth = plot.uniform_linewidth[]
+    color = plot.scaled_color[]
     linestyle, space, model = plot.linestyle[], plot.space[], plot.model[]
     ctx = screen.context
     positions = plot.positions[]
@@ -192,40 +231,25 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
-    args = p.markersize[], p.strokecolor[], p.strokewidth[], p.marker[], p.marker_offset[], p.rotation[],
-           p.transform_marker[], p.model[], p.markerspace[], p.space[], p.clip_planes[]
+    isempty(p.positions_transformed_f32c[]) && return
 
-    markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-    transform_marker, model, markerspace, space, clip_planes = args
+    @get_attribute(p, (
+        markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
+        transform_marker, model, markerspace, space, clip_planes
+    ))
 
     attr = p.args[1]
+
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker),)
     end
 
-    if !haskey(attr.outputs, :cairo_indices) # TODO: Why is this necessary? Is it still necessary?
-        Makie.register_computation!(attr,
-            [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
-            [:cairo_indices]
-        ) do (transformed, model, space, clip_planes), changed, outputs
-            return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
-        end
-    end
-
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
     #       the output can becomes invalid from render to render.
-    # Makie.register_computation!(attr,
-    #     [:positions_transformed_f32c, :cairo_indices, :model_f32c, :projectionview, :resolution, :space],
-    #     [:cairo_positions_px]
-    # ) do (transformed, indices, model, pv, res, space), changed, outputs
-    #     pos = project_position(scene, space[], transformed[], indices[], model[])
-    #     return (pos,)
-    # end
-    indices = p.cairo_indices[]
-    transform = Makie.clip_to_space(scene.camera, p.markerspace[]) *
-        Makie.space_to_clip(scene.camera, p.space[]) * p.model_f32c[]
-    positions = p.positions_transformed_f32c[]
-    isempty(positions) && return
+    indices = cairo_unclipped_indices(attr)
+    markerspace_pos = cairo_project_to_markerspace(scene, p)
+    # ^ if some positions get clipped they still get transformed here because they
+    # need to synchronize with other attributes
 
     marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
@@ -236,7 +260,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     billboard = p.rotation[] isa Billboard
 
     return draw_atomic_scatter(
-        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        scene, ctx, markerspace_pos, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
         )
 end
@@ -244,21 +268,29 @@ end
 is_approx_zero(x) = isapprox(x, 0)
 is_approx_zero(v::VecTypes) = any(x -> isapprox(x, 0), v)
 
+function is_degenerate(M::Mat2f)
+    v1 = M[Vec(1,2), 1]
+    v2 = M[Vec(1,2), 2]
+    l1 = dot(v1, v1)
+    l2 = dot(v2, v2)
+    # Bad cases:   nan   ||     0 vector     ||   linearly dependent
+    return any(isnan, M) || l1 ≈ 0 || l2 ≈ 0 || dot(v1, v2)^2 ≈ l1 * l2
+end
+
 function draw_atomic_scatter(
-        scene, ctx, transform, positions, indices, colors, markersize, strokecolor, strokewidth,
+        scene, ctx, markerspace_positions, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
     )
 
-    Makie.broadcast_foreach_index(positions, indices, colors, markersize, strokecolor,
-        strokewidth, marker, marker_offset, remove_billboard(rotation)) do pos, col,
+    Makie.broadcast_foreach_index(markerspace_positions, indices, colors, markersize, strokecolor,
+        strokewidth, marker, marker_offset, remove_billboard(rotation)) do ms_pos, col,
         markersize, strokecolor, strokewidth, m, mo, rotation
 
-        isnan(pos) && return
+        isnan(ms_pos) && return
         isnan(rotation) && return # matches GLMakie
         (isnan(markersize) || is_approx_zero(markersize)) && return
 
-        p4d = transform * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1) # to markerspace
-        o = p4d[Vec(1, 2, 3)] ./ p4d[4] .+ size_model * to_ndim(Vec3d, mo, 0)
+        o = ms_pos .+ size_model * to_ndim(Vec3d, mo, 0)
         proj_pos, mat, jl_mat = project_marker(scene, markerspace, o,
             markersize, rotation, size_model, billboard) # to pixel space
 
@@ -269,8 +301,8 @@ function draw_atomic_scatter(
         # could be projected more accurately by projecting each point individually
         # and then building the shape.
 
-        # Enclosed area of the marker must be at least 1 pixel?
-        (abs(det(jl_mat)) < 1) && return
+        # make sure the matrix is not degenerate
+        is_degenerate(jl_mat) && return
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         Cairo.save(ctx)
@@ -283,6 +315,106 @@ function draw_atomic_scatter(
     end
 
     return
+end
+
+
+################################################################################
+#                                     Text                                     #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text))
+    # :text_strokewidth # TODO: missing, but does per-glyph strokewidth even work? Same for strokecolor?
+    @get_attribute(primitive, (
+        text_blocks,
+        font_per_char,
+        glyphindices,
+        marker_offset,
+        text_rotation,
+        text_color,
+        fontsize,
+        strokewidth,
+        text_strokecolor,
+        markerspace,
+        transform_marker,
+    ))
+
+    ctx = screen.context
+    attr = primitive.args[1]::Makie.ComputeGraph
+
+    # input -> markerspace
+    # TODO: This sucks, we're doing per-string/glyphcollection work per glyph here
+    valid_indices = cairo_unclipped_indices(attr)
+    markerspace_positions = cairo_project_to_markerspace(scene, primitive)
+
+    model33 = transform_marker ? primitive.model[][Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
+    if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
+        model33 = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d)[Vec(1,2,3), Vec(1,2,3)] * model33
+    end
+
+    for (block_idx, glyph_indices) in enumerate(text_blocks)
+
+        Cairo.save(ctx)
+
+        for glyph_idx in glyph_indices
+            glyph_idx in valid_indices || continue
+
+            glyph = glyphindices[glyph_idx]
+            offset = marker_offset[glyph_idx]
+            font = font_per_char[glyph_idx]
+            rotation = Makie.sv_getindex(text_rotation, glyph_idx)
+            color = Makie.sv_getindex(text_color, glyph_idx)
+            strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
+            scale = Makie.per_glyph_getindex(fontsize, glyphindices, text_blocks, glyph_idx, block_idx)
+
+            glyph_pos = markerspace_positions[glyph_idx]
+
+            # Not renderable by font (e.g. '\n')
+            # TODO, filter out \n in GlyphCollection, and render unrenderables as box
+            glyph == 0 && return
+
+            cairoface = set_ft_font(ctx, font)
+            old_matrix = get_font_matrix(ctx)
+
+            Cairo.save(ctx)
+            Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+
+            # offsets and scale apply in markerspace
+            gp3 = glyph_pos .+ model33 * offset
+
+            if any(isnan, gp3)
+                Cairo.restore(ctx)
+                continue
+            end
+
+            scale2 = scale isa Number ? Vec2d(scale, scale) : scale
+            glyphpos, mat, _ = project_marker(scene, markerspace, gp3, scale2, rotation, model33)
+
+            Cairo.save(ctx)
+            set_font_matrix(ctx, mat)
+            show_glyph(ctx, glyph, glyphpos...)
+            Cairo.restore(ctx)
+
+            if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
+                Cairo.save(ctx)
+                Cairo.move_to(ctx, glyphpos...)
+                set_font_matrix(ctx, mat)
+                glyph_path(ctx, glyph, glyphpos...)
+                Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+                Cairo.set_line_width(ctx, strokewidth)
+                Cairo.stroke(ctx)
+                Cairo.restore(ctx)
+            end
+            Cairo.restore(ctx)
+
+            cairo_font_face_destroy(cairoface)
+            set_font_matrix(ctx, old_matrix)
+        end
+
+        Cairo.restore(ctx)
+    end
+
+    nothing
 end
 
 

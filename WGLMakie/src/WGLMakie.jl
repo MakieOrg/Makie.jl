@@ -34,15 +34,13 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 # using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
+include("shader-abstractions.jl")
 include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")
 include("events.jl")
 include("particles.jl")
 include("new-scatter.jl")
-include("lines.jl")
-include("meshes.jl")
-include("imagelike.jl")
 include("picking.jl")
 include("voxel.jl")
 
@@ -69,22 +67,13 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     return
 end
 
+# This is deprecated, but we'll leave it here for now
+# until the next breaking release.
 const TEXTURE_ATLAS = Observable(Float32[])
-
-wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    # We need to update the texture atlas whenever it changes!
-    # We do this in three_plot!
-    atlas = wgl_texture_atlas()
-    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-    Makie.font_render_callback!(atlas) do sd, uv
-        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-        return
-    end
-
     DISABLE_JS_FINALZING[] = false
     return
 end

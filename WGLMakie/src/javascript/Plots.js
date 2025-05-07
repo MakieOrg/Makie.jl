@@ -8,6 +8,7 @@ import {
     update_uniform
 } from "./ThreeHelper.js";
 import { deserialize_uniforms, plot_cache } from "./Serialization.js";
+import { get_texture_atlas } from "./TextureAtlas.js";
 
 /**
  * Connects a plot to a scene by setting up the necessary camera uniforms.
@@ -49,11 +50,10 @@ function connect_plot(scene, plot) {
     if (plot.plot_data.uniforms.preprojection) {
         const { space, markerspace } = plot.plot_data;
         uniforms.preprojection = cam.preprojection_matrix(
-            space.value,
-            markerspace.value
+            space,
+            markerspace
         );
     }
-
     uniforms.light_direction = scene.light_direction;
 }
 
@@ -87,10 +87,7 @@ export class Plot {
         this.mesh.matrixAutoUpdate = false;
         this.mesh.renderOrder = this.plot_data.zvalue;
         this.mesh.plot_object = this;
-        this.mesh.visible = this.plot_data.visible.value;
-        this.plot_data.visible.on((v) => {
-            this.mesh.visible = v;
-        });
+        this.mesh.visible = this.plot_data.visible;
     }
 
     dispose() {
@@ -248,5 +245,102 @@ export class Mesh extends Plot {
             this.mesh = create_mesh(this);
         }
         this.init_mesh();
+    }
+}
+
+
+/**
+ * Returns x[i] if x is an array, otherwise returns x.
+ * @param {*} x - Either an array or a scalar value
+ * @param {number} i - Index to access if x is an array
+ * @returns {*} - The indexed value or x itself
+ */
+function broadcast_getindex(a, x, i) {
+    if (a.length == (x.length / 2)) {
+        return new THREE.Vector2(x[i * 2], x[i * 2 + 1]);
+    } else if (x.length == 2) {
+        return new THREE.Vector2(x[0], x[1]);
+    } else {
+        throw new Error(
+            `broadcast_getindex: x has length ${x.length}, but a has length ${a.length}`
+        );
+    }
+}
+
+function per_glyph_data(glyph_hashes, scales) {
+    const atlas = get_texture_atlas();
+    const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
+    const markersize = new Float32Array(glyph_hashes.length * 2);
+    const quad_offsets = new Float32Array(glyph_hashes.length * 2);
+    for (let i = 0; i < glyph_hashes.length; i++) {
+        const hash = glyph_hashes[i];
+        const data = atlas.get_glyph_data(
+            hash,
+            broadcast_getindex(glyph_hashes, scales, i),
+        );
+        const [uv, c_width, q_offset] = data ?? [
+            new THREE.Vector4(0, 0, 0, 0),
+            new THREE.Vector2(0, 0),
+            new THREE.Vector2(0, 0),
+        ];
+        uv_offset_width.set(uv.toArray(), i * 4);
+        markersize.set(c_width.toArray(), i * 2);
+        quad_offsets.set(q_offset.toArray(), i * 2);
+
+    }
+    return [uv_offset_width, markersize, quad_offsets];
+}
+
+function get_glyph_data_attributes(atlas, glyph_data) {
+    if (glyph_data == null) {
+        return {}
+    }
+    const { glyph_hashes, atlas_updates, scales } = glyph_data;
+    atlas.insert_glyphs(atlas_updates);
+    if (glyph_hashes) {
+        const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(
+            glyph_hashes,
+            scales
+        );
+        return { sdf_uv, quad_scale, quad_offset };
+    }
+    return {}
+}
+
+export class Scatter extends Plot {
+
+    constructor(scene, data) {
+        const atlas = get_texture_atlas();
+        const lengths = { sdf_uv: 4 };
+        if ("glyph_data" in data) {
+            const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
+            delete data.glyph_data;
+            for (const name in gdata) {
+                const buff = gdata[name];
+                const len = lengths[name] || 2;
+                data.instance_attributes[name] = {
+                    flat: buff,
+                    type_length: len,
+                };
+            }
+        }
+        console.log(data)
+        super(scene, data);
+        this.is_instanced = true;
+        this.atlas = atlas;
+        this.mesh = create_instanced_mesh(this);
+        this.init_mesh();
+    }
+
+    update(data_key_value_array) {
+        const dict = Object.fromEntries(data_key_value_array);
+        if ("glyph_data" in dict) {
+            const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
+            delete dict.glyph_data;
+            for (const [key, value] of Object.entries(data)) {
+                dict[key] = value;
+            }
+        }
+        super.update(Object.entries(dict));
     }
 }

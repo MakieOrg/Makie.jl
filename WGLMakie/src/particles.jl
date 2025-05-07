@@ -1,4 +1,3 @@
-
 function handle_color_getter!(uniform_dict)
     vertex_color = uniform_dict[:vertex_color]
     if vertex_color isa AbstractArray{<:Real}
@@ -31,7 +30,6 @@ function handle_color_getter!(uniform_dict)
     return
 end
 
-
 using Makie: to_spritemarker
 
 
@@ -48,213 +46,15 @@ Base.size(x::NoDataTextureAtlas) = x.dims
 Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
 
 function serialize_three(fta::NoDataTextureAtlas)
-    tex = Dict(:type => "Sampler", :data => "texture_atlas",
-               :size => [fta.dims...], :three_format => three_format(Float16),
-               :three_type => three_type(Float16),
-               :minFilter => three_filter(:linear),
-               :magFilter => three_filter(:linear),
-               :wrapS => "RepeatWrapping",
-               :anisotropy => 16f0)
+    tex = Dict(
+        :type => "Sampler", :data => "texture_atlas",
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16f0
+    )
     tex[:wrapT] = "RepeatWrapping"
     return tex
-end
-
-function scatter_shader(scene::Scene, attributes, plot)
-    # Potentially per instance attributes
-    all_keys = [
-        :positions_transformed_f32c,
-        :vertex_color,
-        :uniform_color,
-        :uniform_colormap,
-        :uniform_colorrange,
-        :nan_color,
-        :highclip_color,
-        :lowclip_color,
-        :pattern,
-
-        :rotation,
-        :quad_scale,
-        :quad_offset,
-        :sdf_uv,
-        :sdf_marker_shape,
-        :image,
-        :strokewidth,
-        :strokecolor,
-        :glowwidth,
-        :glowcolor,
-        :depth_shift,
-        :atlas_1024_32,
-        :markerspace,
-        :visible,
-        :transform_marker,
-        :f32c_scale,
-        :shape_type,
-        :uv_offset_width,
-        :markersize,
-        :marker_offset,
-        :model,
-        :preprojection,
-        :billboard
-    ]
-    per_instance_keys = [:positions_transformed_f32c, :rotation, :markersize, :vertex_color, :intensity,
-                         :uv_offset_width, :quad_offset, :marker_offset]
-    data = Dict{Symbol,Any}()
-    marker = nothing
-    atlas = wgl_texture_atlas()
-    if haskey(attributes, :marker)
-        font =  attributes.font[]
-        marker = lift(plot, attributes[:marker]) do marker
-            marker isa Makie.FastPixel && return Rect # FastPixel not supported, but same as Rect just slower
-            marker isa AbstractMatrix{<:Colorant} && return to_color(marker)
-            return Makie.to_spritemarker(marker)
-        end
-
-        markersize = lift(Makie.to_2d_scale, plot, attributes[:markersize])
-
-        msize, offset = Makie.marker_attributes(atlas, marker, markersize, font, plot)
-        data[:markersize] = msize
-        data[:quad_offset] = offset
-        data[:uv_offset_width] = Makie.primitive_uv_offset_width(atlas, marker, font)
-        if to_value(marker) isa AbstractMatrix
-            data[:uniform_color] = Sampler(lift(el32convert, plot, marker))
-        end
-    end
-    for key in all_keys
-        if haskey(attributes, key)
-            data[key] = attributes[key]
-        end
-    end
-    handle_old_color!(plot, data)
-    handle_color_getter!(data)
-
-    per_instance = filter(data) do (k, v)
-        _v = to_value(v)
-        return k in per_instance_keys && (!(Makie.isscalar(_v)) || _v isa Buffer)
-    end
-
-    for (k, v) in per_instance
-        per_instance[k] = Buffer(lift_convert(k, v, plot))
-    end
-
-    uniform_dict = filter(data) do (k, v)
-        return !haskey(per_instance, k)
-    end
-
-    color_keys = Set([:uniform_color, :uniform_colormap, :highclip_color, :lowclip_color, :nan_color, :colorrange, :colorscale,
-                      :calculated_colors])
-
-    for (k, v) in uniform_dict
-        k in IGNORE_KEYS && continue
-        k in color_keys && continue
-        uniform_dict[k] = lift_convert(k, v, plot)
-    end
-    if !isnothing(marker)
-        get!(uniform_dict, :shape_type) do
-            return lift(plot, marker; ignore_equal_values=true) do marker
-                return Cint(Makie.marker_to_sdf_shape(to_spritemarker(marker)))
-            end
-        end
-    end
-
-    if uniform_dict[:shape_type][] == 3
-        atlas = wgl_texture_atlas()
-        uniform_dict[:distancefield] = NoDataTextureAtlas(size(atlas.data))
-        uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
-    else
-        uniform_dict[:atlas_texture_size] = 0f0
-        uniform_dict[:distancefield] = Observable(false)
-    end
-
-    instance = uv_mesh(Rect2f(-0.5f0, -0.5f0, 1f0, 1f0))
-    # Don't send obs, since it's overwritten in JS to be updated by the camera
-    uniform_dict[:resolution] = to_value(scene.camera.resolution)
-    uniform_dict[:px_per_unit] = 1f0
-
-    # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
-    uniform_dict[:picking] = false
-    uniform_dict[:object_id] = UInt32(0)
-
-    # Make sure these exist
-    get!(uniform_dict, :strokewidth, 0f0)
-    get!(uniform_dict, :strokecolor, RGBAf(0, 0, 0, 0))
-    get!(uniform_dict, :glowwidth, 0f0)
-    get!(uniform_dict, :glowcolor, RGBAf(0, 0, 0, 0))
-    _, arr = first(per_instance)
-    if any(v-> length(arr) != length(v), values(per_instance))
-        lens = [k => length(v) for (k, v) in per_instance]
-        error("Not all have the same length: $(lens)")
-    end
-    return InstancedProgram(WebGL(), lasset("sprites.vert"), lasset("sprites.frag"),
-                            instance, VertexArray(; per_instance...), uniform_dict)
-end
-
-const IGNORE_KEYS = Set([
-    :shading, :overdraw, :distancefield, :space, :markerspace, :fxaa,
-    :visible, :transformation, :alpha, :linewidth, :transparency, :marker,
-    :light_direction, :light_color,
-    :cycle, :label, :inspector_clear, :inspector_hover,
-    :inspector_label, :axis_cyclerr, :dim_conversions, :material, :clip_planes
-    # TODO add model here since we generally need to apply patch_model?
-])
-
-value_or_first(x::AbstractArray) = first(x)
-value_or_first(x::StaticVector) = x
-value_or_first(x::Mat) = x
-value_or_first(x) = x
-
-function create_shader(scene::Scene, plot::Makie.Text{<:Tuple{<:Union{<:Makie.GlyphCollection, <:AbstractVector{<:Makie.GlyphCollection}}}})
-    glyphcollection = plot[1]
-    f32c, model = Makie.patch_model(plot)
-    pos = apply_transform_and_f32_conversion(plot, f32c, plot.position)
-    offset = plot.offset
-
-    atlas = wgl_texture_atlas()
-    glyph_data = lift(plot, pos, glyphcollection, offset; ignore_equal_values=true) do pos, gc, offset
-        Makie.text_quads(atlas, pos, to_value(gc), offset)
-    end
-
-    # unpack values from the one signal:
-    positions, char_offset, quad_offset, uv_offset_width, scale = map((1, 2, 3, 4, 5)) do i
-        return lift(getindex, plot, glyph_data, i; ignore_equal_values=true)
-    end
-
-    uniform_color = lift(plot, glyphcollection; ignore_equal_values=true) do gc
-        if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.colors, length(g.glyphs)) for g in gc);
-                    init=RGBAf[])
-        else
-            gc.colors.sv
-        end
-    end
-    uniform_rotation = lift(plot, glyphcollection; ignore_equal_values=true) do gc
-        if gc isa AbstractArray
-            reduce(vcat, (Makie.collect_vector(g.rotations, length(g.glyphs)) for g in gc);
-                    init=Quaternionf[])
-        else
-            gc.rotations.sv
-        end
-    end
-
-    plot_attributes = copy(plot.attributes)
-    plot_attributes.attributes[:calculated_colors] = uniform_color
-    uniforms = Dict(
-        :model => model,
-        :shape_type => Observable(Cint(3)),
-        :rotation => uniform_rotation,
-        :positions_transformed_f32c => positions,
-        :marker_offset => char_offset,
-        :quad_offset => quad_offset,
-        :markersize => scale,
-        :preprojection => Mat4f(I),
-        :uv_offset_width => uv_offset_width,
-        :transform_marker => get(plot.attributes, :transform_marker, Observable(true)),
-        :billboard => Observable(false),
-        :depth_shift => get(plot, :depth_shift, Observable(0f0)),
-        :glowwidth => plot.glowwidth,
-        :glowcolor => plot.glowcolor,
-    )
-
-    Makie.add_f32c_scale!(uniforms, scene, plot, f32c)
-
-    return scatter_shader(scene, uniforms, plot_attributes)
 end

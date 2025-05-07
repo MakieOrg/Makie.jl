@@ -1,7 +1,8 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import * as Camera from "./Camera.js";
 import * as Plots from "./Plots.js";
-import {create_texture} from "./ThreeHelper.js";
+import { create_texture, to_three_vector } from "./ThreeHelper.js";
+import { get_texture_atlas } from "./TextureAtlas.js";
 
 function create_plot(scene, data) {
     const PlotClass = Plots[data.plot_type]; // Dynamically lookup the class
@@ -103,41 +104,28 @@ export function is_typed_array(data) {
     return data instanceof Float32Array || data instanceof Int32Array || data instanceof Uint32Array;
 }
 
-
-
 function to_uniform(scene, data) {
     if (data.type !== undefined) {
-
         if (data.type == "Sampler") {
             return convert_texture(scene, data);
         }
         throw new Error(`Type ${data.type} not known`);
     }
-    if (is_typed_array(data)) {
+    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
+        if (!data.every((x) => typeof x === "number")) {
+            // if not all numbers, we just leave it
+            return data;
+        }
         // else, we convert it to THREE vector/matrix types
-        if (data.length == 2) {
-            return new THREE.Vector2().fromArray(data);
-        }
-        if (data.length == 3) {
-            return new THREE.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new THREE.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new THREE.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
+        return to_three_vector(data);
     }
     // else, leave unchanged
     return data;
 }
 
+
 export function deserialize_uniforms(scene, data) {
     const result = {};
-    // Deno may change constructor names..so...
-
     for (const name in data) {
         const value = data[name];
         // this is already a uniform - happens when we attach additional
@@ -159,7 +147,33 @@ export function on_next_insert(f) {
     ON_NEXT_INSERT.add(f);
 }
 
+
+// the plot order is different in WGLMakie (js) compared to serialization order
+// In julia, so we need to first go through all plots and update the glyphs.
+// Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
+// If plotb gets serialized first, the glyphs from plota will be missing.
+function add_glyphs_from_plots(scene_data) {
+    const atlas = get_texture_atlas();
+    scene_data.plots.forEach((plot_data) => {
+        if (plot_data.glyph_data) {
+            const glyph_data = plot_data.glyph_data;
+            const { atlas_updates } = glyph_data;
+            if (atlas_updates) {
+                atlas.insert_glyphs(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child) => {
+        add_glyphs_from_plots(child);
+    });
+}
+
 export function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
+}
+
+export function deserialize_scene_recursive(data, screen) {
     const scene = new THREE.Scene();
     scene.screen = screen;
     const { canvas } = screen;
@@ -215,12 +229,11 @@ export function deserialize_scene(data, screen) {
         });
     }
 
-
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
     scene.scene_children = data.children.map((child) => {
-        const childscene = deserialize_scene(child, screen);
+        const childscene = deserialize_scene_recursive(child, screen);
         return childscene;
     });
     return scene;

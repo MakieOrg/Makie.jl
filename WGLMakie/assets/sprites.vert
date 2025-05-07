@@ -46,7 +46,7 @@ float distancefield_scale(){
     // Glyph distance field units are in pixels; convert to dimensionless
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
-    vec4 uv_rect = get_uv_offset_width();
+    vec4 uv_rect = get_sdf_uv();
     float pixsize_x = (uv_rect.z - uv_rect.x) * get_atlas_texture_size();
     return -1.0/pixsize_x;
 }
@@ -78,17 +78,17 @@ void main(){
     // get_position() returns the (relative) position of the current quad vertex
 
     vec3 f32c_scale = get_f32c_scale();
-    vec2 markersize = f32c_scale.xy * get_markersize();
+    vec2 ms = f32c_scale.xy * get_quad_scale();
     vec2 quad_offset = f32c_scale.xy * get_quad_offset();
     vec3 marker_offset = f32c_scale * tovec3(get_marker_offset());
 
-    vec2 bbox_radius = 0.5 * markersize;
+    vec2 bbox_radius = 0.5 * ms;
     vec2 sprite_bbox_centre = quad_offset + bbox_radius;
-    f_sprite_scale = markersize;
+    f_sprite_scale = ms;
     mat4 pview = projection * view;
-    mat4 trans = get_transform_marker() ? model : mat4(1.0);
+    mat4 trans = get_transform_marker() ? model_f32c : mat4(1.0);
 
-    vec4 position_world = model * vec4(tovec3(get_positions_transformed_f32c()), 1);
+    vec4 position_world = model_f32c * vec4(tovec3(get_positions_transformed_f32c()), 1);
     process_clip_planes(position_world.xyz);
 
     // Compute centre of billboard in clipping coordinates
@@ -139,7 +139,7 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = min(abs(markersize.x), abs(markersize.y));
+    float sprite_from_u_scale = min(abs(ms.x), abs(ms.y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
 
@@ -152,7 +152,7 @@ void main(){
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
     frag_color = tovec4(get_vertex_color());
-    frag_uv_offset_width = get_uv_offset_width();
+    frag_uv_offset_width = get_sdf_uv();
     // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
     // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
     frag_uv = vec2(0.5) + (get_uv() - vec2(0.5)) * uv_pad_scale;
