@@ -457,25 +457,7 @@ function computed_plot!(parent, plot::T) where {T}
     end
 
     # from connect_plot!()
-    t_user = to_value(get(attributes(plot), :transformation, automatic))
-    if t_user isa Automatic
-        t_user = to_value(get(plot.kw, :transformation, t_user))
-    end
-    if t_user isa Transformation
-        plot.transformation = t_user
-    else
-        if t_user isa Union{Nothing, Automatic}
-            plot.transformation = Transformation()
-        else
-            t = Transformation()
-            transform!(t, t_user)
-            plot.transformation = t
-        end
-        if is_space_compatible(plot, parent)
-            obsfunc = connect!(transformation(parent), transformation(plot))
-            append!(plot.deregister_callbacks, obsfunc)
-        end
-    end
+    handle_transformation!(plot, parent, false)
 
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates

@@ -370,7 +370,7 @@ function plot!(::Plot{F, Args}) where {F, Args}
     end
 end
 
-function handle_transformation!(plot, parent)
+function handle_transformation!(plot, parent, connect_model = true)
     t_user = to_value(pop!(attributes(plot), :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation
@@ -423,7 +423,10 @@ function handle_transformation!(plot, parent)
         transform!(plot.transformation, transform_op)
     end
 
-    plot.model = transformationmatrix(plot)
+    if connect_model
+        plot.model = transformationmatrix(plot)
+    end
+
     return
 end
 
