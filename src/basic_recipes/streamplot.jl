@@ -60,6 +60,15 @@ end
 
 scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
+function arrow_head(N, ::Automatic, quality)
+    if N == 2
+        return :utriangle
+    else
+        return Tessellation(Cone(Point3f(0), Point3f(0,0,1), 0.5f0), quality)
+    end
+end
+arrow_head(N, marker, quality) = marker
+
 """
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
 

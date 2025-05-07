@@ -474,8 +474,9 @@ end
 
     # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
     p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
-    p10 = arrows!(scene, Point2f[(200, 30)], Vec2f[(0, 20)], linewidth = 5, arrowsize = Vec3f(20))
-    p11 = arrows!(scene, Point3f[(220, 80, 0)], Vec3f[(-30, -10, 0)], linewidth = 5, arrowsize = Vec3f(15))
+    p10 = arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
+    p11 = arrows3d!(scene, Point3f[(220, 80, 0)], Vec3f[(-48, -16, 0)],
+        shaftradius = 2.5, tiplength = 15, tipradius = 7, markerscale = 1.0)
     p12 = contourf!(scene, 240..280, 10..50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
     p13 = spy!(scene, 240..280, 60..100, [1 2 1; 2 0 2; 1 2 1])
     p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
