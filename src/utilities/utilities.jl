@@ -208,7 +208,6 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
         # skip if there's a zero length element (like an empty annotations collection, etc)
         # this differs from standard broadcasting logic in which all non-scalar shapes have to match
         0 in lengths && return
-
         for i in 1:maxlen
             Base.Cartesian.@ncall $N f (j -> attr_broadcast_getindex(args[j], i))
         end

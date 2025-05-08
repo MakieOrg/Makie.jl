@@ -280,7 +280,7 @@ function get_glyph_data(scene::Scene, glyphs, fonts)
 end
 
 function register_text_computation!(attr, scene)
-    register_computation!(attr, [:glyphindices, :text_blocks, :fontsize], [:glyph_scales]) do (glyphs, text_blocks, fontsize), changed, last
+    register_computation!(attr, [:glyphindices, :text_blocks, :text_scales], [:glyph_scales]) do (glyphs, text_blocks, fontsize), changed, last
         return (Makie.map_per_glyph(glyphs, text_blocks, Vec2f, Makie.to_2d_scale(fontsize)),)
     end
 

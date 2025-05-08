@@ -1,3 +1,13 @@
+struct RichText
+    type::Symbol
+    children::Vector{Union{RichText,String}}
+    attributes::Dict{Symbol, Any}
+    function RichText(type::Symbol, children...; kwargs...)
+        cs = Union{RichText,String}[children...]
+        new(type, cs, Dict(kwargs))
+    end
+end
+
 function check_textsize_deprecation(@nospecialize(dictlike))
     if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
@@ -31,14 +41,11 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
         if args isa Tuple{<: AbstractString}
             # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), [args[1]])
-
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
             return ((a_pos,), args[1])
-
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), first.(args[1]))
-
         else # assume position data
             return (args, a_text)
         end
@@ -52,8 +59,6 @@ function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
 
     return
 end
-
-
 
 
 function convert_text_arguments(text::AbstractString, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
@@ -144,35 +149,11 @@ function map_per_glyph(glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int
     return result
 end
 
-
-# TODO: is this needed in CairoMakie?
-#       Do it earlier then
-function per_glyph_data((text, attribute), changed, cached)
-    return (attribute,)
-end
-function per_glyph_data((text, attribute)::Tuple{AbstractVector{<:AbstractString}, Any}, changed, cached)
-    return (attribute,)
-end
-
-
-function register_text_computations!(attr::ComputeGraph)
-    if haskey(attr, :atlas)
-        @error("Overwriting the texture atlas probably doesn't work", maxlog = 1)
-    else
-        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
-            (get_texture_atlas(2048, 64),)
-        end
-    end
-
-    register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
-        return (to_font(fs, f),)
-    end
-
+function compute_glyph_collections!(attr::ComputeGraph, ::Type{<:AbstractString})
     # TODO: maybe split this up
-    # Generate glyphcollections and whatnot
     inputs = [
         :input_text, :fontsize,
-        :selected_font, # TODO: include to_font here
+        :selected_font,
         :align, :rotation, :justification,
         :lineheight,
         :word_wrap_width, :offset
@@ -188,15 +169,174 @@ function register_text_computations!(attr::ComputeGraph)
             inputs.lineheight, inputs.word_wrap_width, inputs.offset
         )
     end
+    # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
+    register_computation!(attr, [:glyphindices, :text_blocks, :color], [:text_color]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.color),)
+    end
+    register_computation!(attr, [:glyphindices, :text_blocks, :strokecolor], [:text_strokecolor]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.strokecolor),)
+    end
+    register_computation!(attr, [:glyphindices, :text_blocks, :rotation], [:text_rotation]) do inputs, changed, cached
+        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, Quaternionf, inputs.rotation),)
+    end
+    register_computation!(attr, [:fontsize,], [:text_scales]) do (fs,), changed, cached
+        return (fs,)
+    end
+end
 
+function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
+    result = Typ[]
+    for g in glyphcollection
+        arr = getfield(g, name)
+        if arr isa Vector
+            append!(result, arr)
+        else
+            _arr = arr.sv
+            if _arr isa Vector
+                append!(result, _arr)
+            else
+                append!(result, (_arr for i in 1:length(g.glyphs)))
+            end
+        end
+    end
+    return result
+end
+
+function get_text_blocks(gcs)
+    text_blocks = UnitRange{Int}[]
+    curr = 1
+    for g in gcs
+        push!(text_blocks, curr:(curr + length(g.glyphs)))
+        curr += length(g.glyphs)
+    end
+    return text_blocks
+end
+
+
+
+function convert_rich_text(input_text::AbstractVector{RichText}, fontsize, font, fonts, align, rotation, justification, lineheight, color)
+    glyphindices = UInt64[]
+    font_per_char = NativeFont[]
+    char_origins = Point3f[]
+    glyph_extents = GlyphExtent[]
+    text_blocks = UnitRange{Int64}[]
+    glyphcollections = GlyphCollection[]
+    colors = RGBAf[]
+    strokecolor = RGBAf[]
+    strokewidth = Float32[]
+    rotations = Quaternionf[]
+    fontsizes = Vec2f[]
+    broadcast_foreach(input_text, fontsize, font, fonts, align, rotation, justification, lineheight, color) do args...
+        gc = layout_text(args...)
+        push!(glyphcollections, gc)
+        curr = length(glyphindices)
+        n = length(gc.glyphs)
+        push!(text_blocks, (curr+1):(curr + n))
+        append!(glyphindices, gc.glyphs)
+        append!(char_origins, gc.origins)
+        append!(glyph_extents, gc.extents)
+        append!(font_per_char, collect_vector(gc.fonts, n))
+        append!(colors, collect_vector(gc.colors, n))
+        append!(strokecolor, collect_vector(gc.strokecolors, n))
+        append!(strokewidth, collect_vector(gc.strokewidths, n))
+        append!(rotations, collect_vector(gc.rotations, n))
+        append!(fontsizes, collect_vector(gc.scales, n))
+    end
+    # TODO, strokecolor per glyph?
+    return (glyphcollections, glyphindices, font_per_char, char_origins, glyph_extents, text_blocks, colors, first(strokecolor), rotations, fontsizes)
+end
+
+function compute_glyph_collections!(attr::ComputeGraph, ::Type{<:RichText})
+    inputs = [
+        :input_text, :fontsize,
+        :selected_font, :fonts,
+        :align, :rotation, :justification,
+        :lineheight, :color
+    ]
+    outputs = [:glyphcollections, :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks, :text_color, :text_strokecolor, :text_rotation, :text_scales]
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        return convert_rich_text(inputs...)
+    end
+end
+
+
+
+function convert_latex(input_text::AbstractVector{LaTeXString}, fontsize, align, rotation, color, scolor, swidth, word_wrap_width)
+    glyphindices = UInt64[]
+    font_per_char = NativeFont[]
+    char_origins = Point3f[]
+    glyph_extents = GlyphExtent[]
+    text_blocks = UnitRange{Int64}[]
+    glyphcollections = GlyphCollection[]
+    colors = RGBAf[]
+    strokecolor = RGBAf[]
+    strokewidth = Float32[]
+    rotations = Quaternionf[]
+    fontsizes = Vec2f[]
+    broadcast_foreach(input_text, fontsize, align, rotation, color, scolor, swidth, word_wrap_width) do args...
+        tex_elements, gc, offset = texelems_and_glyph_collection(args...)
+        push!(glyphcollections, gc)
+        curr = length(glyphindices)
+        n = length(gc.glyphs)
+        push!(text_blocks, (curr+1):(curr + n))
+        append!(glyphindices, gc.glyphs)
+        append!(char_origins, gc.origins)
+        append!(glyph_extents, gc.extents)
+        append!(font_per_char, collect_vector(gc.fonts, n))
+        append!(colors, collect_vector(gc.colors, n))
+        append!(strokecolor, collect_vector(gc.strokecolors, n))
+        append!(strokewidth, collect_vector(gc.strokewidths, n))
+        append!(rotations, collect_vector(gc.rotations, n))
+        append!(fontsizes, collect_vector(gc.scales, n))
+    end
+    return (glyphcollections, glyphindices, font_per_char, char_origins, glyph_extents, text_blocks, colors, first(strokecolor), rotations, fontsizes)
+end
+
+
+function compute_glyph_collections!(attr::ComputeGraph, ::Type{<:LaTeXString})
+    inputs = [
+        :input_text, :fontsize,
+        :align, :rotation,
+        :color, :strokecolor, :strokewidth,
+        :word_wrap_width
+    ]
+    outputs = [:glyphcollections, :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks, :text_color, :text_strokecolor, :text_rotation, :text_scales]
+    register_computation!(attr, inputs, outputs) do inputs, changed, cached
+        return convert_latex(inputs...)
+    end
+end
+
+
+function register_text_computations!(attr::ComputeGraph, ::Type{T}) where T
+    if !haskey(attr, :atlas)
+        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
+            (get_texture_atlas(),)
+        end
+    end
+
+    register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
+        return (to_font(fs, f),)
+    end
+
+    # This computes :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks
+    # And :glyphcollection if applicable
+    compute_glyph_collections!(attr, T)
+
+    register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
+        length(blocks) == length(pos) || error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos))")
+        return ([p for (b, p) in zip(blocks, pos) for i in b],)
+    end
     register_computation!(attr, [:atlas, :glyphindices, :font_per_char], [:sdf_uv]) do (atlas, gi, fonts), changed, cached
         return (glyph_uv_width!.((atlas,), gi, fonts),)
     end
+
     register_computation!(attr, [:glyph_origins, :offset, :text_blocks], [:marker_offset]) do (origins, offset, blocks), changed, cached
         return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r], )
     end
-    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :fontsize],
+
+    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
             [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+
         glyph_boundingboxes = Rect2d[]
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
@@ -211,29 +351,15 @@ function register_text_computations!(attr::ComputeGraph)
         end
         return (glyph_boundingboxes, quad_offsets, quad_scales)
     end
-
-
-    # remap per-glyphcollection andd per-glyph-in-glyphcollection data to per-glyph
-    register_computation!(attr, [:glyphindices, :text_blocks, :color], [:text_color]) do inputs, changed, cached
-        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.color),)
-    end
-    register_computation!(attr, [:glyphindices, :text_blocks, :strokecolor], [:text_strokecolor]) do inputs, changed, cached
-        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, RGBAf, inputs.strokecolor),)
-    end
-        register_computation!(attr, [:glyphindices, :text_blocks, :rotation], [:text_rotation]) do inputs, changed, cached
-        return (map_per_glyph(inputs.glyphindices, inputs.text_blocks, Quaternionf, inputs.rotation),)
-    end
-    register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
-        length(blocks) == length(pos) || error("Text blocks and positions have different lengths")
-        return ([p for (b, p) in zip(blocks, pos) for i in b],)
-    end
-
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
     register_position_transforms!(attr, :text_positions)
     return
 end
 
+
+get_text_type(x::AbstractVector) = eltype(x)
+get_text_type(::T) where T = T
 
 function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
     attr = ComputeGraph()
@@ -243,12 +369,13 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
 
     register_colormapping!(attr)
     register_text_arguments!(attr, user_kw, args...)
-    register_text_computations!(attr)
+    TextType = get_text_type(attr[:input_text][])
+    register_text_computations!(attr, TextType)
 
     # TODO: naming...?
     # markerspace bounding boxes of elements (i.e. each string passed to text)
-    register_computation!(attr, [:glyphindices, :text_blocks, :glyph_origins, :fontsize, :glyph_extents, :rotation], [:per_string_bb]) do args, changed, last
-        b_args = (args.glyph_origins, args.fontsize, args.glyph_extents, args.rotation)
+    register_computation!(attr, [:glyphindices, :text_blocks, :glyph_origins, :text_scales, :glyph_extents, :rotation], [:per_string_bb]) do args, changed, last
+        b_args = (args.glyph_origins, args.text_scales, args.glyph_extents, args.rotation)
         result = Rect3d[]
         per_text_block(args.glyphindices, args.text_blocks, b_args) do glyphs, origins, fontsizes, extents, rotation # per text
             push!(result, unchecked_boundingbox(glyphs, origins, fontsizes, extents, rotation))
@@ -258,7 +385,6 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
 
     # TODO: There is a :position attribute and a :positions Computed (after dim converts)
     #       This seems quite error prone...
-
     # data_limits()
     register_computation!(attr, [:per_string_bb, :positions, :space, :markerspace], [:data_limits]) do inputs, changed, last
         bbs, pos, space, markerspace = inputs
@@ -276,7 +402,7 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
             return nothing
         end
 
-        return (Rect3d(positions),)
+        return (Rect3d(inputs.positions),)
     end
 
     T = typeof(attr[:positions][])
@@ -324,14 +450,6 @@ function string_boundingbox(plot::Text)
 end
 
 
-# Old functions
-
-
-
-function _get_glyphcollection_and_linesegments(str::AbstractString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
-    gc = layout_text(string(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www)
-    gc, Point2f[], Float32[], RGBAf[], Int[]
-end
 
 function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
     tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
@@ -362,9 +480,9 @@ function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, 
     return glyphcollections, linesegs, linewidths, linecolors, lineindices
 end
 
-function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, halign, valign,
+function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
         rotation, color, strokecolor, strokewidth, word_wrap_width)
-
+    halign, valign = align
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
 
@@ -446,15 +564,7 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
-struct RichText
-    type::Symbol
-    children::Vector{Union{RichText,String}}
-    attributes::Dict{Symbol, Any}
-    function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText,String}[children...]
-        new(type, cs, Dict(kwargs))
-    end
-end
+
 
 function Base.String(r::RichText)
     fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
@@ -836,99 +946,3 @@ function get_yshift(lb, ub, align; default=0.5f0)
     end
     lb * (1-align) + ub * align |> Float32
 end
-
-#=
-
-function plot!(plot::Text)
-    positions = plot[1]
-    # attach a function to any text that calculates the glyph layout and stores it
-    glyphcollections = Observable(GlyphCollection[]; ignore_equal_values=true)
-    linesegs = Observable(Point2f[]; ignore_equal_values=true)
-    linewidths = Observable(Float32[]; ignore_equal_values=true)
-    linecolors = Observable(RGBAf[]; ignore_equal_values=true)
-    lineindices = Ref(Int[])
-    if !haskey(plot, :text)
-        attributes(plot)[:text] = plot[2]
-    end
-    calc_color = plot.calculated_colors[]
-
-    color_scaled = calc_color isa ColorMapping ? calc_color.color_scaled : plot.color
-    cmap = calc_color isa ColorMapping ? calc_color.colormap : plot.colormap
-
-    onany(plot, plot.text, plot.fontsize, plot.font, plot.fonts, plot.align,
-          plot.rotation, plot.justification, plot.lineheight, color_scaled, cmap,
-            plot.strokecolor, plot.strokewidth, plot.word_wrap_width, plot.offset) do str,
-                ts, f, fs, al, rot, jus, lh, cs, cmap, scol, swi, www, offs
-
-        ts = to_fontsize(ts)                        # [convert_attribute] check
-        f = to_font(fs, f)                          # [convert_attribute] -----
-        rot = to_rotation(rot)                      # [convert_attribute] check
-        col = to_color(plot.calculated_colors[])    # [convert_attribute] check
-        scol = to_color(scol)                       # [convert_attribute] check
-        offs = to_offset(offs)
-
-        gcs = GlyphCollection[]
-        lsegs = Point2f[]
-        lwidths = Float32[]
-        lcolors = RGBAf[]
-        lindices = Int[]
-        function push_args(args...)
-            gc, ls, lw, lc, lindex = _get_glyphcollection_and_linesegments(args...)
-            push!(gcs, gc)
-            append!(lsegs, ls)
-            append!(lwidths, lw)
-            append!(lcolors, lc)
-            append!(lindices, lindex)
-            return
-        end
-        if str isa Vector
-            # If we have a Vector of strings, Vector arguments are interpreted
-            # as per string.
-            broadcast_foreach(push_args, str, 1:attr_broadcast_length(str), ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
-        else
-            # Otherwise Vector arguments are interpreted by layout_text/
-            # glyph_collection as per character.
-            push_args(str, 1, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
-        end
-
-        glyphcollections[] = gcs
-        linewidths[] = lwidths
-        linecolors[] = lcolors
-        lineindices[] = lindices
-        linesegs[] = lsegs
-    end
-
-    linesegs_shifted = Observable(Point2f[]; ignore_equal_values=true)
-
-    sc = parent_scene(plot)
-
-    onany(plot, linesegs, positions, sc.camera.projectionview, sc.viewport, f32_conversion_obs(sc),
-            transform_func_obs(sc), get(plot, :space, :data)) do segs, pos, _, _, _, transf, space
-        pos_transf = plot_to_screen(plot, pos)
-        linesegs_shifted[] = map(segs, lineindices[]) do seg, index
-            seg + attr_broadcast_getindex(pos_transf, index)
-        end
-    end
-
-    notify(plot.text)
-
-    attrs = copy(plot.attributes)
-    # remove attributes that are already in the glyphcollection
-    attributes(attrs)[:position] = positions
-    pop!(attrs, :text)
-    pop!(attrs, :align)
-    pop!(attrs, :color)
-    pop!(attrs, :calculated_colors)
-
-    t = text!(plot, attrs, glyphcollections)
-    # remove attributes that the backends will choke on
-    pop!(t.attributes, :font)
-    pop!(t.attributes, :fonts)
-    pop!(t.attributes, :text)
-    linesegments!(plot, linesegs_shifted; linewidth = linewidths, color = linecolors, space = :pixel)
-    plot
-end
-
-
-
-=#
