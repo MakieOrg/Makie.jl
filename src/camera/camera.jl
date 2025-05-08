@@ -125,3 +125,126 @@ function is_mouseinside(scene::Scene)
     #     is_mouseinside(child) && return false
     # end
 end
+
+
+function add_camera_computation!(graph::ComputeGraph, scene)
+    # This includes all combinations of:
+    # [world, eye, pixel, relative, clip] to [world, eye, pixel, relative, clip]
+
+    # Inputs to be set by camera controller/scene
+    add_input!(graph, :view, Mat4d(I))
+    add_input!(graph, :projection, Mat4d(I))
+    add_input!(graph, :viewport, Rect2d(0,0,0,0))
+
+
+    # TODO: Should we move viewport to the graph entirely?
+    on(viewport -> update!(graph, :viewport = viewport), scene, scene.viewport)
+
+    # TODO: Should we have px_per_unit + ppu_resolution in here? A float * Vec2d
+    # isn't much to calculate so maybe not?
+    # Note that this needs to exist without ppu too
+    register_computation!(graph, [:viewport], [:resolution]) do (viewport,), changed, cached
+        return (Vec2d(widths(viewport)),)
+    end
+
+    # space to clip
+    alias!(graph, :projectionview, :world_to_clip)
+    alias!(graph, :projection, :eye_to_clip)
+    register_computation!(graph, [:resolution], [:pixel_to_clip]) do (resolution,), changed, cached
+        nearclip = -10_000.0
+        farclip = 10_000.0
+        w, h = resolution
+        return (orthographicprojection(0.0, w, 0.0, h, nearclip, farclip),)
+    end
+    register_computation!(graph, Symbol[], [:relative_to_clip]) do input, changed, cached
+        return (Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1),)
+    end
+
+    # space to space (identities)
+    for key in [:world, :eye, :pixel, :relative, :clip]
+        register_computation!(graph, Symbol[], [Symbol(key, :_to_, key)]) do input, changed, cached
+            return (Mat4d(I),)
+        end
+    end
+
+    # clip to space
+    for key in [:world, :eye]
+        register_computation!(graph, [:projectionview], [Symbol(:clip_to_, key)]) do input, changed, cached
+            return (inv(input[1]),)
+        end
+    end
+    register_computation!(graph, [:resolution], [:clip_to_pixel]) do (resolution,), changed, cached
+        w, h = resolution
+        return (Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1),)
+    end
+    register_computation!(graph, Symbol[], [:clip_to_relative]) do input, changed, cached
+        return (Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1),)
+    end
+
+    # remaining off-diagonal elements
+    for input in [:eye, :pixel, :relative]
+        for output in [:eye, :pixel, :relative]
+            if input != output
+                register_computation!(
+                    graph,
+                    [Symbol(input, :_to_clip), Symbol(:clip_to, :output)],
+                    [Symbol(input, :_to_, output)]
+                ) do (input_to_clip, clip_to_output), changed, cached
+                    # Reminder: This applies right to left `clip_to_output * (input_to_clip * input)`
+                    return (clip_to_output * input_to_clip)
+                end
+            end
+        end
+    end
+
+    return graph
+end
+
+#=
+projection pipelines:
+       view            projection
+world ------>   eye   -----------> clip
+               pixel  -----------> clip
+             relative -----------> clip
+=#
+
+
+get_projectionview(graph::ComputeGraph, space::Symbol) = graph[Symbol(space, :_to_clip)][]
+get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]
+
+function get_projection(graph::ComputeGraph, space::Symbol)
+    key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
+    return graph[key][]
+end
+
+function get_view(graph::ComputeGraph, space::Symbol)
+    # or :eye_to_eye for the else case
+    return space === :data ? graph[Symbol(:data_to_eye)][] : Mat4d(I)
+end
+
+function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
+    return graph[Symbol(space, :_to_, markerspace)][]
+end
+
+#=
+Idea: Do something like:
+register_computation!(graph, [:camera, ...], ...) do ...
+    has_camera_changed(graph, space[, markerspace]) || return nothing
+end
+
+Problem:
+The inputs may get resolved between the :camera becoming dirty and the runtime
+of the function, so has_camera_changed() may be incorrect
+=#
+function has_camera_changed(graph, space::Symbol, markerspace::Symbol = space)
+    has_changed = false
+
+    is_data = is_data_space(space) || is_data_space(markerspace)
+    has_changed = has_changed || (is_data && ComputePipeline.isdirty(graph[:view]))
+    has_changed = has_changed || (is_data && ComputePipeline.isdirty(graph[:projection]))
+
+    is_pixel = is_pixel_space(space) || is_pixel_space(markerspace)
+    has_changed = has_changed || (is_pixel && ComputePipeline.isdirty(graph[:viewport]))
+
+    return has_changed
+end
