@@ -147,6 +147,7 @@ function add_camera_computation!(graph::ComputeGraph, scene)
 
     # TODO: Should we have px_per_unit + ppu_resolution in here? A float * Vec2d
     # isn't much to calculate so maybe not?
+    # TODO: Consider discarding updates if they match cached (like in backend_functionality)
     # Note that this needs to exist without ppu too
     register_computation!(graph, [:viewport], [:scene_origin, :resolution]) do (viewport,), changed, cached
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)),)
@@ -222,27 +223,27 @@ world ------>   eye   -----------> clip
              relative -----------> clip
 =#
 
-get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]
+get_pixelspace(graph::ComputeGraph) = Mat4f(graph[:pixel_to_clip][])
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :world, space)
-    return graph[Symbol(key, :_to_clip)][]
+    return Mat4f(graph[Symbol(key, :_to_clip)][])
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
-    return graph[key][]
+    return Mat4f(graph[key][])
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
     # or :eye_to_eye for the else case
-    return space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I)
+    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))
 end
 
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     key1 = ifelse(space === :data, :world, space)
     key2 = ifelse(markerspace === :data, :world, markerspace)
-    return graph[Symbol(key1, :_to_, key2)][]
+    return Mat4f(graph[Symbol(key1, :_to_, key2)][])
 end
 
 
@@ -250,12 +251,16 @@ end
 function _has_camera_changed(changed, space, markerspace = space)
     is_data = is_data_space(space) || is_data_space(markerspace)
     is_pixel = is_pixel_space(space) || is_pixel_space(markerspace)
-    return (is_data && (changed.view || changed.projection)) || (is_pixel && (changed.viewport))
+    result = (is_data && (changed.view || changed.projection)) || (is_pixel && (changed.viewport))
+    return result
 end
 
 function camera_trigger(inputs, changed, cached)
+    isnothing(cached) && return (true,)
     view, projection, viewport, spaces... = inputs
-    return _has_camera_changed(changed, spaces...) ? nothing : true
+    has_changed = _has_camera_changed(changed, spaces...)
+    # Same values get ignored
+    return has_changed ? (!cached[1],) : nothing
 end
 
 struct CameraMatrixCallback <: Function
@@ -301,10 +306,14 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     register_computation!(callback, plot_graph, input_keys, output_keys)
 
     # Do we need those? Maybe also viewport?
-    add_input!(plot_graph, :pixel_space, scene_graph[:pixel_to_clip])
-    for key in [:resolution, :scene_origin, :eyeposition, :upvector, :view_direction]
-        # type assert for safety
-        add_input!(plot_graph, key, getindex(scene_graph, key)::Computed)
+    # type assert for safety
+    add_input!(plot_graph, :pixel_space, scene_graph[:pixel_to_clip]::Computed)
+    add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
+    for key in [:resolution, :scene_origin]
+        add_input!((k, v) -> Vec2f(v), plot_graph, key, getindex(scene_graph, key)::Computed)
+    end
+    for key in [:eyeposition, :upvector, :view_direction]
+        add_input!((k, v) -> Vec3f(v), plot_graph, key, getindex(scene_graph, key)::Computed)
     end
 
     return
