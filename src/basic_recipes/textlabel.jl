@@ -203,14 +203,10 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes
 end
 
 
-function text_boundingbox_transforms(plot, ms_positions, glyph_collections::Vector, limits, padding, keep_aspect)
+function text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs, limits, padding, keep_aspect)
     (l, r, b, t) = padding
     rotations = to_rotation(plot.rotation[])
-
-    transformations = Vector{Tuple{Vec2d, Vec2d, Float64}}(undef, length(glyph_collections))
-
-    for i in eachindex(glyph_collections)
-        bbox = string_boundingbox(glyph_collections[i], ms_positions[i], sv_getindex(rotations, i))
+    transformations = map(string_bbs) do bbox
         z = minimum(bbox)[3]
         bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
         scale = widths(bbox) ./ widths(limits)
@@ -220,7 +216,7 @@ function text_boundingbox_transforms(plot, ms_positions, glyph_collections::Vect
         # translate center for keep_aspect = true
         translation = minimum(bbox) + 0.5 * widths(bbox) .- scale .* (minimum(limits) + 0.5 * widths(limits))
 
-        transformations[i] = (translation, scale, z)
+        return (translation, scale, z)::Tuple{Vec2d, Vec2d, Float64}
     end
 
     return transformations
@@ -342,21 +338,24 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         return Consume(false)
     end
 
-    native_tp = tp.plots[1]
+    per_string_bb = tp.per_string_bb[]
 
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, native_tp.converted[1], plot.offset,
+            pixel_pos, plot.offset,
             # these are difficult because they are not in markerspace but always pixel space...
-            native_tp.strokewidth, native_tp.glowwidth,
-            native_tp.space, native_tp.markerspace
-        ) do limits, padding, keep_aspect, positions, glyph_collections, offset, sw, gw, args...
+            tp.strokewidth, tp.glowwidth,
+            tp.space, tp.markerspace
+        ) do limits, padding, keep_aspect, positions, offset, sw, gw, args...
 
         pos = [p + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
+        bbs = tp.per_string_bb[]
+
+        # text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs, limits, padding, keep_aspect)
+        padding = to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw)
         return text_boundingbox_transforms(
-            native_tp, pos, glyph_collections,
-            limits, to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw), keep_aspect
+            tp, pos, bbs, limits, padding, keep_aspect
         )
     end
 

@@ -69,7 +69,7 @@ function convert_text_arguments(text::AbstractString, fontsize, fonts, align, ro
     return (nt.glyphindices, nt.font_per_char, nt.char_origins, nt.glyph_extents, [1:length(nt.glyphindices)])
 end
 
-function convert_text_arguments(text::AbstractVector{<:AbstractString}, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
+function convert_text_arguments(text::AbstractVector, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
     glyphindices = UInt64[]
     font_per_char = NativeFont[]
     char_origins = Point3f[]
@@ -357,6 +357,11 @@ function register_text_computations!(attr::ComputeGraph, ::Type{T}) where T
     return
 end
 
+
+function get_text_type(x::AbstractVector{Any})
+    isempty(x) && error("Cant determine text type from empty vector")
+    return mapreduce(typeof, (a, b)-> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
+end
 
 get_text_type(x::AbstractVector) = eltype(x)
 get_text_type(::T) where T = T
