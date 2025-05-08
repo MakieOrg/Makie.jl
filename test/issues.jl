@@ -68,7 +68,7 @@
             @test p3.color[] == palette_colors[3]
 
             p4 = lines!(a, rand(Float32, 10))
-            @test p4.color[] = palette_colors[4]
+            @test p4.color[] == palette_colors[4]
         end
 
         @testset "Poly" begin
