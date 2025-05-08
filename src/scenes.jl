@@ -91,6 +91,7 @@ mutable struct Scene <: AbstractScene
     lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
+    compute::ComputeGraph
 
     conversions::DimConversions
     isclosed::Bool
@@ -132,9 +133,11 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
             Cycler(),
+            ComputeGraph(),
             DimConversions(),
             false
         )
+        add_camera_computation!(scene.compute, scene)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true

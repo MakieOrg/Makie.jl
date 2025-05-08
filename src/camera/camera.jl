@@ -140,9 +140,9 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     # TODO: Should we move viewport to the graph entirely?
-    on(viewport -> update!(graph, viewport = viewport), scene, scene.viewport)
+    on(viewport -> update!(graph, viewport = viewport), scene, scene.viewport, update = true)
     for key in [:view, :projection, :eyeposition, :upvector, :view_direction]
-        on(x -> update!(graph, key => x), scene, getproperty(scene.camera, key))
+        on(x -> update!(graph, key => x), scene, getproperty(scene.camera, key), update = true)
     end
 
     # TODO: Should we have px_per_unit + ppu_resolution in here? A float * Vec2d

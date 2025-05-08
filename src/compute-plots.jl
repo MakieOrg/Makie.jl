@@ -1,7 +1,6 @@
 using Base: RefValue
 using LinearAlgebra
 using GeometryBasics
-using ComputePipeline
 
 ################################################################################
 
