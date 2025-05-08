@@ -218,21 +218,22 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
 
     merged_inputs = [inputs; uniforms;]
     @assert allunique(merged_inputs) "Duplicate robj inputs detected in $merged_inputs."
-
-    register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
-        if isnothing(last)
-            # Generate complex defaults
-            # TODO: Should we add an initializer in ComputePipeline to extract this?
-            # That would simplify this code and remove attr, uniforms from the enclosed variables here
-            _robj = constructor(screen, scene, attr, args, uniforms, input2glname)
-        else
-            _robj = last.gl_renderobject
-            update_robjs!(_robj, args, changed, input2glname)
+    # TODO, I think SpecApi inserts the same plot twice!
+    if !haskey(attr, :gl_renderobject)
+        register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
+            if isnothing(last)
+                # Generate complex defaults
+                # TODO: Should we add an initializer in ComputePipeline to extract this?
+                # That would simplify this code and remove attr, uniforms from the enclosed variables here
+                _robj = constructor(screen, scene, attr, args, uniforms, input2glname)
+            else
+                _robj = last.gl_renderobject
+                update_robjs!(_robj, args, changed, input2glname)
+            end
+            screen.requires_update = true
+            return (_robj,)
         end
-        screen.requires_update = true
-        return (_robj,)
     end
-
     robj = attr[:gl_renderobject][]
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj

@@ -430,6 +430,10 @@ function handle_transformation!(plot, parent, connect_model = true)
     return
 end
 
+function connect_plot!(parent::SceneLike, plot::ComputePlots)
+    computed_plot!(parent, plot)
+end
+
 function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     plot.parent = parent
     scene = parent_scene(parent)

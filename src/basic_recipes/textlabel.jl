@@ -203,7 +203,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes
 end
 
 
-function text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs, limits, padding, keep_aspect)
+function text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs::Vector, limits, padding, keep_aspect)
     (l, r, b, t) = padding
     rotations = to_rotation(plot.rotation[])
     transformations = map(string_bbs) do bbox
