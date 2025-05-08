@@ -137,7 +137,10 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     add_input!(graph, :viewport, Rect2d(0,0,0,0))
 
     # TODO: Should we move viewport to the graph entirely?
-    on(viewport -> update!(graph, :viewport = viewport), scene, scene.viewport)
+    on(viewport -> update!(graph, viewport = viewport), scene, scene.viewport)
+    for key in [:view, :projection, :eyeposition, :upvector, :view_direction]
+        on(x -> update!(graph, key => x), scene, getproperty(scene.camera, key))
+    end
 
     # TODO: Should we have px_per_unit + ppu_resolution in here? A float * Vec2d
     # isn't much to calculate so maybe not?
@@ -280,8 +283,10 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
 
     # Do we need those? Maybe also viewport?
     add_input!(plot_graph, :pixel_space, scene_graph.pixel_to_clip)
-    add_input!(plot_graph, :resolution, scene_graph.resolution)
-    add_input!(plot_graph, :scene_origin, scene_graph.scene_origin)
+    for key in [:resolution, :scene_origin, :eyeposition, :upvector, :view_direction]
+        # type assert for safety
+        add_input!(plot_graph, key, getproperty(scene_graph, key)::Computed)
+    end
 
     return
 end
