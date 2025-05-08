@@ -150,8 +150,10 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     # space to clip
-    alias!(graph, :projectionview, :world_to_clip)
-    alias!(graph, :projection, :eye_to_clip)
+    register_computation!(graph, [:projection, :view], [:world_to_clip]) do (viewport,), changed, cached
+        return (projection * view,)
+    end
+    ComputePipeline.alias!(graph, :projection, :eye_to_clip)
     register_computation!(graph, [:resolution], [:pixel_to_clip]) do (resolution,), changed, cached
         nearclip = -10_000.0
         farclip = 10_000.0
@@ -171,7 +173,7 @@ function add_camera_computation!(graph::ComputeGraph, scene)
 
     # clip to space
     for key in [:world, :eye]
-        register_computation!(graph, [:projectionview], [Symbol(:clip_to_, key)]) do input, changed, cached
+        register_computation!(graph, [Symbol(key, :_to_clip)], [Symbol(:clip_to_, key)]) do input, changed, cached
             return (inv(input[1]),)
         end
     end
@@ -183,13 +185,20 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         return (Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1),)
     end
 
+    register_computation!(graph, [:view], [:world_to_eye]) do (view,), changed, cached
+        return (view,)
+    end
+    register_computation!(graph, [:view], [:eye_to_world]) do (view,), changed, cached
+        return (inv(view),)
+    end
+
     # remaining off-diagonal elements
-    for input in [:eye, :pixel, :relative]
-        for output in [:eye, :pixel, :relative]
-            if input != output
+    for input in [:world, :eye, :pixel, :relative]
+        for output in [:world, :eye, :pixel, :relative]
+            if input != output && (input, output) != (:world, :eye) && (input, output) != (:eye, :world)
                 register_computation!(
                     graph,
-                    [Symbol(input, :_to_clip), Symbol(:clip_to, :output)],
+                    [Symbol(input, :_to_clip), Symbol(:clip_to_, output)],
                     [Symbol(input, :_to_, output)]
                 ) do (input_to_clip, clip_to_output), changed, cached
                     # Reminder: This applies right to left `clip_to_output * (input_to_clip * input)`
