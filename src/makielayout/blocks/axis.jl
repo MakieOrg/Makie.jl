@@ -675,7 +675,12 @@ validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), 
 palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
 attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
-function get_cycler_index!(c::Cycler, P::Type)
+function get_cycler_index!(c::Cycler, P::Type{Plot{Func, Args}}) where {Func, Args}
+    # We want to avoid indexing into the cycler by the arguments of the plot, 
+    # since those can change on input type (float32 vs float64, polygon vs multipolygon, etc)
+    # so instead, we re-create the plot type with only the function, not the arguments!
+    P = Plot{Func}
+    # Now we can index into the cycler using this abstract type.
     if !haskey(c.counters, P)
         return c.counters[P] = 1
     else
