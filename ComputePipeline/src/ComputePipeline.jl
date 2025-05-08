@@ -509,7 +509,7 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     return attr
 end
 
-compute_identity(inputs, changed, cached) = getindex.(values(inputs))
+compute_identity(inputs, changed, cached) = values(inputs)
 
 # TODO: These functions place the given Computed node into the graph. This
 #       typically results in `key != node.name`, which invites errors
