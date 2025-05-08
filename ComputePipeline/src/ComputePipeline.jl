@@ -290,6 +290,7 @@ end
 
 """
     update!(graph; kwargs...)
+    update!(graph, pairs::Pair{Symbol, Any}...)
 
 Updates any number of inputs in the graph based on the passed `key = value`
 keyword arguments. The `key` refers to the name of the input and the `value` is
@@ -301,10 +302,13 @@ the new value.
 graph = ComputeGraph()
 add_input!(graph, :first_node, 1)
 update!(graph, first_node = 2)
+update!(graph, :first_node => 2)
 ```
 """
-function update!(attr::ComputeGraph; kwargs...)
-    for (key, value) in pairs(kwargs)
+update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
+
+function update!(attr::ComputeGraph, pairs...)
+    for (key, value) in pairs
         if haskey(attr.inputs, key)
             _setproperty!(attr, key, value)
         else
