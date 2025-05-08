@@ -135,6 +135,9 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     add_input!(graph, :view, Mat4d(I))
     add_input!(graph, :projection, Mat4d(I))
     add_input!(graph, :viewport, Rect2d(0,0,0,0))
+    for key in [:eyeposition, :upvector, :view_direction]
+        add_input!(graph, key, Vec3d(0))
+    end
 
     # TODO: Should we move viewport to the graph entirely?
     on(viewport -> update!(graph, viewport = viewport), scene, scene.viewport)
