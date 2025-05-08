@@ -7,7 +7,6 @@ using ComputePipeline
 
 # Sketching usage with scatter
 
-const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
 Base.haskey(x::ComputePlots, key) = haskey(x.args[1], key)
 Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
 Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)

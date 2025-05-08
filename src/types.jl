@@ -15,6 +15,8 @@ get_space(::EmptyCamera) = :clip
     IndexedAbsorptionRGBA # 5
 end
 
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
+
 include("interaction/iodevices.jl")
 
 """
