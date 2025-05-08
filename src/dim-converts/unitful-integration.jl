@@ -121,7 +121,7 @@ unit_convert(unit::Unitful.MixedUnits, x::AbstractArray) = unit_convert.(Ref(uni
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
-    return Float64(ustrip(conv))
+    return float(ustrip(conv))
 end
 
 unit_convert(unit::T, value) where T <: Union{Unitful.MixedUnits, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = Float64(ustrip(value))

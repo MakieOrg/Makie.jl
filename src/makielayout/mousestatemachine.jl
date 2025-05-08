@@ -112,7 +112,7 @@ To react to mouse events, use the onmouse... handlers.
 
 Example:
 
-```
+```julia
 mouseevents = addmouseevents!(scene, scatterplot)
 
 onmouseleftclick(mouseevents) do event

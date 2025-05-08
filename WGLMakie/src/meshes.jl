@@ -152,5 +152,5 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     attributes[:faces] = faces
     attributes[:positions] = positions
 
-    return draw_mesh(scene, attributes, plot, uniforms; permute_tex=false)
+    return draw_mesh(scene, attributes, plot, uniforms; permute_tex=false), nothing
 end
