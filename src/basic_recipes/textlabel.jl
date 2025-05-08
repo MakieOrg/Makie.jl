@@ -203,9 +203,8 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes
 end
 
 
-function text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs::Vector, limits, padding, keep_aspect)
+function text_boundingbox_transforms(string_bbs::Vector, limits, padding, keep_aspect)
     (l, r, b, t) = padding
-    rotations = to_rotation(plot.rotation[])
     transformations = map(string_bbs) do bbox
         z = minimum(bbox)[3]
         bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
@@ -338,25 +337,19 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         return Consume(false)
     end
 
-    per_string_bb = tp.per_string_bb[]
+    string_bbs = map(x -> tp.per_string_bb[], plot, tp.args[1].onchange, ignore_equal_values = true)
 
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, plot.offset,
+            pixel_pos, string_bbs, tp.offset,
             # these are difficult because they are not in markerspace but always pixel space...
-            tp.strokewidth, tp.glowwidth,
-            tp.space, tp.markerspace
-        ) do limits, padding, keep_aspect, positions, offset, sw, gw, args...
+            tp.strokewidth, tp.glowwidth
+        ) do limits, padding, keep_aspect, positions, bbs, offset, sw, gw
 
         pos = [p + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
-        bbs = tp.per_string_bb[]
-
-        # text_boundingbox_transforms(plot::Plot, ms_positions, string_bbs, limits, padding, keep_aspect)
         padding = to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw)
-        return text_boundingbox_transforms(
-            tp, pos, bbs, limits, padding, keep_aspect
-        )
+        return text_boundingbox_transforms(bbs .+ pos, limits, padding, keep_aspect)
     end
 
     map!(
