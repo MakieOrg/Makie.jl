@@ -443,6 +443,8 @@ function resolve_shading_default!(attr::ComputeGraph, lights::Vector{<: Abstract
     return
 end
 
+register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.args[1], scene.compute)
+
 function computed_plot!(parent, plot::T) where {T}
     scene = parent_scene(parent)
     add_theme!(plot, scene)
@@ -462,6 +464,8 @@ function computed_plot!(parent, plot::T) where {T}
     on(model -> attr.model = model, plot, plot.transformation.model, update = true)
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
+    register_camera!(scene, plot)
+
     resolve_shading_default!(scene, plot.args[1])
 
     push!(parent, plot)
@@ -470,7 +474,6 @@ function computed_plot!(parent, plot::T) where {T}
     if !isnothing(scene) && haskey(attr, :cycle)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
     end
-
 
     documented_attr = MakieCore.documented_attributes(T).d
     for (k, v) in plot.kw
@@ -482,6 +485,7 @@ function computed_plot!(parent, plot::T) where {T}
             end
         end
     end
+
     return
 end
 

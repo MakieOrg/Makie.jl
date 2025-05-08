@@ -153,7 +153,7 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     # space to clip
-    register_computation!(graph, [:projection, :view], [:world_to_clip]) do (viewport,), changed, cached
+    register_computation!(graph, [:projection, :view], [:world_to_clip]) do (projection, view), changed, cached
         return (projection * view,)
     end
     ComputePipeline.alias!(graph, :projection, :eye_to_clip)
@@ -205,7 +205,7 @@ function add_camera_computation!(graph::ComputeGraph, scene)
                     [Symbol(input, :_to_, output)]
                 ) do (input_to_clip, clip_to_output), changed, cached
                     # Reminder: This applies right to left `clip_to_output * (input_to_clip * input)`
-                    return (clip_to_output * input_to_clip)
+                    return (clip_to_output * input_to_clip,)
                 end
             end
         end
@@ -222,8 +222,12 @@ world ------>   eye   -----------> clip
              relative -----------> clip
 =#
 
-get_projectionview(graph::ComputeGraph, space::Symbol) = graph[Symbol(space, :_to_clip)][]
 get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]
+
+function get_projectionview(graph::ComputeGraph, space::Symbol)
+    key = ifelse(space === :data, :world, space)
+    return graph[Symbol(key, :_to_clip)][]
+end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
@@ -232,11 +236,13 @@ end
 
 function get_view(graph::ComputeGraph, space::Symbol)
     # or :eye_to_eye for the else case
-    return space === :data ? graph[Symbol(:data_to_eye)][] : Mat4d(I)
+    return space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I)
 end
 
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
-    return graph[Symbol(space, :_to_, markerspace)][]
+    key1 = ifelse(space === :data, :world, space)
+    key2 = ifelse(markerspace === :data, :world, markerspace)
+    return graph[Symbol(key1, :_to_, key2)][]
 end
 
 
@@ -252,36 +258,37 @@ function camera_trigger(inputs, changed, cached)
     return _has_camera_changed(changed, spaces...) ? nothing : true
 end
 
-struct CameraMatrixCallback
+struct CameraMatrixCallback <: Function
     graph::ComputeGraph
 end
 
-function (cb::CameraMatrixCallback)((_, space), changed, cached)
+function (cb::CameraMatrixCallback)(inputs, changed, cached)
     graph = cb.graph
-    projectionview = get_projectionview(graph, space)
-    projection = get_project(graph, space)
-    view = get_view(graph, space)
-    return (projectionview, projection, view)
-end
-
-function (cb::CameraMatrixCallback)((_, space, markerspace), changed, cached)
-    graph = cb.graph
-    # TODO: breaks FastPixel?
-    preprojection = get_preprojection(graph, space, markerspace)
-    projectionview = get_projectionview(graph, markerspace)
-    projection = get_project(graph, markerspace)
-    view = get_view(graph, markerspace)
-    return (projectionview, projection, view, preprojection)
+    space = inputs.space
+    if haskey(inputs, :markerspace)
+        markerspace = inputs.markerspace
+        # TODO: breaks FastPixel?
+        preprojection = get_preprojection(graph, space, markerspace)
+        projectionview = get_projectionview(graph, markerspace)
+        projection = get_projection(graph, markerspace)
+        view = get_view(graph, markerspace)
+        return (projectionview, projection, view, preprojection)
+    else
+        projectionview = get_projectionview(graph, space)
+        projection = get_projection(graph, space)
+        view = get_view(graph, space)
+        return (projectionview, projection, view)
+    end
 end
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     # This should connect Computed's from the parent graph to a new Computed in the child graph
     inputs = [scene_graph.view, scene_graph.projection, scene_graph.viewport, plot_graph.space]
     haskey(plot_graph, :markerspace) && push!(inputs, plot_graph.markerspace)
-    @assert inputs isa Vector{ComputeGraph.Computed}
+    @assert inputs isa Vector{ComputePipeline.Computed}
 
     # Only propagate update from camera matrices if its relevant to space
-    unsafe_register!(camera_trigger, plot_graph, inputs, [:camera_trigger])
+    ComputePipeline.unsafe_register!(camera_trigger, plot_graph, inputs, [:camera_trigger])
 
     # Update camera matrices in plot if space changed or a relevant camera update happened
     input_keys = [:camera_trigger, :space]
@@ -294,10 +301,10 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     register_computation!(callback, plot_graph, input_keys, output_keys)
 
     # Do we need those? Maybe also viewport?
-    add_input!(plot_graph, :pixel_space, scene_graph.pixel_to_clip)
+    add_input!(plot_graph, :pixel_space, scene_graph[:pixel_to_clip])
     for key in [:resolution, :scene_origin, :eyeposition, :upvector, :view_direction]
         # type assert for safety
-        add_input!(plot_graph, key, getproperty(scene_graph, key)::Computed)
+        add_input!(plot_graph, key, getindex(scene_graph, key)::Computed)
     end
 
     return
