@@ -5,7 +5,7 @@ abstract type AbstractLight end
 # These need to match up with light shaders to differentiate light types
 module LightType
     const UNDEFINED        = 0
-    const Ambient          = 1
+    # const Ambient          = 1
     const PointLight       = 2
     const DirectionalLight = 3
     const SpotLight        = 4
@@ -30,10 +30,6 @@ struct AmbientLight <: AbstractLight
     color::Observable{RGBf}
 end
 
-light_type(::AmbientLight) = LightType.Ambient
-light_color(l::AmbientLight) = l.color[]
-
-
 """
     PointLight(color, position[, attenuation = Vec2f(0)])
     PointLight(color, position, range::Real)
@@ -53,24 +49,22 @@ Availability:
 - RPRMakie
 """
 struct PointLight <: AbstractLight
-    color::Observable{RGBf}
-    position::Observable{Vec3f}
-    attenuation::Observable{Vec2f}
+    color::RGBf
+    position::Vec3f
+    attenuation::Vec2f
 end
 
 # no attenuation
-function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}})
+function PointLight(color::Colorant, position::VecTypes{3})
     return PointLight(color, position, Vec2f(0))
 end
 # automatic attenuation
-function PointLight(color::Union{Colorant, Observable{<: Colorant}}, position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, range::Real)
+function PointLight(color::Colorant, position::VecTypes{3}, range::Real)
     return PointLight(color, position, default_attenuation(range))
 end
 
-@deprecate PointLight(position::Union{VecTypes{3}, Observable{<: VecTypes{3}}}, color::Union{Colorant, Observable{<: Colorant}}) PointLight(color, position)
-
 light_type(::PointLight) = LightType.PointLight
-light_color(l::PointLight) = l.color[]
+light_color(l::PointLight) = l.color
 
 # fit of values used on learnopengl/ogre3d
 function default_attenuation(range::Real)
@@ -91,8 +85,8 @@ Availability:
 - All backends with `shading = FastShading` or `MultiLightShading`
 """
 struct DirectionalLight <: AbstractLight
-    color::Observable{RGBf}
-    direction::Observable{Vec3f}
+    color::RGBf
+    direction::Vec3f
 
     # Usually a light source is placed in world space, i.e. unrelated to the
     # camera. As a default however, we want to make sure that an object is
@@ -105,7 +99,7 @@ struct DirectionalLight <: AbstractLight
     DirectionalLight(col, dir, rel = false) = new(col, dir, rel)
 end
 light_type(::DirectionalLight) = LightType.DirectionalLight
-light_color(l::DirectionalLight) = l.color[]
+light_color(l::DirectionalLight) = l.color
 
 
 """
@@ -120,14 +114,14 @@ Availability:
 - RPRMakie
 """
 struct SpotLight <: AbstractLight
-    color::Observable{RGBf}
-    position::Observable{Vec3f}
-    direction::Observable{Vec3f}
-    angles::Observable{Vec2f}
+    color::RGBf
+    position::Vec3f
+    direction::Vec3f
+    angles::Vec2f
 end
 
 light_type(::SpotLight) = LightType.SpotLight
-light_color(l::SpotLight) = l.color[]
+light_color(l::SpotLight) = l.color
 
 
 """
@@ -140,8 +134,8 @@ Availability:
 - RPRMakie
 """
 struct EnvironmentLight <: AbstractLight
-    intensity::Observable{Float32}
-    image::Observable{Matrix{RGBf}}
+    intensity::Float32
+    image::Matrix{RGBf}
 end
 
 """
@@ -160,62 +154,171 @@ Availability:
 - GLMakie with `Shading = MultiLightShading`
 """
 struct RectLight <: AbstractLight
-    color::Observable{RGBf}
-    position::Observable{Point3f}
-    u1::Observable{Vec3f}
-    u2::Observable{Vec3f}
-    direction::Observable{Vec3f}
+    color::RGBf
+    position::Point3f
+    u1::Vec3f
+    u2::Vec3f
+    direction::Vec3f
 end
 
 RectLight(color, pos, u1, u2) = RectLight(color, pos, u1, u2, -normalize(cross(u1, u2)))
 function RectLight(color, r::Rect2)
     mini = minimum(r); ws = widths(r)
-    position = Observable(to_ndim(Point3f, mini + 0.5 * ws, 0))
-    u1 = Observable(Vec3f(ws[1], 0, 0))
-    u2 = Observable(Vec3f(0, ws[2], 0))
+    position = to_ndim(Point3f, mini + 0.5 * ws, 0)
+    u1 = Vec3f(ws[1], 0, 0)
+    u2 = Vec3f(0, ws[2], 0)
     return RectLight(color, position, u1, u2, normalize(Vec3f(0,0,-1)))
 end
 
 # Implement Transformable interface (more or less) to simplify working with
 # RectLights
 
-function translate!(::Type{T}, l::RectLight, v) where T
-    offset = to_ndim(Vec3f, Float32.(v), 0)
-    if T === Accum
-        l.position[] = l.position[] + offset
-    elseif T === Absolute
-        l.position[] = offset
-    else
-        error("Unknown translation type: $T")
-    end
-end
-translate!(l::RectLight, v) = translate!(Absolute, l, v)
+# function translate!(::Type{T}, l::RectLight, v) where T
+#     offset = to_ndim(Vec3f, Float32.(v), 0)
+#     if T === Accum
+#         l.position[] = l.position[] + offset
+#     elseif T === Absolute
+#         l.position[] = offset
+#     else
+#         error("Unknown translation type: $T")
+#     end
+# end
+# translate!(l::RectLight, v) = translate!(Absolute, l, v)
 
-function rotate!(l::RectLight, q...)
-    rot = convert_attribute(q, key"rotation"())
-    l.u1[] = rot * l.u1[]
-    l.u2[] = rot * l.u2[]
-    l.direction[] = rot * l.direction[]
-end
+# function rotate!(l::RectLight, q...)
+#     rot = convert_attribute(q, key"rotation"())
+#     l.u1[] = rot * l.u1[]
+#     l.u2[] = rot * l.u2[]
+#     l.direction[] = rot * l.direction[]
+# end
 
-function scale!(::Type{T}, l::RectLight, s) where T
-    scale = to_ndim(Vec2f, Float32.(s), 0)
-    if T === Accum
-        l.u1[] = scale[1] * l.u1[]
-        l.u2[] = scale[2] * l.u2[]
-    elseif T === Absolute
-        l.u1[] = scale[1] * normalize(l.u1[])
-        l.u2[] = scale[2] * normalize(l.u2[])
-    else
-        error("Unknown translation type: $T")
-    end
-end
-scale!(l::RectLight, x::Real, y::Real) = scale!(Accum, l, Vec2f(x, y))
-scale!(l::RectLight, xy::VecTypes) = scale!(Accum, l, xy)
+# function scale!(::Type{T}, l::RectLight, s) where T
+#     scale = to_ndim(Vec2f, Float32.(s), 0)
+#     if T === Accum
+#         l.u1[] = scale[1] * l.u1[]
+#         l.u2[] = scale[2] * l.u2[]
+#     elseif T === Absolute
+#         l.u1[] = scale[1] * normalize(l.u1[])
+#         l.u2[] = scale[2] * normalize(l.u2[])
+#     else
+#         error("Unknown translation type: $T")
+#     end
+# end
+# scale!(l::RectLight, x::Real, y::Real) = scale!(Accum, l, Vec2f(x, y))
+# scale!(l::RectLight, xy::VecTypes) = scale!(Accum, l, xy)
 
 
 light_type(::RectLight) = LightType.RectLight
-light_color(l::RectLight) = l.color[]
+light_color(l::RectLight) = l.color
+
+################################################################################
+
+function add_light_computation!(graph, lights)
+    # TODO: Can we tear apart the old system and change each light to contain
+    # no Observables?
+
+    idx = findfirst(light -> light isa AmbientLight, lights)
+    ambient_color = isnothing(idx) ? RGBf(0,0,0) : lights[idx].color
+
+    filtered_lights = filter(light -> !isa(light, AmbientLight), lights)
+    if length(lights) - length(filtered_lights) > 1
+        @error("Only one AmbientLights is allowed. Skipping AmbientLights beyond the first.")
+    end
+
+    # TODO: defaults
+    add_input!(graph, :ambient_color, ambient_color)
+    add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
+
+    register_computation!(
+        fast_light_computation, graph,
+        [:lights, :eye_to_world], # camera view matrix, not space adjusted plot matrix (right?)
+        [:dirlight_color, :dirlight_direction, :dirlight_cam_relative, :dirlight_final_direction]
+    )
+
+    register_computation!(graph, [:lights], [:lighting_mode]) do (lights,), changed, cached
+        is_fast = (length(lights) == 0) || (lights[1] isa DirectionalLight)
+        return (ifelse(is_fast, FastShading, MultiLightShading), )
+    end
+end
+
+function fast_light_computation(inputs, changed, cached)
+    lights, iview = inputs
+    idx = findfirst(light -> light isa DirectionalLight, lights)
+
+    if idx === nothing && cached === nothing
+        return (RGBf(0,0,0), Vec3f(0), true, Vec3f(0))
+    else
+        light = lights[idx]::DirectionalLight
+        color = light.color
+        dir = light.direction
+        cam_relative = light.camera_relative
+        final_dir = cam_relative ? iview[Vec(1,2,3), Vec(1,2,3)] * dir : dir
+        return (color, Vec3f(dir), cam_relative, Vec3f(final_dir))
+    end
+
+    return nothing
+end
+
+# These return the number of parameter slots they used
+push_parameters!(parameters, light::AbstractLight, iview) = push_parameters!(parameters, light)
+
+function push_parameters!(parameters, light::PointLight)
+    push!(parameters, light.position..., light.attenuation...)
+end
+
+function push_parameters!(parameters, light::DirectionalLight, iview)
+    dir = light.direction
+    if light.camera_relative
+        dir = iview[Vec(1,2,3), Vec(1,2,3)] * dir
+    end
+    push!(parameters, normalize(dir)...)
+end
+
+function push_parameters!(parameters, light::SpotLight)
+    push!(parameters, light.position..., normalize(light.direction)..., cos.(light.angles)...)
+end
+
+function push_parameters!(parameters, light::RectLight)
+    push!(parameters, light.position..., light.u1..., light.u2..., normalize(light.direction)...)
+end
+
+light_parameter_count(::PointLight) = 5
+light_parameter_count(::DirectionalLight) = 3
+light_parameter_count(::SpotLight) = 8
+light_parameter_count(::RectLight) = 12
+
+function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
+    # TODO: Maybe be smarter with view and DirectionalLight?
+    # I.e. only apply and update them, not all lights?
+    # Though the array will need to be pushed to the gpu as long as any are present anyway...
+    register_computation!(
+            scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
+        ) do (lights, iview), changed, cached
+
+        n_lights = 0
+        n_params = 0
+        for light in lights
+            n = light_parameter_count(light)
+            if n_lights + 1 > MAX_LIGHTS
+                @warn "Exceeded the maximum number of lights ($(n_lights + 1) > $MAX_LIGHTS). Skipping lights beyond number $n_lights."
+                break
+            elseif n_params + n > MAX_PARAMS
+                @warn "Exceeded the maximum number of light parameters ($(n_params + n) > $MAX_PARAMS). Skipping lights beyond number $n_lights."
+                break
+            end
+            n_lights += 1
+            n_params += n
+        end
+
+        usable_lights = view(lights, 1:n_lights)
+        types = light_type.(usable_lights)
+        colors = light_color.(usable_lights)
+        parameters = Float32[]
+        foreach(light -> push_parameters!(parameters, light, iview), usable_lights)
+
+        return (n_lights, types, colors, parameters)
+    end
+end
 
 
 ################################################################################

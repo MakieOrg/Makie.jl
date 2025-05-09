@@ -146,40 +146,30 @@ function generate_clip_planes!(attr, target_space::Symbol = :world, modelname = 
 end
 
 # TODO: handle these on the scene level once and reuse them
-function add_light_attributes!(screen, scene, data, attr)
+function register_light_attributes!(screen, scene, attr, uniforms)
     haskey(attr, :shading) || return
+
+    add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
     shading = attr[:shading][]
     if shading == FastShading
 
-        dirlight = Makie.get_directional_light(scene)
-
-        if isnothing(dirlight)
-            data[:light_direction] = Observable(Vec3f(0))
-            data[:light_color] = Observable(RGBf(0,0,0))
-        else
-            # data[:light_direction] = if dirlight.camera_relative
-            #     map(data[:view], dirlight.direction) do view, dir
-            #         return normalize(inv(view[Vec(1,2,3), Vec(1,2,3)]) * dir)
-            #     end
-            # else
-            #     map(normalize, dirlight.direction)
-            # end
-            data[:light_direction] = Vec3d(1)
-
-            data[:light_color] = dirlight.color
-        end
-
-        ambientlight = Makie.get_ambient_light(scene)
-        if !isnothing(ambientlight)
-            data[:ambient] = ambientlight.color
-        else
-            data[:ambient] = Observable(RGBf(0,0,0))
-        end
+        add_input!(attr, :light_color, scene.compute[:dirlight_color])
+        add_input!(attr, :light_direction, scene.compute[:dirlight_final_direction])
+        push!(uniforms, :ambient, :light_color, :light_direction)
 
     elseif shading == MultiLightShading
 
-        handle_lights(data, screen, scene.lights)
+        MAX_LIGHTS = screen.config.max_lights
+        MAX_PARAMS = screen.config.max_light_parameters
+
+        Makie.register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
+
+        names = [:N_lights, :light_types, :light_colors, :light_parameters]
+        for key in names
+            add_input!(attr, key, scene.compute[key]::Computed)
+        end
+        push!(uniforms, :ambient, names...)
 
     end
 end
@@ -198,6 +188,9 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
     push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
     push!(input2glname, :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes)
+
+    # triggers if shading is present
+    register_light_attributes!(screen, scene, attr, uniforms)
 
     merged_inputs = [inputs; uniforms;]
     @assert allunique(merged_inputs) "Duplicate robj inputs detected in $merged_inputs."
@@ -533,7 +526,6 @@ function assemble_meshscatter_robj(screen::Screen, scene::Scene, attr, args, uni
     end
 
     add_color_attributes!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
-    add_light_attributes!(screen, scene, data, attr)
 
     # Correct the name mapping
     if !isnothing(get(data, :intensity, nothing))
@@ -563,6 +555,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
         return (length(pos), Int32(length(pos)))
     end
+
 
     inputs = [
         # Special
@@ -1051,8 +1044,6 @@ function assemble_surface_robj(screen::Screen, scene::Scene, attr, args, uniform
     )
     @assert colorname == :image
 
-    add_light_attributes!(screen, scene, data, attr)
-
     return draw_surface(screen, data[:image], data)
 end
 
@@ -1171,8 +1162,6 @@ function assemble_mesh_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
         attr[:interpolate][]
     )
 
-    add_light_attributes!(screen, scene, data, attr)
-
     data[:normals] === nothing && delete!(data, :normals)
     data[:texturecoordinates] === nothing && delete!(data, :texturecoordinates)
 
@@ -1187,7 +1176,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
 
-    # TODO: normalmatrices, lighting, poly plot!() overwrite for vector of meshes
+    # TODO: normalmatrices, poly plot!() overwrite for vector of meshes
 
     inputs = [
         # Special
@@ -1238,8 +1227,6 @@ function assemble_voxel_robj(screen::Screen, scene::Scene, attr, args, uniforms,
     for name in uniforms
         data[get(input2glname, name, name)] = args[name]
     end
-
-    add_light_attributes!(screen, scene, data, attr)
 
     if haskey(args, :voxel_color)
         interp = attr[:interpolate][] ? :linear : :nearest
@@ -1325,8 +1312,6 @@ function assemble_volume_robj(screen::Screen, scene::Scene, attr, args, uniforms
     for name in uniforms
         data[get(input2glname, name, name)] = args[name]
     end
-
-    add_light_attributes!(screen, scene, data, attr)
 
     if args.volume isa AbstractArray{<:Real}
         data[:color_map] = args.alpha_colormap
