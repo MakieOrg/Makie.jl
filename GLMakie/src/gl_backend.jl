@@ -43,17 +43,9 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         return atlas_texture_cache[(atlas, context)][1]
     else
         require_context(context)
-        tex = Texture(
-            context, atlas.data,
-            minfilter = :linear,
-            magfilter = :linear,
-            # TODO: Consider alternatives to using the builtin anisotropic
-            # samplers for signed distance fields; the anisotropic
-            # filtering should happen *after* the SDF thresholding, but
-            # with the builtin sampler it happens before.
-            anisotropic = 16f0,
-            mipmap = true
-        )
+        # anisotropic filtering sometimes creates artifacts with aspect/distortion
+        # corrected anti-aliasing radius, mipmap seems irrelevant
+        tex = Texture(context, atlas.data, minfilter = :linear, magfilter = :linear)
 
         function callback(distance_field, rectangle)
             ctx = tex.context

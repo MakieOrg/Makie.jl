@@ -14,7 +14,7 @@ in vec2 frag_uv;
 
 
 // Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS 0.8
+#define ANTIALIAS_RADIUS 0.7071067811865476
 
 in float frag_uvscale;
 in float frag_distancefield_scale;
@@ -27,13 +27,13 @@ uniform int num_clip_planes;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
-float aastep(float threshold1, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1 + ANTIALIAS_RADIUS, dist);
+float aastep(float threshold1, float dist, float aa) {
+    return smoothstep(threshold1 - aa, threshold1 + aa, dist);
 }
 
-float aastep(float threshold1, float threshold2, float dist) {
-    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
-           smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
+float aastep(float threshold1, float threshold2, float dist, float aa) {
+    return smoothstep(threshold1 - aa, threshold1 + aa, dist) -
+           smoothstep(threshold2 - aa, threshold2 + aa, dist);
 }
 
 // Procedural signed distance functions on the uv coordinate patch [0,1]x[0,1]
@@ -69,9 +69,9 @@ vec4 fill(vec4 fillcolor, vec4 color, vec2 uv) {
 vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
 vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 
-void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
+void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color, float aa_radius){
     if (width != 0.0){
-        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance);
+        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance, aa_radius);
         vec4 bg_color = mix(color, vec4(strokecolor.rgb, 0), float(signed_distance < 0.5 * width));
         color = mix(bg_color, strokecolor, t);
     }
@@ -98,6 +98,33 @@ float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
+// Given a fragment derivative of f_uv (i.e. dFdx(f_uv) or dFdy(f_uv)), calculate
+// the associated (squared) change in the distancefield. This is effectively the
+// (squared) partial derivative of the distancefield with respect to fragment
+// (pixel) coordinates
+float squared_partial_derivate(float center, vec2 df_uv) {
+    vec2 uv1 = mix(frag_uv_offset_width.xy, frag_uv_offset_width.zw, clamp(frag_uv + 0.5 * df_uv, 0.0, 1.0));
+    vec2 uv0 = mix(frag_uv_offset_width.xy, frag_uv_offset_width.zw, clamp(frag_uv - 0.5 * df_uv, 0.0, 1.0));
+    // It can happen that our fragment is close to a maximum in the distancefield
+    // texture. In this case the derivate based on a point to the left and right
+    // can be close to 0 when it shouldn't be. To avoid this we calculate a
+    // derivative to either side and take the stronger one.
+    float df1 = scaled_distancefield(distancefield, uv1) - center;
+    float df2 = center - scaled_distancefield(distancefield, uv0);
+    return 2.0 * max(df1 * df1, df2 * df2);
+}
+
+// Calculate the anti-aliasing radius based on how much the distance field changes
+// relative to neighboring samples. If the drawn quad samples the distance field
+// with some distortion, it will be picked up here and compensated in changes to
+// the anti-aliasing radius.
+float aspect_corrected_local_aa_radius(float signed_distance) {
+    return frag_uvscale * ANTIALIAS_RADIUS * M_SQRT_2 * sqrt(
+        squared_partial_derivate(signed_distance, dFdx(frag_uv)) +
+        squared_partial_derivate(signed_distance, dFdy(frag_uv))
+    );
+}
+
 vec2 encode_uint_to_float(uint value) {
     float lower = float(value & 0xFFFFu) / 65535.0;
     float upper = float(value >> 16u) / 65535.0;
@@ -120,12 +147,14 @@ void main() {
 
     vec4 uv_off = frag_uv_offset_width;
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
+    float aa_radius = ANTIALIAS_RADIUS;
 
     int shape = get_sdf_marker_shape();
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);
     else if(shape == DISTANCEFIELD) {
         signed_distance = scaled_distancefield(distancefield, tex_uv);
+        aa_radius = aspect_corrected_local_aa_radius(signed_distance);
         if (get_strokewidth() > 0.0 || get_glowwidth() > 0.0) {
             // Compensate for the clamping of tex_uv by an approximate
             // extension of the signed distance outside the valid texture
@@ -145,13 +174,13 @@ void main() {
 
     float stroke_width = get_strokewidth() * get_px_per_unit();
     float inside_start = max(-stroke_width, 0.0);
-    float inside = aastep(inside_start, signed_distance);
+    float inside = aastep(inside_start, signed_distance, aa_radius);
 
     vec4 final_color = fill(frag_color, uniform_color, frag_uv);
     final_color.a = final_color.a * inside;
 
-    stroke(get_strokecolor(), signed_distance, -stroke_width, final_color);
-    glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance), final_color);
+    stroke(get_strokecolor(), signed_distance, -stroke_width, final_color, aa_radius);
+    glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance, aa_radius), final_color);
 
     // debug - show background
     // final_color.a = clamp(final_color.a, 0.0, 1.0);
