@@ -62,6 +62,32 @@ function three_repeat(s::Symbol)
     error("Unknown repeat mode '$s'")
 end
 
+"""
+    NoDataTextureAtlas(texture_atlas_size)
+
+Optimization to just send the texture atlas one time to JS and then look it up from there in wglmakie.js,
+instead of uploading this texture 10x in every plot.
+"""
+struct NoDataTextureAtlas <: ShaderAbstractions.AbstractSampler{Float16, 2}
+    dims::NTuple{2, Int}
+end
+Base.size(x::NoDataTextureAtlas) = x.dims
+Base.show(io::IO, ::NoDataTextureAtlas) = print(io, "NoDataTextureAtlas()")
+
+function serialize_three(fta::NoDataTextureAtlas)
+    tex = Dict(
+        :type => "Sampler", :data => "texture_atlas",
+        :size => [fta.dims...], :three_format => three_format(Float16),
+        :three_type => three_type(Float16),
+        :minFilter => three_filter(:linear),
+        :magFilter => three_filter(:linear),
+        :wrapS => "RepeatWrapping",
+        :anisotropy => 16f0
+    )
+    tex[:wrapT] = "RepeatWrapping"
+    return tex
+end
+
 function serialize_three(color::Sampler{T,N}) where {T,N}
     tex = Dict(
         :type => "Sampler",
