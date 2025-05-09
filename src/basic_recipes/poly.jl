@@ -32,6 +32,12 @@ convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
 function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
+    mfxaa = lift(plot.strokewidth, plot.mesh_fxaa) do sw, fxaa
+        fxaa === automatic || return fxaa
+        # If we stroke, we need to do fxaa=false, to not have bad rendering of the stroke on top of the mesh
+        # If no stroke, we should enable fxaa, to not have the mesh edges be aliased
+        return !(sw > 0.0)
+    end
     mesh!(
         plot, plot[1],
         color = plot.color,
@@ -47,15 +53,15 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         overdraw = plot.overdraw,
         inspectable = plot.inspectable,
         transparency = plot.transparency,
-        space = plot.space,
+        space = plot.space, fxaa=mfxaa,
         depth_shift = plot.depth_shift
     )
     wireframe!(
         plot, plot[1],
         color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
         linewidth = plot.strokewidth, linecap = plot.linecap,
-        visible = plot.visible, overdraw = plot.overdraw,
-        inspectable = plot.inspectable, transparency = plot.transparency,
+        visible = plot.visible, overdraw = plot.overdraw, fxaa=plot.stroke_fxaa,
+        inspectable = plot.inspectable, transparency = plot.stroke_transparency,
         colormap = plot.strokecolormap, depth_shift=plot.stroke_depth_shift
     )
 end
