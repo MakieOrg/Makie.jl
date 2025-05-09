@@ -311,8 +311,8 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         end
 
         usable_lights = view(lights, 1:n_lights)
-        types = light_type.(usable_lights)
-        colors = light_color.(usable_lights)
+        types = Int32.(light_type.(usable_lights))
+        colors = RGBf.(light_color.(usable_lights))
         parameters = Float32[]
         foreach(light -> push_parameters!(parameters, light, iview), usable_lights)
 

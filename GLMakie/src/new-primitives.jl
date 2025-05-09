@@ -151,7 +151,7 @@ function register_light_attributes!(screen, scene, attr, uniforms)
 
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
-    shading = attr[:shading][]
+    shading = scene.compute[:lighting_mode][]
     if shading == FastShading
 
         add_input!(attr, :light_color, scene.compute[:dirlight_color])
@@ -170,7 +170,6 @@ function register_light_attributes!(screen, scene, attr, uniforms)
             add_input!(attr, key, scene.compute[key]::Computed)
         end
         push!(uniforms, :ambient, names...)
-
     end
 end
 

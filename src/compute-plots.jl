@@ -389,13 +389,6 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-function resolve_shading_default!(scene::Scene, attr::ComputeGraph)
-    haskey(attr, :shading) || return
-    # TODO: just return true/false?
-    update!(attr, shading = FastShading)
-    return
-end
-
 register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.args[1], scene.compute)
 
 function connect_plot!(parent::SceneLike, plot::ComputePlots)
@@ -423,8 +416,6 @@ function computed_plot!(parent, plot::T) where {T}
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
     register_camera!(scene, plot)
-
-    resolve_shading_default!(scene, plot.args[1])
 
     push!(parent, plot)
     plot!(plot)
