@@ -49,6 +49,7 @@ function draw_heatmap(screen, data::Dict)
             )
         )
         fxaa = false
+        px_per_unit = 1f0
     end
     return assemble_shader(data)
 end
@@ -73,6 +74,7 @@ function draw_volume(screen, main::VolumeTypes, data::Dict)
         backlight = 1f0
         enable_depth = true
         transparency = false
+        px_per_unit = 1f0
         shader = GLVisualizeShader(
             screen,
             "volume.vert",

@@ -194,7 +194,6 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     end
 end
 
-
 function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
     # Compute contours
     xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)

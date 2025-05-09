@@ -203,6 +203,8 @@ end
 
 # TODO: for Makie v0.22, GeometryBasics v0.5,
 # switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
+# TODO: bring back
+#=
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
     meshes = plot[1]
     attrs = Attributes(
@@ -264,3 +266,4 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: A
     attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
     return mpl
 end
+=#

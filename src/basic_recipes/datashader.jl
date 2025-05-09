@@ -680,7 +680,7 @@ function Makie.plot!(p::HeatmapShader)
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        update_while_pressed = p.values[].update_while_button_pressed
+        update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
         if update_while_pressed || (no_mbutton && no_kbutton)
@@ -694,11 +694,11 @@ function Makie.plot!(p::HeatmapShader)
     end
 
     x, y = map(identity, p, p.x; ignore_equal_values=true), map(identity, p, p.y; ignore_equal_values=true)
-    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, p.image, scene.viewport) do resampler, viewport
         res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
-    image = lift(x-> x.data, p, p.values)
+    image = lift(x-> x.data, p, p.image)
     image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
     x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
     overview_image = lift(last, x_y_overview_image)
@@ -717,7 +717,7 @@ function Makie.plot!(p::HeatmapShader)
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
     overview = overview_image
-    if !p.values[].lowres_background
+    if !p.image[].lowres_background
         # If we don't use the lowres background,
         # We still display a background image, but with only the average of the image
         # Leading to a background that blends relatively well with the high res image
@@ -786,26 +786,13 @@ function Makie.plot!(p::HeatmapShader)
         # if do_resample/ch is not empty, we already know that
         # there is a newer image queued to be updated
         # So we can skip this update
+
+        if !visible[]
+            visible[] = true
+        end
         if isempty(do_resample) && isempty(image_to_obs)
             x, y, image = x_y_image
-            if !p.values[].lowres_background
-                # hiding without a background looks really bad
-                if !visible[]
-                    visible[] = true
-                end
-            else
-                visible[] = false
-            end
-            if imgp[1][] != x
-                imgp[1] = x
-            end
-            if imgp[2][] != y
-                imgp[2] = y
-            end
-            imgp[3] = image
-            if !visible[]
-                visible[] = true
-            end
+            update!(imgp, arg1=x, arg2=y, arg3=image)
         end
     end
     bind(image_to_obs, task)

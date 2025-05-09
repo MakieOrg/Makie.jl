@@ -25,7 +25,7 @@ vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotat
 vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
 vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
-GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion)= Vec4f(rotation.data)
+GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion) = Vec4f(rotation.data)
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 struct PointSizeRender
@@ -33,12 +33,7 @@ struct PointSizeRender
 end
 (x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 
-# For switching between ellipse method and faster circle method in shader
-is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
-is_all_equal_scale(::Real) = true
-is_all_equal_scale(::Vector{Real}) = true
-is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
-is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
 
 
 intensity_convert(cotnext, intensity, verts) = intensity
@@ -78,10 +73,10 @@ end
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
 function draw_mesh_particle(screen, p, data)
-    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    rot = vec2quaternion(rot)
-    delete!(data, :rotation)
-    to_opengl_mesh!(screen.glscreen, data, p[1])
+    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
+    # rot = vec2quaternion(rot)
+    # delete!(data, :rotation)
+    to_opengl_mesh!(screen.glscreen, data, p[1]) # TODO: new functions need something else
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
@@ -91,7 +86,11 @@ function draw_mesh_particle(screen, p, data)
     end
 
     # TODO: use instance attributes
-    if to_value(data[:uv_transform]) isa Vector
+    if to_value(data[:uv_transform]) isa TextureBuffer
+        # compat with new rendering
+
+        # TODO: v delete this
+    elseif to_value(data[:uv_transform]) isa Vector
         transforms = pop!(data, :uv_transform)
         @gen_defaults! data begin
             uv_transform = map(transforms) do transforms
@@ -125,6 +124,7 @@ function draw_mesh_particle(screen, p, data)
 
         instances = const_lift(length, position)
         transparency = false
+        px_per_unit = 1f0
         shader = GLVisualizeShader(
             screen,
             "util.vert", "particles.vert",
@@ -161,6 +161,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         scale        = 2f0
         f32c_scale   = Vec3f(1)
         transparency = false
+        px_per_unit = 1f0
         shader       = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
@@ -186,6 +187,7 @@ function draw_scatter(
     draw_scatter(screen, (RECTANGLE, p[2]), data)
 end
 
+# TODO: vector of images
 function draw_scatter(
         screen, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
     ) where {C <: Colorant, P <: Point}
@@ -224,11 +226,11 @@ Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
 function draw_scatter(screen, (marker, position), data)
-    rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    rot = vec2quaternion(rot)
-    delete!(data, :rotation)
+    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
+    # rot = vec2quaternion(rot)
+    # delete!(data, :rotation)
 
-    if to_value(pop!(data, :depthsorting, false))
+    if !haskey(data, :indices) && to_value(pop!(data, :depthsorting, false))
         data[:indices] = map(
             data[:projectionview], data[:preprojection], data[:model],
             position
@@ -251,16 +253,6 @@ function draw_scatter(screen, (marker, position), data)
         image       = nothing => Texture
     end
 
-    data[:shape] = map(
-            convert(Observable{Int}, pop!(data, :shape)), data[:scale]
-        ) do shape, scale
-        if shape == 0 && !is_all_equal_scale(scale)
-            return Cint(5) # scaled CIRCLE -> ELLIPSE
-        else
-            return shape
-        end
-    end
-
     @gen_defaults! data begin
         quad_offset     = Vec2f(0) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -281,6 +273,7 @@ function draw_scatter(screen, (marker, position), data)
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
         transparency     = false
+        px_per_unit = 1f0
         shader           = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",

@@ -91,6 +91,7 @@ mutable struct Scene <: AbstractScene
     lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
+    compute::ComputeGraph
 
     conversions::DimConversions
     isclosed::Bool
@@ -132,9 +133,11 @@ mutable struct Scene <: AbstractScene
             convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
             Cycler(),
+            ComputeGraph(),
             DimConversions(),
             false
         )
+        add_camera_computation!(scene.compute, scene)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -185,6 +188,9 @@ get_scene(plot::AbstractPlot) = parent_scene(plot)
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
 function Base.show(io::IO, scene::Scene)
+    print(io, "Scene(", length(scene.children), " children, ", length(scene.plots), " plots)")
+end
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
 
@@ -479,6 +485,8 @@ function Base.empty!(scene::Scene; free=false)
         Observables.off(obsfunc)
     end
     empty!(scene.deregister_callbacks)
+    empty!(scene.camera.calculated_matrices)
+    empty!(scene.camera.resolution_ppu)
     return nothing
 end
 
