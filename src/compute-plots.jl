@@ -389,60 +389,6 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-resolve_shading_default!(scene::Scene, attr::ComputeGraph) = resolve_shading_default!(attr, scene.lights)
-function resolve_shading_default!(attr::ComputeGraph, lights::Vector{<: AbstractLight})
-    haskey(attr, :shading) || return
-
-    # shading is a compile time adjustment so it doesn't make sense to add
-    # dynamic comoputations for it. Instead we just replace the initial value
-
-    # Bad type
-    # TODO: This is hacky - we don't want to resolve shading and pin it to a potentially bad type
-    shading = attr.inputs[:shading].value
-    if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
-        prev = shading
-        if (shading isa Bool) && (shading == false)
-            shading = NoShading
-        else
-            shading = automatic
-        end
-        @warn "`shading = $prev` is not valid. Use `Makie.automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
-    end
-
-    # automatic conversion
-    if shading === automatic
-        ambient_count = 0
-        dir_light_count = 0
-
-        for light in lights
-            if light isa AmbientLight
-                ambient_count += 1
-            elseif light isa DirectionalLight
-                dir_light_count += 1
-            elseif light isa EnvironmentLight
-                continue
-            else
-                update!(attr, shading = MultiLightShading)
-                return
-            end
-            if ambient_count > 1 || dir_light_count > 1
-                update!(attr, shading = MultiLightShading)
-                return
-            end
-        end
-
-        if dir_light_count + ambient_count == 0
-            shading = NoShading
-        else
-            shading = FastShading
-        end
-    end
-
-    update!(attr, shading = shading)
-
-    return
-end
-
 register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.args[1], scene.compute)
 
 function connect_plot!(parent::SceneLike, plot::ComputePlots)
@@ -470,8 +416,6 @@ function computed_plot!(parent, plot::T) where {T}
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
     register_camera!(scene, plot)
-
-    resolve_shading_default!(scene, plot.args[1])
 
     push!(parent, plot)
     plot!(plot)
