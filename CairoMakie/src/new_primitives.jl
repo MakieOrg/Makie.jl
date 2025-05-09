@@ -443,7 +443,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     # transform_func is already included in xs, ys, so we can see its effect in is_regular_grid
     is_identity_transform = Makie.is_translation_scale_matrix(model)
     is_regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    is_xy_aligned = Makie.is_translation_scale_matrix(plot.projectionview[])
+    is_xy_aligned = Makie.is_translation_scale_matrix(projectionview)
 
     if interpolate
         if !is_regular_grid
