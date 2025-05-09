@@ -145,7 +145,7 @@ function generate_clip_planes!(attr, target_space::Symbol = :world, modelname = 
     return
 end
 
-# TODO: handle these on the scene level once and reuse them
+# TODO: Consider separating this from plot (i.e. update this in render using scene graph)
 function register_light_attributes!(screen, scene, attr, uniforms)
     haskey(attr, :shading) || return
 
