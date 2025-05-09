@@ -445,6 +445,12 @@ function resolve_shading_default!(attr::ComputeGraph, lights::Vector{<: Abstract
     return
 end
 
+
+function connect_plot!(parent::SceneLike, plot::ComputePlots)
+    computed_plot!(parent, plot)
+end
+
+# should this just be connect_plot?
 function computed_plot!(parent, plot::T) where {T}
     scene = parent_scene(parent)
     add_theme!(plot, scene)
@@ -669,7 +675,7 @@ function register_mesh_decomposition!(attr)
     register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color]) do (meshes, merged, color), changed, cached
         if hasproperty(merged, :color)
             _color = merged.color
-        elseif meshes isa Vector && color isa Vector && length(color) == length(meshes)
+        elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x-> length(coordinates(x)), meshes))
         else
             _color = color
