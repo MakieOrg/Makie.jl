@@ -153,117 +153,52 @@ function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
 end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
-    geometries = plot[1]
-    transform_func = plot.transformation.transform_func
-    meshes = lift(poly_convert, plot, geometries, transform_func)
-    mesh!(plot, meshes;
-        visible = plot.visible,
-        shading = plot.shading,
-        color = plot.color,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        colorrange = plot.colorrange,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        nan_color=plot.nan_color,
-        alpha=plot.alpha,
-        overdraw = plot.overdraw,
-        fxaa = plot.fxaa,
-        transparency = plot.transparency,
-        inspectable = plot.inspectable,
-        space = plot.space,
-        depth_shift = plot.depth_shift
-    )
+    lines!(plot, Point2f[])
+    # geometries = plot.polygon
+    # transform_func = plot.transformation.transform_func
+    # meshes = lift(poly_convert, plot, geometries, transform_func)
 
-    outline = lift(to_lines, plot, geometries)
-    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
-        if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
-            idx = 1
-            return map(outline) do point
-                if isnan(point)
-                    idx += 1
-                end
-                return sc[idx]
-            end
-        else
-            return sc
-        end
-    end
-    lines!(
-        plot, outline, visible = plot.visible,
-        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
-        colormap = plot.strokecolormap,
-        linewidth = plot.strokewidth, linecap = plot.linecap,
-        joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
-        space = plot.space,
-        overdraw = plot.overdraw, transparency = plot.transparency,
-        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
-    )
+    # mesh!(plot, meshes;
+    #     visible = plot.visible,
+    #     shading = plot.shading,
+    #     color = plot.color,
+    #     colormap = plot.colormap,
+    #     colorscale = plot.colorscale,
+    #     colorrange = plot.colorrange,
+    #     lowclip = plot.lowclip,
+    #     highclip = plot.highclip,
+    #     nan_color=plot.nan_color,
+    #     alpha=plot.alpha,
+    #     overdraw = plot.overdraw,
+    #     fxaa = plot.fxaa,
+    #     transparency = plot.transparency,
+    #     inspectable = plot.inspectable,
+    #     space = plot.space,
+    #     depth_shift = plot.depth_shift
+    # )
+
+    # outline = lift(to_lines, plot, geometries)
+    # stroke = lift(plot, outline, plot.strokecolor) do outline, sc
+    #     if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
+    #         idx = 1
+    #         return map(outline) do point
+    #             if isnan(point)
+    #                 idx += 1
+    #             end
+    #             return sc[idx]
+    #         end
+    #     else
+    #         return sc
+    #     end
+    # end
+    # lines!(
+    #     plot, outline, visible = plot.visible,
+    #     color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
+    #     colormap = plot.strokecolormap,
+    #     linewidth = plot.strokewidth, linecap = plot.linecap,
+    #     joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
+    #     space = plot.space,
+    #     overdraw = plot.overdraw, transparency = plot.transparency,
+    #     inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
+    # )
 end
-
-# TODO: for Makie v0.22, GeometryBasics v0.5,
-# switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
-# TODO: bring back
-#=
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
-    meshes = plot[1]
-    attrs = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
-        inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space, ssao = plot.ssao,
-        alpha = plot.alpha,
-        lowclip = get(plot, :lowclip, automatic),
-        highclip = get(plot, :highclip, automatic),
-        nan_color = get(plot, :nan_color, :transparent),
-        colormap = get(plot, :colormap, nothing),
-        colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic),
-        depth_shift = plot.depth_shift
-    )
-
-    num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
-        return Int[length(coordinates(m)) for m in meshes]
-    end
-
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
-
-    interpolate_in_fragment_shader = Observable(false)
-
-    lift!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
-        # one mesh per color
-        if colors isa AbstractVector && length(colors) == length(num_meshes)
-            ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
-            result = similar(ccolors, float32type(ccolors), sum(num_meshes))
-            i = 1
-            for (cs, len) in zip(ccolors, num_meshes)
-                for j in 1:len
-                    result[i] = cs
-                    i += 1
-                end
-            end
-            # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
-            interpolate_in_fragment_shader[] = false
-            return result
-        else
-            # If we have colors per vertex, we need to interpolate in fragment shader
-            interpolate_in_fragment_shader[] = true
-            return to_color(colors)
-        end
-    end
-    attrs[:color] = mesh_colors
-    transform_func = plot.transformation.transform_func
-    bigmesh = lift(plot, meshes, transform_func) do meshes, tf
-        if isempty(meshes)
-            # TODO: Float64
-            return GeometryBasics.Mesh(Point{N, T}[], GLTriangleFace[])
-        else
-            triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
-            return merge(triangle_meshes)
-        end
-    end
-    mpl = mesh!(plot, attrs, bigmesh)
-    # splice in internal attribute after creation to avoid validation
-    attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
-    return mpl
-end
-=#

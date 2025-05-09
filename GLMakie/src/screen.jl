@@ -667,7 +667,6 @@ end
 
 # Note: called from scene finalizer, must not error
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-
     if !isempty(plot.plots)
         # this plot consists of children, so we flatten it and delete the children instead
         for cplot in Makie.collect_atomic_plots(plot)
@@ -689,7 +688,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
         # TODO: cleanup in the future
         if plot isa Makie.ComputePlots
-            haskey(plot.args[1], :gl_renderobject) && delete!(plot.args[1], :gl_renderobject)
+            haskey(plot, :gl_renderobject) && delete!(plot.attributes, :gl_renderobject)
         end
     end
     screen.requires_update = true
@@ -1055,7 +1054,7 @@ function poll_updates(screen)
         # poll object for updates
         if plot isa Makie.ComputePlots
             try
-                plot.args[1][:gl_renderobject][]
+                plot.attributes[:gl_renderobject][]
             catch e
                 @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
                 # TODO: mark the output as resolved so we don't repeatedly pull in errors
@@ -1162,9 +1161,7 @@ function render_asap(f::Function, screen::Screen, N::Integer)
         f()
         for plot in values(screen.cache2plot)
             # poll object for updates
-            if plot isa Makie.ComputePlots
-                plot.args[1][:gl_renderobject][]
-            end
+            plot.attributes[:gl_renderobject][]
         end
         render_frame(screen)
         GLFW.SwapBuffers(to_native(screen))

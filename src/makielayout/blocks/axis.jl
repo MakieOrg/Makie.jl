@@ -768,11 +768,7 @@ function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler
                     idx = Tuple(cis[k])
                     palettes[isym][idx[isym]]
                 end
-                if plot.args[1] isa ComputeGraph
-                    setproperty!(plot.args[1], sym, x)
-                else
-                    plot[sym] = x
-                end
+                plot[sym] = x
             end
         end
     end
