@@ -37,6 +37,7 @@ let
         empty!(DEFAULT_FONT)
         empty!(ALTERNATIVE_FONTS)
         Makie.CURRENT_FIGURE[] = nothing
+        generate_buffers(default_pipeline())
     end
     nothing
 end

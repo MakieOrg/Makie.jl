@@ -6,10 +6,10 @@
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    fb = screen.framebuffer_factory.fb
+    buff = get_buffer(fb, :objectid)
+    GLAbstraction.bind(fb)
+    glReadBuffer(get_attachment(fb, :objectid))
     rx, ry = minimum(rect)
     rw, rh = widths(rect)
     w, h = size(screen.scene)
@@ -27,10 +27,10 @@ end
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
     ShaderAbstractions.switch_context!(screen.glscreen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    fb = screen.framebuffer_factory.fb
+    buff = get_buffer(fb, :objectid)
+    GLAbstraction.bind(fb)
+    glReadBuffer(get_attachment(fb, :objectid))
     x, y = floor.(Int, xy)
     w, h = size(screen.scene)
     ppu = screen.px_per_unit[]
@@ -70,7 +70,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     w, h = size(screen.scene) # unitless dimensions
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
-    fb = screen.framebuffer
+    fb = screen.framebuffer_factory.fb
     ppu = screen.px_per_unit[]
     w, h = size(fb) # pixel dimensions
     x0, y0 = max.(1, floor.(Int, ppu .* (xy .- range)))
@@ -78,9 +78,9 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     dx = x1 - x0; dy = y1 - y0
 
     ShaderAbstractions.switch_context!(screen.glscreen)
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    buff = fb.buffers[:objectid]
+    GLAbstraction.bind(fb)
+    glReadBuffer(get_attachment(fb, :objectid))
+    buff = get_buffer(fb, :objectid)
     sids = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sids)
 
@@ -111,7 +111,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
         return Tuple{AbstractPlot, Int}[]
     end
 
-    fb = screen.framebuffer
+    fb = screen.framebuffer_factory.fb
     ppu = screen.px_per_unit[]
     w, h = size(fb) # pixel dimensions
     x0, y0 = max.(1, floor.(Int, ppu .* (xy .- range)))
@@ -119,9 +119,9 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     dx = x1 - x0; dy = y1 - y0
 
     ShaderAbstractions.switch_context!(screen.glscreen)
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    buff = fb.buffers[:objectid]
+    GLAbstraction.bind(fb)
+    glReadBuffer(get_attachment(fb, :objectid))
+    buff = get_buffer(fb, :objectid)
     picks = zeros(SelectionID{UInt32}, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, picks)
 
