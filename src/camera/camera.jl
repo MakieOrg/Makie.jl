@@ -132,80 +132,102 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     # [world, eye, pixel, relative, clip] to [world, eye, pixel, relative, clip]
 
     # Inputs to be set by camera controller/scene
-    add_input!(graph, :view, Mat4d(I))
-    add_input!(graph, :projection, Mat4d(I))
-    add_input!(graph, :viewport, Rect2d(0,0,0,0))
-    for key in [:eyeposition, :upvector, :view_direction]
-        add_input!(graph, key, Vec3d(0))
-    end
-
     # TODO: Should we move viewport to the graph entirely?
-    on(viewport -> update!(graph, viewport = viewport), scene, scene.viewport, update = true)
+    add_input!(graph, :viewport, scene.viewport)
+
     for key in [:view, :projection, :eyeposition, :upvector, :view_direction]
-        on(x -> update!(graph, key => x), scene, getproperty(scene.camera, key), update = true)
+        add_input!(graph, key, getproperty(scene.camera, key))
     end
 
     register_computation!(graph, [:viewport], [:scene_origin, :resolution]) do (viewport,), changed, cached
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)),)
     end
 
-    # space to clip
-    register_computation!(graph, [:projection, :view], [:world_to_clip]) do (projection, view), changed, cached
-        return (projection * view,)
+    # Camera matrices
+    # TODO: consider aliasing view, projection
+    register_computation!(
+            graph, [:projection, :view], [:world_to_clip, :world_to_eye, :eye_to_clip]
+        ) do (projection, view), changed, cached
+
+        return (projection * view, view, projection)
     end
-    ComputePipeline.alias!(graph, :projection, :eye_to_clip)
-    register_computation!(graph, [:resolution], [:pixel_to_clip]) do (resolution,), changed, cached
+    register_computation!(
+            graph, [:projection, :view],
+            [:clip_to_world, :eye_to_world, :clip_to_eye]
+        ) do (projection, view), changed, cached
+
+        # are there accuracy issues with inv first?
+        iview = inv(view)
+        iprojection = inv(projection)
+        return (iview * iprojection, iview, iprojection)
+    end
+
+    # constants
+    # TODO: consider aliasing identities
+    register_computation!(
+            graph, Symbol[],
+            [:world_to_world, :eye_to_eye, :pixel_to_pixel, :relative_to_relative, :clip_to_clip,
+                :clip_to_relative, :relative_to_clip]
+        ) do input, changed, cached
+        id = Mat4d(I)
+        clip_to_relative = Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
+        relative_to_clip = Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
+        return (id, id, id, id, id, clip_to_relative, relative_to_clip)
+    end
+
+    # pixel
+
+    register_computation!(
+            graph, [:resolution],
+            [:pixel_to_clip, :clip_to_pixel, :pixel_to_relative, :relative_to_pixel]
+        ) do (resolution,), changed, cached
         nearclip = -10_000.0
         farclip = 10_000.0
         w, h = resolution
-        return (orthographicprojection(0.0, w, 0.0, h, nearclip, farclip),)
-    end
-    register_computation!(graph, Symbol[], [:relative_to_clip]) do input, changed, cached
-        return (Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1),)
+
+        d = farclip - nearclip
+        iw, ih, id = 1.0 ./ (w, h, -d)
+        co = (farclip + nearclip) * id
+        # Same as orthographicprojection(w, h, nearclip, farclip) but inlined
+        # so we don't need to recalculate 1 / w etc
+        pixel_to_clip = Mat4d(2iw,0,0,0, 0,2ih,0,0, 0,0,2id,0, -1,-1,co,1)
+        clip_to_pixel = Mat4d(0.5w,0,0,0, 0,0.5h,0,0, 0,0,0.5d,0, 0.5w,0.5h,0,1)
+        pixel_to_relative = Mat4d(iw,0,0,0, 0,ih,0,0, 0,0,id,0, 0,0,co,1)
+        relative_to_pixel = Mat4d(w,0,0,0, 0,h,0,0, 0,0,id,0, 0,0,co,1)
+        return (pixel_to_clip, clip_to_pixel, pixel_to_relative, relative_to_pixel)
     end
 
-    # space to space (identities)
-    for key in [:world, :eye, :pixel, :relative, :clip]
-        register_computation!(graph, Symbol[], [Symbol(key, :_to_, key)]) do input, changed, cached
-            return (Mat4d(I),)
-        end
+    # Pretty common for scatter (space to markerspace = pixel, markerspace to clip)
+    # So let's keep it separated
+    register_computation!(
+            graph, [:world_to_clip, :clip_to_pixel],
+            [:world_to_pixel]
+        ) do (world_to_clip, clip_to_pixel), changed, cached
+        world_to_pixel = clip_to_pixel * world_to_clip
+        return (world_to_pixel,)
     end
 
-    # clip to space
-    for key in [:world, :eye]
-        register_computation!(graph, [Symbol(key, :_to_clip)], [Symbol(:clip_to_, key)]) do input, changed, cached
-            return (inv(input[1]),)
-        end
-    end
-    register_computation!(graph, [:resolution], [:clip_to_pixel]) do (resolution,), changed, cached
-        w, h = resolution
-        return (Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1),)
-    end
-    register_computation!(graph, Symbol[], [:clip_to_relative]) do input, changed, cached
-        return (Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1),)
+    # Uncommon cases
+    register_computation!(
+            graph, [:world_to_clip, :eye_to_clip, :clip_to_pixel, :clip_to_eye],
+            [:world_to_relative, :eye_to_relative, :eye_to_pixel]
+        ) do (world_to_clip, clip_to_pixel), changed, cached
+        world_to_relative = clip_to_relative * world_to_clip
+        eye_to_relative = clip_to_relative * eye_to_clip
+        eye_to_pixel = clip_to_pixel * eye_to_clip
+        return (world_to_relative, eye_to_relative, eye_to_pixel)
     end
 
-    register_computation!(graph, [:view], [:world_to_eye]) do (view,), changed, cached
-        return (view,)
-    end
-    register_computation!(graph, [:view], [:eye_to_world]) do (view,), changed, cached
-        return (inv(view),)
-    end
+    register_computation!(
+            graph, [:clip_to_world, :clip_to_eye, :relative_to_clip, :pixel_to_clip],
+            [:relative_to_world, :relative_to_eye, :pixel_to_world, :pixel_to_eye]
+        ) do (clip_to_world, clip_to_eye, relative_to_clip, pixel_to_clip), changed, cached
+        relative_to_world = clip_to_world * relative_to_clip
+        relative_to_eye = clip_to_eye * relative_to_clip
+        pixel_to_world = clip_to_world * pixel_to_clip
+        pixel_to_eye = clip_to_eye * pixel_to_clip
 
-    # remaining off-diagonal elements
-    for input in [:world, :eye, :pixel, :relative]
-        for output in [:world, :eye, :pixel, :relative]
-            if input != output && (input, output) != (:world, :eye) && (input, output) != (:eye, :world)
-                register_computation!(
-                    graph,
-                    [Symbol(input, :_to_clip), Symbol(:clip_to_, output)],
-                    [Symbol(input, :_to_, output)]
-                ) do (input_to_clip, clip_to_output), changed, cached
-                    # Reminder: This applies right to left `clip_to_output * (input_to_clip * input)`
-                    return (clip_to_output * input_to_clip,)
-                end
-            end
-        end
+        return (relative_to_world, relative_to_eye, pixel_to_world, pixel_to_eye)
     end
 
     return graph
