@@ -44,76 +44,60 @@ function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
     return plot.cairo_colors[]
 end
 
-function cairo_project_to_screen_impl(scene, space, model, pos, output_type = Point2f, yflip = true)
+function cairo_project_to_screen_impl(projectionview, resolution, model, pos, output_type = Point2f, yflip = true)
     # the existing methods include f32convert matrices which are already
     # applied in :positions_transformed_f32c (using this makes CairoMakie
     # less performant (extra O(N) step) but allows code reuse with other backends)
-    M = Makie.space_to_clip(scene.camera, space) * model
-    M = cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+    M = cairo_viewport_matrix(resolution, yflip) * projectionview * model
     return project_position(output_type, M, pos, eachindex(pos))
 end
 
-function cairo_project_to_screen_impl(scene, space, model, pos::VecTypes, output_type = Point2f, yflip = true)
+function cairo_project_to_screen_impl(projectionview, resolution, model, pos::VecTypes, output_type = Point2f, yflip = true)
     p4d = to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
     p4d = model * p4d
-    p4d = Makie.space_to_clip(scene.camera, space) * p4d
-    p4d = cairo_viewport_matrix(scene.camera.resolution[], yflip) * p4d
+    p4d = projectionview * p4d
+    p4d = cairo_viewport_matrix(resolution, yflip) * p4d
     return output_type(p4d) / p4d[4]
 end
 
 function cairo_project_to_screen(
-        scene::Scene, @nospecialize(plot::Plot);
+        @nospecialize(plot::Plot);
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
 
     attr = plot.args[1]::Makie.ComputeGraph
 
     Makie.register_computation!(attr,
-            [input_name, :space, :model_f32c], [:cairo_screen_pos]
-        ) do (pos, space, model), changed, cached
+            [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
+        ) do inputs, changed, cached
 
-        output = cairo_project_to_screen_impl(scene, space, model, pos, output_type, yflip)
+        output = cairo_project_to_screen_impl(values(inputs)..., output_type, yflip)
         return (output,)
     end
 
     return attr[:cairo_screen_pos][]
 end
 
-function cairo_transform_to_world(scene::Scene, @nospecialize(plot::Plot), pos::Array{PT}) where {PT}
-    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    mat = f32convert * plot.model[]
-    transformed = apply_transform(transform_func(plot), pos)
-    output = similar(transformed, PT)
-    @inbounds for i in eachindex(output)
-        p4d = to_ndim(Point4d, to_ndim(Point3d, transformed[i], 0), 1)
-        p4d = mat * p4d
-        output[i] = PT(p4d) / p4d[4]
-    end
-    return output
-end
-
-
 # TODO: This stack should be generalized and moved to Makie
-function cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type = Point3f)
+function cairo_project_to_markerspace_impl(preprojection, model, pos, output_type = Point3f)
     # the existing methods include f32convert matrices which are already
     # applied in :positions_transformed_f32c (using this makes CairoMakie
     # less performant (extra O(N) step) but allows code reuse with other backends)
-    M = Makie.clip_to_space(scene.camera, markerspace) * Makie.space_to_clip(scene.camera, space) * model
-    return project_position(output_type, M, pos, eachindex(pos))
+    return project_position(output_type, preprojection * model, pos, eachindex(pos))
 end
 
 function cairo_project_to_markerspace(
-        scene::Scene, @nospecialize(plot::Plot);
+        @nospecialize(plot::Plot);
         input_name = :positions_transformed_f32c, output_type = Point3d
     )
 
     attr = plot.args[1]::Makie.ComputeGraph
 
     Makie.register_computation!(attr,
-            [input_name, :space, :markerspace, :model_f32c], [:cairo_markerspace_pos]
-        ) do (pos, space, markerspace, model), changed, cached
+            [:preprojection, :model_f32c, input_name], [:cairo_markerspace_pos]
+        ) do inputs, changed, cached
 
-        output = cairo_project_to_markerspace_impl(scene, space, markerspace, model, pos, output_type)
+        output = cairo_project_to_markerspace_impl(inputs..., output_type)
         return (output,)
     end
 
@@ -247,7 +231,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
     #       the output can becomes invalid from render to render.
     indices = cairo_unclipped_indices(attr)
-    markerspace_pos = cairo_project_to_markerspace(scene, p)
+    markerspace_pos = cairo_project_to_markerspace(p)
     # ^ if some positions get clipped they still get transformed here because they
     # need to synchronize with other attributes
 
@@ -345,7 +329,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
     # input -> markerspace
     # TODO: This sucks, we're doing per-string/glyphcollection work per glyph here
     valid_indices = cairo_unclipped_indices(attr)
-    markerspace_positions = cairo_project_to_markerspace(scene, primitive)
+    markerspace_positions = cairo_project_to_markerspace(primitive)
 
     model33 = transform_marker ? primitive.model[][Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
     if !isnothing(scene.float32convert) && Makie.is_data_space(markerspace)
@@ -448,7 +432,7 @@ end
 
 # Note: Changed very little here
 function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::Union{Heatmap, Image})) where RT
-    @get_attribute(primitive, (interpolate, space, image))
+    @get_attribute(primitive, (interpolate, space, image, projectionview, resolution))
     ctx = screen.context
 
     xs, ys = image_grid(primitive)
@@ -459,7 +443,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     # transform_func is already included in xs, ys, so we can see its effect in is_regular_grid
     is_identity_transform = Makie.is_translation_scale_matrix(model)
     is_regular_grid = xs isa AbstractRange && ys isa AbstractRange
-    is_xy_aligned = Makie.is_translation_scale_matrix(scene.camera.projectionview[])
+    is_xy_aligned = Makie.is_translation_scale_matrix(plot.projectionview[])
 
     if interpolate
         if !is_regular_grid
@@ -473,8 +457,8 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     # find projected image corners
     # this already takes care of flipping the image to correct cairo orientation
 
-    xy    = cairo_project_to_screen_impl(scene, space, model, Point2(first(xs), first(ys)))
-    xymax = cairo_project_to_screen_impl(scene, space, model, Point2(last(xs), last(ys)))
+    xy    = cairo_project_to_screen_impl(projectionview, resolution, model, Point2(first(xs), first(ys)))
+    xymax = cairo_project_to_screen_impl(projectionview, resolution, model, Point2(last(xs), last(ys)))
 
     w, h = xymax .- xy
 
@@ -546,7 +530,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
                 end
             end
 
-            cairo_project_to_screen_impl(scene, space, model, transformed)
+            cairo_project_to_screen_impl(projectionview, resolution, model, transformed)
         end
 
         # Note: xs and ys should have size ni+1, nj+1
@@ -575,7 +559,7 @@ end
 
 function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     # TODO: no clip_planes?
-    vs = cairo_project_to_screen(scene, plot)
+    vs = cairo_project_to_screen(plot)
     fs = plot.faces[]
     uv = plot.texturecoordinates[]
     uv_transform = plot.uv_transform[]
@@ -596,7 +580,7 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
 
     # per-element in meshscatter
     world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
-    screen_points = cairo_project_to_screen(scene, plot, output_type = Point3f)
+    screen_points = cairo_project_to_screen(plot, output_type = Point3f)
     meshfaces = plot.faces[]
     meshnormals = plot.normals[]
     _meshuvs = plot.texturecoordinates[]
@@ -655,16 +639,15 @@ function draw_mesh3D(
     draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
         model, shading_bool::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes
+        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes, plot.eyeposition[]
     )
 end
 
 function draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading, diffuse, specular, shininess, faceculling, clip_planes
+        model, shading, diffuse, specular, shininess, faceculling, clip_planes, eyeposition
     )
     ctx = screen.context
-    eyeposition = scene.camera.eyeposition[]
 
     # local_model applies rotation and markersize from meshscatter to vertices
     i = Vec(1, 2, 3)
@@ -813,14 +796,14 @@ function draw_scattered_mesh(
 
     # Z sorting based on meshscatter arguments
     # For correct z-ordering we need to be in view/camera or screen space
-    view = scene.camera.view[]
+    view = plot.view[]
     zorder = sortperm(positions, by = p -> begin
         p4d = to_ndim(Vec4d, p, 1)
         cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
         cam_pos[1] / cam_pos[2]
     end, rev=false)
 
-    proj_mat = cairo_viewport_matrix(scene.camera.resolution[]) * Makie.space_to_clip(scene.camera, space)
+    proj_mat = cairo_viewport_matrix(plot.resolution[]) * plot.projectionview[]
 
     for i in zorder
         # Get per-element data
