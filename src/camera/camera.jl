@@ -270,6 +270,9 @@ end
 function (cb::CameraMatrixCallback)(inputs, changed, cached)
     graph = cb.graph
     space = inputs.space
+    # TODO: more fine grained updates?
+    # e.g. log if space related matrices or markerspace related matrices need
+    # update in camera_trigger and only update those?
     if haskey(inputs, :markerspace)
         markerspace = inputs.markerspace
         # TODO: breaks FastPixel?

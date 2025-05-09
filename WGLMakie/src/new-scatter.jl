@@ -660,7 +660,6 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.args[1]
 
-    Makie.add_computation!(attr, scene, :scene_origin)
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 
