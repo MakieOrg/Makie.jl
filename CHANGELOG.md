@@ -11,6 +11,7 @@
 - Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
 - Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
 - Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
+- Added `sources` section to all Project.tomls in the monorepo, so that `]dev GLMakie` will download the monorepo and automatically dev Makie and MakieCore. [#4967](https://github.com/MakieOrg/Makie.jl/pull/4967)
 
 ## [0.22.4] - 2025-04-11
 
