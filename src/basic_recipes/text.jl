@@ -26,7 +26,7 @@ convert_attribute(str::AbstractString, ::key"text", ::key"text") = [str]
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
 
 
-function register_text_arguments!(attr::ComputeGraph, user_kw, input_args...)
+function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
     inputs = _register_input_arguments!(Text, attr, input_args)
 
@@ -366,14 +366,12 @@ end
 get_text_type(x::AbstractVector) = eltype(x)
 get_text_type(::T) where T = T
 
-function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Text, attr, user_kw)
+function calculated_attributes!(::Type{Text}, plot::Plot)
+    attr = plot.attributes
 
     register_computation!((args...) -> (Cint(DISTANCEFIELD), ), attr, Symbol[], [:sdf_marker_shape])
 
     register_colormapping!(attr)
-    register_text_arguments!(attr, user_kw, args...)
     TextType = get_text_type(attr[:input_text][])
     register_text_computations!(attr, TextType)
 
@@ -406,15 +404,8 @@ function compute_plot(::Type{Text}, args::Tuple, user_kw::Dict{Symbol,Any})
         else
             return nothing
         end
-
         return (Rect3d(inputs.positions),)
     end
-
-    T = typeof(attr[:positions][])
-    p = Plot{text, Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-
-    return p
 end
 
 # TODO: Naming?

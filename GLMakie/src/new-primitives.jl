@@ -185,12 +185,12 @@ function add_light_attributes!(screen, scene, data, attr)
 end
 
 function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
-    attr = plot.args[1]::ComputeGraph
+    attr = plot.attributes::ComputeGraph
     return attr
 end
 
 function register_robj!(constructor, screen, scene, plot, inputs, uniforms, input2glname)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     # These must always be there!
     push!(uniforms, :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :visible, :fxaa)
@@ -868,7 +868,7 @@ end
 ### Image
 ################################################################################
 
-function assemble_image_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_image_robj(screen::Screen, ::Scene, attr, args, uniforms, input2glname)
     r = Rect2f(0,0,1,1)
 
     data = Dict{Symbol, Any}(
@@ -980,7 +980,7 @@ function assemble_heatmap_robj(screen::Screen, scene::Scene, attr, args, uniform
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     # TODO: requires position transforms in Makie
     # # Fast path for regular heatmaps
@@ -1057,7 +1057,7 @@ function assemble_surface_robj(screen::Screen, scene::Scene, attr, args, uniform
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr)
@@ -1180,7 +1180,7 @@ function assemble_mesh_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr)
@@ -1250,7 +1250,7 @@ function assemble_voxel_robj(screen::Screen, scene::Scene, attr, args, uniforms,
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
@@ -1337,7 +1337,7 @@ function assemble_volume_robj(screen::Screen, scene::Scene, attr, args, uniforms
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model

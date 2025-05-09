@@ -685,7 +685,7 @@ Plots polygons, which are defined by
 `coordinates` (the coordinates of the vertices) and
 `connectivity` (the edges between the vertices).
 """
-@recipe Poly begin
+@recipe Poly (polygon,) begin
     """
     Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
     A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
