@@ -229,34 +229,37 @@ function add_light_computation!(graph, lights)
     add_input!(graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
 
-    register_computation!(
-        fast_light_computation, graph,
-        [:lights, :eye_to_world], # camera view matrix, not space adjusted plot matrix (right?)
-        [:dirlight_color, :dirlight_direction, :dirlight_cam_relative, :dirlight_final_direction]
-    )
+    register_computation!(graph, [:lights],
+        [:dirlight_color, :dirlight_direction, :dirlight_cam_relative]
+    ) do (lights,), changed, cached
+        local idx
+        idx = findfirst(light -> light isa DirectionalLight, lights)
+        if idx === nothing && cached === nothing
+            return (RGBf(0,0,0), Vec3f(0), true, Vec3f(0))
+        else
+            light = lights[idx]::DirectionalLight
+            color = light.color
+            dir = normalize(Vec3f(light.direction))
+            cam_relative = light.camera_relative
+            return (color, dir, cam_relative)
+        end
+        return nothing
+    end
+
+    # Split this to avoid updating WGLMakie
+    # camera view matrix, not space adjusted plot matrix (right?)
+    register_computation!(graph,
+        [:dirlight_direction, :dirlight_cam_relative, :eye_to_world],
+        [:dirlight_final_direction]
+    ) do (dir, cam_relative, iview), changed, cached
+        final_dir = cam_relative ? iview[Vec(1,2,3), Vec(1,2,3)] * dir : dir
+        return (final_dir,)
+    end
 
     register_computation!(graph, [:lights], [:lighting_mode]) do (lights,), changed, cached
         is_fast = (length(lights) == 0) || (lights[1] isa DirectionalLight)
         return (ifelse(is_fast, FastShading, MultiLightShading), )
     end
-end
-
-function fast_light_computation(inputs, changed, cached)
-    lights, iview = inputs
-    idx = findfirst(light -> light isa DirectionalLight, lights)
-
-    if idx === nothing && cached === nothing
-        return (RGBf(0,0,0), Vec3f(0), true, Vec3f(0))
-    else
-        light = lights[idx]::DirectionalLight
-        color = light.color
-        dir = light.direction
-        cam_relative = light.camera_relative
-        final_dir = cam_relative ? iview[Vec(1,2,3), Vec(1,2,3)] * dir : dir
-        return (color, Vec3f(dir), cam_relative, Vec3f(final_dir))
-    end
-
-    return nothing
 end
 
 # These return the number of parameter slots they used

@@ -190,9 +190,13 @@ function serialize_scene(scene::Scene)
 
     children = map(child-> serialize_scene(child), scene.children)
 
-    dirlight = Makie.get_directional_light(scene)
-    light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
-    cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
+    light_dir = Observable(Vec3f(1), ignore_equal_values = true)
+    cam_rel = Observable(false, ignore_equal_values = true)
+    on(scene.compute.onchange, update = true) do _
+        light_dir[] = scene.compute[:dirlight_direction][]
+        cam_rel[] = scene.compute[:dirlight_cam_relative][]
+        return
+    end
 
     serialized = Dict(
         :viewport => pixel_area,
@@ -257,23 +261,14 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     delete!(mesh, :attribute_updater)
     delete!(mesh, :uniform_updater)
 
-    dirlight = Makie.get_directional_light(scene)
-    if !isnothing(dirlight)
-        uniforms[:light_color] = serialize_three(dirlight.color[])
-        on(plot, dirlight.color) do value
-            uni_updater[] = [:light_color, serialize_three(value)]
-            return
-        end
+    uniforms[:ambient] = serialize_three(scene.compute[:ambient_color][])
+    uniforms[:light_color] = serialize_three(scene.compute[:dirlight_color][])
+    on(scene.compute.onchange) do _
+        uni_updater[] = [:ambient, serialize_three(scene.compute[:ambient_color][])]
+        uni_updater[] = [:light_color, serialize_three(scene.compute[:dirlight_color][])]
+        return
     end
 
-    ambientlight = Makie.get_ambient_light(scene)
-    if !isnothing(ambientlight)
-        uniforms[:ambient] = serialize_three(ambientlight.color[])
-        on(plot, ambientlight.color) do value
-            uni_updater[] = [:ambient, serialize_three(value)]
-            return
-        end
-    end
     scatterlike = plot isa Scatter || haskey(plot, :markerspace)
     if scatterlike
         mesh[:markerspace] = Observable(plot.markerspace[])
