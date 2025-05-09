@@ -1234,3 +1234,18 @@ end
     scatter!(scene, [(x, y) for x in 51:100 for y in 51:100], markersize=1.0, color = :black, marker = Rect)
     scene
 end
+
+@reference_test "Anisotropic markers" begin
+    scene = Scene(size = (250, 250))
+    scatter!(scene,
+        [-0.5, -0.5, -0.5], [-0.5, 0.5, 0],
+        marker = :rect, markersize = [Vec2f(50, 10), Vec2f(10, 50), Vec2f(50)]
+    )
+    scatter!(scene, 0, +0.5, markersize = (50, 10))
+    scatter!(scene, 0, 0.0, markersize = 50)
+    scatter!(scene, 0, -0.5, markersize = (10, 50))
+    scatter!(scene, 0.5, 0.5, marker = 'o', markersize = 50)
+    scatter!(scene, 0.5, 0, marker = 'L', markersize = 50, rotation = Quaternionf(0.3, 0.7, 0.5, 0.2))
+    scatter!(scene, 0.5, -0.5, marker = 'L', markersize = (20, 100), rotation = Quaternionf(0.3, 0.7, 0.5, 0.2), color = :black)
+    scene
+end
