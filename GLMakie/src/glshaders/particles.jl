@@ -124,6 +124,7 @@ function draw_mesh_particle(screen, p, data)
 
         instances = const_lift(length, position)
         transparency = false
+        px_per_unit = 1f0
         shader = GLVisualizeShader(
             screen,
             "util.vert", "particles.vert",
@@ -160,6 +161,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         scale        = 2f0
         f32c_scale   = Vec3f(1)
         transparency = false
+        px_per_unit = 1f0
         shader       = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
@@ -271,6 +273,7 @@ function draw_scatter(screen, (marker, position), data)
         billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         fxaa             = false
         transparency     = false
+        px_per_unit = 1f0
         shader           = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",

@@ -6,21 +6,6 @@ add_computation!(attr::ComputeGraph, scene::Scene, symbols::Symbol...) =
 
 add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr, Val.(symbols)...)
 
-# TODO: px_per_unit?
-function add_computation!(attr, scene, ::Val{:scene_origin})
-    # TODO: avoid calling this multiple times?
-    haskey(attr, :viewport) || add_input!(attr, :viewport, scene.viewport[])
-    register_computation!(attr, [:viewport], [:scene_origin]) do (viewport,), changed, last
-        !changed[1] && return nothing
-        new_val = Vec2f(origin(viewport))
-        if !isnothing(last) && last[1] == new_val
-            return nothing
-        else
-            return (new_val,)
-        end
-    end
-end
-
 function add_computation!(attr, ::Val{:gl_miter_limit})
     register_computation!(attr, [:miter_limit], [:gl_miter_limit]) do (miter,), changed, output
         return (Float32(cos(pi - miter)),)
@@ -257,9 +242,6 @@ end
 # optionally converts uv_transform to the one used with patterns
 # WGLMakie should call this with target_mat3 = true
 function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname = :model_f32c, colorname = :color, target_mat3 = false)
-    haskey(attr, :projectionview) || add_input!(attr, :projectionview, camera(scene).projectionview)
-    haskey(attr, :viewport) || add_input!(attr, :viewport, viewport(scene))
-
     register_computation!(attr,
         [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
         [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached

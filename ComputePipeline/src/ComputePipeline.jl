@@ -290,6 +290,7 @@ end
 
 """
     update!(graph; kwargs...)
+    update!(graph, pairs::Pair{Symbol, Any}...)
 
 Updates any number of inputs in the graph based on the passed `key = value`
 keyword arguments. The `key` refers to the name of the input and the `value` is
@@ -301,10 +302,13 @@ the new value.
 graph = ComputeGraph()
 add_input!(graph, :first_node, 1)
 update!(graph, first_node = 2)
+update!(graph, :first_node => 2)
 ```
 """
-function update!(attr::ComputeGraph; kwargs...)
-    for (key, value) in pairs(kwargs)
+update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
+
+function update!(attr::ComputeGraph, pairs...)
+    for (key, value) in pairs
         if haskey(attr.inputs, key)
             _setproperty!(attr, key, value)
         else
@@ -486,7 +490,6 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     @assert !(value isa Computed)
     if haskey(attr.inputs, key) || haskey(attr.outputs, key)
         error("Cannot attach input with name $key - already exists!")
-        return
     end
 
     output = Computed(key, RefValue{Any}())
@@ -496,16 +499,17 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     # Needs to be Any, since input can change type
     attr.inputs[key] = input
     attr.outputs[key] = output
-    return
+    return attr
 end
 
 function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     for (k, v) in pairs(kw)
         add_input!(conversion_func, attr, k, v)
     end
+    return attr
 end
 
-compute_identity(inputs, changed, cached) = getindex.(values(inputs))
+compute_identity(inputs, changed, cached) = values(inputs)
 
 # TODO: These functions place the given Computed node into the graph. This
 #       typically results in `key != node.name`, which invites errors
@@ -529,7 +533,7 @@ function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
     # 2. output does not exist (or is already what we want to create)
     # which are given here
     unsafe_register!(compute_identity, attr, [value], (key,))
-    return
+    return attr
 end
 
 # for recipe -> primitive (mostly)
@@ -538,7 +542,7 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
         error("Cannot attach throughput with name $key - already exists!")
     end
     unsafe_register!(InputFunctionWrapper(key, conversion_func), attr, [value], (key,))
-    return
+    return attr
 end
 
 """
@@ -560,7 +564,7 @@ function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
-    return
+    return attr
 end
 
 function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
@@ -569,7 +573,7 @@ function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
-    return
+    return attr
 end
 
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing

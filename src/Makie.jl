@@ -45,6 +45,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 using Dates
+using ComputePipeline
 
 import Unitful
 import UnicodeFun

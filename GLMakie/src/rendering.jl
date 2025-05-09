@@ -129,6 +129,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            elem[:px_per_unit] = ppu
             render(elem)
         end
     catch e
