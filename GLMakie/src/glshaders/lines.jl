@@ -62,6 +62,7 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         lastlen             = Float32[] => GLBuffer
         pattern_length      = 1f0 # we divide by pattern_length a lot.
         debug               = false
+        px_per_unit = 1f0
     end
     return assemble_shader(data)
 end
@@ -94,6 +95,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         gl_primitive        = GL_LINES
         pattern_length      = 1f0
         debug               = false
+        px_per_unit = 1f0
     end
     robj = assemble_shader(data)
     return robj

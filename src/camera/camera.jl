@@ -145,10 +145,6 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         on(x -> update!(graph, key => x), scene, getproperty(scene.camera, key), update = true)
     end
 
-    # TODO: Should we have px_per_unit + ppu_resolution in here? A float * Vec2d
-    # isn't much to calculate so maybe not?
-    # TODO: Consider discarding updates if they match cached (like in backend_functionality)
-    # Note that this needs to exist without ppu too
     register_computation!(graph, [:viewport], [:scene_origin, :resolution]) do (viewport,), changed, cached
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)),)
     end

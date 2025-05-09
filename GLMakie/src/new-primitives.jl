@@ -233,7 +233,6 @@ end
 ################################################################################
 
 function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    camera = scene.camera
     space = attr[:space][]
     markerspace = attr[:markerspace][]
     fast_pixel = attr[:marker][] isa FastPixel
@@ -244,10 +243,9 @@ function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniform
     marker_shape = args.sdf_marker_shape
     distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
 
-    data = Dict(
+    data = Dict{Symbol, Any}(
         # :preprojection => Makie.get_preprojection(camera, space, markerspace),
         :distancefield => distancefield,
-        :px_per_unit => screen.px_per_unit,   # technically not const?
         :ssao => false,                       # shader compilation const
         :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
@@ -368,7 +366,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
     # TODO:
     # - rotation -> billboard missing
-    # - px_per_unit (that can update dynamically via record, right?)
     # - intensity_convert
     # - f32c_scale
 
@@ -407,9 +404,8 @@ function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, 
     colornorm = args.scaled_colorrange
     distancefield = get_texture!(screen.glscreen, args.atlas)
 
-    data = Dict(
+    data = Dict{Symbol, Any}(
         :distancefield => distancefield,
-        :px_per_unit => screen.px_per_unit,   # technically not const?
         :ssao => false,                       # shader compilation const
         :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
@@ -484,7 +480,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     # TODO:
     # - rotation -> billboard missing
-    # - px_per_unit (that can update dynamically via record, right?)
     # - intensity_convert
     # - f32c_scale
 
@@ -729,8 +724,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
 
-    haskey(attr, :px_per_unit) || add_input!(attr, :px_per_unit, screen.px_per_unit)
-
     # TODO: just use positions_transformed_f32c
     # position calculations for patterned lines
     # is projectionview enough to trigger on scene resize in all cases?
@@ -781,7 +774,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     uniforms = [
         :gl_indices, :gl_valid_vertex, :gl_total_length, :gl_last_length,
         :uniform_pattern, :uniform_pattern_length, :linecap, :gl_miter_limit, :joinstyle, :uniform_linewidth,
-        :scene_origin, :px_per_unit, :model_f32c,
+        :scene_origin, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
 
@@ -838,8 +831,6 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     attr = generic_robj_setup(screen, scene, plot)
 
-    haskey(attr, :px_per_unit) || add_input!(attr, :px_per_unit, screen.px_per_unit)
-
     # linestyle/pattern handling
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     haskey(attr, :debug) || add_input!(attr, :debug, false)
@@ -856,7 +847,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     uniforms = [
         :positions_transformed_f32c, :indices,
         :uniform_pattern, :uniform_pattern_length, :linecap, :uniform_linewidth,
-        :scene_origin, :px_per_unit, :model_f32c,
+        :scene_origin, :model_f32c,
         :lowclip_color, :highclip_color, :nan_color, :debug
     ]
 
