@@ -11,7 +11,7 @@ If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` 
 """
 @recipe Series (curves::AbstractVector{<:Union{BezierPath,AbstractVector{<:Point}}},) begin
     linewidth=2
-    color=:lighttest
+    color = wong_colors()
     solid_color=nothing
     labels=nothing
     linestyle=:solid
