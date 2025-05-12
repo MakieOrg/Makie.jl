@@ -676,7 +676,7 @@ function create_lines_data(islines, attr)
     uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
     return Dict(
         :plot_type => "Lines",
-        :visible => Observable(attr.visible),
+        :visible => attr.visible,
         :is_segments => !islines,
         :cam_space => attr.space,
         :uniforms => serialize_uniforms(uniforms),
