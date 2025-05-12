@@ -70,10 +70,6 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
         Cairo.finish(screen2.surface)
     end
 
-    # fix for #4970, to avoid that the finalizer of this surface tries to write to `io` later
-    # when `io` is possibly not valid anymore
-    Cairo.finish(screen.surface)
-
     # for some reason, in the svg, surfaceXXX ids keep counting up,
     # even with the very same figure drawn again and again
     # so we need to reset them to counting up from 1
