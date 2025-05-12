@@ -463,10 +463,23 @@ function plot!(plot::Arrows2D)
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
     poly!(plot, meshes, space = plot.markerspace, color = calc_colors,
-        strokecolor = calc_colors, strokewidth = plot.strokemask; generic_attributes...)
+        strokecolor = calc_colors, strokewidth = plot.strokemask;
+        transformation = :nothing, generic_attributes...)
 
     return plot
 end
+
+function data_limits(plot::Arrows2D)
+    startpoints, directions = _process_arrow_arguments(
+        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
+    )
+
+    return update_boundingbox(
+        Rect3d(startpoints),
+        Rect3d(startpoints .+ directions)
+    )
+end
+boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
 
 ################################################################################
@@ -549,8 +562,6 @@ $_arrow_args_docs
     More vertices will improve the roundness of the mesh but be more costly.
     """
     quality = 32
-    "Controls whether marker attributes get transformed by the model matrix."
-    transform_marker = true
 
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
@@ -585,10 +596,20 @@ function plot!(plot::Arrows3D)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
 
-    startpoints_directions = map(
+    _startpoints_directions = map(
         _process_arrow_arguments, plot,
         plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
     )
+
+    startpoints_directions = map(
+            plot, _startpoints_directions,
+            transform_func_obs(plot), transformationmatrix(plot)
+        ) do (ps, dirs), tf, model
+
+        startpoints = apply_transform_and_model(plot, ps)
+        endpoints = apply_transform_and_model(plot, ps .+ dirs)
+        return (startpoints, endpoints .- startpoints)
+    end
 
     arrowscale = map(plot, startpoints_directions, markerscale) do (ps, dirs), ms
         if ms === automatic
@@ -666,28 +687,32 @@ function plot!(plot::Arrows3D)
 
     meshscatter!(plot,
         map(first, plot, startpoints_directions), marker = tail_m, markersize = tail_scale, rotation = rot,
-        color = tailcolor, visible = tail_visible; generic_attributes...
+        color = tailcolor, visible = tail_visible, transformation = :nothing; generic_attributes...
     )
     meshscatter!(plot,
         shaft_pos, marker = shaft_m, markersize = shaft_scale, rotation = rot,
-        color = shaftcolor, visible = visible; generic_attributes...
+        color = shaftcolor, visible = visible, transformation = :nothing; generic_attributes...
     )
     meshscatter!(plot,
         tip_pos, marker = tip_m, markersize = tip_scale, rotation = rot,
-        color = tipcolor, visible = tip_visible; generic_attributes...
+        color = tipcolor, visible = tip_visible, transformation = :nothing; generic_attributes...
     )
 
     return plot
 end
 
-function data_limits(plot::Arrows2D)
+function data_limits(plot::Arrows3D)
     startpoints, directions = _process_arrow_arguments(
         plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
     )
-
-    return update_boundingbox(
-        Rect3d(startpoints),
-        Rect3d(startpoints .+ directions)
-    )
+    return update_boundingbox(Rect3d(startpoints), Rect3d(startpoints .+ directions))
 end
-boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
+
+function boundingbox(plot::Arrows3D, space::Symbol)
+    bb = Rect3d()
+    for p in plot.plots
+        p.visible[] || continue
+        bb = update_boundingbox(bb, data_limits(p))
+    end
+    return bb
+end
