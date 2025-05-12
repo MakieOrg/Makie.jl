@@ -263,15 +263,15 @@ end
 
 # If we add dynamic plot reconstruction/shader recompilation this could be dynamic.
 # Without it needs to be a constant once the first renderobject is constructed
-function get_lighting_mode(scene)
+function get_shading_mode(scene)
     graph = scene.compute
     if haskey(graph, :lighting_mode)
         return graph[:lighting_mode][]
     else
         shading = get(scene.theme, :shading, automatic)
         mode = if shading === automatic
-            lights = graph[:lights][]
-            is_fast = (length(lights) == 0) || (lights[1] isa DirectionalLight)
+            lights = filter(l -> !isa(l, EnvironmentLight), graph[:lights][])
+            is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
             ifelse(is_fast, FastShading, MultiLightShading)
         else
             shading
