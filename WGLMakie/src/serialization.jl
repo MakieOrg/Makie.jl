@@ -190,11 +190,17 @@ function serialize_scene(scene::Scene)
 
     children = map(child-> serialize_scene(child), scene.children)
 
-    light_dir = Observable(Vec3f(1), ignore_equal_values = true)
-    cam_rel = Observable(false, ignore_equal_values = true)
+
+    light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
+    cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
+    ambient = Observable(serialize_three(RGBf(0,0,1)), ignore_equal_values = true)
+    light_color = Observable(serialize_three(RGBf(1,0,0)), ignore_equal_values = true)
+
     on(scene.compute.onchange, update = true) do _
-        light_dir[] = scene.compute[:dirlight_direction][]
-        cam_rel[] = scene.compute[:dirlight_cam_relative][]
+        ambient[] = serialize_three(scene.compute[:ambient_color][])
+        light_color[] = serialize_three(scene.compute[:dirlight_color][])
+        light_dir[] = serialize_three(scene.compute[:dirlight_direction][])
+        cam_rel[] = serialize_three(scene.compute[:dirlight_cam_relative][])
         return
     end
 
@@ -206,6 +212,8 @@ function serialize_scene(scene::Scene)
         :camera => serialize_camera(scene),
         :light_direction => light_dir,
         :camera_relative_light => cam_rel,
+        :ambient => ambient,
+        :light_color => light_color,
         :plots => serialize_plots(scene, scene.plots),
         :cam3d_state => cam3d_state,
         :visible => scene.visible,

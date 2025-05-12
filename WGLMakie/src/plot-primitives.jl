@@ -355,15 +355,12 @@ end
 function meshscatter_program(args)
     instance = args.marker
     data = Dict{Symbol, Any}(
-        :ambient => Vec3f(0.5),
         :diffuse => args.diffuse,
         :specular => args.specular,
         :shininess => args.shininess,
         :pattern => false,
         :uniform_color => false,
         :uv_transform => Mat3f(I),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
         :PICKING_INDEX_FROM_UV => false,
         :shading => args.shading == false || args.shading != NoShading,
         :backlight => args.backlight,
@@ -445,9 +442,6 @@ function mesh_program(attr)
         :specular => attr.specular,
         :shininess => attr.shininess,
         :backlight => attr.backlight,
-        :ambient => Vec3f(1),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
 
         :model => Mat4f(attr.model_f32c),
         :PICKING_INDEX_FROM_UV => true,
@@ -606,10 +600,7 @@ function create_volume_shader(attr)
         :depth_shift => attr.depth_shift,
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
         :eyeposition => Vec3f(1),
-        :ambient => Vec3f(1),
         :picking => false,
         :object_id => UInt32(0)
     )
