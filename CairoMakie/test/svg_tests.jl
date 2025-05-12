@@ -70,3 +70,10 @@ end
     rm("test1.svg")
     rm("test2.svg")
 end
+
+@testset "issue 4970" begin
+    @test_nowarn begin
+        sprint(io -> show(io, "image/svg+xml", Scene()))
+        GC.gc()
+    end
+end
