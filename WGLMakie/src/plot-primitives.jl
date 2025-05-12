@@ -94,7 +94,7 @@ function plot_updates(args, changed)
     for (name, value) in pairs(args)
         if changed[name]
             _val = if value isa Sampler
-                [Int32[size(value[].data)...], serialize_three(value.data)]
+                [Int32[size(value.data)...], serialize_three(value.data)]
             else
                 serialize_three(value)
             end
