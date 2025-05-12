@@ -173,39 +173,44 @@ end
 # Implement Transformable interface (more or less) to simplify working with
 # RectLights
 
-# function translate!(::Type{T}, l::RectLight, v) where T
-#     offset = to_ndim(Vec3f, Float32.(v), 0)
-#     if T === Accum
-#         l.position[] = l.position[] + offset
-#     elseif T === Absolute
-#         l.position[] = offset
-#     else
-#         error("Unknown translation type: $T")
-#     end
-# end
-# translate!(l::RectLight, v) = translate!(Absolute, l, v)
+function translate(::Type{T}, l::RectLight, v) where T
+    offset = to_ndim(Vec3f, Float32.(v), 0)
+    pos = l.position
+    if T === Accum
+        pos += offset
+    elseif T === Absolute
+        pos = offset
+    else
+        error("Unknown translation type: $T")
+    end
+    return RectLight(l.color, pos, l.u1, l.u2, l.direction)
+end
+translate(l::RectLight, v) = translate(Absolute, l, v)
 
-# function rotate!(l::RectLight, q...)
-#     rot = convert_attribute(q, key"rotation"())
-#     l.u1[] = rot * l.u1[]
-#     l.u2[] = rot * l.u2[]
-#     l.direction[] = rot * l.direction[]
-# end
+function rotate(l::RectLight, q...)
+    rot = convert_attribute(q, key"rotation"())
+    u1 = rot * l.u1
+    u2 = rot * l.u2
+    direction = rot * l.direction
+    return RectLight(l.color, l.position, u1, u2, direction)
+end
 
-# function scale!(::Type{T}, l::RectLight, s) where T
-#     scale = to_ndim(Vec2f, Float32.(s), 0)
-#     if T === Accum
-#         l.u1[] = scale[1] * l.u1[]
-#         l.u2[] = scale[2] * l.u2[]
-#     elseif T === Absolute
-#         l.u1[] = scale[1] * normalize(l.u1[])
-#         l.u2[] = scale[2] * normalize(l.u2[])
-#     else
-#         error("Unknown translation type: $T")
-#     end
-# end
-# scale!(l::RectLight, x::Real, y::Real) = scale!(Accum, l, Vec2f(x, y))
-# scale!(l::RectLight, xy::VecTypes) = scale!(Accum, l, xy)
+function scale(::Type{T}, l::RectLight, s) where T
+    scale = to_ndim(Vec2f, Float32.(s), 0)
+    u1 = l.u1; u2 = l.u2
+    if T === Accum
+        u1 = scale[1] * u1
+        u2 = scale[2] * u2
+    elseif T === Absolute
+        u1 = scale[1] * normalize(u1)
+        u2 = scale[2] * normalize(u2)
+    else
+        error("Unknown translation type: $T")
+    end
+    return RectLight(l.color, l.position, u1, u2, l.direction)
+end
+scale(l::RectLight, x::Real, y::Real) = scale(Accum, l, Vec2f(x, y))
+scale(l::RectLight, xy::VecTypes) = scale(Accum, l, xy)
 
 
 light_type(::RectLight) = LightType.RectLight
@@ -336,6 +341,30 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         return (n_lights, types, colors, parameters)
     end
 end
+
+
+################################################################################
+# User Interface
+
+set_ambient_light!(scene, color) = set_ambient_light!(scene.compute, color)
+set_ambient_light!(graph::ComputeGraph, color) = update!(graph, ambient = color)
+
+set_light!(scene, idx; kwargs...) = set_light!(scene.compute, idx; kwargs...)
+function set_light!(graph::ComputeGraph, idx; kwargs...)
+    lights = graph[:lights][]
+    light = lights[idx]
+    T = typeof(light)
+    data = map(name -> get(kwargs, name, getfield(light, name)), fieldnames(T))
+    lights[idx] = T(data...)
+    update!(graph, lights = lights)
+    return
+end
+
+get_lights(scene) = get_lights(scene.compute)
+get_lights(graph::ComputeGraph) = graph[:lights][]
+
+set_lights!(scene, lights) = get_lights(scene.compute, lights)
+set_lights!(graph::ComputeGraph, lights) = update!(graph, lights = lights)
 
 
 ################################################################################
