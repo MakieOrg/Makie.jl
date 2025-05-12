@@ -293,6 +293,9 @@ $_arrow_args_docs
     """
     strokemask = 0.75
 
+    "Sets the space of arrow metrics like tipwidth, tiplength, etc."
+    markerspace = :pixel
+
     mixin_arrow_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
     MakieCore.mixin_colormap_attributes()...
@@ -327,6 +330,7 @@ function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset
     return
 end
 
+
 function calculated_attributes!(::Type{<: Arrows2D}, plot)
     scene = parent_scene(plot)
     if !isnothing(scene) && haskey(plot, :cycle)
@@ -357,7 +361,7 @@ function plot!(plot::Arrows2D)
         :tip, :tiplength, :tipwidth,
         :tailcolor, :shaftcolor, :tipcolor, :color,
         :calculated_tailcolor, :calculated_shaftcolor, :calculated_tipcolor,
-        :space, :alpha, :strokemask
+        :space, :alpha, :strokemask, :markerspace
     ])
 
     startpoints_directions = map(
@@ -368,10 +372,11 @@ function plot!(plot::Arrows2D)
     scene = parent_scene(plot)
     arrowpoints_px = map(plot,
             startpoints_directions, transform_func_obs(plot), plot.model, plot.space,
-            scene.camera.projectionview, scene.viewport
-        ) do (ps, dirs), tf, model, space, pv, vp
-        startpoints = plot_to_screen(plot, ps)
-        endpoints = plot_to_screen(plot, ps .+ dirs)
+            plot.markerspace, scene.camera.projectionview, scene.viewport
+        ) do (ps, dirs), tf, model, space, markerspace, pv, vp
+
+        startpoints = transform_and_project(plot, space, markerspace, ps, Point2f)
+        endpoints = transform_and_project(plot, space, markerspace, ps .+ dirs, Point2f)
         return (startpoints, endpoints .- startpoints)
     end
 
@@ -457,7 +462,7 @@ function plot!(plot::Arrows2D)
     # mesh anti-aliasing in GLMakie gets pretty bad when the mesh becomes very
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
-    poly!(plot, meshes, space = :pixel, color = calc_colors,
+    poly!(plot, meshes, space = plot.markerspace, color = calc_colors,
         strokecolor = calc_colors, strokewidth = plot.strokemask; generic_attributes...)
 
     return plot
