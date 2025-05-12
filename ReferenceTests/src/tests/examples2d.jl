@@ -2035,3 +2035,22 @@ end
     Makie.step!(st)
     st
 end
+
+@reference_test "Transformed 2D Arrows" begin
+    ps = [Point2f(i, 2^i) for i in 1:10]
+    vs = [Vec2f(1, 100) for _ in 1:10]
+    f,a,p = arrows2d(ps, vs)
+    arrows2d(f[1,2], ps, vs, axis = (yscale = log10,))
+
+    ps = coordinates(Rect2f(-1, -1, 2, 2))
+    a, p = arrows2d(f[2,1], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    translate!(p, 1, 1, 0)
+
+    a, p = arrows2d(f[2,2], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1)
+    rotate!(p, pi/4)
+
+    f
+end
