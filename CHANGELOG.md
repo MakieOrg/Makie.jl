@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Refactored `arrows` to solve various issues with conversions, broken color handling, transparency, alignment and sizing. [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
+
+## [0.22.5] - 2025-05-12
 
 - Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
 - Moved some of the TextureAtlas logic to JS, speeding up text updates and fixing texture atlas updates [4942](https://github.com/MakieOrg/Makie.jl/pull/4942).
@@ -8,8 +11,10 @@
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
 - Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
 - Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
+- Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
 - Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
-- Refactored `arrows` to solve various issues with conversions, broken color handling, transparency, alignment and sizing. [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
+- Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
+- Fixed issue with `sprint`ing to SVG using CairoMakie in Julia 1.11 and above [#4971](https://github.com/MakieOrg/Makie.jl/pull/4971).
 
 ## [0.22.4] - 2025-04-11
 
@@ -793,7 +798,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...HEAD
+[0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
 [0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
 [0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
 [0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2

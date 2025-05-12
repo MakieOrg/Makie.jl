@@ -520,4 +520,11 @@ end
         @test nan_equal(convert_arguments(PointBased(), ls2)[1], ps12)
         @test nan_equal(convert_arguments(PointBased(), ls3)[1], ps3)
     end
+
+    @testset "Lines" begin
+        r = Rect3f(0,0,0,1,1,1)
+        ps = Point3f[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [NaN, NaN, NaN]]
+        ps = ps[[1, 3, 4, 2, 1, 5, 6, 2, 9, 6, 8, 7, 5, 9, 8, 4, 9, 7, 3]]
+        @test nan_equal(convert_arguments(Lines, r)[1], ps)
+    end
 end
