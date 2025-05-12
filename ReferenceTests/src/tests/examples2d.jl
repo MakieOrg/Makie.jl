@@ -2054,3 +2054,32 @@ end
 
     f
 end
+
+@reference_test "arrow min- and maxshaftlength scaling" begin
+    # widths should not scale while the tip ends in the gray area (between min
+    # and maxshaftlength)
+    scene = Scene(camera = campixel!, size = (500, 500))
+    min = 30; max = 60
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 40, color = :lightgray, linewidth = max-min)
+    arrows2d!(scene,
+        50:50:400, zeros(8),
+        zeros(8), [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40,
+        minshaftlength = min, maxshaftlength = max,
+        shaftwidth = 20, tipwidth = 40, tiplength = 40,
+        strokemask = 0
+    )
+    scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
+
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 290, color = :lightgray, linewidth = max-min)
+    arrows3d!(scene,
+        50:50:400, fill(250, 8),
+        zeros(8), [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40,
+        minshaftlength = min, maxshaftlength = max,
+        shaftradius = 10, tipradius = 20, tiplength = 40,
+        markerscale = 1.0
+    )
+    p = scatter!(scene, 50:50:400, fill(270, 8), marker = Rect, markersize = 20, color = :red)
+    translate!(p, 0, 0, 100)
+
+    scene
+end
