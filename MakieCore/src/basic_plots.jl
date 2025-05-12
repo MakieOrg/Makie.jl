@@ -149,7 +149,7 @@ end
 """
 ### 3D shading attributes
 
-- `shading = Makie.automatic` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
+- `shading = true` controls if the plot object is shaded by the parent scenes lights or not. The lighting algorithm used is controlled by the scenes `shading` attribute.
 - `diffuse::Vec3f = Vec3f(1.0)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.4)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
@@ -157,7 +157,7 @@ end
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 function shading_attributes!(attr)
-    attr[:shading] = automatic
+    attr[:shading] = true
     attr[:diffuse] = 1.0
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
@@ -178,8 +178,8 @@ end
 
 function mixin_shading_attributes()
     @DocumentedAttributes begin
-        "Sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie."
-        shading = automatic
+        "Controls if the plot object is shaded by the parent scenes lights or not. The lighting algorithm used is controlled by the scenes `shading` attribute."
+        shading = true
         "Sets how strongly the red, green and blue channel react to diffuse (scattered) light."
         diffuse = 1.0
         "Sets how strongly the object reflects light in the red, green and blue channels."
@@ -711,7 +711,7 @@ Plots polygons, which are defined by
     joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
 
-    shading = NoShading
+    shading = false
 
     cycle = [:color => :patchcolor]
     """

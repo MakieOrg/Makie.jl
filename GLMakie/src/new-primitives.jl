@@ -151,9 +151,11 @@ function register_light_attributes!(screen, scene, attr, uniforms)
         return
     end
 
+    shading = Makie.get_shading_mode(scene)
+    shading == NoShading && return
+
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
-    shading = Makie.get_lighting_mode(scene)
     if shading == FastShading
 
         add_input!(attr, :light_color, scene.compute[:dirlight_color])

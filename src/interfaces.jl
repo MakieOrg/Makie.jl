@@ -437,7 +437,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{F}) where {F}
     apply_theme!(scene, plot)
     handle_transformation!(plot, parent)
     calculated_attributes!(Plot{F}, plot)
-    default_shading!(plot, parent_scene(parent))
 
     if to_value(get(attributes(plot), :clip_planes, automatic)) === automatic
         attributes(plot)[:clip_planes] = map(identity, plot, clip_planes_obs(parent))

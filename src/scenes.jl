@@ -299,9 +299,6 @@ function Scene(;
     return scene
 end
 
-# TODO: just true?
-default_shading!(plot, scene::Scene) = FastShading
-
 function Scene(
         parent::Scene;
         events=parent.events,

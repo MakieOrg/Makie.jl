@@ -621,14 +621,6 @@ function draw_mesh3D(
         align_pattern(per_face_col, scene, f32c_model)
     end
 
-    # TODO: assume Symbol here after this has been deprecated for a while
-    if shading isa Bool
-        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
-        shading_bool = shading
-    else
-        shading_bool = shading != NoShading
-    end
-
     if !isnothing(meshnormals) && to_value(get(plot, :invert_normals, false))
         meshnormals .= -meshnormals
     end
@@ -638,7 +630,7 @@ function draw_mesh3D(
 
     draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading_bool::Bool, diffuse::Vec3f,
+        model, shading::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes, plot.eyeposition[]
     )
 end

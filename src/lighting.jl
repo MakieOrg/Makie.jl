@@ -365,9 +365,3 @@ get_lights(graph::ComputeGraph) = graph[:lights][]
 
 set_lights!(scene, lights) = get_lights(scene.compute, lights)
 set_lights!(graph::ComputeGraph, lights) = update!(graph, lights = lights)
-
-
-################################################################################
-
-# TODO: delete once plot interface is cleaned up
-default_shading!(plot, lights::Vector{<: AbstractLight}) = automatic
