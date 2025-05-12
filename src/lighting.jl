@@ -213,10 +213,7 @@ light_color(l::RectLight) = l.color
 
 ################################################################################
 
-function add_light_computation!(graph, lights)
-    # TODO: Can we tear apart the old system and change each light to contain
-    # no Observables?
-
+function add_light_computation!(graph, scene, lights)
     idx = findfirst(light -> light isa AmbientLight, lights)
     ambient_color = isnothing(idx) ? RGBf(0,0,0) : lights[idx].color
 
@@ -252,13 +249,30 @@ function add_light_computation!(graph, lights)
         [:dirlight_direction, :dirlight_cam_relative, :eye_to_world],
         [:dirlight_final_direction]
     ) do (dir, cam_relative, iview), changed, cached
-        final_dir = cam_relative ? iview[Vec(1,2,3), Vec(1,2,3)] * dir : dir
+        final_dir = cam_relative ? Vec3f(iview[Vec(1,2,3), Vec(1,2,3)] * dir) : dir
         return (final_dir,)
     end
 
-    register_computation!(graph, [:lights], [:lighting_mode]) do (lights,), changed, cached
-        is_fast = (length(lights) == 0) || (lights[1] isa DirectionalLight)
-        return (ifelse(is_fast, FastShading, MultiLightShading), )
+    return
+end
+
+# If we add dynamic plot reconstruction/shader recompilation this could be dynamic.
+# Without it needs to be a constant once the first renderobject is constructed
+function get_lighting_mode(scene)
+    graph = scene.compute
+    if haskey(graph, :lighting_mode)
+        return graph[:lighting_mode][]
+    else
+        shading = get(scene.theme, :shading, automatic)
+        mode = if shading === automatic
+            lights = graph[:lights][]
+            is_fast = (length(lights) == 0) || (lights[1] isa DirectionalLight)
+            ifelse(is_fast, FastShading, MultiLightShading)
+        else
+            shading
+        end::MakieCore.ShadingAlgorithm
+        register_computation!((a, b, c) -> (mode,), graph, Symbol[], [:lighting_mode])
+        return mode
     end
 end
 
@@ -326,59 +340,5 @@ end
 
 ################################################################################
 
-
-function get_one_light(lights, Typ)
-    indices = findall(x-> x isa Typ, lights)
-    isempty(indices) && return nothing
-    return lights[indices[1]]
-end
-
-function default_shading!(plot, lights::Vector{<: AbstractLight})
-    # if the plot does not have :shading we assume the plot doesn't support it
-    haskey(plot.attributes, :shading) || return
-
-    # Bad type
-    shading = to_value(plot.attributes[:shading])
-    if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
-        prev = shading
-        if (shading isa Bool) && (shading == false)
-            shading = NoShading
-        else
-            shading = automatic
-        end
-        @warn "`shading = $prev` is not valid. Use `Makie.automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
-    end
-
-    # automatic conversion
-    if shading === automatic
-        ambient_count = 0
-        dir_light_count = 0
-
-        for light in lights
-            if light isa AmbientLight
-                ambient_count += 1
-            elseif light isa DirectionalLight
-                dir_light_count += 1
-            elseif light isa EnvironmentLight
-                continue
-            else
-                plot.attributes[:shading] = MultiLightShading
-                return
-            end
-            if ambient_count > 1 || dir_light_count > 1
-                plot.attributes[:shading] = MultiLightShading
-                return
-            end
-        end
-
-        if dir_light_count + ambient_count == 0
-            shading = NoShading
-        else
-            shading = FastShading
-        end
-    end
-
-    plot.attributes[:shading] = shading
-
-    return
-end
+# TODO: delete once plot interface is cleaned up
+default_shading!(plot, lights::Vector{<: AbstractLight}) = automatic

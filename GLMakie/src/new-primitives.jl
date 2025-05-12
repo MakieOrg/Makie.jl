@@ -147,11 +147,13 @@ end
 
 # TODO: Consider separating this from plot (i.e. update this in render using scene graph)
 function register_light_attributes!(screen, scene, attr, uniforms)
-    haskey(attr, :shading) || return
+    if !(haskey(attr, :shading) && attr[:shading][])
+        return
+    end
 
     add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
-    shading = scene.compute[:lighting_mode][]
+    shading = Makie.get_lighting_mode(scene)
     if shading == FastShading
 
         add_input!(attr, :light_color, scene.compute[:dirlight_color])
@@ -171,6 +173,8 @@ function register_light_attributes!(screen, scene, attr, uniforms)
         end
         push!(uniforms, :ambient, names...)
     end
+
+    return
 end
 
 function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
@@ -178,7 +182,28 @@ function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
     return attr
 end
 
-function register_robj!(constructor, screen, scene, plot, inputs, uniforms, input2glname)
+function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
+
+    data = Dict{Symbol, Any}(
+        # TODO: Do these always exist?
+        :ssao => attr[:ssao][],
+        :fxaa => attr[:fxaa][],
+        :transparency => attr[:transparency][],
+        :overdraw => attr[:overdraw][],
+    )
+
+    if haskey(attr, :shading) && attr[:shading][]
+        data[:shading] = scene.compute[:lighting_mode][]
+    end
+
+    for name in uniforms
+        data[get(input2glname, name, name)] = args[name]
+    end
+
+    return constructor!(data, screen, attr, args, input2glname)
+end
+
+function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, input2glname)
     attr = plot.args[1]
 
     # These must always be there!
@@ -200,7 +225,7 @@ function register_robj!(constructor, screen, scene, plot, inputs, uniforms, inpu
                 # Generate complex defaults
                 # TODO: Should we add an initializer in ComputePipeline to extract this?
                 # That would simplify this code and remove attr, uniforms from the enclosed variables here
-                _robj = constructor(screen, scene, attr, args, uniforms, input2glname)
+                _robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
             else
                 _robj = last.gl_renderobject
                 update_robjs!(_robj, args, changed, input2glname)
@@ -224,29 +249,15 @@ end
 ### Scatter
 ################################################################################
 
-function assemble_scatter_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    space = attr[:space][]
-    markerspace = attr[:markerspace][]
+function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     fast_pixel = attr[:marker][] isa FastPixel
-    pspace = fast_pixel ? space : markerspace
     colormap = args.alpha_colormap
     color = args.scaled_color
     colornorm = args.scaled_colorrange
     marker_shape = args.sdf_marker_shape
-    distancefield = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
 
-    data = Dict{Symbol, Any}(
-        # :preprojection => Makie.get_preprojection(camera, space, markerspace),
-        :distancefield => distancefield,
-        :ssao => false,                       # shader compilation const
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shape => marker_shape,
-    )
-
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
+    data[:shape] = marker_shape
 
     add_color_attributes!(data, color, colormap, colornorm)
 
@@ -380,7 +391,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :gl_indices => :indices, :gl_len => :len
     )
 
-    robj = register_robj!(assemble_scatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_scatter_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -390,25 +401,15 @@ end
 ### Text
 ################################################################################
 
-function assemble_text_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
     colormap = args.alpha_colormap
     color = args.text_color
     colornorm = args.scaled_colorrange
-    distancefield = get_texture!(screen.glscreen, args.atlas)
 
-    data = Dict{Symbol, Any}(
-        :distancefield => distancefield,
-        :ssao => false,                       # shader compilation const
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shape => Cint(DISTANCEFIELD),
-        :image => nothing,
-        :rotation => args.text_rotation,
-    )
-
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:distancefield] = get_texture!(screen.glscreen, args.atlas)
+    data[:shape] = Cint(DISTANCEFIELD)
+    data[:image] = nothing
+    data[:rotation] = args.text_rotation
 
     add_color_attributes!(data, color, colormap, colornorm)
 
@@ -496,7 +497,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         :gl_indices => :indices, :gl_len => :len,
     )
 
-    robj = register_robj!(assemble_text_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_text_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -505,19 +506,7 @@ end
 ### MeshScatter
 ################################################################################
 
-function assemble_meshscatter_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    data = Dict{Symbol, Any}(
-        # Compile time variable
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shading => attr[:shading][],
-        :ssao => attr[:ssao][],
-    )
-
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
-
+function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glname)
     if args.packed_uv_transform isa Vector{Vec2f}
         data[:uv_transform] = TextureBuffer(screen.glscreen, args.packed_uv_transform)
     else
@@ -579,7 +568,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :model_f32c => :model, :gl_len => :len, :transform_marker => :scale_primitive,
     )
 
-    robj = register_robj!(assemble_meshscatter_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_meshscatter_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -588,25 +577,16 @@ end
 ### Lines
 ################################################################################
 
-function assemble_lines_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_lines_robj!(data, screen::Screen, attr, args, input2glname)
 
     positions = args[1] # changes name, so we use positional
     linestyle = attr[:linestyle][]
 
-    data = Dict{Symbol, Any}(
-        :fast => isnothing(linestyle),
-        # :fast == true removes pattern from the shader so we don't need
-        #               to worry about this
-        :vertex => positions, # Needs to be set before draw_lines()
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :ssao => false,
-        :debug => attr[:debug][],
-    )
-
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:fast] = isnothing(linestyle)
+    # :fast == true removes pattern from the shader so we don't need
+    #               to worry about this
+    data[:vertex] = positions # Needs to be set before draw_lines()
+    data[:debug] = attr[:debug][]
 
     add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
@@ -780,7 +760,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
-    robj = register_robj!(assemble_lines_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_lines_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -789,20 +769,8 @@ end
 ### LineSegments
 ################################################################################
 
-function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    linestyle = attr[:linestyle][]
-
-    data = Dict{Symbol, Any}(
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :debug => attr[:debug][],
-        :ssao => false,
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+function assemble_linesegments_robj!(data, screen::Screen, attr, args, input2glname)
+    data[:debug] = attr[:debug][]
 
     # add_camera_attributes!(data, screen, camera, args.space)
     add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
@@ -814,7 +782,7 @@ function assemble_linesegments_robj(screen::Screen, scene::Scene, attr, args, un
     # Here we do need to be careful with pattern because :fast does not
     # exist as a compile time switch
     # Running this after add_uniforms overwrites
-    if isnothing(linestyle)
+    if isnothing(attr[:linestyle][])
         data[:pattern] = nothing
     end
     return draw_linesegments(screen, data[:vertex], data) # TODO: extract positions
@@ -851,7 +819,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
-    robj = register_robj!(assemble_linesegments_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_linesegments_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -860,24 +828,12 @@ end
 ### Image
 ################################################################################
 
-function assemble_image_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_image_robj!(data, screen::Screen, attr, args, input2glname)
     r = Rect2f(0,0,1,1)
 
-    data = Dict{Symbol, Any}(
-        :faces => decompose(GLTriangleFace, r),
-        :texturecoordinates => decompose_uv(r),
-
-        # Compile time variable/constants
-        :picking_mode => "#define PICKING_INDEX_FROM_UV",
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :ssao => false,
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:faces] = decompose(GLTriangleFace, r)
+    data[:texturecoordinates] = decompose_uv(r)
+    data[:picking_mode] = "#define PICKING_INDEX_FROM_UV"
 
     colormap = args.alpha_colormap
     color = args.scaled_color
@@ -925,7 +881,7 @@ function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
         :scaled_color => :image, :model_f32c => :model,
     )
 
-    robj = register_robj!(assemble_image_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_image_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -934,20 +890,9 @@ end
 ### Heatmap
 ################################################################################
 
-function assemble_heatmap_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    data = Dict{Symbol, Any}(
-        :position_x => Texture(screen.glscreen, args[1], minfilter = :nearest),
-        :position_y => Texture(screen.glscreen, args[2], minfilter = :nearest),
-        # Compile time variable, Constants
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :ssao => false,
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+function assemble_heatmap_robj!(data, screen::Screen, attr, args, input2glname)
+    data[:position_x] = Texture(screen.glscreen, args[1], minfilter = :nearest)
+    data[:position_y] = Texture(screen.glscreen, args[2], minfilter = :nearest)
 
     # add_camera_attributes!(data, screen, camera, args.space)
     colormap = args.alpha_colormap
@@ -1011,7 +956,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
         :model_f32c => :model,
     )
 
-    robj = register_robj!(assemble_heatmap_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_heatmap_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -1020,20 +965,7 @@ end
 ### Surface
 ################################################################################
 
-function assemble_surface_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-    data = Dict{Symbol, Any}(
-        # Compile time variable, Constants
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shading => attr[:shading][],
-        :ssao => attr[:ssao][],
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
-
+function assemble_surface_robj!(data, screen::Screen, attr, args, input2glname)
     colorname = add_mesh_color_attributes!(
         screen, data,
         args.scaled_color,
@@ -1088,7 +1020,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :pattern_uv_transform => :uv_transform
     )
 
-    robj = register_robj!(assemble_surface_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_surface_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -1138,21 +1070,7 @@ function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, in
 end
 
 
-function assemble_mesh_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
-
-    data = Dict{Symbol, Any}(
-        # Compile time variable, Constants
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shading => attr[:shading][],
-        :ssao => attr[:ssao][],
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
-
+function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
     input2glname[:scaled_color] = add_mesh_color_attributes!(
         screen, data,
         args.scaled_color,
@@ -1198,7 +1116,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :pattern_uv_transform => :uv_transform
     )
 
-    robj = register_robj!(assemble_mesh_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_mesh_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -1209,23 +1127,11 @@ end
 ################################################################################
 
 
-function assemble_voxel_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
     voxel_id = Texture(screen.glscreen, args.chunk_u8, minfilter = :nearest)
     uvt = args.packed_uv_transform
-    data = Dict{Symbol, Any}(
-        :voxel_id => voxel_id,
-        :uv_transform => isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest),
-        # Compile time variable, Constants
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shading => attr[:shading][],
-        :ssao => attr[:ssao][],
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:voxel_id] = voxel_id
+    data[:uv_transform] = isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest)
 
     if haskey(args, :voxel_color)
         interp = attr[:interpolate][] ? :linear : :nearest
@@ -1283,7 +1189,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         :voxel_colormap => :color_map, :voxel_color => :color,
     )
 
-    robj = register_robj!(assemble_voxel_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_voxel_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end
@@ -1294,23 +1200,11 @@ end
 ################################################################################
 
 
-function assemble_volume_robj(screen::Screen, scene::Scene, attr, args, uniforms, input2glname)
+function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
     interp = attr[:interpolate][] ? :linear : :nearest
     volume_data = Texture(screen.glscreen, args.volume, minfilter = interp)
 
-    data = Dict{Symbol, Any}(
-        # Compile time variable, Constants
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
-        :shading => attr[:shading][],
-        :ssao => attr[:ssao][],
-        :enable_depth => attr[:enable_depth][],
-    )
-
-    # Transfer over uniforms
-    for name in uniforms
-        data[get(input2glname, name, name)] = args[name]
-    end
+    data[:enable_depth] = attr[:enable_depth][]
 
     if args.volume isa AbstractArray{<:Real}
         data[:color_map] = args.alpha_colormap
@@ -1355,7 +1249,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
     )
 
-    robj = register_robj!(assemble_volume_robj, screen, scene, plot, inputs, uniforms, input2glname)
+    robj = register_robj!(assemble_volume_robj!, screen, scene, plot, inputs, uniforms, input2glname)
 
     return robj
 end

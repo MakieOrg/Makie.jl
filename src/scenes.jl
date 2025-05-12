@@ -136,7 +136,7 @@ mutable struct Scene <: AbstractScene
             false
         )
         add_camera_computation!(scene.compute, scene)
-        add_light_computation!(scene.compute, lights)
+        add_light_computation!(scene.compute, scene, lights)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
