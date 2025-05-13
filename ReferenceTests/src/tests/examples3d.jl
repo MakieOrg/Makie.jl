@@ -220,10 +220,8 @@ end
     a = Axis3(f[1,1])
     r = range(-1, 1, length = 5)
     arrows!(a, Point3f[(1, 0, 0), (0,0,0)], Point3f[(0,0,0.1), (1,0,0)], color = :gray)
-    arrows!(a, Point3f[(-1, 1, 0), (0,0,0)], Point3f[(0,0,0.1), (-1,1,0)], color = :lightblue,
-        transform_marker = false)
-    arrows!(a, Point3f[(1, -1, 0), (0,0,0)], Point3f[(0,0,0.1), (1,-1,0)], color = :yellow,
-        transform_marker = true)
+    arrows!(a, Point3f[(-1, 1, 0), (0,0,0)], Point3f[(0,0,0.1), (-1,1,0)], color = :lightblue,)
+    arrows!(a, Point3f[(1, -1, 0), (0,0,0)], Point3f[(0,0,0.1), (1,-1,0)], color = :yellow,)
     mesh!(a, Rect2f(-1,-1,2,2), color = (:red, 0.5), transparency = true)
     f
 end
@@ -771,5 +769,29 @@ end
     f, ax, pl = mesh(uv3_mesh(positions), color=data, shading=NoShading, axis=(; show_axis=false))
     positions = [Point3f(0.0, 0.5, 0), Point3f(1.0, 0.5, 0), Point3f(1, 0.5, 1), Point3f(0.0, 0.5, 1)]
     mesh!(ax, uv3_mesh(positions); color=data, shading=NoShading)
+    f
+end
+
+@reference_test "Transformed 3D Arrows" begin
+    ps = [Point2f(i, 2^i) for i in 1:10]
+    vs = [Vec2f(1, 100) for _ in 1:10]
+    f,a,p = arrows3d(ps, vs, markerscale = 1, tiplength = 30)
+    arrows3d(f[1,2], ps, vs, markerscale = 1, axis = (yscale = log10,))
+
+    ps = coordinates(Rect3f(-1, -1, -1, 2, 2, 2))
+    a, p = arrows3d(f[2,1], ps, ps)
+    meshscatter!(a, Point3f(0), markersize = 1, marker = Rect3f(-0.5, -0.5, -0.5, 1, 1, 1))
+    translate!(p, 0, 0, 1)
+
+    a, p = arrows3d(f[2,2], ps, ps)
+    meshscatter!(a, Point3f(0), markersize = 1, marker = Rect3f(-0.5, -0.5, -0.5, 1, 1, 1))
+    scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1.0/sqrt(2))
+    rotate!(p, Vec3f(0,0,1), pi/4)
+
+    startpoints = Makie.apply_transform_and_model(p, ps)
+    endpoints = Makie.apply_transform_and_model(p, ps + ps)
+    meshscatter!(a, startpoints, color = :red)
+    meshscatter!(a, endpoints, color = :red)
+
     f
 end
