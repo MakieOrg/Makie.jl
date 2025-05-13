@@ -221,6 +221,13 @@ end
 ### 2D Arrows
 ################################################################################
 
+function arrowtail2d(l, W, metrics)
+    w = metrics.shaftwidth
+    return Point2f[
+        (0, 0), (-0.3W, -0.5W), (l - 0.3W, -0.5W), (l, 0-.5w),
+        (l, 0.5w), (l - 0.3W, 0.5W), (-0.3W, 0.5W)
+    ]
+end
 
 """
     arrows2d(points, directions; kwargs...)
@@ -235,21 +242,21 @@ $_arrow_args_docs
     """
     Sets the shape of the arrow tail in units relative to the tailwidth and taillength.
     The arrow shape extends left to right (towards increasing x) and should be defined
-    from 0..1 in both dimensions.
+    in a 0..1 by -0.5..0.5 range.
     """
-    tail = Rect2f(0,0,1,1)
+    tail = arrowtail2d
     """
     Sets the shape of the arrow shaft in units relative to the shaftwidth and shaftlength.
     The arrow shape extends left to right (towards increasing x) and should be defined
-    from 0..1 in both dimensions.
+    in a 0..1 by -0.5..0.5 range.
     """
-    shaft = Rect2f(0,0,1,1)
+    shaft = Rect2f(0,-0.5,1,1)
     """
     Sets the shape of the arrow tip in units relative to the tipwidth and tiplength.
     The arrow shape extends left to right (towards increasing x) and should be defined
-    from 0..1 in both dimensions.
+    in a 0..1 by -0.5..0.5 range.
     """
-    tip = Point2f[(0, 0), (1, 0.5), (0, 1)]
+    tip = Point2f[(0, -0.5), (1, 0), (0, 0.5)]
 
     """
     Sets the width of the arrow tail. This width may get scaled down if the total arrow length
@@ -305,18 +312,12 @@ end
 
 conversion_trait(::Type{<: Arrows2D}) = ArrowLike()
 
-
-
-function _get_arrow_shape(x, len, width, shaftwidth)
-    m = __get_arrow_shape(x, len, width, shaftwidth)
-    for i in eachindex(m.position)
-        m.position[i] -= Vec2f(0, 0.5 * width) # center width
-    end
-    return m
+function _get_arrow_shape(f::Function, length, width, metrics)
+    nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
+    return poly_convert(f(length, width, nt))
 end
 
-__get_arrow_shape(f::Function, length, width, shaftwidth) = poly_convert(f(length, width, shaftwidth))
-function __get_arrow_shape(polylike, length, width, shaftwidth)
+function _get_arrow_shape(polylike, length, width, metrics)
     # deepcopy so each each meshes positions are independent
     mesh = deepcopy(poly_convert(polylike))
     for i in eachindex(mesh.position)
@@ -429,7 +430,7 @@ function plot!(plot::Arrows2D)
 
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
-                mesh  = _get_arrow_shape(shape, len, max(0, width - mask), shaftwidth)
+                mesh  = _get_arrow_shape(shape, len, max(0, width - mask), metrics[i])
                 _apply_arrow_transform!(mesh, R, startpoint, offset)
                 push!(meshes, mesh)
 

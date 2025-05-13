@@ -94,7 +94,9 @@ Outside of this range or if it is explicitly set, all arrow lengths and widths/r
 
 The base shape of each component is given by the `tail`, `shaft` and `tip` attributes.
 For arrows2d these can be anything compatible with `poly`, e.g. a 2D mesh, Polygon or Vector of points.
-Each component should be defined in a 0..1 x 0..1 range, where +x is the direction of the arrow.
+Each component should be defined in a 0..1 x -0.5..0.5 range, where +x is the direction of the arrow.
+The shape can also be constructed by a callback function `f(length, width, metrics)` returning something poly-compatible.
+It is given the final length and width of the component as well as the all the other final lengths and widths through metrics.
 For arrows3d they should be a mesh or GeometryPrimitive defined in a -0.5..0.5 x -0.5..0.5 x 0..1 range.
 Here +z is the direction of the arrow.
 
@@ -122,7 +124,7 @@ scatter!(ps, marker = Circle, color = :transparent, strokewidth = 1)
 p = arrows2d!(
     ps, [ps[2:end]..., ps[1]], color = (:blue, 0.5),
     align = :center, lengthscale = 0.5, argmode = :endpoint,
-    tail = Point2f[(0, 0.5), (1, 0), (1, 1)], taillength = 8
+    tail = Point2f[(0, 0), (1, -0.5), (1, 0.5)], taillength = 8
 )
 
 # arrow pointing away from ps with a 0.2 gap between the tail and ps

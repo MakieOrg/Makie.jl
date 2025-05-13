@@ -2114,7 +2114,7 @@ function arrow_align_test(plotfunc, tail, taillength)
 end
 
 @reference_test "arrows2d alignment" begin
-    arrow_align_test(arrows2d!, Point2f[(0, 0.5), (1, 0), (1, 1)], 8)
+    arrow_align_test(arrows2d!, Point2f[(0, 0), (1, -0.5), (1, 0.5)], 8)
 end
 
 @reference_test "arrows3d alignment" begin
@@ -2135,14 +2135,15 @@ end
     p.tiplength = 4
     p.tipwidth = 8
     p.shaftwidth = 1
-    p.tail = Rect2f(0,0,1,1)
     p.taillength = 8
-    p.tailwidth = 8
+    p.tailwidth = 6
     Makie.step!(st)
 
     p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
     p.align = :center
     p.shaftcolor = :blue
+    p.tail = Rect2f(0,-0.5,1,1)
+    p.tailwidth = 8
     Makie.step!(st)
     st
 end
