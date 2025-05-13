@@ -2119,3 +2119,56 @@ for (plotfunc, tail, taillength) in zip(
         fig
     end
 end
+
+@reference_test "arrows2d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows2d(ps, grad_func)
+
+    Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 4
+    p.tipwidth = 8
+    p.shaftwidth = 1
+    p.tail = Rect2f(0,0,1,1)
+    p.taillength = 8
+    p.tailwidth = 8
+    Makie.step!(st)
+
+    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    Makie.step!(st)
+    st
+end
+
+# Adjusted from 2d version
+@reference_test "arrows3d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows3d(ps, grad_func)
+
+    Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 0.2
+    p.tipradius = 0.08
+    p.shaftradius = 0.1
+    p.tail = Rect3f(-0.5,-0.5,0, 1,1,1)
+    p.taillength = 0.2
+    p.tailradius = 0.2
+    Makie.step!(st)
+
+    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    Makie.step!(st)
+    st
+end
