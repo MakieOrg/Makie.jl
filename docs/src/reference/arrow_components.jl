@@ -58,4 +58,4 @@ text!(
     fontsize = 16, align = (:center, :center)
 )
 
-scene
+Makie.save("arrow_components.png", scene)

@@ -70,9 +70,7 @@ fig
 
 ### Arrow Components & Details
 
-```@figure
-Core.include(@__MODULE__, "arrow_components.jl") # hide
-```
+![Arrow Components](../../assets/arrow_components.png)
 
 #### Arrow Length
 
