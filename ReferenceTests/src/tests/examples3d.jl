@@ -775,8 +775,8 @@ end
 @reference_test "Transformed 3D Arrows" begin
     ps = [Point2f(i, 2^i) for i in 1:10]
     vs = [Vec2f(1, 100) for _ in 1:10]
-    f,a,p = arrows3d(ps, vs, markerscale = 1, tiplength = 30)
-    arrows3d(f[1,2], ps, vs, markerscale = 1, axis = (yscale = log10,))
+    f,a,p = arrows3d(ps, vs, markerscale = 1, tiplength = 30, color = log10.(norm.(ps)), colormap = :RdBu)
+    arrows3d(f[1,2], ps, vs, markerscale = 1, color = log10.(norm.(ps)), axis = (yscale = log10,))
 
     ps = coordinates(Rect3f(-1, -1, -1, 2, 2, 2))
     a, p = arrows3d(f[2,1], ps, ps)
