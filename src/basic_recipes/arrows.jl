@@ -161,6 +161,8 @@ _is_3d_arrows(::AbstractArray, ::AbstractArray, ::Function) = false
 _is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::Function) = true
 
 function resolve_arrows_deprecation(mutating, args, kwargs)
+    @warn "`arrows` are deprecated in favor of `arrows2d` and `arrows3d`."
+
     is3d = _is_3d_arrows(args...)
     if is3d
         func = mutating ? arrows3d! : arrows3d
