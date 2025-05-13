@@ -1103,7 +1103,7 @@ function draw_mesh3D(
     if isnothing(meshnormals)
         ns = nothing
     else
-        ns = map(n -> normalmatrix * n, meshnormals)
+        ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
     end
 
     # Face culling
