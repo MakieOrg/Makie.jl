@@ -2050,7 +2050,7 @@ end
     a, p = arrows2d(f[2,2], ps, ps)
     scatter!(a, 0,0, markersize = 50, marker = '+')
     scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1)
-    rotate!(p, pi/4)
+    Makie.rotate!(p, pi/4)
 
     f
 end
@@ -2084,40 +2084,41 @@ end
     scene
 end
 
-
-for (plotfunc, tail, taillength) in zip(
-        [arrows2d!, arrows3d!],
-        [Point2f[(0, 0.5), (1, 0), (1, 1)], Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0)],
-        [8, 0.4]
-    )
-    @reference_test "$plotfunc alignment" begin
-        function draw_row!(ax, y; kwargs...)
-            plotfunc(ax, (1, y), (0, 1), align = -0.5; kwargs...)
-            plotfunc(ax, (2, y), (0, 1), align = :tail; kwargs...)
-            plotfunc(ax, (3, y), (0, 1), align = :center; kwargs...)
-            plotfunc(ax, (4, y), (0, 1), align = :tip; kwargs...)
-            plotfunc(ax, (5, y), (0, 1), align = 1.5; kwargs...)
-        end
-
-        fig = Figure()
-        ax = Axis(fig[1, 1])
-
-        hlines!(ax, [1, 3, 5])
-
-        draw_row!(ax, 1)
-        draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1), alpha = 0.3)
-        draw_row!(ax, 5; tail = tail, taillength = taillength,
-            tailcolor = :orange, shaftcolor = RGBAf(0.1, 0.9, 0.2, 0.5), tipcolor = :red)
-
-        plotfunc(ax, (1, 7), (1, 8), argmode = :endpoints, lengthscale = 0.5, align = -0.5)
-        plotfunc(ax, (2, 7), (2, 8), argmode = :endpoints, lengthscale = 0.5, align = :tail)
-        plotfunc(ax, (3, 7), (3, 8), argmode = :endpoints, lengthscale = 0.5, align = :center)
-        plotfunc(ax, (4, 7), (4, 8), argmode = :endpoints, lengthscale = 0.5, align = :tip)
-        plotfunc(ax, (5, 7), (5, 8), argmode = :endpoints, lengthscale = 0.5, align = 1.5)
-        hlines!(ax, [7, 8], color = :red)
-
-        fig
+function arrow_align_test(plotfunc, tail, taillength)
+    function draw_row!(ax, y; kwargs...)
+        plotfunc(ax, (1, y), (0, 1), align = -0.5; kwargs...)
+        plotfunc(ax, (2, y), (0, 1), align = :tail; kwargs...)
+        plotfunc(ax, (3, y), (0, 1), align = :center; kwargs...)
+        plotfunc(ax, (4, y), (0, 1), align = :tip; kwargs...)
+        plotfunc(ax, (5, y), (0, 1), align = 1.5; kwargs...)
     end
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    hlines!(ax, [1, 3, 5])
+
+    draw_row!(ax, 1)
+    draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1), alpha = 0.3)
+    draw_row!(ax, 5; tail = tail, taillength = taillength,
+        tailcolor = :orange, shaftcolor = RGBAf(0.1, 0.9, 0.2, 0.5), tipcolor = :red)
+
+    plotfunc(ax, (1, 7), (1, 8), argmode = :endpoints, lengthscale = 0.5, align = -0.5)
+    plotfunc(ax, (2, 7), (2, 8), argmode = :endpoints, lengthscale = 0.5, align = :tail)
+    plotfunc(ax, (3, 7), (3, 8), argmode = :endpoints, lengthscale = 0.5, align = :center)
+    plotfunc(ax, (4, 7), (4, 8), argmode = :endpoints, lengthscale = 0.5, align = :tip)
+    plotfunc(ax, (5, 7), (5, 8), argmode = :endpoints, lengthscale = 0.5, align = 1.5)
+    hlines!(ax, [7, 8], color = :red)
+
+    fig
+end
+
+@reference_test "arrows2d alignment" begin
+    arrow_align_test(arrows2d, Point2f[(0, 0.5), (1, 0), (1, 1)], 8)
+end
+
+@reference_test "arrows3d alignment" begin
+    arrow_align_test(arrows3d, Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0), 0.4)
 end
 
 @reference_test "arrows2d updates" begin
@@ -2125,7 +2126,7 @@ end
     ps = [Point2f(x, y) for x in -5:5, y in -5:5]
     f, a, p = arrows2d(ps, grad_func)
 
-    Makie.Stepper(f)
+    st = Makie.Stepper(f)
     Makie.step!(st)
 
     p.color[] = :orange

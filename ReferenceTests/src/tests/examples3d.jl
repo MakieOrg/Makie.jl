@@ -786,7 +786,7 @@ end
     a, p = arrows3d(f[2,2], ps, ps)
     meshscatter!(a, Point3f(0), markersize = 1, marker = Rect3f(-0.5, -0.5, -0.5, 1, 1, 1))
     scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1.0/sqrt(2))
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
 
     startpoints = Makie.apply_transform_and_model(p, ps)
     endpoints = Makie.apply_transform_and_model(p, ps + ps)
