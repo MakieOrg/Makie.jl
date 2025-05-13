@@ -34,9 +34,9 @@ function convert_arguments(::ArrowLike, x, y, z, u, v, w)
 end
 
 function convert_arguments(::ArrowLike, pos::AbstractArray, f::Function)
-    points = convert_arguments(PointBased(), pos)[1]
-    f_out = Point2{eltype(points)}.(f.(points))
-    return (vec(points), vec(f_out))
+    points = convert_arguments(PointBased(), vec(pos))[1]
+    f_out = eltype(points).(f.(points))
+    return (points, f_out)
 end
 
 function convert_arguments(::ArrowLike, x::RealVector, y::RealVector, f::Function)
@@ -571,7 +571,13 @@ end
 conversion_trait(::Type{<: Arrows3D}) = ArrowLike()
 
 to_mesh(m::GeometryBasics.Mesh, n) = m
-to_mesh(prim::GeometryBasics.GeometryPrimitive, n) = normal_mesh(Tessellation(prim, n))
+function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
+    return try
+        normal_mesh(Tessellation(prim, n))
+    catch e
+        normal_mesh(prim)
+    end
+end
 
 function plot!(plot::Arrows3D)
     @extract plot (
