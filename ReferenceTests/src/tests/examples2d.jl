@@ -2105,9 +2105,9 @@ for (plotfunc, tail, taillength) in zip(
         hlines!(ax, [1, 3, 5])
 
         draw_row!(ax, 1)
-        draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1))
+        draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1), alpha = 0.3)
         draw_row!(ax, 5; tail = tail, taillength = taillength,
-            tailcolor = :orange, shaftcolor = RGBf(0.1, 0.9, 0.2), tipcolor = :red)
+            tailcolor = :orange, shaftcolor = RGBAf(0.1, 0.9, 0.2, 0.5), tipcolor = :red)
 
         plotfunc(ax, (1, 7), (1, 8), argmode = :endpoints, lengthscale = 0.5, align = -0.5)
         plotfunc(ax, (2, 7), (2, 8), argmode = :endpoints, lengthscale = 0.5, align = :tail)
