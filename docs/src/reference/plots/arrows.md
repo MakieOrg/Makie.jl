@@ -139,12 +139,15 @@ arrows2d!(
 f
 ```
 
-
 ## Attributes
+
+### Arrows2D
 
 ```@attrdocs
 Arrows2D
 ```
+
+### Arrows3D
 
 ```@attrdocs
 Arrows3D
