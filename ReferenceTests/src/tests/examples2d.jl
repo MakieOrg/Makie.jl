@@ -2114,11 +2114,11 @@ function arrow_align_test(plotfunc, tail, taillength)
 end
 
 @reference_test "arrows2d alignment" begin
-    arrow_align_test(arrows2d, Point2f[(0, 0.5), (1, 0), (1, 1)], 8)
+    arrow_align_test(arrows2d!, Point2f[(0, 0.5), (1, 0), (1, 1)], 8)
 end
 
 @reference_test "arrows3d alignment" begin
-    arrow_align_test(arrows3d, Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0), 0.4)
+    arrow_align_test(arrows3d!, Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0), 0.4)
 end
 
 @reference_test "arrows2d updates" begin
@@ -2153,7 +2153,7 @@ end
     ps = [Point2f(x, y) for x in -5:5, y in -5:5]
     f, a, p = arrows3d(ps, grad_func)
 
-    Makie.Stepper(f)
+    st = Makie.Stepper(f)
     Makie.step!(st)
 
     p.color[] = :orange
