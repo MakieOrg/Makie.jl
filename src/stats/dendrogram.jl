@@ -351,6 +351,6 @@ function dendrogram_node_positions(plot::Dendrogram)
             ps[i] = R * (scale .* (p - root_pos)) + origin
         end
 
-        return resample_for_transform(tf, ps)[1]
+        return ps
     end
 end
