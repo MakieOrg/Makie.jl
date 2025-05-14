@@ -245,7 +245,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         merge!(mesh, additional)
     end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = plot.visible isa Observable ? plot.visible : Observable(plot.visible[])
+    mesh[:visible] = plot.visible[]
     mesh[:uuid] = js_uuid(plot)
     # Javascript plot type class name - which falls back to Mesh.
     mesh[:plot_type] = "Mesh"
