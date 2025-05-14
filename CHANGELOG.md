@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Refactored `arrows` to solve various issues with conversions, broken color handling, transparency, alignment and sizing. [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
 
