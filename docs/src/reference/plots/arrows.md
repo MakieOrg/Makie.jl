@@ -141,6 +141,28 @@ arrows2d!(
 f
 ```
 
+```@figure
+ps = Point2f.(1:5, 0)
+vs = Vec2f.(0, 2 .^ (1:2:10))
+
+fig = Figure()
+
+ax = Axis(fig[1, 1], title = "Always scale, never elongate")
+arrows2d!(ax, ps, vs, shaftlength = 16)
+ax = Axis(fig[2, 1])
+# x and y coordinates are on different scales, so radius (x) and length (y) are too
+arrows3d!(ax, ps, vs, shaftlength = 50,
+    tipradius = 0.1, tiplength = 20, shaftradius = 0.02)
+
+ax = Axis(fig[1, 2], title = "Never scale, always elongate")
+arrows2d!(ax, ps, vs, minshaftlength = 0)
+ax = Axis(fig[2, 2])
+arrows3d!(ax, ps, vs, minshaftlength = 0,
+    markerscale = 1, tiplength = 30)
+
+fig
+```
+
 ## Attributes
 
 ### Arrows2D
