@@ -97,6 +97,7 @@ pages = [
             "reference/plots/contourf.md",
             "reference/plots/crossbar.md",
             "reference/plots/datashader.md",
+            "reference/plots/dendrogram.md",
             "reference/plots/density.md",
             "reference/plots/ecdf.md",
             "reference/plots/errorbars.md",

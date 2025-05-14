@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+- Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
 
 ## [0.22.5] - 2025-05-12
 
