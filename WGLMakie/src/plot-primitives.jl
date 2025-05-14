@@ -12,7 +12,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible[]
     mesh[:uuid] = js_uuid(plot)
-    mesh[:updater] = plot.args[1][:wgl_update_obs][]
+    mesh[:updater] = plot.attributes[:wgl_update_obs][]
 
     mesh[:overdraw] = plot.overdraw[]
     mesh[:transparency] = plot.transparency[]
@@ -94,7 +94,7 @@ function plot_updates(args, changed)
     for (name, value) in pairs(args)
         if changed[name]
             _val = if value isa Sampler
-                [Int32[size(value[].data)...], serialize_three(value.data)]
+                [Int32[size(value.data)...], serialize_three(value.data)]
             else
                 serialize_three(value)
             end
@@ -260,7 +260,7 @@ function scatter_program(attr)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
-    attr = plot.args[1]
+    attr = plot.attributes
     Makie.all_marker_computations!(attr)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
@@ -330,7 +330,7 @@ end
 function create_shader(scene::Scene, plot::Makie.Text)
     # TODO: color processing incorrect, processed per-glyphcollection/global
     #       colors instead of per glyph
-    attr = plot.args[1]
+    attr = plot.attributes
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :text_color)
@@ -355,15 +355,12 @@ end
 function meshscatter_program(args)
     instance = args.marker
     data = Dict{Symbol, Any}(
-        :ambient => Vec3f(0.5),
         :diffuse => args.diffuse,
         :specular => args.specular,
         :shininess => args.shininess,
         :pattern => false,
         :uniform_color => false,
         :uv_transform => Mat3f(I),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
         :PICKING_INDEX_FROM_UV => false,
         :shading => args.shading == false || args.shading != NoShading,
         :backlight => args.backlight,
@@ -382,7 +379,7 @@ end
 
 
 function create_shader(scene::Scene, plot::MeshScatter)
-    attr = plot.args[1]
+    attr = plot.attributes
     # generate_clip_planes!(attr, scene)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
@@ -445,9 +442,6 @@ function mesh_program(attr)
         :specular => attr.specular,
         :shininess => attr.shininess,
         :backlight => attr.backlight,
-        :ambient => Vec3f(1),
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
 
         :model => Mat4f(attr.model_f32c),
         :PICKING_INDEX_FROM_UV => true,
@@ -482,7 +476,7 @@ function mesh_program(attr)
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
-    attr = plot.args[1]
+    attr = plot.attributes
     add_uv_mesh!(attr)
     backend_colors!(attr)
     Makie.register_world_normalmatrix!(attr)
@@ -500,7 +494,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
 end
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
-    attr = plot.args[1]
+    attr = plot.attributes
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
     backend_colors!(attr)
@@ -572,7 +566,7 @@ function surface2mesh_computation!(attr)
 end
 
 function create_shader(scene::Scene, plot::Surface)
-    attr = plot.args[1]
+    attr = plot.attributes
     # Makie.add_computation!(attr, scene, Val(:surface_transform))
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
@@ -606,10 +600,7 @@ function create_volume_shader(attr)
         :depth_shift => attr.depth_shift,
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
-        :light_direction => Vec3f(1),
-        :light_color => Vec3f(1),
         :eyeposition => Vec3f(1),
-        :ambient => Vec3f(1),
         :picking => false,
         :object_id => UInt32(0)
     )
@@ -618,7 +609,7 @@ function create_volume_shader(attr)
 end
 
 function create_shader(scene::Scene, plot::Volume)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
     # TODO: reuse in clip planes
@@ -676,7 +667,7 @@ function create_lines_data(islines, attr)
     uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
     return Dict(
         :plot_type => "Lines",
-        :visible => Observable(attr.visible),
+        :visible => attr.visible,
         :is_segments => !islines,
         :cam_space => attr.space,
         :uniforms => serialize_uniforms(uniforms),
@@ -690,7 +681,7 @@ end
 using Makie.ComputePipeline
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-    attr = plot.args[1]
+    attr = plot.attributes
 
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)

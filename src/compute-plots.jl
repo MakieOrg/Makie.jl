@@ -13,11 +13,6 @@ Base.get(x::Plot, key::Symbol, default) = get(()-> default, x, key)
 Base.getindex(plot::Plot, key::Symbol) = getproperty(plot, key)
 Base.setindex!(plot::Plot, val, key::Symbol) = setproperty!(plot, key, val)
 
-Base.getindex(plot::Plot, idx::Integer) = plot.attributes[MakieCore.argument_names(typeof(plot), 10)[idx]]
-
-function Base.getindex(plot::Plot, idx::UnitRange{<:Integer})
-    return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
-end
 
 function data_limits(plot::Plot)
     if haskey(plot, :data_limits)
@@ -333,6 +328,11 @@ end
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
+
+function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    register_computation!(f, p.attributes, inputs, outputs)
+end
+
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
     documented_attr = MakieCore.documented_attributes(T).d
     name = plotkey(T)
@@ -345,7 +345,6 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         :colorrange => RefValue{Union{Automatic, Vec2f}}(automatic),
         :colorscale => RefValue{Any}(identity),
     )
-
     for (k, v) in documented_attr
         if haskey(kwargs, k)
             value = kwargs[k]
@@ -361,6 +360,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             end
         else
             add_input!(attr, k, value)
+            attr[k].value = RefValue{Any}(value)
         end
 
         # Hack-fix variable type
@@ -398,60 +398,6 @@ function add_theme!(plot::T, scene::Scene) where {T}
             end
         end
     end
-    return
-end
-
-resolve_shading_default!(scene::Scene, attr::ComputeGraph) = resolve_shading_default!(attr, scene.lights)
-function resolve_shading_default!(attr::ComputeGraph, lights::Vector{<: AbstractLight})
-    haskey(attr, :shading) || return
-
-    # shading is a compile time adjustment so it doesn't make sense to add
-    # dynamic comoputations for it. Instead we just replace the initial value
-
-    # Bad type
-    # TODO: This is hacky - we don't want to resolve shading and pin it to a potentially bad type
-    shading = attr.inputs[:shading].value
-    if !(shading isa MakieCore.ShadingAlgorithm || shading === automatic)
-        prev = shading
-        if (shading isa Bool) && (shading == false)
-            shading = NoShading
-        else
-            shading = automatic
-        end
-        @warn "`shading = $prev` is not valid. Use `Makie.automatic`, `NoShading`, `FastShading` or `MultiLightShading`. Defaulting to `$shading`."
-    end
-
-    # automatic conversion
-    if shading === automatic
-        ambient_count = 0
-        dir_light_count = 0
-
-        for light in lights
-            if light isa AmbientLight
-                ambient_count += 1
-            elseif light isa DirectionalLight
-                dir_light_count += 1
-            elseif light isa EnvironmentLight
-                continue
-            else
-                update!(attr, shading = MultiLightShading)
-                return
-            end
-            if ambient_count > 1 || dir_light_count > 1
-                update!(attr, shading = MultiLightShading)
-                return
-            end
-        end
-
-        if dir_light_count + ambient_count == 0
-            shading = NoShading
-        else
-            shading = FastShading
-        end
-    end
-
-    update!(attr, shading = shading)
-
     return
 end
 
@@ -505,12 +451,12 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     on(model -> attr.model = model, plot, plot.transformation.model, update = true)
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
-    register_camera!(scene, plot)
-
-    resolve_shading_default!(scene, plot.attributes)
-
     push!(parent, plot)
     plot!(plot)
+
+    if isempty(plot.plots)
+        register_camera!(scene, plot)
+    end
 
     if !isnothing(scene) && haskey(attr, :cycle)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
@@ -665,7 +611,7 @@ end
 function calculated_attributes!(::Type{Lines}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr)
-    ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
+    map!(identity, attr, :linewidth, :uniform_linewidth)
     calculated_attributes!(PointBased(), plot)
 end
 
@@ -692,9 +638,6 @@ function calculated_attributes!(::Type{Volume}, plot::Plot)
         return (Rect3d(Vec3.(x, y, z)...),)
     end
 end
-
-
-
 
 
 

@@ -181,7 +181,7 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
 Base.getindex(plot::Plot, idx::Integer) = plot.converted[idx]
-Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[][idx]
 Base.setindex!(plot::Plot, value, idx::Integer) = (plot.args[idx][] = value)
 Base.length(plot::Plot) = length(plot.converted)
 

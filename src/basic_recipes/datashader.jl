@@ -602,10 +602,7 @@ function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderCo
 end
 
 function data_limits(p::HeatmapShader)
-    x, y = p[1][], p[2][]
-    mini = Vec3f(x[1], y[1], 0)
-    widths = Vec3f(x[2] - x[1], y[2] - y[1], 0)
-    return Rect3f(mini, widths)
+    return Rect3f(p.data_limits[])
 end
 
 function boundingbox(p::HeatmapShader, space::Symbol=:data)
@@ -693,109 +690,65 @@ function Makie.plot!(p::HeatmapShader)
         return
     end
 
-    x, y = map(identity, p, p.x; ignore_equal_values=true), map(identity, p, p.y; ignore_equal_values=true)
-    max_resolution = lift(p, p.image, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, scene.viewport) do viewport
+        resampler = p.image[]
         res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
-    image = lift(x-> x.data, p, p.image)
-    image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
-    x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
-    overview_image = lift(last, x_y_overview_image)
+    add_input!(p.attributes, :max_resolution, max_resolution)
 
-    colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image
-        if eltype(image) <: Number
+    register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
+        return (xy_to_rect(x, y),)
+    end
+    register_computation!(p, [:image, :x, :y, :max_resolution, :data_limits], [:x_endpoints, :y_endpoints, :overview_image]) do (image, x, y, max_resolution, image_area), changed, last
+        return resample_image(x, y, image.data, max_resolution, image_area)
+    end
+    register_computation!(p, [:colorrange, :overview_image], [:computed_colorrange]) do (crange, img), changed, last
+        if eltype(img) <: Number
             if crange isa Automatic
-                return nan_extrema(image)
+                return (Vec2f(nan_extrema(img)),)
             else
-                return Vec2f(crange)
+                return (Vec2f(crange),)
             end
         else
-            return crange
+            return (automatic,) # Matrix{<:Colorant}
         end
     end
+    add_input!(p.attributes, :limits, limits_slow)
+    register_computation!(p, [:image, :x, :y, :max_resolution, :limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
+        if isnothing(xe_ye_oimg)
+            if isnothing(last) # first downsample
+                return (x, x, fill(0f0, 2, 2), false)
+            else
+                return (nothing, nothing, nothing, false) # simply dont update!
+            end
+        end
+        return (xe_ye_oimg..., true)
+    end
+
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
-    overview = overview_image
-    if !p.image[].lowres_background
-        # If we don't use the lowres background,
-        # We still display a background image, but with only the average of the image
-        # Leading to a background that blends relatively well with the high res image
-        overview = map(p, colorrange) do cr
-            Float32[mean(cr) for _ in 1:1, _ in 1:1]
-        end
-    end
+    # overview = overview_image
+    # if !p.image[].lowres_background
+    #     # If we don't use the lowres background,
+    #     # We still display a background image, but with only the average of the image
+    #     # Leading to a background that blends relatively well with the high res image
+    #     overview = map(p, colorrange) do cr
+    #         Float32[mean(cr) for _ in 1:1, _ in 1:1]
+    #     end
+    # end
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, x, y, overview; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
+    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange)
     translate!(lp, 0, 0, -1)
 
-    first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
-    # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
-    visible = Observable(p.visible[]; ignore_equal_values=true)
-    on(p, p.visible) do v
-        visible[] = v
-        return
-    end
-    # if nothing, the image is currently not visible in the limits chosen
-    if isnothing(first_downsample)
-        visible[] = false
-        first_downsample = EndPoints{Float32}(0, 1), EndPoints{Float32}(0, 1), zeros(Float32, 2, 2)
-    end
-    # Make sure we don't trigger an event if the image/xy stays the same
-    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
-
-    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
-
-    # To actually run the resampling on another thread, we need another channel:
-    # To make this threadsafe, the observable needs to be triggered from the current thread
-    # So we need another channel for the result (unbuffered, so `put!` blocks while the image is being updated)
-    image_to_obs = Channel{Union{Nothing, typeof(first_downsample)}}(0)
-    do_resample = Channel{CT}(Inf; spawn=true) do ch
-        for (x, y, image, res, limits) in ch
-            if isempty(ch) # only update if there is no newer image queued
-                resampled = resample_image(x, y, image, res, limits)
-                put!(image_to_obs, resampled)
-            end
-        end
-    end
-
-    onany(p, args..., limits_slow) do x, y, image, res, limits
-        # We remove any queued up resampling requests, since we only care about the latest one
-        # empty!(do_resample)
-        empty_channel!(do_resample)
-        # And then we put the newest:
-        put!(do_resample, (x, y, image, res, limits))
-        return
-    end
-
-    imgp = image!(
-        p, first_downsample...;
-        gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange, visible=visible,
+    image!(
+        p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
+        gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange, visible=p.l_visible,
     )
 
-    # We need to update the image from the same thread as the one that created it
-    # Which is why we need another task here:
-    task = @async for x_y_image in image_to_obs
-        # Image is nothing
-        if isnothing(x_y_image)
-            visible[] = false
-            continue
-        end
-        # if do_resample/ch is not empty, we already know that
-        # there is a newer image queued to be updated
-        # So we can skip this update
-
-        if !visible[]
-            visible[] = true
-        end
-        if isempty(do_resample) && isempty(image_to_obs)
-            x, y, image = x_y_image
-            update!(imgp, arg1=x, arg2=y, arg3=image)
-        end
-    end
-    bind(image_to_obs, task)
     return p
 end
 

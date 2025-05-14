@@ -55,6 +55,8 @@ function connect_plot(scene, plot) {
         );
     }
     uniforms.light_direction = scene.light_direction;
+    uniforms.ambient = scene.ambient;
+    uniforms.light_color = scene.light_color;
 }
 
 export class Plot {

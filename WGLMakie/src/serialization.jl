@@ -190,9 +190,19 @@ function serialize_scene(scene::Scene)
 
     children = map(child-> serialize_scene(child), scene.children)
 
-    dirlight = Makie.get_directional_light(scene)
-    light_dir = isnothing(dirlight) ? Observable(Vec3f(1)) : dirlight.direction
-    cam_rel = isnothing(dirlight) ? false : dirlight.camera_relative
+
+    light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
+    cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
+    ambient = Observable(serialize_three(RGBf(0,0,1)), ignore_equal_values = true)
+    light_color = Observable(serialize_three(RGBf(1,0,0)), ignore_equal_values = true)
+
+    on(scene.compute.onchange, update = true) do _
+        ambient[] = serialize_three(scene.compute[:ambient_color][])
+        light_color[] = serialize_three(scene.compute[:dirlight_color][])
+        light_dir[] = serialize_three(scene.compute[:dirlight_direction][])
+        cam_rel[] = serialize_three(scene.compute[:dirlight_cam_relative][])
+        return
+    end
 
     serialized = Dict(
         :viewport => pixel_area,
@@ -202,6 +212,8 @@ function serialize_scene(scene::Scene)
         :camera => serialize_camera(scene),
         :light_direction => light_dir,
         :camera_relative_light => cam_rel,
+        :ambient => ambient,
+        :light_color => light_color,
         :plots => serialize_plots(scene, scene.plots),
         :cam3d_state => cam3d_state,
         :visible => scene.visible,
@@ -233,7 +245,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
         merge!(mesh, additional)
     end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = plot.visible isa Observable ? plot.visible : Observable(plot.visible[])
+    mesh[:visible] = plot.visible[]
     mesh[:uuid] = js_uuid(plot)
     # Javascript plot type class name - which falls back to Mesh.
     mesh[:plot_type] = "Mesh"
@@ -257,23 +269,14 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     delete!(mesh, :attribute_updater)
     delete!(mesh, :uniform_updater)
 
-    dirlight = Makie.get_directional_light(scene)
-    if !isnothing(dirlight)
-        uniforms[:light_color] = serialize_three(dirlight.color[])
-        on(plot, dirlight.color) do value
-            uni_updater[] = [:light_color, serialize_three(value)]
-            return
-        end
+    uniforms[:ambient] = serialize_three(scene.compute[:ambient_color][])
+    uniforms[:light_color] = serialize_three(scene.compute[:dirlight_color][])
+    on(scene.compute.onchange) do _
+        uni_updater[] = [:ambient, serialize_three(scene.compute[:ambient_color][])]
+        uni_updater[] = [:light_color, serialize_three(scene.compute[:dirlight_color][])]
+        return
     end
 
-    ambientlight = Makie.get_ambient_light(scene)
-    if !isnothing(ambientlight)
-        uniforms[:ambient] = serialize_three(ambientlight.color[])
-        on(plot, ambientlight.color) do value
-            uni_updater[] = [:ambient, serialize_three(value)]
-            return
-        end
-    end
     scatterlike = plot isa Scatter || haskey(plot, :markerspace)
     if scatterlike
         mesh[:markerspace] = Observable(plot.markerspace[])

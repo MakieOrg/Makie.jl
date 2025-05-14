@@ -88,7 +88,6 @@ mutable struct Scene <: AbstractScene
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
     ssao::SSAO
-    lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     cycler::Cycler
     compute::ComputeGraph
@@ -130,7 +129,6 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
             Cycler(),
             ComputeGraph(),
@@ -138,6 +136,7 @@ mutable struct Scene <: AbstractScene
             false
         )
         add_camera_computation!(scene.compute, scene)
+        add_light_computation!(scene.compute, scene, lights)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -252,6 +251,28 @@ function Scene(;
     cam = camera isa Camera ? camera : Camera(viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
+    if lights isa Automatic
+        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
+
+        if haskey(m_theme, :lights)
+            copyto!(_lights, m_theme.lights[])
+        else
+            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
+            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
+            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
+
+            if haskey(m_theme, :ambient)
+                push!(_lights, AmbientLight(m_theme[:ambient][]))
+            end
+
+            push!(_lights, DirectionalLight(
+                m_theme[:light_color][], m_theme[:light_direction][],
+                to_value(get(m_theme, :camera_relative_light, false))
+            ))
+        end
+    end
+
+
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
         clear = Observable(alpha(bg[]) == 1 ? true : false)
@@ -275,34 +296,8 @@ function Scene(;
         end
     end
 
-    if lights isa Automatic
-        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
-
-        if haskey(m_theme, :lights)
-            copyto!(scene.lights, m_theme.lights[])
-        else
-            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
-            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
-            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
-
-            if haskey(m_theme, :ambient)
-                push!(scene.lights, AmbientLight(m_theme[:ambient][]))
-            end
-
-            push!(scene.lights, DirectionalLight(
-                m_theme[:light_color][], m_theme[:light_direction],
-                to_value(get(m_theme, :camera_relative_light, false))
-            ))
-        end
-    end
-
     return scene
 end
-
-get_directional_light(scene::Scene) = get_one_light(scene.lights, DirectionalLight)
-get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
-get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
-default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)
 
 function Scene(
         parent::Scene;

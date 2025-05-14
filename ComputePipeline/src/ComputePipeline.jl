@@ -328,7 +328,11 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :onchange && return getfield(attr, :onchange)
-    return attr.inputs[key].output
+    if haskey(attr.inputs, key)
+        return attr.inputs[key].output
+    else
+        return attr.outputs[key]
+    end
 end
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
@@ -674,6 +678,13 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     _inputs = Computed[attr.outputs[k] for k in inputs]
     unsafe_register!(f, attr, _inputs, outputs)
     return
+end
+
+function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
+    register_computation!(attr, [input], [output]) do inputs, changed, cached
+        return (f(inputs[1]),)
+    end
+    return attr
 end
 
 function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, output_names)

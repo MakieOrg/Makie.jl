@@ -22822,6 +22822,8 @@ function connect_plot(scene, plot) {
         uniforms.preprojection = cam.preprojection_matrix(space, markerspace);
     }
     uniforms.light_direction = scene.light_direction;
+    uniforms.ambient = scene.ambient;
+    uniforms.light_color = scene.light_color;
 }
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -23000,6 +23002,16 @@ function deserialize_scene_recursive(data, screen) {
             plot_data.uniforms.light_direction.value.fromArray(value);
         });
     }
+    const ambient = new mod.Vector3().fromArray(data.ambient.value);
+    scene.ambient = new mod.Uniform(ambient);
+    data.ambient.on((value)=>{
+        scene.ambient.value.fromArray(value);
+    });
+    const light_color = new mod.Vector3().fromArray(data.light_color.value);
+    scene.light_color = new mod.Uniform(light_color);
+    data.light_color.on((value)=>{
+        scene.light_color.value.fromArray(value);
+    });
     data.plots.forEach((plot_data1)=>{
         add_plot(scene, plot_data1);
     });
