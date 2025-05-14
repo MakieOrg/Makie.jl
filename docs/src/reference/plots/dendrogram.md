@@ -38,10 +38,15 @@ merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
 # Adding groups for each leaf node will result in branches of a common group
 # to be colored the same (based on colormap). Branches with miss-matched groups
 # use ungrouped_color
-dendrogram(leaves, merges,
+f, a, p = dendrogram(leaves, merges,
     groups = [1, 1, 2, 3, 3],
     colormap = [:red, :green, :blue],
     ungrouped_color = :black)
+
+# Makie.dendrogram_node_positions(plot) can be used to get final node positions
+textlabel!(a, Makie.dendrogram_node_positions(p), text = ["A", "A", "B", "C", "C"],
+    shape = Circle(Point2f(0.5), 0.5), keep_aspect = true)
+f
 ```
 
 

@@ -137,6 +137,14 @@ function resample_for_transform(tf::Polar, ps, args...; step = 2pi/180)
     return (interpolated_points, interpolated_args...)
 end
 
+_parse_dendrogram_scale(nodes, width::Automatic) = 1.0
+_parse_dendrogram_scale(nodes, width) = error("Incorrect type for Dendrogram width or depth. Must be automatic or Real, but is $(typeof(width)).")
+function _parse_dendrogram_scale(nodes, width::Real)
+    # TODO: Should we consider connections? (check positions instead of nodes)
+    mini, maxi = extrema(node -> node.position[1], nodes)
+    return width / (maxi - mini)
+end
+
 function plot!(plot::Dendrogram)
     branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
         if isnothing(groups)
@@ -148,13 +156,7 @@ function plot!(plot::Dendrogram)
         end
     end
 
-    parse_scale(nodes, width::Automatic) = 1.0
-    parse_scale(nodes, width) = error("Incorrect type for Dendrogram width or depth. Must be automatic or Real, but is $(typeof(width)).")
-    function parse_scale(nodes, width::Real)
-        # TODO: Should we consider connections? (check positions instead of nodes)
-        mini, maxi = extrema(node -> node.position[1], nodes)
-        return width / (maxi - mini)
-    end
+
 
     points_vec = Observable(Point2d[])
     colors_vec = map(plot,
@@ -194,7 +196,7 @@ function plot!(plot::Dendrogram)
         R = rotmatrix2d(rot_angle)
 
         # parse scaling
-        scale = Vec2d(parse_scale(nodes, width), parse_scale(nodes, depth))
+        scale = Vec2d(_parse_dendrogram_scale(nodes, width), _parse_dendrogram_scale(nodes, depth))
 
         # move root to (0, 0), scale, then rotate, then move to origin
         root_pos = nodes[end].position
@@ -302,5 +304,53 @@ function recursive_leaf_groups!(output, node, nodes, groups)
         value = ifelse(left == right, left, NaN)
         output[node.idx] = value
         return value
+    end
+end
+
+"""
+    dendrogram_node_positions(dendrogram)
+
+Returns an Observable that tracks the positions of dendrogram nodes. This includes
+translations from `origin`, `rotation` and scaling from `width` and `depth`.
+"""
+function dendrogram_node_positions(plot::Dendrogram)
+    return map(plot,
+            plot.converted[1], plot.width, plot.depth, plot.rotation, plot.origin, transform_func_obs(plot)
+        ) do nodes, width, depth, rotation, _origin, tf
+
+        origin = to_ndim(Vec2f, _origin, 0)
+        ps = [node.position for node in nodes]
+
+        # force rotation to work with Polar transform
+        if tf isa Polar
+            rotation = ifelse(tf.theta_as_x, :up, :right)
+        end
+
+        # parse rotation, construct rotation matrix
+        if rotation isa Real;
+            rot_angle = rotation
+        elseif rotation === :down
+            rot_angle = 0.0
+        elseif rotation === :right
+            rot_angle = pi/2
+        elseif rotation === :up
+            rot_angle = pi
+        elseif rotation === :left
+            rot_angle = 3pi/2
+        else
+            error("Rotation $rotation is not valid. Must be a <: Real or :down, :right, :up or :left.")
+        end
+        R = rotmatrix2d(rot_angle)
+
+        # parse scaling
+        scale = Vec2d(_parse_dendrogram_scale(nodes, width), _parse_dendrogram_scale(nodes, depth))
+
+        # move root to (0, 0), scale, then rotate, then move to origin
+        root_pos = nodes[end].position
+        for (i, p) in enumerate(ps)
+            ps[i] = R * (scale .* (p - root_pos)) + origin
+        end
+
+        return resample_for_transform(tf, ps)[1]
     end
 end
