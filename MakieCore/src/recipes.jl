@@ -62,7 +62,7 @@ plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
 function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted))
+    argument_names(P, length(plot.converted[]))
 end
 
 function argument_names(::Type{<:AbstractPlot}, num_args::Integer)

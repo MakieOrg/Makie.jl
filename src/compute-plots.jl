@@ -334,7 +334,7 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
-    documented_attr = MakieCore.documented_attributes(T).d
+    documented_attr = plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
 
@@ -347,7 +347,15 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
     )
     for (k, v) in documented_attr
         if haskey(kwargs, k)
-            value = kwargs[k]
+            if v isa Attributes
+                value = merge(v, Attributes(pairs(kwargs[k])))
+            else
+                value = kwargs[k]
+            end
+        elseif v isa Observable
+            value = v[]
+        elseif v isa Attributes
+            value = v
         else
             val = v.default_value
             value = val isa MakieCore.Inherit ? val.fallback : val
@@ -368,14 +376,26 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             attr[k].value = abstract_type_init[k]
         end
     end
+    if !haskey(attr, :model)
+        add_input!(attr, :model, Mat4f(I))
+    end
 end
 
 # function gscatter end
 
 # const GScatter{ARGS} = Scatter{gscatter, ARGS}
 
+function plot_attributes(scene, T)
+    plot_attr = MakieCore.documented_attributes(T)
+    if isnothing(plot_attr)
+        return merge(default_theme(scene, T), default_theme(T))
+    else
+        return plot_attr.d
+    end
+end
+
 function add_theme!(plot::T, scene::Scene) where {T}
-    plot_attr = MakieCore.documented_attributes(T).d
+    plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(plot), (;))
     gattr = plot.attributes
@@ -384,6 +404,10 @@ function add_theme!(plot::T, scene::Scene) where {T}
         if !haskey(plot.kw, k)
             if haskey(plot_scene_theme, k)
                 setproperty!(gattr, k, to_value(plot_scene_theme[k]))
+            elseif v isa Observable
+                setproperty!(gattr, k, v[])
+            elseif v isa Attributes
+                setproperty!(gattr, k, v)
             elseif v.default_value isa MakieCore.Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
@@ -462,7 +486,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
     end
 
-    documented_attr = MakieCore.documented_attributes(T).d
+    documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes.outputs, k)
             if haskey(documented_attr, k)

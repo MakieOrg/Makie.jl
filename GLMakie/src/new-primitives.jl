@@ -153,8 +153,12 @@ function register_light_attributes!(screen, scene, attr, uniforms)
 
     shading = Makie.get_shading_mode(scene)
     shading == NoShading && return
-
-    add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
+    if !haskey(attr, :ambient)
+        # TODO, why is ambient already here for MeshScatter?
+        add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
+    else
+        return
+    end
 
     if shading == FastShading
 

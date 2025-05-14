@@ -173,7 +173,7 @@ end
     return result
 end
 
-@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::Union{Computed, AbstractObservable}, args...;
                           ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
