@@ -2061,25 +2061,39 @@ end
     scene = Scene(camera = campixel!, size = (500, 500))
     min = 30; max = 60
     linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 40, color = :lightgray, linewidth = max-min)
-    arrows2d!(scene,
+    heights = [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40
+    p = arrows2d!(scene,
         50:50:400, zeros(8),
-        zeros(8), [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40,
+        zeros(8), heights,
         minshaftlength = min, maxshaftlength = max,
         shaftwidth = 20, tipwidth = 40, tiplength = 40,
         strokemask = 0
     )
     scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
 
+    component_widths = widths.(Rect2f.(p.plots[1].args[1][]))
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test component_widths[2i-1][1] ≈ p.shaftwidth[] * scale # shaft
+        @test component_widths[2i][1]   ≈ p.tipwidth[] * scale   # tip
+    end
+
     linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 290, color = :lightgray, linewidth = max-min)
-    arrows3d!(scene,
+    p = arrows3d!(scene,
         50:50:400, fill(250, 8),
-        zeros(8), [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40,
+        zeros(8), heights,
         minshaftlength = min, maxshaftlength = max,
         shaftradius = 10, tipradius = 20, tiplength = 40,
         markerscale = 1.0
     )
-    p = scatter!(scene, 50:50:400, fill(270, 8), marker = Rect, markersize = 20, color = :red)
-    translate!(p, 0, 0, 100)
+    sp = scatter!(scene, 50:50:400, fill(270, 8), marker = Rect, markersize = 20, color = :red)
+    translate!(sp, 0, 0, 100)
+
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test p.plots[2].markersize[][i][1] ≈ 2 * p.shaftradius[] * scale # shaft
+        @test p.plots[3].markersize[][i][1] ≈ 2 * p.tipradius[] * scale   # tip
+    end
 
     scene
 end
