@@ -9,6 +9,9 @@ in vec3 o_camdir;
 in float o_clip_distance[8];
 
 uniform int num_clip_planes;
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -33,7 +36,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -143,10 +146,10 @@ void main()
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 N = normalize(o_normal);
         vec3 light = blinnphong(N, normalize(o_camdir), L, real_color.rgb);
-        shaded_color = get_ambient() * real_color.rgb + light;
+        shaded_color = ambient * real_color.rgb + light;
     }
 
     if (picking && (real_color.a > 0.1)) {

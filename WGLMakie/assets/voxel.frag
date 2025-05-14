@@ -20,6 +20,9 @@ flat in int plane_front;
 
 uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 vec4 debug_color(uint id) {
     return vec4(
@@ -105,7 +108,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -170,9 +173,9 @@ void main()
 #endif
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 light = blinnphong(o_normal, normalize(o_camdir), L, voxel_color.rgb);
-        voxel_color.rgb = get_ambient() * voxel_color.rgb + light;
+        voxel_color.rgb = ambient * voxel_color.rgb + light;
     }
 
     if (picking) {

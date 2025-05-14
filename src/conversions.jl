@@ -2004,6 +2004,15 @@ convert_attribute(value, ::key"specular") = Vec3f(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 
+convert_attribute(value::Automatic, ::key"shading") = true
+function convert_attribute(value::MakieCore.ShadingAlgorithm, ::key"shading")
+    if value != NoShading
+        @warn "`shading = $value` is deprecated in favor of `shading = true` as a plot attribute. To switch between `FastShading` and `MultiLightShading` explicitly, use scene attributes."
+    end
+    return value != NoShading
+end
+
+
 convert_attribute(value, ::key"depth_shift") = Float32(value)
 
 

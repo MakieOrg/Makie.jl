@@ -621,14 +621,6 @@ function draw_mesh3D(
         align_pattern(per_face_col, scene, f32c_model)
     end
 
-    # TODO: assume Symbol here after this has been deprecated for a while
-    if shading isa Bool
-        @warn "`shading::Bool` is deprecated. Use `shading = NoShading` instead of false and `shading = FastShading` or `shading = MultiLightShading` instead of true."
-        shading_bool = shading
-    else
-        shading_bool = shading != NoShading
-    end
-
     if !isnothing(meshnormals) && to_value(get(plot, :invert_normals, false))
         meshnormals .= -meshnormals
     end
@@ -638,10 +630,12 @@ function draw_mesh3D(
 
     draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading_bool::Bool, diffuse::Vec3f,
+        model, shading::Bool, diffuse::Vec3f,
         specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes, plot.eyeposition[]
     )
 end
+
+to_vec(c::Colorant) = Vec3f(red(c), green(c), blue(c))
 
 function draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
@@ -685,36 +679,16 @@ function draw_mesh3D(
         return draw_mesh2D(ctx, per_face_col, screen_points, meshfaces, reverse(zorder))
     end
 
-    # Light math happens in view/camera space
-    dirlight = Makie.get_directional_light(scene)
-    if !isnothing(dirlight)
-        lightdirection = if dirlight.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            normalize(T * dirlight.direction[])
-        else
-            normalize(dirlight.direction[])
-        end
-        c = dirlight.color[]
-        light_color = Vec3f(red(c), green(c), blue(c))
-    else
-        lightdirection = Vec3f(0,0,-1)
-        light_color = Vec3f(0)
-    end
-
-    ambientlight = Makie.get_ambient_light(scene)
-    ambient = if !isnothing(ambientlight)
-        c = ambientlight.color[]
-        Vec3f(c.r, c.g, c.b)
-    else
-        Vec3f(0)
-    end
+    ambient = to_vec(scene.compute[:ambient_color][])
+    light_color = to_vec(scene.compute[:dirlight_color][])
+    light_direction = scene.compute[:dirlight_final_direction][]
 
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(v[i] - eyeposition), world_points)
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
-        lightdirection, light_color, shininess, diffuse, ambient, specular)
+        light_direction, light_color, shininess, diffuse, ambient, specular)
 
     return
 end

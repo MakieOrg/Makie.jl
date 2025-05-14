@@ -225,9 +225,21 @@ export function deserialize_scene_recursive(data, screen) {
         );
         scene.light_direction = new THREE.Uniform(light_dir);
         data.light_direction.on((value) => {
-            plot_data.uniforms.light_direction.value.fromArray(value);
+            scene.light_direction.value.fromArray(value);
         });
     }
+
+    const ambient = new THREE.Vector3().fromArray(data.ambient.value);
+    scene.ambient = new THREE.Uniform(ambient);
+    data.ambient.on((value) => {
+        scene.ambient.value.fromArray(value);
+    })
+
+    const light_color = new THREE.Vector3().fromArray(data.light_color.value);
+    scene.light_color = new THREE.Uniform(light_color);
+    data.light_color.on((value) => {
+        scene.light_color.value.fromArray(value);
+    })
 
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);

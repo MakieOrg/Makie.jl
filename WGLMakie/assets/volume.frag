@@ -12,6 +12,9 @@ const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
 uniform vec4 clip_planes[8];
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
@@ -86,7 +89,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     vec3 H = normalize(L + V);
     float spec_coeff = pow(max(dot(H, -N), 0.0) + max(dot(H, N), 0.0), shininess);
     // final lighting model
-    return ambient * color + get_light_color() * vec3(
+    return ambient * color + light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -177,7 +180,7 @@ vec4 isosurface(vec3 front, vec3 dir)
         float density = texture(uniform_color, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = get_light_direction();
+            vec3 L = light_direction;
             c = vec4(
                 blinnphong(N, camdir, L, diffuse_color.rgb),
                 diffuse_color.a
