@@ -2037,28 +2037,22 @@ end
 end
 
 @reference_test "Dendrogram" begin
-    leaves = Point2f.([
-        (1,0),
-        (2,0.5),
-        (3,1),
-        (4,2),
-        (5,0)
-        ])
+    leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+    merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
 
-    merges = [
-        (1, 2), # 6
-        (6, 3), # 7
-        (4, 5), # 8
-        (7, 8), # 9
-    ]
-    f = Figure(size = (500, 500))
+    f = Figure(size = (400, 700))
     a = Axis(f[1, 1], aspect = DataAspect())
     # TODO: vary more attributes to confirm that they work
     #       (i.e. Lines attributes, colors w/o grouping, branch_style)
-    dendrogram!(leaves, merges; origin = Point2f( 0, -2), rotation = :down,  ungrouped_color = :gray,      groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
-    dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,       groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
-    dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    ungrouped_color = :green,     groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
-    dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  ungrouped_color = :lightblue, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
-    dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange,    groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 0, -2), rotation = :down,  ungrouped_color = :gray, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,  groups = [1,1,2,3,3])
+    dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    color = :blue, branch_shape = :tree, linestyle = :dot, linewidth = 3)
+    dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  color = :black, width = 5, depth = 5)
+    dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+
+    a = PolarAxis(f[2, 1])
+    rlims!(a, 0, 6)
+    dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
+
     f
 end
