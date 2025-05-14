@@ -49,6 +49,11 @@ Plot a kernel density estimate of `values`.
     weights = automatic
     cycle = [:color => :patchcolor]
     inspectable = @inherit inspectable
+    """
+    The alpha value of the colormap or color attribute. Multiple alphas like
+    in plot(alpha=0.2, color=(:red, 0.5), will get multiplied.
+    """
+    alpha = 1.0
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
@@ -112,9 +117,9 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
 
     band!(plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
-        colorrange = plot.colorrange, inspectable = plot.inspectable)
+        colorrange = plot.colorrange, inspectable = plot.inspectable, alpha = plot.alpha)
     l = lines!(plot, linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,
-        inspectable = plot.inspectable)
+        inspectable = plot.inspectable, alpha = plot.alpha)
     plot
 end
