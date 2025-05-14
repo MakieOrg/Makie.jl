@@ -211,7 +211,7 @@ end
 
 function initialize_block!(sl::Slider2)
 
-    topscene = sl.blockscene
+    topscene = sl.blockscene 
 
     sliderrange = sl.range
 
