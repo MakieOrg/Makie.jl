@@ -190,7 +190,7 @@ function resolve_arrows_deprecation(mutating, args, kwargs)
 
     for k in keys(kwargs)
         if k in removed
-            throw(ArgumentError("Attribute $k has been removed."))
+            @warn "Attribute $k has been removed."
         elseif haskey(renamed, k)
             new = renamed[k]
             @warn "$k has been renamed to $new."
