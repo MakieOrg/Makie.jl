@@ -7,16 +7,20 @@ dendrogram
 ## Examples
 
 ```@figure
-leaves = Point2f.([
+using CairoMakie
+
+# Positions of leaf nodes
+leaves = Point2f[
     (1,0),
     (2,0.5),
     (3,1),
     (4,2),
     (5,0)
-])
+]
 
+# connections between nodes which merge into a new node
 merges = [
-    (1, 2), # 6
+    (1, 2), # creates node 6
     (6, 3), # 7
     (4, 5), # 8
     (7, 8), # 9
@@ -25,38 +29,42 @@ merges = [
 dendrogram(leaves, merges)
 ```
 
-WIP!
+```@figure
+using CairoMakie
+
+leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
+
+# Adding groups for each leaf node will result in branches of a common group
+# to be colored the same (based on colormap). Branches with miss-matched groups
+# use ungrouped_color
+dendrogram(leaves, merges,
+    groups = [1, 1, 2, 3, 3],
+    colormap = [:red, :green, :blue],
+    ungrouped_color = :black)
+```
+
 
 ```@figure
-f = Figure() 
-Axis(f[1, 1])
+using CairoMakie
 
-for i in 1:10
-    arc!(Point2f(0, i), i, -π, π)
-end
+leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
 
+f, a, p = dendrogram(leaves, merges, rotation = :right, branch_shape = :tree)
+dendrogram!(a, leaves, merges, origin = (4, 4), rotation = :left, color = :orange)
 f
 ```
 
 ```@figure
+using CairoMakie
+
+leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
+
 f = Figure()
-Axis(f[1, 1])
-
-for i in 1:4
-    radius = 1/(i*2)
-    left = 1/(i*2)
-    right = (i*2-1)/(i*2)
-    arc!(Point2f(left, 0), radius, 0, π)
-    arc!(Point2f(right, 0), radius, 0, π)
-end
-for i in 3:4
-    radius = 1/(i*(i-1)*2)
-    left = (1/i) + 1/(i*(i-1)*2)
-    right = ((i-1)/i) - 1/(i*(i-1)*2)
-    arc!(Point2f(left, 0), radius, 0, π)
-    arc!(Point2f(right, 0), radius, 0, π)
-end
-
+a = PolarAxis(f[1, 1])
+dendrogram!(a, leaves, merges, linewidth = 3, color = :black, linestyle = :dash, origin = Point2f(0, 1))
 f
 ```
 

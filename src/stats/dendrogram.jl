@@ -153,9 +153,10 @@ function plot!(plot::Dendrogram)
     colors_vec = map(plot,
             plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors,
             transform_func_obs(plot), plot.width, plot.depth
-        ) do nodes, origin, rotation, branch_shape, branch_colors, tf, width, depth
+        ) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
 
         ps = empty!(points_vec[])
+        origin = to_ndim(Vec2f, _origin, 0)
 
         # Generate positional data that connect branches of the tree. If colors are
         # given per node (either directly or through grouping) repeat their values
