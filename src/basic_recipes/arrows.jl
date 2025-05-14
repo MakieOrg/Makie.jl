@@ -166,7 +166,7 @@ function resolve_arrows_deprecation(mutating, args, kwargs)
     is3d = _is_3d_arrows(args...)
     if is3d
         func = mutating ? arrows3d! : arrows3d
-        removed = Set([:markerspace, :linestyle])
+        removed = Set([:markerspace, :linestyle, :transform_marker])
 
         # Old 3d defaults
         get!(kwargs, :markerscale, 1.0)
