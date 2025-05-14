@@ -35,16 +35,23 @@ and parent nodes identified by `merges`.
     "Sets the position of the tree root."
     origin = Point2d(0)
     """
-    Sets the width of the dendrogram, i.e. the maximum distance between to leaf nodes.
-    Defaults to keeping neighboring leaf nodes 1 unit apart.
+    Scales the dendrogram so that the maximum distance between leaf nodes is `width`.
+    By default no scaling is applied, i.e. the width of the dendrogram is defined
+    by its arguments.
     """
     width = automatic
     """
-    Sets the depth or height of the dendrogram, i.e. how far apart the root noe and
-    the most distant leaf node are. TODO: What does the default case do?
+    Scales the dendrogram so that the maximum distance between the root node and
+    leaf nodes is `depth`. By default no scaling is applied, i.e. the depth or
+    height of the dendrogram is derived from the given nodes and connections.
+    (For this each parent node is at least 1 unit above its children.)
     """
     depth = automatic
-    "TODO: document"
+    """
+    Sets a group id for each leaf node. Branches that merge nodes of the same
+    group will use their group to look up a color in the given colormap. Branches
+    that merge different groups will use `ungrouped_color`.
+    """
     groups = nothing
     "Sets the color of branches with mixed groups if groups are defined."
     ungrouped_color = :gray
