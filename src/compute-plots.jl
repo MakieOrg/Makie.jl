@@ -370,7 +370,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         end
     end
     if !haskey(attr, :model)
-        add_input!(attr, :model, Mat4f(I))
+        add_input!(attr, :model, Mat4d(I))
     end
 end
 
@@ -435,9 +435,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     converted = attr[:converted][]
     ArgTyp = MakieCore.argtypes(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
-    p = Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
-    p.transformation = Transformation()
-    return p
+    return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
 function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))

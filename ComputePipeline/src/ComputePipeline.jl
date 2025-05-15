@@ -155,7 +155,7 @@ mutable struct Input{T} <: AbstractEdge
     f::Function
     output::Computed
     dirty::Bool
-    dependents::Vector{ComputeEdge}
+    dependents::Vector{ComputeEdge{T}}
 end
 
 function Input(graph, name, value, f, output)
@@ -381,11 +381,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :outputs && return getfield(attr, :outputs)
     key === :onchange && return getfield(attr, :onchange)
     key === :observables && return getfield(attr, :observables)
-    if haskey(attr.inputs, key)
-        return attr.inputs[key].output
-    else
-        return attr.outputs[key]
-    end
+    return attr.outputs[key]
 end
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
