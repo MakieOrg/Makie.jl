@@ -334,6 +334,11 @@ function register_text_computations!(attr::ComputeGraph, ::Type{T}) where T
         return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r], )
     end
 
+    # glyph_boundingboxes are not tight to the character.
+    # Vertically they fill the full space the character may occupy.
+    # (I.e. a and g have the same y min and max)
+    # Horizontally they fill the include the spacing between characters.
+    # (I.e. boundingboxes of consecutive characters touch)
     register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
             [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
 
@@ -445,6 +450,32 @@ function string_boundingbox(plot::Text)
     return (total_bb,)
 end
 
+# replacement for charbbs()
+# TODO: Maybe generalize this? I.e. for multiple text blocks, markerpace != space, transformations, etc
+function _tight_character_boundingboxes(plot::Text)
+    register_computation!(plot.attributes,
+            [:text_positions, :glyph_extents, :text_scales, :glyph_origins],
+            [:tight_character_boundingboxes]
+        ) do inputs, changed, cached
+
+        positions, extents, scales, origins = inputs
+        if all(x -> length(x) == length(positions) || length(x) == 1, inputs)
+            bbs = Rect2f[]
+            broadcast_foreach(positions, extents, scales, origins) do pos, ext, sc, ori
+                bb = Makie.height_insensitive_boundingbox_with_advance(ext)
+                bb2 = Rect2f(bb * sc) + Point2f(ori) + Point2f(pos)
+                push!(bbs, bb2)
+            end
+            return (bbs, )
+        elseif isnothing(cached)
+            return (Rect2f[],)
+        else
+            return nothing
+        end
+    end
+
+    return plot.tight_character_boundingboxes[]
+end
 
 
 function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)

@@ -232,9 +232,9 @@ function Observables.map!(f, target::Observable, args::Computed...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     return map!(f, target, obsies...)
 end
-function Observables.map(f, arg1::Computed, args...)
+function Observables.map(f, arg1::Computed, args...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    return map(f, obsies...)
+    return map(f, obsies...; kwargs...)
 end
 
 
