@@ -459,7 +459,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    # from connect_plot!()
     handle_transformation!(plot, parent, false)
     calculated_attributes!(Plot{Func}, plot)
 
@@ -472,7 +471,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     if isempty(plot.plots)
         register_camera!(scene, plot)
     end
-    push!(parent, plot)
 
     if !isnothing(scene) && haskey(attr, :cycle)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
