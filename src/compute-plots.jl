@@ -419,15 +419,16 @@ register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.attributes, s
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
-        attr = attributes(first(user_args))
-        merge!(user_attributes, attr)
+        attr = attributes(first(user_args)) # TODO: Should this copy to keep user_args[1] unchanged?
+        merge!(attr, user_attributes)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
     # And also plot!(plot, ::ComputeGraph, args...)
     if !isempty(user_args) && first(user_args) isa ComputeGraph
-        attr = first(user_args).outputs
-        merge!(user_attributes, )
-        return Plot{Func}(Base.tail(user_args), user_attributes)
+        # shallow copy with generalized type (avoid changing graph, allow non Computed types)
+        attr = Dict{Symbol, Any}(pairs(first(user_args).outputs))
+        merge!(attr, user_attributes)
+        return Plot{Func}(Base.tail(user_args), attr)
     end
 
     P = Plot{Func}
