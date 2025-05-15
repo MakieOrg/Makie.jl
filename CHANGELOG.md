@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 - **Breaking** Removed `MakieCore` from Makie's dependencies. Going forward, package extensions are recommended if a lightweight dependency is desired. A quick fix is to change the dependency to `Makie` and replace all `MakieCore` occurrences with `Makie` although this will incur Makie's full load time every time. The alternative is to use a package extension on `Makie` which requires at least Julia 1.9.
 - Fixed `annotation` in the presence of scene transform functions [#5058](https://github.com/MakieOrg/Makie.jl/pull/5058).
