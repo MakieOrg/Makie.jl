@@ -165,34 +165,20 @@ function calculate_contourf_polys!(
 end
 
 function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
-    xs, ys, zs = c[1:3]
+    graph = c.attributes
 
-    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
-        _get_isoband_levels(Val(mode), levels, vec(zs))
+    map!(graph, [:_arg3, :levels, :mode], :computed_levels) do zs, levels, mode
+        return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c, c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
-    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
-    c.attributes[:_computed_colormap] = computed_colormap
+    map!(extrema, graph, :computed_levels, :computed_colorrange)
 
-    lowcolor = Observable{RGBAf}()
-    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
-    c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, c.extendlow)
+    map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
 
-    highcolor = Observable{RGBAf}()
-    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
-    c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, c.extendhigh)
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+    map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
+    map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
 
-    polys = Observable(PolyType[])
-    colors = Observable(Float64[])
-
-    function calculate_polys(xs, ys, zs, levels, is_extended_low, is_extended_high)
+    function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         levels = copy(levels)
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
@@ -200,24 +186,35 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        calculate_contourf_polys!(polys[], colors[], xs, ys, zs, lows, highs)
-
-        notify(polys)
+        calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
+        return
     end
 
-    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
-    # onany doesn't get called without a push, so we call
-    # it on a first run!
-    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+    register_computation!(graph,
+            [:_arg1, :_arg2, :_arg3, :computed_levels, :computed_lowcolor, :computed_highcolor],
+            [:polys, :computed_colors]
+        ) do (xs, ys, zs, levels, low, high), changed, cached
+        is_extended_low = !isnothing(low)
+        is_extended_high = !isnothing(high)
+        if isnothing(cached)
+            PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+            polys = PolyType[]
+            colors = Float64[]
+        else
+            polys, colors = cached
+        end
+        calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+        return (polys, colors)
+    end
 
     poly!(c,
-        polys,
-        colormap = c._computed_colormap,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
+        c.polys,
+        colormap = c.computed_colormap,
+        colorrange = c.computed_colorrange,
+        highclip = c.computed_highcolor,
+        lowclip = c.computed_lowcolor,
         nan_color = c.nan_color,
-        color = colors,
+        color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         shading = NoShading,
