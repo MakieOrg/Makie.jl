@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 ## [0.22.5] - 2025-05-12
 
