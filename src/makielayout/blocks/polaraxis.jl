@@ -44,14 +44,12 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
             po.blockscene,
-            rticklabelplot.args[1].onchange,
-            thetaticklabelplot.args[1].onchange,
             po.rticklabelpad,
             po.rticksvisible, po.rticksize, po.rtickalign,
             po.thetaticklabelpad,
             po.thetaticksvisible, po.thetaticksize, po.thetatickalign,
             po.overlay.viewport
-        ) do _, _, rpad, rtvis, rtsize, rtalign, tpad, ttvis, ttsize, ttalign, area
+        ) do rpad, rtvis, rtsize, rtalign, tpad, ttvis, ttsize, ttalign, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)

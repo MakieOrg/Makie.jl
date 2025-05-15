@@ -214,28 +214,6 @@ function Base.setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, re
     dict[key2, rest...] = value
 end
 
-function Base.setindex!(x::AbstractPlot, value, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing && haskey(x.attributes, key)
-        return x.attributes[key][] = value
-    elseif !haskey(x.attributes, key)
-        x.attributes[key] = convert(Observable, value)
-    else
-        return setindex!(x.converted[idx], value)
-    end
-end
-
-function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing
-        return attributes(x)[key] = value
-    else
-        return setindex!(x.converted[idx], value)
-    end
-end
-
 # a few shortcut functions to make attribute conversion easier
 function get_attribute(dict, key, default=nothing)
     if haskey(dict, key)
