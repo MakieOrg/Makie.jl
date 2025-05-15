@@ -427,6 +427,12 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         merge!(user_attributes, attr)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
+    # And also plot!(plot, ::ComputeGraph, args...)
+    if !isempty(user_args) && first(user_args) isa ComputeGraph
+        attr = first(user_args).outputs
+        merge!(user_attributes, )
+        return Plot{Func}(Base.tail(user_args), user_attributes)
+    end
 
     P = Plot{Func}
     attr = ComputeGraph()
