@@ -185,15 +185,15 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         farclip = 10_000.0
         w, h = resolution
 
-        d = farclip - nearclip
-        iw, ih, id = 1.0 ./ (w, h, -d)
+        d = -(farclip - nearclip)
+        iw, ih, id = 1.0 ./ (w, h, d)
         co = (farclip + nearclip) * id
         # Same as orthographicprojection(w, h, nearclip, farclip) but inlined
         # so we don't need to recalculate 1 / w etc
-        pixel_to_clip     = Mat4d(2iw,0,0,0,  0,2ih,0,0,  0,0,-2/d,0,  -1,-1,co,1)
-        clip_to_pixel     = Mat4d(0.5w,0,0,0, 0,0.5h,0,0, 0,0,-0.5d,0, 0.5w,0.5h,0,1)
+        pixel_to_clip     = Mat4d(2iw,0,0,0,  0,2ih,0,0,  0,0,2id,0,  -1,-1,co,1)
+        clip_to_pixel     = Mat4d(0.5w,0,0,0, 0,0.5h,0,0, 0,0,0.5d,0, 0.5w,0.5h,0,1)
         pixel_to_relative = Mat4d(iw,0,0,0,   0,ih,0,0,   0,0,id,0,   0,0,co,1)
-        relative_to_pixel = Mat4d(w,0,0,0,    0,h,0,0,    0,0,id,0,   0,0,co,1)
+        relative_to_pixel = Mat4d(w,0,0,0,    0,h,0,0,    0,0,d,0,   0,0,co,1)
         return (pixel_to_clip, clip_to_pixel, pixel_to_relative, relative_to_pixel)
     end
 
@@ -209,9 +209,9 @@ function add_camera_computation!(graph::ComputeGraph, scene)
 
     # Uncommon cases
     register_computation!(
-            graph, [:world_to_clip, :eye_to_clip, :clip_to_pixel, :clip_to_eye],
+            graph, [:world_to_clip, :eye_to_clip, :clip_to_pixel, :clip_to_relative],
             [:world_to_relative, :eye_to_relative, :eye_to_pixel]
-        ) do (world_to_clip, clip_to_pixel), changed, cached
+        ) do (world_to_clip, eye_to_clip, clip_to_pixel, clip_to_relative), changed, cached
         world_to_relative = clip_to_relative * world_to_clip
         eye_to_relative = clip_to_relative * eye_to_clip
         eye_to_pixel = clip_to_pixel * eye_to_clip
