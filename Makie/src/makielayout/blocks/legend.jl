@@ -995,6 +995,50 @@ function Legend(
     return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete = true)
 end
 
+"""
+    Legend(fig_or_scene, axes::Union{Vector{Axis},Vector{Axis3},Vector{LScene},Vector{Scene}}, title = nothing; merge=true, kwargs...)
+
+Create a single-group legend with all plots from `axes` that have the attribute `label` set.
+
+If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
+If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
+
+
+"""
+function Legend(
+    fig_or_scene,
+    axes::Union{Vector{Axis},Vector{Axis3},Vector{LScene},Vector{Scene}},
+    title=nothing;
+    merge=false,
+    unique=false,
+    kwargs...,
+)
+
+    lplots = AbstractPlot[]
+    labels = AbstractString[]
+    for ax in axes
+        pl, lb = Makie.get_labeled_plots(ax, merge=false, unique=false)
+        append!(lplots, pl)
+        append!(labels, lb)
+    end
+
+    if unique
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
+        lplots = first.(plots_labels)
+        labels = last.(plots_labels)
+    end
+
+    if merge
+        ulabels = Base.unique(labels)
+        mergedplots = [[lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
+            for ul in ulabels]
+
+        lplots, labels = mergedplots, ulabels
+    end
+    
+    return Legend(fig_or_scene, lplots, labels, title; kwargs...)
+end
+
 
 """
     Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
