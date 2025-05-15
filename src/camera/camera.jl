@@ -314,7 +314,7 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     @assert inputs isa Vector{ComputePipeline.Computed}
 
     # Only propagate update from camera matrices if its relevant to space
-    ComputePipeline.unsafe_register!(camera_trigger, plot_graph, inputs, [:camera_trigger])
+    register_computation!(camera_trigger, plot_graph, inputs, [:camera_trigger])
 
     # Update camera matrices in plot if space changed or a relevant camera update happened
     input_keys = [:camera_trigger, :space]

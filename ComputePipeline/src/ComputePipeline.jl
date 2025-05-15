@@ -589,7 +589,7 @@ function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
     # 1. input exists
     # 2. output does not exist (or is already what we want to create)
     # which are given here
-    unsafe_register!(compute_identity, attr, [value], (key,))
+    register_computation!(compute_identity, attr, [value], [key])
     return attr
 end
 
@@ -598,7 +598,7 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
-    unsafe_register!(InputFunctionWrapper(key, conversion_func), attr, [value], (key,))
+    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [value], [key])
     return attr
 end
 
@@ -670,6 +670,16 @@ end
 ```
 """
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    if !all(k -> haskey(attr.outputs, k), inputs)
+        missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
+        error("Could not register computation: Inputs $missing_keys not found.")
+    end
+    _inputs = Computed[attr.outputs[k] for k in inputs]
+    register_computation!(f, attr, _inputs, outputs)
+    return
+end
+
+function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
     if any(x-> getfield(f, x) isa Core.Box, propertynames(f))
         boxed = [x => getfield(f, x) for x in propertynames(f) if getfield(f, x) isa Core.Box]
         boxed_str = map(boxed) do (k, v)
@@ -678,6 +688,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
         end
         error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
     end
+
     if any(k -> haskey(attr.outputs, k), outputs)
         existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
         if length(existing) == 0
@@ -710,12 +721,12 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
             # We can not rely on e1.inputs.name here because name can be different
             # from the key in attr.outputs
             inputs_to_verify = Set(e1.inputs)
-            for key in inputs
-                if attr.outputs[key] in inputs_to_verify
-                    delete!(inputs_to_verify, attr.outputs[key])
+            for input in inputs
+                if input in inputs_to_verify
+                    delete!(inputs_to_verify, input)
                 else
                     error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                    "that uses a different set of inputs. (Failed to find $( attr.outputs[key]) in existing)")
+                    "that uses a different set of inputs. (Failed to find $input in existing)")
                 end
             end
             if !isempty(inputs_to_verify)
@@ -728,8 +739,26 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
         end
     end
 
-    _inputs = Computed[attr.outputs[k] for k in inputs]
-    unsafe_register!(f, attr, _inputs, outputs)
+    new_edge = ComputeEdge(f, attr, inputs)
+
+    for input in inputs
+        @assert hasparent(input) "Computed should be guaranteed to have a parent edge, but does not"
+        # Edges can have multiple outputs so multiple inputs of this edge could
+        # come from the same edge
+        any(x -> x === new_edge, input.parent.dependents) && continue
+        push!(input.parent.dependents, new_edge)
+    end
+
+    # use order of namedtuple, which should not change!
+    for (i, symbol) in enumerate(outputs)
+        # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
+        value = get!(attr.outputs, symbol, Computed(symbol))
+        value.parent = new_edge
+        value.parent_idx = i
+        value.dirty = true
+        push!(new_edge.outputs, value)
+    end
+
     return
 end
 
@@ -738,28 +767,6 @@ function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
         return (f(inputs[1]),)
     end
     return attr
-end
-
-function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, output_names)
-    new_edge = ComputeEdge(f, attr, inputs)
-    for input in inputs
-        @assert hasparent(input)
-        # Edges can have multiple outputs so multiple inputs of this edge could
-        # come from the same edge
-        any(x -> x === new_edge, input.parent.dependents) && continue
-        push!(input.parent.dependents, new_edge)
-    end
-
-    # use order of namedtuple, which should not change!
-    for (i, symbol) in enumerate(output_names)
-        # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
-        value = get!(attr.outputs, symbol, Computed(symbol))
-        value.parent = new_edge
-        value.parent_idx = i
-        value.dirty = true
-        push!(new_edge.outputs, value)
-    end
-    return
 end
 
 """
