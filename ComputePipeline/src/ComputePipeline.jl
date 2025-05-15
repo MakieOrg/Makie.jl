@@ -158,8 +158,11 @@ mutable struct Input{T} <: AbstractEdge
     dependents::Vector{ComputeEdge{T}}
 end
 
+Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
+
 function Input(graph, name, value, f, output)
     @assert !(value isa Computed)
+    @assert !(value isa Observable)
     return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
 end
 

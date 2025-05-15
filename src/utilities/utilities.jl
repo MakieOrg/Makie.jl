@@ -45,6 +45,22 @@ function replace_automatic!(f, dict, key)
     to_value(val) == automatic && return (dict[key] = f())
     val
 end
+replace_automatic!(f, p::Plot, key) = replace_automatic!(f, Attributes(p), key)
+function replace_automatic!(f, attr::ComputeGraph, key)
+    if !haskey(attr, key)
+        add_input!(attr, key, f())
+    else
+        val = attr[key]
+        if to_value(val) == automatic
+            new_val = f()
+            new_val isa Observable && error("Replacing a compute graph entry with an Observable is not possible.")
+            update!(attr, key => val)
+            return new_val
+        else
+            return val
+        end
+    end
+end
 
 is_unitrange(x) = (false, 0:0)
 is_unitrange(x::AbstractRange) = (true, x)
@@ -579,6 +595,9 @@ end
 Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
+    # TODO: This currently happens for ComputeGraph passthrough already
+    return Attributes(plot)
+
     valid_attributes = attribute_names(target)
     existing_attributes = keys(plot.attributes)
     to_drop = setdiff(existing_attributes, valid_attributes)

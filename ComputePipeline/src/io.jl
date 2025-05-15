@@ -31,38 +31,51 @@ edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
 
 
 # Get Input callback function and input type
-edge_callback_location(edge::Input) = edge_callback_location(edge.f, (typeof(edge.value),))
+function edge_callback_location(edge::Input)
+    @info edge
+    @info typeof(edge.value)
+    edge_callback_location(edge.f, (edge.value,))
+end
 
 # get ComputeEdge callback function, input type, output type
 function edge_callback_location(edge::ComputeEdge)
     # TypedEdge may not be initialized yet so we can't rely on its input type
-    inputT = if all(c -> isdefined(c, :value), edge.inputs)
+    input = if all(c -> isdefined(c, :value), edge.inputs)
         N = length(edge.inputs)
         names = ntuple(i -> edge.inputs[i].name, N)
         values = ntuple(i -> edge.inputs[i].value, N)
-        NamedTuple{names, typeof(values)}
+        NamedTuple{names}(values)
     else
-        NamedTuple
+        NamedTuple()
     end
 
-    outputT = isassigned(edge.typed_edge) ? typeof(edge.typed_edge[].outputs) : Nothing
-    return edge_callback_location(edge.callback, inputT, outputT)
+    output = if all(c -> isdefined(c, :value), edge.outputs)
+        N = length(edge.outputs)
+        names = ntuple(i -> edge.outputs[i].name, N)
+        values = ntuple(i -> edge.outputs[i].value, N)
+        NamedTuple{names}(values)
+    else
+        nothing
+    end
+    return edge_callback_location(edge.callback, input, output)
 end
 
 # fill out ComputeEdge callback arg types
-edge_callback_location(f, arg1, arg3) = edge_callback_location(f, (arg1, Vector{Bool}, arg3))
+function edge_callback_location(f, arg1, arg3)
+    return typed_edge_callback_location(f, (typeof(arg1), Vector{Bool}, typeof(arg3)))
+end
 
 # for add_input!(..., ::Computed)
 function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any, <: Any, <: Any})
-    return edge_callback_location(f.user_func, (Symbol, args[1][1]))
+    return typed_edge_callback_location(f.user_func, (Symbol, typeof(args[1][1])))
 end
 
 # for add_input!(..., value)
 function edge_callback_location(f::InputFunctionWrapper, args::Tuple{<: Any})
-    return edge_callback_location(f.user_func, (Symbol, args[1]))
+    return typed_edge_callback_location(f.user_func, (Symbol, typeof(args[1])))
 end
 
-function edge_callback_location(f, args)
+function typed_edge_callback_location(f, args)
     if hasmethod(f, args)
         file, line = Base.functionloc(f, args)
         return "$file:$line"
