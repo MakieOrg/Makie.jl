@@ -153,8 +153,12 @@ function register_light_attributes!(screen, scene, attr, uniforms)
 
     shading = Makie.get_shading_mode(scene)
     shading == NoShading && return
-
-    add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
+    if !haskey(attr, :ambient)
+        # TODO, why is ambient already here for MeshScatter?
+        add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
+    else
+        return
+    end
 
     if shading == FastShading
 
@@ -180,12 +184,11 @@ function register_light_attributes!(screen, scene, attr, uniforms)
 end
 
 function generic_robj_setup(screen::Screen, scene::Scene, plot::Plot)
-    attr = plot.args[1]::ComputeGraph
+    attr = plot.attributes::ComputeGraph
     return attr
 end
 
 function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
-
     data = Dict{Symbol, Any}(
         # TODO: Do these always exist?
         :ssao => attr[:ssao][],
@@ -206,7 +209,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
 end
 
 function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, input2glname)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     # These must always be there!
     push!(uniforms, :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :visible, :fxaa)
@@ -580,7 +583,6 @@ end
 ################################################################################
 
 function assemble_lines_robj!(data, screen::Screen, attr, args, input2glname)
-
     positions = args[1] # changes name, so we use positional
     linestyle = attr[:linestyle][]
 
@@ -701,6 +703,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     # TODO: just use positions_transformed_f32c
     # position calculations for patterned lines
     # is projectionview enough to trigger on scene resize in all cases?
+
     register_computation!(
         attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
     ) do (_, model, f32c, space), changed, output
@@ -919,7 +922,7 @@ function assemble_heatmap_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     # TODO: requires position transforms in Makie
     # # Fast path for regular heatmaps
@@ -981,7 +984,7 @@ function assemble_surface_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr)
@@ -1088,7 +1091,7 @@ function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     generate_clip_planes!(attr)
@@ -1144,7 +1147,7 @@ function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
@@ -1217,7 +1220,7 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model

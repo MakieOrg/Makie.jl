@@ -74,7 +74,8 @@ end
 A `ComputeEdge` represents the computation connecting one set of nodes to another.
 They are considered internal and should not be interacted with or created directly.
 """
-struct ComputeEdge <: AbstractEdge
+struct ComputeEdge{T} <: AbstractEdge
+    graph::T
     callback::Function
 
     inputs::Vector{Computed}
@@ -85,13 +86,14 @@ struct ComputeEdge <: AbstractEdge
 
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
-    dependents::Vector{ComputeEdge}
+    dependents::Vector{ComputeEdge{T}}
     typed_edge::RefValue{TypedEdge}
 end
 
-function ComputeEdge(f, input, output)
-    return ComputeEdge(
-        f, [input], [true], [output], RefValue(false),
+
+function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
+    return ComputeEdge{ComputeGraph}(
+        graph, f, [input], [true], [output], RefValue(false),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -137,11 +139,6 @@ function TypedEdge(edge::ComputeEdge)
 end
 
 
-ComputeEdge(f) = ComputeEdge(f, Computed[])
-function ComputeEdge(f, inputs::Vector{Computed})
-    return ComputeEdge(f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
-                       ComputeEdge[], RefValue{TypedEdge}())
-end
 
 """
     struct Input
@@ -151,7 +148,8 @@ it should not be created directly, but rely on [`add_input!`](@ref). It should
 be updated by `update!(graph, input_name = new_value)` to correctly update the
 state of the compute graph.
 """
-mutable struct Input <: AbstractEdge
+mutable struct Input{T} <: AbstractEdge
+    graph::T
     name::Symbol
     value::Any
     f::Function
@@ -160,9 +158,9 @@ mutable struct Input <: AbstractEdge
     dependents::Vector{ComputeEdge}
 end
 
-function Input(name, value, f, output)
+function Input(graph, name, value, f, output)
     @assert !(value isa Computed)
-    return Input(name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
 end
 
 """
@@ -194,10 +192,63 @@ struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
     onchange::Observable{Nothing}
+    observables::Dict{Symbol,Observable}
+end
+
+function get_observable!(attr::ComputeGraph, key::Symbol)
+    return get!(attr.observables, key) do
+        val = attr.outputs[key]
+        result = Observable(val[])
+        on(attr.onchange) do _
+            _val = val[]
+            if !is_same(result[], _val)
+                result[] = _val
+            end
+        end
+        return result
+    end
+end
+
+function get_observable!(c::Computed)
+    if hasparent(c)
+        p = getparent(c)
+        return get_observable!(p.graph, c.name)
+    else
+        error("Cannot get observable for Computed without parent")
+    end
+end
+
+function Observables.on(f, x::Computed)
+    obs = get_observable!(x)
+    return on(f, obs)
+end
+
+function Observables.onany(f, args::Computed...)
+    obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
+    return onany(f, obsies...)
+end
+function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...)
+    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
+    return onany(f, obsies...)
+end
+function Observables.map!(f, target::Observable, args::Computed...)
+    obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
+    return map!(f, target, obsies...)
+end
+function Observables.map(f, arg1::Computed, args...)
+    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
+    return map(f, obsies...)
+end
+
+
+# ComputeEdge(f) = ComputeEdge(f, Computed[])
+function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
+    return ComputeEdge{ComputeGraph}(graph, f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
+                       ComputeEdge[], RefValue{TypedEdge}())
 end
 
 function ComputeGraph()
-    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}())
+    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}(), Dict{Symbol,Observable}())
 end
 
 _first_arg(args, changed, last) = (args[1],)
@@ -322,13 +373,19 @@ end
 # TODO: should this check inputs, outputs, both?
 # Note: WGLMakie relies on this checking output to avoid double-defining
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key) || haskey(attr.outputs, key)
+Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :onchange && return getfield(attr, :onchange)
-    return attr.inputs[key].output
+    key === :observables && return getfield(attr, :observables)
+    if haskey(attr.inputs, key)
+        return attr.inputs[key].output
+    else
+        return attr.outputs[key]
+    end
 end
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
@@ -493,7 +550,7 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
     end
 
     output = Computed(key, RefValue{Any}())
-    input = Input(key, value, func, output)
+    input = Input(attr, key, value, func, output)
     output.parent = input
     output.parent_idx = 1
     # Needs to be Any, since input can change type
@@ -676,8 +733,15 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     return
 end
 
+function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
+    register_computation!(attr, [input], [output]) do inputs, changed, cached
+        return (f(inputs[1]),)
+    end
+    return attr
+end
+
 function unsafe_register!(f, attr::ComputeGraph, inputs::Vector{Computed}, output_names)
-    new_edge = ComputeEdge(f, inputs)
+    new_edge = ComputeEdge(f, attr, inputs)
     for input in inputs
         @assert hasparent(input)
         # Edges can have multiple outputs so multiple inputs of this edge could

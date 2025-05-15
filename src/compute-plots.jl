@@ -6,33 +6,43 @@ using GeometryBasics
 
 # Sketching usage with scatter
 
-Base.haskey(x::ComputePlots, key) = haskey(x.args[1], key)
-Base.get(f::Function, x::ComputePlots, key::Symbol) = haskey(x.args[1], key) ? x.args[1][key] : f()
-Base.get(x::ComputePlots, key::Symbol, default) = get(()-> default, x, key)
+Base.haskey(x::Plot, key) = haskey(x.attributes, key)
+Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
+Base.get(x::Plot, key::Symbol, default) = get(()-> default, x, key)
 
-Base.getindex(plot::ComputePlots, key::Symbol) = getproperty(plot, key)
-Base.setindex!(plot::ComputePlots, val, key::Symbol) = setproperty!(plot, key, val)
+Base.getindex(plot::Plot, key::Symbol) = getproperty(plot, key)
+Base.setindex!(plot::Plot, val, key::Symbol) = setproperty!(plot, key, val)
 
-Base.getindex(plot::ComputePlots, idx::Integer) = plot.args[1][MakieCore.argument_names(typeof(plot), 10)[idx]]
 
-function Base.getindex(plot::ComputePlots, idx::UnitRange{<:Integer})
-    return ntuple(i -> plot.converted[Symbol(:arg, i)], idx)
+function data_limits(plot::Plot)
+    if haskey(plot, :data_limits)
+        return plot[:data_limits][]
+    end
+    isempty(plot.plots) && return Rect3d()
+    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
+    for i in 2:length(plot.plots)
+        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
+    end
+    return bb_ref[]
 end
-plot!(parent::SceneLike, plot::ComputePlots) = computed_plot!(parent, plot)
-data_limits(plot::ComputePlots) = plot[:data_limits][]
 
-function Base.getproperty(plot::ComputePlots, key::Symbol)
+function ComputePipeline.update!(plot::Plot; args...)
+    ComputePipeline.update!(plot.attributes; args...)
+    return
+end
+
+function Base.getproperty(plot::Plot, key::Symbol)
     if key in fieldnames(typeof(plot))
         return getfield(plot, key)
     end
-    return plot.args[1][key]
+    return plot.attributes[key]
 end
 
-function Base.setproperty!(plot::ComputePlots, key::Symbol, val)
+function Base.setproperty!(plot::Plot, key::Symbol, val)
     if key in fieldnames(typeof(plot))
         return Base.setfield!(plot, key, val)
     end
-    attr = plot.args[1]
+    attr = plot.attributes
     if haskey(attr.inputs, key)
         setproperty!(attr, key, val)
     else
@@ -57,7 +67,7 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
 end
 
 # TODO: is this data_limits or boundingbox()?
-function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
+function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
     if space === markerspace
         bb = Rect3d()
         for (i, p) in enumerate(positions)
@@ -81,7 +91,7 @@ function _boundingbox(positions, space::Symbol, markerspace::Symbol, scale, offs
     end
 end
 
-function _meshscatter_data_limits(positions, marker, markersize, rotation)
+function meshscatter_data_limits(positions, marker, markersize, rotation)
     # TODO: avoid mesh generation here if possible
     marker_bb = Rect3d(marker)
     scales = markersize
@@ -198,29 +208,15 @@ function register_position_transforms!(attr, input_name = :positions)
 end
 
 # Split for text compat
-function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args...) where {P}
+function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(P, attr, input_args)
     _register_expand_arguments!(P, attr, inputs)
     _register_argument_conversions!(P, attr, user_kw)
-    # TODO:
-    # - :positions may not be compatible with all primitive plot types
-    #   probably need specialization, e.g. for heatmap, image, surface
-    # - recipe plots may want this too for boundingbox
-    if P <: PrimitivePlotTypes
-        register_position_transforms!(attr)
-    end
     return
 end
 
 function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
-    if all(arg -> arg isa Computed, input_args)
-        inputs = map(enumerate(input_args)) do (i, arg)
-            sym = Symbol(:arg, i)
-            add_input!(attr, sym, arg)
-            return sym
-        end
-    elseif !any(arg -> arg isa Computed, input_args)
-        # TODO: same code, merge with above branch?
+    if all(arg -> arg isa Computed, input_args) || !any(arg -> arg isa Computed, input_args)
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
@@ -247,8 +243,8 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
     else
         conversion_trait(P, map(k -> attr[k][], inputs)...)
     end
-
-    register_computation!(attr, inputs, [:expanded_args]) do input_args, changed, last
+    # call it args for backwards compatibility (plot.args)
+    register_computation!(attr, inputs, [:args]) do input_args, changed, last
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
@@ -262,17 +258,17 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
-    expanded_args = attr[:expanded_args][]
-    if length(expanded_args) in (2, 3)
+    args = attr[:args][]
+    if length(args) in (2, 3)
         inputs = Symbol[]
-        for (i, arg) in enumerate(expanded_args)
+        for (i, arg) in enumerate(args)
             update_dim_conversion!(dim_converts, i, arg)
             obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
             converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
             add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
             push!(inputs, Symbol(:dim_convert_, i))
         end
-        register_computation!(attr, [:expanded_args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
+        register_computation!(attr, [:args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
             last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
             result = ntuple(length(converts)) do i
                 return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
@@ -280,13 +276,17 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             return (result,)
         end
     else
-        register_computation!(attr, [:expanded_args], [:dim_converted]) do args, changed, last
-            return (args.expanded_args,)
+        register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
+            return (args.args,)
         end
     end
-
-    register_computation!(attr, [:dim_converted], [MakieCore.argument_names(P, 10)...]) do args, changed, last
-        return convert_arguments(P, args.dim_converted...)
+    #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
+    register_computation!(attr, [:dim_converted], [:converted]) do args, changed, last
+        return (convert_arguments(P, args.dim_converted...),)
+    end
+    n_args = length(attr[:converted][])
+    register_computation!(attr, [:converted], [MakieCore.argument_names(P, n_args)...]) do args, changed, last
+        return args.converted # destructure
     end
 
     add_input!(attr, :transform_func, identity)
@@ -321,8 +321,13 @@ end
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
+
+function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    register_computation!(f, p.attributes, inputs, outputs)
+end
+
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
-    documented_attr = MakieCore.documented_attributes(T).d
+    documented_attr = plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
 
@@ -333,10 +338,17 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         :colorrange => RefValue{Union{Automatic, Vec2f}}(automatic),
         :colorscale => RefValue{Any}(identity),
     )
-
     for (k, v) in documented_attr
         if haskey(kwargs, k)
-            value = kwargs[k]
+            if v isa Attributes
+                value = merge(v, Attributes(pairs(kwargs[k])))
+            else
+                value = kwargs[k]
+            end
+        elseif v isa Observable
+            value = v[]
+        elseif v isa Attributes
+            value = v
         else
             val = v.default_value
             value = val isa MakieCore.Inherit ? val.fallback : val
@@ -349,6 +361,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             end
         else
             add_input!(attr, k, value)
+            attr[k].value = RefValue{Any}(value)
         end
 
         # Hack-fix variable type
@@ -356,22 +369,38 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             attr[k].value = abstract_type_init[k]
         end
     end
+    if !haskey(attr, :model)
+        add_input!(attr, :model, Mat4f(I))
+    end
 end
 
 # function gscatter end
 
 # const GScatter{ARGS} = Scatter{gscatter, ARGS}
 
+function plot_attributes(scene, T)
+    plot_attr = MakieCore.documented_attributes(T)
+    if isnothing(plot_attr)
+        return merge(default_theme(scene, T), default_theme(T))
+    else
+        return plot_attr.d
+    end
+end
+
 function add_theme!(plot::T, scene::Scene) where {T}
-    plot_attr = MakieCore.documented_attributes(T).d
+    plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(plot), (;))
-    gattr = plot.args[1]
+    gattr = plot.attributes
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
         if !haskey(plot.kw, k)
             if haskey(plot_scene_theme, k)
                 setproperty!(gattr, k, to_value(plot_scene_theme[k]))
+            elseif v isa Observable
+                setproperty!(gattr, k, v[])
+            elseif v isa Attributes
+                setproperty!(gattr, k, v)
             elseif v.default_value isa MakieCore.Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
@@ -389,48 +418,71 @@ function add_theme!(plot::T, scene::Scene) where {T}
     return
 end
 
-register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.args[1], scene.compute)
+register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.attributes, scene.compute)
 
-function connect_plot!(parent::SceneLike, plot::ComputePlots)
-    computed_plot!(parent, plot)
+function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+    # Handle plot!(plot, attributes::Attributes, args...) here
+    if !isempty(user_args) && first(user_args) isa Attributes
+        attr = attributes(first(user_args))
+        merge!(user_attributes, attr)
+        return Plot{Func}(Base.tail(user_args), user_attributes)
+    end
+
+    P = Plot{Func}
+    attr = ComputeGraph()
+    add_attributes!(P, attr, user_attributes)
+    register_arguments!(P, attr, user_attributes, user_args)
+    converted = attr[:converted][]
+    ArgTyp = MakieCore.argtypes(converted)
+    FinalPlotFunc = plotfunc(plottype(P, converted...))
+    p = Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
+    p.transformation = Transformation()
+    return p
 end
 
+function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
+    cycler = scene.cycler
+    palette = scene.theme.palette
+    add_cycle_attributes!(plot, cycle, cycler, palette)
+    return
+end
 # should this just be connect_plot?
-function computed_plot!(parent, plot::T) where {T}
+function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
+    T = typeof(plot)
     scene = parent_scene(parent)
     add_theme!(plot, scene)
     plot.parent = parent
-    attr = plot.args[1]
+    attr = plot.attributes
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
         on(plot, scene.float32convert.scaling) do f32c
             attr.f32c = f32c
         end
     end
 
-    # from connect_plot!()
     handle_transformation!(plot, parent, false)
+    calculated_attributes!(Plot{Func}, plot)
 
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
     on(model -> attr.model = model, plot, plot.transformation.model, update = true)
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
-    register_camera!(scene, plot)
-
-    push!(parent, plot)
     plot!(plot)
+    if isempty(plot.plots)
+        register_camera!(scene, plot)
+    end
 
     if !isnothing(scene) && haskey(attr, :cycle)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
     end
 
-    documented_attr = MakieCore.documented_attributes(T).d
+    documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
-        if !haskey(plot.args[1].outputs, k)
+        if !haskey(plot.attributes.outputs, k)
             if haskey(documented_attr, k)
                 error("User Attribute $k did not get registered.")
             else
-                add_input!(plot.args[1], k, v)
+                add_input!(plot.attributes, k, v)
             end
         end
     end
@@ -441,101 +493,6 @@ end
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
 Base.notify(computed::ComputePipeline.Computed) = computed
 
-
-function compute_plot(::Type{Image}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Image, attr, user_kw)
-    register_arguments!(Image, attr, user_kw, args...)
-    register_computation!(attr, [:x, :y], [:positions]) do (x, y), changed, cached
-        x0, x1 = x
-        y0, y1 = y
-        return (decompose(Point2d, Rect2d(x0, y0, x1-x0, y1-y0)),)
-    end
-    register_position_transforms!(attr)
-
-    register_colormapping!(attr, :image)
-    register_computation!(
-        attr,
-        [:x, :y],
-        [:data_limits],
-    ) do mini_maxi, changed, _
-        mini = Vec3d(first.(values(mini_maxi))..., 0)
-        maxi = Vec3d(last.(values(mini_maxi))..., 0)
-        return (Rect3d(mini, maxi .- mini),)
-    end
-    T = typeof((attr[:x][], attr[:y][], attr[:image][]))
-    p = Plot{image,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function compute_plot(::Type{Heatmap}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Heatmap, attr, user_kw)
-    register_arguments!(Heatmap, attr, user_kw, args...)
-    register_colormapping!(attr, :image)
-    register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
-        mini = Vec3d(first.(values(mini_maxi))..., 0)
-        maxi = Vec3d(last.(values(mini_maxi))..., 0)
-        return (Rect3d(mini, maxi .- mini),)
-    end
-    T = typeof((attr[:x][], attr[:y][], attr[:image][]))
-    p = Plot{heatmap,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function compute_plot(::Type{Surface}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Surface, attr, user_kw)
-    register_arguments!(Surface, attr, user_kw, args...)
-    register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
-        return (isnothing(color) ? z : color,)
-    end
-    register_colormapping!(attr, :color_with_default)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
-        xlims = extrema(x)
-        ylims = extrema(y)
-        zlims = extrema(z)
-        return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
-    end
-    T = typeof((attr[:x][], attr[:y][], attr[:z][]))
-    p = Plot{surface,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function compute_plot(::Type{Scatter}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Scatter, attr, user_kw)
-    register_arguments!(Scatter, attr, user_kw, args...)
-    register_marker_computations!(attr)
-    register_colormapping!(attr)
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
-                          [:data_limits]) do args, changed, last
-        return (_boundingbox(args...),)
-    end
-    T = typeof(attr[:positions][])
-    p = Plot{scatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function compute_plot(::Type{MeshScatter}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(MeshScatter, attr, user_kw)
-    register_arguments!(MeshScatter, attr, user_kw, args...)
-    register_marker_computations!(attr)
-    register_colormapping!(attr)
-    register_computation!(attr, [:positions, :marker, :markersize, :rotation],
-                          [:data_limits]) do args, changed, last
-        return (_meshscatter_data_limits(args...),)
-    end
-    T = typeof(attr[:positions][])
-    p = Plot{meshscatter,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     register_computation!(
@@ -560,37 +517,6 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     end
 end
 
-function compute_plot(::Type{Lines}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Lines, attr, user_kw)
-    register_arguments!(Lines, attr, user_kw, args...)
-    register_colormapping!(attr)
-    ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
-    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions),)
-    end
-    T = typeof(attr[:positions][])
-    p = Plot{lines,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function compute_plot(::Type{LineSegments}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(LineSegments, attr, user_kw)
-    register_arguments!(LineSegments, attr, user_kw, args...)
-    attribute_per_pos!(attr, :color, :synched_color)
-    register_colormapping!(attr, :synched_color)
-    attribute_per_pos!(attr, :linewidth, :uniform_linewidth)
-    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions),)
-    end
-
-    T = typeof(attr[:positions][])
-    p = Plot{linesegments,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
 
 # TODO: it may make sense to just remove Mesh in convert_arguments?
 # TODO: this could probably be reused by meshscatter
@@ -629,44 +555,107 @@ function register_mesh_decomposition!(attr)
     end
 end
 
-function compute_plot(::Type{Mesh}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Mesh, attr, user_kw)
-    register_arguments!(Mesh, attr, user_kw, args...)
-    register_mesh_decomposition!(attr)
-    register_colormapping!(attr, :mesh_color)
+
+function calculated_attributes!(::Type{Image}, plot::Plot)
+    attr = plot.attributes
+    calculated_attributes!(Heatmap, plot)
+    register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, cached
+        return (decompose(Point2d, Rect2d(rect)),)
+    end
     register_position_transforms!(attr)
+end
+
+function calculated_attributes!(::Type{Heatmap}, plot::Plot)
+    attr = plot.attributes
+    register_colormapping!(attr, :image)
+    register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
+        mini = Vec3d(first.(values(mini_maxi))..., 0)
+        maxi = Vec3d(last.(values(mini_maxi))..., 0)
+        return (Rect3d(mini, maxi .- mini),)
+    end
+end
+
+function calculated_attributes!(::Type{Surface}, plot::Plot)
+    attr = plot.attributes
+    register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
+        return (isnothing(color) ? z : color,)
+    end
+    register_colormapping!(attr, :color_with_default)
+    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
+        xlims = extrema(x)
+        ylims = extrema(y)
+        zlims = extrema(z)
+        return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
+    end
+end
+
+function calculated_attributes!(::Type{Scatter}, plot::Plot)
+    attr = plot.attributes
+    register_marker_computations!(attr)
+    register_colormapping!(attr)
+    register_position_transforms!(attr)
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
+                          [:data_limits]) do args, changed, last
+        return (scatter_limits(args...),)
+    end
+
+end
+
+function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
+    attr = plot.attributes
+    register_marker_computations!(attr)
+    register_colormapping!(attr)
+    register_position_transforms!(attr)
+    register_computation!(attr, [:positions, :marker, :markersize, :rotation],
+                          [:data_limits]) do args, changed, last
+        return (meshscatter_data_limits(args...),)
+    end
+end
+
+
+function calculated_attributes!(::PointBased, plot::Plot)
+    attr = plot.attributes
     register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
         return (Rect3d(positions),)
     end
-    T = typeof(attr[:arg1][])
-    p = Plot{mesh,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
+    register_position_transforms!(attr)
 end
 
-function compute_plot(::Type{Volume}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Volume, attr, user_kw)
-    register_arguments!(Volume, attr, user_kw, args...)
+
+function calculated_attributes!(::Type{Lines}, plot::Plot)
+    attr = plot.attributes
+    register_colormapping!(attr)
+    map!(identity, attr, :linewidth, :uniform_linewidth)
+    calculated_attributes!(PointBased(), plot)
+end
+
+function calculated_attributes!(::Type{LineSegments}, plot::Plot)
+    attr = plot.attributes
+    attribute_per_pos!(attr, :color, :synched_color)
+    register_colormapping!(attr, :synched_color)
+    attribute_per_pos!(attr, :linewidth, :uniform_linewidth)
+    calculated_attributes!(PointBased(), plot)
+end
+
+function calculated_attributes!(::Type{Mesh}, plot::Plot)
+    attr = plot.attributes
+    register_mesh_decomposition!(attr)
+    register_colormapping!(attr, :mesh_color)
+    calculated_attributes!(PointBased(), plot)
+end
+
+function calculated_attributes!(::Type{Volume}, plot::Plot)
+    attr = plot.attributes
     register_position_transforms!(attr) # TODO: isn't this skipped
     register_colormapping!(attr, :volume)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
         return (Rect3d(Vec3.(x, y, z)...),)
     end
-    T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:volume][]))
-    p = Plot{volume,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
-end
-
-function ComputePipeline.update!(plot::ComputePlots; args...)
-    ComputePipeline.update!(plot.args[1]; args...)
-    return
 end
 
 
-get_colormapping(plot::Plot) = get_colormapping(plot, plot.args[1])
+
+get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
     register_computation!(attr, [:colormap], [:colormapping_type]) do (cmap,), changed, last
@@ -700,31 +689,6 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     end
     return attr[:cb_colormapping][]
 end
-
-# Note: GLMakie version of this in backend-functionality.
-# TODO: check if reusable?
-# function apply_transform_and_model(plot::Heatmap, data, output_type=Point3d)
-#     return apply_transform_and_model(
-#         to_value(plot.model[]), plot.transform_func[], data, to_value(get(plot, :space, :data)), output_type
-#     )
-# end
-
-
-# function boundingbox(plot::Heatmap, space::Symbol=:data)
-#     # Assume primitive plot
-#     if isempty(plot.plots)
-#         raw_bb = apply_transform_and_model(plot, data_limits(plot))
-#         return raw_bb
-#     end
-
-#     # Assume combined plot
-#     bb_ref = Base.RefValue(boundingbox(plot.plots[1], space))
-#     for i in 2:length(plot.plots)
-#         update_boundingbox!(bb_ref, boundingbox(plot.plots[i], space))
-#     end
-
-#     return bb_ref[]
-# end
 
 # This one plays nice with out system, only needs model
 function register_world_normalmatrix!(attr, modelname = :model_f32c)

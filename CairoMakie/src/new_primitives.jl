@@ -23,7 +23,7 @@ function sample_color(
 end
 
 function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
-    Makie.register_computation!(plot.args[1]::Makie.ComputeGraph,
+    Makie.register_computation!(plot.attributes::Makie.ComputeGraph,
             [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color],
             [:cairo_colors]
         ) do inputs, changed, cached
@@ -65,7 +65,7 @@ function cairo_project_to_screen(
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
 
-    attr = plot.args[1]::Makie.ComputeGraph
+    attr = plot.attributes::Makie.ComputeGraph
 
     Makie.register_computation!(attr,
             [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
@@ -91,7 +91,7 @@ function cairo_project_to_markerspace(
         input_name = :positions_transformed_f32c, output_type = Point3d
     )
 
-    attr = plot.args[1]::Makie.ComputeGraph
+    attr = plot.attributes::Makie.ComputeGraph
 
     Makie.register_computation!(attr,
             [:preprojection, :model_f32c, input_name], [:cairo_markerspace_pos]
@@ -168,7 +168,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
     end
 
     # joinstyle
-    attr = plot.args[1]
+    attr = plot.attributes
     miter_angle = plot isa Lines ? attr.outputs[:miter_limit][] : 2pi/3
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
 
@@ -184,8 +184,8 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
     end
 
     # TODO, how do we allow this conversion?s
-    if plot isa Lines && to_value(plot.args[1]) isa BezierPath
-        return draw_bezierpath_lines(ctx, to_value(plot.args[1]), plot, color, space, model, linewidth)
+    if plot isa Lines && to_value(plot.attributes) isa BezierPath
+        return draw_bezierpath_lines(ctx, to_value(plot.attributes), plot, color, space, model, linewidth)
     end
 
     if color isa AbstractArray || linewidth isa AbstractArray
@@ -222,7 +222,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
         transform_marker, model, markerspace, space, clip_planes
     ))
 
-    attr = p.args[1]
+    attr = p.attributes
 
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker),)
@@ -324,7 +324,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
     ))
 
     ctx = screen.context
-    attr = primitive.args[1]::Makie.ComputeGraph
+    attr = primitive.attributes::Makie.ComputeGraph
 
     # input -> markerspace
     # TODO: This sucks, we're doing per-string/glyphcollection work per glyph here
@@ -415,7 +415,7 @@ Heatmap:
 =#
 
 function image_grid(@nospecialize(primitive::Heatmap))
-    Makie.add_computation!(primitive.args[1], nothing, Val(:heatmap_transform))
+    Makie.add_computation!(primitive.attributes, nothing, Val(:heatmap_transform))
     xs = regularly_spaced_array_to_range(primitive.x_transformed_f32c[])
     ys = regularly_spaced_array_to_range(primitive.y_transformed_f32c[])
     return xs, ys
@@ -700,7 +700,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    attr = primitive.args[1]::Makie.ComputeGraph
+    attr = primitive.attributes::Makie.ComputeGraph
 
     # Generate mesh from surface data and add its data to the compute graph.
     # Use that to draw surface as a mesh
@@ -836,7 +836,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
 
     # sneak in model_f32c so we don't have to pass through another variable
-    Makie.register_computation!(primitive.args[1]::Makie.ComputeGraph, [:model], [:model_f32c]) do (model,), _, __
+    Makie.register_computation!(primitive.attributes::Makie.ComputeGraph, [:model], [:model_f32c]) do (model,), _, __
         return (Mat4f(model),)
     end
 

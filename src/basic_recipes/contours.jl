@@ -228,12 +228,17 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-
-    replace_automatic!(()-> zrange, plot, :colorrange)
+    colorrange = lift(plot.colorrange, zrange) do crange, zrange
+        if crange === automatic
+            return zrange
+        else
+            return crange
+        end
+    end
 
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
-    args = @extract plot (color, colormap, colorscale, colorrange, alpha)
-    level_colors = lift(color_per_level, plot, args..., levels)
+    args = @extract plot (color, colormap, colorscale)
+    level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
     old_values = map(copy, arg_values)
@@ -358,9 +363,11 @@ function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     maxi = Vec3d(last.(mini_maxi)..., 0)
     return Rect3d(mini, maxi .- mini)
 end
+
 function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}, space::Symbol = :data) where {X, Y, Z}
     return apply_transform_and_model(plot, data_limits(plot))
 end
+
 # TODO: should this have a data_limits overload?
 function boundingbox(plot::Contour3d, space::Symbol = :data)
     return apply_transform_and_model(plot, data_limits(plot))

@@ -180,20 +180,27 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # Plot plots break this assumption in some way, but the way to look at it is,
 # that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
-Base.getindex(plot::Plot, idx::Integer) = plot.converted[idx]
-Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+function Base.getindex(plot::Plot, idx::Integer)
+    name = argument_names(plot)[idx]
+    plot.attributes[name]
+end
+
+function Base.getindex(plot::Plot, idx::UnitRange{<:Integer})
+    names = argument_names(plot)[idx]
+    return getindex.((plot.attributes,), names)
+end
 Base.setindex!(plot::Plot, value, idx::Integer) = (plot.args[idx][] = value)
 Base.length(plot::Plot) = length(plot.converted)
 
-function Base.getindex(x::T, key::Symbol) where {T <: Plot}
-    argnames = argument_names(T, length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing
-        return attributes(x)[key]
-    else
-        return x.converted[idx]
-    end
-end
+# function Base.getindex(x::T, key::Symbol) where {T <: Plot}
+#     argnames = argument_names(T, length(x.converted))
+#     idx = findfirst(isequal(key), argnames)
+#     if idx === nothing
+#         return attributes(x)[key]
+#     else
+#         return x.converted[idx]
+#     end
+# end
 
 function Base.getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])

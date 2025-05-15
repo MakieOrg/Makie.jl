@@ -165,15 +165,16 @@ end
 @inline function Base.map!(f, @nospecialize(scene::Union{Plot,Scene}), result::AbstractObservable, os...;
                            update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting
-    callback = Observables.MapCallback(f, result, os)
-    for o in os
+    observables = map(x -> x isa Computed ? ComputePipeline.get_observable!(x) : x, os)
+    callback = Observables.MapCallback(f, result, observables)
+    for o in observables
         o isa AbstractObservable && on(callback, scene, o, priority = priority)
     end
     update && callback(nothing)
     return result
 end
 
-@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::Union{Computed, AbstractObservable}, args...;
                           ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)

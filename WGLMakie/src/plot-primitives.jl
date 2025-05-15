@@ -12,7 +12,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible[]
     mesh[:uuid] = js_uuid(plot)
-    mesh[:updater] = plot.args[1][:wgl_update_obs][]
+    mesh[:updater] = plot.attributes[:wgl_update_obs][]
 
     mesh[:overdraw] = plot.overdraw[]
     mesh[:transparency] = plot.transparency[]
@@ -260,7 +260,7 @@ function scatter_program(attr)
 end
 
 function create_shader(scene::Scene, plot::Scatter)
-    attr = plot.args[1]
+    attr = plot.attributes
     Makie.all_marker_computations!(attr)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
@@ -330,7 +330,7 @@ end
 function create_shader(scene::Scene, plot::Makie.Text)
     # TODO: color processing incorrect, processed per-glyphcollection/global
     #       colors instead of per glyph
-    attr = plot.args[1]
+    attr = plot.attributes
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :text_color)
@@ -379,7 +379,7 @@ end
 
 
 function create_shader(scene::Scene, plot::MeshScatter)
-    attr = plot.args[1]
+    attr = plot.attributes
     # generate_clip_planes!(attr, scene)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
@@ -476,7 +476,7 @@ function mesh_program(attr)
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
-    attr = plot.args[1]
+    attr = plot.attributes
     add_uv_mesh!(attr)
     backend_colors!(attr)
     Makie.register_world_normalmatrix!(attr)
@@ -494,7 +494,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
 end
 
 function create_shader(scene::Scene, plot::Makie.Mesh)
-    attr = plot.args[1]
+    attr = plot.attributes
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
     backend_colors!(attr)
@@ -566,7 +566,7 @@ function surface2mesh_computation!(attr)
 end
 
 function create_shader(scene::Scene, plot::Surface)
-    attr = plot.args[1]
+    attr = plot.attributes
     # Makie.add_computation!(attr, scene, Val(:surface_transform))
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
@@ -609,7 +609,7 @@ function create_volume_shader(attr)
 end
 
 function create_shader(scene::Scene, plot::Volume)
-    attr = plot.args[1]
+    attr = plot.attributes
 
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
     # TODO: reuse in clip planes
@@ -681,7 +681,7 @@ end
 using Makie.ComputePipeline
 
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
-    attr = plot.args[1]
+    attr = plot.attributes
 
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)

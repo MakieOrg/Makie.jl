@@ -13,12 +13,12 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # so, we should also take a look at converted
     # First, we check whether a `draw_poly` method exists for the input arguments
     # before conversion:
-    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.args))...})
-        draw_poly(scene, screen, poly, to_value.(poly.args)...)
+    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(poly.args[])...})
+        draw_poly(scene, screen, poly, poly.args[]...)
     # If not, we check whether a `draw_poly` method exists for the arguments after conversion
     # (`plot.converted`).  This allows anything which decomposes to be checked for.
-    elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(to_value.(poly.converted))...})
-        draw_poly(scene, screen, poly, to_value.(poly.converted)...)
+    elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(poly.converted[])...})
+        draw_poly(scene, screen, poly, poly.converted[]...)
     # In the worst case, we return to drawing the polygon as a mesh + lines.
     else
         draw_poly_as_mesh(scene, screen, poly)
