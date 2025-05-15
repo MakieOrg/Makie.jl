@@ -244,7 +244,7 @@ function initialize_block!(leg::Legend; entrygroups)
         foreach(halfshade_rects -> foreach(delete!, halfshade_rects), entryhalfshades)
         empty!(entryhalfshades)
 
-        foreach(off, entry_observer_funcs)
+        foreach(off ∘ getindex, entry_observer_funcs)
         empty!(entry_observer_funcs)
 
         # the attributes for legend entries that the legend itself carries
