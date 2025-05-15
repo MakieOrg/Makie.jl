@@ -198,13 +198,11 @@ end
 function get_observable!(attr::ComputeGraph, key::Symbol)
     return get!(attr.observables, key) do
         val = attr.outputs[key]
-        result = Observable(val[]; ignore_equal_values=true)
+        result = Observable(val[])
         on(attr.onchange) do _
-            if isdirty(val)
-                _val = val[]
-                if !is_same(result[], _val)
-                    result[] = _val
-                end
+            _val = val[]
+            if !is_same(result[], _val)
+                result[] = _val
             end
         end
         return result
@@ -229,7 +227,10 @@ function Observables.onany(f, args::Computed...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     return onany(f, obsies...)
 end
-
+function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...)
+    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
+    return onany(f, obsies...)
+end
 function Observables.map!(f, target::Observable, args::Computed...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
     return map!(f, target, obsies...)

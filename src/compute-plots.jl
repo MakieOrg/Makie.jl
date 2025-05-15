@@ -216,14 +216,7 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args)
 end
 
 function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
-    if all(arg -> arg isa Computed, input_args)
-        inputs = map(enumerate(input_args)) do (i, arg)
-            sym = Symbol(:arg, i)
-            add_input!(attr, sym, arg)
-            return sym
-        end
-    elseif !any(arg -> arg isa Computed, input_args)
-        # TODO: same code, merge with above branch?
+    if all(arg -> arg isa Computed, input_args) || !any(arg -> arg isa Computed, input_args)
         inputs = map(enumerate(input_args)) do (i, arg)
             sym = Symbol(:arg, i)
             add_input!(attr, sym, arg)
@@ -477,7 +470,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     push!(parent, plot)
     plot!(plot)
-
     if isempty(plot.plots)
         register_camera!(scene, plot)
     end

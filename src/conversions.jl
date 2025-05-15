@@ -560,8 +560,12 @@ end
 
 function convert_arguments(
         T::Type{<:Mesh},
-        meshes::AbstractVector{<: GeometryBasics.AbstractGeometry}
-    )
+        meshes::AbstractVector{<: GeometryBasics.AbstractGeometry{DIM}}
+    ) where DIM
+
+    if isempty(meshes)
+        return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
+    end
     converted = [convert_arguments(T, m)[1] for m in meshes]
     return (merge(converted),)
 end

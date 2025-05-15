@@ -153,52 +153,51 @@ function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
 end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
-    lines!(plot, Point2f[])
-    # geometries = plot.polygon
-    # transform_func = plot.transformation.transform_func
-    # meshes = lift(poly_convert, plot, geometries, transform_func)
+    geometries = plot.polygon
+    transform_func = plot.transformation.transform_func
+    meshes = lift(poly_convert, plot, geometries, transform_func)
 
-    # mesh!(plot, meshes;
-    #     visible = plot.visible,
-    #     shading = plot.shading,
-    #     color = plot.color,
-    #     colormap = plot.colormap,
-    #     colorscale = plot.colorscale,
-    #     colorrange = plot.colorrange,
-    #     lowclip = plot.lowclip,
-    #     highclip = plot.highclip,
-    #     nan_color=plot.nan_color,
-    #     alpha=plot.alpha,
-    #     overdraw = plot.overdraw,
-    #     fxaa = plot.fxaa,
-    #     transparency = plot.transparency,
-    #     inspectable = plot.inspectable,
-    #     space = plot.space,
-    #     depth_shift = plot.depth_shift
-    # )
+    mesh!(plot, meshes;
+        visible = plot.visible,
+        shading = plot.shading,
+        color = plot.color,
+        colormap = plot.colormap,
+        colorscale = plot.colorscale,
+        colorrange = plot.colorrange,
+        lowclip = plot.lowclip,
+        highclip = plot.highclip,
+        nan_color=plot.nan_color,
+        alpha=plot.alpha,
+        overdraw = plot.overdraw,
+        fxaa = plot.fxaa,
+        transparency = plot.transparency,
+        inspectable = plot.inspectable,
+        space = plot.space,
+        depth_shift = plot.depth_shift
+    )
 
-    # outline = lift(to_lines, plot, geometries)
-    # stroke = lift(plot, outline, plot.strokecolor) do outline, sc
-    #     if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
-    #         idx = 1
-    #         return map(outline) do point
-    #             if isnan(point)
-    #                 idx += 1
-    #             end
-    #             return sc[idx]
-    #         end
-    #     else
-    #         return sc
-    #     end
-    # end
-    # lines!(
-    #     plot, outline, visible = plot.visible,
-    #     color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
-    #     colormap = plot.strokecolormap,
-    #     linewidth = plot.strokewidth, linecap = plot.linecap,
-    #     joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
-    #     space = plot.space,
-    #     overdraw = plot.overdraw, transparency = plot.transparency,
-    #     inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
-    # )
+    outline = lift(to_lines, plot, geometries)
+    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
+        if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
+            idx = 1
+            return map(outline) do point
+                if isnan(point)
+                    idx += 1
+                end
+                return sc[idx]
+            end
+        else
+            return sc
+        end
+    end
+    lines!(
+        plot, outline, visible = plot.visible,
+        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
+        colormap = plot.strokecolormap,
+        linewidth = plot.strokewidth, linecap = plot.linecap,
+        joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,
+        space = plot.space,
+        overdraw = plot.overdraw, transparency = plot.transparency,
+        inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
+    )
 end
