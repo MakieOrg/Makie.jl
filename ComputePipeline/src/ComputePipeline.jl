@@ -218,19 +218,19 @@ function get_observable!(c::Computed)
     end
 end
 
-function Observables.on(f, x::Computed)
+function Observables.on(f, x::Computed; kwargs...)
     obs = get_observable!(x)
-    return on(f, obs)
+    return on(f, obs; kwargs...)
 end
 
-function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...)
+function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
     @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entires"
-    return onany(f, obsies...)
+    return onany(f, obsies...; kwargs...)
 end
-function Observables.map!(f, target::Observable, args::Computed...)
+function Observables.map!(f, target::Observable, args::Computed...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
-    return map!(f, target, obsies...)
+    return map!(f, target, obsies...; kwargs...)
 end
 function Observables.map(f, arg1::Computed, args...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))

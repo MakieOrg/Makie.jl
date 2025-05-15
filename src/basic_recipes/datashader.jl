@@ -362,7 +362,7 @@ function fast_bb(points, f)
 end
 
 
-function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, op, binsize::Observable)
+function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, op, binsize)
     canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
     canvas_obs = Observable(canvas)
     onany(p, limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
@@ -507,7 +507,7 @@ end
 function extract_colormap(plot::DataShader)
     color = lift(x -> x.aggbuffer, plot, plot.canvas)
     return ColorMapping(
-       color[], color, plot.colormap, plot.raw_colorrange,
+        color[], color, plot.colormap, plot.raw_colorrange,
         plot.colorscale,
         plot.alpha,
         plot.highclip,

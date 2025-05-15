@@ -216,14 +216,10 @@ function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args)
 end
 
 function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
-    if all(arg -> arg isa Computed, input_args) || !any(arg -> arg isa Computed, input_args)
-        inputs = map(enumerate(input_args)) do (i, arg)
-            sym = Symbol(:arg, i)
-            add_input!(attr, sym, arg)
-            return sym
-        end
-    else
-        error("args should be either all Computed or all other things. $input_args")
+    inputs = map(enumerate(input_args)) do (i, arg)
+        sym = Symbol(:arg, i)
+        add_input!(attr, sym, arg)
+        return sym
     end
 
     return inputs
