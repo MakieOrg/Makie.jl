@@ -468,11 +468,11 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     on(model -> attr.model = model, plot, plot.transformation.model, update = true)
     on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
-    push!(parent, plot)
     plot!(plot)
     if isempty(plot.plots)
         register_camera!(scene, plot)
     end
+    push!(parent, plot)
 
     if !isnothing(scene) && haskey(attr, :cycle)
         add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
