@@ -423,15 +423,25 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         merge!(attr, user_attributes)
         return Plot{Func}(Base.tail(user_args), user_attributes)
     end
+
+    P = Plot{Func}
+
     # And also plot!(plot, ::ComputeGraph, args...)
     if !isempty(user_args) && first(user_args) isa ComputeGraph
         # shallow copy with generalized type (avoid changing graph, allow non Computed types)
         attr = Dict{Symbol, Any}(pairs(first(user_args).outputs))
+
+        # TODO: Do we just blacklist these, because they are controlled by Transformations()?
+        filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
+
+        # remove attributes that the parent graph has but don't apply to this plot
+        valid_keys = keys(plot_attributes(nothing, P))
+        filter!(kv -> in(kv[1], valid_keys), attr)
+
         merge!(attr, user_attributes)
         return Plot{Func}(Base.tail(user_args), attr)
     end
 
-    P = Plot{Func}
     attr = ComputeGraph()
     add_attributes!(P, attr, user_attributes)
     register_arguments!(P, attr, user_attributes, user_args)
@@ -460,13 +470,8 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    handle_transformation!(plot, parent, false)
+    handle_transformation!(plot, parent)
     calculated_attributes!(Plot{Func}, plot)
-
-    # TODO: Consider removing Transformation() and handling this in compute graph
-    # connect updates
-    on(model -> attr.model = model, plot, plot.transformation.model, update = true)
-    on(tf -> update!(attr; transform_func=tf), plot, plot.transformation.transform_func; update=true)
 
     plot!(plot)
     if isempty(plot.plots)

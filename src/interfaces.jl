@@ -126,7 +126,7 @@ function plot!(::Plot{F, Args}) where {F, Args}
     end
 end
 
-function handle_transformation!(plot, parent, connect_model = true)
+function handle_transformation!(plot, parent)
     t_user = to_value(pop!(plot.kw, :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation
@@ -179,8 +179,20 @@ function handle_transformation!(plot, parent, connect_model = true)
         transform!(plot.transformation, transform_op)
     end
 
-    if connect_model
-        plot.model = transformationmatrix(plot)
+
+    # TODO: Consider removing Transformation() and handling this in compute graph
+    # connect updates
+    # TODO: These should not be added as inputs. But how do we update them otherwise?
+    if haskey(plot, :model)
+        on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
+    else
+        add_input!(plot.attributes, :model, transformationmatrix(plot))
+    end
+
+    if haskey(plot, :transform_func)
+        on(tf -> update!(plot; transform_func=tf), plot, transform_func_obs(plot); update=true)
+    else
+        add_input!(plot.attributes, :transform_func, transform_func_obs(plot))
     end
 
     return
