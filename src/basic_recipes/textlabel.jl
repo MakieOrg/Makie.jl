@@ -155,50 +155,22 @@ convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_
 convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractString}})
-    attrs = copy(plot.attributes) # TODO: does this need to be a copy?
-    pop!(attrs, :calculated_colors, nothing)
-    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
     plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    attrs = copy(plot.attributes)
-    pop!(attrs, :calculated_colors, nothing)
-    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
     plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
-    strings_and_positions = plot[1]
-
-    strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
-
-    positions = Observable(
-        Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
-    )
-
-    attrs = plot.attributes
-    pop!(attrs, :position)
-    pop!(attrs, :calculated_colors, nothing)
-    pop!(attrs, :text)
-
-    textlabel!(plot, positions, text = strings; attrs...)
-
-    # update both text and positions together
-    on(plot, strings_and_positions) do str_pos
-        strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3d), last.(str_pos), 0)
-
-        strings_unequal = strings.val != strs
-        pos_unequal = positions.val != poss
-        strings_unequal && (strings.val = strs)
-        pos_unequal && (positions.val = poss)
-        # Check for equality very important, otherwise we get an infinite loop
-        strings_unequal && notify(strings)
-        pos_unequal && notify(positions)
-
-        return
+    register_computation!(plot.attributes, [:_arg1], [:real_text, :real_position]) do (str_pos, ), changed, cached
+        text = first.(str_pos)
+        pos = last.(str_pos)
+        return (text, pos)
     end
+    textlabel!(plot, Attributes(plot), plot.real_position, text = plot.real_text)
     plot
 end
 
@@ -337,7 +309,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         return Consume(false)
     end
 
-    string_bbs = map(x -> tp.per_string_bb[], plot, tp.args[1].onchange, ignore_equal_values = true)
+    string_bbs = map(identity, tp.per_string_bb, ignore_equal_values = true)
 
     translation_scale_z = map(
             plot,
