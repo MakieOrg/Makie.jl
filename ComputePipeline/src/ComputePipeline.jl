@@ -762,6 +762,13 @@ function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
     return attr
 end
 
+function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
+    register_computation!(attr, inputs, [output]) do inputs, changed, cached
+        return (f(inputs...),)
+    end
+    return attr
+end
+
 """
     delete!(graph::ComputeGraph, key::Symbol[; force = false, recursive = false])
 
