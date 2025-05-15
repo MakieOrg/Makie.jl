@@ -1,6 +1,6 @@
 function Base.show(io::IO, computed::Computed)
     if isdefined(computed, :value) && isassigned(computed.value)
-        print(io, "Computed(:", computed.name, ", ", computed.value[], ")")
+        print(IOContext(io, :limit => true), "Computed(:", computed.name, ", ", computed.value[], ")")
     else
         print(io, "Computed(:", computed.name, ", #undef)")
     end
@@ -20,7 +20,8 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     end
     v = isdefined(computed, :value) && isassigned(computed.value) ? computed.value[] : "#undef"
     print(io, "  value = ")
-    printstyled(io, "$v", color = ifelse(isdirty(computed), :light_black, :normal))
+    print(IOContext(io, :limit => true), v)
+    print(io, "\n  dirty: ", isdirty(computed))
 end
 
 
