@@ -148,27 +148,10 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = copy(Attributes(plot))
-
-    attr[:colorrange] = cliprange
-    attr[:colormap] = cmap
-    attr[:algorithm] = 7
-    pop!(attr, :levels)
-    pop!(attr, :alpha) # don't apply alpha 2 times
-
-    # unused attributes
-    pop!(attr, :labels)
-    pop!(attr, :labelfont)
-    pop!(attr, :labelsize)
-    pop!(attr, :labelcolor)
-    pop!(attr, :labelformatter)
-    pop!(attr, :color)
-    pop!(attr, :linestyle)
-    pop!(attr, :linewidth)
-    pop!(attr, :linecap)
-    pop!(attr, :joinstyle)
-    pop!(attr, :miter_limit)
-    volume!(plot, attr, x, y, z, volume)
+    volume!(
+        plot, Attributes(plot), x, y, z, volume, alpha = 1.0, # don't apply alpha 2 times
+        algorithm = 7, colorrange = cliprange, colormap = cmap
+    )
 end
 
 color_per_level(color, args...) = color_per_level(to_color(color), args...)
