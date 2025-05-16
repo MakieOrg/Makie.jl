@@ -126,7 +126,7 @@ function convert_dim_value(conversion::CategoricalConversion, attr, values, prev
     # outside of category_to_int updating
     unwrapped_values = get_values(values)
     new_values = unique!(Any[v for v in unwrapped_values])
-    if new_values != prev_values
+    if any(x-> !haskey(conversion.category_to_int[], x), new_values)
         dict_setindex!(conversion.sets, string(objectid(attr)), new_values)
         recalculate_categories!(conversion)
         # Others need to be updated too
