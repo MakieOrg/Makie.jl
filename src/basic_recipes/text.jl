@@ -480,22 +480,21 @@ given text plot.
 maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), init = Vec3d(0))
 
 function string_boundingbox(plot::Text)
-    # TODO: technically this should consider scene space if space == :data
-    if plot.space[] == plot.markerspace[]
-        # TODO: Should probably be positions_transformed_f32c since those are the
-        #       positions that mix with marker/text metrics
-        pos = to_ndim.(Point3d, plot.positions[], 0)
-    else
-        cam = (parent_scene(plot).camera,)
-        transformed = plot.positions_transformed_f32c[]
-        pos = Makie.project.(cam, plot.space[], plot.markerspace[], transformed) # TODO: vectorized project
+    register_computation!(
+        plot.attributes,
+        [:positions_transformed_f32c, :preprojection, :per_string_bb],
+        [:markerspace_boundingbox]
+    ) do (positions, preprojection, per_string_bb), changed, cached
+        # preprojection in plot is space -> markerspace
+        # Could skip this if the matrix == I
+        pos = _project(preprojection, positions)
+        total_bb = Rect3d()
+        for (bb, p) in zip(per_string_bb, pos)
+            total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
+        end
+        return (total_bb,)
     end
-
-    total_bb = Rect3d()
-    for (bb, p) in zip(plot.per_string_bb[], pos)
-        total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
-    end
-    return (total_bb,)
+    return plot.markerspace_boundingbox[]
 end
 
 # replacement for charbbs()

@@ -406,16 +406,16 @@ end
 # test #3315
 @reference_test "text with empty lines" begin
     text(
-        0,0, 
+        0,0,
         text=rich(
-            rich("test", font = :bold), 
+            rich("test", font = :bold),
             """
-            
+
             more
 
             """
-        ); 
-        markerspace = :data, 
+        );
+        markerspace = :data,
         axis = (; aspect = DataAspect())
     )
 end

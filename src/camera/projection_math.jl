@@ -362,6 +362,13 @@ function _to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+function _project(matrix::Mat4{T1}, ps::AbstractArray{<: VecTypes{N, T2}}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+    T = promote_type(Float32, T1, T2)
+    ps4 = to_ndim.(Point4{T}, to_ndim.(Point3{T}, ps, 0.0), dim4)
+    ps4 = [matrix * p for p in ps4]
+    return [Point3{T}(p) / p[4] for p in ps4]
+end
+
 
 # TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
