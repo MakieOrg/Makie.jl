@@ -230,6 +230,8 @@ function add_light_computation!(graph, scene, lights)
     # TODO: defaults
     add_input!(graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
+    add_input!(graph, :shading, get(scene.theme, :shading, automatic))
+    graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
     register_computation!(graph, [:lights],
         [:dirlight_color, :dirlight_direction, :dirlight_cam_relative]
@@ -261,24 +263,24 @@ function add_light_computation!(graph, scene, lights)
     return
 end
 
-# If we add dynamic plot reconstruction/shader recompilation this could be dynamic.
-# Without it needs to be a constant once the first renderobject is constructed
+# shading is a compile time variable for robjs, but it is allowed to change
+# when the robj is recompiled (e.g. screen reopened) so we make it dynamic
+# here. It should not be used outside of renderobject construction
 function get_shading_mode(scene)
     graph = scene.compute
-    if haskey(graph, :lighting_mode)
-        return graph[:lighting_mode][]
-    else
-        shading = get(scene.theme, :shading, automatic)
-        mode = if shading === automatic
-            lights = filter(l -> !isa(l, EnvironmentLight), graph[:lights][])
-            is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
-            ifelse(is_fast, FastShading, MultiLightShading)
-        else
-            shading
-        end::MakieCore.ShadingAlgorithm
-        register_computation!((a, b, c) -> (mode,), graph, Symbol[], [:lighting_mode])
-        return mode
+    if !haskey(graph, :lighting_mode)
+        register_computation!(graph, Symbol[:shading, :lights], [:lighting_mode]) do (shading, _lights), changed, cached
+            mode = if shading === automatic
+                lights = filter(l -> !isa(l, EnvironmentLight), _lights)
+                is_fast = length(lights) == 0 || (length(lights) == 1 && lights[1] isa DirectionalLight)
+                ifelse(is_fast, FastShading, MultiLightShading)
+            else
+                shading
+            end::MakieCore.ShadingAlgorithm
+            return (mode,)
+        end
     end
+    return graph[:lighting_mode][]
 end
 
 # These return the number of parameter slots they used
@@ -365,3 +367,11 @@ get_lights(graph::ComputeGraph) = graph[:lights][]
 
 set_lights!(scene, lights) = get_lights(scene.compute, lights)
 set_lights!(graph::ComputeGraph, lights) = update!(graph, lights = lights)
+
+push_light!(scene, light) = push_light!(scene.compute, light)
+function push_light!(graph::ComputeGraph, light::AbstractLight)
+    lights = graph[:lights][]
+    push!(lights, light)
+    update!(graph, lights = lights)
+    return
+end
