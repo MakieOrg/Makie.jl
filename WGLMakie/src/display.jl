@@ -357,18 +357,13 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
-    @assert !haskey(plot, :__wgl_session)
     plot_data = serialize_plots(scene, Plot[plot])
-    plot_sub = Session(session)
-    Bonito.init_session(plot_sub)
     # serialize + evaljs via sub session, so we can keep track of those observables
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    Bonito.evaljs_value(plot_sub, js; timeout=50)
-    @assert !haskey(plot.attributes, :__wgl_session)
-    plot.attributes[:__wgl_session] = plot_sub
+    Bonito.evaljs_value(session, js; timeout=50)
     return
 end
 
@@ -429,10 +424,10 @@ function delete_js_objects!(screen::Screen, scene::Scene)
     isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
-        if haskey(plot, :__wgl_session)
-            wgl_session = plot.__wgl_session[]
-            close(wgl_session)
-        end
+        delete!(plot.attributes, :wgl_renderobject)
+        obs = plot.attributes[:wgl_update_obs][]
+        delete!(plot.attributes, :wgl_update_obs)
+        Bonito.delete_cached!(root, root, obs.id)
     end
 
     Bonito.evaljs(root, js"""
@@ -506,8 +501,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::Plot)
     # only queue atomics to actually delete on js
     if !DISABLE_JS_FINALZING[]
         plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
-        session = to_value(get(plot, :__wgl_session, nothing))
-        push!(DELETE_QUEUE, (screen, plot_uuids, session))
+        push!(DELETE_QUEUE, (screen, plot_uuids, nothing))
     end
     return
 end
