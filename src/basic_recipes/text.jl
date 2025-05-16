@@ -20,6 +20,7 @@ conversion_trait(::Type{<: Text}, args...) = PointBased()
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
+convert_attribute(align, ::key"align", ::key"text") = align # text also allows :baseline and resolves it later
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = [str]

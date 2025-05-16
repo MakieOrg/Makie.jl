@@ -790,8 +790,8 @@ end
 Deletes a node from the given graph based on its name.
 
 If `recursive = true` all child nodes of the selected node are deleted. If
-`force = true` all siblings are deleted. If either exists without the respective
-option being true an error will be thrown.
+`force = true` all siblings (outputs from the same parent edge) are deleted.
+If either exists without the respective option being true an error will be thrown.
 """
 function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
     haskey(attr.outputs, key) || throw(KeyError(key))

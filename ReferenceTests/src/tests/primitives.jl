@@ -670,7 +670,8 @@ end
         end
 
         a, p = surface(f[i, j], xs, ys, zs, color = cs, nan_color = :red, axis = (show_axis = false,))
-        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        Makie.set_ambient_light!(a.scene, RGBf(0, 0, 0))
+        Makie.set_lights!(a.scene, [DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))])
         # plot a wireframe so we can see what's going on, and in which cells.
         m = Makie.surface2mesh(xs, ys, zs)
         wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
@@ -683,7 +684,8 @@ end
         nan_color = ifelse(i == 1, :transparent, :red)
         a, p = surface(f[4, i], 1..11, 1..11, data, color = cs, colormap = [:white, :white];
             nan_color, axis = (show_axis = false,))
-        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        Makie.set_ambient_light!(a.scene, RGBf(0, 0, 0))
+        Makie.set_lights!(a.scene, [DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))])
         m = Makie.surface2mesh(1..1, 1..1, data)
         wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
@@ -815,9 +817,9 @@ end
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
+    Makie.update!(ax.scene.compute, shading = NoShading)
     xlims!(ax, 1, 10)
     ylims!(ax, 1, 10)
-    empty!(ax.scene.lights)
     hidedecorations!(ax)
 
     heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())

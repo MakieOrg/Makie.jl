@@ -108,20 +108,15 @@ function register_voxel_colormapping!(attr)
     end
 end
 
-function compute_plot(::Type{Voxels}, args::Tuple, user_kw::Dict{Symbol,Any})
-    attr = ComputeGraph()
-    add_attributes!(Voxels, attr, user_kw)
-    register_arguments!(Voxels, attr, user_kw, args...)
+function calculated_attributes!(::Type{Voxels}, plot::Plot)
+    attr = plot.attributes
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
         mini, maxi = Vec3.(x, y, z)
         return (Rect3d(mini, maxi .- mini),)
     end
-    T = typeof((attr[:x][], attr[:y][], attr[:z][], attr[:chunk][]))
-    p = Plot{voxels,Tuple{T}}(user_kw, Observable(Pair{Symbol,Any}[]), Any[attr], Observable[])
-    p.transformation = Transformation()
-    return p
+    return
 end
 
 Base.@propagate_inbounds function _update_voxel(

@@ -12,10 +12,13 @@ function missing_uniforms(robj, inputs, input2name)
         [:visible]
     )
     # Set by other means
-    skip = [
-        :objectid,
-        :ambient, :light_color, :light_direction
-    ]
+    if !haskey(attr, :ambient)
+        # TODO, why is ambient already here for MeshScatter?
+        add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
+    else
+        return
+    end
+    skip = [:objectid,]
     for k in setdiff(uniformset, inputset)
         k in skip && continue
         printstyled("Missing uniform $k\n", color = :red)
@@ -146,18 +149,30 @@ end
 
 # TODO: Consider separating this from plot (i.e. update this in render using scene graph)
 function register_light_attributes!(screen, scene, attr, uniforms)
-    if !(haskey(attr, :shading) && attr[:shading][])
+    # plot does not support shading
+    haskey(attr, :shading) || return
+
+    # On re-display these are already registered. To allow compiling shaders
+    # with different light settings we need to clear old computations
+    if haskey(attr, :ambient)
+        if haskey(attr, :gl_renderobject)
+            error("Try to register lights that have already been registered. Is the renderobject getting created twice?")
+        else
+            for key in [:ambient, :light_color, :light_direction, :N_lights, :light_types, :light_colors, :light_parameters]
+                if haskey(attr, key)
+                    delete!(attr, key, force = true)
+                end
+            end
+        end
+    end
+
+    # Nothing to generate if we don't shade
+    shading = Makie.get_shading_mode(scene)
+    if !attr[:shading][] || (shading == NoShading)
         return
     end
 
-    shading = Makie.get_shading_mode(scene)
-    shading == NoShading && return
-    if !haskey(attr, :ambient)
-        # TODO, why is ambient already here for MeshScatter?
-        add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
-    else
-        return
-    end
+    add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
 
     if shading == FastShading
 
@@ -196,8 +211,8 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
         :overdraw => attr[:overdraw][],
     )
 
-    if haskey(attr, :shading) && attr[:shading][]
-        data[:shading] = scene.compute[:lighting_mode][]
+    if haskey(attr, :shading)
+        data[:shading] = attr[:shading][] ? Makie.get_shading_mode(scene) : NoShading
     end
 
     for name in uniforms
