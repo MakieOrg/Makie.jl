@@ -54,7 +54,7 @@ function replace_automatic!(f, attr::ComputeGraph, key)
         if to_value(val) == automatic
             new_val = f()
             new_val isa Observable && error("Replacing a compute graph entry with an Observable is not possible.")
-            update!(attr, key => val)
+            update!(attr, key => new_val)
             return new_val
         else
             return val

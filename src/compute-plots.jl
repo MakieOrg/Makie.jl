@@ -340,7 +340,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
     abstract_type_init = Dict{Symbol, RefValue}(
         :lowclip => RefValue{Union{Automatic, Colorant}}(automatic),
         :highclip => RefValue{Union{Automatic, Colorant}}(automatic),
-        :colorrange => RefValue{Union{Automatic, Vec2f}}(automatic),
+        :colorrange => RefValue{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}}(automatic),
         :colorscale => RefValue{Any}(identity),
     )
     for (k, v) in documented_attr

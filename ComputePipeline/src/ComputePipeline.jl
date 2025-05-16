@@ -40,8 +40,12 @@ mutable struct Computed
     parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
     Computed(name) = new(name, false)
-    Computed(name, value::RefValue) = new(name, false, value)
+    function Computed(name, value::RefValue)
+        validate_value(value)
+        return new(name, false, value)
+    end
     function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
+        validate_value(value)
         return new(name, false, value, parent, idx)
     end
     function Computed(name, edge::AbstractEdge, idx::Integer)
@@ -159,12 +163,24 @@ mutable struct Input{T} <: AbstractEdge
 end
 
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
+Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
 function Input(graph, name, value, f, output)
-    @assert !(value isa Computed)
-    @assert !(value isa Observable)
+    validate_value(value)
     return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
 end
+
+# Sanity checks, maybe remove later?
+validate_value(x) = nothing
+validate_value(x::RefValue) = isassigned(x) ? validate_value(x[]) : nothing
+# shouldn't have those in input.value or computed.value[]
+validate_value(::Computed) = error("::Computed is not a valid value for a Computed or Input")
+validate_value(::Input) = error("::Input is not a valid value for a Computed or Input")
+validate_value(::Observable) = error("::Observable is not a valid value for a Computed or Input")
+validate_value(::RefValue{<: Computed}) = error("::Computed is not a valid value for a Computed or Input")
+validate_value(::RefValue{<: Input}) = error("::Input is not a valid value for a Computed or Input")
+validate_value(::RefValue{<: Observable}) = error("::Observable is not a valid value for a Computed or Input")
+
 
 """
     ComputeGraph()
