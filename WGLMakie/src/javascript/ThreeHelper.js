@@ -354,7 +354,7 @@ function create_texture_from_data(data) {
 
 export function create_texture(scene, data) {
     const buffer = data.data;
-    if (buffer == "texture_atlas") {
+    if (buffer === "texture_atlas") {
         const { texture_atlas, renderer } = scene.screen;
         if (!texture_atlas) {
             const atlas = get_texture_atlas();

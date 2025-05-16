@@ -157,7 +157,7 @@ vec4 contours(vec3 front, vec3 dir)
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = get_light_direction();
+            vec3 L = light_direction;
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;

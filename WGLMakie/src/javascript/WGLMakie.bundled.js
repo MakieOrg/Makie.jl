@@ -21743,7 +21743,7 @@ function get_texture_atlas() {
 }
 function create_texture(scene, data) {
     const buffer = data.data;
-    if (buffer == "texture_atlas") {
+    if (buffer === "texture_atlas") {
         const { texture_atlas , renderer  } = scene.screen;
         if (!texture_atlas) {
             const atlas = get_texture_atlas();
@@ -21823,19 +21823,19 @@ function create_material(plot) {
 }
 function create_mesh(plot) {
     const buffer_geometry = new mod.BufferGeometry();
-    const { plot_data: plot_data1  } = plot;
-    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
-    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
+    const { plot_data  } = plot;
+    const faces = new mod.BufferAttribute(plot_data.faces, 1);
+    attach_geometry(buffer_geometry, plot_data.vertexarrays, faces);
     const material = create_material(plot);
     const mesh = new mod.Mesh(buffer_geometry, material);
     return mesh;
 }
 function create_instanced_mesh(plot) {
-    const { plot_data: plot_data1  } = plot;
+    const { plot_data  } = plot;
     const buffer_geometry = new mod.InstancedBufferGeometry();
-    const faces = new mod.BufferAttribute(plot_data1.faces, 1);
-    attach_geometry(buffer_geometry, plot_data1.vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, plot_data1.instance_attributes);
+    const faces = new mod.BufferAttribute(plot_data.faces, 1);
+    attach_geometry(buffer_geometry, plot_data.vertexarrays, faces);
+    attach_instanced_geometry(buffer_geometry, plot_data.instance_attributes);
     const material = create_material(plot);
     const mesh = new mod.Mesh(buffer_geometry, material);
     return mesh;
@@ -22839,8 +22839,8 @@ function filter_by_key(dict, keys, default_value = false) {
 }
 const scene_cache = {};
 const plot_cache = {};
-function add_plot(scene, plot_data1) {
-    const p = create_plot(scene, plot_data1);
+function add_plot(scene, plot_data) {
+    const p = create_plot(scene, plot_data);
     plot_cache[p.uuid] = p.mesh;
     scene.add(p.mesh);
     const next_insert = new Set(ON_NEXT_INSERT);
@@ -22884,9 +22884,9 @@ function delete_scenes(scene_uuids, plot_uuids) {
         delete_scene(scene_id);
     });
 }
-function insert_plot(scene_id, plot_data1) {
+function insert_plot(scene_id, plot_data) {
     const scene = find_scene(scene_id);
-    plot_data1.forEach((plot)=>{
+    plot_data.forEach((plot)=>{
         add_plot(scene, plot);
     });
 }
@@ -22947,9 +22947,9 @@ function on_next_insert(f) {
 }
 function add_glyphs_from_plots(scene_data) {
     const atlas = get_texture_atlas();
-    scene_data.plots.forEach((plot_data1)=>{
-        if (plot_data1.glyph_data) {
-            const glyph_data = plot_data1.glyph_data;
+    scene_data.plots.forEach((plot_data)=>{
+        if (plot_data.glyph_data) {
+            const glyph_data = plot_data.glyph_data;
             const { atlas_updates  } = glyph_data;
             if (atlas_updates) {
                 atlas.insert_glyphs(atlas_updates);
@@ -22999,7 +22999,7 @@ function deserialize_scene_recursive(data, screen) {
         const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
         scene.light_direction = new mod.Uniform(light_dir);
         data.light_direction.on((value)=>{
-            plot_data.uniforms.light_direction.value.fromArray(value);
+            scene.light_direction.value.fromArray(value);
         });
     }
     const ambient = new mod.Vector3().fromArray(data.ambient.value);
@@ -23012,8 +23012,8 @@ function deserialize_scene_recursive(data, screen) {
     data.light_color.on((value)=>{
         scene.light_color.value.fromArray(value);
     });
-    data.plots.forEach((plot_data1)=>{
-        add_plot(scene, plot_data1);
+    data.plots.forEach((plot_data)=>{
+        add_plot(scene, plot_data);
     });
     scene.scene_children = data.children.map((child)=>{
         const childscene = deserialize_scene_recursive(child, screen);
@@ -24264,11 +24264,11 @@ function add_line_attributes(plot, attributes) {
 function create_line(plot_object) {
     const geometry = create_line_instance_geometry();
     const buffers = {};
-    const { plot_data: plot_data1  } = plot_object;
-    create_line_buffers(geometry, buffers, add_line_attributes(plot_object, plot_data1.attributes), plot_object.is_segments);
+    const { plot_data  } = plot_object;
+    create_line_buffers(geometry, buffers, add_line_attributes(plot_object, plot_data.attributes), plot_object.is_segments);
     const material = create_line_material(add_line_attributes(plot_object, plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
-    material.depthTest = !plot_data1.overdraw.value;
-    material.depthWrite = !plot_data1.transparency.value;
+    material.depthTest = !plot_data.overdraw.value;
+    material.depthWrite = !plot_data.transparency.value;
     material.uniforms.is_linesegments = {
         value: plot_object.is_segments
     };
@@ -24950,8 +24950,8 @@ function pick_closest(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data1, _] = pick_native(scene, x0, y0, dx, dy, false);
-    const plot_matrix = plot_data1.data;
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
+    const plot_matrix = plot_data.data;
     let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [
         null,
@@ -24995,11 +24995,11 @@ function pick_sorted(scene, xy, range) {
     if (!picked) {
         return null;
     }
-    const [plot_data1, selected] = picked;
+    const [plot_data, selected] = picked;
     if (selected.length == 0) {
         return null;
     }
-    const plot_matrix = plot_data1.data;
+    const plot_matrix = plot_data.data;
     const distances = selected.map((x1)=>1e30);
     const x2 = xy[0] * px_per_unit + 1 - x0;
     const y2 = xy[1] * px_per_unit + 1 - y0;

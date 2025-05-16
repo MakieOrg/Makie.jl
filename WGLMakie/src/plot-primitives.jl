@@ -598,11 +598,12 @@ function create_volume_shader(attr)
         :shininess => attr.shininess,
         :model => attr.uniform_model,
         :depth_shift => attr.depth_shift,
+
         # these get filled in later by serialization, but we need them
         # as dummy values here, so that the correct uniforms are emitted
         :eyeposition => Vec3f(1),
         :picking => false,
-        :object_id => UInt32(0)
+        :object_id => UInt32(0),
     )
     handle_color!(uniforms, attr)
     return create_shader(box, uniforms, lasset("volume.vert"), lasset("volume.frag"))
