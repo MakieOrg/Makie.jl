@@ -12,6 +12,7 @@ on:
     branches:
       - master
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -26,9 +27,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
+          - '1.11'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
         backend:

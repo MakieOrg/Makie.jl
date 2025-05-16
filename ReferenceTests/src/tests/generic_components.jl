@@ -39,8 +39,8 @@
 
     # verify that heatmap path is used for heatmaps
     if Symbol(Makie.current_backend()) == :WGLMakie
-        @test length(WGLMakie.create_shader(scene, hm).vertexarray.buffers[:faces]) > 2
-        @test length(WGLMakie.create_shader(scene, hm2).vertexarray.buffers[:faces]) > 2
+        @test length(WGLMakie.create_shader(scene, hm)[1].vertexarray.buffers[:faces]) > 2
+        @test length(WGLMakie.create_shader(scene, hm2)[1].vertexarray.buffers[:faces]) > 2
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
@@ -393,7 +393,7 @@
     end
 
     #=
-    For Verfication
+    For Verification
     Note that the text only marks the index in the picking list. The position
     that is closest (that pick_sorted used) is somewhere else in the marked
     element. Check scene2 to see the pickable regions if unsure
@@ -425,7 +425,7 @@
     scene2
 end
 
-@reference_test "Tranformations and space" begin
+@reference_test "Transformations and space" begin
     transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :nothing]
     spaces = [:data, :pixel, :relative, :clip]
 

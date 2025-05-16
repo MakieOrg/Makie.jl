@@ -58,7 +58,7 @@ disp = display(Makie.mesh(m, show_axis=false));
 mesh_normals = GeometryBasics.normals(positions, triangles)
 coords = meta(positions, color=xyz_vertex_color, normals=mesh_normals)
 vertexcolor_mesh = GeometryBasics.Mesh(coords, triangles)
-scren = mesh(vertexcolor_mesh, show_axis=false) |> display
+screen = mesh(vertexcolor_mesh, show_axis=false) |> display
 
 
 function getter_function(io::IO, ::Fragment, sampler::Sampler, name::Symbol)
@@ -116,13 +116,13 @@ texsampler = Makie.sampler(rand(RGBf, 4, 4), uv)
 coords = meta(positions, color=texsampler, normals=mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
-scren = mesh(texture_mesh, show_axis=false) |> display
+screen = mesh(texture_mesh, show_axis=false) |> display
 
 texsampler = Makie.sampler(:viridis, rand(length(positions)))
 coords = meta(positions, color=texsampler, normals=mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
-scren = mesh(texture_mesh, show_axis=false) |> display
+screen = mesh(texture_mesh, show_axis=false) |> display
 
 
 

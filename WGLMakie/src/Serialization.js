@@ -1,8 +1,7 @@
 import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import * as Camera from "./Camera.js";
 import { create_line, create_linesegments } from "./Lines.js";
-
-
+import { get_texture_atlas } from "./TextureAtlas.js";
 /**
  * Updates the value of a given uniform with a new value.
  *
@@ -30,7 +29,6 @@ function update_uniform(uniform, new_value) {
     }
 }
 
-
 class Plot {
     mesh = undefined;
     parent = undefined;
@@ -49,6 +47,9 @@ class Plot {
             this.mesh = create_line(scene, this.plot_data);
         } else if (data.plot_type === "linesegments") {
             this.mesh = create_linesegments(scene, this.plot_data);
+        } else if ("glyph_data" in data) {
+            this.is_instanced = true;
+            this.mesh = create_text_mesh(scene, this.plot_data);
         } else if ("instance_attributes" in data) {
             this.is_instanced = true;
             this.mesh = create_instanced_mesh(scene, this.plot_data);
@@ -253,20 +254,7 @@ function to_uniform(scene, data) {
             return data;
         }
         // else, we convert it to THREE vector/matrix types
-        if (data.length == 2) {
-            return new THREE.Vector2().fromArray(data);
-        }
-        if (data.length == 3) {
-            return new THREE.Vector3().fromArray(data);
-        }
-        if (data.length == 4) {
-            return new THREE.Vector4().fromArray(data);
-        }
-        if (data.length == 16) {
-            const mat = new THREE.Matrix4();
-            mat.fromArray(data);
-            return mat;
-        }
+        return to_three_vector(data);
     }
     // else, leave unchanged
     return data;
@@ -307,7 +295,9 @@ function connect_plot(scene, plot) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const cam = scene.wgl_camera;
     const identity = new THREE.Uniform(new THREE.Matrix4());
-    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+    const uniforms = plot.mesh
+        ? plot.mesh.material.uniforms
+        : plot.plot_data.uniforms;
     const space = plot.plot_data.cam_space;
     if (space == "data") {
         uniforms.view = cam.view;
@@ -328,7 +318,7 @@ function connect_plot(scene, plot) {
         uniforms.projection = identity;
         uniforms.projectionview = identity;
     } else {
-        throw new Error(`Space ${space} not supported!`)
+        throw new Error(`Space ${space} not supported!`);
     }
     const { px_per_unit } = scene.screen;
     uniforms.resolution = cam.resolution;
@@ -345,7 +335,6 @@ function connect_plot(scene, plot) {
     uniforms.light_direction = scene.light_direction;
 }
 
-
 export function add_plot(scene, plot_data) {
     // fill in the camera uniforms, that we don't sent in serialization per plot
     const p = new Plot(scene, plot_data);
@@ -359,7 +348,7 @@ export function add_plot(scene, plot_data) {
 function convert_RGB_to_RGBA(rgbArray) {
     const length = rgbArray.length;
     const rgbaArray = new rgbArray.constructor((length / 3) * 4);
-    const a = (rgbArray instanceof Uint8Array) ? 255 : 1.0;
+    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
 
     for (let i = 0, j = 0; i < length; i += 3, j += 4) {
         rgbaArray[j] = rgbArray[i]; // R
@@ -407,26 +396,12 @@ function create_texture(scene, data) {
     // Special care has to be taken to deregister the callback when the context gets destroyed
     // Since TEXTURE_ATLAS uses "Bonito.Retain" and will live for the whole browser session.
     if (buffer == "texture_atlas") {
-        const {texture_atlas} = scene.screen
-        if (texture_atlas) {
-            return texture_atlas;
-        } else {
-            data.data = TEXTURE_ATLAS[0].value
-            const texture = create_texture_from_data(data);
-            scene.screen.texture_atlas = texture;
-            TEXTURE_ATLAS[0].on((new_data) => {
-                if (new_data === texture) {
-                    // if the data is our texture, it means the WGL context got destroyed and we want to deregister
-                    // TODO, better Observables.js API for this
-                    return false; // deregisters the callback
-                } else {
-                    texture.image.data.set(new_data);
-                    texture.needsUpdate = true;
-                    return
-                }
-            });
-            return texture;
+        const { texture_atlas, renderer } = scene.screen;
+        if (!texture_atlas) {
+            const atlas = get_texture_atlas();
+            scene.screen.texture_atlas = atlas.get_texture(renderer);
         }
+        return scene.screen.texture_atlas;
     } else {
         return create_texture_from_data(data);
     }
@@ -459,7 +434,6 @@ function re_create_texture(old_texture, buffer, size) {
     }
     return tex;
 }
-
 
 function BufferAttribute(buffer) {
     const jsbuff = new THREE.BufferAttribute(buffer.flat, buffer.type_length);
@@ -566,6 +540,102 @@ function create_mesh(scene, program) {
     return mesh;
 }
 
+/**
+ * Returns x[i] if x is an array, otherwise returns x.
+ * @param {*} x - Either an array or a scalar value
+ * @param {number} i - Index to access if x is an array
+ * @returns {*} - The indexed value or x itself
+ */
+function broadcast_getindex(a, x, i) {
+    if (a.length == (x.length / 2)) {
+        return new THREE.Vector2(x[i * 2], x[i * 2 + 1]);
+    } else if (x.length == 2) {
+        return new THREE.Vector2(x[0], x[1]);
+    } else {
+        throw new Error(
+            `broadcast_getindex: x has length ${x.length}, but a has length ${a.length}`
+        );
+    }
+}
+
+function per_glyph_data(glyph_hashes, scales) {
+    const atlas = get_texture_atlas();
+    const uv_offset_width = new Float32Array(glyph_hashes.length * 4);
+    const markersize = new Float32Array(glyph_hashes.length * 2);
+    const quad_offsets = new Float32Array(glyph_hashes.length * 2);
+    for (let i = 0; i < glyph_hashes.length; i++) {
+        const hash = glyph_hashes[i];
+        const data = atlas.get_glyph_data(
+            hash,
+            broadcast_getindex(glyph_hashes, scales, i),
+        );
+        const [uv, c_width, q_offset] = data ?? [
+            new THREE.Vector4(0, 0, 0, 0),
+            new THREE.Vector2(0, 0),
+            new THREE.Vector2(0, 0),
+        ];
+        uv_offset_width.set(uv.toArray(), i * 4);
+        markersize.set(c_width.toArray(), i * 2);
+        quad_offsets.set(q_offset.toArray(), i * 2);
+
+    }
+
+    return [uv_offset_width, markersize, quad_offsets];
+}
+
+export function to_three_vector(data) {
+    if (data.length == 2) {
+        return new THREE.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new THREE.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new THREE.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new THREE.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data
+}
+
+function get_glyph_data_attributes(atlas, glyph_data) {
+    const { glyph_hashes, atlas_updates, scales } = glyph_data;
+    atlas.insert_glyphs(atlas_updates);
+    if (glyph_hashes) {
+        const [uv_offset_width, markersize, quad_offset] = per_glyph_data(
+            glyph_hashes,
+            scales
+        );
+        return { uv_offset_width, markersize, quad_offset };
+    }
+    return {}
+}
+
+function create_text_mesh(scene, program) {
+    const glyph_obs = program.glyph_data;
+    const updater = program.attribute_updater;
+    const lengths = { uv_offset_width: 4 };
+    const atlas = get_texture_atlas();
+    glyph_obs.on((glyph_data) => {
+        const data = get_glyph_data_attributes(atlas, glyph_data);
+        for (const name in data) {
+            const buff = data[name];
+            const len = lengths[name] || 2;
+            updater.notify([name, buff, buff.length / len]);
+        }
+    });
+    const gdata = get_glyph_data_attributes(atlas, glyph_obs.value);
+    for (const name in gdata) {
+        const buff = gdata[name];
+        const len = lengths[name] || 2;
+        program.instance_attributes[name] = { flat: buff, type_length: len };
+    }
+    return create_instanced_mesh(scene, program);
+}
+
 function create_instanced_mesh(scene, program) {
     const buffer_geometry = new THREE.InstancedBufferGeometry();
     const faces = new THREE.BufferAttribute(program.faces.value, 1);
@@ -661,11 +731,33 @@ function connect_attributes(mesh, updater) {
     });
 }
 
-export function deserialize_scene(data, screen) {
+// the plot order is different in WGLMakie (js) compared to serialization order
+// In julia, so we need to first go through all plots and update the glyphs.
+// Example: plota brings glyphs [a,b,c] from text "abc", plotb brings [d, e] from text "abcde".
+// If plotb gets serialized first, the glyphs from plota will be missing.
+function add_glyphs_from_plots(scene_data) {
+    const atlas = get_texture_atlas();
+    scene_data.plots.forEach((plot_data) => {
+        if (plot_data.glyph_data) {
+            const glyph_data = plot_data.glyph_data.value;
+            const { atlas_updates } = glyph_data;
+            if (atlas_updates) {
+                atlas.insert_glyphs(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child) => {
+        add_glyphs_from_plots(child);
+    });
+}
+
+
+
+export function deserialize_scene_recursive(data, screen) {
     const scene = new THREE.Scene();
     scene.screen = screen;
-    const { canvas } = screen;
     add_scene(data.uuid, scene);
+    const { canvas } = screen;
     scene.scene_uuid = data.uuid;
     scene.frustumCulled = false;
     scene.viewport = data.viewport;
@@ -717,19 +809,23 @@ export function deserialize_scene(data, screen) {
         });
     }
 
-
     data.plots.forEach((plot_data) => {
         add_plot(scene, plot_data);
     });
     scene.scene_children = data.children.map((child) => {
-        const childscene = deserialize_scene(child, screen);
+        const childscene = deserialize_scene_recursive(child, screen);
         return childscene;
     });
     return scene;
 }
 
+export function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
+}
+
 export function delete_plot(plot) {
-    plot.plot_object.dispose()
+    plot.plot_object.dispose();
 }
 
 export function delete_three_scene(scene) {

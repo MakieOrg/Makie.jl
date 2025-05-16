@@ -296,7 +296,7 @@ end
 
 function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
-    if event.type !== MouseEventTypes.rightdrag
+    if event.type !== to_drag_event(ax.panbutton[])
         return Consume(false)
     end
 
@@ -399,7 +399,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     else
 
         #=
-        # Faster but less acurate (dependent on aspect ratio)
+        # Faster but less accurate (dependent on aspect ratio)
         scene_area = viewport(ax.scene)[]
         relative_delta = (event.px - event.prev_px) ./ widths(scene_area)
 
@@ -414,7 +414,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
         # Slower but more accurate
         model = ax.scene.transformation.model[]
         world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
-        # make plane_normal perpendicular to the allowed trnaslation directions
+        # make plane_normal perpendicular to the allowed translation directions
         # allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
         # plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
         plane = Plane3f(world_center, ax.scene.camera.view_direction[])

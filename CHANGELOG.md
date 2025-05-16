@@ -3,6 +3,27 @@
 ## [Unreleased]
 
 - Use the `bar_default_fillto` method from [#3004](https://github.com/MakieOrg/Makie.jl/pull/3004) in stacked barplots as well, to stop the first member of the stack from disappearing in log scale [#4670](https://github.com/MakieOrg/Makie.jl/pull/4849).
+- Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+
+## [0.22.5] - 2025-05-12
+
+- Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
+- Moved some of the TextureAtlas logic to JS, speeding up text updates and fixing texture atlas updates [4942](https://github.com/MakieOrg/Makie.jl/pull/4942).
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
+- Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
+- Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
+- Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
+- Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
+- Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
+- Fixed issue with `sprint`ing to SVG using CairoMakie in Julia 1.11 and above [#4971](https://github.com/MakieOrg/Makie.jl/pull/4971).
+
+## [0.22.4] - 2025-04-11
+
+- Re-added the `apply_transform(f, data, space)` method that was removed in v0.22.3 with a deprecation warning. It will be removed in the next breaking version. [#4916](https://github.com/MakieOrg/Makie.jl/pull/4916)
+
+## [0.22.3] - 2025-04-08
+
 - Added `alpha` attribute to `tricontourf.jl` to control the transparency of filled contours [#4800](https://github.com/MakieOrg/Makie.jl/pull/4800)
 - Fixed hexbin using log-scales [#4898](https://github.com/MakieOrg/Makie.jl/pull/4898)
 - Updated scope of `space` attribute, restricting it to camera related projections in the conversion-transformation-projection pipeline. (See docs on `space` or the pipeline) [#4792](https://github.com/MakieOrg/Makie.jl/pull/4792)
@@ -13,6 +34,7 @@
 - Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
+- Added `textlabel!()` recipe for plotting text with a background [#4879](https://github.com/MakieOrg/Makie.jl/pull/4879)
 - Fixed the computed `colorrange` being out of order with `colorscale = -` or similar colorscale functions that break sorting [#4884](https://github.com/MakieOrg/Makie.jl/pull/4884)
 - Added `transform_marker` to arrows [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
 - Reverted change in `meshscatter` transformation behavior by using `transform_marker = true` as the default [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
@@ -20,6 +42,7 @@
 - Fixed minor grid not showing in Axis when minorticks are hidden [#4896](https://github.com/MakieOrg/Makie.jl/pull/4896)
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
 - Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
+- Switched to Julia 1.10 for GLMakie CI due to issues with OpenGL on ubuntu-latest. This may cause GLMakie compatibility with the Julia 1.6 to degrade in the future. [#4913](https://github.com/MakieOrg/Makie.jl/pull/4913)
 
 ## [0.22.2] - 2025-02-26
 
@@ -68,7 +91,7 @@
   - Changed the order of `Rect2` coordinates to be counter-clockwise.
   - Updated `Cylinder` to avoid visually rounding off the top and bottom.
   - Added `MetaMesh` to store non-vertex metadata in a GeometryBasics Mesh object. These are now produced by MeshIO for `.obj` files, containing information from `.mtl` files.
-  - Renamed `Tesselation/tesselation` to `Tessellation/tessellation` [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
+  - Fix `Tessellation/tessellation` spelling [GeometryBasics#227](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/227) [#4564](https://github.com/MakieOrg/Makie.jl/pull/4564)
 - Added `Makie.mesh` option for `MetaMesh` which applies some of the bundled information [#4368](https://github.com/MakieOrg/Makie.jl/pull/4368), [#4496](https://github.com/MakieOrg/Makie.jl/pull/4496)
 - `Voronoiplot`s automatic colors are now defined based on the underlying point set instead of only those generators appearing in the tessellation. This makes the selected colors consistent between tessellations when generators might have been deleted or added. [#4357](https://github.com/MakieOrg/Makie.jl/pull/4357)
 - `contour` now supports _curvilinear_ grids, where `x` and `y` are matrices [#4670](https://github.com/MakieOrg/Makie.jl/pull/4670).
@@ -158,7 +181,7 @@
 
 ## [0.21.13] - 2024-10-07
 
-- Optimize SpecApi, re-use Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
+- Optimize SpecApi, reuse Blocks better and add API to access the created block objects [#4354](https://github.com/MakieOrg/Makie.jl/pull/4354).
 - Fixed `merge(attr1, attr2)` modifying nested attributes in `attr1` [#4416](https://github.com/MakieOrg/Makie.jl/pull/4416)
 - Fixed issue with CairoMakie rendering scene backgrounds at the wrong position [#4425](https://github.com/MakieOrg/Makie.jl/pull/4425)
 - Fixed incorrect inverse transformation in `position_on_plot` for lines, causing incorrect tooltip placement in DataInspector [#4402](https://github.com/MakieOrg/Makie.jl/pull/4402)
@@ -374,7 +397,7 @@
 
 ## [0.20.5] - 2024-01-25
 
-- Use plot plot instead of scene transform functions in CairoMakie, fixing missplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
+- Use plot plot instead of scene transform functions in CairoMakie, fixing misplaced h/vspan. [#3552](https://github.com/MakieOrg/Makie.jl/pull/3552)
 - Fix error printing on shader error [#3530](https://github.com/MakieOrg/Makie.jl/pull/3530).
 - Update pagefind to 1.0.4 for better headline search [#3534](https://github.com/MakieOrg/Makie.jl/pull/3534).
 - Remove unnecessary deps, e.g. Setfield [3546](https://github.com/MakieOrg/Makie.jl/pull/3546).
@@ -560,7 +583,7 @@
 - Added the `waterfall` plotting function [#2416](https://github.com/JuliaPlots/Makie.jl/pull/2416).
 - Add support for `AbstractPattern` in `WGLMakie` [#2432](https://github.com/MakieOrg/Makie.jl/pull/2432).
 - Broadcast replaces deprecated method for quantile [#2430](https://github.com/MakieOrg/Makie.jl/pull/2430).
-- Fix CairoMakie's screen re-using [#2440](https://github.com/MakieOrg/Makie.jl/pull/2440).
+- Fix CairoMakie's screen reusing [#2440](https://github.com/MakieOrg/Makie.jl/pull/2440).
 - Fix repeated rendering with invisible objects [#2437](https://github.com/MakieOrg/Makie.jl/pull/2437).
 - Fix hvlines for GLMakie [#2446](https://github.com/MakieOrg/Makie.jl/pull/2446).
 
@@ -750,7 +773,7 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 
 ## [0.15.2] - 2021-08-26
 
-- Reenabled Julia 1.3 support.
+- Re-enabled Julia 1.3 support.
 - Use [MathTexEngine v0.2](https://github.com/Kolaru/MathTeXEngine.jl/releases/tag/v0.2.0).
 - Depend on new GeometryBasics, which changes all the Vec/Point/Quaternion/RGB/RGBA - f0 aliases to just f. For example, `Vec2f0` is changed to `Vec2f`. Old aliases are still exported, but deprecated and will be removed in the next breaking release. For more details and an upgrade script, visit [GeometryBasics#97](https://github.com/JuliaGeometry/GeometryBasics.jl/pull/97).
 - Added `hspan!` and `vspan!` functions [#1264](https://github.com/MakieOrg/Makie.jl/pull/1264).
@@ -777,7 +800,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...HEAD
+[0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
+[0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
+[0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
 [0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.21.18...v0.22.0

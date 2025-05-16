@@ -138,7 +138,7 @@ end
 """
     apply_scale(scale, x)
 
-Applies the scale function / callable `scale` to each element of `x`.  
+Applies the scale function / callable `scale` to each element of `x`.
 If `scale` is an Observable then this returns an Observable via `lift`,
 otherwise simply returns `broadcast(scale, x)`.
 """
@@ -357,7 +357,7 @@ function ColorMapping(
     T = _array_value_type(color)
     color_tight = Observable{T}(color)
     # We need to copy, to check for changes
-    # Since users may re-use the array when pushing updates
+    # Since users may reuse the array when pushing updates
     on(colors_obs) do new_colors
         if color_tight[] === new_colors || color_tight[] != new_colors
             color_tight[] = new_colors
