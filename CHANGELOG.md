@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+
 ## [0.22.5] - 2025-05-12
 
 - Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
