@@ -734,8 +734,8 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
 
             if e1.callback != f
                 # We should only care about input arg types...
-                func1, loc1 = edge_callback_to_string(f)
-                func2, loc2 = edge_callback_to_string(e1.callback)
+                func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
+                func2, loc2 = edge_callback_to_string(e1)
                 error(
                     "Cannot register computation: The outputs already have a parent compute edge using " *
                     "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
