@@ -21,7 +21,7 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     v = isdefined(computed, :value) && isassigned(computed.value) ? computed.value[] : "#undef"
     print(io, "  value = ")
     print(IOContext(io, :limit => true), v)
-    print(io, "\n  dirty: ", isdirty(computed))
+    print(io, "\n  dirty = ", isdirty(computed))
 end
 
 
