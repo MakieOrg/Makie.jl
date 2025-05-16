@@ -422,14 +422,13 @@ end
 
 function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
+    updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        arg_obs = plot.args[i]
         prev_val = oldspec.args[i]
         if is_different(prev_val, spec.args[i]) # only update if different
-            arg_obs.val = spec.args[i]
-            push!(obs_to_notify, arg_obs)
+            updates[Symbol(:arg, i)] = spec.args[i]
         end
     end
     scene = parent_scene(plot)
@@ -439,12 +438,12 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         # only update if different
         if is_different(old_attr[], new_value)
             if new_value isa Cycled
-                old_attr.val = to_color(scene, attribute, new_value)
+                updates[attribute] = to_color(scene, attribute, new_value)
             else
                 @debug("updating kw $attribute")
-                old_attr.val = new_value
+                updates[attribute] = new_value
             end
-            push!(obs_to_notify, old_attr)
+            # push!(obs_to_notify, old_attr)
         end
     end
 
@@ -459,7 +458,8 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             # only update if different
             if is_different(old_attr[], new_value)
                 old_attr.val = new_value
-                push!(obs_to_notify, old_attr)
+                # push!(obs_to_notify, old_attr)
+                updates[k] = old_attr
             end
         end
     end
@@ -483,9 +483,10 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 filter!(x -> x in uncycled, attr_vec)
             end
             add_cycle_attribute!(plot, scene, cycle)
-            append!(obs_to_notify, (plot[k] for k in uncycled))
+            # append!(obs_to_notify, (plot[k] for k in uncycled))
         end
     end
+    update!(plot, updates)
     return
 end
 

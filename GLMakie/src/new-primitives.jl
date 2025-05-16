@@ -5,7 +5,6 @@ using Makie.ComputePipeline
 ################################################################################
 
 function missing_uniforms(robj, inputs, input2name)
-    @info "Verifying uniforms"
     inputset = Set([get(input2name, k, k) for k in inputs])
     uniformset = union(
         keys(robj.vertexarray.program.uniformloc),

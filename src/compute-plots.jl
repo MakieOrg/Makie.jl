@@ -12,6 +12,10 @@ Base.get(x::Plot, key::Symbol, default) = get(()-> default, x, key)
 
 Base.getindex(plot::Plot, key::Symbol) = getproperty(plot, key)
 Base.setindex!(plot::Plot, val, key::Symbol) = setproperty!(plot, key, val)
+function Base.setindex!(plot::Plot, val, key::Int)
+    sym = Symbol("arg", key)
+    setindex!(plot, val, sym)
+end
 
 
 function data_limits(plot::Plot)
@@ -25,7 +29,10 @@ function data_limits(plot::Plot)
     end
     return bb_ref[]
 end
-
+function ComputePipeline.update!(plot::Plot, dict)
+    ComputePipeline.update!(plot.attributes, dict)
+    return
+end
 function ComputePipeline.update!(plot::Plot; args...)
     ComputePipeline.update!(plot.attributes; args...)
     return

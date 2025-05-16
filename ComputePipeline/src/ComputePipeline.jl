@@ -358,6 +358,18 @@ update!(graph, :first_node => 2)
 """
 update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
 
+function update!(attr::ComputeGraph, dict::Dict{Symbol})
+    for (key, value) in dict
+        if haskey(attr.inputs, key)
+            _setproperty!(attr, key, value)
+        else
+            error("Attribute $key not found in ComputeGraph")
+        end
+    end
+    notify(attr.onchange)
+    return attr
+end
+
 function update!(attr::ComputeGraph, pairs...)
     for (key, value) in pairs
         if haskey(attr.inputs, key)

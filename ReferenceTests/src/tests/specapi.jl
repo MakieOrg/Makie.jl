@@ -18,7 +18,7 @@ end
     st = Makie.Stepper(f)
     sync_step!(st)
     obs = pl[1]
-    obs[] = S.GridLayout([S.Axis(; plots=[S.Lines(1:4; color=:black, linewidth=5), S.Scatter(1:4; markersize=20)])
+    pl[1] = S.GridLayout([S.Axis(; plots=[S.Lines(1:4; color=:black, linewidth=5), S.Scatter(1:4; markersize=20)])
                      S.Axis3(; plots=[S.Scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)])])
     sync_step!(st)
     obs[] = begin
