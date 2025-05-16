@@ -354,7 +354,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
     end
 end
 
-function register_text_computations!(attr::ComputeGraph) where T
+function register_text_computations!(attr::ComputeGraph)
     if !haskey(attr, :atlas)
         register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
             (get_texture_atlas(),)

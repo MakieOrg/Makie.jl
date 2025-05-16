@@ -219,9 +219,9 @@ function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::T
     inputs = map(enumerate(input_args)) do (i, arg)
         sym = Symbol(:arg, i)
         add_input!(attr, sym, arg)
+        attr[sym].value = RefValue{Any}(arg)
         return sym
     end
-
     return inputs
 end
 
@@ -244,9 +244,11 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
-            return (args,)
+            # TODO, this can change types...
+            # Is Ref any a good idea for this, or should
+            return (Ref{Any}(args),)
         else
-            return (args_exp,)
+            return (Ref{Any}(args_exp),)
         end
     end
     return
@@ -254,7 +256,7 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
-    args = attr[:args][]
+    args = attr[:args][][]
     if length(args) in (2, 3)
         inputs = Symbol[]
         for (i, arg) in enumerate(args)
@@ -267,13 +269,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         register_computation!(attr, [:args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
             last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
             result = ntuple(length(converts)) do i
-                return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
+                return convert_dim_value(converts[i], attr, expanded[][i], last_vals[i])
             end
             return (result,)
         end
     else
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (args.args,)
+            return (args.args[],)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
