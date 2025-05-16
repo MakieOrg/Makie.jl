@@ -479,9 +479,11 @@ function pack_images(images_marker)
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
         max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-        texture_atlas = Texture(eltype(images[1]), (max_xy...,))
+        texture_atlas = fill(eltype(images[1])(RGBAf(0,0,0,0)), max_xy...)
         for (area, img) in zip(uv_coordinates, images)
-            texture_atlas[area] = img # transfer to texture atlas
+            mini = minimum(area)
+            maxi = maximum(area)
+            texture_atlas[mini[1]+1:maxi[1], mini[2]+1:maxi[2]] = img # transfer to texture atlas
         end
         uvs = map(uv_coordinates) do uv
             m = max_xy .- 1
