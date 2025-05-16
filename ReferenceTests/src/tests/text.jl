@@ -398,7 +398,7 @@ end
     p = text!(scene, "test", fontsize = 85)
     st = Stepper(scene)
     Makie.step!(st)
-    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    p.arg1[] = "-!ħ█?-" # "!ħ█?" are all new symbols
     Makie.step!(st)
     st
 end
