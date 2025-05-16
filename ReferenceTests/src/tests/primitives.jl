@@ -815,9 +815,9 @@ end
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
+    Makie.update!(ax.scene.compute, shading = NoShading)
     xlims!(ax, 1, 10)
     ylims!(ax, 1, 10)
-    empty!(ax.scene.lights)
     hidedecorations!(ax)
 
     heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())

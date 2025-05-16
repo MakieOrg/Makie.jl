@@ -366,6 +366,10 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         if haskey(abstract_type_init, k)
             attr[k].value = abstract_type_init[k]
         end
+        # text also allows :baseline and resolves it later
+        if T <: Makie.Text && k == :align
+            attr[k].value = RefValue{Any}((:center, :center))
+        end
     end
     if !haskey(attr, :model)
         add_input!(attr, :model, Mat4d(I))
