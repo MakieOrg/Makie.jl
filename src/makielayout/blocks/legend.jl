@@ -214,7 +214,7 @@ function initialize_block!(leg::Legend; entrygroups)
             tilesize=(hatch_width,hatch_width), linecolor=shade_color)
 
     # For cleaning up visible listeners on relayouting
-    entry_observer_funcs = Observable[]
+    entry_observer_funcs = ObserverFunction[]
 
     on(blockscene, entry_groups) do entry_groups
         # first delete all existing labels and patches
