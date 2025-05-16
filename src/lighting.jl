@@ -349,7 +349,7 @@ end
 # User Interface
 
 set_ambient_light!(scene, color) = set_ambient_light!(scene.compute, color)
-set_ambient_light!(graph::ComputeGraph, color) = update!(graph, ambient = color)
+set_ambient_light!(graph::ComputeGraph, color) = update!(graph, ambient_color = color)
 
 set_light!(scene, idx; kwargs...) = set_light!(scene.compute, idx; kwargs...)
 function set_light!(graph::ComputeGraph, idx; kwargs...)
@@ -365,7 +365,7 @@ end
 get_lights(scene) = get_lights(scene.compute)
 get_lights(graph::ComputeGraph) = graph[:lights][]
 
-set_lights!(scene, lights) = get_lights(scene.compute, lights)
+set_lights!(scene, lights) = set_lights!(scene.compute, lights)
 set_lights!(graph::ComputeGraph, lights) = update!(graph, lights = lights)
 
 push_light!(scene, light) = push_light!(scene.compute, light)
