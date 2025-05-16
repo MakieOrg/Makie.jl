@@ -310,6 +310,17 @@ end
     st
 end
 
+@reference_test "Legend update" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    lines!(ax, [0, 1], [1, 1]; color = :blue, label = "lines")
+    scatter!(ax, [0], [0]; color = :red, label = "scatter")
+    legend = axislegend(ax; position = :rb)
+    reverse!(legend.entrygroups[][1][2])
+    notify(legend.entrygroups)
+    fig
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
