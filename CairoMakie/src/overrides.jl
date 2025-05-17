@@ -268,7 +268,13 @@ function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
     if is_linear_gradient_compatible(band) || !(band.color[] isa AbstractArray)
         basecolor = to_cairo_color(band.color[], band)
-        color = coloralpha.(basecolor, alpha.(basecolor) .* band.alpha[])
+        color = if basecolor isa Cairo.CairoPattern
+            basecolor
+        elseif basecolor isa AbstractVector # CairoPattern doesn't broadcast
+            coloralpha.(basecolor, alpha.(basecolor) .* band.alpha[])
+        else
+            coloralpha(basecolor, alpha(basecolor) * band.alpha[])
+        end
 
         model = band.model[]
         space = band.space[]
