@@ -284,7 +284,6 @@ function draw_scatter(screen, (marker, position), data)
     # Exception for intensity, to make it possible to handle intensity with a
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(screen.glscreen, intensity, position)
-    data[:len] = const_lift(length, position)
 
     return assemble_shader(data)
 end

@@ -24,16 +24,17 @@ end
 
 
 function flag_float64(robj)
-    float64_types = Union{
+    banned_types = Union{
         Float64, VecTypes{N, Float64} where N,
         AbstractArray{Float64},
         AbstractArray{<: VecTypes{N, Float64}} where N,
+        Observable
     }
     for (k, v) in robj.vertexarray.buffers
-        v isa float64_types && error("$k in vertexarray is a Float64 type")
+        v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
-        v isa float64_types && error("$k in uniforms is a Float64 type")
+        v isa banned_types && error("$k in uniforms is a banned type: $(typeof(v))")
     end
 end
 
