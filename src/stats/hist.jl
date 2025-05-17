@@ -75,7 +75,7 @@ function Makie.plot!(plot::StepHist)
             return color
         end
     end
-    stairs!(plot, Attributes(plot), points; attr..., color=color)
+    stairs!(plot, Attributes(plot), points; color=color)
     plot
 end
 
