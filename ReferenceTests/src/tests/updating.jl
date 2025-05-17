@@ -30,8 +30,10 @@ end
     st = Stepper(fig)
     Makie.step!(st)
     on(points) do pts
-        pl[1].val = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[])
-        pl.color.val = map(p->RGBf(normalize(p)...), points[])
+        Makie.update!(pl,
+            arg1 = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[]),
+            color = map(p->RGBf(normalize(p)...), points[])
+        )
         notify(pl[1])
     end
 
