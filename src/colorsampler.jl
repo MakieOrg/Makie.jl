@@ -151,7 +151,7 @@ otherwise simply returns `broadcast(scale, x)`.
 """
 apply_scale(scale::AbstractObservable, x) = lift(apply_scale, scale, x)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
-apply_scale(scale, x) = broadcast(scale, x)
+apply_scale(scale, x) = broadcast(v -> invokelatest(scale, v), x)
 
 function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}

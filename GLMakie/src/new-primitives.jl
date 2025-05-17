@@ -11,13 +11,6 @@ function missing_uniforms(robj, inputs, input2name)
         Symbol.(collect(keys(robj.vertexarray.buffers))),
         [:visible]
     )
-    # Set by other means
-    if !haskey(attr, :ambient)
-        # TODO, why is ambient already here for MeshScatter?
-        add_input!(attr, :ambient, scene.compute[:ambient_color]::Computed)
-    else
-        return
-    end
     skip = [:objectid,]
     for k in setdiff(uniformset, inputset)
         k in skip && continue
@@ -26,6 +19,21 @@ function missing_uniforms(robj, inputs, input2name)
     for k in setdiff(inputset, uniformset)
         k in [:indices, :instances, :fxaa] && continue
         printstyled("Discard input $k\n", color = :yellow)
+    end
+end
+
+
+function flag_float64(robj)
+    float64_types = Union{
+        Float64, VecTypes{N, Float64} where N,
+        AbstractArray{Float64},
+        AbstractArray{<: VecTypes{N, Float64}} where N,
+    }
+    for (k, v) in robj.vertexarray.buffers
+        v isa float64_types && error("$k in vertexarray is a Float64 type")
+    end
+    for (k, v) in robj.uniforms
+        v isa float64_types && error("$k in uniforms is a Float64 type")
     end
 end
 
@@ -53,7 +61,11 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.uniforms[gl_name], value)
             else
-                robj.uniforms[gl_name] = value
+                converted = GLAbstraction.gl_convert(robj.context, value)
+                if typeof(robj.uniforms[gl_name]) !== typeof(converted)
+                    @error("Uniforms can not change their type. uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))")
+                end
+                robj.uniforms[gl_name] = converted
             end
         elseif haskey(robj.vertexarray.buffers, string(gl_name))
             GLAbstraction.update!(robj.vertexarray.buffers[string(gl_name)], value)
@@ -254,6 +266,9 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         end
     end
     robj = attr[:gl_renderobject][]
+
+    flag_float64(robj)
+
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)

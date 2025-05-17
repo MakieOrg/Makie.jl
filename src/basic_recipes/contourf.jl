@@ -197,8 +197,7 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         is_extended_low = !isnothing(low)
         is_extended_high = !isnothing(high)
         if isnothing(cached)
-            PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
-            polys = PolyType[]
+            polys = Polygon{2, Float32}[]
             colors = Float64[]
         else
             polys, colors = cached

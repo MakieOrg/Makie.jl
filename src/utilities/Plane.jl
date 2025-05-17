@@ -44,6 +44,10 @@ function Plane{N, T}(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real
     return Plane{N, T}(Vec{N, T}(normal), T(distance))
 end
 
+function Plane{N, T}(plane::Plane) where {N, T <: Real}
+    return Plane{N, T}(to_ndim(Vec{N, T}, plane.normal, 0), T(plane.distance))
+end
+
 const Plane2{T} = Plane{2, T}
 const Plane3{T} = Plane{3, T}
 const Plane2f = Plane{2, Float32}

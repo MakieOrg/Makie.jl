@@ -68,8 +68,8 @@ end
 
 # Input with InputFunctionWrapper adding Symbol to the callback
 # for add_input!(f, key, value)
-function get_callback_info(f::InputFunctionWrapper, args::Tuple{<: Any})
-    return f.user_func, (Symbol, typeof(args[1]))
+function get_callback_info(f::InputFunctionWrapper, arg)
+    return f.user_func, (Symbol, typeof(arg))
 end
 
 # add_input!(key, value)

@@ -73,14 +73,11 @@ end
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
 function draw_mesh_particle(screen, p, data)
-    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    # rot = vec2quaternion(rot)
-    # delete!(data, :rotation)
     to_opengl_mesh!(screen.glscreen, data, p[1]) # TODO: new functions need something else
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
-        rotation = rot => TextureBuffer
+        rotation = Quaternionf(0,0,0,1) => TextureBuffer
         f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
@@ -226,10 +223,6 @@ Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
 function draw_scatter(screen, (marker, position), data)
-    # rot = get!(data, :rotation, Vec4f(0, 0, 0, 1))
-    # rot = vec2quaternion(rot)
-    # delete!(data, :rotation)
-
     if !haskey(data, :indices) && to_value(pop!(data, :depthsorting, false))
         data[:indices] = map(
             data[:projectionview], data[:preprojection], data[:model],
@@ -249,7 +242,7 @@ function draw_scatter(screen, (marker, position), data)
         position    = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer
         scale       = Vec2f(0) => GLBuffer
-        rotation    = rot => GLBuffer
+        rotation    = Quaternionf(0,0,0,1) => GLBuffer
         image       = nothing => Texture
     end
 
