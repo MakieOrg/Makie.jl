@@ -704,7 +704,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
             return (cached.cb_colormapping, nothing)
         end
     end
-    return ComputePipeline.get_observable!(attr[:cb_colormapping])
+    on(plot, attr.onchange) do _
+        attr[:cb_colormapping][]
+    end
+    return attr[:cb_colormapping][]
 end
 
 # This one plays nice with out system, only needs model
