@@ -398,7 +398,7 @@ end
     p = text!(scene, "test", fontsize = 85)
     st = Stepper(scene)
     Makie.step!(st)
-    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    p.arg1[] = "-!ħ█?-" # "!ħ█?" are all new symbols
     Makie.step!(st)
     st
 end
@@ -406,16 +406,16 @@ end
 # test #3315
 @reference_test "text with empty lines" begin
     text(
-        0,0, 
+        0,0,
         text=rich(
-            rich("test", font = :bold), 
+            rich("test", font = :bold),
             """
-            
+
             more
 
             """
-        ); 
-        markerspace = :data, 
+        );
+        markerspace = :data,
         axis = (; aspect = DataAspect())
     )
 end

@@ -1083,9 +1083,7 @@ function foreach_plot_visibility(f, entry::LegendEntry)
     for element in entry.elements
         if !isnothing(element)
             for p in get_plots(element)
-                if hasproperty(p, :visible)
-                    f(p.visible)
-                end
+                f(p.visible)
             end
         end
     end
@@ -1100,7 +1098,7 @@ end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    foreach_plot_visibility(x -> push!(visibilities, x), entry)
+    foreach_plot_visibility(x -> push!(visibilities, ComputePipeline.get_observable!(x)), entry)
     return visibilities
 end
 

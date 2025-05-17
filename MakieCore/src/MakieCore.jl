@@ -5,6 +5,7 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_m
     @eval Base.Experimental.@optlevel 0
 end
 
+using ComputePipeline
 using Observables
 using Observables: to_value
 using Base: RefValue

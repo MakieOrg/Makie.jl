@@ -17,7 +17,7 @@ end
 function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
-    append!(lsb[1][], positions)
+    append!(lsb[:arg1][], positions)
     append!(lsb[:color][], colorv)
     append!(lsb[:linewidth][], thickv)
     return
@@ -28,7 +28,7 @@ function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where
 end
 
 function start!(lsb::LineSegments)
-    resize!(lsb[1][], 0)
+    resize!(lsb[:arg1][], 0)
     resize!(lsb[:color][], 0)
     resize!(lsb[:linewidth][], 0)
     return
@@ -36,9 +36,10 @@ end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    ComputePipeline.mark_dirty!(lsb[:arg1])
+    ComputePipeline.mark_dirty!(lsb[:color])
+    ComputePipeline.mark_dirty!(lsb[:linewidth])
+    notify(lsb.attributes.onchange)
     return
 end
 
@@ -51,8 +52,9 @@ function TextBuffer(
         align = [Vec2f(0)],
         kw_args...
     ) where N
-    annotations!(
-        scene, String[" "], [Point{N, Float32}(0)];
+    text!(
+        scene, [Point{N, Float32}(0)];
+        text = String[" "],
         rotation = rotation,
         color = color,
         fontsize = fontsize,
@@ -62,49 +64,55 @@ function TextBuffer(
     )
 end
 
-function start!(tb::Annotations)
-    for key in (1, :color, :rotation, :fontsize, :font, :align)
-        empty!(tb[key][])
+function start!(tb::Text)
+    attr = tb.attributes
+    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+        empty!(attr.inputs[key].value)
     end
     return
 end
 
-function finish!(tb::Annotations)
-    # update the signal!
+function finish!(tb::Text)
     # now update all callbacks
-    # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
-    # in basic_recipes annotations should depend on all signals here, so updating one should be enough
+    attr = tb.attributes
+    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+        ComputePipeline.mark_dirty!(attr.inputs[key])
+    end
     if length(tb[1][]) != length(tb.fontsize[])
         error("Inconsistent buffer state for $(tb[1][])")
     end
-    notify(tb[1])
+    notify(attr.onchange)
     return
 end
 
-function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
-    append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
+function push!(tb::Text, text::String, position::VecTypes{N}; kw_args...) where N
+    append!(tb, [text], [position]; kw_args...)
 end
 
-function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    text_positions = convert_arguments(Annotations, text, positions)[1]
-    append!(tb, text_positions; kw_args...)
-    return
-end
+function append!(tb::Text, text::Vector{String}, positions::Vector{<: VecTypes{N}}; kw_args...) where N
+    attr = tb.attributes
 
-function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
-    append!(tb[1][], text_positions)
+    textv = same_length_array(positions, text)
+    append!(attr.inputs[:text].value, textv)
+    append!(attr.inputs[:arg1].value, positions)
+
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
-            isempty(tb[key][]) && error("please provide default for $key")
-            return last(tb[key][])
+            isempty(attr.inputs[key].value) && error("please provide default for $key")
+            return last(attr.inputs[key].value)
         end
         val_vec = if key === :font
-            same_length_array(text_positions, to_font(tb.fonts, val))
+            same_length_array(positions, to_font(tb.fonts[], val))
         else
-            same_length_array(text_positions, val, Key{key}())
+            same_length_array(positions, val, Key{key}())
         end
-        append!(tb[key][], val_vec)
+        append!(attr.inputs[key].value, val_vec)
     end
+    return
+end
+
+function append!(tb::Text, text_positions::Vector{Tuple{String, <: VecTypes{N}}}; kw_args...) where N
+    append!(tb, first.(text_positions), last.(text_positions); kw_args...)
     return
 end

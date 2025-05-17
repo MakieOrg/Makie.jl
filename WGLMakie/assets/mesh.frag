@@ -9,6 +9,9 @@ in vec3 o_camdir;
 in float o_clip_distance[8];
 
 uniform int num_clip_planes;
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -33,7 +36,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -64,17 +67,15 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     }
 }
 
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
-
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
     float cmax = colorrange.y;
     if (value <= cmax && value >= cmin) {
         // in value range, continue!
     } else if (value < cmin) {
-        return get_lowclip();
+        return get_lowclip_color();
     } else if (value > cmax) {
-        return get_highclip();
+        return get_highclip_color();
     } else {
         // isnan is broken (of course) -.-
         // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -135,26 +136,28 @@ uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
 
 void main()
 {
-    for (int i = 0; i < num_clip_planes; i++)
-        if (o_clip_distance[i] < 0.0)
+    for (int i = 0; i < num_clip_planes; i++) {
+        if (o_clip_distance[i] < 0.0) {
             discard;
+        }
+    }
 
-    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
+    vec4 real_color = get_color(uniform_color, frag_uv, get_uniform_colorrange(), uniform_colormap);
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 N = normalize(o_normal);
         vec3 light = blinnphong(N, normalize(o_camdir), L, real_color.rgb);
-        shaded_color = get_ambient() * real_color.rgb + light;
+        shaded_color = ambient * real_color.rgb + light;
     }
 
     if (picking && (real_color.a > 0.1)) {
-        if (get_PICKING_INDEX_FROM_UV()) {
+        if (PICKING_INDEX_FROM_UV) {
             fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
-        } else
+        } else {
             fragment_color = pack_int(object_id, frag_instance_id);
-
+        }
         return;
     }
 

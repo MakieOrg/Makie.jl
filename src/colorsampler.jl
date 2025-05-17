@@ -31,7 +31,7 @@ Base.size(sampler::Sampler) = size(sampler.values)
 Like getindex, but accepts values between 0..1 and interpolates those to the full range.
 You can use `norm`, to change the range of 0..1 to whatever you want.
 """
-function interpolated_getindex(cmap::AbstractArray, value::Number, norm::VecTypes)
+function interpolated_getindex(cmap::AbstractArray, value::Real, norm::VecTypes)
     cmin, cmax = norm
     cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
     i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
@@ -64,6 +64,13 @@ end
 function nearest_getindex(cmap::AbstractArray, i01::Real)
     idx = round(Int, i01 * (length(cmap) - 1)) + 1
     return cmap[idx]
+end
+
+function nearest_getindex(cmap::AbstractArray, value::Real, norm::VecTypes{2})
+    cmin, cmax = norm
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
+    return nearest_getindex(cmap, i01)
 end
 
 """
@@ -144,7 +151,7 @@ otherwise simply returns `broadcast(scale, x)`.
 """
 apply_scale(scale::AbstractObservable, x) = lift(apply_scale, scale, x)
 apply_scale(::Union{Nothing,typeof(identity)}, x) = x  # noop
-apply_scale(scale, x) = broadcast(scale, x)
+apply_scale(scale, x) = broadcast(v -> invokelatest(scale, v), x)
 
 function numbers_to_colors(numbers::Union{AbstractArray{<:Number},Number}, primitive)
     colormap = get_attribute(primitive, :colormap)::Vector{RGBAf}
@@ -369,8 +376,10 @@ function ColorMapping(
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
-    return ColorMapping(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
-                    plot.highclip, plot.nan_color)
+    # CairoMakie uses this with strokecolor as colors too...
+    keys = [:colormap, :colorrange, :colorscale, :alpha, :lowclip, :highclip, :nan_color]
+    obs = ComputePipeline.get_observable!.(getproperty.(Ref(plot), keys))
+    return ColorMapping(c, color, obs...)
 end
 
 function to_color(c::ColorMapping)
