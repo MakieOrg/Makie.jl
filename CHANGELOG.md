@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+- Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).
 
 ## [0.22.5] - 2025-05-12
 

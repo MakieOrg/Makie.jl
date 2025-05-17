@@ -175,6 +175,10 @@ end
     # vertical version
     ax2, _ = lines(f[1, 2], μ, t)
     band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
+
+    # array colors
+    band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
+    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues)
     f
 end
 
