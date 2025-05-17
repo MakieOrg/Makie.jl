@@ -45,7 +45,7 @@ Sets RPRMakie as the currently active backend and also allows to quickly set the
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/RPRMakie/src/RPRMakie.jl#L47-L57" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/RPRMakie/src/RPRMakie.jl#L47-L57" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

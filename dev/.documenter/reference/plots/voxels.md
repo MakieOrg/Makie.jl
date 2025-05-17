@@ -22,7 +22,7 @@ Note that `voxels` is currently considered experimental and may still see breaki
 The plot type alias for the `voxels` function is `Voxels`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/MakieCore/src/recipes.jl#L520-L632" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/MakieCore/src/recipes.jl#L520-L632" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

@@ -1,7 +1,9 @@
 
 # Changelog {#Changelog}
 
-## [Unreleased](https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...HEAD) {#Unreleasedhttps://github.com/MakieOrg/Makie.jl/compare/v0.22.5...HEAD}
+## [Unreleased](https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...HEAD) {#Unreleasedhttps://github.com/MakieOrg/Makie.jl/compare/v0.22.6...HEAD}
+
+## [0.22.6](https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6) - 2025-05-17 {#0.22.6https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6-2025-05-17}
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
   
 - Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).

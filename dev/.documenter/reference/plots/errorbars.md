@@ -28,7 +28,7 @@ If you want to plot intervals from low to high values instead of relative errors
 The plot type alias for the `errorbars` function is `Errorbars`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/MakieCore/src/recipes.jl#L520-L602" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/MakieCore/src/recipes.jl#L520-L602" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

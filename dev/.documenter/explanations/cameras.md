@@ -165,7 +165,7 @@ The camera position and orientation can also be adjusted via the functions
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/src/camera/camera3d.jl#L25-L113" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/src/camera/camera3d.jl#L25-L113" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

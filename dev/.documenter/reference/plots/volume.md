@@ -20,7 +20,7 @@ All volume plots are derived from casting rays for each drawn pixel. These rays 
 The plot type alias for the `volume` function is `Volume`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/MakieCore/src/recipes.jl#L520-L614" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/MakieCore/src/recipes.jl#L520-L614" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

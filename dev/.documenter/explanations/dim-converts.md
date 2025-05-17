@@ -118,7 +118,7 @@ barplot(Named.([:a, :b, :c]), 1:3, axis=(dim1_conversion=conversion,))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/src/dim-converts/categorical-integration.jl#L1-L26" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/src/dim-converts/categorical-integration.jl#L1-L26" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -159,7 +159,7 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/src/dim-converts/unitful-integration.jl#L121-L145" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/src/dim-converts/unitful-integration.jl#L121-L145" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -197,7 +197,7 @@ scatter(1:4, (1:4) .* u"s", axis=(dim2_conversion=conversion,))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/c1ff276792827f16c26b5ad51ea371f8a3759971/src/dim-converts/dates-integration.jl#L20-L44" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/cefec3bc07a829ab04fb7edfbd5ae240496109fa/src/dim-converts/dates-integration.jl#L20-L44" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
