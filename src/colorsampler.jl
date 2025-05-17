@@ -376,8 +376,10 @@ function ColorMapping(
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
-    return ColorMapping(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
-                    plot.highclip, plot.nan_color)
+    # CairoMakie uses this with strokecolor as colors too...
+    keys = [:colormap, :colorrange, :colorscale, :alpha, :lowclip, :highclip, :nan_color]
+    obs = ComputePipeline.get_observable!.(getproperty.(Ref(plot), keys))
+    return ColorMapping(c, color, obs...)
 end
 
 function to_color(c::ColorMapping)
