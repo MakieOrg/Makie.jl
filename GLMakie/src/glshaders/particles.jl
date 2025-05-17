@@ -138,7 +138,6 @@ function draw_mesh_particle(screen, p, data)
     end
     if !isnothing(Makie.to_value(intensity))
         data[:intensity] = intensity_convert_tex(screen.glscreen, intensity, position)
-        data[:len] = const_lift(length, position)
     end
     return assemble_shader(data)
 end
