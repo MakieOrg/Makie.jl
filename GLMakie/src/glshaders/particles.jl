@@ -11,29 +11,7 @@ function to_meshcolor(context, color)
     color
 end
 
-vec2quaternion(rotation::StaticVector{4}) = rotation
-
-function vec2quaternion(r::StaticVector{2})
-    vec2quaternion(Vec3f(r[1], r[2], 0))
-end
-function vec2quaternion(rotation::StaticVector{3})
-    Makie.rotation_between(Vec3f(0, 0, 1), Vec3f(rotation))
-end
-
-vec2quaternion(rotation::Vec4f) = rotation
-vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
-vec2quaternion(rotation::Observable) = lift(vec2quaternion, rotation)
-vec2quaternion(rotation::Makie.Quaternion)= Vec4f(rotation.data)
-vec2quaternion(rotation)= vec2quaternion(to_rotation(rotation))
 GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion) = Vec4f(rotation.data)
-to_pointsize(x::Number) = Float32(x)
-to_pointsize(x) = Float32(x[1])
-struct PointSizeRender
-    size::Observable
-end
-(x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
-
-
 
 
 intensity_convert(cotnext, intensity, verts) = intensity
@@ -80,29 +58,6 @@ function draw_mesh_particle(screen, p, data)
         rotation = Quaternionf(0,0,0,1) => TextureBuffer
         f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
-    end
-
-    # TODO: use instance attributes
-    if to_value(data[:uv_transform]) isa TextureBuffer
-        # compat with new rendering
-
-        # TODO: v delete this
-    elseif to_value(data[:uv_transform]) isa Vector
-        transforms = pop!(data, :uv_transform)
-        @gen_defaults! data begin
-            uv_transform = map(transforms) do transforms
-                # 3x Vec2 should match the element order of glsl mat3x2
-                output = Vector{Vec2f}(undef, 3 * length(transforms))
-                for i in eachindex(transforms)
-                    output[3 * (i-1) + 1] = transforms[i][Vec(1, 2)]
-                    output[3 * (i-1) + 2] = transforms[i][Vec(3, 4)]
-                    output[3 * (i-1) + 3] = transforms[i][Vec(5, 6)]
-                end
-                return output
-            end => TextureBuffer
-        end
-    else
-        # handled automatically
     end
 
     shading = pop!(data, :shading)::Makie.MakieCore.ShadingAlgorithm
@@ -172,70 +127,11 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     return assemble_shader(data)
 end
 
-function draw_scatter(
-    screen, p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, data::Dict
-    ) where {C <: Colorant, P <: Point}
-    data[:image] = p[1] # we don't want this to be overwritten by user
-    @gen_defaults! data begin
-        scale = lift(x-> Vec2f(size(x)), p[1])
-        offset = Vec2f(0)
-    end
-    draw_scatter(screen, (RECTANGLE, p[2]), data)
-end
-
-# TODO: vector of images
-function draw_scatter(
-        screen, p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, data::Dict
-    ) where {C <: Colorant, P <: Point}
-    images = map(el32convert, to_value(p[1]))
-    isempty(images) && error("Can not display empty vector of images as primitive")
-    sizes = map(size, images)
-    if !all(x-> x == sizes[1], sizes) # if differently sized
-        # create texture atlas
-        maxdims = sum(map(Vec{2, Int}, sizes))
-        rectangles = map(x->Rect2(0, 0, x...), sizes)
-        rpack = RectanglePacker(Rect2(0, 0, maxdims...))
-        uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-        texture_atlas = Texture(screen.glscreen, eltype(images[1]), (max_xy...,))
-        for (area, img) in zip(uv_coordinates, images)
-            texture_atlas[area] = img #transfer to texture atlas
-        end
-        data[:uv_offset_width] = map(uv_coordinates) do uv
-            m = max_xy .- 1
-            mini = reverse((minimum(uv)) ./ m)
-            maxi = reverse((maximum(uv) .- 1) ./ m)
-            return Vec4f(mini..., maxi...)
-        end
-        images = texture_atlas
-    end
-    data[:image] = images # we don't want this to be overwritten by user
-    @gen_defaults! data begin
-        shape = RECTANGLE
-        quad_offset = Vec2f(0)
-    end
-    return draw_scatter(screen, (RECTANGLE, p[2]), data)
-end
-
 """
 Main assemble functions for scatter particles.
 Sprites are anything like distance fields, images and simple geometries
 """
-function draw_scatter(screen, (marker, position), data)
-    if !haskey(data, :indices) && to_value(pop!(data, :depthsorting, false))
-        data[:indices] = map(
-            data[:projectionview], data[:preprojection], data[:model],
-            position
-        ) do pv, pp, m, pos
-            T = pv * pp * m
-            depth_vals = map(pos) do p
-                p4d = T * to_ndim(Point4f, to_ndim(Point3f, p, 0f0), 1f0)
-                p4d[3] / p4d[4]
-            end
-            UInt32.(sortperm(depth_vals, rev = true) .- 1)
-        end
-    end
-
+function draw_scatter(screen, position, data)
     @gen_defaults! data begin
         shape       = Cint(0)
         position    = position => GLBuffer
