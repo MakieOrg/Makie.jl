@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.6] - 2025-05-17
+
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
 - Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).
 
@@ -800,7 +802,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...HEAD
+[0.22.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6
 [0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
 [0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
 [0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
