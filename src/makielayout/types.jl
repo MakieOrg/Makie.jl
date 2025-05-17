@@ -5,7 +5,7 @@ const Optional{T} = Union{Nothing, T}
 struct AxisAspect
     aspect::Float32
 end
-
+ 
 struct DataAspect end
 
 struct Cycle
@@ -974,7 +974,7 @@ end
 end
 
 @Block Slider2 begin
-    selected_index::Observable{Int}
+    selected_indices::Observable{Tuple{Int, Int}}
     @attributes begin
         "The horizontal alignment of the element in its suggested bounding box."
         halign = :center
@@ -984,16 +984,18 @@ end
         width = Auto()
         "The height setting of the element."
         height = Auto()
-        "The range of values that the slider can pick from."
-        range = 0:0.01:10
+        "The range of x values that the slider can pick from."
+        xrange = 0:0.01:10
+        "The range of y values that the slider can pick from."
+        yrange = 0:0.01:10
         "Controls if the parent layout can adjust to this element's width"
         tellwidth::Bool = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight::Bool = true
-        "The start value of the slider or the value that is closest in the slider range."
-        startvalue = 0
+        "The start value of the slider's x position or the value that is closest in the slider range."
+        startvalue = (0,0)
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
-        value = 0
+        value = (0,0)
         "The width of the slider line"
         linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
@@ -1002,8 +1004,6 @@ end
         color_active::RGBAf = COLOR_ACCENT[]
         "The color of the slider when it is not interacted with."
         color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
-        "Controls if the slider has a horizontal orientation or not."
-        horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
         "If false, slider only updates value once dragging stops"

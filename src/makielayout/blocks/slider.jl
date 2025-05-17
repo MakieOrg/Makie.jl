@@ -29,7 +29,7 @@ function initialize_block!(sl::Slider)
              Point2f(x, top(bb) - w/2)]
         end
     end
-
+    
     # this is the index of the selected value in the slider's range
     selected_index = Observable(1)
     setfield!(sl, :selected_index, selected_index)
@@ -210,78 +210,94 @@ function set_close_to!(slider::Slider, value)
 end
 
 function initialize_block!(sl::Slider2)
-
+    println("hello")
     topscene = sl.blockscene 
 
-    sliderrange = sl.range
+    sliderxrange = sl.xrange
+    slideryrange = sl.yrange
 
-    onany(sl.linewidth, sl.horizontal) do lw, horizontal
-        if horizontal
-            sl.layoutobservables.autosize[] = (nothing, Float32(lw))
-        else
-            sl.layoutobservables.autosize[] = (Float32(lw), nothing)
-        end
+    #what does this do? assigns an autosize. Why onany()?
+    onany(sl.linewidth) do lw
+        sl.layoutobservables.autosize[] = (Float32(lw), Float32(lw))
     end
 
     sliderbox = lift(identity, topscene, sl.layoutobservables.computedbbox)
 
-    endpoints = lift(topscene, sliderbox, sl.horizontal) do bb, horizontal
-
+    #what will endpoints be used for? We need 4 corners instead?
+    endpoints = lift(topscene, sliderbox) do bb
         h = height(bb)
         w = width(bb)
 
-        if horizontal
-            y = bottom(bb) + h / 2
-            [Point2f(left(bb) + h/2, y),
-             Point2f(right(bb) - h/2, y)]
-        else
-            x = left(bb) + w / 2
-            [Point2f(x, bottom(bb) + w/2),
-             Point2f(x, top(bb) - w/2)]
-        end
+        ###################
+        #debugging
+        println(bb)
+        println("w = $w")
+        println("h = $h")
+        bbtop = top(bb)
+        bbbottom = bottom(bb)
+        bbleft = left(bb)
+        bbright = right(bb)
+        println("top = $bbtop")
+        println("bottom = $bbbottom")
+        println("right = $bbright")
+        println("left = $bbleft")
+        ###################
+
+        y = bottom(bb) + h / 2
+        [Point2f(left(bb) + h/2, y),
+            Point2f(right(bb) - h/2, y)]
     end
 
-    # this is the index of the selected value in the slider's range
-    selected_index = Observable(1)
-    setfield!(sl, :selected_index, selected_index)
+    println(endpoints)
 
-    # the fraction on the slider corresponding to the selected_index
+    # this is the index of the selected value in the slider's range
+    selected_indices = Observable((1, 1))
+    setfield!(sl, :selected_indices, selected_indices)
+
+    # the fraction on the slider corresponding to the selected_indices
     # this is only used after dragging
-    sliderfraction = lift(topscene, selected_index, sliderrange) do i, r
-        (i - 1) / (length(r) - 1)
+    sliderfractions = lift(sl.selected_indices, sliderxrange, slideryrange) do is, xr, yr
+        xfrac = (is[1] - 1) / (length(xr) - 1)
+        yfrac = (is[2] - 1) / (length(yr) - 1)
+        return (xfrac,yfrac)
     end
 
     dragging = Observable(false)
 
-    # what the slider actually displays currently (also during dragging when
-    # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfraction = Observable(0.0)
-
-    on(topscene, sliderfraction) do frac
-        # only update displayed fraction through sliderfraction if not dragging
-        # dragging overrides the value so there is clear mouse interaction
-        if !dragging[]
-            displayed_sliderfraction[] = frac
-        end
-    end
-
     # when the range is changed, switch to closest value
-    on(topscene, sliderrange) do rng
-        selected_index[] = closest_index(rng, sl.value[])
+    on(topscene, sliderxrange) do rng
+        selected_indices[][1] = closest_index(rng, sl.value[][1])
     end
 
-    onany(topscene, selected_index, dragging) do i, dragging
-        new_val = get(sliderrange[], i, nothing)
-        has_value = !isnothing(new_val)
-        has_changed = sl.value[] != new_val
+    on(topscene, slideryrange) do rng
+        selected_indices[][2] = closest_index(rng, sl.value[][2])
+    end
+    
+    #worried about observable nonsense in here
+    onany(topscene, selected_indices, dragging) do i, dragging
+        new_xval = get(sliderxrange[], i[][1], nothing)
+        new_yval = get(slideryrange[], i[][2], nothing)
+
+        has_xvalue = !isnothing(new_xval)
+        has_yvalue = !isnothing(new_yval)
+
+        has_changed = sl.value[] != (new_xval,new_yval)
         drag_updates = sl.update_while_dragging[] || !dragging[]
-        if has_value && has_changed && drag_updates
-            sl.value[] = new_val
+
+        if has_xvalue && has_yvalue && has_changed && drag_updates
+            sl.value[] = (new_xval,new_yval)
         end
     end
-    sl.value[] = sliderrange[][selected_index[]]
-    # initialize slider value with closest from range
-    selected_index[] = closest_index(sliderrange[], sl.startvalue[])
+    
+    sl.value[] = (sliderxrange[][selected_indices[][1]],slideryrange[][selected_indices[][2]])
+
+    # initialize slider values with closest from ranges
+    selxidx = closest_index(sliderxrange[], sl.startvalue[][1])
+    selyidx = closest_index(slideryrange[], sl.startvalue[][2])
+    println("x_idx = $selxidx")
+    println("y_idx = $selyidx")
+    println(selected_indices)
+    #selected_indices[] = (selxidx,selyidx) #this throws an error from calling getindex on a tuple(Int,Int) with no index, and I can't figure out where this is happening.
 
     middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
         Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
