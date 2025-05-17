@@ -17,7 +17,7 @@ Create horizontal lines across a `Scene` with 2D projection. The lines will be p
 The plot type alias for the `hlines` function is `HLines`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

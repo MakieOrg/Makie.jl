@@ -50,7 +50,7 @@ translate!(t::Transformable, xyz...)
 Apply an absolute translation to the given `Transformable` (a Scene or Plot), translating it to `x, y, z`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L176-L181" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/layouting/transformation.jl#L176-L181" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -62,7 +62,7 @@ translate!(Accum, t::Transformable, xyz...)
 Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L185-L189" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/layouting/transformation.jl#L185-L189" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -79,7 +79,7 @@ rotate!(Accum, t::Transformable, axis_rot...)
 Apply a relative rotation to the transformable, by multiplying by the current rotation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L146-L150" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/layouting/transformation.jl#L146-L150" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -93,7 +93,7 @@ rotate!(t::Transformable, axis_rot...)
 Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L153-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/layouting/transformation.jl#L153-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -111,7 +111,7 @@ scale!([mode = Absolute], t::Transformable, xyz::VecTypes)
 Scale the given `t::Transformable` (a Scene or Plot) to the given arguments `xyz`. Any missing dimension will be scaled by 1. If `mode == Accum` the given scaling will be multiplied with the previous one.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/layouting/transformation.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -132,7 +132,7 @@ update_cam!(scene::SceneLike, area)
 Updates the camera for the given `scene` to cover the given `area` in 2d.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/camera/camera2d.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -144,7 +144,7 @@ update_cam!(scene::SceneLike)
 Updates the camera for the given `scene` to cover the limits of the `Scene`. Useful when using the `Observable` pipeline.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L67-L72" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/camera/camera2d.jl#L67-L72" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -156,7 +156,7 @@ update_cam!(scene, cam::Camera3D, ϕ, θ[, radius])
 Set the camera position based on two angles `0 ≤ ϕ ≤ 2π` and `-pi/2 ≤ θ ≤ pi/2` and an optional radius around the current `cam.lookat[]`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L784-L789" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/camera/camera3d.jl#L784-L789" target="_blank" rel="noreferrer">source</a></Badge>
 
 
 
@@ -168,7 +168,7 @@ update_cam!(scene::Scene, eyeposition, lookat, up = Vec3d(0, 0, 1))
 Updates the camera&#39;s controls to point to the specified location.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L358-L362" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/d2876406fadce67d5357789b0b71495e7971e5c1/src/camera/old_camera3d.jl#L358-L362" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
