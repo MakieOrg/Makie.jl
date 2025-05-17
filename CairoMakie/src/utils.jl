@@ -668,6 +668,9 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
         return Cairo.CairoPattern(color)
+    elseif color isa Makie.ShaderAbstractions.Sampler # currently target for AbstractPattern
+        @assert color.repeat === (:repeat, :repeat)
+        return Cairo.CairoPattern(Makie.ImagePattern(color.data))
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
         wsize = size(color)
         wh = wsize .- 1

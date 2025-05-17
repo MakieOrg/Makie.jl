@@ -569,7 +569,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     color = cairo_colors(plot)
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, model)
+        align_pattern(cols, scene, plot.model[])
     end
     return draw_mesh2D(screen, cols, vs, fs)
 end
