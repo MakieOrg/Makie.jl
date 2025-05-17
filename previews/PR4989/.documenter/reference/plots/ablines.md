@@ -17,7 +17,7 @@ Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene
 The plot type alias for the `ablines` function is `ABLines`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 

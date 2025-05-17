@@ -10,7 +10,7 @@
 `ABLines` is the plot type associated with plotting function `ablines`. Check the docstring for `ablines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -27,7 +27,7 @@ Absolute
 Force transformation to be absolute, not relative to the current state. This is the default setting.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L99-L104" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L99-L104" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -44,7 +44,7 @@ Accum
 Force transformation to be relative to the current state, not absolute.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L92-L96" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L92-L96" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -65,7 +65,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L21-L28" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L21-L28" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -77,7 +77,7 @@ Availability:
 `Annotations` is the plot type associated with plotting function `annotations`. Check the docstring for `annotations` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -89,7 +89,7 @@ Availability:
 `Arc` is the plot type associated with plotting function `arc`. Check the docstring for `arc` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -116,7 +116,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
 `alignmode`, `aspect`, `autolimitaspect`, `backgroundcolor`, `bottomspinecolor`, `bottomspinevisible`, `dim1_conversion`, `dim2_conversion`, `flip_ylabel`, `halign`, `height`, `leftspinecolor`, `leftspinevisible`, `limits`, `panbutton`, `rightspinecolor`, `rightspinevisible`, `spinewidth`, `subtitle`, `subtitlecolor`, `subtitlefont`, `subtitlegap`, `subtitlelineheight`, `subtitlesize`, `subtitlevisible`, `tellheight`, `tellwidth`, `title`, `titlealign`, `titlecolor`, `titlefont`, `titlegap`, `titlelineheight`, `titlesize`, `titlevisible`, `topspinecolor`, `topspinevisible`, `valign`, `width`, `xautolimitmargin`, `xaxisposition`, `xgridcolor`, `xgridstyle`, `xgridvisible`, `xgridwidth`, `xlabel`, `xlabelcolor`, `xlabelfont`, `xlabelpadding`, `xlabelrotation`, `xlabelsize`, `xlabelvisible`, `xminorgridcolor`, `xminorgridstyle`, `xminorgridvisible`, `xminorgridwidth`, `xminortickalign`, `xminortickcolor`, `xminorticks`, `xminorticksize`, `xminorticksvisible`, `xminortickwidth`, `xpankey`, `xpanlock`, `xrectzoom`, `xreversed`, `xscale`, `xtickalign`, `xtickcolor`, `xtickformat`, `xticklabelalign`, `xticklabelcolor`, `xticklabelfont`, `xticklabelpad`, `xticklabelrotation`, `xticklabelsize`, `xticklabelspace`, `xticklabelsvisible`, `xticks`, `xticksize`, `xticksmirrored`, `xticksvisible`, `xtickwidth`, `xtrimspine`, `xzoomkey`, `xzoomlock`, `yautolimitmargin`, `yaxisposition`, `ygridcolor`, `ygridstyle`, `ygridvisible`, `ygridwidth`, `ylabel`, `ylabelcolor`, `ylabelfont`, `ylabelpadding`, `ylabelrotation`, `ylabelsize`, `ylabelvisible`, `yminorgridcolor`, `yminorgridstyle`, `yminorgridvisible`, `yminorgridwidth`, `yminortickalign`, `yminortickcolor`, `yminorticks`, `yminorticksize`, `yminorticksvisible`, `yminortickwidth`, `ypankey`, `ypanlock`, `yrectzoom`, `yreversed`, `yscale`, `ytickalign`, `ytickcolor`, `ytickformat`, `yticklabelalign`, `yticklabelcolor`, `yticklabelfont`, `yticklabelpad`, `yticklabelrotation`, `yticklabelsize`, `yticklabelspace`, `yticklabelsvisible`, `yticks`, `yticksize`, `yticksmirrored`, `yticksvisible`, `ytickwidth`, `ytrimspine`, `yzoomkey`, `yzoomlock`, `zoombutton`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L135" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L135" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -136,7 +136,7 @@ No docstring defined.
 `alignmode`, `aspect`, `axis_translation_mod`, `azimuth`, `backgroundcolor`, `clip`, `clip_decorations`, `cursorfocuskey`, `dim1_conversion`, `dim2_conversion`, `dim3_conversion`, `elevation`, `front_spines`, `halign`, `height`, `limits`, `near`, `perspectiveness`, `protrusions`, `targetlimits`, `tellheight`, `tellwidth`, `title`, `titlealign`, `titlecolor`, `titlefont`, `titlegap`, `titlesize`, `titlevisible`, `valign`, `viewmode`, `width`, `xautolimitmargin`, `xgridcolor`, `xgridvisible`, `xgridwidth`, `xlabel`, `xlabelalign`, `xlabelcolor`, `xlabelfont`, `xlabeloffset`, `xlabelrotation`, `xlabelsize`, `xlabelvisible`, `xreversed`, `xspinecolor_1`, `xspinecolor_2`, `xspinecolor_3`, `xspinecolor_4`, `xspinesvisible`, `xspinewidth`, `xtickcolor`, `xtickformat`, `xticklabelcolor`, `xticklabelfont`, `xticklabelpad`, `xticklabelsize`, `xticklabelsvisible`, `xticks`, `xticksize`, `xticksvisible`, `xtickwidth`, `xtranslationkey`, `xtranslationlock`, `xypanelcolor`, `xypanelvisible`, `xzoomkey`, `xzoomlock`, `xzpanelcolor`, `xzpanelvisible`, `yautolimitmargin`, `ygridcolor`, `ygridvisible`, `ygridwidth`, `ylabel`, `ylabelalign`, `ylabelcolor`, `ylabelfont`, `ylabeloffset`, `ylabelrotation`, `ylabelsize`, `ylabelvisible`, `yreversed`, `yspinecolor_1`, `yspinecolor_2`, `yspinecolor_3`, `yspinecolor_4`, `yspinesvisible`, `yspinewidth`, `ytickcolor`, `ytickformat`, `yticklabelcolor`, `yticklabelfont`, `yticklabelpad`, `yticklabelsize`, `yticklabelsvisible`, `yticks`, `yticksize`, `yticksvisible`, `ytickwidth`, `ytranslationkey`, `ytranslationlock`, `yzoomkey`, `yzoomlock`, `yzpanelcolor`, `yzpanelvisible`, `zautolimitmargin`, `zgridcolor`, `zgridvisible`, `zgridwidth`, `zlabel`, `zlabelalign`, `zlabelcolor`, `zlabelfont`, `zlabeloffset`, `zlabelrotation`, `zlabelsize`, `zlabelvisible`, `zoommode`, `zreversed`, `zspinecolor_1`, `zspinecolor_2`, `zspinecolor_3`, `zspinecolor_4`, `zspinesvisible`, `zspinewidth`, `ztickcolor`, `ztickformat`, `zticklabelcolor`, `zticklabelfont`, `zticklabelpad`, `zticklabelsize`, `zticklabelsvisible`, `zticks`, `zticksize`, `zticksvisible`, `ztickwidth`, `ztranslationkey`, `ztranslationlock`, `zzoomkey`, `zzoomlock`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -148,7 +148,7 @@ No docstring defined.
 `Band` is the plot type associated with plotting function `band`. Check the docstring for `band` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -160,7 +160,7 @@ No docstring defined.
 `BarPlot` is the plot type associated with plotting function `barplot`. Check the docstring for `barplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -191,7 +191,7 @@ A `BezierPath` can be used in certain places in Makie as an alternative to a pol
 The benefit of using a `BezierPath` is that curves do not need to be converted into a vector of vertices by the user. CairoMakie can use the path commands directly when it writes vector graphics which is more efficient and uses less space than approximating them visually using line segments.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L165-L184" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L165-L184" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -225,7 +225,7 @@ scatter(1:10, marker = bp, markersize = 20)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L330-L359" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L330-L359" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -245,7 +245,7 @@ No docstring defined.
 `alignmode`, `color`, `cornerradius`, `halign`, `height`, `linestyle`, `strokecolor`, `strokevisible`, `strokewidth`, `tellheight`, `tellwidth`, `valign`, `visible`, `width`, `z`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -257,7 +257,7 @@ No docstring defined.
 `BoxPlot` is the plot type associated with plotting function `boxplot`. Check the docstring for `boxplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -269,7 +269,7 @@ No docstring defined.
 `Bracket` is the plot type associated with plotting function `bracket`. Check the docstring for `bracket` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -289,7 +289,7 @@ No docstring defined.
 `alignmode`, `buttoncolor`, `buttoncolor_active`, `buttoncolor_hover`, `clicks`, `cornerradius`, `cornersegments`, `font`, `fontsize`, `halign`, `height`, `label`, `labelcolor`, `labelcolor_active`, `labelcolor_hover`, `padding`, `strokecolor`, `strokewidth`, `tellheight`, `tellwidth`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -328,7 +328,7 @@ Struct to hold all relevant matrices and additional parameters, to let backends 
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/types.jl#L258-L266" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/types.jl#L258-L266" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -465,7 +465,7 @@ The camera position and orientation can also be adjusted via the functions
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L25-L113" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L25-L113" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -495,7 +495,7 @@ This feature might change outside breaking releases, since the API is not yet fi
 :::
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/colorsampler.jl#L230-L243" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/colorsampler.jl#L230-L243" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -515,7 +515,7 @@ No docstring defined.
 `alignmode`, `checkboxcolor_checked`, `checkboxcolor_unchecked`, `checkboxstrokecolor_checked`, `checkboxstrokecolor_unchecked`, `checkboxstrokewidth`, `checked`, `checkmark`, `checkmarkcolor_checked`, `checkmarkcolor_unchecked`, `checkmarksize`, `halign`, `height`, `onchange`, `roundness`, `size`, `tellheight`, `tellwidth`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -532,7 +532,7 @@ ClosePath()
 A path command for use within a `BezierPath` which closes the current subpath. The resulting path will have an implicit line segment between the last point and the first point if they do not match.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L86-L92" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L86-L92" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -564,7 +564,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 `alignmode`, `bottomspinecolor`, `bottomspinevisible`, `colormap`, `colorrange`, `flip_vertical_label`, `flipaxis`, `halign`, `height`, `highclip`, `label`, `labelcolor`, `labelfont`, `labelpadding`, `labelrotation`, `labelsize`, `labelvisible`, `leftspinecolor`, `leftspinevisible`, `limits`, `lowclip`, `minortickalign`, `minortickcolor`, `minorticks`, `minorticksize`, `minorticksvisible`, `minortickwidth`, `nsteps`, `rightspinecolor`, `rightspinevisible`, `scale`, `size`, `spinewidth`, `tellheight`, `tellwidth`, `tickalign`, `tickcolor`, `tickformat`, `ticklabelalign`, `ticklabelcolor`, `ticklabelfont`, `ticklabelpad`, `ticklabelrotation`, `ticklabelsize`, `ticklabelspace`, `ticklabelsvisible`, `ticks`, `ticksize`, `ticksvisible`, `tickwidth`, `topspinecolor`, `topspinevisible`, `valign`, `vertical`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L140" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L140" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -576,7 +576,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 `Contour` is the plot type associated with plotting function `contour`. Check the docstring for `contour` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -588,7 +588,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 `Contour3d` is the plot type associated with plotting function `contour3d`. Check the docstring for `contour3d` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -600,7 +600,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 `Contourf` is the plot type associated with plotting function `contourf`. Check the docstring for `contourf` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -612,7 +612,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
 `CrossBar` is the plot type associated with plotting function `crossbar`. Check the docstring for `crossbar` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -630,7 +630,7 @@ CurveTo(cx1::Real, cy1::Real, cx2::Real, cy2::Real, px::Real, py::Real)
 A path command for use within a `BezierPath` which continues the current subpath with a cubic bezier curve to point `p`, with the first control point `c1` and the second control point `c2`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L26-L32" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L26-L32" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -647,7 +647,7 @@ Cycled(i::Int)
 If a `Cycled` value is passed as an attribute to a plotting function, it is replaced with the value from the cycler for this attribute (as long as there is one defined) at the index `i`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/types.jl#L25-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/types.jl#L25-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -688,7 +688,7 @@ This functionality can be disabled on a per-plot basis by setting `plot.inspecta
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/inspector.jl#L219-L245" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/inspector.jl#L219-L245" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -700,7 +700,7 @@ This functionality can be disabled on a per-plot basis by setting `plot.inspecta
 `DataShader` is the plot type associated with plotting function `datashader`. Check the docstring for `datashader` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -712,7 +712,7 @@ This functionality can be disabled on a per-plot basis by setting `plot.inspecta
 `Density` is the plot type associated with plotting function `density`. Check the docstring for `density` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -733,7 +733,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L84-L92" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L84-L92" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -745,7 +745,7 @@ Availability:
 `ECDFPlot` is the plot type associated with plotting function `ecdfplot`. Check the docstring for `ecdfplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -769,7 +769,7 @@ The angles `a1` and `a2` are the start and stop positions of the arc on the elli
 If the last position of the subpath does not equal the start of the arc, the resulting path will have an implicit line segment between the two.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L56-L73" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L56-L73" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -792,7 +792,7 @@ Usually, four arcs can be constructed between two points given these ellipse par
 If `largearc === true`, the arc will be longer than 180 degrees. If `sweepflag === true`, the arc will sweep through increasing angles.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L535-L548" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L535-L548" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -813,7 +813,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L133-L141" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L133-L141" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -825,7 +825,7 @@ Availability:
 `Errorbars` is the plot type associated with plotting function `errorbars`. Check the docstring for `errorbars` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -892,7 +892,7 @@ end
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/types.jl#L58-L80" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/types.jl#L58-L80" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -915,7 +915,7 @@ Boolean expressions are lowered to multiple `Exclusive` sets in an `Or`. It is w
 See also: [`And`](/api#Makie.And), [`Or`](/api#Makie.Or), [`Not`](/api#Makie.Not), [`ispressed`](/api#Makie.ispressed), `&`, `|`, `!`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L147-L163" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L147-L163" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -939,7 +939,7 @@ scatter(..., marker=FastPixel())
 For significantly faster plotting times for large amount of points. Note, that this will draw markers always as 1 pixel.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1913-L1924" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1913-L1924" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -958,7 +958,7 @@ Construct a `Figure` which allows to place `Block`s like [`Axis`](/reference/blo
 All other keyword arguments such as `size` and `backgroundcolor` are forwarded to the [`Scene`](/api#Makie.Scene) owned by the figure which acts as the container for all other visual objects.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L98-L107" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L98-L107" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -970,7 +970,7 @@ All other keyword arguments such as `size` and `backgroundcolor` are forwarded t
 `HLines` is the plot type associated with plotting function `hlines`. Check the docstring for `hlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -982,7 +982,7 @@ All other keyword arguments such as `size` and `backgroundcolor` are forwarded t
 `HSpan` is the plot type associated with plotting function `hspan`. Check the docstring for `hspan` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -994,7 +994,7 @@ All other keyword arguments such as `size` and `backgroundcolor` are forwarded t
 `Hexbin` is the plot type associated with plotting function `hexbin`. Check the docstring for `hexbin` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1006,7 +1006,7 @@ All other keyword arguments such as `size` and `backgroundcolor` are forwarded t
 `Hist` is the plot type associated with plotting function `hist`. Check the docstring for `hist` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1026,7 +1026,7 @@ No docstring defined.
 `alignmode`, `color_active`, `color_active_dimmed`, `color_inactive`, `halign`, `height`, `horizontal`, `interval`, `linewidth`, `range`, `snap`, `startvalues`, `tellheight`, `tellwidth`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1043,7 +1043,7 @@ IntervalsBetween(n::Int, mirror::Bool = true)
 Indicates to create n-1 minor ticks between every pair of adjacent major ticks.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/types.jl#L124-L128" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/types.jl#L124-L128" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1063,7 +1063,7 @@ No docstring defined.
 `alignmode`, `dim1_conversion`, `dim2_conversion`, `dim3_conversion`, `halign`, `height`, `show_axis`, `tellheight`, `tellwidth`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1083,7 +1083,7 @@ No docstring defined.
 `alignmode`, `color`, `font`, `fontsize`, `halign`, `height`, `justification`, `lineheight`, `padding`, `rotation`, `tellheight`, `tellwidth`, `text`, `valign`, `visible`, `width`, `word_wrap`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1102,7 +1102,7 @@ Create a single-group legend with all plots from `axis` that have the attribute 
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry. If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/legend.jl#L938-L946" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/legend.jl#L938-L946" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1124,7 +1124,7 @@ Legend(
 Create a legend from `contents` and `labels` where each label is associated to one content element. A content element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`, or any other object for which the `legendelements` method is defined.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/legend.jl#L877-L889" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/legend.jl#L877-L889" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1144,7 +1144,7 @@ No docstring defined.
 `alignmode`, `alpha`, `backgroundcolor`, `bgcolor`, `colgap`, `framecolor`, `framevisible`, `framewidth`, `gridshalign`, `gridsvalign`, `groupgap`, `halign`, `heatmapcolorrange`, `heatmaplimits`, `heatmapvalues`, `height`, `imagecolorrange`, `imagelimits`, `imagevalues`, `label`, `labelcolor`, `labelfont`, `labelhalign`, `labeljustification`, `labelsize`, `labelvalign`, `linecolor`, `linecolormap`, `linecolorrange`, `linepoints`, `linestyle`, `linewidth`, `margin`, `marker`, `markercolor`, `markercolormap`, `markercolorrange`, `markerpoints`, `markersize`, `markerstrokecolor`, `markerstrokewidth`, `mesh`, `meshcolor`, `meshcolormap`, `meshcolorrange`, `meshscattercolor`, `meshscattercolormap`, `meshscattercolorrange`, `meshscattermarker`, `meshscatterpoints`, `meshscatterrotation`, `meshscattersize`, `nbanks`, `orientation`, `padding`, `patchcolor`, `patchlabelgap`, `patchsize`, `patchstrokecolor`, `patchstrokewidth`, `polycolor`, `polycolormap`, `polycolorrange`, `polypoints`, `polystrokecolor`, `polystrokewidth`, `rowgap`, `surfacecolormap`, `surfacecolorrange`, `surfacedata`, `surfacevalues`, `tellheight`, `tellwidth`, `titlecolor`, `titlefont`, `titlegap`, `titlehalign`, `titleposition`, `titlesize`, `titlevalign`, `titlevisible`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1168,7 +1168,7 @@ Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`. Ea
 Within each group, each content element is associated with one label. A content element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`, or any other object for which the `legendelements` method is defined.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/legend.jl#L907-L922" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/legend.jl#L907-L922" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1186,7 +1186,7 @@ LineTo(x::Real, y::Real)
 A path command for use within a `BezierPath` which continues the current subpath with a line to the given point.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L13-L19" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L13-L19" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1198,7 +1198,7 @@ A path command for use within a `BezierPath` which continues the current subpath
 LinearTicks with ideally a number of `n_ideal` tick marks.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/types.jl#L36-L38" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/types.jl#L36-L38" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1225,7 +1225,7 @@ Here&#39;s an example in ASCII code. If we specify `[0, 3, 6, 11, 16]` then we g
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1131-L1149" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1131-L1149" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1242,7 +1242,7 @@ LogTicks{T}(linear_ticks::T)
 Wraps any other tick object. Used to apply a linear tick searching algorithm on a log-transformed interval.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/types.jl#L114-L119" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/types.jl#L114-L119" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1303,7 +1303,7 @@ end
 `alignmode`, `cell_color_active`, `cell_color_hover`, `cell_color_inactive_even`, `cell_color_inactive_odd`, `direction`, `dropdown_arrow_color`, `dropdown_arrow_size`, `fontsize`, `halign`, `height`, `i_selected`, `is_open`, `options`, `prompt`, `scroll_speed`, `selection`, `selection_cell_color_inactive`, `tellheight`, `tellwidth`, `textcolor`, `textpadding`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L166" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L166" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1334,7 +1334,7 @@ Describes a mouse state change. Fields:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L42-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L42-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1352,7 +1352,7 @@ MoveTo(x::Real, y::Real)
 A path command for use within a `BezierPath` which starts a new subpath at the given point.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/bezier.jl#L1-L6" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/bezier.jl#L1-L6" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1371,7 +1371,7 @@ MultiplesTicks(5, pi, "π")
 If `strip_zero == true`, then the resulting labels will be checked and any label that is a multiple of 0 will be set to &quot;0&quot;.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/types.jl#L61-L73" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/types.jl#L61-L73" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1383,7 +1383,7 @@ If `strip_zero == true`, then the resulting labels will be checked and any label
 `Pie` is the plot type associated with plotting function `pie`. Check the docstring for `pie` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1400,7 +1400,7 @@ PlotSpec(plottype, args...; kwargs...)
 Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`) as well as plot type `P` of a basic plot.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/specapi.jl#L12-L17" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/specapi.jl#L12-L17" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1426,7 +1426,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L37-L54" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L37-L54" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1446,7 +1446,7 @@ No docstring defined.
 `alignmode`, `axis_rotation_button`, `backgroundcolor`, `clip`, `clip_r`, `clipcolor`, `dim1_conversion`, `dim2_conversion`, `direction`, `fixrmin`, `gridz`, `halign`, `height`, `normalize_theta_ticks`, `r_translation_button`, `radius_at_origin`, `rautolimitmargin`, `reset_axis_orientation`, `reset_button`, `rgridcolor`, `rgridstyle`, `rgridvisible`, `rgridwidth`, `rlimits`, `rminorgridcolor`, `rminorgridstyle`, `rminorgridvisible`, `rminorgridwidth`, `rminortickalign`, `rminortickcolor`, `rminorticks`, `rminorticksize`, `rminorticksvisible`, `rminortickwidth`, `rtickalign`, `rtickangle`, `rtickcolor`, `rtickformat`, `rticklabelcolor`, `rticklabelfont`, `rticklabelpad`, `rticklabelrotation`, `rticklabelsize`, `rticklabelstrokecolor`, `rticklabelstrokewidth`, `rticklabelsvisible`, `rticks`, `rticksize`, `rticksmirrored`, `rticksvisible`, `rtickwidth`, `rzoomkey`, `rzoomlock`, `sample_density`, `spinecolor`, `spinestyle`, `spinevisible`, `spinewidth`, `tellheight`, `tellwidth`, `theta_0`, `theta_as_x`, `theta_translation_button`, `thetaautolimitmargin`, `thetagridcolor`, `thetagridstyle`, `thetagridvisible`, `thetagridwidth`, `thetalimits`, `thetaminorgridcolor`, `thetaminorgridstyle`, `thetaminorgridvisible`, `thetaminorgridwidth`, `thetaminortickalign`, `thetaminortickcolor`, `thetaminorticks`, `thetaminorticksize`, `thetaminorticksvisible`, `thetaminortickwidth`, `thetatickalign`, `thetatickcolor`, `thetatickformat`, `thetaticklabelcolor`, `thetaticklabelfont`, `thetaticklabelpad`, `thetaticklabelsize`, `thetaticklabelstrokecolor`, `thetaticklabelstrokewidth`, `thetaticklabelsvisible`, `thetaticks`, `thetaticksize`, `thetaticksmirrored`, `thetaticksvisible`, `thetatickwidth`, `thetazoomkey`, `thetazoomlock`, `title`, `titlealign`, `titlecolor`, `titlefont`, `titlegap`, `titlesize`, `titlevisible`, `valign`, `width`, `zoomspeed`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1458,7 +1458,7 @@ No docstring defined.
 `QQNorm` is the plot type associated with plotting function `qqnorm`. Check the docstring for `qqnorm` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1470,7 +1470,7 @@ No docstring defined.
 `QQPlot` is the plot type associated with plotting function `qqplot`. Check the docstring for `qqplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1482,7 +1482,7 @@ No docstring defined.
 `RainClouds` is the plot type associated with plotting function `rainclouds`. Check the docstring for `rainclouds` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1494,7 +1494,7 @@ No docstring defined.
 `Rangebars` is the plot type associated with plotting function `rangebars`. Check the docstring for `rangebars` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1518,7 +1518,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L147-L161" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L147-L161" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1543,7 +1543,7 @@ Creates a resampling type which can be used with `heatmap`, to display large ima
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/datashader.jl#L524-L534" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/datashader.jl#L524-L534" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1555,7 +1555,7 @@ Creates a resampling type which can be used with `heatmap`, to display large ima
 Reverses the attribute T upon conversion
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1554-L1556" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1554-L1556" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1584,7 +1584,7 @@ Custom scale struct, taking a forward and inverse arbitrary scale function.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/types.jl#L496-L503" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/types.jl#L496-L503" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1596,7 +1596,7 @@ Custom scale struct, taking a forward and inverse arbitrary scale function.
 `ScatterLines` is the plot type associated with plotting function `scatterlines`. Check the docstring for `scatterlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1655,7 +1655,7 @@ Scene TODO document this
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/scenes.jl#L40-L48" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/scenes.jl#L40-L48" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1667,7 +1667,7 @@ Scene TODO document this
 Unit space of the scene it&#39;s displayed on. Also referred to as data units
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/units.jl#L31-L34" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/units.jl#L31-L34" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1679,7 +1679,7 @@ Unit space of the scene it&#39;s displayed on. Also referred to as data units
 `Series` is the plot type associated with plotting function `series`. Check the docstring for `series` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1699,7 +1699,7 @@ No docstring defined.
 `alignmode`, `color_active`, `color_active_dimmed`, `color_inactive`, `halign`, `height`, `horizontal`, `linewidth`, `range`, `snap`, `startvalue`, `tellheight`, `tellwidth`, `update_while_dragging`, `valign`, `value`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1751,7 +1751,7 @@ end
 `alignmode`, `halign`, `height`, `tellheight`, `tellwidth`, `valign`, `value_column_width`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L158" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L158" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1774,7 +1774,7 @@ Availability:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/lighting.jl#L111-L121" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/lighting.jl#L111-L121" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1786,7 +1786,7 @@ Availability:
 `Spy` is the plot type associated with plotting function `spy`. Check the docstring for `spy` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1798,7 +1798,7 @@ Availability:
 `Stairs` is the plot type associated with plotting function `stairs`. Check the docstring for `stairs` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1810,7 +1810,7 @@ Availability:
 `Stem` is the plot type associated with plotting function `stem`. Check the docstring for `stem` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1822,7 +1822,7 @@ Availability:
 `StepHist` is the plot type associated with plotting function `stephist`. Check the docstring for `stephist` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1834,7 +1834,7 @@ Availability:
 `StreamPlot` is the plot type associated with plotting function `streamplot`. Check the docstring for `streamplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1846,7 +1846,7 @@ Availability:
 `TextLabel` is the plot type associated with plotting function `textlabel`. Check the docstring for `textlabel` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1866,7 +1866,7 @@ No docstring defined.
 `alignmode`, `bordercolor`, `bordercolor_focused`, `bordercolor_focused_invalid`, `bordercolor_hover`, `borderwidth`, `boxcolor`, `boxcolor_focused`, `boxcolor_focused_invalid`, `boxcolor_hover`, `cornerradius`, `cornersegments`, `cursorcolor`, `defocus_on_submit`, `displayed_string`, `focused`, `font`, `fontsize`, `halign`, `height`, `placeholder`, `reset_on_defocus`, `restriction`, `stored_string`, `tellheight`, `tellwidth`, `textcolor`, `textcolor_placeholder`, `textpadding`, `validator`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L129" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1878,7 +1878,7 @@ No docstring defined.
 `TimeSeries` is the plot type associated with plotting function `timeseries`. Check the docstring for `timeseries` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1917,7 +1917,7 @@ end
 `active`, `alignmode`, `buttoncolor`, `cornersegments`, `framecolor_active`, `framecolor_inactive`, `halign`, `height`, `length`, `markersize`, `orientation`, `rimfraction`, `tellheight`, `tellwidth`, `toggleduration`, `valign`, `width`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks.jl#L118-L146" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks.jl#L118-L146" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1929,7 +1929,7 @@ end
 `Tooltip` is the plot type associated with plotting function `tooltip`. Check the docstring for `tooltip` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1959,7 +1959,7 @@ Holds the transformations for Scenes.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/types.jl#L315-L319" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/types.jl#L315-L319" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1971,7 +1971,7 @@ Holds the transformations for Scenes.
 `Tricontourf` is the plot type associated with plotting function `tricontourf`. Check the docstring for `tricontourf` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1983,7 +1983,7 @@ Holds the transformations for Scenes.
 `Triplot` is the plot type associated with plotting function `triplot`. Check the docstring for `triplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -1995,7 +1995,7 @@ Holds the transformations for Scenes.
 `VLines` is the plot type associated with plotting function `vlines`. Check the docstring for `vlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2007,7 +2007,7 @@ Holds the transformations for Scenes.
 `VSpan` is the plot type associated with plotting function `vspan`. Check the docstring for `vspan` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2078,7 +2078,7 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/ffmpeg-util.jl#L224-L249" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/ffmpeg-util.jl#L224-L249" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2090,7 +2090,7 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 `Violin` is the plot type associated with plotting function `violin`. Check the docstring for `violin` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2102,7 +2102,7 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 `VolumeSlices` is the plot type associated with plotting function `volumeslices`. Check the docstring for `volumeslices` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2114,7 +2114,7 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 `Voronoiplot` is the plot type associated with plotting function `voronoiplot`. Check the docstring for `voronoiplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2126,7 +2126,7 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 `Waterfall` is the plot type associated with plotting function `waterfall`. Check the docstring for `waterfall` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2219,7 +2219,7 @@ and the variables here are:
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/ticklocators/wilkinson.jl#L1-L15" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/ticklocators/wilkinson.jl#L1-L15" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2262,7 +2262,7 @@ Save a `Scene` with the specified filename and format.
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/display.jl#L275-L300" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/display.jl#L275-L300" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2279,7 +2279,7 @@ save(path::String, io::VideoStream)
 Flushes the video stream and saves it to `path`. Ideally, `path`&#39;s file extension is the same as the format that the `VideoStream` was created with (e.g., if created with format &quot;mp4&quot; then `path`&#39;s file extension must be &quot;.mp4&quot;). Otherwise, the video will get converted to the target format. If using [`record`](/api#Makie.record-Tuple{Any,%20Union{Figure,%20Makie.FigureAxisPlot,%20Scene},%20AbstractString}) then this is handled for you, as the `VideoStream`&#39;s format is deduced from the file extension of the path passed to `record`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/ffmpeg-util.jl#L306-L314" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/ffmpeg-util.jl#L306-L314" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2297,7 +2297,7 @@ Pattern(mask[; color1, color2])
 Creates an `ImagePattern` from an `image` (a matrix of colors) or a `mask` (a matrix of real numbers). The pattern can be passed as a `color` to a plot to texture it. If a `mask` is passed, one can specify to colors between which colors are interpolated.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/patterns.jl#L26-L34" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/patterns.jl#L26-L34" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2315,7 +2315,7 @@ Pattern(style::Char = '/'; kwargs...)
 Creates a line pattern based on the given argument. Available patterns are `'/'`, `'\'`, `'-'`, `'|'`, `'x'`, and `'+'`. All keyword arguments correspond to the keyword arguments for `LinePattern`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/patterns.jl#L99-L106" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/patterns.jl#L99-L106" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2332,7 +2332,7 @@ Record(func, figlike, [iter]; kw_args...)
 Check [`Makie.record`](/api#Makie.record-Tuple{Any,%20Union{Figure,%20Makie.FigureAxisPlot,%20Scene},%20AbstractString}) for documentation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/recording.jl#L159-L163" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/recording.jl#L159-L163" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2409,7 +2409,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2421,7 +2421,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `ablines!` is the mutating variant of plotting function `ablines`. Check the docstring for `ablines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2438,7 +2438,7 @@ activate_interaction!(parent, name::Symbol)
 Activate the interaction named `name` registered in `parent`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/interactions.jl#L64-L68" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/interactions.jl#L64-L68" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2468,7 +2468,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L104-L122" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L104-L122" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2569,7 +2569,7 @@ The plot type alias for the `annotations` function is `Annotations`.
 **`word_wrap_width`** =  `-1`  — Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2581,7 +2581,7 @@ The plot type alias for the `annotations` function is `Annotations`.
 `annotations!` is the mutating variant of plotting function `annotations`. Check the docstring for `annotations` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2668,7 +2668,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L609" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L609" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2680,7 +2680,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `arc!` is the mutating variant of plotting function `arc`. Check the docstring for `arc` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2697,7 +2697,7 @@ autolimits!(ax::PolarAxis[, unlock_zoom = true])
 Calling this tells the PolarAxis to derive limits freely from the plotted data, which allows rmin &gt; 0 and thetalimits spanning less than a full circle. If `unlock_zoom = true` this also unlocks zooming in r and theta direction and allows for translations in r direction.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L989-L996" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L989-L996" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2715,7 +2715,7 @@ autolimits!(la::Axis)
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis. The argument `la` defaults to `current_axis()`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L923-L929" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L923-L929" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2732,7 +2732,7 @@ available_gradients()
 Prints all available gradient names.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1503-L1507" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1503-L1507" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2749,7 +2749,7 @@ available_marker_symbols()
 Displays all available marker symbols.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1901-L1905" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1901-L1905" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2766,7 +2766,7 @@ available_plotting_methods()
 Returns an array of all available plotting functions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L505-L509" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L505-L509" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2827,7 +2827,7 @@ OldAxis attributes and their defaults for `Plot{Makie.axis3d}` are:
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/axis.jl#L30-L37" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/axis.jl#L30-L37" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2852,7 +2852,7 @@ The position can be a Symbol where the first letter controls the horizontal alig
 With the keywords merge and unique you can control how plot objects with the same labels are treated. If merge is true, all plot objects with the same label will be layered on top of each other into one legend entry. If unique is true, all plot objects with the same plot type and label will be reduced to one occurrence.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/legend.jl#L1029-L1048" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/legend.jl#L1029-L1048" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2943,7 +2943,7 @@ The plot type alias for the `band` function is `Band`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -2955,7 +2955,7 @@ The plot type alias for the `band` function is `Band`.
 `band!` is the mutating variant of plotting function `band`. Check the docstring for `band` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3070,7 +3070,7 @@ The plot type alias for the `barplot` function is `BarPlot`.
 **`width`** =  `automatic`  — The gapless width of the bars. If `automatic`, the width `w` is calculated as `minimum(diff(sort(unique(positions)))`. The actual width of the bars is calculated as `w * (1 - gap)`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L635" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L635" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3082,7 +3082,7 @@ The plot type alias for the `barplot` function is `BarPlot`.
 `barplot!` is the mutating variant of plotting function `barplot`. Check the docstring for `barplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3101,7 +3101,7 @@ Returns the data space bounding box of a plot. This include `plot.transformation
 See also: [`data_limits`](/api#Makie.data_limits)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/boundingbox.jl#L25-L32" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/boundingbox.jl#L25-L32" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3120,7 +3120,7 @@ Returns the combined data space bounding box of all plots collected under `scene
 See also: [`data_limits`](/api#Makie.data_limits)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/boundingbox.jl#L6-L14" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/boundingbox.jl#L6-L14" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3215,7 +3215,7 @@ The plot type alias for the `boxplot` function is `BoxPlot`.
 **`width`** =  `automatic`  — Width of the box before shrinking.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L599" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L599" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3227,7 +3227,7 @@ The plot type alias for the `boxplot` function is `BoxPlot`.
 `boxplot!` is the mutating variant of plotting function `boxplot`. Check the docstring for `boxplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3291,7 +3291,7 @@ The plot type alias for the `bracket` function is `Bracket`.
 **`width`** =  `15`  — The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L573" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L573" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3303,7 +3303,7 @@ The plot type alias for the `bracket` function is `Bracket`.
 `bracket!` is the mutating variant of plotting function `bracket`. Check the docstring for `bracket` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3320,7 +3320,7 @@ broadcast_foreach(f, args...)
 Like broadcast but for foreach. Doesn&#39;t care about shape and treats Tuples &amp;&amp; StaticVectors as scalars. This method is meant for broadcasting across attributes that can either have scalar or vector / array form. An example would be a collection of scatter markers that have different sizes but a single color. The length of an attribute is determined with `attr_broadcast_length` and elements are accessed with `attr_broadcast_getindex`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L190-L198" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L190-L198" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3347,7 +3347,7 @@ Creates a 2D camera for the given `scene`. The camera implements zooming by scro
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera2d.jl#L11-L24" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L11-L24" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3359,7 +3359,7 @@ Creates a 2D camera for the given `scene`. The camera implements zooming by scro
 Creates a subscene with a pixel camera
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/scenes.jl#L410-L412" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/scenes.jl#L410-L412" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3376,7 +3376,7 @@ cam3d!(scene[; kwargs...])
 Creates a `Camera3D` with `zoom_shift_lookat = true` and `fixed_axis = true`. For more information, see [`Camera3D`](/explanations/cameras#Makie.Camera3D)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L257-L262" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L257-L262" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3393,7 +3393,7 @@ cam3d_cad!(scene[; kwargs...])
 Creates a `Camera3D` with `cad = true`, `zoom_shift_lookat = false` and `fixed_axis = false`. For more information, see [`Camera3D`](/explanations/cameras#Makie.Camera3D)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L266-L271" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L266-L271" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3410,7 +3410,7 @@ cam_relative!(scene)
 Creates a camera for the given `scene` which maps the scene area to a 0..1 by 0..1 range. This camera does not feature controls.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera2d.jl#L361-L366" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L361-L366" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3427,7 +3427,7 @@ campixel!(scene; nearclip=-1000.0, farclip=1000.0)
 Creates a pixel camera for the given `scene`. This means that the positional data of a plot will be interpreted in pixel units. This camera does not feature controls.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera2d.jl#L337-L343" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L337-L343" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3444,7 +3444,7 @@ categorical_colors(colormaplike, categories::Integer)
 Creates categorical colors and tries to match `categories`. Will error if color scheme doesn&#39;t contain enough categories. Will drop the n last colors, if request less colors than contained in scheme.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1518-L1523" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1518-L1523" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3471,7 +3471,7 @@ Returns the content of the given scene or screen rasterised to a Matrix of Color
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/display.jl#L452-L465" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/display.jl#L452-L465" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3488,7 +3488,7 @@ colorbuffer(ax::Axis; include_decorations=true, colorbuffer_kws...)
 Gets the colorbuffer of the `Axis` in `JuliaNative` image format. If `include_decorations=false`, only the inside of the axis is fetched.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1983-L1988" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1983-L1988" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3586,7 +3586,7 @@ The plot type alias for the `contour` function is `Contour`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3598,7 +3598,7 @@ The plot type alias for the `contour` function is `Contour`.
 `contour!` is the mutating variant of plotting function `contour`. Check the docstring for `contour` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3693,7 +3693,7 @@ The plot type alias for the `contour3d` function is `Contour3d`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L613" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L613" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3705,7 +3705,7 @@ The plot type alias for the `contour3d` function is `Contour3d`.
 `contour3d!` is the mutating variant of plotting function `contour3d`. Check the docstring for `contour3d` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3778,7 +3778,7 @@ If `levels` is an `Int`, the contourf plot will be rectangular as all `zs` value
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3790,7 +3790,7 @@ If `levels` is an `Int`, the contourf plot will be rectangular as all `zs` value
 `contourf!` is the mutating variant of plotting function `contourf`. Check the docstring for `contourf` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3865,7 +3865,7 @@ The plot type alias for the `crossbar` function is `CrossBar`.
 **`width`** =  `automatic`  — Width of the box before shrinking.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L579" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L579" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3877,7 +3877,7 @@ The plot type alias for the `crossbar` function is `CrossBar`.
 `crossbar!` is the mutating variant of plotting function `crossbar`. Check the docstring for `crossbar` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3894,7 +3894,7 @@ current_axis!(ax)
 Set an axis `ax`, which must be part of a figure, as the figure&#39;s current active axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L77-L81" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L77-L81" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3911,7 +3911,7 @@ current_axis!(fig::Figure, ax)
 Set `ax` as the current active axis in `fig`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L60-L64" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L60-L64" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3928,7 +3928,7 @@ current_axis()
 Returns the current active axis (or the last axis created). Returns `nothing` if there is no current active axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L52-L56" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L52-L56" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3945,7 +3945,7 @@ current_figure!(fig)
 Set `fig` as the current active figure.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L45-L49" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L45-L49" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3962,7 +3962,7 @@ current_figure()
 Returns the current active figure (or the last figure created). Returns `nothing` if there is no current active figure.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L37-L42" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L37-L42" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -3981,7 +3981,7 @@ Returns the combined data limits of all plots collected under `scenelike` for wh
 See also: [`boundingbox`](/api#Makie.boundingbox)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/data_limits.jl#L16-L24" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/data_limits.jl#L16-L24" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4000,7 +4000,7 @@ Returns the bounding box of a plot based on just its position data.
 See also: [`boundingbox`](/api#Makie.boundingbox)
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/data_limits.jl#L35-L41" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/data_limits.jl#L35-L41" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4110,7 +4110,7 @@ Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L633" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L633" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4122,7 +4122,7 @@ Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
 `datashader!` is the mutating variant of plotting function `datashader`. Check the docstring for `datashader` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4139,7 +4139,7 @@ deactivate_interaction!(parent, name::Symbol)
 Deactivate the interaction named `name` registered in `parent`. It can be reactivated with `activate_interaction!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/interactions.jl#L75-L80" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/interactions.jl#L75-L80" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4196,7 +4196,7 @@ The plot type alias for the `density` function is `Density`.
 **`weights`** =  `automatic`  — Assign a vector of statistical weights to `values`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L569" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L569" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4208,7 +4208,7 @@ The plot type alias for the `density` function is `Density`.
 `density!` is the mutating variant of plotting function `density`. Check the docstring for `density` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4225,7 +4225,7 @@ deregister_interaction!(parent, name::Symbol)
 Deregister the interaction named `name` registered in `parent`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/interactions.jl#L42-L46" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/interactions.jl#L42-L46" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4316,7 +4316,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L611" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L611" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4328,7 +4328,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `ecdfplot!` is the mutating variant of plotting function `ecdfplot`. Check the docstring for `ecdfplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4416,7 +4416,7 @@ The plot type alias for the `errorbars` function is `Errorbars`.
 **`whiskerwidth`** =  `0`  — The width of the whiskers or line caps in screen units.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L602" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L602" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4428,7 +4428,7 @@ The plot type alias for the `errorbars` function is `Errorbars`.
 `errorbars!` is the mutating variant of plotting function `errorbars`. Check the docstring for `errorbars` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4445,7 +4445,7 @@ fill_between!(scenelike, x, y1, y2; where = nothing, kw_args...)
 fill the section between 2 lines with the condition `where`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/band.jl#L87-L91" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/band.jl#L87-L91" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4468,7 +4468,7 @@ For help on a specific function&#39;s attributes, type `help_attributes(plot_Typ
 Use the optional `extended = true` keyword argument to see more details.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/documentation/documentation.jl#L4-L14" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/documentation/documentation.jl#L4-L14" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4485,7 +4485,7 @@ help_arguments([io], func)
 Returns a list of signatures for function `func`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/documentation/documentation.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/documentation/documentation.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4528,7 +4528,7 @@ Use the optional keyword argument `extended` (default = `false`) to show in addi
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/documentation/documentation.jl#L73-L104" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/documentation/documentation.jl#L73-L104" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4577,7 +4577,7 @@ The plot type alias for the `hexbin` function is `Hexbin`.
 **`weights`** =  `nothing`  — Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L560" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L560" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4589,7 +4589,7 @@ The plot type alias for the `hexbin` function is `Hexbin`.
 `hexbin!` is the mutating variant of plotting function `hexbin`. Check the docstring for `hexbin` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4609,7 +4609,7 @@ Hide decorations of both x and y-axis: label, ticklabels, ticks and grid. Keywor
 See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1166-L1174" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1166-L1174" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4628,7 +4628,7 @@ Hide decorations of both r and theta-axis: label, ticklabels, ticks and grid. Ke
 See also [`hiderdecorations!`], [`hidethetadecorations!`], [`hidezdecorations!`]
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L1073-L1080" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L1073-L1080" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4645,7 +4645,7 @@ hiderdecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid = tru
 Hide decorations of the r-axis: label, ticklabels, ticks and grid. Keyword arguments can be used to disable hiding of certain types of decorations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L1037-L1042" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L1037-L1042" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4662,7 +4662,7 @@ hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 Hide all specified axis spines. Hides all spines by default, otherwise choose which sides to hide with the symbols :l (left), :r (right), :b (bottom) and :t (top).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1183-L1189" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1183-L1189" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4679,7 +4679,7 @@ hidethetadecorations!(ax::PolarAxis; ticklabels = true, grid = true, minorgrid =
 Hide decorations of the theta-axis: label, ticklabels, ticks and grid. Keyword arguments can be used to disable hiding of certain types of decorations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L1055-L1060" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L1055-L1060" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4697,7 +4697,7 @@ hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid 
 Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword arguments can be used to disable hiding of certain types of decorations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1108-L1114" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1108-L1114" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4715,7 +4715,7 @@ hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid 
 Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword arguments can be used to disable hiding of certain types of decorations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1137-L1143" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1137-L1143" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4732,7 +4732,7 @@ hidezdecorations!(ax::Axis3; label = true, ticklabels = true, ticks = true, grid
 Hide decorations of the z-axis: label, ticklabels, ticks and grid. Keyword arguments can be used to disable hiding of certain types of decorations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis3d.jl#L827-L832" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis3d.jl#L827-L832" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4811,7 +4811,7 @@ The plot type alias for the `hist` function is `Hist`.
 **`weights`** =  `automatic`  — Allows to statistically weight the observations.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L591" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L591" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4823,7 +4823,7 @@ The plot type alias for the `hist` function is `Hist`.
 `hist!` is the mutating variant of plotting function `hist`. Check the docstring for `hist` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4904,7 +4904,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`xmin`** =  `0`  — The start of the lines in relative axis units (0 to 1) along the x dimension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4916,7 +4916,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `hlines!` is the mutating variant of plotting function `hlines`. Check the docstring for `hlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -4935,7 +4935,7 @@ Returns the `scene` that the mouse is currently hovering over.
 Properly identifies the scene for a plot with multiple sub-plots.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L231-L237" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L231-L237" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5029,7 +5029,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`xmin`** =  `0`  — The start of the bands in relative axis units (0 to 1) along the x dimension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5041,7 +5041,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `hspan!` is the mutating variant of plotting function `hspan`. Check the docstring for `hspan` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5058,7 +5058,7 @@ is_mouseinside(scene)
 Returns true if the current mouseposition is inside the given scene.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera.jl#L114-L118" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera.jl#L114-L118" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5092,7 +5092,7 @@ For cases where you want to react to a release event you can optionally add a ke
 See also: [`And`](/api#Makie.And), [`Or`](/api#Makie.Or), [`Not`](/api#Makie.Not), [`Exclusively`](/api#Makie.Exclusively), `&`, `|`, `!`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L251-L287" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L251-L287" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5126,7 +5126,7 @@ layout[1, 1] = ls.layout
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/helpers.jl#L294-L320" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/helpers.jl#L294-L320" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5161,7 +5161,7 @@ layout[1, 1] = ls.layout
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/helpers.jl#L351-L379" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/helpers.jl#L351-L379" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5178,7 +5178,7 @@ left_subsup(subscript, superscript; kwargs...)
 Create a `RichText` object representing a left subscript/superscript combination, where both scripts are right-aligned against the following text.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/text.jl#L335-L340" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/text.jl#L335-L340" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5195,7 +5195,7 @@ limits!(ax::Axis, xlims, ylims)
 Set the axis limits to `xlims` and `ylims`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1379-L1384" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1379-L1384" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5212,7 +5212,7 @@ limits!(ax::Axis, rect::Rect2)
 Set the axis limits to `rect`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1401-L1406" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1401-L1406" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5229,7 +5229,7 @@ limits!(ax::Axis, x1, x2, y1, y2)
 Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1390-L1395" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1390-L1395" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5246,7 +5246,7 @@ limits!(ax::Axis3, xlims, ylims, zlims)
 Set the axis limits to `xlims`, `ylims`, and `zlims`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis3d.jl#L993-L998" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis3d.jl#L993-L998" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5263,7 +5263,7 @@ limits!(ax::Axis3, rect::Rect3)
 Set the axis limits to `rect`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis3d.jl#L1018-L1023" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis3d.jl#L1018-L1023" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5280,7 +5280,7 @@ limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
 Set the axis x-limits to `x1` and `x2`, the y-limits to `y1` and `y2`, and the z-limits to `z1` and `z2`. If limits are ordered high-low, this reverses the axis orientation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis3d.jl#L1005-L1011" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis3d.jl#L1005-L1011" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5297,7 +5297,7 @@ linkaxes!(a::Axis, others...)
 Link both x and y axes of all given `Axis` so that they stay synchronized.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L976-L980" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L976-L980" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5314,7 +5314,7 @@ linkxaxes!(a::Axis, others...)
 Link the x axes of all given `Axis` so that they stay synchronized.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1063-L1067" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1063-L1067" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5331,7 +5331,7 @@ linkyaxes!(a::Axis, others...)
 Link the y axes of all given `Axis` so that they stay synchronized.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1071-L1075" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1071-L1075" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5348,7 +5348,7 @@ mouseover(fig/ax/scene, plots::AbstractPlot...)
 Returns true if the mouse currently hovers any of `plots`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L8-L12" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L8-L12" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5367,7 +5367,7 @@ Return the current position of the mouse in _data coordinates_ of the given `sce
 By default uses the `scene` that the mouse is currently hovering over.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L212-L219" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L212-L219" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5384,7 +5384,7 @@ old_cam3d!(scene; kwargs...)
 An alias to [`old_cam3d_turntable!`](/api#Makie.old_cam3d_turntable!-Tuple{Scene}). Creates a 3D camera for `scene`, which rotates around the plot&#39;s axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L94-L100" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L94-L100" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5401,7 +5401,7 @@ old_cam3d_cad!(scene; kw_args...)
 Creates a 3D camera for `scene` which rotates around the _viewer_&#39;s &quot;up&quot; axis - similarly to how it&#39;s done in CAD software cameras.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L19-L25" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L19-L25" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5418,7 +5418,7 @@ old_cam3d_turntable!(scene; kw_args...)
 Creates a 3D camera for `scene`, which rotates around the plot&#39;s axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L58-L63" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L58-L63" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5430,7 +5430,7 @@ Creates a 3D camera for `scene`, which rotates around the plot&#39;s axis.
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === downoutside`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5442,7 +5442,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === enter`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5454,7 +5454,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5466,7 +5466,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftdoubleclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5478,7 +5478,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftdown`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5490,7 +5490,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftdrag`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5502,7 +5502,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftdragstart`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5514,7 +5514,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftdragstop`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5526,7 +5526,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === leftup`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5538,7 +5538,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middleclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5550,7 +5550,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middledoubleclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5562,7 +5562,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middledown`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5574,7 +5574,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middledrag`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5586,7 +5586,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middledragstart`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5598,7 +5598,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middledragstop`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5610,7 +5610,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === middleup`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5622,7 +5622,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === out`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5634,7 +5634,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === over`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5646,7 +5646,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5658,7 +5658,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightdoubleclick`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5670,7 +5670,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightdown`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5682,7 +5682,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightdrag`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5694,7 +5694,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightdragstart`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5706,7 +5706,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightdragstop`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5718,7 +5718,7 @@ Executes the function f whenever the `MouseEventHandle`&#39;s observable is set 
 Executes the function f whenever the `MouseEventHandle`&#39;s observable is set to a MouseEvent with `event.type === rightup`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/mousestatemachine.jl#L87-L90" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5735,7 +5735,7 @@ onpick(func, plot)
 Calls `func` if one clicks on `plot`. Implemented by the backend.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L69-L72" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L69-L72" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5752,7 +5752,7 @@ onpick(f, fig/ax/scene, plots::AbstractPlot...)
 Calls `f(plot, idx)` whenever the mouse is over any of `plots`. `idx` is an index, e.g. when over a scatter plot, it will be the index of the hovered element
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L19-L25" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L19-L25" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5770,7 +5770,7 @@ origin!([mode = Absolute], t::Transformable, xyz::VecTypes)
 Sets the origin of the transformable `t` to the given `xyz` value. This affects the origin of `rotate!(t, ...)` and `scale!(t, ...)`. If `mode` is given as `Accum` the origin is translated by the given `xyz` instead.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L195-L202" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L195-L202" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5782,7 +5782,7 @@ Sets the origin of the transformable `t` to the given `xyz` value. This affects 
 Picks a mouse position. Implemented by the backend.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L59-L61" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L59-L61" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5799,7 +5799,7 @@ pick(scene::Scene, rect::Rect2i)
 Return all `(plot, index)` pairs within the given rect. The rect must be within screen boundaries.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L188-L193" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L188-L193" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5837,7 +5837,7 @@ The index returned relates to the main input of the respective primitive plot.
 See also: `pick_sorted`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L55-L75" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L55-L75" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5908,7 +5908,7 @@ The plot type alias for the `pie` function is `Pie`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L581" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L581" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5920,7 +5920,7 @@ The plot type alias for the `pie` function is `Pie`.
 `pie!` is the mutating variant of plotting function `pie`. Check the docstring for `pie` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -5968,7 +5968,7 @@ plots[] = [
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/specapi.jl#L493-L526" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/specapi.jl#L493-L526" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6037,7 +6037,7 @@ The plot type alias for the `qqnorm` function is `QQNorm`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L579" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L579" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6049,7 +6049,7 @@ The plot type alias for the `qqnorm` function is `QQNorm`.
 `qqnorm!` is the mutating variant of plotting function `qqnorm`. Check the docstring for `qqnorm` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6138,7 +6138,7 @@ The plot type alias for the `qqplot` function is `QQPlot`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6150,7 +6150,7 @@ The plot type alias for the `qqplot` function is `QQPlot`.
 `qqplot!` is the mutating variant of plotting function `qqplot`. Check the docstring for `qqplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6229,7 +6229,7 @@ The plot type alias for the `rainclouds` function is `RainClouds`.
 **`whiskerwidth`** =  `0.5`  — The width of the Q1, Q3 whisker in the boxplot. Value as a portion of the `boxplot_width`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L608" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L608" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6241,7 +6241,7 @@ The plot type alias for the `rainclouds` function is `RainClouds`.
 `rainclouds!` is the mutating variant of plotting function `rainclouds`. Check the docstring for `rainclouds` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6322,7 +6322,7 @@ The plot type alias for the `rangebars` function is `Rangebars`.
 **`whiskerwidth`** =  `0`  — The width of the whiskers or line caps in screen units.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6334,7 +6334,7 @@ The plot type alias for the `rangebars` function is `Rangebars`.
 `rangebars!` is the mutating variant of plotting function `rangebars`. Check the docstring for `rangebars` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6449,7 +6449,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/recording.jl#L81-L145" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/recording.jl#L81-L145" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6466,7 +6466,7 @@ record_events(f, scene::Scene, path::String)
 Records all window events that happen while executing function `f` for `scene` and serializes them to `path`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/event-recorder.jl#L2-L7" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/event-recorder.jl#L2-L7" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6483,7 +6483,7 @@ recordframe!(io::VideoStream)
 Adds a video frame to the VideoStream `io`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/ffmpeg-util.jl#L286-L290" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/ffmpeg-util.jl#L286-L290" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6502,7 +6502,7 @@ Register `interaction` with `parent` under the name `name`. The parent will call
 The interaction can be removed with `deregister_interaction!` or temporarily toggled with `activate_interaction!` / `deactivate_interaction!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/interactions.jl#L7-L16" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/interactions.jl#L7-L16" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6521,7 +6521,7 @@ Register `interaction` with `parent` under the name `name`. The parent will call
 The interaction can be removed with `deregister_interaction!` or temporarily toggled with `activate_interaction!` / `deactivate_interaction!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/interactions.jl#L24-L34" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/interactions.jl#L24-L34" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6533,7 +6533,7 @@ The interaction can be removed with `deregister_interaction!` or temporarily tog
 Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding value is nothing
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L38-L41" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L38-L41" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6551,7 +6551,7 @@ replay_events(scene::Scene, path::String)
 Replays the serialized events recorded with `record_events` in `path` in `scene`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/event-recorder.jl#L26-L31" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/event-recorder.jl#L26-L31" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6572,7 +6572,7 @@ resample_cmap(cmap, ncolors::Integer; alpha=1.0)
   
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L17-L23" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L17-L23" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6589,7 +6589,7 @@ reset_limits!(ax; xauto = true, yauto = true)
 Resets the axis limits depending on the value of `ax.limits`. If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is false, respectively, or it is determined automatically from the plots in the axis. If one of the components is a tuple of two numbers, those are used directly.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L551-L559" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L551-L559" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6606,7 +6606,7 @@ resize_to_layout!(fig::Figure)
 Resize `fig` so that it fits the current contents of its top `GridLayout`. If a `GridLayout` contains fixed-size content or aspect-constrained columns, for example, it is likely that the solved size of the `GridLayout` differs from the size of the `Figure`. This can result in superfluous whitespace at the borders, or content clipping at the figure edges. Once resized, all content should fit the available space, including the `Figure`&#39;s outer padding.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/figures.jl#L173-L183" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/figures.jl#L173-L183" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6623,7 +6623,7 @@ rich(args...; kwargs...)
 Create a `RichText` object containing all elements in `args`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/text.jl#L310-L314" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/text.jl#L310-L314" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6640,7 +6640,7 @@ rlims!(ax::PolarAxis[, rmin], rmax)
 Sets the radial limits of a given `PolarAxis`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L1015-L1019" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L1015-L1019" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6659,7 +6659,7 @@ rotate!(t::Transformable, axis_rot...)
 Apply an absolute rotation to the transformable. Rotations are all internally converted to `Quaternion`s.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L153-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L153-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6676,7 +6676,7 @@ rotate!(Accum, t::Transformable, axis_rot...)
 Apply a relative rotation to the transformable, by multiplying by the current rotation.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L146-L150" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L146-L150" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6695,7 +6695,7 @@ Rotates the camera by the given `angles` around the camera x- (left, right), y- 
 Note that this method reacts to `fix_x_key` etc and `fixed_axis`. The former restrict the rotation around a specific axis when a given key is pressed. The latter keeps the camera y axis fixed as the data space z axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L515-L525" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L515-L525" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6713,7 +6713,7 @@ rotate_cam!(scene::Scene, theta_v::VecTypes)
 Rotate the camera of the Scene by the given rotation. Passing `theta_v = (α, β, γ)` will rotate the camera according to the Euler angles (α, β, γ).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L299-L305" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L299-L305" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6731,7 +6731,7 @@ scale!([mode = Absolute], t::Transformable, xyz::VecTypes)
 Scale the given `t::Transformable` (a Scene or Plot) to the given arguments `xyz`. Any missing dimension will be scaled by 1. If `mode == Accum` the given scaling will be multiplied with the previous one.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6824,7 +6824,7 @@ The plot type alias for the `scatterlines` function is `ScatterLines`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L607" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L607" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6836,7 +6836,7 @@ The plot type alias for the `scatterlines` function is `ScatterLines`.
 `scatterlines!` is the mutating variant of plotting function `scatterlines`. Check the docstring for `scatterlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6857,7 +6857,7 @@ The value of the returned line is updated **only** when the user un-clicks and o
 The `kwargs...` are propagated into `lines!` which plots the selected line.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L306-L319" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L306-L319" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6878,7 +6878,7 @@ The value of the returned point is updated **only** when the user un-clicks.
 The `kwargs...` are propagated into `scatter!` which plots the selected point.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L368-L380" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L368-L380" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6899,7 +6899,7 @@ The value of the returned observable is updated **only** when the user un-clicks
 The `kwargs...` are propagated into `lines!` which plots the selected rectangle.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/interactive_api.jl#L241-L255" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/interactive_api.jl#L241-L255" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6960,7 +6960,7 @@ The plot type alias for the `series` function is `Series`.
 **`strokewidth`** =  `nothing`  — _No docs available._
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L565" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L565" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6972,7 +6972,7 @@ The plot type alias for the `series` function is `Series`.
 `series!` is the mutating variant of plotting function `series`. Check the docstring for `series` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -6984,7 +6984,7 @@ The plot type alias for the `series` function is `Series`.
 Set the `slider` to the values in the slider&#39;s range that are closest to `v1` and `v2`, and return those values ordered min, misl.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/intervalslider.jl#L264-L266" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/intervalslider.jl#L264-L266" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7001,7 +7001,7 @@ set_close_to!(slider, value) -> closest_value
 Set the `slider` to the value in the slider&#39;s range that is closest to `value` and return this value. This function should be used to set a slider to a value programmatically, rather than mutating its value observable directly, which doesn&#39;t update the slider visually.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/slider.jl#L199-L205" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/slider.jl#L199-L205" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7018,7 +7018,7 @@ set_theme!(theme; kwargs...)
 Set the global default theme to `theme` and add / override any attributes given as keyword arguments.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/theming.jl#L196-L201" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/theming.jl#L196-L201" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7039,7 +7039,7 @@ showgradients(
 Plots the given colour gradients arranged as horizontal colourbars. If you change the offsets or the font size, you may need to change the resolution.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/convenience_functions.jl#L15-L24" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/convenience_functions.jl#L15-L24" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7139,7 +7139,7 @@ f
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L622" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L622" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7151,7 +7151,7 @@ f
 `spy!` is the mutating variant of plotting function `spy`. Check the docstring for `spy` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7242,7 +7242,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L611" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L611" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7254,7 +7254,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `stairs!` is the mutating variant of plotting function `stairs`. Check the docstring for `stairs` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7347,7 +7347,7 @@ The plot type alias for the `stem` function is `Stem`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L606" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L606" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7359,7 +7359,7 @@ The plot type alias for the `stem` function is `Stem`.
 `stem!` is the mutating variant of plotting function `stem`. Check the docstring for `stem` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7406,7 +7406,7 @@ The plot type alias for the `stephist` function is `StepHist`.
 **`weights`** =  `automatic`  — Allows to provide statistical weights.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L558" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L558" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7418,7 +7418,7 @@ The plot type alias for the `stephist` function is `StepHist`.
 `stephist!` is the mutating variant of plotting function `stephist`. Check the docstring for `stephist` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7521,7 +7521,7 @@ The plot type alias for the `streamplot` function is `StreamPlot`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L619" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L619" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7533,7 +7533,7 @@ The plot type alias for the `streamplot` function is `StreamPlot`.
 `streamplot!` is the mutating variant of plotting function `streamplot`. Check the docstring for `streamplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7550,7 +7550,7 @@ subscript(args...; kwargs...)
 Create a `RichText` object representing a superscript containing all elements in `args`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/text.jl#L316-L320" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/text.jl#L316-L320" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7567,7 +7567,7 @@ subsup(subscript, superscript; kwargs...)
 Create a `RichText` object representing a right subscript/superscript combination, where both scripts are left-aligned against the preceding text.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/text.jl#L328-L333" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/text.jl#L328-L333" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7584,7 +7584,7 @@ superscript(args...; kwargs...)
 Create a `RichText` object representing a superscript containing all elements in `args`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/basic_recipes/text.jl#L322-L326" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/basic_recipes/text.jl#L322-L326" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7701,7 +7701,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`word_wrap_width`** =  `-1`  — Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L642" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L642" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7713,7 +7713,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `textlabel!` is the mutating variant of plotting function `textlabel`. Check the docstring for `textlabel` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7730,7 +7730,7 @@ thetalims!(ax::PolarAxis, thetamin, thetamax)
 Sets the angular limits of a given `PolarAxis`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/polaraxis.jl#L1027-L1031" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/polaraxis.jl#L1027-L1031" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7747,7 +7747,7 @@ tight_ticklabel_spacing!(ax::Axis)
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1227-L1231" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1227-L1231" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7764,7 +7764,7 @@ space = tight_ticklabel_spacing!(cb::Colorbar)
 Sets the space allocated for the ticklabels of the `Colorbar` to the minimum that is needed and returns that value.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/colorbar.jl#L427-L431" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/colorbar.jl#L427-L431" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7781,7 +7781,7 @@ space = tight_xticklabel_spacing!(ax::Axis)
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1217-L1221" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1217-L1221" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7798,7 +7798,7 @@ space = tight_yticklabel_spacing!(ax::Axis)
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1207-L1211" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1207-L1211" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7822,7 +7822,7 @@ tightlimits!(laxis, Bottom())
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/helpers.jl#L103-L113" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/helpers.jl#L103-L113" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7839,7 +7839,7 @@ tightlimits!(la::Axis)
 Sets the autolimit margins to zero on all sides.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/helpers.jl#L92-L96" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/helpers.jl#L92-L96" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7942,7 +7942,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L624" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L624" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7954,7 +7954,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `timeseries!` is the mutating variant of plotting function `timeseries`. Check the docstring for `timeseries` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7973,7 +7973,7 @@ Converts the given align to a `Vec2f`. Can convert `VecTypes{2}` and two compone
 To specify a custom error message you can add an `error_prefix` or use `halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1305-L1313" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1305-L1313" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -7990,7 +7990,7 @@ to_colormap(b::AbstractVector)
 An `AbstractVector{T}` with any object that `to_color` accepts.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1566-L1570" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1566-L1570" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8007,7 +8007,7 @@ to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`. For now, we support gradients from `PlotUtils` natively.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1579-L1584" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1579-L1584" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8024,7 +8024,7 @@ to_font(str::String)
 Loads a font specified by `str` and returns a `NativeFont` object storing the font handle. A font can either be specified by a file path, such as &quot;folder/with/fonts/font.otf&quot;, or by a (partial) name such as &quot;Helvetica&quot;, &quot;Helvetica Bold&quot; etc.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1394-L1400" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1394-L1400" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8042,7 +8042,7 @@ to_rotation(b, vec4)
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L1448-L1453" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L1448-L1453" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8132,7 +8132,7 @@ The plot type alias for the `tooltip` function is `Tooltip`.
 **`zautolimits`** =  `false`  — _No docs available._
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L600" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L600" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8144,7 +8144,7 @@ The plot type alias for the `tooltip` function is `Tooltip`.
 `tooltip!` is the mutating variant of plotting function `tooltip`. Check the docstring for `tooltip` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8162,7 +8162,7 @@ translate!(t::Transformable, xyz...)
 Apply an absolute translation to the given `Transformable` (a Scene or Plot), translating it to `x, y, z`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L176-L181" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L176-L181" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8179,7 +8179,7 @@ translate!(Accum, t::Transformable, xyz...)
 Translate the given `Transformable` (a Scene or Plot), relative to its current position.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/layouting/transformation.jl#L185-L189" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/layouting/transformation.jl#L185-L189" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8198,7 +8198,7 @@ Translates the camera by the given vector in camera space, i.e. by `v[1]` to the
 Note that this method reacts to `fix_x_key` etc. If any of those keys are pressed the translation will be restricted to act in these directions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L500-L508" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L500-L508" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8215,7 +8215,7 @@ translate_cam!(scene::Scene, translation::VecTypes)
 Translate the camera by a translation vector given in camera space.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L229-L233" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L229-L233" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8287,7 +8287,7 @@ The plot type alias for the `tricontourf` function is `Tricontourf`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L603" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L603" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8299,7 +8299,7 @@ The plot type alias for the `tricontourf` function is `Tricontourf`.
 `tricontourf!` is the mutating variant of plotting function `tricontourf`. Check the docstring for `tricontourf` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8376,7 +8376,7 @@ The plot type alias for the `triplot` function is `Triplot`.
 **`triangle_color`** =  `:transparent`  — Sets the color of the triangles.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L584" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L584" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8388,7 +8388,7 @@ The plot type alias for the `triplot` function is `Triplot`.
 `triplot!` is the mutating variant of plotting function `triplot`. Check the docstring for `triplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8405,7 +8405,7 @@ update_cam!(scene, cam::Camera3D, ϕ, θ[, radius])
 Set the camera position based on two angles `0 ≤ ϕ ≤ 2π` and `-pi/2 ≤ θ ≤ pi/2` and an optional radius around the current `cam.lookat[]`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L784-L789" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L784-L789" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8422,7 +8422,7 @@ update_cam!(scene::Scene, eyeposition, lookat, up = Vec3d(0, 0, 1))
 Updates the camera&#39;s controls to point to the specified location.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L358-L362" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L358-L362" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8439,7 +8439,7 @@ update_cam!(scene::SceneLike, area)
 Updates the camera for the given `scene` to cover the given `area` in 2d.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera2d.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L54-L58" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8456,7 +8456,7 @@ update_cam!(scene::SceneLike)
 Updates the camera for the given `scene` to cover the limits of the `Scene`. Useful when using the `Observable` pipeline.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera2d.jl#L67-L72" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera2d.jl#L67-L72" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8490,7 +8490,7 @@ update_theme!(Theme(colormap=:greys))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/theming.jl#L257-L277" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/theming.jl#L257-L277" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8507,7 +8507,7 @@ viewport(scene::Scene)
 Gets the viewport of the scene in device independent units as an `Observable{Rect2{Int}}`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/scenes.jl#L599-L603" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/scenes.jl#L599-L603" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8606,7 +8606,7 @@ The plot type alias for the `violin` function is `Violin`.
 **`width`** =  `automatic`  — Width of the box before shrinking.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L608" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L608" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8618,7 +8618,7 @@ The plot type alias for the `violin` function is `Violin`.
 `violin!` is the mutating variant of plotting function `violin`. Check the docstring for `violin` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8699,7 +8699,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`ymin`** =  `0`  — The start of the lines in relative axis units (0 to 1) along the y dimension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L598" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8711,7 +8711,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `vlines!` is the mutating variant of plotting function `vlines`. Check the docstring for `vlines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8782,7 +8782,7 @@ The plot type alias for the `volumeslices` function is `VolumeSlices`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L585" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L585" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8794,7 +8794,7 @@ The plot type alias for the `volumeslices` function is `VolumeSlices`.
 `volumeslices!` is the mutating variant of plotting function `volumeslices`. Check the docstring for `volumeslices` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8855,7 +8855,7 @@ The plot type alias for the `voronoiplot` function is `Voronoiplot`.
 **`unbounded_edge_extension_factor`** =  `0.1`  — Sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L572" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L572" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8867,7 +8867,7 @@ The plot type alias for the `voronoiplot` function is `Voronoiplot`.
 `voronoiplot!` is the mutating variant of plotting function `voronoiplot`. Check the docstring for `voronoiplot` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8961,7 +8961,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`ymin`** =  `0`  — The start of the bands in relative axis units (0 to 1) along the y dimension.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -8973,7 +8973,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `vspan!` is the mutating variant of plotting function `vspan`. Check the docstring for `vspan` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9028,7 +9028,7 @@ The plot type alias for the `waterfall` function is `Waterfall`.
 **`width`** =  `automatic`  — _No docs available._
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L562" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L562" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9040,7 +9040,7 @@ The plot type alias for the `waterfall` function is `Waterfall`.
 `waterfall!` is the mutating variant of plotting function `waterfall`. Check the docstring for `waterfall` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9067,7 +9067,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/theming.jl#L212-L227" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/theming.jl#L212-L227" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9084,7 +9084,7 @@ xlabel!(scene, xlabel)
 Set the x-axis label for the given Scene.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L7-L11" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L7-L11" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9101,7 +9101,7 @@ xlims!(ax = current_axis())
 Reset the x-axis limits to be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1357-L1362" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1357-L1362" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9121,7 +9121,7 @@ xlims!(ax, low..high)
 Set the x-axis limits of axis `ax` to `low` and `high` or a tuple `xlims = (low,high)`. If the limits are ordered high-low, the axis orientation will be reversed. If a limit is `nothing` it will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1292-L1302" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1292-L1302" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9139,7 +9139,7 @@ xlims!(; low = nothing, high = nothing)
 Set the x-axis limits of the current axis to `low` and `high`. If the limits are ordered high-low, this reverses the axis orientation. A limit set to `nothing` will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1329-L1336" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1329-L1336" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9156,7 +9156,7 @@ xticklabels(scene)
 Returns all the x-axis tick labels. See also `ticklabels`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L63-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L63-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9173,7 +9173,7 @@ xtickrange(scene)
 Returns the tick range along the x-axis. See also `tickranges`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L98-L102" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L98-L102" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9190,7 +9190,7 @@ xtickrotation!([scene,] xangle)
 Set the rotation of tick labels along the x-axis. See also `tickrotations!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L226-L230" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L226-L230" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9207,7 +9207,7 @@ xtickrotation(scene)
 Returns the rotation of tick labels along the x-axis. See also `tickrotations`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L190-L194" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L190-L194" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9224,7 +9224,7 @@ xticks!([scene,]; xtickrange=xtickrange(scene), xticklabels=xticklabel(scene))
 Set the tick labels and range along the x-axis. See also `ticks!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L139-L143" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L139-L143" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9241,7 +9241,7 @@ ylabel!(scene, ylabel)
 Set the y-axis label for the given Scene.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L19-L23" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L19-L23" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9258,7 +9258,7 @@ ylims!(ax = current_axis())
 Reset the y-axis limits to be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1364-L1369" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1364-L1369" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9278,7 +9278,7 @@ ylims!(ax, low..high)
 Set the y-axis limits of axis `ax` to `low` and `high` or a tuple `ylims = (low,high)`. If the limits are ordered high-low, the axis orientation will be reversed. If a limit is `nothing` it will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1304-L1314" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1304-L1314" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9296,7 +9296,7 @@ ylims!(; low = nothing, high = nothing)
 Set the y-axis limits of the current axis to `low` and `high`. If the limits are ordered high-low, this reverses the axis orientation. A limit set to `nothing` will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1338-L1345" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1338-L1345" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9313,7 +9313,7 @@ yticklabels(scene)
 Returns all the y-axis tick labels. See also `ticklabels`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L70-L74" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L70-L74" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9330,7 +9330,7 @@ ytickrange(scene)
 Returns the tick range along the y-axis. See also `tickranges`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L105-L109" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L105-L109" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9347,7 +9347,7 @@ ytickrotation!([scene,] yangle)
 Set the rotation of tick labels along the y-axis. See also `tickrotations!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L236-L240" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L236-L240" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9364,7 +9364,7 @@ ytickrotation(scene)
 Returns the rotation of tick labels along the y-axis. See also `tickrotations`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L197-L201" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L197-L201" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9381,7 +9381,7 @@ yticks!([scene,]; ytickrange=ytickrange(scene), yticklabels=yticklabel(scene))
 Set the tick labels and range along all the y-axis. See also `ticks!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L149-L153" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L149-L153" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9404,7 +9404,7 @@ The Scene must have an Axis3D.  If not, then this function will error.
 :::
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L35-L42" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L35-L42" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9421,7 +9421,7 @@ zlims!(ax = current_axis())
 Reset the z-axis limits to be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1371-L1376" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1371-L1376" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9441,7 +9441,7 @@ zlims!(ax, low..high)
 Set the z-axis limits of axis `ax` to `low` and `high` or a tuple `zlims = (low,high)`. If the limits are ordered high-low, the axis orientation will be reversed. If a limit is `nothing` it will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1316-L1326" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1316-L1326" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9459,7 +9459,7 @@ zlims!(; low = nothing, high = nothing)
 Set the z-axis limits of the current axis to `low` and `high`. If the limits are ordered high-low, this reverses the axis orientation. A limit set to `nothing` will be determined automatically from the plots in the axis.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/makielayout/blocks/axis.jl#L1347-L1354" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/makielayout/blocks/axis.jl#L1347-L1354" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9478,7 +9478,7 @@ Zooms the camera in or out based on the multiplier `zoom_step`. A `zoom_step` of
 If `cad = true` zooming will also apply a rotation based on how far the cursor is from the center of the scene. If `zoom_shift_lookat = true` and `projectiontype = Orthographic` zooming will keep the data under the cursor at the same screen space position.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera3d.jl#L534-L544" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera3d.jl#L534-L544" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9495,7 +9495,7 @@ zoom!(scene, point, zoom_step, shift_lookat::Bool)
 Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`. A positive `zoom_step` zooms in while a negative `zoom_step` zooms out.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/old_camera3d.jl#L259-L264" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/old_camera3d.jl#L259-L264" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9512,7 +9512,7 @@ zticklabels(scene)
 Returns all the z-axis tick labels. See also `ticklabels`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L77-L81" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L77-L81" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9529,7 +9529,7 @@ ztickrange(scene)
 Returns the tick range along the z-axis. See also `tickranges`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L112-L116" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L112-L116" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9546,7 +9546,7 @@ ztickrotation!([scene,] zangle)
 Set the rotation of tick labels along the z-axis. See also `tickrotations!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L249-L253" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L249-L253" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9563,7 +9563,7 @@ ztickrotation(scene)
 Returns the rotation of tick labels along the z-axis. See also `tickrotations`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L204-L208" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L204-L208" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9580,7 +9580,7 @@ zticks!([scene,]; ztickranges=ztickrange(scene), zticklabels=zticklabel(scene))
 Set the tick labels and range along all z-axis. See also `ticks!`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/shorthands.jl#L165-L169" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/shorthands.jl#L165-L169" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9597,7 +9597,7 @@ convert_arguments(ct::GridBased, x::VecOrMat, y::VecOrMat, z::Matrix)
 If `ct` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y` whether they represent edges or centers of the heatmap bins. If they are centers, convert to edges. Convert eltypes to `Float32` and return outputs as a `Tuple`.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L337-L344" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L337-L344" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9614,7 +9614,7 @@ convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges with size(z, 1/2).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L353-L358" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L353-L358" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9631,7 +9631,7 @@ convert_arguments(P, x, y, z)::(Vector)
 Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the values from `x`, `y`, and `z`. `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L120-L126" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L120-L126" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9643,7 +9643,7 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix spanning z over the grid spanned by x y
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L101-L104" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L101-L104" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9660,7 +9660,7 @@ convert_arguments(PB, LineString)
 Takes an input `LineString` and decomposes it to points.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L200-L205" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L200-L205" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9677,7 +9677,7 @@ convert_arguments(PB, Polygon)
 Takes an input `Polygon` and decomposes it to points.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L227-L232" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L227-L232" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9696,7 +9696,7 @@ Takes vectors `x` and `y` and turns it into a vector of 2D points of the values 
 `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L152-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L152-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9708,7 +9708,7 @@ Takes vectors `x` and `y` and turns it into a vector of 2D points of the values 
 Wrap a single point or equivalent object in a single-element array.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L65-L67" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L65-L67" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9725,7 +9725,7 @@ convert_arguments(Mesh, vertices, indices)::GLNormalMesh
 Takes `vertices` and `indices`, and creates a triangle mesh out of those. See `to_vertices` and `to_triangles` for more information about accepted types.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L608-L614" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L608-L614" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9742,7 +9742,7 @@ convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
 Takes real vectors x, y, z and constructs a triangle mesh out of those, using the faces in `indices`, which can be integers (every 3 -&gt; one triangle), or GeometryBasics.NgonFace{N, &lt;: Integer}.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L594-L599" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L594-L599" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9759,7 +9759,7 @@ convert_arguments(Mesh, x, y, z)::GLNormalMesh
 Takes real vectors x, y, z and constructs a mesh out of those, under the assumption that every 3 points form a triangle.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L522-L527" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L522-L527" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9776,7 +9776,7 @@ convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
 Takes an input mesh and a vector `xyz` representing the vertices of the mesh, and creates indices under the assumption, that each triplet in `xyz` forms a triangle.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L534-L539" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L534-L539" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9793,7 +9793,7 @@ convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that `x` and `y` span. This is equivalent to `f.(x, y')`. `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L453-L459" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L453-L459" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9812,7 +9812,7 @@ Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on 
 `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L661-L668" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L661-L668" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9824,7 +9824,7 @@ Takes `AbstractVector` `x`, `y`, and `z` and the function `f`, evaluates `f` on 
 Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`) to encode e.g. linesegments or directions.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L505-L508" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L505-L508" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9841,7 +9841,7 @@ convert_arguments(P, x)::(Vector)
 Takes an input GeometryPrimitive `x` and decomposes it to points. `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L137-L142" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L137-L142" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9858,7 +9858,7 @@ convert_arguments(PB, Union{Array{<:LineString}, MultiLineString})
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L210-L214" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L210-L214" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9875,7 +9875,7 @@ convert_arguments(PB, Union{Array{<:Polygon}, MultiPolygon})
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L250-L255" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L250-L255" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9894,7 +9894,7 @@ Takes an input `Rect` `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/conversions.jl#L164-L170" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/conversions.jl#L164-L170" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9927,7 +9927,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interfaces.jl#L283-L304" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interfaces.jl#L283-L304" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9944,7 +9944,7 @@ on(f, c::Camera, observables::Observable...)
 When mapping over observables for the camera, we store them in the `steering_node` vector, to make it easier to disconnect the camera steering signals later!
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/camera/camera.jl#L54-L59" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/camera/camera.jl#L54-L59" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9972,7 +9972,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L91-L105" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L91-L105" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -9994,7 +9994,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L148-L159" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L148-L159" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10021,7 +10021,7 @@ end
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/utilities/utilities.jl#L110-L126" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/utilities/utilities.jl#L110-L126" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10063,7 +10063,7 @@ nt = (x = Observable(1), y = Observable(2))
 
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/liftmacro.jl#L44-L71" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/liftmacro.jl#L44-L71" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10075,7 +10075,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Arrows` is the plot type associated with plotting function `arrows`. Check the docstring for `arrows` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10087,7 +10087,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Heatmap` is the plot type associated with plotting function `heatmap`. Check the docstring for `heatmap` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10099,7 +10099,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Image` is the plot type associated with plotting function `image`. Check the docstring for `image` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10111,7 +10111,7 @@ nt = (x = Observable(1), y = Observable(2))
 `LineSegments` is the plot type associated with plotting function `linesegments`. Check the docstring for `linesegments` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10123,7 +10123,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Lines` is the plot type associated with plotting function `lines`. Check the docstring for `lines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10135,7 +10135,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Mesh` is the plot type associated with plotting function `mesh`. Check the docstring for `mesh` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10147,7 +10147,7 @@ nt = (x = Observable(1), y = Observable(2))
 `MeshScatter` is the plot type associated with plotting function `meshscatter`. Check the docstring for `meshscatter` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10159,7 +10159,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Poly` is the plot type associated with plotting function `poly`. Check the docstring for `poly` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10171,7 +10171,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Scatter` is the plot type associated with plotting function `scatter`. Check the docstring for `scatter` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10183,7 +10183,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Surface` is the plot type associated with plotting function `surface`. Check the docstring for `surface` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10195,7 +10195,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Text` is the plot type associated with plotting function `text`. Check the docstring for `text` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10207,7 +10207,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Volume` is the plot type associated with plotting function `volume`. Check the docstring for `volume` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10219,7 +10219,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Voxels` is the plot type associated with plotting function `voxels`. Check the docstring for `voxels` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10231,7 +10231,7 @@ nt = (x = Observable(1), y = Observable(2))
 `Wireframe` is the plot type associated with plotting function `wireframe`. Check the docstring for `wireframe` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L521" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10348,7 +10348,7 @@ The plot type alias for the `arrows` function is `Arrows`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L656" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L656" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10360,7 +10360,7 @@ The plot type alias for the `arrows` function is `Arrows`.
 `arrows!` is the mutating variant of plotting function `arrows`. Check the docstring for `arrows` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10440,7 +10440,7 @@ The plot type alias for the `heatmap` function is `Heatmap`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L603" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L603" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10452,7 +10452,7 @@ The plot type alias for the `heatmap` function is `Heatmap`.
 `heatmap!` is the mutating variant of plotting function `heatmap`. Check the docstring for `heatmap` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10522,7 +10522,7 @@ The plot type alias for the `image` function is `Image`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L587" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L587" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10534,7 +10534,7 @@ The plot type alias for the `image` function is `Image`.
 `image!` is the mutating variant of plotting function `image`. Check the docstring for `image` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10619,7 +10619,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L605" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L605" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10631,7 +10631,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `lines!` is the mutating variant of plotting function `lines`. Check the docstring for `lines` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10711,7 +10711,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L595" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10723,7 +10723,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `linesegments!` is the mutating variant of plotting function `linesegments`. Check the docstring for `linesegments` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10813,7 +10813,7 @@ The plot type alias for the `mesh` function is `Mesh`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L612" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L612" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10825,7 +10825,7 @@ The plot type alias for the `mesh` function is `Mesh`.
 `mesh!` is the mutating variant of plotting function `mesh`. Check the docstring for `mesh` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10918,7 +10918,7 @@ The plot type alias for the `meshscatter` function is `MeshScatter`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L615" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -10930,7 +10930,7 @@ The plot type alias for the `meshscatter` function is `MeshScatter`.
 `meshscatter!` is the mutating variant of plotting function `meshscatter`. Check the docstring for `meshscatter` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11029,7 +11029,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L621" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L621" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11041,7 +11041,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `poly!` is the mutating variant of plotting function `poly`. Check the docstring for `poly` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11140,7 +11140,7 @@ The plot type alias for the `scatter` function is `Scatter`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L617" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L617" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11152,7 +11152,7 @@ The plot type alias for the `scatter` function is `Scatter`.
 `scatter!` is the mutating variant of plotting function `scatter`. Check the docstring for `scatter` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11238,7 +11238,7 @@ The plot type alias for the `surface` function is `Surface`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L605" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L605" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11250,7 +11250,7 @@ The plot type alias for the `surface` function is `Surface`.
 `surface!` is the mutating variant of plotting function `surface`. Check the docstring for `surface` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11353,7 +11353,7 @@ The plot type alias for the `text` function is `Text`.
 **`word_wrap_width`** =  `-1`  — Specifies a linewidth limit for text. If a word overflows this limit, a newline is inserted before it. Negative numbers disable word wrapping.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L616" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11365,7 +11365,7 @@ The plot type alias for the `text` function is `Text`.
 `text!` is the mutating variant of plotting function `text`. Check the docstring for `text` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11469,7 +11469,7 @@ The plot type alias for the `volume` function is `Volume`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L614" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L614" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11481,7 +11481,7 @@ The plot type alias for the `volume` function is `Volume`.
 `volume!` is the mutating variant of plotting function `volume`. Check the docstring for `volume` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11577,7 +11577,7 @@ The plot type alias for the `voxels` function is `Voxels`.
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L632" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L632" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11589,7 +11589,7 @@ The plot type alias for the `voxels` function is `Voxels`.
 `voxels!` is the mutating variant of plotting function `voxels`. Check the docstring for `voxels` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11668,7 +11668,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 **`visible`** =  `true`  — Controls whether the plot will be rendered or not.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L520-L594" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11680,7 +11680,7 @@ For custom patterns have a look at [`Makie.Linestyle`](/api#Makie.Linestyle).
 `wireframe!` is the mutating variant of plotting function `wireframe`. Check the docstring for `wireframe` for further information.
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/MakieCore/src/recipes.jl#L522" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11699,7 +11699,7 @@ Creates an `And` struct with the left and right argument for later evaluation. I
 See also: [`Or`](/api#Makie.Or), [`Not`](/api#Makie.Not), [`ispressed`](/api#Makie.ispressed), `&`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L105-L112" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L105-L112" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11718,7 +11718,7 @@ Creates a `Not` struct with the given argument for later evaluation.
 See also: [`And`](/api#Makie.And), [`Or`](/api#Makie.Or), [`ispressed`](/api#Makie.ispressed), `!`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L135-L141" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L135-L141" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
@@ -11737,7 +11737,7 @@ Creates an `Or` struct with the left and right argument for later evaluation. If
 See also: [`And`](/api#Makie.And), [`Not`](/api#Makie.Not), [`ispressed`](/api#Makie.ispressed), `|`
 
 
-<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/406a09fe6f430d0a43f0f3cf1a876583e9bafbf5/src/interaction/events.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
+<Badge type="info" class="source-link" text="source"><a href="https://github.com/MakieOrg/Makie.jl/blob/e1788feb7d2b5c349ae9fe7900dfde092b701913/src/interaction/events.jl#L120-L127" target="_blank" rel="noreferrer">source</a></Badge>
 
 </details>
 
