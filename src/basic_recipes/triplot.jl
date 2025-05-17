@@ -238,7 +238,7 @@ function data_limits(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
-        return Rect3d(p.converted[1][])
+        return Rect3d(p[1][])
     else
         # First component is either another Triplot or a poly plot. Both
         # cases span the full limits of the plot
