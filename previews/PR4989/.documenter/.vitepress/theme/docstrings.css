@@ -1,0 +1,51 @@
+.jldocstring.custom-block {
+    border: 1px solid var(--vp-c-gray-2);
+    color: var(--vp-c-text-1);
+    overflow: hidden;
+}
+
+.jldocstring.custom-block summary {
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    margin: 0 0 8px;
+}
+.jldocstring.custom-block summary a {
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.jldocstring.custom-block .source-link {
+  border: 1px solid var(--vp-c-gray-2);
+  border-radius: 4px;
+  text-decoration: none;
+  background-color: #414040;
+  float: right;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.jldocstring.custom-block .source-link a {
+  text-decoration: none;
+  color: #e5e5e5;
+}
+
+.jldocstring.custom-block .source-link a:hover {
+  text-decoration: underline;
+}
+
+.jldocstring.custom-block:hover .source-link {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .jldocstring.custom-block .source-link {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
