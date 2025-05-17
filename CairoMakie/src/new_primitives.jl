@@ -322,7 +322,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         transform_marker,
     ))
 
-    text_color = cairo_colors(primitive)
+    text_color = cairo_colors(primitive, :text_color)
     ctx = screen.context
     attr = primitive.attributes::Makie.ComputeGraph
 
