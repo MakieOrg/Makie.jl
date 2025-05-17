@@ -371,7 +371,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
         end
 
         # Hack-fix variable type
-        if haskey(abstract_type_init, k)
+        if is_primitive && haskey(abstract_type_init, k)
             attr[k].value = abstract_type_init[k]
         end
         # text also allows :baseline and resolves it later
