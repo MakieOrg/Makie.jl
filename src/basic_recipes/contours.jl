@@ -271,7 +271,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 rot_from_horz
             end
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
-            push!(rot, rot_from_vert)
+            push!(rot, to_rotation(rot_from_vert))
             push!(lbl, labelformatter(lev))
             p = p2  # try to position label around center
             isnan(p) && (p = p1)

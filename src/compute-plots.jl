@@ -689,7 +689,7 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
         Cout = typeof(dict[:scaled_color])
         if isnothing(cached)
             observables = map(attributes) do name
-                Observable(dict[name])
+                name === :colorscale ? Observable{Any}(dict[name]) : Observable(dict[name])
             end
             observable_dict = Dict(zip(attributes, observables))
             cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange), observables[6:end]...)
