@@ -223,6 +223,7 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
             if !is_same(result[], _val)
                 result[] = _val
             end
+            return Consume(false)
         end
         return result
     end
