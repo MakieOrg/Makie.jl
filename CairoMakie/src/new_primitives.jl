@@ -315,7 +315,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         glyphindices,
         marker_offset,
         text_rotation,
-        text_color,
         fontsize,
         strokewidth,
         text_strokecolor,
@@ -323,6 +322,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         transform_marker,
     ))
 
+    text_color = cairo_colors(primitive)
     ctx = screen.context
     attr = primitive.attributes::Makie.ComputeGraph
 
