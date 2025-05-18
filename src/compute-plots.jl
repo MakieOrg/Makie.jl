@@ -670,7 +670,8 @@ function calculated_attributes!(::Type{Volume}, plot::Plot)
     register_position_transforms!(attr) # TODO: isn't this skipped
     register_colormapping!(attr, :volume)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
-        return (Rect3d(Vec3.(x, y, z)...),)
+        mini, maxi = Vec3.(x, y, z)
+        return (Rect3d(mini, maxi .- mini),)
     end
 end
 

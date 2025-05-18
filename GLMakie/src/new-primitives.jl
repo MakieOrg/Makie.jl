@@ -1286,6 +1286,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     input2glname = Dict{Symbol, Symbol}(
         :volume => :volumedata, :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        :gl_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_volume_robj!, screen, scene, plot, inputs, uniforms, input2glname)

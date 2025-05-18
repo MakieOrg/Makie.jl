@@ -69,11 +69,11 @@ function data_limits(plot::Heatmap)
     return Rect3d(mini, maxi .- mini)
 end
 
-function data_limits(x::Volume)
-    axes = (x[1][], x[2][], x[3][])
-    extremata = extrema.(axes)
-    return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
-end
+# function data_limits(x::Volume)
+#     axes = (x[1][], x[2][], x[3][])
+#     extremata = extrema.(axes)
+#     return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
+# end
 
 # function data_limits(plot::Text)
 #     if plot.space[] == plot.markerspace[]
