@@ -1241,11 +1241,11 @@ end
 
 function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
     interp = attr[:interpolate][] ? :linear : :nearest
-    volume_data = Texture(screen.glscreen, args.volume, minfilter = interp)
+    volume_data = Texture(screen.glscreen, args.scaled_color, minfilter = interp)
 
     data[:enable_depth] = attr[:enable_depth][]
 
-    if args.volume isa AbstractArray{<:Real}
+    if args.scaled_color isa AbstractArray{<:Real}
         data[:color_map] = args.alpha_colormap
         data[:color_norm] = args.scaled_colorrange
     end
@@ -1274,17 +1274,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :alpha_colormap, :scaled_colorrange
     ]
     uniforms = [
-        :volume, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
+        :scaled_color, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
         # :lowclip_color, :highclip_color, :nan_color,
         :uniform_model,
     ]
 
-    haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
-    haskey(attr, :voxel_color) && push!(inputs, :voxel_color) # needs interpolation handling
-
     input2glname = Dict{Symbol, Symbol}(
-        :volume => :volumedata, :uniform_model => :model,
+        :scaled_color => :volumedata, :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :gl_num_clip_planes => :_num_clip_planes
     )
