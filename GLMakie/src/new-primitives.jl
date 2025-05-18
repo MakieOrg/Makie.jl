@@ -399,8 +399,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         uniforms = [
             :positions_transformed_f32c,
             :gl_markerspace, :quad_scale, :model_f32c, :f32c_scale,
-            :lowclip_color, :highclip_color, :nan_color, :gl_indices, :gl_len
-            # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
+            :lowclip_color, :highclip_color, :nan_color, :gl_indices, :gl_len,
+            :marker_offset
         ]
 
     else
