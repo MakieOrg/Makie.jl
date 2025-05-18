@@ -479,8 +479,9 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot.parent = parent
     attr = plot.attributes
     if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
-        on(plot, scene.float32convert.scaling) do f32c
+        on(plot, scene.float32convert.scaling, update = true) do f32c
             attr.f32c = f32c
+            return
         end
     end
 

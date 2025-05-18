@@ -47,6 +47,7 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         changed[name] || continue
         value = args[name]
         gl_name = get(gl_names, name, name)
+        # println("Updating ", name)
         if name === :visible
             robj.visible = value
         elseif gl_name === :indices || gl_name === :faces
@@ -251,7 +252,19 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     register_light_attributes!(screen, scene, attr, uniforms)
 
     merged_inputs = [inputs; uniforms;]
-    @assert allunique(merged_inputs) "Duplicate robj inputs detected in $merged_inputs."
+    if !allunique(merged_inputs)
+        unique_inputs = Set{Symbol}()
+        duplicates = Set{Symbol}()
+        for k in merged_inputs
+            if k in unique_inputs
+                push!(duplicates, k)
+            else
+                push!(unique_inputs, k)
+            end
+        end
+        error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
+    end
+
     # TODO: I think SpecApi inserts the same plot twice!
     if !haskey(attr, :gl_renderobject)
         register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
@@ -332,6 +345,8 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     attr = generic_robj_setup(screen, scene, plot)
 
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+
     # We register the screen under a unique name. If the screen closes
     # Any computation that depens on screen gets removed
     atlas = gl_texture_atlas()
@@ -383,7 +398,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
         uniforms = [
             :positions_transformed_f32c,
-            :gl_markerspace, :quad_scale, :model_f32c,
+            :gl_markerspace, :quad_scale, :model_f32c, :f32c_scale,
             :lowclip_color, :highclip_color, :nan_color, :gl_indices, :gl_len
             # TODO: this should've gotten marker_offset when we separated marker_offset from quad_offset
         ]
@@ -398,7 +413,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             :image, :lowclip_color, :highclip_color, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :rotation, :transform_marker,
-            :gl_indices, :gl_len, :marker_offset
+            :gl_indices, :gl_len, :marker_offset, :f32c_scale,
         ]
     end
 
@@ -407,7 +422,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     # TODO:
     # - rotation -> billboard missing
     # - intensity_convert
-    # - f32c_scale
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
@@ -487,6 +501,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         return (Int32(length(ps)),)
     end
 
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
+
     inputs = [
         # Special
         :atlas,
@@ -502,7 +518,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
         :model_f32c, :transform_marker,
-        :gl_indices, :gl_len
+        :gl_indices, :gl_len, :f32c_scale
     ]
 
 
@@ -511,7 +527,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # TODO:
     # - rotation -> billboard missing
     # - intensity_convert
-    # - f32c_scale
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
@@ -1129,8 +1144,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     generate_clip_planes!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
-
-    # TODO: normalmatrices, poly plot!() overwrite for vector of meshes
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
     inputs = [
         # Special
@@ -1142,7 +1156,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel
+        :pattern_uv_transform, :fetch_pixel, :f32c_scale
     ]
 
     input2glname = Dict{Symbol, Symbol}(
