@@ -1,18 +1,16 @@
 function initialize_block!(sl::Slider)
 
     topscene = sl.blockscene
-
     #why name this?
     sliderrange = sl.range
 
     #=onany(f, args...; weak::Bool = false, priority::Int = 0, update::Bool = false)
-
     Calls f on updates to any observable refs in args. args may contain any number of Observable objects. f will
-  be passed the values contained in the refs as the respective argument. All other objects in args are passed
-  as-is.=#
+    be passed the values contained in the refs as the respective argument. All other objects in args are passed
+    as-is.=#
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
-            sl.layoutobservables.autosize[] = (nothing, Float32(lw)) #What is sl.layoutobservables.autosize[]? It is not in the list of attributes in the
+            sl.layoutobservables.autosize[] = (nothing, Float32(lw)) #What is sl.layoutobservables.autosize[]? It is not in the list of attributes in the macro
         else
             sl.layoutobservables.autosize[] = (Float32(lw), nothing)
         end
@@ -35,7 +33,7 @@ function initialize_block!(sl::Slider)
              Point2f(x, top(bb) - w/2)]
         end
     end
-    
+
     # this is the index of the selected value in the slider's range
     selected_index = Observable(1)
     setfield!(sl, :selected_index, selected_index)
@@ -47,6 +45,18 @@ function initialize_block!(sl::Slider)
     end
 
     dragging = Observable(false)
+
+    # what the slider actually displays currently (also during dragging when
+    # the slider position is in an "invalid" position given the slider's range)
+    displayed_sliderfraction = Observable(0.0)
+
+    on(topscene, sliderfraction) do frac
+        # only update displayed fraction through sliderfraction if not dragging
+        # dragging overrides the value so there is clear mouse interaction
+        if !dragging[]
+            displayed_sliderfraction[] = frac
+        end
+    end
 
     # when the range is changed, switch to closest value
     on(topscene, sliderrange) do rng
@@ -66,9 +76,23 @@ function initialize_block!(sl::Slider)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], sl.startvalue[])
 
+    middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
+        Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
+    end
 
-    endbuttons = scatter!(topscene, endpoints,
+    linepoints = lift(topscene, endpoints, middlepoint) do eps, middle
+        [eps[1], middle, middle, eps[2]]
+    end
+
+    linecolors = lift(topscene, sl.color_active_dimmed, sl.color_inactive) do ca, ci
+        [ca, ci]
+    end
+
+    endbuttons = scatter!(topscene, endpoints, color = linecolors,
         markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
+
+    linesegs = linesegments!(topscene, linepoints, color = linecolors,
+        linewidth = sl.linewidth, inspectable = false)
 
     button_magnification = Observable(1.0)
     buttonsize = lift(*, topscene, sl.linewidth, button_magnification)
@@ -90,6 +114,7 @@ function initialize_block!(sl::Slider)
         if sl.snap[]
             fraction = (newindex - 1) / (length(sliderrange[]) - 1)
         end
+        displayed_sliderfraction[] = fraction
 
         if selected_index[] != newindex
             selected_index[] = newindex
@@ -189,137 +214,90 @@ function set_close_to!(slider::Slider, value)
 end
 
 function initialize_block!(sl::Slider2)
-    println("hello")
-    topscene = sl.blockscene 
+    topscene = sl.blockscene
+    xrange, yrange = sl.xrange[], sl.yrange[]
 
-    sliderxrange = sl.xrange
-    slideryrange = sl.yrange
-
-    #what does this do? assigns an autosize. Why onany()?
-    onany(sl.linewidth) do lw
-        sl.layoutobservables.autosize[] = (Float32(lw), Float32(lw))
-    end
-
-    sliderbox = lift(identity, topscene, sl.layoutobservables.computedbbox)
-
-    #what will endpoints be used for? We need 4 corners instead?
-    endpoints = lift(topscene, sliderbox) do bb
-        h = height(bb)
-        w = width(bb)
-
-        ###################
-        #debugging
-        println(bb)
-        println("w = $w")
-        println("h = $h")
-        bbtop = top(bb)
-        bbbottom = bottom(bb)
-        bbleft = left(bb)
-        bbright = right(bb)
-        println("top = $bbtop")
-        println("bottom = $bbbottom")
-        println("right = $bbright")
-        println("left = $bbleft")
-        ###################
-
-        y = bottom(bb) + h / 2
-        [Point2f(left(bb) + h/2, y),
-            Point2f(right(bb) - h/2, y)]
-    end
-
-    println(endpoints)
-
-    # this is the index of the selected value in the slider's range
     selected_indices = Observable((1, 1))
     setfield!(sl, :selected_indices, selected_indices)
 
-    # the fraction on the slider corresponding to the selected_indices
-    # this is only used after dragging
-    sliderfractions = lift(sl.selected_indices, sliderxrange, slideryrange) do is, xr, yr
-        xfrac = (is[1] - 1) / (length(xr) - 1)
-        yfrac = (is[2] - 1) / (length(yr) - 1)
-        return (xfrac,yfrac)
-    end
-
     dragging = Observable(false)
+    displayed_fraction = Observable((0.0, 0.0))
 
-    # when the range is changed, switch to closest value
-    on(topscene, sliderxrange) do rng
-        selected_indices[][1] = closest_index(rng, sl.value[][1])
+    sliderfraction = lift(topscene, selected_indices, sl.xrange, sl.yrange) do (ix, iy), xr, yr
+        fx = (ix - 1) / (length(xr) - 1)
+        fy = (iy - 1) / (length(yr) - 1)
+        (fx, fy)
     end
 
-    on(topscene, slideryrange) do rng
-        selected_indices[][2] = closest_index(rng, sl.value[][2])
-    end
-    
-    #worried about observable nonsense in here
-    onany(topscene, selected_indices, dragging) do i, dragging
-        new_xval = get(sliderxrange[], i[][1], nothing)
-        new_yval = get(slideryrange[], i[][2], nothing)
-
-        has_xvalue = !isnothing(new_xval)
-        has_yvalue = !isnothing(new_yval)
-
-        has_changed = sl.value[] != (new_xval,new_yval)
-        drag_updates = sl.update_while_dragging[] || !dragging[]
-
-        if has_xvalue && has_yvalue && has_changed && drag_updates
-            sl.value[] = (new_xval,new_yval)
+    on(topscene, sliderfraction) do frac
+        if !dragging[]
+            displayed_fraction[] = frac
         end
     end
-    
-    sl.value[] = (sliderxrange[][selected_indices[][1]],slideryrange[][selected_indices[][2]])
 
-    # initialize slider values with closest from ranges
-    selxidx = closest_index(sliderxrange[], sl.startvalue[][1])
-    selyidx = closest_index(slideryrange[], sl.startvalue[][2])
-    println("x_idx = $selxidx")
-    println("y_idx = $selyidx")
-    println(selected_indices)
-    #selected_indices[] = (selxidx,selyidx) #this throws an error from calling getindex on a tuple(Int,Int) with no index, and I can't figure out where this is happening.
-
-    middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
-        Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
+    on(topscene, sl.xrange) do xr
+        selected_indices[] = (closest_index(xr, sl.value[][1]), selected_indices[][2])
+    end
+    on(topscene, sl.yrange) do yr
+        selected_indices[] = (selected_indices[][1], closest_index(yr, sl.value[][2]))
     end
 
-    linepoints = lift(topscene, endpoints, middlepoint) do eps, middle
-        [eps[1], middle, middle, eps[2]]
+    onany(topscene, selected_indices, dragging) do (ix, iy), dragging
+        new_val = (get(sl.xrange[], ix, nothing), get(sl.yrange[], iy, nothing))
+        has_changed = sl.value[] != new_val
+        drag_updates = sl.update_while_dragging[] || !dragging[]
+        if !isnothing(new_val[1]) && !isnothing(new_val[2]) && has_changed && drag_updates
+            sl.value[] = new_val
+        end
     end
 
-    linecolors = lift(topscene, sl.color_active_dimmed, sl.color_inactive) do ca, ci
-        [ca, ci]
+    sl.value[] = (xrange[selected_indices[][1]], yrange[selected_indices[][2]])
+    selected_indices[] = (closest_index(xrange, sl.startvalue[][1]),
+                          closest_index(yrange, sl.startvalue[][2]))
+
+    bbox = lift(identity, topscene, sl.layoutobservables.computedbbox)
+    trackpoint = lift(topscene, bbox, displayed_fraction) do bb, (fx, fy)
+        x = left(bb) + fx * width(bb)
+        y = bottom(bb) + fy * height(bb)
+        Point2f(x, y)
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = linecolors,
-        markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
+    frame = lift(topscene, bbox) do bb
+        [
+            Point2f(left(bb), bottom(bb)),
+            Point2f(left(bb), top(bb)),
+            Point2f(right(bb), top(bb)),
+            Point2f(right(bb), bottom(bb)),
+            Point2f(left(bb), bottom(bb))
+        ]
+    end
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors,
-        linewidth = sl.linewidth, inspectable = false)
+    linesegments!(topscene, frame, color = sl.color_inactive, linewidth = 1)
+    cross = lift(topscene, trackpoint) do p
+        [Point2f(p[1] - 5, p[2]), Point2f(p[1] + 5, p[2]),
+         Point2f(p[1], p[2] - 5), Point2f(p[1], p[2] + 5)]
+    end
 
-    button_magnification = Observable(1.0)
-    buttonsize = lift(*, topscene, sl.linewidth, button_magnification)
-    button = scatter!(topscene, middlepoint, color = sl.color_active, strokewidth = 0,
-        markersize = buttonsize, inspectable = false, marker=Circle)
+    linesegments!(topscene, cross, color = sl.color_active, linewidth = sl.linewidth)
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true
-        dif = event.px - event.prev_px
-        fraction = clamp(if sl.horizontal[]
-            (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
-        else
-            (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
-        end, 0, 1)
+        bb = bbox[]
+        fx = clamp((event.px[1] - left(bb)) / width(bb), 0, 1)
+        fy = clamp((event.px[2] - bottom(bb)) / height(bb), 0, 1)
 
-        newindex = closest_fractionindex(sliderrange[], fraction)
+        newx = closest_fractionindex(sl.xrange[], fx)
+        newy = closest_fractionindex(sl.yrange[], fy)
         if sl.snap[]
-            fraction = (newindex - 1) / (length(sliderrange[]) - 1)
+            fx = (newx - 1) / (length(sl.xrange[]) - 1)
+            fy = (newy - 1) / (length(sl.yrange[]) - 1)
         end
-        displayed_sliderfraction[] = fraction
+        displayed_fraction[] = (fx, fy)
 
-        if selected_index[] != newindex
-            selected_index[] = newindex
+        if selected_indices[] != (newx, newy)
+            selected_indices[] = (newx, newy)
         end
 
         return Consume(true)
@@ -327,38 +305,15 @@ function initialize_block!(sl::Slider2)
 
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
-        # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
-        linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
-        return Consume(true)
-    end
-
-    onmouseleftdown(mouseevents) do event
-        pos = event.px
-        dim = sl.horizontal[] ? 1 : 2
-        frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
-        selected_index[] = closest_fractionindex(sliderrange[], frac)
-        # linecolors[] = [color_active[], color_inactive[]]
         return Consume(true)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_index[] = closest_index(sliderrange[], sl.startvalue[])
+        selected_indices[] = (closest_index(sl.xrange[], sl.startvalue[][1]),
+                              closest_index(sl.yrange[], sl.startvalue[][2]))
         return Consume(true)
     end
 
-    onmouseenter(mouseevents) do event
-        button_magnification[] = 1.25
-        return Consume(false)
-    end
-
-    onmouseout(mouseevents) do event
-        button_magnification[] = 1.0
-        linecolors[] = [sl.color_active_dimmed[], sl.color_inactive[]]
-        return Consume(false)
-    end
-
-    # trigger autosize through linewidth for first layout
-    notify(sl.linewidth)
     sl
 end
