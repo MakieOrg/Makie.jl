@@ -262,23 +262,37 @@ function initialize_block!(sl::Slider2)
         Point2f(x, y)
     end
 
-    frame = lift(topscene, bbox) do bb
+    background = lift(topscene, bbox) do bb
+        # Return a polygon representing the full bounding rectangle
         [
             Point2f(left(bb), bottom(bb)),
             Point2f(left(bb), top(bb)),
             Point2f(right(bb), top(bb)),
-            Point2f(right(bb), bottom(bb)),
-            Point2f(left(bb), bottom(bb))
+            Point2f(right(bb), bottom(bb))
         ]
     end
 
-    linesegments!(topscene, frame, color = sl.color_inactive, linewidth = 1)
-    cross = lift(topscene, trackpoint) do p
-        [Point2f(p[1] - 5, p[2]), Point2f(p[1] + 5, p[2]),
-         Point2f(p[1], p[2] - 5), Point2f(p[1], p[2] + 5)]
+    poly!(topscene, background, color = sl.color_inactive)
+
+    cross = lift(topscene, bbox, trackpoint) do bb, p
+        [
+            Point2f(left(bb), p[2]), Point2f(right(bb), p[2]),
+            Point2f(p[1], bottom(bb)), Point2f(p[1], top(bb))
+        ]
     end
 
-    linesegments!(topscene, cross, color = sl.color_active, linewidth = sl.linewidth)
+    linesegments!(topscene, cross, color = sl.color_active_dimmed, linewidth = 2)
+
+    hovered = Observable(false)
+
+    scatter!(
+        topscene, lift(p -> [p], trackpoint),
+        color = sl.color_active,
+        markersize = lift(hovered) do h
+            h ? 20.0 : 12.0
+        end,
+    )
+
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
@@ -315,5 +329,39 @@ function initialize_block!(sl::Slider2)
         return Consume(true)
     end
 
+    onmouseleftclick(mouseevents) do event
+        bb = bbox[]
+        fx = clamp((event.px[1] - left(bb)) / width(bb), 0, 1)
+        fy = clamp((event.px[2] - bottom(bb)) / height(bb), 0, 1)
+
+        newx = closest_fractionindex(sl.xrange[], fx)
+        newy = closest_fractionindex(sl.yrange[], fy)
+
+        if sl.snap[]
+            fx = (newx - 1) / (length(sl.xrange[]) - 1)
+            fy = (newy - 1) / (length(sl.yrange[]) - 1)
+        end
+
+        displayed_fraction[] = (fx, fy)
+
+        if selected_indices[] != (newx, newy)
+            selected_indices[] = (newx, newy)
+        end
+
+        return Consume(true)
+    end
+
+
+    onmouseover(mouseevents) do event
+        hovered[] = true
+        return Consume(false)
+    end
+
+    onmouseout(mouseevents) do event
+        hovered[] = false
+        return Consume(false)
+    end
+
     sl
 end
+
