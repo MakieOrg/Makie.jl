@@ -259,3 +259,20 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname =
         end
     end
 end
+
+function add_computation!(attr, scene, ::Val{:voxel_uv_transform})
+    # TODO: can this be reused in WGLMakie?
+    # TODO: Should this verify that color is a texture?
+    register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
+        if !isnothing(uvt)
+            return (Makie.pack_voxel_uv_transform(uvt),)
+        elseif !isnothing(uvmap)
+            @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+            raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+            converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+            return (Makie.pack_voxel_uv_transform(converted_uvt),)
+        else
+            return (nothing,)
+        end
+    end
+end

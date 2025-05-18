@@ -53,7 +53,7 @@ mat3x2 get_uv_transform_mat(sampler3D uv_transform, int id, int side) {
 
 
 vec4 get_color_from_texture(sampler2D color, int id) {
-    mat3x2 uvt = get_uv_transform_mat(uv_transform, id, o_side);
+    mat3x2 uvt = get_uv_transform_mat(wgl_uv_transform, id, o_side);
     // compute uv normalized to voxel
     // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
@@ -164,7 +164,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(color, color_map, uv_transform, id);
+    vec4 voxel_color = get_color(get_wgl_color(), get_wgl_colormap(), get_wgl_uv_transform(), id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)

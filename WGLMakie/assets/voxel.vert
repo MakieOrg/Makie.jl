@@ -29,7 +29,7 @@ const mat2x3 orientations[3] = mat2x3[](
 void main() {
     // Without fetching the instanced data the shader wont render. On some
     // systems (linux + firefox for example) this even needs to be used.
-    float zero = get_dummy();
+    float zero = get_dummy_data();
 
     /* How this works:
     To simplify lets consider a 2d grid of pixel where the voxel surface would
@@ -102,7 +102,7 @@ void main() {
 
     // plane placement
     // Figure out which plane to start with
-    vec3 normal = get_normalmatrix() * unit_vecs[dim];
+    vec3 normal = get_world_normalmatrix() * unit_vecs[dim];
     int dir = dot(get_view_direction(), normal) < 0.0 ? -1 : 1, start;
     if (depthsorting) {
         // TODO: depthsorted should start far away from viewer so every plane draws
@@ -112,8 +112,8 @@ void main() {
         // otherwise we should start at viewer and expand in view direction so
         // that the depth test can quickly eliminate unnecessary fragments
         // Note that model can have rotations and (uneven) scaling
-        vec4 origin = model * vec4(0, 0, 0, 1);
-        vec4 back   = model * vec4(size, 1);
+        vec4 origin = voxel_model * vec4(0, 0, 0, 1);
+        vec4 back   = voxel_model * vec4(size, 1);
         float front_dist = dot(origin.xyz / origin.w, normal);
         float back_dist  = dot(back.xyz / back.w, normal);
         float cam_dist   = dot(eyeposition, normal);
@@ -140,7 +140,7 @@ void main() {
 
     // place plane vertices
     vec3 plane_vertex = vec3(size) * (orientations[dim] * get_position()) + displacement;
-    vec4 world_pos = get_model() * vec4(plane_vertex, 1.0f);
+    vec4 world_pos = get_voxel_model() * vec4(plane_vertex, 1.0f);
     gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * get_depth_shift();
 
