@@ -2,11 +2,17 @@ function initialize_block!(sl::Slider)
 
     topscene = sl.blockscene
 
+    #why name this?
     sliderrange = sl.range
 
+    #=onany(f, args...; weak::Bool = false, priority::Int = 0, update::Bool = false)
+
+    Calls f on updates to any observable refs in args. args may contain any number of Observable objects. f will
+  be passed the values contained in the refs as the respective argument. All other objects in args are passed
+  as-is.=#
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
-            sl.layoutobservables.autosize[] = (nothing, Float32(lw))
+            sl.layoutobservables.autosize[] = (nothing, Float32(lw)) #What is sl.layoutobservables.autosize[]? It is not in the list of attributes in the
         else
             sl.layoutobservables.autosize[] = (Float32(lw), nothing)
         end
@@ -42,18 +48,6 @@ function initialize_block!(sl::Slider)
 
     dragging = Observable(false)
 
-    # what the slider actually displays currently (also during dragging when
-    # the slider position is in an "invalid" position given the slider's range)
-    displayed_sliderfraction = Observable(0.0)
-
-    on(topscene, sliderfraction) do frac
-        # only update displayed fraction through sliderfraction if not dragging
-        # dragging overrides the value so there is clear mouse interaction
-        if !dragging[]
-            displayed_sliderfraction[] = frac
-        end
-    end
-
     # when the range is changed, switch to closest value
     on(topscene, sliderrange) do rng
         selected_index[] = closest_index(rng, sl.value[])
@@ -72,23 +66,9 @@ function initialize_block!(sl::Slider)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], sl.startvalue[])
 
-    middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
-        Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
-    end
 
-    linepoints = lift(topscene, endpoints, middlepoint) do eps, middle
-        [eps[1], middle, middle, eps[2]]
-    end
-
-    linecolors = lift(topscene, sl.color_active_dimmed, sl.color_inactive) do ca, ci
-        [ca, ci]
-    end
-
-    endbuttons = scatter!(topscene, endpoints, color = linecolors,
+    endbuttons = scatter!(topscene, endpoints,
         markersize = sl.linewidth, strokewidth = 0, inspectable = false, marker=Circle)
-
-    linesegs = linesegments!(topscene, linepoints, color = linecolors,
-        linewidth = sl.linewidth, inspectable = false)
 
     button_magnification = Observable(1.0)
     buttonsize = lift(*, topscene, sl.linewidth, button_magnification)
@@ -110,7 +90,6 @@ function initialize_block!(sl::Slider)
         if sl.snap[]
             fraction = (newindex - 1) / (length(sliderrange[]) - 1)
         end
-        displayed_sliderfraction[] = fraction
 
         if selected_index[] != newindex
             selected_index[] = newindex
