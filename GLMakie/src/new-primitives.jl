@@ -771,7 +771,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     haskey(attr, :debug) || add_input!(attr, :debug, false)
 
-    generate_clip_planes!(attr, :clip) # requires projectionview
+    generate_clip_planes!(attr, :clip)
 
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
@@ -808,7 +808,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_miter_limit => :miter_limit, :uniform_linewidth => :thickness,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :model_f32c => :model,
+        :model_f32c => :model, :gl_num_clip_planes => :_num_clip_planes,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
@@ -868,7 +868,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :uniform_linewidth => :thickness, :model_f32c => :model,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :lowclip_color => :lowclip, :highclip_color => :highclip,
+        :lowclip_color => :lowclip, :highclip_color => :highclip, :gl_num_clip_planes => :_num_clip_planes,
     )
 
     robj = register_robj!(assemble_linesegments_robj!, screen, scene, plot, inputs, uniforms, input2glname)
