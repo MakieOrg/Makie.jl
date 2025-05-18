@@ -686,8 +686,8 @@ end
             nan_color, axis = (show_axis = false,))
         Makie.set_ambient_light!(a.scene, RGBf(0, 0, 0))
         Makie.set_lights!(a.scene, [DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))])
-        m = Makie.surface2mesh(1..1, 1..1, data)
-        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+        m = Makie.surface2mesh(to_value.(p.converted[])...)
+        w = wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
 
     colgap!(f.layout, 0.0)

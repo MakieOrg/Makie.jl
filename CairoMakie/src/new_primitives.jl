@@ -711,7 +711,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
         # (x, y, z) are generated after convert_arguments and dim_converts,
         # before apply_transform and
         m = Makie.surface2mesh(x, y, z)
-        return coordinates(m), faces(m), texturecoordinates(m), normals(m)
+        return coordinates(m), decompose(GLTriangleFace, m), texturecoordinates(m), normals(m)
     end
 
     # TODO: Should we always have this registered for positions derived from x, y, z?
