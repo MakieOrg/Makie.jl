@@ -216,17 +216,20 @@ end
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     isempty(p.positions_transformed_f32c[]) && return
+    attr = p.attributes
+
+    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
     @get_attribute(p, (
         markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-        transform_marker, model, markerspace, space, clip_planes
+        transform_marker, model, markerspace, space, clip_planes, f32c_scale
     ))
 
-    attr = p.attributes
 
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker),)
     end
+
 
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
     #       the output can becomes invalid from render to render.
@@ -238,6 +241,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     marker = p.cairo_marker[] # this goes through CairoMakie's conversion system and not Makie's...
     ctx = screen.context
     size_model = transform_marker ? model[Vec(1,2,3), Vec(1,2,3)] : Mat3d(I)
+    size_model = Mat3d(f32c_scale[1], 0, 0, 0, f32c_scale[2], 0, 0, 0, f32c_scale[3]) * size_model
 
     font = p.font[]
     colors = cairo_colors(p)
