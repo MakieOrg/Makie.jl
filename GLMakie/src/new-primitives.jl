@@ -222,6 +222,7 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
         :fxaa => attr[:fxaa][],
         :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
+        :num_clip_planes => 0, # default for in-shader resolution of clip planes
     )
 
     if haskey(attr, :shading)
@@ -243,7 +244,8 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     # TODO: resolution should actually be ppu * resolution (do this in shader?)
     push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
-    push!(input2glname, :gl_clip_planes => :clip_planes, :gl_num_clip_planes => :num_clip_planes)
+    push!(input2glname, :gl_clip_planes => :clip_planes)
+    get!(input2glname, :gl_num_clip_planes, :num_clip_planes) # don't overwrite
 
     # triggers if shading is present
     register_light_attributes!(screen, scene, attr, uniforms)
@@ -308,7 +310,7 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
         return draw_pixel_scatter(screen, data[:position], data)
     else
         # pass nothing to avoid going into image generating functions
-        return draw_scatter(screen, (nothing, data[:position]), data)
+        return draw_scatter(screen, position, data)
     end
 end
 
@@ -1209,6 +1211,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     input2glname = Dict{Symbol, Symbol}(
         :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
+        :gl_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_voxel_robj!, screen, scene, plot, inputs, uniforms, input2glname)
