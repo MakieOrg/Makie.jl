@@ -1,7 +1,7 @@
 function initialize_block!(sl::Slider)
 
     topscene = sl.blockscene
-    
+
     sliderrange = sl.range
 
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
