@@ -5,7 +5,7 @@ const Optional{T} = Union{Nothing, T}
 struct AxisAspect
     aspect::Float32
 end
- 
+
 struct DataAspect end
 
 struct Cycle

@@ -1,16 +1,11 @@
 function initialize_block!(sl::Slider)
 
     topscene = sl.blockscene
-    #why name this?
     sliderrange = sl.range
 
-    #=onany(f, args...; weak::Bool = false, priority::Int = 0, update::Bool = false)
-    Calls f on updates to any observable refs in args. args may contain any number of Observable objects. f will
-    be passed the values contained in the refs as the respective argument. All other objects in args are passed
-    as-is.=#
     onany(sl.linewidth, sl.horizontal) do lw, horizontal
         if horizontal
-            sl.layoutobservables.autosize[] = (nothing, Float32(lw)) #What is sl.layoutobservables.autosize[]? It is not in the list of attributes in the macro
+            sl.layoutobservables.autosize[] = (nothing, Float32(lw))
         else
             sl.layoutobservables.autosize[] = (Float32(lw), nothing)
         end
@@ -215,6 +210,7 @@ end
 
 function initialize_block!(sl::Slider2)
     topscene = sl.blockscene
+
     xrange, yrange = sl.xrange[], sl.yrange[]
 
     selected_indices = Observable((1, 1))
@@ -263,7 +259,7 @@ function initialize_block!(sl::Slider2)
     end
 
     background = lift(topscene, bbox) do bb
-        # Return a polygon representing the full bounding rectangle
+        #full bounding rectangle
         [
             Point2f(left(bb), bottom(bb)),
             Point2f(left(bb), top(bb)),
@@ -271,28 +267,25 @@ function initialize_block!(sl::Slider2)
             Point2f(right(bb), bottom(bb))
         ]
     end
-
     poly!(topscene, background, color = sl.color_inactive)
 
+    #crosshairs
     cross = lift(topscene, bbox, trackpoint) do bb, p
         [
             Point2f(left(bb), p[2]), Point2f(right(bb), p[2]),
             Point2f(p[1], bottom(bb)), Point2f(p[1], top(bb))
         ]
     end
-
     linesegments!(topscene, cross, color = sl.color_active_dimmed, linewidth = 2)
 
     hovered = Observable(false)
-
     scatter!(
         topscene, lift(p -> [p], trackpoint),
         color = sl.color_active,
         markersize = lift(hovered) do h
-            h ? 20.0 : 12.0
+            h ? 16.0 : 12.0
         end,
     )
-
 
     mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
 
