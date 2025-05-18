@@ -1,8 +1,8 @@
 function get_n_visible(entry::LegendEntry)
     n_visible = Ref(0)
     n_total = Ref(0)
-    foreach_plot_visibility(entry) do vis
-        n_visible[] += Int64(vis[])
+    foreach_plot(entry) do p
+        n_visible[] += Int64(p.visible[])
         n_total[] += 1
     end
     return n_visible[], n_total[]
@@ -1079,26 +1079,30 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     (halign = t[1], valign = t[2])
 end
 
-function foreach_plot_visibility(f, entry::LegendEntry)
+function foreach_plot(f, entry::LegendEntry)
     for element in entry.elements
         if !isnothing(element)
             for p in get_plots(element)
-                f(p.visible)
+                f(p)
             end
         end
     end
 end
 
 function toggle_visibility!(entry::LegendEntry, sync = false)
-    foreach_plot_visibility(entry) do visible
-        visible[] = sync ? true : !visible[]
+    foreach_plot(entry) do p
+        p.visible = sync ? true : !p.visible[]
     end
     return
 end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    foreach_plot_visibility(x -> push!(visibilities, ComputePipeline.get_observable!(x)), entry)
+    foreach_plot(entry) do p
+        obs = ComputePipeline.get_observable!(p.visible)::Observable{Bool}
+        push!(visibilities, obs)
+        return
+    end
     return visibilities
 end
 
