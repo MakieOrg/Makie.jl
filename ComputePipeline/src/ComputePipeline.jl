@@ -4,6 +4,9 @@ using Observables
 
 using Base: RefValue
 
+deref(r::RefValue) = r[]
+deref(x) = x
+
 abstract type AbstractEdge end
 
 #=
@@ -123,7 +126,7 @@ function TypedEdge(edge::ComputeEdge)
             error("Result needs to have same length. Found: $(result), for func $(line)")
         end
         outputs = ntuple(length(edge.outputs)) do i
-            v = RefValue(result[i])
+            v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
@@ -308,10 +311,10 @@ end
 function resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
-    if isassigned(input.output.value)
-        input.output.value[] = value
+    if isdefined(input.output, :value) && isassigned(input.output.value)
+        input.output.value[] = deref(value)
     else
-        input.output.value = RefValue(value)
+        input.output.value = value isa RefValue ? value : RefValue(value)
     end
     input.dirty = false
     input.output.dirty = true
@@ -443,7 +446,7 @@ function set_result!(edge::TypedEdge, result, i, value)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = value
+        edge.outputs[i][] = deref(value)
     end
     if !isempty(result)
         next_val = first(result)
@@ -578,7 +581,7 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
         error("Cannot attach input with name $key - already exists!")
     end
 
-    output = Computed(key, RefValue{Any}())
+    output = Computed(key)
     input = Input(attr, key, value, func, output)
     output.parent = input
     output.parent_idx = 1
