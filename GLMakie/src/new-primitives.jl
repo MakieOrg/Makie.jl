@@ -1144,7 +1144,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     generate_clip_planes!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
-    Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
     inputs = [
         # Special
@@ -1156,7 +1155,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :f32c_scale
+        :pattern_uv_transform, :fetch_pixel
     ]
 
     input2glname = Dict{Symbol, Symbol}(
