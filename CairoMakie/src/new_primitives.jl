@@ -692,7 +692,7 @@ function draw_mesh3D(
     light_direction = scene.compute[:dirlight_final_direction][]
 
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
-    vs = map(v -> normalize(v[i] - eyeposition), world_points)
+    vs = map(v -> normalize(to_ndim(Point3f, v, 0) - eyeposition), world_points)
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
