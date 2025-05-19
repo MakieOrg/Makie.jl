@@ -119,7 +119,7 @@ function voxel_program(attr)
     )
 
     # TODO: this is a waste, should just be "make N instances with no data"
-    per_instance = Dict(:dummy_data => Float32[])
+    per_instance = Dict(:dummy_data => attr.dummy_data)
     instance = GeometryBasics.mesh(Rect2f(0, 0, 1, 1)) # dont need uv, normals
 
     data = create_instanced_shader(

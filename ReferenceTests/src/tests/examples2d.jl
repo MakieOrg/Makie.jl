@@ -711,7 +711,7 @@ end
         background_color = :white, text_align = (:left, :bottom)
     )
     textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
-    textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
+    p = textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
         background_color = :orange,
         text_rotation = pi/8,
         word_wrap_width = 8,
@@ -763,8 +763,8 @@ end
         draw_on_top = false
     )
 
-    p = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
-    translate!(p, 0, 0, 10)
+    mp = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
+    translate!(mp, 0, 0, 10)
 
     xlims!(ax, 0.8, 3.4)
     ylims!(ax, -1.6, 1.4)
