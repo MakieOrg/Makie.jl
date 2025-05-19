@@ -467,8 +467,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     w, h = xymax .- xy
 
     uv_transform = if primitive isa Image
-        Makie.add_computation!(primitive.attributes, scene, Val(:pattern_uv_transform))
-        T = primitive.pattern_uv_transform[]
+        T = primitive.uv_transform[]
         # Cairo uses pixel units so we need to transform those to a 0..1 range,
         # then apply uv_transform, then scale them back to pixel units.
         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
@@ -614,6 +613,8 @@ function draw_mesh3D(
     )
 
     @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling))
+
+    shading = shading && (scene.compute.shading[] != NoShading)
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
