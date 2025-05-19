@@ -53,6 +53,7 @@ function backend_colors!(attr, color_name=:scaled_color)
         end
     end
     register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
+        color isa Real && return (color,)
         color isa AbstractVector ? (Buffer(color),) : (false,)
     end
 
@@ -123,7 +124,7 @@ end
 
 function handle_color_getter!(uniform_dict)
     vertex_color = uniform_dict[:vertex_color]
-    if vertex_color isa AbstractArray{<:Real}
+    if vertex_color isa Union{Real, AbstractArray{<:Real}}
         uniform_dict[:vertex_color_getter] = """
             vec4 get_vertex_color(){
                 vec2 norm = get_uniform_colorrange();
@@ -172,7 +173,7 @@ function assemble_particle_robj!(attr, data)
 
     per_instance_keys = Set([
         :positions_transformed_f32c, :rotation, :quad_offset, :quad_scale, :vertex_color,
-        :intensity, :sdf_uv, :strokecolor, :marker_offset
+        :intensity, :sdf_uv, :strokecolor, :marker_offset, :markersize
     ])
 
     per_instance = filter(data) do (k, v)

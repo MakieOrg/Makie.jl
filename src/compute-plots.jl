@@ -29,12 +29,20 @@ function data_limits(plot::Plot)
     end
     return bb_ref[]
 end
+
 function ComputePipeline.update!(plot::Plot, dict)
     ComputePipeline.update!(plot.attributes, dict)
     return
 end
 function ComputePipeline.update!(plot::Plot; args...)
     ComputePipeline.update!(plot.attributes; args...)
+    return
+end
+
+function ComputePipeline.update!(plot::Plot, args...; attr...)
+    kw = Dict{Symbol, Any}(Symbol(:arg, i) => arg for (i, arg) in enumerate(args))
+    merge!(kw, attr)
+    ComputePipeline.update!(plot.attributes, kw)
     return
 end
 
@@ -149,7 +157,6 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             [colorname, :colorscale, :alpha],
             [:raw_color, :scaled_color, :fetch_pixel]
         ) do (color, colorscale, alpha), changed, last
-
         val = if color isa Union{AbstractArray{<: Real}, Real}
             el32convert(apply_scale(colorscale, color))
         elseif color isa AbstractPattern

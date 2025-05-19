@@ -1108,7 +1108,7 @@ function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, in
         if color isa Union{AbstractMatrix{<: Real}, AbstractArray{<: Real, 3}}
             data[:image] = Texture(screen.glscreen, color, minfilter = interp)
             colorname = :image
-        elseif color isa AbstractVector{<: Real}
+        elseif color isa Union{Real, AbstractVector{<: Real}}
             data[:vertex_color] = color
             colorname = :vertex_color
         else
