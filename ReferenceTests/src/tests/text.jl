@@ -312,8 +312,8 @@ end
 @reference_test "latex updates" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textnode = Observable([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
-    posnode = Observable(Point2f[(50, 50), (100, 100)])
+    textnode = [L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"]
+    posnode = Point2f[(50, 50), (100, 100)]
 
     t = text!(s,
         textnode,
@@ -323,8 +323,10 @@ end
 
     Makie.step!(st)
     ## change lengths
-    textnode[] = push!(textnode[], L"\int_0^5x^2+2ab")
-    posnode[] = push!(posnode[], Point2f(150, 150))
+    Makie.update!(
+        t, push!(textnode, L"\int_0^5x^2+2ab");
+        position=push!(posnode, Point2f(150, 150))
+    )
     Makie.step!(st)
     st
 end
