@@ -94,7 +94,7 @@ void main(){
     if (isnan(vertex_position.z)) {
         vertex_position.z = 0.0;
     }
-    vec4 position_world = model * vec4(vertex_position, 1);
+    vec4 position_world = model_f32c * vec4(vertex_position, 1);
 
     render(position_world, get_normal(), view, projection);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
