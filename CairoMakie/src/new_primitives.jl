@@ -747,13 +747,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
-
     colors = cairo_colors(primitive)
+    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
+    uv_transform = plot.pattern_uv_transform[]
 
     draw_scattered_mesh(
         scene, screen, primitive, marker,
         transformed_pos, markersize, rotation, colors,
-        clip_planes, transform_marker
+        clip_planes, transform_marker, uv_transform
     )
 end
 
@@ -761,12 +762,9 @@ function draw_scattered_mesh(
         scene, screen, @nospecialize(plot::Plot), mesh,
         # positions in world space, acting as translations for mesh
         positions, scales, rotations, colors,
-        clip_planes, transform_marker
+        clip_planes, transform_marker, uv_transform
     )
     @get_attribute(plot, (model, space))
-
-    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
-    uv_transform = plot.pattern_uv_transform[]
 
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
@@ -854,7 +852,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     draw_scattered_mesh(
         scene, screen, primitive, marker,
         transformed_pos, scale, Quaternionf(0,0,0,1), colors,
-        Plane3f[], true
+        Plane3f[], true, primitive.uv_transform[]
     )
 
     return nothing
