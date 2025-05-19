@@ -159,7 +159,13 @@ function assemble_particle_robj!(attr, data)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = get(()-> attr.text_rotation, attr, :rotation)
+    data[:rotation] = if haskey(attr, :converted_rotation)
+        attr.converted_rotation
+    elseif haskey(attr, :rotation)
+        attr.rotation
+    else
+        attr.text_rotation
+    end
     data[:f32c_scale] = attr.f32c_scale
 
     # Uniforms will be set in JavaScript
@@ -199,7 +205,8 @@ const SCATTER_INPUTS = [
     :lowclip_color,
     :pattern,
 
-    :rotation,
+    :converted_rotation,
+    :billboard,
     :quad_scale,
     :quad_offset,
     :sdf_uv,
@@ -229,7 +236,7 @@ function scatter_program(attr)
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => get(()-> attr.text_rotation, attr, :rotation) isa Billboard,
+        :billboard => haskey(attr, :converted_rotation) ? attr.billboard : true,
         :distancefield => distancefield,
 
         :marker_offset => attr.marker_offset,

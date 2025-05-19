@@ -619,7 +619,10 @@ function calculated_attributes!(::Type{Scatter}, plot::Plot)
     register_marker_computations!(attr)
     register_colormapping!(attr)
     register_position_transforms!(attr)
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
+    register_computation!(attr, [:rotation], [:converted_rotation, :billboard]) do (rotation,), changed, cached
+        return (convert_attribute(rotation, key"rotation"()), rotation isa Billboard)
+    end
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation],
                           [:data_limits]) do args, changed, last
         return (scatter_limits(args...),)
     end
