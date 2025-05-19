@@ -1105,8 +1105,8 @@ function add_mesh_color_attributes!(screen, attr, data, color, colormap, colorno
 
     else # colormapped
 
-        interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
-        data[:color_map] = Texture(screen.glscreen, colormap, minfilter = interp)
+        cm_interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        data[:color_map] = Texture(screen.glscreen, colormap, minfilter = cm_interp)
         data[:color_norm] = colornorm
 
         if color isa Union{AbstractMatrix{<: Real}, AbstractArray{<: Real, 3}}

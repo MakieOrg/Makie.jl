@@ -304,7 +304,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         return args.converted # destructure
     end
 
-    add_input!((k, v) -> Ref{Any}(identity), attr, :transform_func, identity)
+    add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
 
     # TODO: Should we get rid of model as a documented attribute?
     #       (On master, it acts as an overwrite, making translate!() etc not work)
