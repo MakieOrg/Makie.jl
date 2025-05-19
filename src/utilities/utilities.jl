@@ -508,6 +508,9 @@ sv_getindex(v::AbstractArray, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
 sv_getindex(x::Mat, ::Integer) = x
+# for CairoMakie meshscatter we don't want images and patterns to get indexed
+sv_getindex(x::AbstractMatrix{<: Colorant}, ::Integer) = x
+sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
 # TODO: move to GeometryBasics
 function corners(rect::Rect2{T}) where T

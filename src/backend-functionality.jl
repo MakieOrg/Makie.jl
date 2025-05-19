@@ -249,7 +249,9 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname =
         needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern || changed.uv_transform
         if needs_update
             if is_pattern
-                new_uvt = Makie.pattern_uv_transform(uvt, pv * model, widths(vp), pattern, target_mat3)
+                # This changes what `automatic` converts to
+                input_uvt = attr.inputs[:uv_transform].value
+                new_uvt = Makie.pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern, target_mat3)
                 return (new_uvt, )
             else
                 return (uvt,)
