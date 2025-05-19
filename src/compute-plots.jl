@@ -271,7 +271,7 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
-    args = attr[:args][][]
+    args = attr[:args][]
     if length(args) in (2, 3)
         inputs = Symbol[]
         for (i, arg) in enumerate(args)
@@ -284,13 +284,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         register_computation!(attr, [:args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
             last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
             result = ntuple(length(converts)) do i
-                return convert_dim_value(converts[i], attr, expanded[][i], last_vals[i])
+                return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
             end
             return (result,)
         end
     else
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (args.args[],)
+            return (args.args,)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
@@ -302,9 +302,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         return args.converted # destructure
     end
 
-    add_input!(attr, :transform_func, identity)
-    # Hack-fix variable type
-    attr[:transform_func].value = RefValue{Any}(identity)
+    add_input!((k, v) -> Ref{Any}(identity), attr, :transform_func, identity)
 
     # TODO: Should we get rid of model as a documented attribute?
     #       (On master, it acts as an overwrite, making translate!() etc not work)
@@ -373,8 +371,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
                 return convert_attribute(value, Key{key}(), Key{name}())
             end
         else
-            add_input!(attr, k, value)
-            attr[k].value = RefValue{Any}(value)
+            add_input!((k,v) -> Ref{Any}(v), attr, k, value)
         end
 
         # Hack-fix variable type
