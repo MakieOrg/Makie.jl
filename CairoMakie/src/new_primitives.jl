@@ -467,7 +467,8 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     w, h = xymax .- xy
 
     uv_transform = if primitive isa Image
-        T = primitive.uv_transform[]
+        Makie.add_computation!(primitive.attributes, scene, Val(:pattern_uv_transform))
+        T = primitive.pattern_uv_transform[]
         # Cairo uses pixel units so we need to transform those to a 0..1 range,
         # then apply uv_transform, then scale them back to pixel units.
         # Cairo also doesn't have the yflip we have in OpenGL, so we need to
@@ -566,7 +567,8 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     vs = cairo_project_to_screen(plot)
     fs = plot.faces[]
     uv = plot.texturecoordinates[]
-    uv_transform = plot.uv_transform[]
+    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
+    uv_transform = plot.pattern_uv_transform[]
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
@@ -580,7 +582,9 @@ end
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
-    @get_attribute(plot, (uv_transform, clip_planes))
+    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
+    @get_attribute(plot, (clip_planes, ))
+    uv_transform = plot.pattern_uv_transform[]
 
     # per-element in meshscatter
     world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
@@ -759,7 +763,10 @@ function draw_scattered_mesh(
         positions, scales, rotations, colors,
         clip_planes, transform_marker
     )
-    @get_attribute(plot, (model, uv_transform, space))
+    @get_attribute(plot, (model, space))
+
+    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
+    uv_transform = plot.pattern_uv_transform[]
 
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
