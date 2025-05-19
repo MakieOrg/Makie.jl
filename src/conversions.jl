@@ -902,9 +902,9 @@ end
 
 
 
+# convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+# convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
 convert_attribute(x::Automatic, ::key"color") = x
