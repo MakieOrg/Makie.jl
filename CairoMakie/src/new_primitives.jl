@@ -225,11 +225,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
         transform_marker, model, markerspace, space, clip_planes, f32c_scale
     ))
 
-
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
         return (cairo_scatter_marker(marker),)
     end
-
 
     # TODO: This requires (cam.projectionview, resolution) as inputs otherwise
     #       the output can becomes invalid from render to render.
@@ -250,7 +248,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     return draw_atomic_scatter(
         scene, ctx, markerspace_pos, indices, colors, markersize, strokecolor, strokewidth,
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
-        )
+    )
 end
 
 is_approx_zero(x) = isapprox(x, 0)
@@ -270,7 +268,7 @@ function draw_atomic_scatter(
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
     )
 
-    Makie.broadcast_foreach_index(markerspace_positions, indices, colors, markersize, strokecolor,
+    Makie.broadcast_foreach_index(indices, markerspace_positions, colors, markersize, strokecolor,
         strokewidth, marker, marker_offset, remove_billboard(rotation)) do ms_pos, col,
         markersize, strokecolor, strokewidth, m, mo, rotation
 
@@ -518,7 +516,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         # this already takes care of flipping the image to correct cairo orientation
         space = primitive.space[]
         xys = let
-            transformed = [Point2(x, y) for x in xs, y in ys]
+            transformed = [Point2f(x, y) for x in xs, y in ys]
 
             # This should transform to the coordinate system transformed is in,
             # which is pre model_f32c application, not pre model application
@@ -530,7 +528,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
 
             for i in eachindex(transformed)
                 if is_clipped(planes, transformed[i])
-                    transformed[i] = T(NaN)
+                    transformed[i] = Point2f(NaN)
                 end
             end
 
