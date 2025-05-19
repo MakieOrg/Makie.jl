@@ -517,6 +517,7 @@ function free(plot::AbstractPlot)
         Observables.off(f)
     end
     foreach(free, plot.plots)
+    empty!(plot.attributes)
     # empty!(plot.plots)
     empty!(plot.deregister_callbacks)
     free(plot.transformation)

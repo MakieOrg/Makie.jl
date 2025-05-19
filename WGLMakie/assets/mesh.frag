@@ -96,7 +96,9 @@ vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
         return frag_color;
     }
 }
-
+vec4 get_color(float value, vec2 uv, vec2 colorrange, sampler2D colormap) {
+    return get_color_from_cmap(value, colormap, colorrange);
+}
 vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(values, uv).x;
     return get_color_from_cmap(value, colormap, colorrange);
@@ -130,7 +132,10 @@ uint picking_index_from_uv(sampler2D img, vec2 uv) {
 }
 
 // These should not get hit
-uint picking_index_from_uv(bool img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(float img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(bool img, vec2 uv) {
+    return frag_instance_id;
+}
 uint picking_index_from_uv(vec3 img, vec2 uv) { return frag_instance_id; }
 uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
 

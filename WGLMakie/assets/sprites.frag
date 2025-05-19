@@ -66,6 +66,9 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
 vec4 fill(vec4 fillcolor, vec4 color, vec2 uv) {
     return color;
 }
+vec4 fill(vec4 fillcolor, float color, vec2 uv) {
+    return fillcolor;
+}
 vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
 vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 

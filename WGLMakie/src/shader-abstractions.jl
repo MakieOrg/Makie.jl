@@ -41,12 +41,19 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
             end
             println(io, "uniform ", t_str, " $name;")
             getkey = Symbol(string(name, "_", "getter"))
-            if haskey(uniforms, getkey)
-                println(io, uniforms[getkey])
-            else
+            if !haskey(uniforms, getkey)
                 SA.getter_function(io, v, t_str, name)
             end
         end
+        # emit getter after uniforms
+        for (name, v) in uniforms
+            getkey = Symbol(string(name, "_", "getter"))
+            if haskey(uniforms, getkey)
+                println(io, uniforms[getkey])
+            end
+        end
+
+
         println(io)
     end
     vertex_dict = to_vertex_dict(vertex_attr)

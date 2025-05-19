@@ -164,7 +164,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(get_wgl_color(), get_wgl_colormap(), get_wgl_uv_transform(), id);
+    vec4 voxel_color = get_color(wgl_color, wgl_colormap, get_wgl_uv_transform(), id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)

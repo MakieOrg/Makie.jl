@@ -212,6 +212,7 @@ struct ComputeGraph
     outputs::Dict{Symbol,Computed}
     onchange::Observable{Nothing}
     observables::Dict{Symbol,Observable}
+    observerfunctions::Vector{Observables.ObserverFunction}
 end
 
 function get_observable!(attr::ComputeGraph, key::Symbol)
@@ -265,7 +266,9 @@ function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
 end
 
 function ComputeGraph()
-    return ComputeGraph(Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}(), Dict{Symbol,Observable}())
+    return ComputeGraph(
+        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}(),
+        Dict{Symbol,Observable}(), Observables.ObserverFunction[])
 end
 
 _first_arg(args, changed, last) = (args[1],)
@@ -410,6 +413,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :outputs && return getfield(attr, :outputs)
     key === :onchange && return getfield(attr, :onchange)
     key === :observables && return getfield(attr, :observables)
+    key === :observerfunctions && return getfield(attr, :observerfunctions)
     return attr.outputs[key]
 end
 
@@ -642,19 +646,21 @@ function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(attr, k, obs[])
     # typemax-1 so it doesn't get disturbed by other listeners but can still be
     # blocked by a typamax obs
-    on(obs, priority = typemax(Int)-1) do new_val
+    of = on(obs, priority = typemax(Int)-1) do new_val
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
+    push!(attr.observerfunctions, of)
     return attr
 end
 
 function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(f, attr, k, obs[])
-    on(obs, priority = typemax(Int)-1) do new_val
+    of = on(obs, priority = typemax(Int)-1) do new_val
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
+    push!(attr.observerfunctions, of)
     return attr
 end
 
@@ -799,6 +805,19 @@ function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol
         return (f(inputs...),)
     end
     return attr
+end
+
+function Base.empty!(attr::ComputeGraph)
+    # empty!(attr.inputs)
+    # empty!(attr.outputs)
+    for (name, obs) in attr.observables
+        Observables.clear(obs)
+    end
+    empty!(attr.observables)
+    for of in attr.observerfunctions
+        Observables.off(of)
+    end
+    empty!(attr.observerfunctions)
 end
 
 """

@@ -371,7 +371,9 @@ function register_text_computations!(attr::ComputeGraph)
     compute_glyph_collections!(attr)
 
     register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
-        length(blocks) == length(pos) || error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos))")
+        if length(blocks) != length(pos)
+            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
+        end
         return ([p for (b, p) in zip(blocks, pos) for i in b],)
     end
 
