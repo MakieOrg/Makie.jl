@@ -746,8 +746,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
     colors = cairo_colors(primitive)
-    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
-    uv_transform = plot.pattern_uv_transform[]
+    Makie.add_computation!(primitive.attributes, scene, Val(:pattern_uv_transform))
+    uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(
         scene, screen, primitive, marker,
