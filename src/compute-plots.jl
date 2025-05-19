@@ -342,13 +342,6 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
 
-    # Hack-fix variable types
-    abstract_type_init = Dict{Symbol, RefValue}(
-        :lowclip => RefValue{Union{Automatic, Colorant}}(automatic),
-        :highclip => RefValue{Union{Automatic, Colorant}}(automatic),
-        :colorrange => RefValue{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}}(automatic),
-        :colorscale => RefValue{Any}(identity),
-    )
     for (k, v) in documented_attr
         if haskey(kwargs, k)
             if v isa Attributes
@@ -372,11 +365,6 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
             end
         else
             add_input!((k,v) -> Ref{Any}(v), attr, k, value)
-        end
-
-        # Hack-fix variable type
-        if is_primitive && haskey(abstract_type_init, k)
-            attr[k].value = abstract_type_init[k]
         end
     end
     if !haskey(attr, :model)

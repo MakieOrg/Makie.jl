@@ -907,17 +907,26 @@ end
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
+convert_attribute(font, ::key"font") = to_font(font)
+convert_attribute(align, ::key"align") = to_align(align)
+
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
 convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
-convert_attribute(font, ::key"font") = to_font(font)
-convert_attribute(align, ::key"align") = to_align(align)
 
-convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Union{Automatic, Nothing}, ::key"highclip") = p
-convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Union{Automatic,Nothing}, ::key"lowclip") = p
+convert_attribute(c, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic, Nothing}, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+convert_attribute(c, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic,Nothing}, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+
+convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
+
+# TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
+convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
+
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -1477,10 +1486,6 @@ to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s
 to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
-
-convert_attribute(x::Automatic, ::key"colorrange") = x
-convert_attribute(x, ::key"colorrange") = to_colorrange(x)
-to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
