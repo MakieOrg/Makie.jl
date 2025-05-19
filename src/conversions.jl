@@ -913,7 +913,7 @@ convert_attribute(align, ::key"align") = to_align(align)
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
-convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
 
 convert_attribute(c, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
 convert_attribute(::Union{Automatic, Nothing}, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(automatic)
@@ -1622,6 +1622,22 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     # 256 is just a high enough constant, without being too big to slow things down.
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
+
+"""
+    to_colormapping_type(colormap)
+Returns `continuous`, `categorical` or `banded` according to the type of the
+colormap passed.
+Note: Currently recognizes all named colormaps as continuous. To recognize them
+as categorical they need to be wrapped in `Categorical(colormap)`.
+"""
+to_colormapping_type(::Any) = continuous
+to_colormapping_type(::Categorical) = categorical
+to_colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
+to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
+to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
+# TODO: some Symbols should probably be considered categorical?
+# TODO: Would be nice if we could extract more information like colorscale from
+#       PlotUtils, colormapping types from ColorSchemes, ...
 
 # Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")

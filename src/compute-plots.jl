@@ -127,23 +127,25 @@ function add_alpha(color, alpha)
 end
 
 function register_colormapping!(attr::ComputeGraph, colorname=:color)
-    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping]) do (icm, a), changed, last
-        raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
+    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do (icm, a), changed, last
+        # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
+        # This only differs from alpha_colormap in that it doesn't resample PlotUtils.ColorGradient...
+        raw_colormap = _to_colormap(icm)::Vector{RGBAf}
+        conv_colormap = to_colormap(icm)
         if a < 1.0
-            alpha_colormap = add_alpha.(icm, a)
+            alpha_colormap = add_alpha.(conv_colormap, a)
             raw_colormap .= add_alpha.(raw_colormap, a)
         else
-            alpha_colormap = icm
+            alpha_colormap = conv_colormap
         end
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
-        return (alpha_colormap, raw_colormap, color_mapping)
+        type = to_colormapping_type(icm)
+        return (alpha_colormap, raw_colormap, color_mapping, type)
     end
-    register_computation!(attr, [:raw_colormap], [:color_mapping_type]) do (color,), changed, last
-        return (colormapping_type(color),)
-    end
+
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
-        register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
+        register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
             if input === automatic
                 (ifelse(key == :lowclip, first(cmap), last(cmap)),)
             else

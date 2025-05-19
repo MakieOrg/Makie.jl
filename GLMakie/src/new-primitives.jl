@@ -77,12 +77,14 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
     end
 end
 
-function add_color_attributes!(data, color, colormap, colornorm)
+function add_color_attributes!(screen, attr, data, color, colormap, colornorm)
     needs_mapping = !(colornorm isa Nothing)
     _color = needs_mapping ? nothing : color
     intensity = needs_mapping ? color : nothing
 
-    data[:color_map] = needs_mapping ? colormap : nothing
+    interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
+    data[:color_map] = needs_mapping ? Texture(screen.glscreen, colormap, minfilter = interp) : nothing
+
     if _color isa Matrix{RGBAf} || _color isa ShaderAbstractions.Sampler
         data[:image] = _color
         data[:color] = RGBAf(1,1,1,1)
@@ -94,9 +96,10 @@ function add_color_attributes!(data, color, colormap, colornorm)
     return nothing
 end
 
-function add_color_attributes_lines!(data, color, colormap, colornorm)
+function add_color_attributes_lines!(screen, attr, data, color, colormap, colornorm)
     needs_mapping = !(colornorm isa Nothing)
-    data[:color_map] = needs_mapping ? colormap : nothing
+    interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
+    data[:color_map] = needs_mapping ? Texture(screen.glscreen, colormap, minfilter = interp) : nothing
     data[:color] = color
     data[:color_norm] = colornorm
     return nothing
@@ -309,7 +312,7 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
     data[:shape] = marker_shape
 
-    add_color_attributes!(data, color, colormap, colornorm)
+    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # Correct the name mapping
     if !isnothing(get(data, :intensity, nothing))
@@ -463,7 +466,7 @@ function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
     data[:image] = nothing
     data[:rotation] = args.text_rotation
 
-    add_color_attributes!(data, color, colormap, colornorm)
+    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # Correct the name mapping
     if !isnothing(get(data, :intensity, nothing))
@@ -566,7 +569,7 @@ function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glna
         data[:uv_transform] = args.packed_uv_transform
     end
 
-    add_color_attributes!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
+    add_color_attributes!(screen, attr, data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
     # Correct the name mapping
     if !isnothing(get(data, :intensity, nothing))
@@ -640,7 +643,7 @@ function assemble_lines_robj!(data, screen::Screen, attr, args, input2glname)
     data[:vertex] = positions # Needs to be set before draw_lines()
     data[:debug] = attr[:debug][]
 
-    add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
+    add_color_attributes_lines!(screen, attr, data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
     if !isnothing(get(data, :intensity, nothing))
         input2glname[:scaled_color] = :intensity
@@ -826,7 +829,7 @@ function assemble_linesegments_robj!(data, screen::Screen, attr, args, input2gln
     data[:debug] = attr[:debug][]
 
     # add_camera_attributes!(data, screen, camera, args.space)
-    add_color_attributes_lines!(data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
+    add_color_attributes_lines!(screen, attr, data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
 
     if !isnothing(get(data, :intensity, nothing))
         input2glname[:scaled_color] = :intensity
@@ -891,7 +894,7 @@ function assemble_image_robj!(data, screen::Screen, attr, args, input2glname)
     colormap = args.alpha_colormap
     color = args.scaled_color
     colornorm = args.scaled_colorrange
-    add_color_attributes!(data, color, colormap, colornorm)
+    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # always use :image with specific interpolation settings, so remove:
     pop!(data, :image, nothing)
@@ -951,7 +954,7 @@ function assemble_heatmap_robj!(data, screen::Screen, attr, args, input2glname)
     colormap = args.alpha_colormap
     color = args.scaled_color
     colornorm = args.scaled_colorrange
-    add_color_attributes!(data, color, colormap, colornorm)
+    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # always use :image with specific interpolation settings, so remove:
     pop!(data, :image, nothing)
@@ -1103,7 +1106,8 @@ function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, in
 
     else # colormapped
 
-        data[:color_map] = colormap
+        interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
+        data[:color_map] = Texture(screen.glscreen, colormap, minfilter = interp)
         data[:color_norm] = colornorm
 
         if color isa Union{AbstractMatrix{<: Real}, AbstractArray{<: Real, 3}}
