@@ -444,7 +444,7 @@ function mesh_program(attr)
         :shininess => attr.shininess,
         :backlight => attr.backlight,
 
-        :model => Mat4f(attr.model_f32c),
+        :model_f32c => Mat4f(attr.model_f32c),
         :PICKING_INDEX_FROM_UV => true,
         :uv_transform => Mat3f(I),
         :depth_shift => attr.depth_shift,
