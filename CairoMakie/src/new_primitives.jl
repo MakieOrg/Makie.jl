@@ -268,7 +268,7 @@ function draw_atomic_scatter(
         marker, marker_offset, rotation, size_model, font, markerspace, billboard
     )
 
-    Makie.broadcast_foreach_index(markerspace_positions, indices, colors, markersize, strokecolor,
+    Makie.broadcast_foreach_index(indices, markerspace_positions, colors, markersize, strokecolor,
         strokewidth, marker, marker_offset, remove_billboard(rotation)) do ms_pos, col,
         markersize, strokecolor, strokewidth, m, mo, rotation
 
@@ -516,7 +516,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
         # this already takes care of flipping the image to correct cairo orientation
         space = primitive.space[]
         xys = let
-            transformed = [Point2(x, y) for x in xs, y in ys]
+            transformed = [Point2f(x, y) for x in xs, y in ys]
 
             # This should transform to the coordinate system transformed is in,
             # which is pre model_f32c application, not pre model application
@@ -528,7 +528,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
 
             for i in eachindex(transformed)
                 if is_clipped(planes, transformed[i])
-                    transformed[i] = T(NaN)
+                    transformed[i] = Point2f(NaN)
                 end
             end
 
@@ -690,7 +690,7 @@ function draw_mesh3D(
     light_direction = scene.compute[:dirlight_final_direction][]
 
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
-    vs = map(v -> normalize(v[i] - eyeposition), world_points)
+    vs = map(v -> normalize(to_ndim(Point3f, v, 0) - eyeposition), world_points)
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
@@ -745,13 +745,14 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
-
     colors = cairo_colors(primitive)
+    Makie.add_computation!(primitive.attributes, scene, Val(:pattern_uv_transform))
+    uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(
         scene, screen, primitive, marker,
         transformed_pos, markersize, rotation, colors,
-        clip_planes, transform_marker
+        clip_planes, transform_marker, uv_transform
     )
 end
 
@@ -759,12 +760,9 @@ function draw_scattered_mesh(
         scene, screen, @nospecialize(plot::Plot), mesh,
         # positions in world space, acting as translations for mesh
         positions, scales, rotations, colors,
-        clip_planes, transform_marker
+        clip_planes, transform_marker, uv_transform
     )
     @get_attribute(plot, (model, space))
-
-    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
-    uv_transform = plot.pattern_uv_transform[]
 
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
@@ -852,7 +850,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     draw_scattered_mesh(
         scene, screen, primitive, marker,
         transformed_pos, scale, Quaternionf(0,0,0,1), colors,
-        Plane3f[], true
+        Plane3f[], true, primitive.uv_transform[]
     )
 
     return nothing
