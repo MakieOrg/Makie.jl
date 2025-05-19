@@ -359,7 +359,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
 
             # Not renderable by font (e.g. '\n')
             # TODO, filter out \n in GlyphCollection, and render unrenderables as box
-            glyph == 0 && return
+            glyph == 0 && continue
 
             cairoface = set_ft_font(ctx, font)
             old_matrix = get_font_matrix(ctx)
