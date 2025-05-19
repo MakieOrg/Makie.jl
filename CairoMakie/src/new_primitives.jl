@@ -609,7 +609,7 @@ end
 function draw_mesh3D(
         scene, screen, @nospecialize(plot::Plot),
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
-        uv_transform, color, clip_planes
+        uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
     @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling))
@@ -634,7 +634,6 @@ function draw_mesh3D(
         meshnormals .= -meshnormals
     end
 
-    model = plot.model_f32c[]::Mat4f
     faceculling = to_value(get(plot, :faceculling, -10))
 
     draw_mesh3D(
@@ -795,12 +794,12 @@ function draw_scattered_mesh(
         # Get per-element data
         element_color = Makie.sv_getindex(colors, i)
         element_uv_transform = Makie.sv_getindex(uv_transform, i)
-        element_transform = Makie.transformationmatrix(
-            Vec3d(0), Makie.sv_getindex(scales, i), Makie.sv_getindex(rotations, i)
-        )
         element_translation = to_ndim(Point4d, positions[i], 0)
+        element_rotation = Makie.rotationmatrix4(Makie.sv_getindex(rotations, i))
+        element_scale = Makie.scalematrix(Makie.sv_getindex(scales, i))
+        element_transform = element_rotation * element_scale # different order from transformationmatrix()
 
-        # TODO: Should we cache this?
+        # TODO: Should we cache this? Would be a lot of data...
         # mesh transformations
         # - transform_func does not apply to vertices (only pos)
         # - only scaling from float32convert applies to vertices
@@ -818,7 +817,7 @@ function draw_scattered_mesh(
         draw_mesh3D(
             scene, screen, plot,
             element_world_pos, element_screen_pos, meshfaces, meshnormals, meshuvs,
-            element_uv_transform, element_color, clip_planes
+            element_uv_transform, element_color, clip_planes, f32c_model * element_transform
         )
     end
 
