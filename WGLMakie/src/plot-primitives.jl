@@ -124,7 +124,7 @@ end
 
 function handle_color_getter!(uniform_dict)
     vertex_color = uniform_dict[:vertex_color]
-    if vertex_color isa Union{Real, AbstractArray{<:Real}}
+    if vertex_color isa Union{Real, AbstractArray{<:Real}} && !(vertex_color isa Bool)
         uniform_dict[:vertex_color_getter] = """
             vec4 get_vertex_color(){
                 vec2 norm = get_uniform_colorrange();
