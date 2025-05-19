@@ -1023,11 +1023,10 @@ end
 
 function assemble_surface_robj!(data, screen::Screen, attr, args, input2glname)
     colorname = add_mesh_color_attributes!(
-        screen, data,
+        screen, attr, data,
         args.scaled_color,
         args.alpha_colormap,
         args.scaled_colorrange,
-        attr[:interpolate][]
     )
     @assert colorname == :image
 
@@ -1086,9 +1085,9 @@ end
 ################################################################################
 
 # mesh_inner part 1
-function add_mesh_color_attributes!(screen, data, color, colormap, colornorm, interpolate)
+function add_mesh_color_attributes!(screen, attr, data, color, colormap, colornorm)
     # Note: assuming el32convert, Pattern convert to happen in Makie or earlier elsewhere
-    interp = interpolate ? :linear : :nearest
+    interp = attr[:interpolate][] ? :linear : :nearest
     colorname = :vertex_color
 
     if color isa Colorant
@@ -1129,11 +1128,10 @@ end
 
 function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
     input2glname[:scaled_color] = add_mesh_color_attributes!(
-        screen, data,
+        screen, attr, data,
         args.scaled_color,
         args.alpha_colormap,
-        args.scaled_colorrange,
-        attr[:interpolate][]
+        args.scaled_colorrange
     )
 
     data[:normals] === nothing && delete!(data, :normals)
