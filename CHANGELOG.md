@@ -6,6 +6,7 @@
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
 - Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).
+- Fixed cycling not being consistent when the same plot function was called with different input types (float32 vs float64 lines, for example) [#4960](https://github.com/MakieOrg/Makie.jl/pull/4960)
 
 ## [0.22.5] - 2025-05-12
 
@@ -18,7 +19,6 @@
 - Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
 - Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
 - Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
-- Fixed cycling not being consistent when the same plot function was called with different input types (float32 vs float64 lines, for example) [#4960](https://github.com/MakieOrg/Makie.jl/pull/4960)
 - Fixed issue with `sprint`ing to SVG using CairoMakie in Julia 1.11 and above [#4971](https://github.com/MakieOrg/Makie.jl/pull/4971).
 
 ## [0.22.4] - 2025-04-11
