@@ -349,7 +349,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
         :strokewidth, :glowwidth, :glowcolor,
 
-        :text_rotation, :text_strokecolor, # TODO: do these even work per glyph?
+        :text_rotation, :text_strokecolor,
         :marker_offset, :sdf_marker_shape, :glyph_data,
         # :quad_scale, :quad_offset, :sdf_uv,
         :depth_shift, :atlas, :markerspace,

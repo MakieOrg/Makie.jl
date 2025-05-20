@@ -14,6 +14,7 @@ out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
 out float o_clip_distance[8];
+flat out vec4 frag_strokecolor;
 
 flat out uint frag_instance_id;
 flat out vec2 f_sprite_scale;
@@ -152,6 +153,7 @@ void main(){
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
     frag_color = tovec4(get_vertex_color());
+    frag_strokecolor = tovec4(get_strokecolor());
     frag_uv_offset_width = get_sdf_uv();
     // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
     // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)

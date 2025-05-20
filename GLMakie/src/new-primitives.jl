@@ -510,8 +510,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     generate_clip_planes!(attr)
 
     # TODO:
-    # - rotation -> billboard missing
     # - intensity_convert
+
+    # TODO:
+    # text_strokewidth doesn't work because the shader only accepts a uniform float
+    # this is also true on master
 
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are

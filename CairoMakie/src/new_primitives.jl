@@ -277,7 +277,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         marker_offset,
         text_rotation,
         text_scales,
-        strokewidth,
+        text_strokewidth,
         text_strokecolor,
         markerspace,
         transform_marker,
@@ -309,6 +309,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
             font = font_per_char[glyph_idx]
             rotation = Makie.sv_getindex(text_rotation, glyph_idx)
             color = Makie.sv_getindex(text_color, glyph_idx)
+            strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
             scale = Makie.sv_getindex(text_scales, glyph_idx)
 

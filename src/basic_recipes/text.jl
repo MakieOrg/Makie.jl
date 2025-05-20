@@ -206,6 +206,9 @@ function convert_text_string!(
     append!(outputs.text_rotation, rotations)
     append!(outputs.text_scales, scales)
 
+    append!(outputs.text_strokecolor, per_glyph_block(strokecolor, i, N, block))
+    append!(outputs.text_strokewidth, per_glyph_block(strokewidth, i, N, block))
+
     return
 end
 
@@ -228,8 +231,8 @@ function convert_text_string!(
 
     append!(outputs.font_per_char, collect_vector(gc.fonts, n))
     append!(outputs.text_color, collect_vector(gc.colors, n))
-    # append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    # append!(outputs.strokewidth, collect_vector(gc.strokewidths, n))
+    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
+    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
@@ -254,8 +257,8 @@ function convert_text_string!(
     append!(outputs.glyph_extents, gc.extents)
     append!(outputs.font_per_char, collect_vector(gc.fonts, n))
     append!(outputs.text_color, collect_vector(gc.colors, n))
-    # append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
-    # append!(outputs.strokewidth, collect_vector(gc.strokewidths, n))
+    append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
+    append!(outputs.text_strokewidth, collect_vector(gc.strokewidths, n))
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
@@ -288,7 +291,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_blocks,
         :text_color,
         :text_rotation,
-        :text_scales
+        :text_scales,
+        :text_strokewidth,
+        :text_strokecolor,
     ]
     register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         if isnothing(cached)
@@ -302,6 +307,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
                 text_color = RGBAf[],
                 text_rotation = Quaternionf[],
                 text_scales = Vec2f[],
+                text_strokewidth = Float32[],
+                text_strokecolor = RGBAf[]
             )
         else
             foreach(empty!, values(cached))
@@ -317,8 +324,6 @@ function compute_glyph_collections!(attr::ComputeGraph)
         return values(_outputs)
     end
 
-    # TODO: per-glyph strokecolor and strokewidth?
-    map!(identity, attr, :strokecolor, :text_strokecolor)
 end
 
 function register_text_computations!(attr::ComputeGraph)
