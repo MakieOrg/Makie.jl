@@ -992,7 +992,7 @@ end
         tellwidth::Bool = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight::Bool = true
-        "The start value of the slider's x position or the value that is closest in the slider range."
+        "The start value of the slider's position or the value that is closest in the slider range."
         startvalue = (0,0)
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = (0,0)
