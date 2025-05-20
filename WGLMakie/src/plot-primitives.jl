@@ -236,7 +236,7 @@ function scatter_program(attr)
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => haskey(attr, :converted_rotation) ? attr.billboard : true,
+        :billboard => haskey(attr, :converted_rotation) ? attr.billboard : false,
         :distancefield => distancefield,
 
         :marker_offset => attr.marker_offset,

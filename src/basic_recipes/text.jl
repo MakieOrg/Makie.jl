@@ -42,14 +42,14 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
         # Note: Could add RichText
         if args isa Tuple{<: AbstractString}
             # position data will always be wrapped in a Vector, so strings should too
-            return ((a_pos,), [args[1]])
+            return ((a_pos,), Ref{Any}([args[1]]))
         elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
-            return ((a_pos,), args[1])
+            return ((a_pos,), Ref{Any}(args[1]))
         elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
             # [(text, pos), ...] argument
-            return ((last.(args[1]),), first.(args[1]))
+            return ((last.(args[1]),), Ref{Any}(first.(args[1])))
         else # assume position data
-            return (args, a_text)
+            return (args, Ref{Any}(a_text))
         end
     end
 
