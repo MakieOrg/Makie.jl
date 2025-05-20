@@ -902,22 +902,31 @@ end
 
 
 
+# convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+# convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
+
+convert_attribute(font, ::key"font") = to_font(font)
+convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
 
-convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
-convert_attribute(font, ::key"font") = to_font(font)
-convert_attribute(align, ::key"align") = to_align(align)
+convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
 
-convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Union{Automatic, Nothing}, ::key"highclip") = p
-convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Union{Automatic,Nothing}, ::key"lowclip") = p
+convert_attribute(c, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic, Nothing}, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+convert_attribute(c, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic,Nothing}, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+
+convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
+
+# TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
+convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
+
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -948,6 +957,7 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
+convert_attribute(r, ::key"rotation", ::key"scatter") = Ref{Any}(r)
 convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
@@ -1477,10 +1487,6 @@ to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
-convert_attribute(x::Automatic, ::key"colorrange") = x
-convert_attribute(x, ::key"colorrange") = to_colorrange(x)
-to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
-
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
 to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
@@ -1616,6 +1622,22 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     # 256 is just a high enough constant, without being too big to slow things down.
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
+
+"""
+    to_colormapping_type(colormap)
+Returns `continuous`, `categorical` or `banded` according to the type of the
+colormap passed.
+Note: Currently recognizes all named colormaps as continuous. To recognize them
+as categorical they need to be wrapped in `Categorical(colormap)`.
+"""
+to_colormapping_type(::Any) = continuous
+to_colormapping_type(::Categorical) = categorical
+to_colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
+to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
+to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
+# TODO: some Symbols should probably be considered categorical?
+# TODO: Would be nice if we could extract more information like colorscale from
+#       PlotUtils, colormapping types from ColorSchemes, ...
 
 # Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")

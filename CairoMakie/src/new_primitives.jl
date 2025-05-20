@@ -221,8 +221,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
     @get_attribute(p, (
-        markersize, strokecolor, strokewidth, marker, marker_offset, rotation,
-        transform_marker, model, markerspace, space, clip_planes, f32c_scale
+        markersize, strokecolor, strokewidth, marker, marker_offset,
+        converted_rotation, billboard, transform_marker, model, markerspace,
+        space, clip_planes, f32c_scale
     ))
 
     Makie.register_computation!(attr, [:marker], [:cairo_marker]) do (marker,), changed, outputs
@@ -243,11 +244,10 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
 
     font = p.font[]
     colors = cairo_colors(p)
-    billboard = p.rotation[] isa Billboard
 
     return draw_atomic_scatter(
         scene, ctx, markerspace_pos, indices, colors, markersize, strokecolor, strokewidth,
-        marker, marker_offset, rotation, size_model, font, markerspace, billboard
+        marker, marker_offset, converted_rotation, size_model, font, markerspace, billboard
     )
 end
 

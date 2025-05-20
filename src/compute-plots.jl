@@ -127,23 +127,25 @@ function add_alpha(color, alpha)
 end
 
 function register_colormapping!(attr::ComputeGraph, colorname=:color)
-    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping]) do (icm, a), changed, last
-        raw_colormap = _to_colormap(icm)::Vector{RGBAf} # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
+    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do (icm, a), changed, last
+        # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
+        # This only differs from alpha_colormap in that it doesn't resample PlotUtils.ColorGradient...
+        raw_colormap = _to_colormap(icm)::Vector{RGBAf}
+        conv_colormap = to_colormap(icm)
         if a < 1.0
-            alpha_colormap = add_alpha.(icm, a)
+            alpha_colormap = add_alpha.(conv_colormap, a)
             raw_colormap .= add_alpha.(raw_colormap, a)
         else
-            alpha_colormap = icm
+            alpha_colormap = conv_colormap
         end
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
-        return (alpha_colormap, raw_colormap, color_mapping)
+        type = to_colormapping_type(icm)
+        return (alpha_colormap, raw_colormap, color_mapping, type)
     end
-    register_computation!(attr, [:raw_colormap], [:color_mapping_type]) do (color,), changed, last
-        return (colormapping_type(color),)
-    end
+
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
-        register_computation!(attr, [key, :colormap], [sym]) do (input, cmap), changed, _
+        register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
             if input === automatic
                 (ifelse(key == :lowclip, first(cmap), last(cmap)),)
             else
@@ -271,7 +273,7 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
-    args = attr[:args][][]
+    args = attr[:args][]
     if length(args) in (2, 3)
         inputs = Symbol[]
         for (i, arg) in enumerate(args)
@@ -284,13 +286,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         register_computation!(attr, [:args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
             last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
             result = ntuple(length(converts)) do i
-                return convert_dim_value(converts[i], attr, expanded[][i], last_vals[i])
+                return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
             end
             return (result,)
         end
     else
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (args.args[],)
+            return (args.args,)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
@@ -302,9 +304,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         return args.converted # destructure
     end
 
-    add_input!(attr, :transform_func, identity)
-    # Hack-fix variable type
-    attr[:transform_func].value = RefValue{Any}(identity)
+    add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
 
     # TODO: Should we get rid of model as a documented attribute?
     #       (On master, it acts as an overwrite, making translate!() etc not work)
@@ -344,13 +344,6 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
 
-    # Hack-fix variable types
-    abstract_type_init = Dict{Symbol, RefValue}(
-        :lowclip => RefValue{Union{Automatic, Colorant}}(automatic),
-        :highclip => RefValue{Union{Automatic, Colorant}}(automatic),
-        :colorrange => RefValue{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}}(automatic),
-        :colorscale => RefValue{Any}(identity),
-    )
     for (k, v) in documented_attr
         if haskey(kwargs, k)
             if v isa Attributes
@@ -373,17 +366,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T}
                 return convert_attribute(value, Key{key}(), Key{name}())
             end
         else
-            add_input!(attr, k, value)
-            attr[k].value = RefValue{Any}(value)
-        end
-
-        # Hack-fix variable type
-        if is_primitive && haskey(abstract_type_init, k)
-            attr[k].value = abstract_type_init[k]
-        end
-        # text also allows :baseline and resolves it later
-        if T <: Makie.Text && k == :align
-            attr[k].value = RefValue{Any}((:center, :center))
+            add_input!((k,v) -> Ref{Any}(v), attr, k, value)
         end
     end
     if !haskey(attr, :model)
@@ -622,7 +605,10 @@ function calculated_attributes!(::Type{Scatter}, plot::Plot)
     register_marker_computations!(attr)
     register_colormapping!(attr)
     register_position_transforms!(attr)
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :rotation],
+    register_computation!(attr, [:rotation], [:converted_rotation, :billboard]) do (rotation,), changed, cached
+        return (convert_attribute(rotation, key"rotation"()), rotation isa Billboard)
+    end
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation],
                           [:data_limits]) do args, changed, last
         return (scatter_limits(args...),)
     end
