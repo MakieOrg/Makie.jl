@@ -420,7 +420,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
     updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
@@ -443,7 +443,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 @debug("updating kw $attribute")
                 updates[attribute] = new_value
             end
-            # push!(obs_to_notify, old_attr)
         end
     end
 
@@ -458,7 +457,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
             # only update if different
             if is_different(old_attr[], new_value)
                 old_attr.val = new_value
-                # push!(obs_to_notify, old_attr)
                 updates[k] = old_attr
             end
         end
@@ -483,7 +481,6 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
                 filter!(x -> x in uncycled, attr_vec)
             end
             add_cycle_attribute!(plot, scene, cycle)
-            # append!(obs_to_notify, (plot[k] for k in uncycled))
         end
     end
     update!(plot, updates)
@@ -583,7 +580,6 @@ end
 
 function diff_plotlist!(
         scene::Scene, plotspecs::Vector{PlotSpec},
-        obs_to_notify,
         plotlist::Union{Nothing,PlotList}=nothing,
         reusable_plots = IdDict{PlotSpec, Plot}(),
         new_plots = IdDict{PlotSpec,Plot}())
@@ -622,7 +618,7 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
-            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+            update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
         end
@@ -641,7 +637,6 @@ function update_plotspecs!(
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    obs_to_notify = Observable[]
     update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
@@ -650,7 +645,7 @@ function update_plotspecs!(
         empty!(scene.cycler.counters) # Reset Cycler
         # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
-        diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
+        diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
         if own_plots
@@ -667,8 +662,6 @@ function update_plotspecs!(
             empty!(new_plots)
             # finally, notify all changes at once
         end
-        foreach(notify, obs_to_notify)
-        empty!(obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
@@ -683,7 +676,8 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
-    update_plotspecs!(scene, p[1], p)
+    obs = map(first, ComputePipeline.get_observable!(p.converted))
+    update_plotspecs!(scene, obs, p)
     return p
 end
 

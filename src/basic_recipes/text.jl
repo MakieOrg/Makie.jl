@@ -456,20 +456,25 @@ given text plot.
 """
 maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), init = Vec3d(0))
 
-function string_boundingbox(plot::Text)
+function per_string_boundingboxes(plot::Text)
     register_computation!(
         plot.attributes,
-        [:positions_transformed_f32c, :preprojection, :per_string_bb],
-        [:markerspace_boundingbox]
-    ) do (positions, preprojection, per_string_bb), changed, cached
+        [:positions_transformed_f32c, :preprojection, :per_string_bb, :text_blocks],
+        [:markerspace_boundingboxes]
+    ) do (positions, preprojection, per_string_bb, blocks), changed, cached
         # preprojection in plot is space -> markerspace
         # Could skip this if the matrix == I
-        pos = _project(preprojection, positions)
-        total_bb = Rect3d()
-        for (bb, p) in zip(per_string_bb, pos)
-            total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
-        end
-        return (total_bb,)
+        pos = _project(preprojection, positions[first.(blocks)])
+        bbs = [bb + to_ndim(Point3d, p, 0) for (bb, p) in zip(per_string_bb, pos)]
+        return (bbs,)
+    end
+    return plot.markerspace_boundingboxes[]
+end
+
+function string_boundingbox(plot::Text)
+    per_string_boundingboxes(plot)
+    map!(plot.attributes, :markerspace_boundingboxes, :markerspace_boundingbox) do bbs
+        return reduce(update_boundingbox, bbs, init = Rect3d())
     end
     return plot.markerspace_boundingbox[]
 end

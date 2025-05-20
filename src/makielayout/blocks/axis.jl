@@ -700,6 +700,22 @@ function to_color(scene::Scene, attribute_name, cycled::Cycled)
     return attr_palette[mod1(index, length(attr_palette))]
 end
 
+
+function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
+    palettes = [palettes[sym][] for sym in palettesyms(cycle)]
+    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
+    palette = palettes[attribute]
+    if cycle.covary
+        return palette[mod1(index, length(palette))]
+    else
+        cis = CartesianIndices(Tuple(length(p) for p in palettes))
+        n = length(cis)
+        k = mod1(index, n)
+        idx = Tuple(cis[k])
+        return palette[idx[isym]]
+    end
+end
+
 function add_cycle_attributes!(@nospecialize(plot), cycle::Cycle, cycler::Cycler, palette::Attributes)
     # check if none of the cycled attributes of this plot
     # were passed manually, because we don't use the cycler

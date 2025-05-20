@@ -43,8 +43,6 @@ plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
 
-argtypes(::T) where {T <: Tuple} = T
-
 function create_axis_like end
 function create_axis_like! end
 function figurelike_return end
