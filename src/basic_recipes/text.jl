@@ -63,33 +63,6 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
 end
 
 
-function convert_text_arguments(text::AbstractString, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
-    nt = glyph_collection(
-        text, fonts, fontsize, align...,
-        lineheight, justification, word_wrap_width, rotation
-    )
-    return (nt.glyphindices, nt.font_per_char, nt.char_origins, nt.glyph_extents, [1:length(nt.glyphindices)])
-end
-
-function convert_text_arguments(text::AbstractVector, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width, offset)
-    glyphindices = UInt64[]
-    font_per_char = NativeFont[]
-    char_origins = Point3f[]
-    glyph_extents = GlyphExtent[]
-    text_blocks = UnitRange{Int64}[]
-    broadcast_foreach(text, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width) do text, fontsize, fonts, align, rotation, justification, lineheight, word_wrap_width
-        nt = glyph_collection(text, fonts, fontsize, align..., lineheight, justification, word_wrap_width, rotation)
-        curr = length(glyphindices)
-        push!(text_blocks, (curr+1):(curr + length(nt.glyphindices)))
-        append!(glyphindices, nt.glyphindices)
-        append!(font_per_char, nt.font_per_char)
-        append!(char_origins, nt.char_origins)
-        append!(glyph_extents, nt.glyph_extents)
-    end
-    return (glyphindices, font_per_char, char_origins, glyph_extents, text_blocks)
-end
-
-
 function per_glyph_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
     if isscalar(x)
         return x
@@ -180,148 +153,115 @@ function get_text_blocks(gcs)
     return text_blocks
 end
 
-function convert_rich_text(input_text::AbstractVector{RichText}, fontsize, font, fonts, align, rotation, justification, lineheight, color)
-    glyphindices = UInt64[]
-    font_per_char = NativeFont[]
-    char_origins = Point3f[]
-    glyph_extents = GlyphExtent[]
-    text_blocks = UnitRange{Int64}[]
-    glyphcollections = GlyphCollection[]
-    colors = RGBAf[]
-    strokecolor = RGBAf[]
-    strokewidth = Float32[]
-    rotations = Quaternionf[]
-    fontsizes = Vec2f[]
-    broadcast_foreach(input_text, fontsize, font, fonts, align, rotation, justification, lineheight, color) do args...
-        gc = layout_text(args...)
-        push!(glyphcollections, gc)
-        curr = length(glyphindices)
-        n = length(gc.glyphs)
-        push!(text_blocks, (curr+1):(curr + n))
-        append!(glyphindices, gc.glyphs)
-        append!(char_origins, gc.origins)
-        append!(glyph_extents, gc.extents)
-        append!(font_per_char, collect_vector(gc.fonts, n))
-        append!(colors, collect_vector(gc.colors, n))
-        append!(strokecolor, collect_vector(gc.strokecolors, n))
-        append!(strokewidth, collect_vector(gc.strokewidths, n))
-        append!(rotations, collect_vector(gc.rotations, n))
-        append!(fontsizes, collect_vector(gc.scales, n))
+#####################################
+# New stuff
+
+function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
+    block_length = length(block)
+    if isscalar(data)
+        return fill(data, block_length)
+    elseif length(data) == N_blocks
+        return fill(data[block_idx], block_length)
+    else
+        return view(data, block)
     end
-    # TODO, strokecolor per glyph?
-    return (glyphcollections, glyphindices, font_per_char, char_origins, glyph_extents, text_blocks, colors, first(strokecolor), rotations, fontsizes)
 end
 
-
-function convert_latex(input_text::AbstractVector{LaTeXString}, fontsize, align, rotation, color, scolor, swidth, word_wrap_width)
-    glyphindices = UInt64[]
-    font_per_char = NativeFont[]
-    char_origins = Point3f[]
-    glyph_extents = GlyphExtent[]
-    text_blocks = UnitRange{Int64}[]
-    glyphcollections = GlyphCollection[]
-    colors = RGBAf[]
-    strokecolor = RGBAf[]
-    strokewidth = Float32[]
-    rotations = Quaternionf[]
-    fontsizes = Vec2f[]
-    broadcast_foreach(input_text, fontsize, align, rotation, color, scolor, swidth, word_wrap_width) do args...
-        tex_elements, gc, offset = texelems_and_glyph_collection(args...)
-        push!(glyphcollections, gc)
-        curr = length(glyphindices)
-        n = length(gc.glyphs)
-        push!(text_blocks, (curr+1):(curr + n))
-        append!(glyphindices, gc.glyphs)
-        append!(char_origins, gc.origins)
-        append!(glyph_extents, gc.extents)
-        append!(font_per_char, collect_vector(gc.fonts, n))
-        append!(colors, collect_vector(gc.colors, n))
-        append!(strokecolor, collect_vector(gc.strokecolors, n))
-        append!(strokewidth, collect_vector(gc.strokewidths, n))
-        append!(rotations, collect_vector(gc.rotations, n))
-        append!(fontsizes, collect_vector(gc.scales, n))
-    end
-    return (glyphcollections, glyphindices, font_per_char, char_origins, glyph_extents, text_blocks, colors, first(strokecolor), rotations, fontsizes)
-end
-
-function convert_text_inputs(
-        input_text::AbstractVector{<:AbstractString},
-        fontsize,
-        selected_font,
-        align,
-        rotation,
-        justification,
-        lineheight,
-        word_wrap_width,
-        offset,
-        fonts,
-        color,
-        strokecolor,
-        strokewidth
+function convert_text_string!(
+        outputs::NamedTuple,
+        input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
+        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
-    glyphindices, font_per_char, glyph_origins, glyph_extents, text_blocks = convert_text_arguments(
-        input_text, fontsize, selected_font,
-        align, rotation, justification,
-        lineheight, word_wrap_width, offset
+
+    args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
+    nt = glyph_collection(input_text, args...)
+    curr = length(outputs.glyphindices)
+    block = (curr+1):(curr + length(nt.glyphindices))
+
+    push!(outputs.text_blocks, block)
+    append!(outputs.glyphindices, nt.glyphindices)
+    append!(outputs.font_per_char, nt.font_per_char)
+    append!(outputs.glyph_origins, nt.char_origins)
+    append!(outputs.glyph_extents, nt.glyph_extents)
+
+    scales = per_glyph_block(to_2d_scale(fontsize), i, N, block) # TODO: convert_attribute?
+    rotations = per_glyph_block(rotation, i, N, block)
+    colors = per_glyph_block(color, i, N, block)
+
+    # TODO: Should we get rid of this in general?
+    gc = GlyphCollection(
+        nt.glyphindices,
+        nt.font_per_char,
+        nt.char_origins,
+        nt.glyph_extents,
+        scales,
+        rotations,
+        colors,
+        RGBAf[],
+        Float32[]
     )
-    text_color = map_per_glyph(glyphindices, text_blocks, RGBAf, color)
-    text_rotation = map_per_glyph(glyphindices, text_blocks, Quaternionf, rotation)
-    text_scales = map_per_glyph(glyphindices, text_blocks, Vec2f, to_2d_scale(fontsize))
-    return (
-        GlyphCollection[], glyphindices, font_per_char, glyph_origins, glyph_extents, text_blocks,
-        text_color, strokecolor, text_rotation, text_scales
-    )
+
+    push!(outputs.glyphcollections, gc)
+    append!(outputs.text_color, colors)
+    append!(outputs.text_rotation, rotations)
+    append!(outputs.text_scales, scales)
+
+    return
 end
 
-function convert_text_inputs(
-        input_text::AbstractVector{<:RichText},
-        fontsize,
-        selected_font,
-        align,
-        rotation,
-        justification,
-        lineheight,
-        word_wrap_width,
-        offset,
-        fonts,
-        color,
-        strokecolor,
-        strokewidth
+function convert_text_string!(
+        outputs::NamedTuple,
+        input_text::RichText, i, N, fontsize, font, align, rotation, justification,
+        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
-    return convert_rich_text(input_text, fontsize, selected_font, fonts, align, rotation, justification, lineheight, color)
+
+    args = sv_getindex.((fontsize, font, fonts, align, rotation, justification, lineheight, color), i)
+    gc = layout_text(input_text, args...)
+    curr = length(outputs.glyphindices)
+    n = length(gc.glyphs)
+
+    push!(outputs.glyphcollections, gc)
+    push!(outputs.text_blocks, (curr+1):(curr + n))
+    append!(outputs.glyphindices, gc.glyphs)
+    append!(outputs.glyph_origins, gc.origins)
+    append!(outputs.glyph_extents, gc.extents)
+
+    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
+    append!(outputs.text_color, collect_vector(gc.colors, n))
+    # append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
+    # append!(outputs.strokewidth, collect_vector(gc.strokewidths, n))
+    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
+    append!(outputs.text_scales, collect_vector(gc.scales, n))
+
+    return
 end
 
-
-
-function convert_text_inputs(
-        input_text::AbstractVector{<:LaTeXString},
-        fontsize,
-        selected_font,
-        align,
-        rotation,
-        justification,
-        lineheight,
-        word_wrap_width,
-        offset,
-        fonts,
-        color,
-        strokecolor,
-        strokewidth
+function convert_text_string!(
+        outputs::NamedTuple,
+        input_text::LaTeXString, i, N, fontsize, font, align, rotation, justification,
+        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
     )
-    result = convert_latex(input_text, fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width)
-    return result
+
+    args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
+    tex_elements, gc, offset = texelems_and_glyph_collection(input_text, args...)
+    curr = length(outputs.glyphindices)
+    n = length(gc.glyphs)
+
+    push!(outputs.glyphcollections, gc)
+    push!(outputs.text_blocks, (curr+1):(curr + n))
+    append!(outputs.glyphindices, gc.glyphs)
+    append!(outputs.glyph_origins, gc.origins)
+    append!(outputs.glyph_extents, gc.extents)
+    append!(outputs.font_per_char, collect_vector(gc.fonts, n))
+    append!(outputs.text_color, collect_vector(gc.colors, n))
+    # append!(outputs.text_strokecolor, collect_vector(gc.strokecolors, n))
+    # append!(outputs.strokewidth, collect_vector(gc.strokewidths, n))
+    append!(outputs.text_rotation, collect_vector(gc.rotations, n))
+    append!(outputs.text_scales, collect_vector(gc.scales, n))
+
+    return
 end
 
-function convert_text_inputs(
-        input_text::AbstractVector{Any}, args...)
-    if isempty(input_text)
-        return (GlyphCollection[], UInt64[], NativeFont[], Point3f[], GlyphExtent[], UnitRange{Int}[],
-                RGBAf[], RGBAf(0,0,0,0), Quaternionf[], Vec2f[])
-    end
-    text = map(identity, input_text) # try to force an eltype
-    eltype(text) == Any && error("Text input must be of type String, LaTeXString or RichText. Found: $(text)")
-    return convert_text_inputs(text, args...)
-end
 
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
@@ -347,13 +287,38 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :glyph_extents,
         :text_blocks,
         :text_color,
-        :text_strokecolor,
         :text_rotation,
         :text_scales
     ]
-    register_computation!(attr, inputs, outputs) do inputs, changed, cached
-        return convert_text_inputs(inputs...)
+    register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
+        if isnothing(cached)
+            _outputs = (
+                glyphcollections = GlyphCollection[],
+                glyphindices = UInt64[],
+                font_per_char = NativeFont[],
+                glyph_origins = Point3f[],
+                glyph_extents = GlyphExtent[],
+                text_blocks = UnitRange{Int64}[],
+                text_color = RGBAf[],
+                text_rotation = Quaternionf[],
+                text_scales = Vec2f[],
+            )
+        else
+            foreach(empty!, values(cached))
+            _outputs = cached
+        end
+        # strokewidth = Float32[] # TODO: Skipped?
+
+        N = length(input_texts)
+        for (block_index, str) in enumerate(input_texts)
+            convert_text_string!(_outputs, str, block_index, N, _inputs...)
+        end
+
+        return values(_outputs)
     end
+
+    # TODO: per-glyph strokecolor and strokewidth?
+    map!(identity, attr, :strokecolor, :text_strokecolor)
 end
 
 function register_text_computations!(attr::ComputeGraph)
@@ -894,6 +859,7 @@ function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
     xmax1, xmax2 = map((line1, line2)) do line
         maximum(line; init = 0f0) do ginfo
+            # TODO: typo?
             GlyphInfo
             ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
         end
