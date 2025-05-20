@@ -287,3 +287,42 @@ function add_computation!(attr, scene, ::Val{:voxel_uv_transform})
         end
     end
 end
+
+# TODO: update Makie.Sampler to include lowclip, highclip, nan_color
+#       and maybe also just RGBAf color types?
+#       Or just move this to Makie as a more generic function?
+# Note: This assumes to be called with data from ComputePipeline, i.e.
+#       alpha and colorscale already applied
+function sample_color(
+        colormap::Vector{RGBAf}, value::Real, colorrange::VecTypes{2},
+        lowclip::RGBAf = first(colormap), highclip::RGBAf = last(colormap),
+        nan_color::RGBAf = RGBAf(0,0,0,0), interpolation = Makie.Linear
+    )
+    isnan(value) && return nan_color
+    value < colorrange[1] && return lowclip
+    value > colorrange[2] && return highclip
+    if interpolation == Makie.Linear
+        return Makie.interpolated_getindex(colormap, value, colorrange)
+    else
+        return Makie.nearest_getindex(colormap, value, colorrange)
+    end
+end
+
+function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_color)
+    register_computation!(attr,
+            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color],
+            [:computed_color]
+        ) do (color, colorrange, colormap, nan_color, lowclip, highclip), changed, cached
+        # colormapping
+        if color isa AbstractArray{<:Real} || color isa Real
+            output = map(color) do v
+                return Makie.sample_color(colormap, v, colorrange, lowclip, highclip, nan_color)
+            end
+            return (output,)
+        else # Raw colors
+            # Avoid update propagation if nothing changed
+            !isnothing(cached) && !changed[1] && return nothing
+            return (color,)
+        end
+    end
+end

@@ -275,7 +275,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :word_wrap_width,
         :offset,
         :fonts,
-        :color,
+        :computed_color,
         :strokecolor,
         :strokewidth
     ]
@@ -331,6 +331,10 @@ function register_text_computations!(attr::ComputeGraph)
     register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
         return (to_font(fs, f),)
     end
+
+    # Resolve colormapping to colors early. This allows rich text which returns
+    # its own colors to be mixed with other text types which dont.
+    add_computation!(attr, Val(:computed_color))
 
     # This computes :glyphindices, :font_per_char, :glyph_origins, :glyph_extents, :text_blocks
     # And :glyphcollection if applicable

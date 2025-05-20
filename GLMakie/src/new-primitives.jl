@@ -457,24 +457,10 @@ end
 ################################################################################
 
 function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
-    colormap = args.alpha_colormap
-    color = args.text_color
-    colornorm = args.scaled_colorrange
-
     data[:distancefield] = get_texture!(screen.glscreen, args.atlas)
     data[:shape] = Cint(DISTANCEFIELD)
     data[:image] = nothing
     data[:rotation] = args.text_rotation
-
-    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
-
-    # Correct the name mapping
-    if !isnothing(get(data, :intensity, nothing))
-        input2glname[:scaled_color] = :intensity
-    end
-    if !isnothing(get(data, :image, nothing))
-        input2glname[:scaled_color] = :image
-    end
 
     # pass nothing to avoid going into image generating functions
     return draw_scatter(screen, (nothing, data[:position]), data)
@@ -507,17 +493,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
-    inputs = [
-        # Special
-        :atlas,
-        # Needs explicit handling
-        :alpha_colormap, :text_color, :scaled_colorrange,
-    ]
+    inputs = [:atlas,]
 
     # Simple forwards
     uniforms = [
-        :positions_transformed_f32c, # :text_color,
-        :text_strokecolor, :text_rotation,
+        :positions_transformed_f32c,
+        :text_color, :text_strokecolor, :text_rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
@@ -538,8 +519,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     input2glname = Dict{Symbol, Symbol}(
         :text_rotation => :rotation,
         :positions_transformed_f32c => :position,
-        :alpha_colormap => :color_map,
-        :scaled_colorrange => :color_norm,
         :text_color => :color,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
