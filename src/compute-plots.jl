@@ -247,7 +247,6 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
     # true:  one input where attr[input][] = (arg1, arg2, ...)
     # false: multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
     # this is used in text
-
     # TODO expand_dims + dim_converts
     # Only 2 and 3d conversions are supported, and only
     PTrait = if is_merged
@@ -297,9 +296,17 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
     register_computation!(attr, [:dim_converted], [:converted]) do args, changed, last
-        return (convert_arguments(P, args.dim_converted...),)
+        x = convert_arguments(P, args.dim_converted...)
+        if x isa Tuple
+            return (x,)
+        elseif x isa Union{PlotSpec,AbstractVector{PlotSpec}, GridLayoutSpec}
+            return ((x,),)
+        else
+            error("Result needs to be Tuple or SpecApi")
+        end
     end
-    n_args = length(attr[:converted][])
+    converted = attr[:converted][]
+    n_args = length(converted)
     register_computation!(attr, [:converted], [MakieCore.argument_names(P, n_args)...]) do args, changed, last
         return args.converted # destructure
     end
@@ -450,7 +457,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     add_attributes!(P, attr, user_attributes)
     register_arguments!(P, attr, user_attributes, user_args)
     converted = attr[:converted][]
-    ArgTyp = MakieCore.argtypes(converted)
+    ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
@@ -461,6 +468,7 @@ function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plot
     add_cycle_attributes!(plot, cycle, cycler, palette)
     return
 end
+
 # should this just be connect_plot?
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     T = typeof(plot)
