@@ -147,7 +147,8 @@ function glyph_collection(
         glyph_extents = FreeTypeAbstraction.FontExtent{Float32}[],
     )
     # collect information about every character in the string
-    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, font, scale
+    charinfos = broadcast((c for c in str), font_per_char, fontscale_px) do char, _font, scale
+        font = find_font_for_char(char, _font)
         (
             char = char,
             font = font,
