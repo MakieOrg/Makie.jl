@@ -224,7 +224,12 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
         result = Observable(val[])
         on(attr.onchange) do _
             _val = val[]
-            if !is_same(result[], _val)
+            # Using !is_same(result[], _val) here results in StackOverflows
+            # from Observables repeatedly updating, e.g. tricontourf:
+            #   c.attributes[:_computed_levels] = lift(..., c, zs, c.levels, c.mode)
+            #   which calls add_input!(attr, :_computed_levels, obs)
+            # will infinitely update zs (_arg2) when levels get updated
+            if result[] != _val
                 result[] = _val
             end
             return Consume(false)

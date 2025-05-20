@@ -17,6 +17,18 @@ function Base.setindex!(plot::Plot, val, key::Int)
     setindex!(plot, val, sym)
 end
 
+Base.setindex!(plot::Plot, val::Observable, key::Symbol) = setindex!(plot.attributes, val, key)
+function Base.setindex!(attr::ComputeGraph, val::Observable, key::Symbol)
+    @warn "`plot[key] = val::Observable` is deprecated. If the observable is produced by `lift` or `map` use the compute graph directly with `register_computation!()` or keep the Observable seperately. If you are trying to add an input, use `add_input!()`."
+
+    # This assumes a user may also do plot[key] = Observable(...) to create a
+    # new attribute input, that they later update (1)
+    add_input!(attr, key, val)
+
+    # (1) implies that val is not the only source of updates. So we do need to
+    # react to onchange
+    return ComputePipeline.get_observable!(attr, key)
+end
 
 function data_limits(plot::Plot)
     if haskey(plot, :data_limits)

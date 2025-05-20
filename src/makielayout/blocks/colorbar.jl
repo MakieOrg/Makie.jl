@@ -43,7 +43,8 @@ function extract_colormap(plot::Plot{volumeslices})
     return extract_colormap(plot.plots[1])
 end
 
-function extract_colormap(plot::Union{Contourf,Tricontourf})
+# TODO: revert to _names?
+function extract_colormap(plot::Contourf)
     levels = ComputePipeline.get_observable!(plot.computed_levels)
     limits = lift(l -> (l[1], l[end]), levels)
     function extend_color(color, computed)
@@ -57,6 +58,23 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
         ComputePipeline.get_observable!(plot.computed_colormap), limits,
         ComputePipeline.get_observable!(plot.colorscale), Observable(1.0),
         elow, ehigh, ComputePipeline.get_observable!(plot.nan_color))
+end
+
+function extract_colormap(plot::Tricontourf)
+    levels = plot._computed_levels
+    limits = lift(l -> (l[1], l[end]), levels)
+    function extend_color(color, computed)
+        color === nothing && return automatic
+        color == :auto || color == automatic && return computed
+        return computed
+    end
+    elow = lift(extend_color, plot.extendlow, plot._computed_extendlow)
+    ehigh = lift(extend_color, plot.extendhigh, plot._computed_extendhigh)
+    return ColorMapping(levels[], levels,
+        ComputePipeline.get_observable!(plot._computed_colormap), limits,
+        ComputePipeline.get_observable!(plot.colorscale), Observable(1.0),
+        elow, ehigh, ComputePipeline.get_observable!(plot.nan_color)
+    )
 end
 
 function extract_colormap(plot::Voxels)
