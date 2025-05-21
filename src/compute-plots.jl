@@ -185,12 +185,14 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     end
 
     # TODO: if colorscale is defined, should it act on user supplied colorrange?
-    register_computation!(attr, [:colorrange, :scaled_color], [:scaled_colorrange]) do (colorrange, color), changed, last
+    register_computation!(attr,
+            [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
+        ) do (colorrange, colorscale, color), changed, last
         (color isa AbstractArray{<:Real} || color isa Real) || return (nothing,)
         if colorrange === automatic
             return (isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color)),)
         else
-            return (Vec2f(colorrange),)
+            return (Vec2f(apply_scale(colorscale, colorrange)),)
         end
     end
 end
