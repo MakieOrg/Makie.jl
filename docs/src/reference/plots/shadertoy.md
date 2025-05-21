@@ -1,4 +1,4 @@
-# spy
+# shadertoy
 
 ```@shortdocs; canonical=false
 shadertoy
@@ -64,5 +64,5 @@ nothing # hide
 ## Attributes
 
 ```@attrdocs
-shadertoy
+ShaderToy
 ```
