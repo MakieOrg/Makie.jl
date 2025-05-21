@@ -456,7 +456,7 @@ given text plot.
 """
 maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), init = Vec3d(0))
 
-function per_string_boundingboxes(plot::Text)
+function register_per_string_boundingboxes!(plot::Text)
     register_computation!(
         plot.attributes,
         [:positions_transformed_f32c, :preprojection, :per_string_bb, :text_blocks],
@@ -468,15 +468,35 @@ function per_string_boundingboxes(plot::Text)
         bbs = [bb + to_ndim(Point3d, p, 0) for (bb, p) in zip(per_string_bb, pos)]
         return (bbs,)
     end
+    return
+end
+
+function per_string_boundingboxes(plot::Text)
+    register_per_string_boundingboxes!(plot)
     return plot.markerspace_boundingboxes[]
 end
 
-function string_boundingbox(plot::Text)
-    per_string_boundingboxes(plot)
+function per_string_boundingboxes_obs(plot::Text)
+    register_per_string_boundingboxes!(plot)
+    return ComputePipeline.get_observable!(plot.markerspace_boundingboxes)
+end
+
+function register_string_boundingbox!(plot::Text)
+    register_per_string_boundingboxes!(plot)
     map!(plot.attributes, :markerspace_boundingboxes, :markerspace_boundingbox) do bbs
         return reduce(update_boundingbox, bbs, init = Rect3d())
     end
+    return
+end
+
+function string_boundingbox(plot::Text)
+    register_string_boundingbox!(plot)
     return plot.markerspace_boundingbox[]
+end
+
+function string_boundingbox_obs(plot::Text)
+    register_string_boundingbox!(plot)
+    return ComputePipeline.get_observable!(plot.markerspace_boundingbox)
 end
 
 # replacement for charbbs()

@@ -282,29 +282,20 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return
     end
 
-    bboxes = lift(plot, labels, texts.text; ignore_equal_values=true) do labels, _
-        labels || return
-        return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
-            # drop the depth component of the bounding box for 3D
-            px_pos = project(scene, apply_transform(transform_func(plot), pt))
-            bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
-            isfinite_rect(bb) || return Rect2f()
-            Rect2f(bb)
-        end
-    end
+    bboxes = per_string_boundingboxes_obs(texts)
 
     masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
         n = 1
-        bb = bboxes[n]
+        bb = Rect2(bboxes[n])
         nlab = length(bboxes)
         masked = copy(segments)
         nan = P(NaN32)
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
-                bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
+                bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
                 # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
             elseif project(scene, apply_transform(transform_func(plot), p)) in bb
                 masked[i] = nan
