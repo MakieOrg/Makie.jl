@@ -1089,9 +1089,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.ShaderToy)
         connect_camera!(plot, uniforms, scene.camera, :data)
 
         m = plot.rect[]
-        uniforms[:faces] = indexbuffer(decompose(GLTriangleFace, m))
-        uniforms[:vertices] = GLBuffer(decompose(Point2f, m))
-        uniforms[:uv] = GLBuffer(GeometryBasics.decompose_uv(m))
+        uniforms[:faces] = indexbuffer(screen.glscreen, decompose(GLTriangleFace, m))
+        uniforms[:vertices] = GLBuffer(screen.glscreen, decompose(Point2f, m))
+        uniforms[:uv] = GLBuffer(screen.glscreen, GeometryBasics.decompose_uv(m))
 
         templates = Dict(
             "SHADERTOY_INPUTS" => """

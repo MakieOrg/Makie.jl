@@ -164,7 +164,7 @@ include("camera/old_camera3d.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
-include("basic_recipes/shaders.jl")
+include("basic_recipes/shadertoy.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")

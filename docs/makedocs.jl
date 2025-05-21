@@ -119,6 +119,7 @@ pages = [
             "reference/plots/scatter.md",
             "reference/plots/scatterlines.md",
             "reference/plots/series.md",
+            "reference/plots/shadertoy.md",
             "reference/plots/spy.md",
             "reference/plots/stairs.md",
             "reference/plots/stem.md",
