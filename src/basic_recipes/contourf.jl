@@ -87,9 +87,6 @@ function calculate_contourf_polys!(
         xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
-    empty!(polys)
-    empty!(colors)
-
     # zs needs to be transposed to match rest of makie
     isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
@@ -118,9 +115,6 @@ function calculate_contourf_polys!(
         xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
-    empty!(polys)
-    empty!(colors)
-
     # A brief note on terminology:
     # - **rectilinear** space: the space of the z matrix, or the space of cartesian indices.
     #   This is usually `(1:n, 1:m)` for a `n x m` matrix.
@@ -164,19 +158,66 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
-function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
-    graph = c.attributes
 
-    map!(graph, [:_arg3, :levels, :mode], :computed_levels) do zs, levels, mode
+function compute_contourf_colormap(levels, cmap, elow, ehigh)
+    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+    n = length(levels_scaled)
+
+    _cmap = to_colormap(cmap)
+
+    if elow === :auto && ehigh !== :auto
+        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    elseif ehigh === :auto && elow !== :auto
+        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    elseif ehigh === :auto && elow === :auto
+        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    else
+        cm = cgrad(_cmap, levels_scaled; categorical=true)
+    end
+    return cm
+end
+
+function compute_lowcolor(el, cmap)
+    if isnothing(el)
+        return RGBAf(0, 0, 0, 0)
+    elseif el === automatic || el === :auto
+        return RGBAf(to_colormap(cmap)[begin])
+    else
+        return to_color(el)::RGBAf
+    end
+end
+
+function compute_highcolor(eh, cmap)
+    if isnothing(eh)
+        return RGBAf(0, 0, 0, 0)
+    elseif eh === automatic || eh === :auto
+        return RGBAf(to_colormap(cmap)[end])
+    else
+        return to_color(eh)::RGBAf
+    end
+end
+
+
+function register_contourf_computations!(graph, argname)
+    map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    map!(extrema, graph, :computed_levels, :computed_colorrange)
-
+    map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
     map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
-
     map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
     map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
+
+    return
+end
+
+function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
+    graph = c.attributes
+
+    register_contourf_computations!(graph, :_arg3)
 
     function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         levels = copy(levels)
@@ -200,7 +241,7 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
             polys = Polygon{2, Float32}[]
             colors = Float64[]
         else
-            polys, colors = cached
+            polys, colors = empty!.(values(cached))
         end
         calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
