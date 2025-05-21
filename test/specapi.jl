@@ -144,12 +144,12 @@ end
     @test first(ax.then_observers).f === println
 
     pl[1] = S.GridLayout(S.Axis(title="interaction"))
-    @test real_ax === f.content[1] # re-use axis
+    @test real_ax === f.content[1] # reuse axis
     @test length(mpos.listeners) == 1
     @test mpos.listeners[1][2] !== println
 end
 
-@testset "Blockspec re-use" begin
+@testset "Blockspec reuse" begin
     ax1 = S.Axis(; title="Title 1")
     ax2 = S.Axis(; title="Title 2")
     ax3 = S.Axis(; title="Title 3")
@@ -195,4 +195,19 @@ end
 @testset "External Recipe compatibility (#4295)" begin
     @test_nowarn S.TestRecipeForSpecApi
     @test_nowarn S.TestRecipeForSpecApi(1, 2, 3; a = 4, b = 5)
+end
+
+@enum Directions North East South West
+
+@testset "Enums" begin
+    xvals = [North, East, South, West]
+    f, ax, pl = barplot(xvals, [1, 2, 3, 4])
+    # The value a categorical conversion maps to is somewhat arbitrary, so to make the test robust we
+    # best use the actual look up
+    vals = Makie.convert_dim_value.((ax.dim1_conversion[],), xvals)
+    @test first.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
+    # test y values and expand_dimensions too
+    f, ax, pl = barplot(xvals)
+    vals = Makie.convert_dim_value.((ax.dim2_conversion[],), xvals)
+    @test last.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
 end

@@ -55,32 +55,42 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     end
 
     maybe_color_mapping = plot.calculated_colors[]
-    uv_map = plot.uvmap
+    uv_map = get(plot.attributes, :uvmap, nothing)
+    uv_transform = plot.uv_transform
     if maybe_color_mapping isa Makie.ColorMapping
         uniform_dict[:color_map] = Sampler(maybe_color_mapping.colormap, minfilter = :nearest)
-        uniform_dict[:uv_map] = false
+        uniform_dict[:uv_transform] = false
         uniform_dict[:color] = false
-    elseif !isnothing(to_value(uv_map))
+    elseif !isnothing(to_value(uv_transform)) || !isnothing(to_value(uv_map))
+        if !(to_value(maybe_color_mapping) isa Matrix{<: Colorant})
+            error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
+        end
+
         uniform_dict[:color_map] = false
-        # WebGL doesn't have sampler1D so we need to pad id -> uv mappings to
-        # (id, side) -> uv mappings
-        wgl_uv_map = map(plot, uv_map) do uv_map
-            if uv_map isa Vector
-                new_map = Matrix{Vec4f}(undef, length(uv_map), 6)
-                for col in 1:6
-                    new_map[:, col] .= uv_map
-                end
-                return new_map
-            else
-                return uv_map
+
+        if !isnothing(to_value(uv_transform))
+            # new
+            packed = map(plot, uv_transform) do uvt
+                x = Makie.convert_attribute(uvt, Makie.key"uv_transform"())
+                return Makie.pack_voxel_uv_transform(x)
+            end
+        else
+            # old, deprecated
+            @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
+            packed = map(uv_map) do uvmap
+                raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
+                converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
+                return Makie.pack_voxel_uv_transform(converted_uvt)
             end
         end
-        uniform_dict[:uv_map] = Sampler(wgl_uv_map, minfilter = :nearest)
+        uniform_dict[:uv_transform] = Sampler(packed, minfilter = :nearest)
         interp = to_value(plot.interpolate) ? :linear : :nearest
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = interp)
+    elseif to_value(maybe_color_mapping) isa Matrix{<: Colorant}
+        error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
     else
         uniform_dict[:color_map] = false
-        uniform_dict[:uv_map] = false
+        uniform_dict[:uv_transform] = false
         uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = :nearest)
     end
 
@@ -97,7 +107,7 @@ function create_shader(scene::Scene, plot::Makie.Voxels)
     notify(plot.gap)
 
     instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
-
-    return InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
+    program = InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
                         instance, VertexArray(dummy = dummy_data), uniform_dict)
+    return program, nothing
 end

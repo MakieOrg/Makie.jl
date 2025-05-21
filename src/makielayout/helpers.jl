@@ -67,24 +67,24 @@ function roundedrectvertices(rect, cornerradius, cornersegments)
     htouching = height(rect) / 2 == cr
 
     cstr = if wtouching
-        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
-    else
         anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs)[1:end-1], cr)
+    else
+        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
     end
     cstl = if htouching
-        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
-    else
         anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs)[1:end-1], cr)
+    else
+        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
     end
     csbl = if wtouching
-        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
-    else
         anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs)[1:end-1], cr)
+    else
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
     end
     csbr = if htouching
-        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
-    else
         anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs)[1:end-1], cr)
+    else
+        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
     end
     arr = [cstr; cstl; csbl; csbr]
 end
@@ -107,7 +107,7 @@ Sets the autolimit margins to zero on all given sides.
 
 Example:
 
-```
+```julia
 tightlimits!(laxis, Bottom())
 ```
 """
@@ -313,7 +313,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslider!(scene, "Voltage:", 0:10; format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```
@@ -372,7 +372,7 @@ All other keywords are forwarded to the `GridLayout`.
 
 Example:
 
-```
+```julia
 ls = labelslidergrid!(scene, ["Voltage", "Ampere"], Ref(0:0.1:100); format = x -> "\$(x)V")
 layout[1, 1] = ls.layout
 ```

@@ -327,6 +327,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
+        minorticksused = ax.xminorgridvisible,
         )
 
     ax.xaxis = xaxis
@@ -341,6 +342,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
             tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
+        minorticksused = ax.yminorgridvisible,
         )
 
     ax.yaxis = yaxis
@@ -836,7 +838,7 @@ function getlimits(la::Axis, dim)
         # only use plots with autolimits = true
         to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
         # only if they use data coordinates
-        is_data_space(to_value(get(plot, :space, :data))) || return true
+        is_data_space(plot) || return true
         # only use visible plots for limits
         return !to_value(get(plot, :visible, true))
     end
@@ -968,8 +970,8 @@ function autolimits(ax::Axis, dim::Integer)
     return lims
 end
 
-xautolimits(ax::Axis) = autolimits(ax, 1)
-yautolimits(ax::Axis) = autolimits(ax, 2)
+xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
+yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
 
 """
     linkaxes!(a::Axis, others...)
@@ -1110,7 +1112,7 @@ end
 Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hidexdecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     if label
         la.xlabelvisible = false
@@ -1139,7 +1141,7 @@ end
 Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hideydecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     if label
         la.ylabelvisible = false
@@ -1170,7 +1172,7 @@ Keyword arguments can be used to disable hiding of certain types of decorations.
 
 See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
-function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+function hidedecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
         minorgrid = true, minorticks = true)
     hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
         minorgrid = minorgrid, minorticks = minorticks)
@@ -1200,13 +1202,14 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
         end
     end
 end
+hidespines!(spines::Symbol...) = hidespines!(current_axis(), spines...)
 
 """
     space = tight_yticklabel_spacing!(ax::Axis)
 
 Sets the space allocated for the yticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_yticklabel_spacing!(ax::Axis)
+function tight_yticklabel_spacing!(ax::Axis = current_axis())
     space = tight_ticklabel_spacing!(ax.yaxis)
     return space
 end
@@ -1216,7 +1219,7 @@ end
 
 Sets the space allocated for the xticklabels of the `Axis` to the minimum that is needed and returns that value.
 """
-function tight_xticklabel_spacing!(ax::Axis)
+function tight_xticklabel_spacing!(ax::Axis = current_axis())
     space = tight_ticklabel_spacing!(ax.xaxis)
     return space
 end
@@ -1226,7 +1229,7 @@ end
 
 Sets the space allocated for the xticklabels and yticklabels of the `Axis` to the minimum that is needed.
 """
-function tight_ticklabel_spacing!(ax::Axis)
+function tight_ticklabel_spacing!(ax::Axis = current_axis())
     tight_xticklabel_spacing!(ax)
     tight_yticklabel_spacing!(ax)
     return
@@ -1511,6 +1514,134 @@ function attribute_examples(::Type{Axis})
 
                     f
                     """
+            )
+        ],
+        :backgroundcolor => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    ax1 = Axis(f[1, 1])
+                    ax2 = Axis(f[1, 2], backgroundcolor = :gray80)
+
+                    f
+                """
+            )
+        ],
+        :xautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], xautolimitmargin = (0, 0), title = "xautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[2, 1], xautolimitmargin = (0.05, 0.05), title = "xautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[3, 1], xautolimitmargin = (0, 0.2), title = "xautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :yautolimitmargin => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    data = 0:1
+
+                    ax1 = Axis(f[1, 1], yautolimitmargin = (0, 0), title = "yautolimitmargin = (0, 0)")
+                    ax2 = Axis(f[1, 2], yautolimitmargin = (0.05, 0.05), title = "yautolimitmargin = (0.05, 0.05)")
+                    ax3 = Axis(f[1, 3], yautolimitmargin = (0, 0.2), title = "yautolimitmargin = (0, 0.2)")
+
+                    for ax in [ax1, ax2, ax3]
+                        lines!(ax, data)
+                    end
+
+                    f
+                """
+            )
+        ],
+        :xticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xticklabelpad = 0, title = "xticklabelpad = 0")
+                    Axis(f[1, 2], xticklabelpad = 5, title = "xticklabelpad = 5")
+                    Axis(f[1, 3], xticklabelpad = 15, title = "xticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelpad => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], yticklabelpad = 0, title = "yticklabelpad = 0")
+                    Axis(f[2, 1], yticklabelpad = 5, title = "yticklabelpad = 5")
+                    Axis(f[3, 1], yticklabelpad = 15, title = "yticklabelpad = 15")
+
+                    f
+                """
+            )
+        ],
+        :xticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xticklabelspace = 0.0, title = "xticklabelspace = 0.0")
+                    Axis(f[1, 2], xlabel = "X Label", xticklabelspace = 30.0, title = "xticklabelspace = 30.0")
+                    Axis(f[1, 3], xlabel = "X Label", xticklabelspace = Makie.automatic, title = "xticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :yticklabelspace => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", yticklabelspace = 0.0, title = "yticklabelspace = 0.0")
+                    Axis(f[2, 1], ylabel = "Y Label", yticklabelspace = 30.0, title = "yticklabelspace = 30.0")
+                    Axis(f[3, 1], ylabel = "Y Label", yticklabelspace = Makie.automatic, title = "yticklabelspace = automatic")
+
+                    f
+                """
+            )
+        ],
+        :xlabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], xlabel = "X Label", xlabelpadding = 0, title = "xlabelpadding = 0")
+                    Axis(f[1, 2], xlabel = "X Label", xlabelpadding = 5, title = "xlabelpadding = 5")
+                    Axis(f[1, 3], xlabel = "X Label", xlabelpadding = 10, title = "xlabelpadding = 10")
+
+                    f
+                """
+            )
+        ],
+        :ylabelpadding => [
+            Example(
+                code = """
+                    f = Figure()
+
+                    Axis(f[1, 1], ylabel = "Y Label", ylabelpadding = 0, title = "ylabelpadding = 0")
+                    Axis(f[2, 1], ylabel = "Y Label", ylabelpadding = 5, title = "ylabelpadding = 5")
+                    Axis(f[3, 1], ylabel = "Y Label", ylabelpadding = 10, title = "ylabelpadding = 10")
+
+                    f
+                """
             )
         ],
         :title => [

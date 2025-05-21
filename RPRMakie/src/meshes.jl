@@ -156,10 +156,9 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Surface)
     z = plot[3]
 
     function grid(x, y, z, trans)
-        space = to_value(get(plot, :space, :data))
         g = map(CartesianIndices(z)) do i
             p = Point3f(Makie.get_dim(x, i, 1, size(z)), Makie.get_dim(y, i, 2, size(z)), z[i])
-            return Makie.apply_transform(trans, p, space)
+            return Makie.apply_transform(trans, p)
         end
         return vec(g)
     end

@@ -112,7 +112,7 @@ end
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
-    return Float64(ustrip(conv))
+    return float(ustrip(conv))
 end
 
 
@@ -137,10 +137,10 @@ using Unitful, CairoMakie
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 ```
 
-Fix unit to always use Meter & display unit in the xlabel:
+Fix unit to always use Meter & display unit in the ylabel:
 ```julia
 uc = Makie.UnitfulConversion(u"m"; units_in_label=false)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, xlabel="x (km)"))
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, ylabel="y (m)"))
 ```
 """
 struct UnitfulConversion <: AbstractDimConversion

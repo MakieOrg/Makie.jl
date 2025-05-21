@@ -13,14 +13,14 @@
         f, a, p = scatter(ps)
         Makie.update_state_before_display!(f)
         # sanity check: old behavior should fail
-        M = Makie.Mat4f(Makie.clip_to_space(a.scene.camera, :data)) * 
+        M = Makie.Mat4f(Makie.clip_to_space(a.scene.camera, :data)) *
             Makie.Mat4f(Makie.space_to_clip(a.scene.camera, :data))
         @test !(M ≈ I)
         # this should not
         M = Makie.clip_to_space(a.scene.camera, :data) * Makie.space_to_clip(a.scene.camera, :data)
         @test M ≈ I atol = 1e-4
     end
-    
+
     @testset "#4416 Merging attributes" begin
         # See https://github.com/MakieOrg/Makie.jl/pull/4416
         theme1 = Theme(Axis = (; titlesize = 10))
@@ -29,5 +29,29 @@
         # Test that merging themes does not modify leftmost argument
         @test !haskey(theme1.Axis, :xgridvisible)
         @test !haskey(theme2.Axis, :titlesize)  # sanity check other argument
+    end
+
+    @testset "#4722 Transformation passthrough" begin
+        scene = Scene(camera = campixel!)
+        p = text!(scene, L"\frac{1}{2}")
+        translate!(scene, 0, 0, 10)
+        @test isassigned(p.transformation.parent)
+        @test isassigned(p.plots[1].transformation.parent)
+        @test isassigned(p.plots[1].plots[1].transformation.parent)
+        @test isassigned(p.plots[1].plots[2].transformation.parent)
+
+        @test scene.transformation.model[][3, 4] == 10.0
+        @test p.transformation.model[][3, 4] == 10.0
+        @test p.plots[1].transformation.model[][3, 4] == 10.0
+        @test p.plots[1].plots[1].transformation.model[][3, 4] == 10.0
+        @test p.plots[1].plots[2].transformation.model[][3, 4] == 10.0
+    end
+
+    @testset "#4883 colorscale that breaks sort" begin
+        data = Float32.(Makie.peaks())
+        f, a, p = image(data; colorscale = -)
+        @test p.calculated_colors[].colorrange_scaled[][1] == -maximum(data)
+        @test p.calculated_colors[].colorrange_scaled[][2] == -minimum(data)
+        @test issorted(p.calculated_colors[].colorrange_scaled[])
     end
 end

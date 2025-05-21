@@ -63,7 +63,7 @@ Like LinearTicks but for multiples of `multiple`.
 Example where approximately 5 numbers should be found
 that are multiples of pi, printed like "1π", "2π", etc.:
 
-```
+```julia
 MultiplesTicks(5, pi, "π")
 ```
 
@@ -310,9 +310,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         xlabelvisible::Bool = true
         "Controls if the ylabel is visible."
         ylabelvisible::Bool = true
-        "The padding between the xlabel and the ticks or axis."
+        "The additional padding between the xlabel and the ticks or axis."
         xlabelpadding::Float64 = 3f0
-        "The padding between the ylabel and the ticks or axis."
+        "The additional padding between the ylabel and the ticks or axis."
         ylabelpadding::Float64 = 5f0 # xlabels usually have some more visual padding because of ascenders, which are larger than the hadvance gaps of ylabels
         "The xlabel rotation in radians."
         xlabelrotation = Makie.automatic
@@ -578,6 +578,16 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         the autolimits will also have a ratio of 1 to 2. The setting `autolimitaspect = 1`
         is the complement to `aspect = AxisAspect(1)`, but while `aspect` changes the axis
         size, `autolimitaspect` changes the limits to achieve the desired ratio.
+
+        !!! warning
+            `autolimitaspect` can introduce cyclical updates which result in stack overflow errors.
+            This happens when the expanded limits have different ticks than the unexpanded ones.
+            The difference in size causes a relayout which might again result in different autolimits
+            to match the new aspect ratio, new ticks and again a relayout.
+
+            You can hide the ticklabels or fix `xticklabelspace` and `yticklabelspace` to avoid the relayouts.
+            You can choose the amount of space manually or pick the current automatic one with `tight_ticklabel_spacing!`.
+
         """
         autolimitaspect = nothing
         """
@@ -918,6 +928,8 @@ end
         tellheight = true
         "The align mode of the rectangle in its parent GridLayout."
         alignmode = Inside()
+        "Sets the z value of the Box"
+        z = 0.0
     end
 end
 
@@ -954,6 +966,8 @@ end
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
+        "If false, slider only updates value once dragging stops"
+        update_while_dragging = true
         "Controls if the button snaps to valid positions or moves freely"
         snap::Bool = true
     end
@@ -1325,21 +1339,52 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
+    plots::Vector{Plot}
     attributes::Attributes
+end
+
+struct ImageElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
+struct MeshElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
+struct MeshScatterElement <: LegendElement
+    plots::Vector{Plot}
+    attributes::Attributes
+end
+
+function get_plots(le::LegendElement)
+    if hasfield(typeof(le), :plots)
+        return le.plots
+    else
+        @warn """LegendElements should now keep track of the plots they respresent in a `plots` field.
+        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
+        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
+        """
+        return Plot[]
+    end
 end
 
 struct LegendEntry
     elements::Vector{LegendElement}
     attributes::Attributes
 end
+
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
@@ -1420,6 +1465,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         rowgap = 3
         "The gap between the patch and the label of each legend entry."
         patchlabelgap = 5
+
         "The default points used for LineElements in normalized coordinates relative to each label patch."
         linepoints = [Point2f(0, 0.5), Point2f(1, 0.5)]
         "The default line width used for LineElements."
@@ -1432,6 +1478,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
         "The default marker colormap for MarkerElements"
@@ -1448,6 +1495,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         markerstrokewidth = theme(scene, :markerstrokewidth)
         "The default marker stroke color used for MarkerElements."
         markerstrokecolor = theme(scene, :markerstrokecolor)
+
         "The default poly points used for PolyElements in normalized coordinates relative to each label patch."
         polypoints = [Point2f(0, 0), Point2f(1, 0), Point2f(1, 1), Point2f(0, 1)]
         "The default poly stroke width used for PolyElements."
@@ -1460,6 +1508,68 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         polycolormap = theme(scene, :colormap)
         "The default colorrange for PolyElements"
         polycolorrange = automatic
+
+        """
+        The default mesh used for MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        mesh = Rect3f(Point3f(-0.7), Vec3f(1.4))
+        "The default mesh color used for MeshElements."
+        meshcolor = wong_colors()[1]
+        "The default colormap for MeshElements"
+        meshcolormap = theme(scene, :colormap)
+        "The default colorrange for MeshElements."
+        meshcolorrange = automatic
+
+        """
+        The default (x, y, z) data used for surface-based MeshElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        surfacedata = (-0.7..0.7, -0.7..0.7, [-0.007 * x^3 * (1 - 0.05 * y^2) for x in -5:5, y in -5:5])
+        """
+        The default values/colors used for surface-based MeshElements. These need to match the size of zs.
+        If not set the z values will be used.
+        """
+        surfacevalues = automatic
+        "The default colormap for surface-based MeshElements"
+        surfacecolormap = theme(scene, :colormap)
+        "The default colorrange for surface-based MeshElements. If not set this will be derived from surfacevalues."
+        surfacecolorrange = automatic
+
+        "The default (x, y) limits used for ImageElements in normalized coordinates relative to each label patch."
+        imagelimits = (0..1, 0..1)
+        "The default values (or colors) used for ImageElements."
+        imagevalues = [0 0.3; 0.6 1]
+        "The default colorrange for ImageElements. If not set this will be derived from imagevalues."
+        imagecolorrange = automatic
+
+        "The default (x, y) limits (or vectors) used for HeatmapElements in normalized coordinates relative to each label patch."
+        heatmaplimits = (0..1, 0..1)
+        "The default values used for HeatmapElements."
+        heatmapvalues = [0 0.3; 0.6 1]
+        "The default colorrange for HeatmapElements. If not set this will be derived from heatmapvalues."
+        heatmapcolorrange = automatic
+
+        "The default marker color for MeshScatterElements"
+        meshscattercolor = theme(scene, :markercolor)
+        "The default marker colormap for MeshScatterElements"
+        meshscattercolormap = theme(scene, :colormap)
+        "The default marker colorrange for MeshScatterElements"
+        meshscattercolorrange = automatic
+        "The default marker for MeshScatterElements"
+        meshscattermarker = Sphere(Point3f(0), 1f0)
+        """
+        The default marker points used for MeshScatterElements.
+        For 3D elements the camera is positioned at (1, 1, 1), looking towards (0, 0, 0) with z being up.
+        """
+        meshscatterpoints = [Point3f(0)]
+        "The default marker size used for MeshScatterElements."
+        meshscattersize = 0.8
+        "The default marker rotation used for MeshScatterElements."
+        meshscatterrotation = Quaternionf(0,0,0,1)
+
+        "The default alpha for legend elements"
+        alpha = 1
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
@@ -1665,6 +1775,8 @@ end
             a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
+        "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
+        clip::Bool = true
         "The background color"
         backgroundcolor = :transparent
         "The x label"
@@ -1799,6 +1911,14 @@ end
         yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
         zspinecolor_3 = :black
+        "Controls if the 4. Spines are created to close the outline box"
+        front_spines = false
+        "The color of x spine 4"
+        xspinecolor_4 = :black
+        "The color of y spine 4"
+        yspinecolor_4 = :black
+        "The color of z spine 4"
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
@@ -2008,8 +2128,34 @@ end
 
         "The specifier for the radial (`r`) ticks, similar to `xticks` for a normal Axis."
         rticks = LinearTicks(4)
+        "If set to true and theta range is below 2pi, mirrors r ticks to the other side in a PolarAxis."
+        rticksmirrored = false
+
+        "The size of the rtick marks."
+        rticksize::Float64 = 5f0
+        "Controls if the rtick marks are visible."
+        rticksvisible::Bool = false
+        "The alignment of the rtick marks relative to the axis spine (0 = out, 1 = in)."
+        rtickalign::Float64 = 0f0
+        "The width of the rtick marks."
+        rtickwidth::Float64 = 1f0
+        "The color of the rtick marks."
+        rtickcolor = RGBf(0, 0, 0)
+
         "The specifier for the minor `r` ticks."
         rminorticks = IntervalsBetween(2)
+
+        "Controls if minor ticks on the r axis are visible"
+        rminorticksvisible::Bool = false
+        "The alignment of r minor ticks on the axis spine"
+        rminortickalign::Float64 = 0f0
+        "The tick size of r minor ticks"
+        rminorticksize::Float64 = 3f0
+        "The tick width of r minor ticks"
+        rminortickwidth::Float64 = 1f0
+        "The tick color of r minor ticks"
+        rminortickcolor = :black
+
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
         "The fontsize of the `r` tick labels."
@@ -2044,8 +2190,34 @@ end
 
         "The specifier for the angular (`theta`) ticks, similar to `yticks` for a normal Axis."
         thetaticks = AngularTicks(180/pi, "°") # ((0:45:315) .* pi/180, ["$(x)°" for x in 0:45:315])
+        "If set to true and rmin > 0, mirrors theta ticks to the other side of the PolarAxis."
+        thetaticksmirrored = false
+
+        "The size of the theta tick marks."
+        thetaticksize::Float64 = 5f0
+        "Controls if the theta tick marks are visible."
+        thetaticksvisible::Bool = false
+        "The alignment of the theta tick marks relative to the axis spine (0 = out, 1 = in)."
+        thetatickalign::Float64 = 0f0
+        "The width of the theta tick marks."
+        thetatickwidth::Float64 = 1f0
+        "The color of the theta tick marks."
+        thetatickcolor = RGBf(0, 0, 0)
+
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
+
+        "Controls if minor ticks on the theta axis are visible"
+        thetaminorticksvisible::Bool = false
+        "The alignment of theta minor ticks on the axis spine"
+        thetaminortickalign::Float64 = 0f0
+        "The tick size of theta minor ticks"
+        thetaminorticksize::Float64 = 3f0
+        "The tick width of theta minor ticks"
+        thetaminortickwidth::Float64 = 1f0
+        "The tick color of theha minor ticks"
+        thetaminortickcolor = :black
+
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
         "The fontsize of the `theta` tick labels."

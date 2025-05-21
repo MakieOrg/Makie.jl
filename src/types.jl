@@ -4,6 +4,7 @@ abstract type AbstractAxis <: Block end
 
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
+get_space(::EmptyCamera) = :clip
 
 @enum RaymarchAlgorithm begin
     IsoValue # 0
@@ -64,7 +65,7 @@ not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
-```
+```julia
 on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
@@ -367,6 +368,17 @@ function Transformation(parent::Transformable;
                            origin)
     connect!(transformation(parent), trans; connect_func=connect_func)
     return trans
+end
+
+function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
+    println(io, "Transformation()")
+    println(io, "          parent = ", isassigned(t.parent) ? "Transformation(…)" : "#undef")
+    println(io, "     translation = ", t.translation[])
+    println(io, "           scale = ", t.scale[])
+    println(io, "        rotation = ", t.rotation[])
+    println(io, "          origin = ", t.origin[])
+    println(io, "           model = ", t.model[])
+    println(io, "  transform_func = ", t.transform_func[])
 end
 
 struct ScalarOrVector{T}

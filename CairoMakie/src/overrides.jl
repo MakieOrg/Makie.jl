@@ -47,12 +47,15 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
         model, strokecolor, strokestyle, strokewidth)
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     points = clip_poly(poly.clip_planes[], points, space, model)
     points = _project_position(scene, space, points, model, true)
     Cairo.move_to(screen.context, points[1]...)
@@ -79,6 +82,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])) do points, color, strokecolor, strokestyle, strokewidth, model
             draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     end
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
@@ -86,7 +92,7 @@ draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_pol
 
 function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Rect2, BezierPath}})
     model = poly.model[]::Mat4d
-    space = to_value(get(poly, :space, :data))::Symbol
+    space = poly.space[]::Symbol
     planes = poly.clip_planes[]::Vector{Plane3f}
 
     projected_shapes = map(shapes) do shape
@@ -113,6 +119,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
+    end
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
 end
 
@@ -169,7 +178,7 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     projected_polys = map(polygons) do polygon
         return project_polygon(poly, space, polygon, poly.clip_planes[], model)
     end
@@ -187,11 +196,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
         Cairo.stroke(screen.context)
     end
 
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<: MultiPolygon})
     model = poly.model[]
-    space = to_value(get(poly, :space, :data))
+    space = poly.space[]
     projected_polys = map(polygons) do polygon
         project_multipolygon(poly, space, polygon, poly.clip_planes[], model)
     end
@@ -211,6 +223,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
         end
     end
 
+    if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 end
 
 
@@ -239,30 +254,71 @@ function band_segment_ranges(lowerpoints, upperpoints)
     return ranges
 end
 
+# we can draw an array-colored band using a linear gradient if it's a "normal" band
+# in which all upper/lower values with the same index are at the same x value.
+# the linear gradient will look much better than falling back to mesh drawing, which
+# results in many little triangles when colors are semitransparent and a jagged corner
+function is_linear_gradient_compatible(band)
+    all(zip(band[1][], band[2][])) do (p1, p2)
+        p1 isa Point2 && p2 isa Point2 && p1[1] == p2[1]
+    end
+end
+
 function draw_plot(scene::Scene, screen::Screen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
-
-    if !(band.color[] isa AbstractArray)
+    if is_linear_gradient_compatible(band) || !(band.color[] isa AbstractArray)
         basecolor = to_cairo_color(band.color[], band)
-        color = coloralpha(basecolor, alpha(basecolor) * band.alpha[])
+        color = if basecolor isa Cairo.CairoPattern
+            basecolor
+        elseif basecolor isa AbstractVector # CairoPattern doesn't broadcast
+            coloralpha.(basecolor, alpha.(basecolor) .* band.alpha[])
+        else
+            coloralpha(basecolor, alpha(basecolor) * band.alpha[])
+        end
 
         model = band.model[]
-        space = to_value(get(band, :space, :data))
+        space = band.space[]
 
-        upperpoints = band[1][]
-        lowerpoints = band[2][]
+        xdir::Bool = band.direction[] === :x
+
+        upperpoints = xdir ? band[1][] : reverse.(band[1][])
+        lowerpoints = xdir ? band[2][] : reverse.(band[2][])
 
         for rng in band_segment_ranges(lowerpoints, upperpoints)
-            points = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))
-            points = clip_poly(band.clip_planes[], points, space, model)
+            points_segment = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))
+            points = clip_poly(band.clip_planes[], points_segment, space, model)
             points = project_position.(Ref(band), space, points, Ref(model))
             Cairo.move_to(screen.context, points[1]...)
             for p in points[2:end]
                 Cairo.line_to(screen.context, p...)
             end
             Cairo.close_path(screen.context)
-            set_source(screen.context, color)
-            Cairo.fill(screen.context)
+            if color isa AbstractVector
+                # for the gradient we use all points, irrespective of clipping
+                lower_proj = project_position.(Ref(band), space, points_segment[1:end÷2], Ref(model))
+                p_first = lower_proj[begin]
+                p_last = lower_proj[end]
+                P = typeof(p_last)
+                # the gradient must be parallel to x or y axis
+                p_last = xdir ? P(p_last[1], p_first[2]) : P(p_first[1], p_last[2])
+                dist = p_last - p_first
+                pat = Cairo.pattern_create_linear(p_first..., p_last...)
+                for (p, c) in zip(lower_proj, color)
+                    i = xdir ? 1 : 2
+                    fraction = (p[i] - p_first[i]) / dist[i]
+                    Cairo.pattern_add_color_stop_rgba(pat, fraction, red(c), green(c), blue(c), alpha(c))
+                end
+                Cairo.set_source(screen.context, pat)
+                Cairo.fill(screen.context)
+                Cairo.destroy(pat)
+            else
+                set_source(screen.context, color)
+                Cairo.fill(screen.context)
+            end
+        end
+
+        if basecolor isa Cairo.CairoPattern
+            pattern_set_matrix(basecolor, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
         end
     else
         for p in band.plots
@@ -293,7 +349,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     colors = to_cairo_color(colornumbers, pol)
     polygons = pol[1][]
     model = pol.model[]
-    space = to_value(get(pol, :space, :data))
+    space = pol.space[]
     projected_polys = project_polygon.(Ref(tric), space, polygons, Ref(tric.clip_planes[]), Ref(model))
 
     function draw_tripolys(polys, colornumbers, colors)
@@ -308,6 +364,10 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
     end
 
     draw_tripolys(projected_polys, colornumbers, colors)
+
+    if colors isa Cairo.CairoPattern
+        pattern_set_matrix(colors, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
 
     return
 end

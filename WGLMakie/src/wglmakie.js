@@ -1,4 +1,4 @@
-import * as THREE from "./THREE.js";
+import * as THREE from "https://cdn.esm.sh/v66/three@0.173/es2021/three.js";
 import { getWebGLErrorMessage } from "./WEBGL.js";
 import {
     delete_scenes,
@@ -8,7 +8,6 @@ import {
     delete_three_scene,
     find_plots,
     deserialize_scene,
-    TEXTURE_ATLAS,
     on_next_insert,
     scene_cache,
     plot_cache,
@@ -16,6 +15,7 @@ import {
 } from "./Serialization.js";
 
 import { events2unitless } from "./Camera.js";
+import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
@@ -32,12 +32,8 @@ function dispose_screen(screen) {
     }
 
     if (screen.texture_atlas) {
-        // we need a better observable API to deregister callbacks,
-        // Right now one can only deregister a callback from within the callback by returning false.
-        // So we notify the whole texture atlas with the texture that needs to go & deregister.
-        const data = TEXTURE_ATLAS[0].value;
-        TEXTURE_ATLAS[0].notify(screen.texture_atlas, true);
-        TEXTURE_ATLAS[0].value = data;
+        screen.texture_atlas.dispose(); // Frees GPU memory
+        screen.texture_atlas.image = null;
         screen.texture_atlas = undefined;
     }
     if (root_scene) {
@@ -456,7 +452,6 @@ function create_scene(
     comm,
     width,
     height,
-    texture_atlas_obs,
     fps,
     resize_to,
     px_per_unit,
@@ -471,8 +466,6 @@ function create_scene(
 
     const renderer = threejs_module(canvas);
 
-    TEXTURE_ATLAS[0] = texture_atlas_obs;
-
     if (!renderer) {
         const warning = getWebGLErrorMessage();
         // wrapper.removeChild(canvas)
@@ -483,6 +476,7 @@ function create_scene(
     camera.updateProjectionMatrix();
     const pixel_ratio = window.devicePixelRatio || 1.0;
     const winscale = scalefactor / pixel_ratio;
+
     const screen = {
         renderer,
         camera,
@@ -491,7 +485,7 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
-        texture_atlas: undefined
+        texture_atlas: undefined,
     };
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
@@ -823,7 +817,7 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    TEXTURE_ATLAS,
+    get_texture_atlas,
 };
 
 export {
@@ -841,4 +835,5 @@ export {
     create_scene,
     events2unitless,
     on_next_insert,
+    get_texture_atlas,
 };

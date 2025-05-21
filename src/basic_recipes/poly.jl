@@ -66,8 +66,8 @@ function poly_convert(geometries::AbstractVector, transform_func=identity)
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{2, T}, transform_func=identity) where {T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{2,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
@@ -91,7 +91,9 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     outer = coordinates(polygon.exterior)
     # TODO consider applying f32 convert here too. We would need to identify this though...
     PT = float_type(outer)
-    points = Vector{PT}[apply_transform(transform_func, outer)]
+    # Note that this should not be coerced to be a `Vector{PT}`,
+    # since `apply_transform` can change points from e.g 2D to 3D.
+    points = [apply_transform(transform_func, outer)]
     points_flat = PT[outer;]
     for inner in polygon.interiors
         inner_points = coordinates(inner)
@@ -106,12 +108,13 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=identity) where {T}
-    points = convert(Vector{Point2{float_type(T)}}, polygon)
-    points_transformed = apply_transform(transform_func, points)
+function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func=identity) where {N, T}
+    points2d = convert(Vector{Point2{float_type(T)}}, polygon)
+    points_transformed = apply_transform(transform_func, points2d)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{2, float_type(T), GLTriangleFace}
+    points = convert(Vector{Point{N, float_type(T)}}, polygon)
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
@@ -125,28 +128,31 @@ to_lines(polygon) = convert_arguments(Lines, polygon)[1]
 to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_lines(meshes::AbstractVector)
-    line = Point2d[]
+    get_dim(::AbstractVector{<: VecTypes{N}}) where N = N
+    get_dim(::Any) = 3
+    N = mapreduce(get_dim, max, meshes, init = 2)
+    line = Point{N, Float64}[]
     for (i, mesh) in enumerate(meshes)
-        points = to_lines(mesh)
+        points = to_ndim.(Point{N, Float64}, to_lines(mesh), 0)
         append!(line, points)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
-            push!(line, Point2d(NaN))
+            push!(line, Point{N, Float64}(NaN))
         end
     end
     return line
 end
 
-function to_lines(polygon::AbstractVector{<: VecTypes})
-    result = Point2d.(polygon)
+function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
+    result = Point{N, Float64}.(polygon)
     if !isempty(result) && !(result[1] ≈ result[end])
         push!(result, polygon[1])
     end
     return result
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)

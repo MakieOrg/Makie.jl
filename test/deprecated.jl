@@ -44,9 +44,8 @@ end
         @test occursin("ContinuousSurface() is deprecated", msg)
     end
     @testset "AbstractVector ImageLike" begin
-        msg = @depwarn_message image(1:10, 1..10, zeros(10, 10))
-        @test occursin("Encountered an `AbstractVector` with value 1:10 on side x", msg)
-        msg = @depwarn_message image(1..10, 1:10, zeros(10, 10))
-        @test occursin("Encountered an `AbstractVector` with value 1:10 on side y", msg)
+        @test_throws ErrorException image(1:10, 1..10, zeros(10, 10))
+        @test_throws ErrorException image(1..10, 1:10, zeros(10, 10))
+        @test_throws ErrorException image(collect(1:10), 1:10, zeros(10, 10))
     end
 end

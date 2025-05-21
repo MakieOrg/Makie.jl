@@ -52,3 +52,71 @@ end
     @test glyph_collection_obs[][1].colors[1] == colors[1]
     @test glyph_collection_obs[][end].colors[1] == colors[2]
 end
+
+@testset "updating heatmap with mutated array that is A === B" begin
+    n = 5
+    # Float32 is important, to not have a conversion in between, which circumvents A === B
+    data = Observable(fill(1f0, n, n))
+    s = Scene(; size=(200, 200))
+    # TODO heatmap!(s, data) triggers 3 times :(
+    hm = heatmap!(s, data)
+    color_triggered = Observable(0)
+    on(hm.calculated_colors[].color_scaled) do x
+        color_triggered[] += 1
+    end
+    colorrange_triggered = Observable(0)
+    on(hm.calculated_colors[].colorrange_scaled) do x
+        colorrange_triggered[] += 1
+    end
+    @test color_triggered[] == 0
+    notify(data)
+    @test color_triggered[] == 1
+    # If updating with a new array, that contains the same values, we don't want to trigger an update
+    data[] = copy(data[])
+    @test color_triggered[] == 1
+    # Colorrange should never update if it stays the same
+    @test colorrange_triggered[] == 0
+end
+
+@testset "updating volume with mutated array that is A === B" begin
+    n = 5
+    # Float32 is important, to not have a conversion in between, which circumvents A === B
+    data = Observable(fill(1.0f0, n, n, n))
+    s = Scene(; size=(200, 200))
+    # TODO heatmap!(s, data) triggers 3 times :(
+    hm = volume!(s, data)
+    color_triggered = Observable(0)
+    on(hm.calculated_colors[].color_scaled) do x
+        color_triggered[] += 1
+    end
+    colorrange_triggered = Observable(0)
+    on(hm.calculated_colors[].colorrange_scaled) do x
+        colorrange_triggered[] += 1
+    end
+    @test color_triggered[] == 0
+    notify(data)
+    @test color_triggered[] == 1
+    # If updating with a new array, that contains the same values, we don't want to trigger an update
+    data[] = copy(data[])
+    @test color_triggered[] == 1
+    # Colorrange should never update if it stays the same
+    @test colorrange_triggered[] == 0
+end
+#=
+# Reference image test for the above, that I dont think is necessary
+##
+n = 5
+# FLoat32 is important, so that it doesn't get converted
+A = Observable(Float32.(Makie.peaks(n)));
+s = Scene(size=(200, 200))
+r = -0.75 .. 0.75
+hm = heatmap!(s, r, r, A, colorrange=(-5, 8))
+im1 = copy(colorbuffer(s))
+A[] .= fill(0f0, n, n)
+notify(A)
+im2 = copy(colorbuffer(s))
+large = vcat(im1, im2)
+s = Scene(size=size(large));
+image!(s, large; space=:pixel);
+s
+=#

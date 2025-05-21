@@ -150,7 +150,7 @@ end
 const Layoutable = Union{GridLayout,Block}
 const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
 const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
-# We use this to decide if we can re-use a plot.
+# We use this to decide if we can reuse a plot.
 # (nesting_level_in_layout, position_in_layout, spec)
 const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
 
@@ -464,8 +464,8 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         end
     end
     # Cycling needs to be handled separately sadly,
-    # since they're implicitly mutating attributes, e.g. if I re-use a plot
-    # that has been on cycling position 2, and now I re-use it for the first plot in the list
+    # since they're implicitly mutating attributes, e.g. if I reuse a plot
+    # that has been on cycling position 2, and now I reuse it for the first plot in the list
     # it will need to change to the color of cycling position 1
     if haskey(plot, :cycle)
         cycle = get_cycle_for_plottype(plot.cycle[])
@@ -595,13 +595,14 @@ function diff_plotlist!(
     for plotspec in plotspecs
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
+        # Forward kw arguments from Plotlist
+        if !isnothing(plotlist)
+            merge!(plotspec.kwargs, plotlist.kw)
+        end
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-            # Forward kw arguments from Plotlist
-            if !isnothing(plotlist)
-                merge!(plotspec.kwargs, plotlist.kw)
-            end
+
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
             # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
@@ -618,7 +619,7 @@ function diff_plotlist!(
             new_plots[plotspec] = plot_obj
         else
             @debug("updating old plot with spec")
-            # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
+            # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
             update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
@@ -646,7 +647,7 @@ function update_plotspecs!(
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
         empty!(scene.cycler.counters) # Reset Cycler
-        # diff_plotlist! deletes all plots that get re-used from unused_plots
+        # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
         diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
@@ -940,7 +941,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
             @debug("updating old block with spec")
-            # Make sure we don't double re-use a layoutable
+            # Make sure we don't double reuse a layoutable
             splice!(previous_contents, idx)
             (_, _, old_spec) = old_key
             (layoutable, plot_obs) = layoutable_obs
@@ -975,8 +976,8 @@ end
 
 function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
                             new_layoutables)
-    # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
-    # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
+    # For each update we look into `unused_layoutables` to see if we can reuse a layoutable (GridLayout/Block).
+    # Every reused layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
     update_gridlayout!(
@@ -1013,7 +1014,7 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
     #     return
     # end
     # Finally transfer all new_layoutables into reusable_layoutables,
-    # since in the next update they will be the once we re-use
+    # since in the next update they will be the once we reuse
     append!(unused_layoutables, new_layoutables)
     unique!(unused_layoutables)
     return

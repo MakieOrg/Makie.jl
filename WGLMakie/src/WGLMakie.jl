@@ -32,7 +32,7 @@ using Makie: apply_transform_and_f32_conversion, f32_conversion_obs, f32_convert
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
 const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
-# Main.download("https://cdn.esm.sh/v66/three@0.157/es2021/three.js", joinpath(@__DIR__, "THREE.js"))
+# using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
 include("display.jl")
 include("three_plot.jl")
@@ -68,21 +68,13 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     return
 end
 
+# This is deprecated, but we'll leave it here for now
+# until the next breaking release.
 const TEXTURE_ATLAS = Observable(Float32[])
-
-wgl_texture_atlas() = Makie.get_texture_atlas(1024, 32)
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    # We need to update the texture atlas whenever it changes!
-    # We do this in three_plot!
-    atlas = wgl_texture_atlas()
-    TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-    Makie.font_render_callback!(atlas) do sd, uv
-        TEXTURE_ATLAS[] = convert(Vector{Float32}, vec(atlas.data))
-        return
-    end
     DISABLE_JS_FINALZING[] = false
     return
 end

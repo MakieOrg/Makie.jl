@@ -56,10 +56,6 @@ function serialize_three(array::AbstractArray{T}) where {T<:Union{N0f8,UInt8,Int
     vec(convert(Array, array))
 end
 
-function serialize_three(p::Makie.AbstractPattern)
-    return serialize_three(Makie.to_image(p))
-end
-
 three_format(::Type{<:Integer}) = "RedIntegerFormat"
 three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
@@ -93,14 +89,14 @@ function three_repeat(s::Symbol)
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", 
+    tex = Dict(:type => "Sampler",
                :data => serialize_three(color.data),
-               :size => Int32[size(color.data)...], 
+               :size => Int32[size(color.data)...],
                :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
                :magFilter => three_filter(color.magfilter),
-               :wrapS => three_repeat(color.repeat[1]), 
+               :wrapS => three_repeat(color.repeat[1]),
                :mipmap => color.mipmap,
                :anisotropy => color.anisotropic)
     if N > 1
@@ -328,8 +324,11 @@ end
 
 # TODO: lines overwrites this
 function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
-    program = create_shader(scene, plot)
+    program, additional = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+    if additional !== nothing
+        merge!(mesh, additional)
+    end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
@@ -465,7 +464,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     end
 
     uniforms[:num_clip_planes] = serialize_three(
-        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
+        Makie.is_data_space(plot) ? length(clip_planes[]) : 0
     )
     onany(plot, plot.clip_planes, plot.space) do planes, space
         N = Makie.is_data_space(space) ? length(planes) : 0

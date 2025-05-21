@@ -50,12 +50,15 @@ end
         [
             Label(fig, "A", width = nothing) Label(fig, "C", width = nothing);
             menu1                            menu3;
+            Box(fig, visible = false) Box(fig, visible = false);
             Label(fig, "B", width = nothing) Label(fig, "D", width = nothing);
             menu2                            menu4;
         ]
     )
-    menu2.is_open = true
+
+    menu1.is_open = true
     menu4.is_open = true
+
     fig
 end
 
@@ -166,6 +169,25 @@ end
     f
 end
 
+@reference_test "Legend with scalar colors and alpha" begin
+    f = Figure()
+    ax = Axis(f[1, 1])
+    for i in 1:3
+        lines!(ax, (1:3) .+ i, color = i, colorrange = (0, 4), colormap = :Blues, label = "Line $i", linewidth = 3, alpha = 0.5)
+    end
+    for i in 1:3
+        scatter!(ax, (1:3) .+ i .+ 3, color = i, colorrange = (0, 4), colormap = :plasma, label = "Scatter $i", markersize = 15, alpha = 0.5)
+    end
+    for i in 1:3
+        barplot!(ax, (1:3) .+ i .+ 8, fillto = (1:3) .+ i .+ 7.5, color = i, colorrange = (0, 4), colormap = :tab10, label = "Barplot $i", alpha = 0.5)
+    end
+    for i in 1:3
+        poly!(ax, [Rect2f((j, i .+ 12 + j), (0.5, 0.5)) for j in 1:3], color = i, colorrange = (0, 4), colormap = :heat, label = "Poly $i", alpha = 0.5)
+    end
+    Legend(f[1, 2], ax)
+    f
+end
+
 @reference_test "Legend overrides" begin
     f = Figure()
     ax = Axis(f[1, 1])
@@ -189,14 +211,103 @@ end
     Legend(
         f[1, 3],
         [
-            sc => (; markersize = 30),
-            [li => (; color = :red), sc => (; color = :cyan)],
+            sc => (; markersize = 30, alpha = 0.3),
+            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
             [li, sc] => Dict(:color => :cyan),
         ],
         ["Scatter", "Line and Scatter", "Another"],
         patchsize = (40, 20)
     )
     f
+end
+
+@reference_test "Legend Image-, Mesh- and MeshScatterElements" begin
+    f = Figure(size = (400, 400))
+    a,p = heatmap(f[1, 1:2], RNG.rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
+    image!(10.5..20.5, 0.5..10.5, RNG.rand(10, 10), label = "Image" => (colormap = :viridis,))
+    axislegend(a)
+
+    a,p = meshscatter(f[2, 1], [RNG.rand(Point3f) + Vec3f(0,0,1) for i in 1:10] , label = "MeshScatter" => (color = :orange,))
+    mesh!(Rect3f(0,0,0,1,1,1), label = "Mesh" => (color = :lightblue,))
+    surface!(-1..2, -1..2, RNG.rand(10, 10), label = "Surface" => (colormap = :magma,))
+    Legend(f[2, 2], a, tellwidth = false)
+    f
+
+    st = Makie.Stepper(f)
+    e = events(f)
+    Makie.step!(st)
+
+    # verify that all elements can be turned invisible
+    click(e, 340, 360)
+    click(e, 340, 335)
+    click(e, 300, 125)
+    click(e, 300, 100)
+    click(e, 300, 75)
+    Makie.step!(st)
+
+    st
+end
+
+@reference_test "Legend visibility toggles" begin
+    f = Figure(size = (500, 500))
+
+    ax  = Axis(f[1,1])
+    lb = lines!(ax, 0:4, 0:4, linewidth = 10, color=:blue, label="lines 1")
+    lo = lines!(ax, 0:4, -4:0, linewidth = 10, color=:orange, label="lines 2")
+    sb = scatter!(ax, range(0, 4, length=10), fill(3, 10), markersize = 10, color=:blue, label="scatter 1")
+    so = scatter!(ax, range(0, 4, length=10), fill(2, 10), markersize = 10, color=:orange, label="scatter 2")
+    x = LinRange(0, 4, 100)
+    slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color=:blue, label="band 1")
+    slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color=:orange, label="band 2")
+
+    ax2 = Axis(f[2,1])
+    x = 1:2:20
+    y = 5 * (0.5 .+ sin.(x).^2)
+    bb = barplot!(ax2, x, y; strokewidth = 1, color = :blue, label="barplot 1")
+    bo = barplot!(ax2, x, -y; strokewidth = 1, color = :orange, label="barplot 2")
+
+    l1 = Legend(f[1,2], ax)
+    l2 = Legend(f[2,2],
+        [ PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            PolyElement(plots = [lo, so, slo, bo], color = :orange) ],
+        [ "blue", "orange" ], "Colors" )
+    f
+
+    st = Makie.Stepper(f)
+    e = events(f)
+
+    click(e, 450, 440) # turn blue line off, blue off + dashed
+    Makie.step!(st)
+
+    click(e, 450, 330) # turn orange band off, two dashed
+    Makie.step!(st)
+
+    click(e, 450, 400, Mouse.right) # invert
+    Makie.step!(st)
+
+    click(e, 450, 380)
+    click(e, 450, 420) # reenable all orange, blue scatter + band off, blue dashed, all orange free
+    Makie.step!(st)
+
+    click(e, 450, 120) # turn off orange in second (should turn off all orange)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset (all on)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # swap (all off)
+    Makie.step!(st)
+
+    click(e, 450, 140) # turn on (all) blue
+    Makie.step!(st)
+
+    click(e, 450, 110, Mouse.right) # swap (all orange)
+    Makie.step!(st)
+
+    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite previous states)
+    Makie.step!(st)
+
+    st
 end
 
 @reference_test "LaTeXStrings in Axis3 plots" begin
@@ -214,20 +325,10 @@ end
     fig
 end
 
-@reference_test "PolarAxis surface" begin
-    f = Figure()
-    ax = PolarAxis(f[1, 1])
-    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
-    p = surface!(ax, 0..2pi, 0..10, zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
-    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
-    translate!(p, 0, 0, -200)
-    Colorbar(f[1, 2], p)
-    f
-end
-
-# may fail in WGLMakie due to missing dashes
-@reference_test "PolarAxis scatterlines spine" begin
-    f = Figure(size = (800, 400))
+@reference_test "PolarAxis decorations" begin
+    # may fail in WGLMakie due to missing dashes
+    # tests: some decorations, theta_as_x, title, scatter, lines
+    f = Figure(size = (800, 800), backgroundcolor = :gray)
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
     scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
@@ -235,16 +336,14 @@ end
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
+    rlims!(ax2, 0, 1.5)
     scatterlines!(ax2, range(0, 10pi, length=100), range(0, 1, length=100), color = 1:100)
-    f
-end
 
-# may fail in CairoMakie due to different text stroke handling
-# and in WGLMakie due to missing stroke
-@reference_test "PolarAxis decorations" begin
-    f = Figure(size = (400, 400), backgroundcolor = :black)
+    # may fail in CairoMakie due to different text stroke handling
+    # and in WGLMakie due to missing stroke
+    # tests: decorations
     ax = PolarAxis(
-        f[1, 1],
+        f[2, 1],
         backgroundcolor = :black,
         rminorgridvisible = true, rminorgridcolor = :red,
         rminorgridwidth = 1.0, rminorgridstyle = :dash,
@@ -259,7 +358,56 @@ end
         thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
         rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
+
+    # tests: surface, grid layering, hidedecorations!() effect on spacing
+    ax = PolarAxis(f[2, 2], gridz = 1, backgroundcolor = :lightblue)
+    hidedecorations!(ax)
+    ax.rgridvisible[] = true
+    ax.thetagridvisible[] = true
+    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
+    p = surface!(ax, 0..2pi, 0..10, zeros(size(zs)), color = zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
+    rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     f
+end
+
+@reference_test "PolarAxis ticks" begin
+    f = Figure(size = (600, 600))
+    as = []
+    for (i, mirror) in enumerate([false, true])
+        for (j, dir) in enumerate([1, -1])
+            Label(f[i, j][1, 1], "mirror = $mirror, dir = $dir", tellwidth = false)
+            a = PolarAxis(f[i, j][2, 1],
+                # thetaticks = Makie.LinearTicks(4),
+                thetaticks = Makie.MultiplesTicks(4, pi/180, "°"),
+                rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red,
+                thetaticksvisible = true, thetaticksize = 12, thetatickwidth = 4, thetatickcolor = :blue,
+                rminorgridvisible = true, thetaminorgridvisible = true,
+                rminorticksvisible = true, rminorticksize = 8, rminortickwidth = 3, rminortickcolor = :orange,
+                thetaminorticksvisible = true, thetaminorticksize = 8, thetaminortickwidth = 3, thetaminortickcolor = :cyan,
+                rticksmirrored = mirror, thetaticksmirrored = mirror,
+                rticklabelrotation = :aligned,
+                direction = dir
+            )
+            phi = pi/8 + i * pi/2 + (j-1) * pi
+            thetalims!(a, phi, phi + pi/4)
+            rlims!(a, 0.5, 0.9)
+            push!(as, a)
+        end
+    end
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    for a in as
+        a.rtickalign[] = 0.5
+        a.thetatickalign[] = 0.5
+        a.rminortickalign[] = 1
+        a.thetaminortickalign[] = 1
+    end
+
+    Makie.step!(st)
+
+    st
 end
 
 @reference_test "PolarAxis limits" begin
@@ -306,6 +454,30 @@ end
     f
 end
 
+@reference_test "Axis3 fullbox" begin
+    f = Figure(size = (400, 400))
+    a = Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
+    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+
+    for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
+        kwargs = Dict(
+            Symbol(viskey, :spinesvisible) => false,
+            Symbol(colkey, :spinecolor_1) => :red,
+            Symbol(colkey, :spinecolor_2) => :green,
+            Symbol(colkey, :spinecolor_3) => :blue,
+            Symbol(colkey, :spinecolor_4) => :orange,
+        )
+        a = Axis3(
+            f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
+            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
+
+        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
+        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+    end
+    f
+end
+
 @reference_test "Axis3 viewmodes, xreversed, aspect, perspectiveness" begin
     fig = Figure(size = (800, 1200))
 
@@ -346,6 +518,38 @@ end
 
     perspectiveness[] = 1.0
     Makie.step!(st)
+end
+
+@reference_test "Axis3 clipping" begin
+    # Data from Brillouin.jl
+    basis = Vec3f[[-6.2831855, 6.2831855, 6.2831855], [6.2831855, -6.2831855, 6.2831855], [6.2831855, 6.2831855, -6.2831855]]
+    fs = [[6, 3, 4, 14, 13, 5], [15, 13, 14, 17, 18, 16], [17, 14, 4, 11], [17, 11, 12, 24, 23, 18], [3, 1, 2, 12, 11, 4], [1, 3, 6, 10], [24, 12, 2, 22], [5, 13, 15, 8], [19, 20, 7, 8, 15, 16], [16, 18, 23, 19], [10, 6, 5, 8, 7, 9], [24, 22, 21, 20, 19, 23], [1, 10, 9, 21, 22, 2], [20, 21, 9, 7]]
+    verts = Vec3i[[1, -1, -2], [2, 1, -1], [1, -2, -1], [2, -1, 1], [-2, -3, -1], [-1, -3, -2], [-3, -1, -2], [-3, -2, -1], [-2, -1, -3], [-1, -2, -3], [3, 1, 2], [3, 2, 1], [-1, -2, 1], [1, -1, 2], [-2, -1, 1], [-1, 1, 2], [2, 1, 3], [1, 2, 3], [-1, 2, 1], [-2, 1, -1], [-1, 1, -2], [1, 2, -1], [1, 3, 2], [2, 3, 1]]
+    ps = map(((a,b,c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
+    ls = Point3f[]
+    for f in fs
+        append!(ls, ps[f])
+        push!(ls, ps[f[1]], Point3f(NaN))
+    end
+    _fs = decompose(GLTriangleFace, [NgonFace(f...) for f in fs])
+    m = GeometryBasics.mesh(Point3f.(ps), _fs, normal = face_normals(ps, _fs))
+
+    # Should create closed square and hexagonal cells
+    f = Figure(size = (600, 300))
+    a = Axis3(f[1, 1], aspect = :data,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    scatter!(a, ps, markersize = 30, transparency = true)
+
+    a = Axis3(f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    )
+    lines!(a, ls, linewidth = 3, transparency = true)
+    mesh!(a, m, color = (:orange, 0.2), transparency = true)
+    meshscatter!(a, ps, markersize = 0.15, transparency = false, transform_marker = false)
+    f
 end
 
 @reference_test "Colorbar for recipes" begin
@@ -392,6 +596,14 @@ end
     fig, ax, plt = contourf(x, y, z; levels = l)
     cb = Colorbar(fig[1, 2], plt; tellheight = false)
 
+    fig
+end
+
+@reference_test "Categorical Colorbar with nan_color" begin
+    arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
+    fig = Figure(size = (300, 200))
+    a, hm = heatmap(fig[1,1], arr; colormap=Makie.Categorical(:Paired_8), colorrange=(1,3), lowclip=:black)
+    Colorbar(fig[1,2], hm)
     fig
 end
 
@@ -471,29 +683,28 @@ end
 
 @reference_test "Textbox" begin
     f = Figure()
+    e = events(f)
 
     tb1 = Makie.Textbox(f[1,1])
     Makie.set!(tb1, "1234567890qwertyuiop")
     Makie.focus!(tb1)
-    f.scene.events.mouseposition[] = (297, 221)
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
+    click(e, 297, 221)
     Makie.defocus!(tb1)
 
     tb2 = Makie.Textbox(f[2,1], width=100)
     Makie.set!(tb2, "1234567890qwertyuiop")
     tb2.cursorindex[] = 20
     Makie.focus!(tb2)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+    send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
     tb3 = Makie.Textbox(f[3,1], width=100)
     Makie.set!(tb3, "1234567890qwertyuiop")
     tb3.cursorindex[] = 20
     Makie.focus!(tb3)
-    f.scene.events.mouseposition[] = (259, 173)  # between 7 and 8
-    f.scene.events.mousebutton[] = Makie.MouseButtonEvent(Makie.Mouse.left, Makie.Mouse.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
-    f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.left, Makie.Keyboard.press)
+    click(e, 259, 173) # between 7 and 8
+    send(e, Keyboard.left)
+    send(e, Keyboard.left)
     Makie.defocus!(tb3)
 
     tb4 = Makie.Textbox(f[4,1], width=100)
@@ -502,7 +713,7 @@ end
     tb4.cursorindex[] = 10
     Makie.focus!(tb4)
     for _ in 1:8
-        f.scene.events.keyboardbutton[] = Makie.KeyEvent(Makie.Keyboard.backspace, Makie.Keyboard.press)
+        send(e, Keyboard.backspace)
     end
     Makie.defocus!(tb4)
 

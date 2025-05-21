@@ -8,62 +8,70 @@ using Makie: apply_transform, transform_func, unclipped_indices, to_model_space,
 
 function project_position(scene::Scene, transform_func::T, space::Symbol, point, model::Mat4, yflip::Bool = true) where T
     # use transform func
-    point = Makie.apply_transform(transform_func, point, space)
+    point = Makie.apply_transform(transform_func, point)
     _project_position(scene, space, point, model, yflip)
 end
 
-# much faster than dot-ing `project_position` because it skips all the repeated mat * mat
-function project_position(
-        scene::Scene, space::Symbol, ps::Vector{<: VecTypes{N, T1}},
-        indices::Vector{<:Integer}, model::Mat4, yflip::Bool = true
-    ) where {N, T1}
-
-    transform = let
-        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
-        res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
-        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
-        M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
-    end
-
-    output = Vector{Point2f}(undef, length(indices))
-
-    @inbounds for (i_out, i_in) in enumerate(indices)
-        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
-        px_pos = transform * p4d
-        output[i_out] = px_pos[Vec(1, 2)] / px_pos[3]
-    end
-
-    return output
-end
 
 function _project_position(scene::Scene, space, ps::AbstractArray{<: VecTypes{N, T1}}, model, yflip::Bool) where {N, T1}
     return project_position(scene, space, ps, eachindex(ps), model, yflip)
 end
 
-function project_position(
-        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes{N, T1}},
-        indices::Base.OneTo, model::Mat4, yflip::Bool = true
-    ) where {N, T1}
+function cairo_viewport_matrix(res::VecTypes{2}, yflip = true)
+    px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
+    px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
+    return Makie.transformationmatrix(px_offset, px_scale)
+end
 
-    transform = let
-        f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-        M = Makie.space_to_clip(scene.camera, space) * f32convert * model
-        res = scene.camera.resolution[]
-        px_scale  = Vec3d(0.5 * res[1], 0.5 * (yflip ? -res[2] : res[2]), 1)
-        px_offset = Vec3d(0.5 * res[1], 0.5 * res[2], 0)
-        M = Makie.transformationmatrix(px_offset, px_scale) * M
-        M[Vec(1,2,4), Vec(1,2,3,4)] # skip z, i.e. calculate (x, y, w)
+function build_combined_transformation_matrix(
+        scene::Scene, space::Symbol, model::Mat4, yflip = true
+    )
+    f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
+    M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
+end
+
+function project_position(
+        scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes},
+        indices::Union{Vector{<:Integer}, Base.OneTo}, model::Mat4,
+        yflip::Bool = true
+    )
+    # much faster to calculate the combined projection-transformation matrix
+    # once than dot-ing `project_position` because it skips all the repeated mat * mat
+    transform = build_combined_transformation_matrix(scene, space, model, yflip)
+    # skip z with Vec(1,2,4), i.e. calculate only (x, y, w)
+    return project_position(Point2f, transform[Vec(1,2,4), Vec(1,2,3,4)], ps, indices)
+end
+
+# Assumes (transform * ps[i])[end] to be w component, always
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractVector{<: VecTypes},
+        indices::Vector{<:Integer}
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = Vector{PT}(undef, length(indices))
+    dims = Vec(ntuple(identity, N))
+
+    @inbounds for (i_out, i_in) in enumerate(indices)
+        p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i_in], 0), 1)
+        px_pos = transform * p4d
+        output[i_out] = px_pos[dims] / px_pos[end]
     end
 
-    output = similar(ps, Point2f)
+    return output
+end
+function project_position(
+        ::Type{PT}, transform::Mat{M, 4}, ps::AbstractArray{<: VecTypes},
+        indices::Base.OneTo
+    ) where {N, PT <: VecTypes{N}, M}
+
+    output = similar(ps, PT)
+    dims = Vec(ntuple(identity, N))
 
     @inbounds for i in indices
         p4d = to_ndim(Point4d, to_ndim(Point3d, ps[i], 0), 1)
         px_pos = transform * p4d
-        output[i] = px_pos[Vec(1, 2)] / px_pos[3]
+        output[i] = px_pos[dims] / px_pos[end]
     end
 
     return output
@@ -87,27 +95,65 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
     return p_0_to_1 .* res
 end
 
+# Scatter has already applied f32convert and model, which the function above
+# would reapply. This one avoids that.
+function scatter_project_position(scene::Scene, markerspace, point::VecTypes, yflip::Bool)
+    res = scene.camera.resolution[]
+    p4d = to_ndim(Vec4d, to_ndim(Vec3d, point, 0.0), 1.0)
+    clip = Makie.space_to_clip(scene.camera, markerspace) * p4d
+    @inbounds begin
+        # between -1 and 1
+        p = clip[Vec(1,2)] ./ clip[4]
+        # flip y to match cairo
+        p_yflip = Vec2d(p[1], (1.0 - 2.0 * yflip) * p[2])
+        # normalize to between 0 and 1
+        p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
+    end
+    # multiply with scene resolution for final position
+    return p_0_to_1 .* res
+end
+
 function project_position(@nospecialize(scenelike), space, point, model, yflip::Bool = true)
     scene = Makie.get_scene(scenelike)
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_scale(scene::Scene, space, s::Number, model = Mat4d(I))
-    project_scale(scene, space, Vec2d(s), model)
+function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
+    scale3 = to_ndim(Vec2d, scale, first(scale))
+    model33 = model[Vec(1,2,3), Vec(1,2,3)]
+    origin3 = to_ndim(Point3d, origin, 0)
+    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, billboard)
 end
+function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
+    # the CairoMatrix is found by transforming the right and up vector
+    # of the marker into screen space and then subtracting the projected
+    # origin. The resulting vectors give the directions in which the character
+    # needs to be stretched in order to match the 3D projection
 
-function project_scale(scene::Scene, space, s, model = Mat4d(I))
-    p4d = model * to_ndim(Vec4d, s, 0)
-    if is_data_space(space)
-        @inbounds p = (scene.camera.projectionview[] * p4d)[Vec(1, 2)]
-        return p .* scene.camera.resolution[] .* 0.5
-    elseif is_pixel_space(space)
-        return p4d[Vec(1, 2)]
-    elseif is_relative_space(space)
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[]
-    else # clip
-        return p4d[Vec(1, 2)] .* scene.camera.resolution[] .* 0.5f0
+    xvec = rotation * (model33 * (scale[1] * Point3d(1, 0, 0)))
+    yvec = rotation * (model33 * (scale[2] * Point3d(0, -1, 0)))
+
+    proj_pos = scatter_project_position(scene, markerspace, origin, true)
+
+    if billboard && Makie.is_data_space(markerspace)
+        p4d = scene.camera.view[] * to_ndim(Point4d, origin, 1)
+        xproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + xvec, true)
+        yproj = scatter_project_position(scene, :eye, p4d[Vec(1,2,3)] / p4d[4] + yvec, true)
+    else
+        xproj = scatter_project_position(scene, markerspace, origin + xvec, true)
+        yproj = scatter_project_position(scene, markerspace, origin + yvec, true)
     end
+
+    xdiff = xproj - proj_pos
+    ydiff = yproj - proj_pos
+
+    mat = Cairo.CairoMatrix(
+        xdiff[1], xdiff[2],
+        ydiff[1], ydiff[2],
+        0, 0,
+    )
+
+    return proj_pos, mat, Mat2f(xdiff..., ydiff...)
 end
 
 function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
@@ -193,7 +239,18 @@ end
 
 
 
-function project_line_points(scene, plot::T, positions, colors, linewidths) where {T <: Union{Lines, LineSegments}}
+function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+
+    # Standard transform from input space to clip space
+    # Note that this is type unstable, so there is a function barrier in place.
+    space = (plot.space[])::Symbol
+    points = Makie.apply_transform(transform_func(plot), positions)
+
+    return project_transformed_line_points(scene, plot, points, colors, linewidths)
+end
+
+function project_transformed_line_points(scene, plot::T, points::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
+    # Note that here, `points` has already had `transform_func` applied.
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
     per_point_colors = colors isa AbstractArray
@@ -201,8 +258,6 @@ function project_line_points(scene, plot::T, positions, colors, linewidths) wher
 
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
-    # Standard transform from input space to clip space
-    points = Makie.apply_transform(transform_func(plot), positions, space)::typeof(positions)
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
     transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
     clip_points = map(points) do point
@@ -472,30 +527,44 @@ to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 # handle patterns
 function Cairo.CairoPattern(color::Makie.AbstractPattern)
-    # the Cairo y-coordinate are fliped
-    bitmappattern = reverse!(ARGB32.(Makie.to_image(color)); dims=2)
+    # the Cairo y-coordinate are flipped
+    bitmappattern = reverse!(Makie.to_image(color); dims=2)
+    # Cairo wants pre-multiplied alpha - ARGB32 doesn't do that on its own
+    bitmappattern = map(bitmappattern) do c
+        a = alpha(c)
+        return ARGB32(a * red(c), a * green(c), a * blue(c), a)
+    end
     cairoimage = Cairo.CairoImageSurface(bitmappattern)
     cairopattern = Cairo.CairoPattern(cairoimage)
+    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
     return cairopattern
+end
+
+function align_pattern(pattern::Cairo.CairoPattern, scene, model)
+    o = Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
+    T = Mat{2, 3, Float32}(1,0, 0,1, -o[1], -o[2])
+    pattern_set_matrix(pattern, Cairo.CairoMatrix(T...))
+    return
 end
 
 ########################################
 #        Common color utilities        #
 ########################################
 
-function to_cairo_color(colors::Union{AbstractVector{<: Number},Number}, plot_object)
+function to_cairo_color(colors::Union{AbstractVector,Number}, plot_object)
     cmap = Makie.assemble_colors(colors, Observable(colors), plot_object)
     return to_color(to_value(cmap))
 end
 
-function to_cairo_color(color::Makie.AbstractPattern, plot_object)
+function to_cairo_color(color::Makie.AbstractPattern, plot)
     cairopattern = Cairo.CairoPattern(color)
-    Cairo.pattern_set_extend(cairopattern, Cairo.EXTEND_REPEAT);
+    # This should be reset after drawing
+    align_pattern(cairopattern, Makie.parent_scene(plot), plot.model[])
     return cairopattern
 end
 
 function to_cairo_color(color, plot_object)
-    return to_color(color)
+    return to_color((color, to_value(plot_object.alpha)))
 end
 
 function set_source(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern)
@@ -585,8 +654,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     elseif color isa AbstractVector{<: Colorant}
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
-        # let next level extend and fill with CairoPattern
-        return color
+        return Cairo.CairoPattern(color)
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
         wsize = size(color)
         wh = wsize .- 1
@@ -598,7 +666,10 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         # TODO This is wrong and doesn't actually interpolate
         # Inside the triangle sampling the color image
         return FaceIterator(cvec, faces)
+    elseif color isa AbstractArray{<:Any, 3}
+        error("Volume texture only supported in GLMakie right now")
     end
+
     error("Unsupported Color type: $(typeof(color))")
 end
 

@@ -36,7 +36,7 @@ uniform int len;
 flat out uvec2 o_id;
 flat out int o_InstanceID;
 out vec4 o_color;
-out vec2 o_uv;
+out vec3 o_uv;
 
 {{position_type}} position;
 
@@ -89,8 +89,8 @@ vec4 get_particle_color(Nothing color, samplerBuffer intensity, sampler1D color_
     // always look up color in vertex_shader (mesh.frag can switch)
     return get_color_from_cmap(texelFetch(intensity, index).x, color_map, color_norm);
 }
-
-vec4 get_particle_color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
+// image should be defined instead
+vec4 get_particle_color(Nothing color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len){
     return vec4(0);
 }
 
@@ -108,10 +108,14 @@ vec2 apply_uv_transform(samplerBuffer transforms, int index, vec2 uv){
     return transform * vec3(uv, 1);
 }
 
-vec2 get_uv(int index, Nothing uv){ return vec2(0.0); }
-vec2 get_uv(int index, vec2 uv){
-    return apply_uv_transform(uv_transform, index, uv);
+vec3 get_uv(int index, Nothing uv){ return vec3(0.0); }
+vec3 get_uv(int index, vec2 uv){
+    return vec3(apply_uv_transform(uv_transform, index, uv), 0.0);
 }
+vec3 get_uv(int index, vec3 uv) {
+    return uv;
+}
+
 
 void main(){
     int index = gl_InstanceID;

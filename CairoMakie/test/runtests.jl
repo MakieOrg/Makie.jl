@@ -187,14 +187,15 @@ excludes = Set([
     "fast pixel marker",
     "scatter with glow", # some are missing
     "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
-    "heatmaps & surface", # different nan_colors in surface
     "Textured meshscatter", # not yet implemented
-    "Voxel - texture mapping", # not yet implemented
+    "Voxel - texture mapping", # textures not implemented
+    "Voxel uvs", # textures not implemented
     "Miter Joints for line rendering", # CairoMakie does not show overlap here
-    "Scatter with FastPixel", # almost works, but scatter + markerspace=:data seems broken for 3D
     "picking", # Not implemented
-    "scatter marker_offset 3D with rotation", # missing support for 3D scatter with markerspace = :data
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
+    "Mesh with 3d volume texture", # Not implemented yet
+    "Volume absorption",
+    "DataInspector", "DataInspector 2", # No DataInspector without pick/interactivity
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -304,4 +305,24 @@ end
     ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
     @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
     @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
+
+    # Check that `reinterpret`ed arrays of points are handled correctly
+    # ref. https://github.com/MakieOrg/Makie.jl/issues/4661
+
+    data = reinterpret(Point2f, rand(Point2f, 10) .=> rand(Point2f, 10))
+
+    f, a, p = lines(data)
+    Makie.update_state_before_display!(f)
+    ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
+    @test length(ps) == length(data) # this should never clip!
+
+end
+
+@testset "issue 4970 (invalid io use during finalization)" begin
+    @testset "$mime" for mime in CairoMakie.SUPPORTED_MIMES
+        @test_nowarn begin
+            sprint(io -> show(io, mime, Scene()))
+            GC.gc()
+        end
+    end
 end

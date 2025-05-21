@@ -305,6 +305,9 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
     Makie.apply_screen_config!(screen, config, scene, nothing, MIME"image/png"())
 end
 
+function Makie.px_per_unit(s::Screen)::Float64
+    return s.config.px_per_unit
+end
 
 function Screen(scene::Scene; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))

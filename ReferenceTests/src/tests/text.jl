@@ -220,7 +220,7 @@ end
     meshscatter(f[2, 1], [p1, p2]; markersize=0.3, color=[:purple, :yellow])
     text!(p1; text="A", align=(:center, :center), glowwidth=10.0, glowcolor=:white, color=:black, fontsize=40, overdraw=true)
     text!(p2; text="B", align=(:center, :center), glowwidth=20.0, glowcolor=(:black, 0.6), color=:white, fontsize=40, overdraw=true)
-        
+
     f
 end
 
@@ -295,13 +295,13 @@ end
 @reference_test "latex (axis, scene, bbox)" begin
     f = Figure(size = (500, 300))
 
-    text(f[1, 1], 1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50, 
+    text(f[1, 1], 1, 1, text = L"\frac{\sqrt{x + y}}{\sqrt{x + y}}", fontsize = 50,
         rotation = pi/4, align = (:center, :center))
-    
+
     s = LScene(f[1, 2], scenekw = (camera = campixel!,), show_axis = false)
     text!(s, L"\sqrt{2}", position = (100, 50), rotation = pi/2, fontsize = 20,
         markerspace = :data)
-    
+
     t = text!(s, L"\int_0^5x^2+2ab", position = Point2f(50, 150), rotation = 0.0,
         fontsize = 20, markerspace = :data)
     wireframe!(s, boundingbox(t, :data), color=:black)
@@ -401,4 +401,21 @@ end
     p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
     Makie.step!(st)
     st
+end
+
+# test #3315
+@reference_test "text with empty lines" begin
+    text(
+        0,0, 
+        text=rich(
+            rich("test", font = :bold), 
+            """
+            
+            more
+
+            """
+        ); 
+        markerspace = :data, 
+        axis = (; aspect = DataAspect())
+    )
 end
