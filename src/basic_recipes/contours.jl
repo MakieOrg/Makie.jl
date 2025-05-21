@@ -224,6 +224,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
+
     old_values = map(copy, arg_values)
     points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values=true)
     onany(plot, args...) do args...
@@ -241,10 +242,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     texts = text!(
         plot,
-        Observable(P[]);
-        color = Observable(RGBA{Float32}[]),
-        rotation = Observable(Float32[]),
-        text = Observable(String[]),
+        P[];
+        color = RGBA{Float32}[],
+        rotation = Float32[],
+        text = String[],
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
@@ -255,10 +256,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions[]; empty!(pos)
-        rot = texts.rotation[]; empty!(rot)
-        col = texts.color[]; empty!(col)
-        lbl = texts.text[]; empty!(lbl)
+        pos = P[]
+        rot = Quaternionf[]
+        col = RGBAf[]
+        lbl = String[]
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
@@ -278,7 +279,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             isnan(p) && (p = p3)
             push!(pos, p)
         end
-        notify(texts.text)
+        update!(texts, arg1 = pos, rotation = rot, color = col, text = lbl)
         return
     end
 
