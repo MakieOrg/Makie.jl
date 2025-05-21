@@ -39,4 +39,5 @@ MakieCore = { path = "../MakieCore" }
 CairoMakie = { path = "../CairoMakie" }
 GLMakie = { path = "../GLMakie" }
 WGLMakie = { path = "../WGLMakie" }
-RPRMakie = { path = "../RPRMakie" }
+RPRMakie = {path = "../RPRMakie"}
+ComputePipeline = {path = "../ComputePipeline"}
