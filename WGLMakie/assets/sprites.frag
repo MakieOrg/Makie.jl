@@ -22,6 +22,7 @@ in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
 in float o_clip_distance[8];
 flat in vec2 f_sprite_scale;
+flat in vec4 frag_strokecolor;
 
 uniform int num_clip_planes;
 
@@ -182,7 +183,7 @@ void main() {
     vec4 final_color = fill(frag_color, uniform_color, frag_uv);
     final_color.a = final_color.a * inside;
 
-    stroke(get_strokecolor(), signed_distance, -stroke_width, final_color, aa_radius);
+    stroke(frag_strokecolor, signed_distance, -stroke_width, final_color, aa_radius);
     glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance, aa_radius), final_color);
 
     // debug - show background

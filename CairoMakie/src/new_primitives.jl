@@ -1,47 +1,6 @@
-# TODO:
-#   - Embed camera matrices in compute pipeline so we can easily and consistently
-#     do projections here
-
-# TODO: update Makie.Sampler to include lowclip, highclip, nan_color
-#       and maybe also just RGBAf color types?
-#       Or just move this to make as a more generic function?
-# Note: This assumes to be called with data from ComputePipeline, i.e.
-#       alpha and colorscale already applied
-function sample_color(
-        colormap::Vector{RGBAf}, value::Real, colorrange::VecTypes{2},
-        lowclip::RGBAf = first(colormap), highclip::RGBAf = last(colormap),
-        nan_color::RGBAf = RGBAf(0,0,0,0), interpolation = Makie.Linear
-    )
-    isnan(value) && return nan_color
-    value < colorrange[1] && return lowclip
-    value > colorrange[2] && return highclip
-    if interpolation == Makie.Linear
-        return Makie.interpolated_getindex(colormap, value, colorrange)
-    else
-        return Makie.nearest_getindex(colormap, value, colorrange)
-    end
-end
-
 function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
-    Makie.register_computation!(plot.attributes::Makie.ComputeGraph,
-            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color],
-            [:cairo_colors]
-        ) do inputs, changed, cached
-        (color, colorrange, colormap, nan_color, lowclip, highclip) = inputs
-        # colormapping
-        if color isa AbstractArray{<:Real} || color isa Real
-            output = map(color) do v
-                return sample_color(colormap, v, colorrange, lowclip, highclip, nan_color)
-            end
-            return (output,)
-        else # Raw colors
-            # Avoid update propagation if nothing changed
-            !isnothing(last) && !changed[1] && return nothing
-            return (color,)
-        end
-    end
-
-    return plot.cairo_colors[]
+    Makie.add_computation!(plot.attributes, Val(:computed_color), color_name)
+    return plot.computed_color[]
 end
 
 function cairo_project_to_screen_impl(projectionview, resolution, model, pos, output_type = Point2f, yflip = true)
@@ -318,13 +277,13 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
         marker_offset,
         text_rotation,
         text_scales,
-        strokewidth,
+        text_strokewidth,
         text_strokecolor,
         markerspace,
         transform_marker,
+        text_color
     ))
 
-    text_color = cairo_colors(primitive, :text_color)
     ctx = screen.context
     attr = primitive.attributes::Makie.ComputeGraph
 
@@ -350,6 +309,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Text
             font = font_per_char[glyph_idx]
             rotation = Makie.sv_getindex(text_rotation, glyph_idx)
             color = Makie.sv_getindex(text_color, glyph_idx)
+            strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
             scale = Makie.sv_getindex(text_scales, glyph_idx)
 

@@ -137,6 +137,16 @@ This layout in text coordinates, relative to the anchor point [0,0] can then be 
 rotated to wherever it is needed in the plot.
 """
 function glyph_collection(
+        str::AbstractString, font_per_char, fontscale_px, (halign, valign),
+        lineheight_factor, justification, word_wrap_width, rotation
+    )
+    return glyph_collection(
+        str, font_per_char, fontscale_px, halign, valign,
+        lineheight_factor, justification, word_wrap_width, rotation
+    )
+end
+
+function glyph_collection(
         str::AbstractString, font_per_char, fontscale_px, halign, valign,
         lineheight_factor, justification, word_wrap_width, rotation
     )
