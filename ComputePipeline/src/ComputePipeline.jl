@@ -213,7 +213,7 @@ graph[:derived_node][]
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
-    onchange::Observable{Nothing}
+    onchange::Observable{Set{Symbol}}
     observables::Dict{Symbol,Observable}
     observerfunctions::Vector{Observables.ObserverFunction}
 end
@@ -222,10 +222,9 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
     return get!(attr.observables, key) do
         val = attr.outputs[key]
         result = Observable(val[])
-        on(attr.onchange) do _
-            _val = val[]
-            if !is_same(result[], _val)
-                result[] = _val
+        on(attr.onchange) do changeset
+            if key in changeset
+                result[] = val[]
             end
             return Consume(false)
         end
@@ -270,7 +269,7 @@ end
 
 function ComputeGraph()
     return ComputeGraph(
-        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable{Nothing}(),
+        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable(Set{Symbol}()),
         Dict{Symbol,Observable}(), Observables.ObserverFunction[])
 end
 
@@ -299,6 +298,9 @@ function mark_dirty!(edge::ComputeEdge)
     edge.got_resolved[] = false
     for dep in edge.dependents
         mark_dirty!(dep)
+    end
+    for output in edge.outputs
+        push!(edge.graph.onchange.val, output.name)
     end
     return
 end
@@ -330,6 +332,7 @@ function mark_dirty!(input::Input)
     for edge in input.dependents
         mark_dirty!(edge)
     end
+    push!(input.graph.onchange.val, input.name)
     return
 end
 
@@ -348,17 +351,18 @@ function Base.setindex!(input::Input, value)
 end
 
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
+    empty!(attr.onchange.val)
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
     input.value = value
     mark_dirty!(input)
+    notify(attr.onchange)
     return value
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     _setproperty!(attr, key, value)
-    notify(attr.onchange)
     return value
 end
 
@@ -389,7 +393,6 @@ function update!(attr::ComputeGraph, dict::Dict{Symbol})
             error("Attribute $key not found in ComputeGraph")
         end
     end
-    notify(attr.onchange)
     return attr
 end
 
@@ -401,7 +404,6 @@ function update!(attr::ComputeGraph, pairs...)
             error("Attribute $key not found in ComputeGraph")
         end
     end
-    notify(attr.onchange)
     return attr
 end
 
