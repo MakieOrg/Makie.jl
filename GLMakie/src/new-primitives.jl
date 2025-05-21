@@ -1140,7 +1140,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel
+        :pattern_uv_transform, :fetch_pixel,
+        :interpolate_in_fragment_shader
     ]
 
     input2glname = Dict{Symbol, Symbol}(
@@ -1148,7 +1149,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
         :scaled_color => :image, :model_f32c => :model,
-        :pattern_uv_transform => :uv_transform
+        :pattern_uv_transform => :uv_transform,
     )
 
     robj = register_robj!(assemble_mesh_robj!, screen, scene, plot, inputs, uniforms, input2glname)

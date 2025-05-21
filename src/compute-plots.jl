@@ -150,6 +150,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         end
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
         type = to_colormapping_type(icm)
+        if length(conv_colormap) == 0
+            error("Converted colormap must contain colors.")
+        end
         return (alpha_colormap, raw_colormap, color_mapping, type)
     end
 
@@ -157,9 +160,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         sym = Symbol(key, :_color)
         register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
             if input === automatic
-                (ifelse(key == :lowclip, first(cmap), last(cmap)),)
+                return (ifelse(key == :lowclip, first(cmap), last(cmap)),)
             else
-                (to_color(input),)
+                return (to_color(input),)
             end
         end
     end
@@ -182,12 +185,14 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
     end
 
     # TODO: if colorscale is defined, should it act on user supplied colorrange?
-    register_computation!(attr, [:colorrange, :scaled_color], [:scaled_colorrange]) do (colorrange, color), changed, last
+    register_computation!(attr,
+            [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
+        ) do (colorrange, colorscale, color), changed, last
         (color isa AbstractArray{<:Real} || color isa Real) || return (nothing,)
         if colorrange === automatic
             return (isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color)),)
         else
-            return (Vec2f(colorrange),)
+            return (Vec2f(apply_scale(colorscale, colorrange)),)
         end
     end
 end
@@ -611,15 +616,15 @@ function register_mesh_decomposition!(attr)
         return (pos, faces, normies, texturecoords)
     end
 
-    register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color]) do (meshes, merged, color), changed, cached
+    register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]) do (meshes, merged, color), changed, cached
         if hasproperty(merged, :color)
-            _color = merged.color
+            return (merged.color, true)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x-> length(coordinates(x)), meshes))
+            return (_color, false)
         else
-            _color = color
+            return (color, true)
         end
-        return (_color,)
     end
 end
 
@@ -730,10 +735,19 @@ end
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
-    register_computation!(attr, [:colormap], [:colormapping_type]) do (cmap,), changed, last
-        return (colormapping_type(cmap),)
+    haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
+
+    map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
+        if colorrange === automatic
+            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        else
+            return Vec2f(colorrange)
+        end
     end
-    attributes = [:raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
+
+    attributes = [
+        :raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :unscaled_colorrange,
+        :lowclip, :highclip, :nan_color, :color_mapping_type, :scaled_colorrange, :scaled_color]
     register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
         dict = Dict(zip(attributes, values(args)))
         N = ndims(dict[:raw_color])
@@ -744,7 +758,7 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
                 name === :colorscale ? Observable{Any}(dict[name]) : Observable(dict[name])
             end
             observable_dict = Dict(zip(attributes, observables))
-            cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange), observables[6:end]...)
+            cm = ColorMapping{N,Cin,Cout}(observables...)
             return (cm, observable_dict)
         else
             observable_dict = cached.cb_observables

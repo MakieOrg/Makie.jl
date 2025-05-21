@@ -774,6 +774,7 @@ float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
 float32type(::T) where {T} = float32type(T)
+float32type(T::Type) = error("Could not convert $T to a Float32 type")
 
 el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
