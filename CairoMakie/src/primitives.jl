@@ -515,7 +515,7 @@ function path_command(ctx, c::EllipticalArc)
 end
 
 
-function draw_marker(ctx, marker::Matrix{T}, pos,
+function draw_marker(ctx, marker::AbstractMatrix{T}, pos,
     strokecolor #= unused =#, strokewidth #= unused =#,
     mat) where T<:Colorant
 
