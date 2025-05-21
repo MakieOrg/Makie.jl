@@ -53,6 +53,16 @@ function Base.getproperty(plot::Plot, key::Symbol)
     return plot.attributes[key]
 end
 
+function Base.setproperty!(plot::Plot, key::Symbol, val::Observable)
+    error(
+        "Setting an Attribute ($key) to an Observable is no longer allowed.\n" *
+        "If you are using attributes as storage in a recipe, i.e. `plot[key] = map/lift(...)` " *
+        "either track the Observable as a variable `var = map/lift(...)` or consider using " *
+        "`register_computation!()` or the ComputePipelines `map!()` methods.\n" *
+        "If you are trying to create a new input to a ComputeGraph use `add_input!(graph, key, obs)` explicitly."
+    )
+end
+
 function Base.setproperty!(plot::Plot, key::Symbol, val)
     if key in fieldnames(typeof(plot))
         return Base.setfield!(plot, key, val)
