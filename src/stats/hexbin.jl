@@ -136,11 +136,9 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         notify(points)
         return notify(count_hex)
     end
-    onany(calculate_grid, hb[1], hb.weights, hb.bins, hb.cellsize, hb.threshold)
+    onany(calculate_grid, hb[1], hb.weights, hb.bins, hb.cellsize, hb.threshold, update = true)
 
-    notify(hb.bins)  # trigger once
-
-    computed_colorrange = map!(hb, hb.colorrange) do colorrange
+    computed_colorrange = map(hb, hb.colorrange) do colorrange
         if colorrange === automatic
             if isempty(count_hex[])
                 (0, 1)

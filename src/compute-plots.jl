@@ -150,6 +150,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         end
         color_mapping = icm isa PlotUtils.ColorGradient ? icm.values : nothing
         type = to_colormapping_type(icm)
+        if length(conv_colormap) == 0
+            error("Converted colormap must contain colors.")
+        end
         return (alpha_colormap, raw_colormap, color_mapping, type)
     end
 
@@ -157,9 +160,9 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         sym = Symbol(key, :_color)
         register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
             if input === automatic
-                (ifelse(key == :lowclip, first(cmap), last(cmap)),)
+                return (ifelse(key == :lowclip, first(cmap), last(cmap)),)
             else
-                (to_color(input),)
+                return (to_color(input),)
             end
         end
     end
