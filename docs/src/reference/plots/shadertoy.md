@@ -7,7 +7,7 @@ shadertoy
 
 ## Examples
 
-```@figure
+```@figure backend=GLMakie
 using GLMakie
 
 # Define the shader as a string
@@ -54,6 +54,11 @@ shadertoy!(ax,
     )
 )
 record(identity, f, "plasma_animation.mp4", 1:1000; framerate=30)
+nothing # hide
+```
+
+```@raw html
+<video autoplay loop muted playsinline controls src="./plasma_animation.mp4" />
 ```
 
 ## Attributes
