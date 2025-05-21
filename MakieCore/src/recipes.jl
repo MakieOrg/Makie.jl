@@ -412,9 +412,19 @@ function attribute_names(T::Type{<:Plot})
     return keys(attr.d)
 end
 
+
+function plot_attributes(scene, T)
+    plot_attr = MakieCore.documented_attributes(T)
+    if isnothing(plot_attr)
+        return merge(default_theme(scene, T), default_theme(T))
+    else
+        return plot_attr.d
+    end
+end
+
 function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
     thm = theme(scene)
-    metas = documented_attributes(T).d
+    metas = plot_attributes(scene, T)
     psym = plotsym(T)
     if haskey(thm, psym)
         overwrite = thm[psym]

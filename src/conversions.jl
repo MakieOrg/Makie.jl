@@ -907,6 +907,9 @@ end
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
+convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
+
+
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 

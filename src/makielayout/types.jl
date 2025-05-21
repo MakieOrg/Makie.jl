@@ -13,7 +13,11 @@ struct Cycle
     covary::Bool
 end
 
+Cycle(cycle::Cycle) = cycle
 Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
+
+palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
+attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
 
 to_cycle(single) = [to_cycle_single(single)]
 to_cycle(::Nothing) = []
@@ -21,6 +25,21 @@ to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
 to_cycle_single(sym::Symbol) = [sym] => sym
 to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
 to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
+
+function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
+    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
+    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
+    palette = cyclepalettes[isym]
+    if cycle.covary
+        return palette[mod1(index, length(palette))]
+    else
+        cis = CartesianIndices(Tuple(length(p) for p in cyclepalettes))
+        n = length(cis)
+        k = mod1(index, n)
+        idx = Tuple(cis[k])
+        return palette[idx[isym]]
+    end
+end
 
 """
     Cycled(i::Int)

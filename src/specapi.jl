@@ -437,12 +437,7 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
         old_attr = plot[attribute]
         # only update if different
         if is_different(old_attr[], new_value)
-            if new_value isa Cycled
-                updates[attribute] = to_color(scene, attribute, new_value)
-            else
-                @debug("updating kw $attribute")
-                updates[attribute] = new_value
-            end
+            updates[attribute] = new_value
         end
     end
 
@@ -459,28 +454,6 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
                 old_attr.val = new_value
                 updates[k] = old_attr
             end
-        end
-    end
-    # Cycling needs to be handled separately sadly,
-    # since they're implicitly mutating attributes, e.g. if I reuse a plot
-    # that has been on cycling position 2, and now I reuse it for the first plot in the list
-    # it will need to change to the color of cycling position 1
-    if haskey(plot, :cycle)
-        cycle = get_cycle_for_plottype(plot.cycle[])
-        uncycled = Set{Symbol}()
-        for (attr_vec, _) in cycle.cycle
-            for attr in attr_vec
-                if !haskey(spec.kwargs, attr)
-                    push!(uncycled, attr)
-                end
-            end
-        end
-        if !isempty(uncycled)
-            # remove all attributes that don't need cycling
-            for (attr_vec, _) in cycle.cycle
-                filter!(x -> x in uncycled, attr_vec)
-            end
-            add_cycle_attribute!(plot, scene, cycle)
         end
     end
     update!(plot, updates)
@@ -583,13 +556,11 @@ function diff_plotlist!(
         plotlist::Union{Nothing,PlotList}=nothing,
         reusable_plots = IdDict{PlotSpec, Plot}(),
         new_plots = IdDict{PlotSpec,Plot}())
-     # needed to be mutated
-    empty!(scene.cycler.counters)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
-    for plotspec in plotspecs
+    for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
         # Forward kw arguments from Plotlist
@@ -618,6 +589,8 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
+            # Update the position of the plot!
+            reused_plot.plot_position = i
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
@@ -642,7 +615,6 @@ function update_plotspecs!(
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
-        empty!(scene.cycler.counters) # Reset Cycler
         # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
         diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
@@ -802,10 +774,6 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         if is_different(val, prev_val)
             setproperty!(block, key, val)
         end
-    end
-    # Reset the cycler
-    if hasproperty(block, :scene)
-        empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots

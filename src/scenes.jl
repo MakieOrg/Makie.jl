@@ -89,7 +89,6 @@ mutable struct Scene <: AbstractScene
     visible::Observable{Bool}
     ssao::SSAO
     deregister_callbacks::Vector{Observables.ObserverFunction}
-    cycler::Cycler
     compute::ComputeGraph
 
     conversions::DimConversions
@@ -130,7 +129,6 @@ mutable struct Scene <: AbstractScene
             visible,
             ssao,
             deregister_callbacks,
-            Cycler(),
             ComputeGraph(),
             DimConversions(),
             false

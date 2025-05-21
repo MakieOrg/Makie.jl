@@ -356,34 +356,71 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol
     register_computation!(f, p.attributes, inputs, outputs)
 end
 
+function default_attribute(user_attributes, (key, value))
+    if haskey(user_attributes, key)
+        if value isa Attributes
+            return merge(value, Attributes(pairs(user_attributes[key])))
+        else
+            return user_attributes[key]
+        end
+    elseif value isa MakieCore.AttributeMetadata
+        val = value.default_value
+        return val isa MakieCore.Inherit ? val.fallback : val
+    else
+        return to_value(value)
+    end
+end
+
 function add_attributes!(::Type{T}, attr, kwargs) where {T}
-    documented_attr = plot_attributes(nothing, T)
+
+    documented_attr = MakieCore.plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
-
-    for (k, v) in documented_attr
-        if haskey(kwargs, k)
-            if v isa Attributes
-                value = merge(v, Attributes(pairs(kwargs[k])))
-            else
-                value = kwargs[k]
+    inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
+    delete!(inputs, :cycle)
+    _cycle = to_value(get(kwargs, :cycle) do
+        MakieCore.lookup_default(T, nothing, :cycle)
+    end)
+    add_input!(attr, :cycle, _cycle) do key, value
+        # TODO, better convert_attribute to just return nothing for the different ways of disabling cycle?
+        cyc = convert_attribute(value, Key{key}(), Key{name}())
+        return isempty(cyc.cycle) ? nothing : cyc
+    end
+    # Cycle attributes are get set to plot, and then set in connect_plot!
+    add_input!(attr, :plot_position, 0)
+    add_input!(attr, :palettes, nothing)
+    cycle = attr.cycle[]
+    if !isnothing(cycle)
+        asc = attrsyms(cycle)
+        ps = palettesyms(cycle)
+        # flatten to attribute -> palette
+        lookup = Dict([b for syms in asc for b in zip(syms, ps)])
+        add_input!(attr, :palette_lookup, lookup)
+        for (k, p) in lookup
+            # If user explicitely passes values, we should not do anything
+            let plotcycle = cycle
+                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                    palettes = attr.palettes[]
+                    value isa Cycled && return get_cycle_attribute(palettes, key, value.i, plotcycle)
+                    if !isnothing(value)
+                        return convert_attribute(value, Key{key}(), Key{name}())
+                    end
+                    pos = attr.plot_position[]
+                    cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
+                    return convert_attribute(cyc, Key{key}(), Key{name}())
+                end
+                delete!(inputs, k)
             end
-        elseif v isa Observable
-            value = v[]
-        elseif v isa Attributes
-            value = v
-        else
-            val = v.default_value
-            value = val isa MakieCore.Inherit ? val.fallback : val
         end
-
+    end
+    for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
         if is_primitive
-            add_input!(attr, k, value) do key, value
+            add_input!(attr, k, v) do key, value
                 return convert_attribute(value, Key{key}(), Key{name}())
             end
         else
-            add_input!((k,v) -> Ref{Any}(v), attr, k, value)
+            add_input!((k,v) -> Ref{Any}(v), attr, k, v)
         end
     end
     if !haskey(attr, :model)
@@ -395,23 +432,18 @@ end
 
 # const GScatter{ARGS} = Scatter{gscatter, ARGS}
 
-function plot_attributes(scene, T)
-    plot_attr = MakieCore.documented_attributes(T)
-    if isnothing(plot_attr)
-        return merge(default_theme(scene, T), default_theme(T))
-    else
-        return plot_attr.d
-    end
-end
-
 function add_theme!(plot::T, scene::Scene) where {T}
-    plot_attr = plot_attributes(scene, T)
+    plot_attr = MakieCore.plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(plot), (;))
     gattr = plot.attributes
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
         if !haskey(plot.kw, k)
+            # dont set theme values for cycled attributes
+            if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], k)
+                continue
+            end
             if haskey(plot_scene_theme, k)
                 setproperty!(gattr, k, to_value(plot_scene_theme[k]))
             elseif v isa Observable
@@ -456,7 +488,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
 
         # remove attributes that the parent graph has but don't apply to this plot
-        valid_keys = keys(plot_attributes(nothing, P))
+        valid_keys = keys(MakieCore.plot_attributes(nothing, P))
         filter!(kv -> in(kv[1], valid_keys), attr)
 
         merge!(attr, user_attributes)
@@ -472,16 +504,24 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
-function add_cycle_attribute!(plot::Plot, scene::Scene, cycle=get_cycle_for_plottype(plot.cycle[]))
-    cycler = scene.cycler
-    palette = scene.theme.palette
-    add_cycle_attributes!(plot, cycle, cycler, palette)
-    return
+function get_plot_position(scene::Scene, plot::Plot)
+    # TODO, this may not reproduce the exact same cycle index as on master
+    pos = 0
+    for p in scene.plots
+        if haskey(p, :cycle) && !isnothing(p.cycle[])
+            pos += 1
+        end
+        p === plot && return pos
+    end
+    return pos
+end
+# For recipes we use the recipes position?
+function get_plot_position(parent::Plot, ::Plot)
+    get_plot_position(get_scene(parent), parent)
 end
 
 # should this just be connect_plot?
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
-    T = typeof(plot)
     scene = parent_scene(parent)
     add_theme!(plot, scene)
     plot.parent = parent
@@ -492,6 +532,9 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
             return
         end
     end
+    # TODO, do this for recipes?
+    plot.plot_position = get_plot_position(parent, plot)
+    plot.palettes = get_scene(parent).theme.palette
 
     handle_transformation!(plot, parent)
     calculated_attributes!(Plot{Func}, plot)
@@ -501,11 +544,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         register_camera!(scene, plot)
     end
 
-    if !isnothing(scene) && haskey(attr, :cycle)
-        add_cycle_attribute!(plot, scene, get_cycle_for_plottype(attr[:cycle][]))
-    end
-
-    documented_attr = plot_attributes(scene, Plot{Func})
+    documented_attr = MakieCore.plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes.outputs, k)
             if haskey(documented_attr, k)
