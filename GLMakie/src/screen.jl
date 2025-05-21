@@ -1050,16 +1050,18 @@ end
 
 # const time_record = sizehint!(Float64[], 100_000)
 function poll_updates(screen)
-    for plot in values(screen.cache2plot)
-        # poll object for updates
-        if plot isa Makie.ComputePlots
-            try
-                plot.attributes[:gl_renderobject][]
-            catch e
-                @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
-                # TODO: mark the output as resolved so we don't repeatedly pull in errors
-                #       Wouldn't setting inputs_dirty break state though?
-                # ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject]) <-- doesn't exist yet
+    Base.invokelatest() do
+        for plot in values(screen.cache2plot)
+            # poll object for updates
+            if plot isa Makie.ComputePlots
+                try
+                    plot.attributes[:gl_renderobject][]
+                catch e
+                    @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                    # TODO: mark the output as resolved so we don't repeatedly pull in errors
+                    #       Wouldn't setting inputs_dirty break state though?
+                    # ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject]) <-- doesn't exist yet
+                end
             end
         end
     end
