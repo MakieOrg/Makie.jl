@@ -655,7 +655,27 @@ end
 
 Gets tick labels by applying `showoff_minus` to `values`.
 """
-get_ticklabels(::Automatic, values) = showoff_minus(values)
+function get_ticklabels(::Automatic, values)
+    rawstrings = Showoff.showoff(values, export_raw = true)
+    converted = Vector{Union{String, Makie.RichText}}(undef, length(rawstrings))
+    converted[:] = rawstrings[:] 
+    sci_notation_index = findfirst.("e", rawstrings)
+    plain_notation = isnothing.(sci_notation_index)
+    sci_notation_indices = findall(.!(plain_notation))
+    converted[plain_notation] = replace.(converted[plain_notation], r"-(?=\d)" => MINUS_SIGN)
+    for (i, idx) in enumerate(sci_notation_indices)
+        str = rawstrings[idx]
+        base_number, power = split(str, "e")
+        upperscript_str = string(parse(Int32, power))
+        converted[idx] = rich(
+            string(base_number) * "×10",
+            superscript(replace(upperscript_str, r"-(?=\d)" => MINUS_SIGN)),
+            offset = Vec2f(0.1f0, 0f0)
+        )
+    end
+
+    return converted
+end
 
 """
     get_ticklabels(formatfunction::Function, values)
