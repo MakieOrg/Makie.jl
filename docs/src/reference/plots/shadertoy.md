@@ -9,7 +9,7 @@ shadertoy
 
 ```@example
 using GLMakie
-
+GLMakie.activate!() # hide
 # Define the shader as a string
 plasma_shader = """
 // A colorful plasma animation
