@@ -7,7 +7,7 @@ shadertoy
 
 ## Examples
 
-```@figure backend=GLMakie
+```@example
 using GLMakie
 
 # Define the shader as a string
