@@ -871,8 +871,7 @@ end
 end
 
 @reference_test "per element uv_transform" begin
-    cow = FileIO.load(assetpath("cow.png"))
-
+    cow = load(assetpath("cow.png"))
     N = 8; M = 10
     f = Figure(size = (500, 400))
     a, p = meshscatter(
@@ -880,7 +879,7 @@ end
         [Point2f(x, y) for x in 1:M for y in 1:N],
         color = cow,
         uv_transform = [
-            Makie.uv_transform(:rotl90) *
+            Makie.uv_transform(:rotr90) *
             Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
             for x in range(0, 1, length = M+1)[1:M]
             for y in range(0, 1, length = N+1)[1:N]
@@ -893,6 +892,7 @@ end
     ylims!(a, 0.3, N+0.7)
     f
 end
+
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
     row = [(1, :pixel, 20), (2, :data, 0.5)]
