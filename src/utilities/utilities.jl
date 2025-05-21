@@ -36,31 +36,31 @@ function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
 end
 
 """
-Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
-value is nothing
+    default_automatic(a, default)
+
+Returns `default` if `a == automatic` and `a` otherwise.
 """
-function replace_automatic!(f, dict, key)
-    haskey(dict, key) || return (dict[key] = f())
-    val = dict[key]
-    to_value(val) == automatic && return (dict[key] = f())
-    val
+default_automatic(::Automatic, b) = b
+default_automatic(a, b) = a
+default_automatic(x, ::Automatic) = throw(MethodError(default_automatic, (x, automatic)))
+
+"""
+    default_automatic(default)
+
+Creates a function `x -> default_automatic(x, default)` which returns `x` if it is
+not automatic and `default` otherwise.
+"""
+default_automatic(::Automatic) = throw(MethodError(default_automatic, (automatic)))
+default_automatic(default) = x -> default_automatic(x, default)
+
+function replace_automatic!(args...)
+    error(
+        "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
+        "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
+        "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
+    )
 end
-replace_automatic!(f, p::Plot, key) = replace_automatic!(f, Attributes(p), key)
-function replace_automatic!(f, attr::ComputeGraph, key)
-    if !haskey(attr, key)
-        add_input!(attr, key, f())
-    else
-        val = attr[key]
-        if to_value(val) == automatic
-            new_val = f()
-            new_val isa Observable && error("Replacing a compute graph entry with an Observable is not possible.")
-            update!(attr, key => new_val)
-            return new_val
-        else
-            return val
-        end
-    end
-end
+
 
 is_unitrange(x) = (false, 0:0)
 is_unitrange(x::AbstractRange) = (true, x)

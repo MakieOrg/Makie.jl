@@ -140,19 +140,23 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
 
     notify(hb.bins)  # trigger once
 
-    replace_automatic!(hb, :colorrange) do
-        if isempty(count_hex[])
-            (0, 1)
-        else
-            mi, ma = extrema(count_hex[])
-            # if we have only one unique value (usually happens) when there are very few points
-            # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
-            # a singular colorrange error down the line.
-            if mi == ma
-                (0, ifelse(ma == 0, 1, ma))
+    computed_colorrange = map!(hb, hb.colorrange) do colorrange
+        if colorrange === automatic
+            if isempty(count_hex[])
+                (0, 1)
             else
-                (mi, ma)
+                mi, ma = extrema(count_hex[])
+                # if we have only one unique value (usually happens) when there are very few points
+                # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
+                # a singular colorrange error down the line.
+                if mi == ma
+                    (0, ifelse(ma == 0, 1, ma))
+                else
+                    (mi, ma)
+                end
             end
+        else
+            colorrange
         end
     end
 
@@ -164,7 +168,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         hb.colorscale
     end
     return scatter!(hb, points;
-                    colorrange=hb.colorrange,
+                    colorrange=computed_colorrange,
                     color=count_hex,
                     colormap=hb.colormap,
                     colorscale=scale,
