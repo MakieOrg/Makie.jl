@@ -577,15 +577,15 @@ function register_mesh_decomposition!(attr)
         return (pos, faces, normies, texturecoords)
     end
 
-    register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color]) do (meshes, merged, color), changed, cached
+    register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]) do (meshes, merged, color), changed, cached
         if hasproperty(merged, :color)
-            _color = merged.color
+            return (merged.color, true)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x-> length(coordinates(x)), meshes))
+            return (_color, false)
         else
-            _color = color
+            return (color, true)
         end
-        return (_color,)
     end
 end
 
