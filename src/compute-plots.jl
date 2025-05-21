@@ -696,10 +696,19 @@ end
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
 function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     isnothing(attr[:scaled_colorrange][]) && return nothing
-    register_computation!(attr, [:colormap], [:colormapping_type]) do (cmap,), changed, last
-        return (colormapping_type(cmap),)
+    haskey(attr, :cb_colormapping) && return attr[:cb_colormapping][]
+
+    map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
+        if colorrange === automatic
+            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        else
+            return Vec2f(colorrange)
+        end
     end
-    attributes = [:raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :lowclip, :highclip, :nan_color, :colormapping_type, :scaled_colorrange, :scaled_color]
+
+    attributes = [
+        :raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :unscaled_colorrange,
+        :lowclip, :highclip, :nan_color, :color_mapping_type, :scaled_colorrange, :scaled_color]
     register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
         dict = Dict(zip(attributes, values(args)))
         N = ndims(dict[:raw_color])
@@ -710,7 +719,7 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
                 name === :colorscale ? Observable{Any}(dict[name]) : Observable(dict[name])
             end
             observable_dict = Dict(zip(attributes, observables))
-            cm = ColorMapping{N,Cin,Cout}(observables[1:5]..., Observable(args.scaled_colorrange), observables[6:end]...)
+            cm = ColorMapping{N,Cin,Cout}(observables...)
             return (cm, observable_dict)
         else
             observable_dict = cached.cb_observables
