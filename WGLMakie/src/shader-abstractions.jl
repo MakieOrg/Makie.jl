@@ -29,6 +29,13 @@ end
 
 function create_shader(vertex_attr, uniforms, vertshader, fragshader)
     context = WebGL()
+    vertex_dict = to_vertex_dict(vertex_attr)
+    # For vertex_attributes with varying names we set a backup in uniforms
+    # Which needs to be removed, when they actually come from the mesh/vertex_attributes
+    for (name, element) in vertex_dict
+        delete!(uniforms, name)
+    end
+    # remove faces from vertex attributes
     uniform_block = sprint() do io
         println(io, "\n// Uniforms: ")
         for (name, v) in uniforms
@@ -53,10 +60,8 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
             end
         end
 
-
         println(io)
     end
-    vertex_dict = to_vertex_dict(vertex_attr)
     src = sprint() do io
         println(io, "// vertex inputs: ")
         for (name, element) in vertex_dict

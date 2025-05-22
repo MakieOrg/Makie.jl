@@ -379,8 +379,7 @@ function meshscatter_program(args)
         :interpolate_in_fragment_shader => false,
         :markersize => args.markersize,
         :f32c_scale => args.f32c_scale,
-        # TODO: This causes uv to exist as uniform and vertex input sometimes
-        # (e.g. "uv_transform" refimg test)
+        # TODO uv needst o be destructured via register_computation! to allow updates
         :uv => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
