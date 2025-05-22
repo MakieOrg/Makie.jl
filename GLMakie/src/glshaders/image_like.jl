@@ -54,13 +54,13 @@ function draw_heatmap(screen, data::Dict)
     return assemble_shader(data)
 end
 
-function draw_volume(screen, main::VolumeTypes, data::Dict)
+function draw_volume(screen, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
     shading = pop!(data, :shading, FastShading)
     pop!(data, :backlight, 0f0) # We overwrite this
     @gen_defaults! data begin
-        volumedata = main => Texture
+        volumedata = Array{Float32, 3}(undef, 0, 0, 0) => Texture
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = nothing => Texture

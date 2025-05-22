@@ -1226,8 +1226,8 @@ end
 
 function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
     interp = attr[:interpolate][] ? :linear : :nearest
-    volume_data = Texture(screen.glscreen, args.scaled_color, minfilter = interp)
 
+    data[:volumedata] = Texture(screen.glscreen, args.scaled_color, minfilter = interp)
     data[:enable_depth] = attr[:enable_depth][]
 
     if args.scaled_color isa AbstractArray{<:Real}
@@ -1235,7 +1235,7 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
         data[:color_norm] = args.scaled_colorrange
     end
 
-    return draw_volume(screen, volume_data, data)
+    return draw_volume(screen, data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
