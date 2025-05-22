@@ -315,7 +315,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
     inputs = [
         # Special
-        :atlas,
         # Needs explicit handling
         :alpha_colormap, :scaled_color, :scaled_colorrange,
         :sdf_marker_shape
@@ -389,7 +388,7 @@ end
 ################################################################################
 
 function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
-    data[:distancefield] = get_texture!(screen.glscreen, args.atlas)
+    data[:distancefield] = get_texture!(screen.glscreen, Makie.get_texture_atlas())
     data[:shape] = Cint(DISTANCEFIELD)
     data[:image] = nothing
     data[:rotation] = args.text_rotation
@@ -425,7 +424,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
-    inputs = [:atlas,]
+    inputs = Symbol[]
 
     # Simple forwards
     uniforms = [
