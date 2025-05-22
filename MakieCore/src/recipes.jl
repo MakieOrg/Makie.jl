@@ -37,7 +37,7 @@ func2type(x::T) where T = func2type(T)
 func2type(x::Type{<: AbstractPlot}) = x
 func2type(f::Function) = Plot{plotfunc(f)}
 
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+@generated plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = QuoteNode(Symbol(lowercase(func2string(Typ))))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
