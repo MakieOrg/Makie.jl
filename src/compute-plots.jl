@@ -511,14 +511,21 @@ end
 
 function get_plot_position(scene::Scene, plot::Plot)
     # TODO, this may not reproduce the exact same cycle index as on master
-    pos = 0
+    cycle = plot.cycle[]
+    isnothing(cycle) && return 0
+    syms = [s for ps in attrsyms(cycle) for s in ps]
+    pos = 1
     for p in scene.plots
-        p === plot && return pos + 1
-        if haskey(p, :cycle) && !isnothing(p.cycle[])
-            pos += 1
+        p === plot && return pos
+        if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
+            is_cycling = any(x-> isnothing(p.attributes.inputs[x].value), syms)
+            if  is_cycling
+                pos += 1
+            end
         end
     end
-    return pos + 1
+    # not inserted yet
+    return pos
 end
 # For recipes we use the recipes position?
 function get_plot_position(parent::Plot, ::Plot)

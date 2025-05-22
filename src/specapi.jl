@@ -448,13 +448,12 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
     if !isempty(reset_to_default)
         for k in reset_to_default
-            old_attr = plot[k]
+            old_attr = plot[k][]
             new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
             # In case of e.g. dim_conversions
             isnothing(new_value) && continue
             # only update if different
-            if is_different(old_attr[], new_value)
-                old_attr.val = new_value
+            if is_different(old_attr, new_value)
                 updates[k] = old_attr
             end
         end
@@ -554,6 +553,18 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
+
+function get_plot_position(specs, spec::PlotSpec)
+    pos = 1
+    for p in specs
+        p == spec && return pos
+        if p.type === spec.type
+            pos += 1
+        end
+    end
+    return pos + 1
+end
+
 function diff_plotlist!(
         scene::Scene, plotspecs::Vector{PlotSpec},
         plotlist::Union{Nothing,PlotList}=nothing,
@@ -593,7 +604,7 @@ function diff_plotlist!(
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
             # Update the position of the plot!
-            reused_plot.plot_position = i
+            reused_plot.plot_position = get_plot_position(plotspecs, plotspec)
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
