@@ -501,8 +501,7 @@ end
 function extract_colormap(plot::DataShader)
     color = lift(x -> x.aggbuffer, plot, plot.canvas)
     attributes = [:colormap, :raw_colorrange, :colorscale, :alpha, :highclip, :lowclip, :nan_color]
-    obsies = map(x -> ComputePipeline.get_observable!(getindex(plot, x)), attributes)
-    return ColorMapping(color[], color, obsies...)
+    return ColorMapping(color[], color, map(k -> getindex(plot, k), attributes)...)
 end
 
 function xy_to_rect(x, y)

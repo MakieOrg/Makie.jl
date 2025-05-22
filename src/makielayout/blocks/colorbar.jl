@@ -53,10 +53,8 @@ function extract_colormap(plot::Union{Contourf,Tricontourf})
     end
     elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
     ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
-    return ColorMapping(levels[], levels,
-        ComputePipeline.get_observable!(plot.computed_colormap), limits,
-        ComputePipeline.get_observable!(plot.colorscale), Observable(1.0),
-        elow, ehigh, ComputePipeline.get_observable!(plot.nan_color))
+    return ColorMapping(levels[], levels, plot.computed_colormap, limits,
+        plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color)
 end
 
 function extract_colormap(plot::Voxels)

@@ -234,6 +234,11 @@ struct ColorMapping{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}
     color_scaled::Observable{T2}
 end
 
+function ColorMapping(args::Union{Observable, Computed}...)
+    obs = map(x -> x isa Computed ? ComputePipeline.get_observable!(x) : x, args)
+    return ColorMapping(obs...)
+end
+
 """
     Categorical(colormaplike)
 
@@ -363,16 +368,21 @@ function ColorMapping(
 
     T = _array_value_type(color)
     color_tight = Observable{T}(color)
+
+    args = map([colors_obs, colormap, colorrange, colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type]) do x
+        x isa Computed ? ComputePipeline.get_observable!(x) : x
+    end
+
     # We need to copy, to check for changes
     # Since users may reuse the array when pushing updates
-    on(colors_obs) do new_colors
+    on(args[1]) do new_colors
         if color_tight[] === new_colors || color_tight[] != new_colors
             color_tight[] = new_colors
         end
     end
-     # color_tight.ignore_equal_values = true
-    _colormapping(color_tight, colors_obs, colormap, colorrange,
-                         colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
+    # color_tight.ignore_equal_values = true
+
+    return _colormapping(color_tight, args...)
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
