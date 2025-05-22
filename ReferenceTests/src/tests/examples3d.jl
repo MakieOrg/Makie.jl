@@ -63,8 +63,8 @@ end
         algorithm=:mip,  # maximum-intensity-projection
         colorrange=(0, 1),
     )
-    ax.scene[OldAxis].names.textcolor = :lightgray # let axis labels be seen on dark background
-    ax.scene[OldAxis].ticks.textcolor = :gray # let axis ticks be seen on dark background
+    ax.scene[OldAxis].names[].textcolor = :lightgray # let axis labels be seen on dark background
+    ax.scene[OldAxis].ticks[].textcolor = :gray # let axis ticks be seen on dark background
     ax.scene.backgroundcolor[] = to_color(:black)
     ax.scene.clear[] = true
 

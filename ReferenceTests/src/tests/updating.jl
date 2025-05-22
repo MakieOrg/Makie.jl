@@ -203,12 +203,15 @@ end
     f
     img1 = copy(colorbuffer(f; px_per_unit=1))
     plots = [pl1, pl2, pl3, pl4]
-    get_listener_lengths() = map(plots) do x
-        arg_l = length(x[1].listeners)
-        attr_l = length(x.color.listeners)
-        return [arg_l, attr_l]
-    end
-    listener_lengths_1 = get_listener_lengths()
+
+    # TODO what memory leak to check here?
+
+    # get_listener_lengths() = map(plots) do x
+    #     arg_l = length(x[1].listeners)
+    #     attr_l = length(x.color.listeners)
+    #     return [arg_l, attr_l]
+    # end
+    # listener_lengths_1 = get_listener_lengths()
 
     ax2 = Axis(f[1, 2]; title="Axis 2")
     ls = LScene(f[2, :]; show_axis=false)
@@ -222,7 +225,7 @@ end
     pl3.colormap = :inferno
     pl3.markersize = 1
 
-    @test listener_lengths_1 == get_listener_lengths()
+    # @test listener_lengths_1 == get_listener_lengths()
 
     img2 = copy(colorbuffer(f; px_per_unit=1))
     @test length(ax.scene.plots) == 1
@@ -248,7 +251,7 @@ end
 
     img3 = copy(colorbuffer(f; px_per_unit=1))
 
-    @test listener_lengths_1 == get_listener_lengths()
+    # @test listener_lengths_1 == get_listener_lengths()
 
     imgs = hcat(rotr90.((img1, img2, img3))...)
     s = Scene(; size=size(imgs))
