@@ -126,8 +126,9 @@ end
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
                            low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
     T_out = float_type(float_type(val), T)
+    T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3{T_out}(val, low, high)
+        Vec3{T_out_ref[]}(val, low, high)
     end
     (val_low_high,)
 end
