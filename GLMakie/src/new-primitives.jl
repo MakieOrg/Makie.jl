@@ -369,7 +369,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
             pvm = Makie.space_to_clip(scene.camera, space) * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
-            return depthsort!(pos[], depth_vals, indices, pvm)
+            return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
         register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
@@ -479,7 +479,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             pvm = Makie.space_to_clip(scene.camera, space) * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
-            return depthsort!(pos[], depth_vals, indices, pvm)
+            return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
         register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
