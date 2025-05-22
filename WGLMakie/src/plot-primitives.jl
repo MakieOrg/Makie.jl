@@ -26,7 +26,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     end
 
     mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
-    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
+    mesh[:uniforms][:num_clip_planes] = 0
 
     return mesh
 end

@@ -237,60 +237,6 @@ function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     return result
 end
 
-# TODO: lines overwrites this
-function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
-    program, additional = create_shader(scene, plot)
-    mesh = serialize_three(plot, program)
-    if additional !== nothing
-        merge!(mesh, additional)
-    end
-    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
-    mesh[:visible] = plot.visible[]
-    mesh[:uuid] = js_uuid(plot)
-    # Javascript plot type class name - which falls back to Mesh.
-    mesh[:plot_type] = "Mesh"
-
-    get!(mesh, :transparency, plot.transparency[])
-    get!(mesh, :overdraw, plot.overdraw[])
-    get!(() -> Makie.zvalue2d(plot), mesh, :zvalue)
-
-    uniforms = mesh[:uniforms]
-    uni_updater = mesh[:uniform_updater]
-    attr_updater = mesh[:attribute_updater]
-    updater = Observable([])
-    mesh[:updater] = updater
-
-    on(plot, uni_updater) do update
-        updater[] = [update]
-    end
-    on(plot, attr_updater) do (name, data, count)
-        updater[] = [[name, data]]
-    end
-    delete!(mesh, :attribute_updater)
-    delete!(mesh, :uniform_updater)
-
-    uniforms[:ambient] = serialize_three(scene.compute[:ambient_color][])
-    uniforms[:light_color] = serialize_three(scene.compute[:dirlight_color][])
-    on(scene.compute.onchange) do _
-        uni_updater[] = [:ambient, serialize_three(scene.compute[:ambient_color][])]
-        uni_updater[] = [:light_color, serialize_three(scene.compute[:dirlight_color][])]
-        return
-    end
-
-    scatterlike = plot isa Scatter || haskey(plot, :markerspace)
-    if scatterlike
-        mesh[:markerspace] = Observable(plot.markerspace[])
-    end
-    mesh[:space] = Observable(plot.space[])
-
-    key = scatterlike ? (:markerspace) : (:space)
-    mesh[:cam_space] = to_value(get(plot, key, :data))
-    uniforms[:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
-    uniforms[:num_clip_planes] = serialize_three(0)
-
-    return mesh
-end
-
 function flat_m4f(x::AbstractArray)
     result = Vector{Float32}(undef, length(x))
     copyto!(result, Mat4f(x))
