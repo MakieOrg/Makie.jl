@@ -297,7 +297,6 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
-                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
             elseif project(scene, apply_transform(transform_func(plot), p)) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
@@ -329,21 +328,21 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         depth_shift=plot.depth_shift,
         space=plot.space
     )
+
+    # toggle to debug labels
+    # wireframe!(plot, map(bbs -> merge(map(GeometryBasics.mesh, bbs)), bboxes), space = :pixel)
+
     plot
 end
 
-function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+function data_limits(plot::Union{Contour{<: Tuple{X, Y, Z}}, Contour3d{<: Tuple{X, Y, Z}}}) where {X, Y, Z}
     mini_maxi = extrema_nan.((plot[1][], plot[2][]))
     mini = Vec3d(first.(mini_maxi)..., 0)
     maxi = Vec3d(last.(mini_maxi)..., 0)
     return Rect3d(mini, maxi .- mini)
 end
 
-function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}, space::Symbol = :data) where {X, Y, Z}
+function boundingbox(plot::Union{Contour, Contour3d}, space::Symbol = :data)
     return apply_transform_and_model(plot, data_limits(plot))
 end
 
-# TODO: should this have a data_limits overload?
-function boundingbox(plot::Contour3d, space::Symbol = :data)
-    return apply_transform_and_model(plot, data_limits(plot))
-end

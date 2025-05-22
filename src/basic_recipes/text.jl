@@ -459,12 +459,12 @@ maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), i
 function register_per_string_boundingboxes!(plot::Text)
     register_computation!(
         plot.attributes,
-        [:positions_transformed_f32c, :preprojection, :per_string_bb, :text_blocks],
+        [:positions_transformed_f32c, :model_f32c, :preprojection, :per_string_bb, :text_blocks],
         [:markerspace_boundingboxes]
-    ) do (positions, preprojection, per_string_bb, blocks), changed, cached
+    ) do (positions, model, preprojection, per_string_bb, blocks), changed, cached
         # preprojection in plot is space -> markerspace
         # Could skip this if the matrix == I
-        pos = _project(preprojection, positions[first.(blocks)])
+        pos = _project(preprojection * model, positions[first.(blocks)])
         bbs = [bb + to_ndim(Point3d, p, 0) for (bb, p) in zip(per_string_bb, pos)]
         return (bbs,)
     end
