@@ -448,19 +448,18 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     canvases = Dict(k => Canvas(canvas.bounds; resolution=canvas.resolution, op=AggCount{Float32}())
                     for (k, v) in categories)
 
-    toal_value = Observable(0f0)
     register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method=p.method[])
-        toal_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return (canvases, toal_value)
+        total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
+        return (canvases, total_value)
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
-    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, toal_value)
+    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, p.total_value)
 
     for (k, canv) in canvases
         color = colors[k]
