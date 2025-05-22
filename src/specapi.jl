@@ -9,6 +9,9 @@ function symbol_to_specable(sym::Symbol)
     return MakieCore.symbol_to_plot(sym)
 end
 
+deref(x) = x
+deref(x::Base.RefValue) = x[]
+
 """
     PlotSpec(plottype, args...; kwargs...)
 
@@ -48,7 +51,7 @@ struct PlotSpec
                     # So on error we don't convert for now via try catch
                     # Since we also dont have an API to figure out if a convert is defined correctly
                     # TODO, I think we can do this more elegantly but will need a bit of a convert_attribute refactor
-                    kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+                    kw[k] = deref(convert_attribute(v, Key{k}(), Key{type}()))
                 catch e
                     kw[k] = v
                 end
