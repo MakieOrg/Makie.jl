@@ -231,18 +231,23 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     # If neither is the case we would have to combine vertices with positions and
     # transform them to world space (post float32convert) on the CPU. We then can't
     # do instancing anymore, so meshscatter becomes pointless.
-    register_computation!(attr, [:f32c, :model, :model_f32c, :transform_marker], [:f32c_scale]
-            ) do (f32c, model, model_f32c, transform_marker), changed, cached
+    space = haskey(attr, :markerspace) ? :markerspace : :space
+    register_computation!(attr, [:f32c, :model, :model_f32c, :transform_marker, space], [:f32c_scale]
+            ) do (f32c, model, model_f32c, transform_marker, space), changed, cached
         if Makie.is_identity_transform(f32c)
             return (Vec3f(1), )
         else
             # f32c_scale * model_f32c should reproduce f32c.scale * model if transform_marker is true
-            if transform_marker
-                d3 = Vec(1, 6, 11)
-                scale = f32c.scale .* model[d3] ./ model_f32c[d3]
-                return (scale, )
+            if is_data_space(space)
+                if transform_marker
+                    d3 = Vec(1, 6, 11)
+                    scale = f32c.scale .* model[d3] ./ model_f32c[d3]
+                    return (scale, )
+                else
+                    return (f32c.scale, )
+                end
             else
-                return (f32c.scale, )
+                return (Vec3f(1),)
             end
         end
     end
