@@ -513,12 +513,12 @@ function get_plot_position(scene::Scene, plot::Plot)
     # TODO, this may not reproduce the exact same cycle index as on master
     pos = 0
     for p in scene.plots
+        p === plot && return pos + 1
         if haskey(p, :cycle) && !isnothing(p.cycle[])
             pos += 1
         end
-        p === plot && return pos
     end
-    return pos
+    return pos + 1
 end
 # For recipes we use the recipes position?
 function get_plot_position(parent::Plot, ::Plot)
@@ -729,7 +729,6 @@ function calculated_attributes!(::Type{Volume}, plot::Plot)
         return (Rect3d(mini, maxi .- mini),)
     end
 end
-
 
 
 get_colormapping(plot::Plot) = get_colormapping(plot, plot.attributes)
