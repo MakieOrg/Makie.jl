@@ -690,13 +690,13 @@ function get_glyph_sdf(atlas::TextureAtlas, hash::UInt32)
     return atlas.data[x_range, y_range]
 end
 
-function glyph_boundingobx(::BezierPath, ::Makie.NativeFont)
+function glyph_boundingbox(::BezierPath, ::Makie.NativeFont)
     # TODO, implement this
     # Main blocker is the JS side since this is a bit more complicated.
     return (Vec2f(0), Vec2f(0))
 end
 
-function glyph_boundingobx(gi::UInt64, font::Makie.NativeFont)
+function glyph_boundingbox(gi::UInt64, font::Makie.NativeFont)
     extent = FreeTypeAbstraction.get_extent(font, gi)
     glyph_bb = FreeTypeAbstraction.boundingbox(extent)
     w, mini = widths(glyph_bb), minimum(glyph_bb)
@@ -738,7 +738,7 @@ function inner_get_glyph_data(atlas::TextureAtlas, tracker, marker::Union{Bezier
         push!(tracker, hash)
         uv = primitive_uv_offset_width(atlas, marker, ffont)
         sdf = get_glyph_sdf(atlas, hash)
-        w, mini = glyph_boundingobx(tex_marker, ffont)
+        w, mini = glyph_boundingbox(tex_marker, ffont)
         return (hash, [uv, sdf, w, mini])
     end
     return (hash, nothing)
