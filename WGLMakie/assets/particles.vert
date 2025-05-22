@@ -86,7 +86,7 @@ void main(){
     process_clip_planes(position_world.xyz);
     o_normal = normalize(N);
     frag_color = to_color(get_vertex_color());
-    frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
+    frag_uv = apply_uv_transform(get_wgl_uv_transform(), get_uv());
     // direction to camera
     o_camdir = position_world.xyz / position_world.w - eyeposition;
     // screen space coordinates of the position
