@@ -250,7 +250,8 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     colornorm = args.scaled_colorrange
     marker_shape = args.sdf_marker_shape
 
-    data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, args.atlas) : nothing
+    # TODO: allowing user supplied atlas for e.g. sprite animations would be nice...
+    data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, Makie.get_texture_atlas()) : nothing
     data[:shape] = marker_shape
 
     add_color_attributes!(screen, attr, data, color, colormap, colornorm)
@@ -290,16 +291,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     attr = generic_robj_setup(screen, scene, plot)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-
-    # We register the screen under a unique name. If the screen closes
-    # Any computation that depens on screen gets removed
-    atlas = gl_texture_atlas()
-    if haskey(attr, :atlas)
-        # TODO: Do we need to update this?
-        Makie.update!(attr, atlas = atlas)
-    else
-        add_input!(attr, :atlas, atlas)
-    end
 
     if attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?

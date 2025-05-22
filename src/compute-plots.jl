@@ -339,12 +339,12 @@ end
 
 function register_marker_computations!(attr::ComputeGraph)
 
-    register_computation!(attr, [:marker, :markersize],
-                          [:quad_offset, :quad_scale]) do (marker, markersize), changed, last
+    # TODO: allowing user supplied atlas for e.g. sprite animations would be nice...
+
+    register_computation!(attr, [:marker, :markersize, :font],
+                          [:quad_offset, :quad_scale]) do (marker, markersize, font), changed, last
         atlas = get_texture_atlas()
-        font = defaultfont()
-        mm_changed = changed[1] || changed[2]
-        quad_scale = mm_changed ? rescale_marker(atlas, marker, font, markersize) : nothing
+        quad_scale = rescale_marker(atlas, marker, font, markersize)
         quad_offset = offset_marker(atlas, marker, font, markersize)
 
         return (quad_offset, quad_scale)
