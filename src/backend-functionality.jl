@@ -118,13 +118,13 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         else
             # TODO: avoid reallocating?
             xs = Vector{Float32}(undef, length(x))
-            @inbounds for i in eachindex(output)
+            @inbounds for i in eachindex(xs)
                 p4d = to_ndim(Point4d, to_ndim(Point3d, x[i], 0), 1)
                 p4d = model * p4d
                 xs[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 1)
             end
             ys = Vector{Float32}(undef, length(y))
-            @inbounds for i in eachindex(output)
+            @inbounds for i in eachindex(ys)
                 p4d = to_ndim(Point4d, to_ndim(Point3d, y[i], 0), 1)
                 p4d = model * p4d
                 ys[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 2)
