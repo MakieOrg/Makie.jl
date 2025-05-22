@@ -35,23 +35,21 @@ function backend_colors!(attr, color_name=:scaled_color)
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
-    register_computation!(attr, [color_name, :interpolate], [:uniform_color, :pattern]) do (color, interpolate), changed, last
+    register_computation!(attr, [color_name, :interpolate, :fetch_pixel], [:uniform_color, :pattern]) do (color, interpolate, is_pattern), changed, last
         filter = interpolate ? :linear : :nearest
-        if color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
+        if color isa Sampler
+            return (color, is_pattern)
+        elseif color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
             # TODO, don't construct a sampler every time
             return (Sampler(color, minfilter=filter), false)
         elseif color isa Union{Real, Colorant}
             return (color, false)
-        elseif color isa Makie.AbstractPattern
-            color isa Makie.AbstractPattern
-            img = Makie.to_image(color)
-            sampler = Sampler(img; x_repeat = :repeat, minfilter=filter)
-            return (sampler, true)
         else
             # Not a uniform color
             return (false, false)
         end
     end
+
     register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
         color isa Real && return (color,)
         color isa AbstractVector ? (Buffer(color),) : (false,)
@@ -250,6 +248,7 @@ function scatter_program(attr)
         :strokecolor => get(()-> attr.text_strokecolor, attr, :strokecolor),
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
+        :pattern => get(attr, :pattern, false),
     )
 
     per_instance, uniforms = assemble_particle_robj!(attr, data)
@@ -346,7 +345,8 @@ function create_shader(scene::Scene, plot::Makie.Text)
     inputs = [
         :positions_transformed_f32c,
 
-        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange, :nan_color, :highclip_color, :lowclip_color, :pattern,
+        :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange,
+        :nan_color, :highclip_color, :lowclip_color, :pattern,
         :strokewidth, :glowwidth, :glowcolor,
 
         :text_rotation, :text_strokecolor,
