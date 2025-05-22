@@ -209,7 +209,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
 
     scene = parent_scene(plot)
 
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
+    whiskers = iszero(whiskerwidth[]) ? nothing : lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
         scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
 
         screenendpoints = plot_to_screen(plot, endpoints)
@@ -222,7 +222,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         return [p for pair in screenendpoints_shifted_pairs for p in pair]
     end
     whiskercolors = Observable{RGBColors}()
-    lift!(plot, whiskercolors, color) do color
+    iszero(whiskerwidth[]) || lift!(plot, whiskercolors, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -232,7 +232,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
     whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
-    lift!(plot, whiskerlinewidths, linewidth) do linewidth
+    iszero(whiskerwidth[]) || lift!(plot, whiskerlinewidths, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
             return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
@@ -246,7 +246,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
         transparency = transparency
     )
-    linesegments!(
+    iszero(whiskerwidth[]) || linesegments!(
         plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, linecap = linecap,
         visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
         inspectable = inspectable, transparency = transparency, space = :pixel,
