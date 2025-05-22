@@ -360,6 +360,10 @@ function create_shader(scene::Scene, plot::Makie.Text)
 end
 
 
+to_3x3(mat::Mat{3, 3}) = mat
+to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
+to_3x3(xs::AbstractArray) = to_3x3.(xs)
+
 function meshscatter_program(args)
     instance = args.marker
     data = Dict{Symbol, Any}(
@@ -368,13 +372,15 @@ function meshscatter_program(args)
         :shininess => args.shininess,
         :pattern => false,
         :uniform_color => false,
-        :uv_transform => Mat3f(I),
+        :wgl_uv_transform => args.wgl_uv_transform,
         :PICKING_INDEX_FROM_UV => false,
         :shading => args.shading == false || args.shading != NoShading,
         :backlight => args.backlight,
         :interpolate_in_fragment_shader => false,
         :markersize => args.markersize,
         :f32c_scale => args.f32c_scale,
+        # TODO: This causes uv to exist as uniform and vertex input sometimes
+        # (e.g. "uv_transform" refimg test)
         :uv => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)
@@ -390,7 +396,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
     # generate_clip_planes!(attr, scene)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
+    map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
+    Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform) # TODO:
+
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
@@ -399,7 +407,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         # Special
         :space,
         :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
-        :packed_uv_transform, :pattern,
+        :wgl_uv_transform, :pattern,
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
@@ -417,6 +425,9 @@ function add_uv_mesh!(attr)
         end
         Makie.register_position_transforms!(attr)
     end
+    # TODO: Shouldn't these be hidden Compute nodes instead of Inputs?
+    # map!(x -> value, attr, Symbol[], name)
+
     # These are constant so we just add them as inputs
     rect = Rect2f(0, 0, 1, 1)
     if !haskey(attr, :faces)
@@ -430,18 +441,12 @@ function add_uv_mesh!(attr)
         Makie.add_input!(attr, :shininess, 0f0)
         Makie.add_input!(attr, :backlight, 0f0)
         Makie.add_input!(attr, :shading, false)
-        Makie.add_input!(attr, :pattern_uv_transform, Mat3f(I))
+        haskey(attr, :wgl_uv_transform) || Makie.add_input!(attr, :wgl_uv_transform, Mat3f(I))
     end
-end
-
-to_3x3(mat::Mat{3, 3}) = mat
-function to_3x3(mat::Mat{2, 3})::Mat{3, 3}
-    return Mat3f(mat[1, 1], mat[1, 2], 0, mat[2, 1], mat[2, 2], 0, 0, 0, 1)
 end
 
 function mesh_program(attr)
     i = Vec(1, 2, 3)
-    uv_transform = to_3x3(attr.pattern_uv_transform)
     shading = attr.shading isa Bool ? attr.shading : attr.shading != NoShading
     data = Dict(
 
@@ -453,7 +458,7 @@ function mesh_program(attr)
 
         :model_f32c => Mat4f(attr.model_f32c),
         :PICKING_INDEX_FROM_UV => true,
-        :uv_transform => Mat3f(I),
+        :wgl_uv_transform => attr.wgl_uv_transform,
         :depth_shift => attr.depth_shift,
         :normalmatrix => attr.world_normalmatrix,
         :interpolate_in_fragment_shader => true
@@ -484,7 +489,11 @@ function mesh_program(attr)
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
+    # TODO: uv_transform?
     attr = plot.attributes
+    if plot isa Image
+        map!(to_3x3, attr, :uv_transform, :wgl_uv_transform)
+    end
     add_uv_mesh!(attr)
     backend_colors!(attr)
     Makie.register_world_normalmatrix!(attr)
@@ -495,7 +504,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :color_mapping_type, :pattern, :interpolate,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :shading,
+        :wgl_uv_transform, :fetch_pixel, :shading,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
@@ -505,6 +514,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     attr = plot.attributes
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
+    map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
     inputs = [
         # Special
@@ -513,7 +523,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
+        :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
@@ -579,6 +589,7 @@ function create_shader(scene::Scene, plot::Surface)
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
+    map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
     inputs = [
         # Special
@@ -587,7 +598,7 @@ function create_shader(scene::Scene, plot::Surface)
         :uniform_colormap, :uniform_color, :vertex_color, :uniform_colorrange, :pattern,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
+        :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)

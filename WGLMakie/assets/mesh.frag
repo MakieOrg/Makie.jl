@@ -58,7 +58,7 @@ vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     if (get_pattern()) {
         // TODO: per instance
-        mat3 t = get_uv_transform();
+        mat3 t = get_wgl_uv_transform();
         vec2 pos = apply_uv_transform(t, gl_FragCoord.xy);
         // vec2 pos = vec2(gl_FragCoord.xy) / vec2(textureSize(color, 0));
         return texture(color, pos);
