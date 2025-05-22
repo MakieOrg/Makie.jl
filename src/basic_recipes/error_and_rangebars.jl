@@ -261,8 +261,9 @@ function plot_to_screen(plot, points::AbstractVector)
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
+    transfunc = transform_func(plot)
     return map(points) do p
-        transformed = apply_transform(transform_func(plot), p)
+        transformed = apply_transform(transfunc, p)
         p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         return Point2f(p4d) / p4d[4]
     end
