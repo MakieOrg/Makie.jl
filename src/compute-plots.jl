@@ -518,7 +518,9 @@ function get_plot_position(scene::Scene, plot::Plot)
     for p in scene.plots
         p === plot && return pos
         if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
-            is_cycling = any(x-> isnothing(p.attributes.inputs[x].value), syms)
+            is_cycling = any(syms) do x
+                return haskey(p.attributes.inputs, x) && !isnothing(p.attributes.inputs[x].value)
+            end
             if  is_cycling
                 pos += 1
             end
