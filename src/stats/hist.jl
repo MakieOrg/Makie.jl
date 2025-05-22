@@ -182,7 +182,7 @@ function Makie.plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     bp = barplot!(
-        plot, Attributes(plot), points; width = widths, gap = 0, fillto=plot.fillto,
+        plot, Attributes(plot), points; width = widths, fillto=plot.fillto,
         offset=plot.offset, bar_labels=bar_labels, color=color)
 
     onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
