@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
+
 ## [0.22.6] - 2025-05-17
 
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
