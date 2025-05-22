@@ -313,10 +313,16 @@ end
 @reference_test "Legend update" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
-    lines!(ax, [0, 1], [1, 1]; color = :blue, label = "lines")
-    scatter!(ax, [0], [0]; color = :red, label = "scatter")
-    legend = axislegend(ax; position = :rb)
-    reverse!(legend.entrygroups[][1][2])
+    l = lines!(ax, [0, 1], [1, 1]; color = :blue)
+    s = scatter!(ax, [0], [0]; color = :red)
+    p = poly!(ax, [(0, 0), (0, 1), (0.5, 0.7)])
+    make_legend(pos) = Legend(pos, [[l, s, p], [p, l, s]], [["line", "scatter", "poly"], ["LINE", "SCATTER", "POLY"]], ["Group1", "Group2"])
+    make_legend(fig[1, 2])
+    legend = make_legend(fig[1, 3])
+    reverse!(legend.entrygroups[])
+    for (title, group) in legend.entrygroups[]
+        popfirst!(group)
+    end
     notify(legend.entrygroups)
     fig
 end
