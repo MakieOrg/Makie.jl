@@ -8,7 +8,7 @@ in vec3 o_normal;
 in vec3 o_camdir;
 in float o_clip_distance[8];
 
-uniform int num_clip_planes;
+uniform int uniform_num_clip_planes;
 uniform vec3 light_color;
 uniform vec3 ambient;
 uniform vec3 light_direction;
@@ -141,7 +141,7 @@ uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
 
 void main()
 {
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         if (o_clip_distance[i] < 0.0) {
             discard;
         }

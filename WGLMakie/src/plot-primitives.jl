@@ -5,7 +5,6 @@ js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.ComputePlots)
-
     mesh = create_shader(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
@@ -25,8 +24,8 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
         mesh[:cam_space] = plot.space[]
     end
 
-    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
-    mesh[:uniforms][:num_clip_planes] = 0
+    mesh[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
+    mesh[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
 
     return mesh
 end
@@ -104,6 +103,9 @@ function plot_updates(args, changed)
 end
 
 function create_wgl_renderobject(callback, attr, inputs)
+    # default case
+    haskey(attr, :uniform_clip_planes) || Makie.add_computation!(attr, Val(:uniform_clip_planes))
+
     register_computation!(attr, inputs, [:wgl_renderobject, :wgl_update_obs]) do args, changed, last
         if isnothing(last)
             program = callback(args)
@@ -223,7 +225,9 @@ const SCATTER_INPUTS = [
     :f32c_scale,
     :model_f32c,
     :marker_offset,
-    :glyph_data
+    :glyph_data,
+    :uniform_clip_planes,
+    :uniform_num_clip_planes
 ]
 
 function scatter_program(attr)
@@ -354,7 +358,8 @@ function create_shader(scene::Scene, plot::Makie.Text)
         # :quad_scale, :quad_offset, :sdf_uv,
         :depth_shift, :atlas, :markerspace,
 
-        :visible, :transform_marker, :f32c_scale, :model_f32c
+        :visible, :transform_marker, :f32c_scale, :model_f32c,
+        :uniform_clip_planes, :uniform_num_clip_planes
     ]
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
@@ -393,7 +398,6 @@ end
 
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
-    # generate_clip_planes!(attr, scene)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform) # TODO:
@@ -411,7 +415,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :transform_marker, :marker, :shading, :depth_shift
+        :transform_marker, :marker, :shading, :depth_shift,
+        :uniform_clip_planes, :uniform_num_clip_planes
     ]
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
 end
@@ -448,7 +453,6 @@ function mesh_program(attr)
     i = Vec(1, 2, 3)
     shading = attr.shading isa Bool ? attr.shading : attr.shading != NoShading
     data = Dict(
-
         :shading => shading,
         :diffuse => attr.diffuse,
         :specular => attr.specular,
@@ -505,6 +509,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -524,6 +529,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -590,6 +596,7 @@ function create_shader(scene::Scene, plot::Surface)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
     inputs = [
         # Special
         :space,
@@ -599,6 +606,7 @@ function create_shader(scene::Scene, plot::Surface)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -631,6 +639,8 @@ function create_shader(scene::Scene, plot::Volume)
     attr = plot.attributes
 
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :uniform_model)
+
     # TODO: reuse in clip planes
     register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
         return (Mat4f(inv(model)),)
@@ -644,7 +654,7 @@ function create_shader(scene::Scene, plot::Volume)
         :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :depth_shift,
         :lowclip_color, :highclip_color, :nan_color,
-        :uniform_model,
+        :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes
     ]
     return create_wgl_renderobject(create_volume_shader, attr, inputs)
 end
@@ -682,8 +692,6 @@ function create_lines_data(islines, attr)
         end
     end
 
-    uniforms[:num_clip_planes] = 0
-    uniforms[:clip_planes] = [Vec4f(0, 0, 0, -1e9) for _ in 1:8]
     return Dict(
         :plot_type => "Lines",
         :visible => attr.visible,
@@ -707,11 +715,14 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
 
     islines = plot isa Lines
 
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
+
     inputs = [
         :positions_transformed_f32c,
         :line_color, :uniform_colormap, :uniform_colorrange, :color_mapping_type, :lowclip_color, :highclip_color, :nan_color,
         :linecap, :uniform_linewidth, :uniform_pattern, :uniform_pattern_length,
         :space, :scene_origin, :model_f32c, :depth_shift, :transparency, :visible,
+        :uniform_clip_planes, :uniform_num_clip_planes
     ]
 
     register_computation!(attr, [:uniform_color, :vertex_color], [:line_color]) do (uc, vc), changed, last
@@ -725,5 +736,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:uuid] = js_uuid(plot)
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:updater] = attr[:wgl_update_obs][]
+    dict[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
+    dict[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
     return dict
 end

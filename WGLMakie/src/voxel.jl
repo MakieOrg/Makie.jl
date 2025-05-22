@@ -19,8 +19,8 @@ function serialize_three(scene::Scene, plot::Makie.Voxels)
         mesh[:cam_space] = plot.space[]
     end
 
-    mesh[:uniforms][:clip_planes] = serialize_three([Vec4f(0, 0, 0, -1e9) for _ in 1:8])
-    mesh[:uniforms][:num_clip_planes] = serialize_three(0)
+    mesh[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
+    mesh[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
 
     return mesh
 end
@@ -50,10 +50,8 @@ function create_shader(scene::Scene, plot::Voxels)
         end
     end
 
-    # TODO: model space, use voxel_model to transform
-    # generate_clip_planes!(attr, :model, :voxel_model)
-
     Makie.register_world_normalmatrix!(attr, :voxel_model)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :voxel_model)
 
     # TODO: this is a waste, should just be "make N instances with no data"
     register_computation!(attr, [:chunk_u8, :gap], [:dummy_data]) do (chunk, gap), changed, cached
@@ -77,19 +75,13 @@ function create_shader(scene::Scene, plot::Voxels)
     inputs = [
         :dummy_data,
 
-        :depth_shift,
-        :world_normalmatrix,
-        :gap,
-        :voxel_id,
-        :voxel_model,
-        :wgl_colormap,
-        :wgl_uv_transform,
-        :wgl_color,
+        :depth_shift, :world_normalmatrix,
+        :gap, :voxel_id, :voxel_model,
+        :wgl_colormap, :wgl_uv_transform, :wgl_color,
 
         :diffuse, :specular, :shininess, # :backlight,
-        :depthsorting, :shading
-
-
+        :depthsorting, :shading,
+        :uniform_clip_planes, :uniform_num_clip_planes
     ]
 
     return create_wgl_renderobject(voxel_program, attr, inputs)
@@ -116,6 +108,8 @@ function voxel_program(attr)
         :wgl_colormap => attr.wgl_colormap,
         :wgl_uv_transform => attr.wgl_uv_transform,
         :wgl_color => attr.wgl_color,
+        # :uniform_clip_planes => attr.uniform_clip_planes,
+        # :uniform_num_clip_planes => attr.uniform_num_clip_planes,
     )
 
     # TODO: this is a waste, should just be "make N instances with no data"

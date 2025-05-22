@@ -331,3 +331,60 @@ function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_col
         end
     end
 end
+
+
+function generate_clip_planes(planes, space, output)
+    if length(planes) > 8
+        @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
+    end
+    if Makie.is_data_space(space)
+        N = min(8, length(planes))
+        for i in 1:N
+            output[i] = Makie.gl_plane_format(planes[i])
+        end
+        for i in N+1 : 8
+            output[i] = Vec4f(0, 0, 0, -1e9)
+        end
+    else
+        fill!(output, Vec4f(0, 0, 0, -1e9))
+        N = 0
+    end
+    return (output, Int32(N))
+end
+
+function generate_clip_planes(pvm, planes, space, output)
+    planes = Makie.to_clip_space(pvm, planes)
+    return generate_clip_planes(planes, space, output)
+end
+
+function generate_model_space_clip_planes(model, planes, space, output)
+    modelinv = inv(model)
+    @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
+    planes = map(planes) do plane
+        origin = modelinv * to_ndim(Point4f, plane.distance * plane.normal, 1)
+        normal = transpose(model) * to_ndim(Vec4f, plane.normal, 0)
+        return Plane3f(origin[Vec(1,2,3)] / origin[4], normal[Vec(1,2,3)])
+    end
+    return generate_clip_planes(planes, space, output)
+end
+
+function add_computation!(attr, ::Val{:uniform_clip_planes}, target_space::Symbol = :world, modelname = :model_f32c)
+    inputs = [:clip_planes, :space]
+    target_space == :model && push!(inputs, modelname)
+    target_space == :clip && push!(inputs, :projectionview)
+
+    register_computation!(attr, inputs, [:uniform_clip_planes, :uniform_num_clip_planes]) do input, changed, last
+        output = isnothing(last) ? Vector{Vec4f}(undef, 8) : last.uniform_clip_planes
+        planes = input.clip_planes
+        if target_space === :world
+            return generate_clip_planes(planes, input.space, output)
+        elseif target_space === :model
+            return generate_model_space_clip_planes(getproperty(input, modelname), planes, input.space, output)
+        elseif target_space === :clip
+            return generate_clip_planes(input.projectionview, planes, input.space, output)
+        else
+            error("Unknown space $target_space.")
+        end
+    end
+    return
+end

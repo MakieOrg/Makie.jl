@@ -23189,7 +23189,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
-            uniform vec4 clip_planes[8];
+            uniform vec4 uniform_clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -23218,10 +23218,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2)
             {
                 float d1, d2;
-                for (int i = 0; i < int(num_clip_planes); i++) {
+                for (int i = 0; i < int(uniform_num_clip_planes); i++) {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+                    d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p2.w;
 
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
@@ -23384,7 +23384,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
-            uniform vec4 clip_planes[8];
+            uniform vec4 uniform_clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -23502,11 +23502,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
             {
                 float d1, d2;
-                for(int i = 0; i < int(num_clip_planes); i++)
+                for(int i = 0; i < int(uniform_num_clip_planes); i++)
                 {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+                    d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p2.w;
 
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {

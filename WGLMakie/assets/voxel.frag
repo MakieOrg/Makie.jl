@@ -18,8 +18,8 @@ flat in int plane_dim;
 flat in int plane_front;
 #endif
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec4 uniform_clip_planes[8];
 uniform vec3 light_color;
 uniform vec3 ambient;
 uniform vec3 light_direction;
@@ -120,9 +120,9 @@ bool is_clipped()
     // get center pos of this voxel
     vec3 size = vec3(textureSize(voxel_id, 0).xyz);
     vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance between clip plane and voxel center
-        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d = dot(xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
         if (d < 0.0)
             return true;
     }

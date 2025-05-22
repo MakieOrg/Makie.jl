@@ -105,65 +105,6 @@ function add_color_attributes_lines!(screen, attr, data, color, colormap, colorn
     return nothing
 end
 
-# For use with register!(...)
-
-function generate_clip_planes(planes, space, output)
-    if length(planes) > 8
-        @warn("Only up to 8 clip planes are supported. The rest are ignored!", maxlog = 1)
-    end
-    if Makie.is_data_space(space)
-        N = min(8, length(planes))
-        for i in 1:N
-            output[i] = Makie.gl_plane_format(planes[i])
-        end
-        for i in N+1 : 8
-            output[i] = Vec4f(0, 0, 0, -1e9)
-        end
-    else
-        fill!(output, Vec4f(0, 0, 0, -1e9))
-        N = 0
-    end
-    return (output, Int32(N))
-end
-
-function generate_clip_planes(pvm, planes, space, output)
-    planes = Makie.to_clip_space(pvm, planes)
-    return generate_clip_planes(planes, space, output)
-end
-
-function generate_model_space_clip_planes(model, planes, space, output)
-    modelinv = inv(model)
-    @assert (length(planes) == 0) || isapprox(modelinv[4, 4], 1, atol = 1e-6)
-    planes = map(planes) do plane
-        origin = modelinv * to_ndim(Point4f, plane.distance * plane.normal, 1)
-        normal = transpose(model) * to_ndim(Vec4f, plane.normal, 0)
-        return Plane3f(origin[Vec(1,2,3)] / origin[4], normal[Vec(1,2,3)])
-    end
-    return generate_clip_planes(planes, space, output)
-end
-
-
-function generate_clip_planes!(attr, target_space::Symbol = :world, modelname = :model_f32c)
-    inputs = [:clip_planes, :space]
-    target_space == :model && push!(inputs, modelname)
-    target_space == :clip && push!(inputs, :projectionview)
-
-    register_computation!(attr, inputs, [:gl_clip_planes, :gl_num_clip_planes]) do input, changed, last
-        output = isnothing(last) ?  Vector{Vec4f}(undef, 8) : last.gl_clip_planes
-        planes = input.clip_planes
-        if target_space === :world
-            return generate_clip_planes(planes, input.space, output)
-        elseif target_space === :model
-            return generate_model_space_clip_planes(getproperty(input, modelname), planes, input.space, output)
-        elseif target_space === :clip
-            return generate_clip_planes(input.projectionview, planes, input.space, output)
-        else
-            error("Unknown space $target_space.")
-        end
-    end
-    return
-end
-
 # TODO: Consider separating this from plot (i.e. update this in render using scene graph)
 function register_light_attributes!(screen, scene, attr, uniforms)
     # plot does not support shading
@@ -244,12 +185,12 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     attr = plot.attributes
 
     # These must always be there!
-    push!(uniforms, :gl_clip_planes, :gl_num_clip_planes, :depth_shift, :visible, :fxaa)
+    push!(uniforms, :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa)
     # TODO: resolution should actually be ppu * resolution (do this in shader?)
     push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
-    push!(input2glname, :gl_clip_planes => :clip_planes)
-    get!(input2glname, :gl_num_clip_planes, :num_clip_planes) # don't overwrite
+    push!(input2glname, :uniform_clip_planes => :clip_planes)
+    get!(input2glname, :uniform_num_clip_planes, :num_clip_planes) # don't overwrite
 
     # triggers if shading is present
     register_light_attributes!(screen, scene, attr, uniforms)
@@ -420,7 +361,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         ]
     end
 
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     # TODO:
     # - rotation -> billboard missing
@@ -507,7 +448,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     ]
 
 
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     # TODO:
     # - intensity_convert
@@ -572,7 +513,7 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -757,7 +698,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     haskey(attr, :debug) || add_input!(attr, :debug, false)
 
-    generate_clip_planes!(attr, :clip)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
 
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
@@ -794,7 +735,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         :gl_miter_limit => :miter_limit, :uniform_linewidth => :thickness,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :model_f32c => :model, :gl_num_clip_planes => :_num_clip_planes,
+        :model_f32c => :model, :uniform_num_clip_planes => :_num_clip_planes,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
     )
 
@@ -832,7 +773,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     # linestyle/pattern handling
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     haskey(attr, :debug) || add_input!(attr, :debug, false)
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
         return (length(positions),)
@@ -854,7 +795,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
         :uniform_linewidth => :thickness, :model_f32c => :model,
         :uniform_pattern => :pattern, :uniform_pattern_length => :pattern_length,
         :scaled_color => :color, :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :lowclip_color => :lowclip, :highclip_color => :highclip, :gl_num_clip_planes => :_num_clip_planes,
+        :lowclip_color => :lowclip, :highclip_color => :highclip, :uniform_num_clip_planes => :_num_clip_planes,
     )
 
     robj = register_robj!(assemble_linesegments_robj!, screen, scene, plot, inputs, uniforms, input2glname)
@@ -898,7 +839,7 @@ end
 function draw_atomic_as_image(screen::Screen, scene::Scene, plot)
     attr = generic_robj_setup(screen, scene, plot)
 
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     inputs = [
         # Special
@@ -966,7 +907,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Heatmap)
 
     generic_robj_setup(screen, scene, plot)
 
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     Makie.add_computation!(attr, scene, Val(:heatmap_transform))
 
@@ -1019,7 +960,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:surface_transform))
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
@@ -1126,7 +1067,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     attr = plot.attributes
 
     generic_robj_setup(screen, scene, plot)
-    generate_clip_planes!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
 
@@ -1182,7 +1123,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
-    generate_clip_planes!(attr, :model, :voxel_model)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :voxel_model)
 
     Makie.register_world_normalmatrix!(attr, :voxel_model)
 
@@ -1210,7 +1151,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     input2glname = Dict{Symbol, Symbol}(
         :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
-        :gl_num_clip_planes => :_num_clip_planes
+        :uniform_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_voxel_robj!, screen, scene, plot, inputs, uniforms, input2glname)
@@ -1245,7 +1186,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     Makie.add_computation!(attr, scene, Val(:uniform_model)) # bit different from voxel_model
 
     # TODO: check if this should be the normal model matrix (for voxel too)
-    generate_clip_planes!(attr, :model, :uniform_model)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :uniform_model)
 
     # TODO: reuse in clip planes
     register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
@@ -1268,7 +1209,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     input2glname = Dict{Symbol, Symbol}(
         :scaled_color => :volumedata, :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
-        :gl_num_clip_planes => :_num_clip_planes
+        :uniform_num_clip_planes => :_num_clip_planes
     )
 
     robj = register_robj!(assemble_volume_robj!, screen, scene, plot, inputs, uniforms, input2glname)

@@ -24,7 +24,7 @@ in float o_clip_distance[8];
 flat in vec2 f_sprite_scale;
 flat in vec4 frag_strokecolor;
 
-uniform int num_clip_planes;
+uniform int uniform_num_clip_planes;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -143,7 +143,7 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    for (int i = 0; i < num_clip_planes; i++)
+    for (int i = 0; i < uniform_num_clip_planes; i++)
         if (o_clip_distance[i] < 0.0)
             discard;
 

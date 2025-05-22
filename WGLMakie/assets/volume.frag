@@ -11,7 +11,8 @@ const float max_distance = 1.3;
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-uniform vec4 clip_planes[8];
+uniform vec4 uniform_clip_planes[8];
+uniform int uniform_num_clip_planes;
 uniform vec3 light_color;
 uniform vec3 ambient;
 uniform vec3 light_direction;
@@ -245,10 +246,10 @@ uniform int num_clip_planes;
 bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 {
     float d1, d2;
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
+        d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {

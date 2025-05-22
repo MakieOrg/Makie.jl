@@ -3,8 +3,8 @@ precision highp int;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec4 uniform_clip_planes[8];
 
 uniform float atlas_tex_dim;
 
@@ -70,8 +70,8 @@ float _determinant(mat2 m) {
 }
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < num_clip_planes; i++)
-        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+    for (int i = 0; i < uniform_num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
 }
 
 void main(){
