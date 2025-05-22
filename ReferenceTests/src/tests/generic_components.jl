@@ -11,7 +11,6 @@
     l2 = lines!(scene, [20, 50, NaN, 20, 50], [200, 200, NaN, 230, 230], linewidth = 20, linecap = :round)
     ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
-    t = tp.plots[1]
 
     i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
     s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
@@ -109,18 +108,18 @@
         end
 
         @testset "text" begin
-            @test pick(scene, 15, 320) == (t, 1)
+            @test pick(scene, 15, 320) == (tp, 1)
             @test pick(scene, 13, 320) == (nothing, 0)
             # edge checks, further outside due to AA
             @test pick(scene, 20, 306) == (nothing, 0)
-            @test pick(scene, 20, 320) == (t, 1)
+            @test pick(scene, 20, 320) == (tp, 1)
             @test pick(scene, 20, 333) == (nothing, 0)
             # space is counted
-            @test pick(scene, 43, 320) == (t, 3)
-            @test pick(scene, 48, 324) == (t, 3)
+            @test pick(scene, 43, 320) == (tp, 3)
+            @test pick(scene, 48, 324) == (tp, 3)
             @test pick(scene, 49, 326) == (nothing, 0)
             # characters at nan position are counted
-            @test pick(scene, 20, 350) == (t, 6)
+            @test pick(scene, 20, 350) == (tp, 6)
         end
 
         @testset "image" begin
@@ -304,8 +303,8 @@
             @test pick(scene,  5, 280, 10) == (ls, 6)
         end
         @testset "text" begin
-            @test pick(scene, 32, 320, 10) == (t, 1)
-            @test pick(scene, 35, 320, 10) == (t, 3)
+            @test pick(scene, 32, 320, 10) == (tp, 1)
+            @test pick(scene, 35, 320, 10) == (tp, 3)
         end
         @testset "image" begin
             @test pick(scene,  98, 15, 10) == (i, 1)

@@ -387,7 +387,7 @@ end
 function clear_temporary_plots!(inspector::DataInspector, plot)
     inspector.attributes.indicator_visible[] = false
     foreach(p -> p.visible[] = false, values(inspector.cached_plots))
-    inspector.plot.offset.val = inspector.attributes.offset[]
+    inspector.plot.offset = inspector.attributes.offset[]
 
     if inspector.selection !== plot
         if to_value(get(inspector.selection, :inspector_clear, automatic)) !== automatic
@@ -431,8 +431,8 @@ function get_indicator_plot(inspector, scene, PlotType)
         # Compat: cached plots need to become invisible when indicator_visible
         # turns false, but not visible when it turns true as that would turn
         # every cached plot visible.
-        map!(plot, plot.visible, inspector.attributes.indicator_visible) do vis
-            return ifelse(vis, plot.visible[], false)
+        on(plot, inspector.attributes.indicator_visible) do vis
+            plot.visible = ifelse(vis, plot.visible[], false)
         end
 
         # Restore camera
@@ -717,7 +717,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
         if interpolate
             # Cached
             indicator = get_indicator_plot(inspector, scene, Scatter)
-            indicator.args[1][] = apply_transform_and_model(plot, pos)
+            indicator.arg1 = apply_transform_and_model(plot, pos)
             indicator.visible[] = true
             if z isa Real
                 if haskey(plot, :calculated_colors)
@@ -998,8 +998,8 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
     a = inspector.attributes
 
     pos = Point2f(position_on_plot(mesh, idx, apply_transform = false)) #Point2f(mouseposition(scene))
-    ps1 = plot.converted[1][]
-    ps2 = plot.converted[2][]
+    ps1 = plot.converted[][1]
+    ps2 = plot.converted[][2]
 
     # find first triangle containing the cursor position
     idx = findfirst(1:length(ps1)-1) do i
@@ -1059,7 +1059,7 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
     tt = inspector.plot
     proj_pos = Point2f(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
-    idx2d = spy._index_map[][idx]
+    idx2d = spy.index_map[][idx]
     if to_value(get(scatter, :inspector_label, automatic)) == automatic
         z = spy.z[][idx2d...]
         tt.text[] = color2text("S", idx2d..., z)
