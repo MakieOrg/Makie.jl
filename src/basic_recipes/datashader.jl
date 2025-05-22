@@ -362,10 +362,13 @@ function fast_bb(points, f)
 end
 
 
-function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, op, binsize)
-    canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
-    canvas_obs = Observable(canvas)
-    onany(p, limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
+function canvas_computation!(p::DataShader)
+    register_computation!(p, [:axis_limits, :pixel_area, :binsize, :agg], [:canvas]) do (lims, pxarea, binsize, op), _, last
+        if isnothing(last)
+            canvas = Canvas(lims; resolution=(widths(pxarea)...,), op=op)
+        else
+            canvas = last.canvas
+        end
         binsize isa Int || error("Bin factor $binsize is not an Int.")
         xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binsize)
         has_changed = Base.resize!(canvas, (xsize, ysize))
@@ -375,40 +378,33 @@ function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, o
             has_changed = true
             canvas.bounds = lims64
         end
-        if has_changed
-            canvas_obs[] = canvas
-        end
+        has_changed = has_changed || isnothing(last)
+        return has_changed ? (canvas,) : nothing
     end
-    return canvas_obs
 end
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
+    # TODO, switch projview_to_2d_limits to use a clean computation!
     limits = projview_to_2d_limits(p)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(p, limits, viewport, p.agg, p.binsize)
-    p._boundingbox = lift(fast_bb, p.points, p.point_transform)
-    on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
-    p.canvas = canvas_with_aggregation
-    colorrange = Observable(Vec2f(0, 1))
-    on(p.colorrange; update=true) do crange
-        if !(crange isa Automatic)
-            colorrange[] = Vec2f(crange)
-        end
+    add_input!(p.attributes, :axis_limits, limits)
+    add_input!(p.attributes, :pixel_area, scene.viewport)
+    canvas_computation!(p)
+
+    register_computation!(p, [:points, :point_transform], [:data_limits]) do (points, f), _, _
+        return (fast_bb(points, f),)
     end
 
-    on_func(p, canvas, p.points, p.point_transform) do canvas, points, f
-        Aggregation.aggregate!(canvas, points; point_transform=f, method=p.method[])
-        canvas_with_aggregation[] = canvas
-        # If not automatic, it will get updated by the above on(p.colorrange)
-        if p.colorrange[] isa Automatic
-            colorrange[] = Vec2f(distinct_extrema_nan(canvas.data_extrema))
+    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), _, _
+        Aggregation.aggregate!(canvas, points; point_transform=f, method=method)
+        if crange isa Automatic
+            cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
+        else
+            cr = Vec2f(crange)
         end
-        return
+        return (canvas, cr)
     end
-    p.raw_colorrange = colorrange
-    image!(p, canvas_with_aggregation, p.operation, p.local_operation;
+    image!(p, p.canvas_with_aggregation, p.operation, p.local_operation;
         interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
         MakieCore.colormap_attributes(p)...)
@@ -440,28 +436,27 @@ end
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
     limits = projview_to_2d_limits(p)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(p, limits, viewport, Observable(AggCount{Float32}()), p.binsize)
-    p._boundingbox = lift(p, p.points, p.point_transform) do cats, func
-        rects = map(points -> fast_bb(points, func), values(cats))
-        return reduce(union, rects)
+    add_input!(p.attributes, :axis_limits, limits)
+    add_input!(p.attributes, :pixel_area, scene.viewport)
+    canvas_computation!(p)
+    register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
+        rects = map(points -> fast_bb(points, f), values(categories))
+        return (reduce(union, rects),)
     end
     categories = p.points[]
-    canvases = Dict(k => Canvas(canvas[].bounds; resolution=canvas[].resolution, op=AggCount{Float32}())
+    canvas = p.canvas[]
+    canvases = Dict(k => Canvas(canvas.bounds; resolution=canvas.resolution, op=AggCount{Float32}())
                     for (k, v) in categories)
 
-    on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
-    p.canvas = canvas_with_aggregation
     toal_value = Observable(0f0)
-    on_func(p, canvas, p.points) do canvas, cats
+    register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method=p.method[])
-        toal_value[] = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return
+        toal_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
+        return (canvases, toal_value)
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
@@ -475,8 +470,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     return p
 end
 
-data_limits(p::DataShader) = p._boundingbox[]
-boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p._boundingbox[])
+data_limits(p::DataShader) = p.data_limits[]
+boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p.data_limits[])
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
@@ -506,13 +501,9 @@ end
 # TODO, should we merge the local/global op with colorscale?
 function extract_colormap(plot::DataShader)
     color = lift(x -> x.aggbuffer, plot, plot.canvas)
-    return ColorMapping(
-        color[], color, plot.colormap, plot.raw_colorrange,
-        plot.colorscale,
-        plot.alpha,
-        plot.highclip,
-        plot.lowclip,
-        plot.nan_color)
+    attributes = [:colormap, :raw_colorrange, :colorscale, :alpha, :highclip, :lowclip, :nan_color]
+    obsies = map(x -> ComputePipeline.get_observable!(getindex(plot, x)), attributes)
+    return ColorMapping(color[], color, obsies...)
 end
 
 function xy_to_rect(x, y)
