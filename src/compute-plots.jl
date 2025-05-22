@@ -688,7 +688,6 @@ end
 
 function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     attr = plot.attributes
-    register_marker_computations!(attr)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_computation!(attr, [:positions, :marker, :markersize, :rotation],
