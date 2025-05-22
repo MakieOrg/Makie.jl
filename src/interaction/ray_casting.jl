@@ -287,7 +287,7 @@ function position_on_plot(plot::AbstractPlot, idx::Integer; apply_transform = tr
 end
 
 function position_on_plot(plot::Scatter, idx, ray::Ray; apply_transform=true)
-    point = plot.args[1][:positions_transformed][][idx]
+    point = plot[:positions_transformed][][idx]
     point3 = to_ndim(Point3d, point, 0)
     return point3
 end
