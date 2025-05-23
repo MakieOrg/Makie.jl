@@ -601,6 +601,14 @@ end
     Toggle(f[3,1], orientation=pi/4)
 end
 
+@testset "Tooltips on Blocks" begin
+    f = Figure()
+    t = Toggle(f[1,1])
+    tooltip!(t, "I'm a Toggle")
+    a, s = scatter(f[1,2], [1,2,3])
+    tooltip!(a, "I'm an Axis")
+end
+
 @testset "Textbox set! & unsafe_set!" begin
     f = Figure()
     tb = Textbox(f[1,1], validator = isequal("hi"))
