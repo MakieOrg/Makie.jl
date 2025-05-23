@@ -12,6 +12,7 @@ end
     scatter(f[1, 1], u"ns" .* (1:10), u"d" .* (1:10), markersize=20, color=1:10)
     linesegments(f[1, 2], 1:10, Nanosecond.(round.(LinRange(0, 4599800000000, 10))))
     scatter(f[2, 1], u"cm" .* (1:10), u"d" .* (1:10))
+    scatter(f[2, 2], (60:10:100)*u"dB")
     f
 end
 
