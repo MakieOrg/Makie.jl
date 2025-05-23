@@ -272,13 +272,22 @@ end
 
 function create_shader(scene::Scene, plot::Scatter)
     attr = plot.attributes
-    Makie.all_marker_computations!(attr)
+    markersym = :marker
+    if attr[:marker][] isa FastPixel
+        # TODO, can we do this more elegantly?
+        register_computation!(attr, [:marker], [:fast_pixel_marker]) do (marker,), changed, last
+            return (Rect,)
+        end
+        markersym = :fast_pixel_marker
+    end
+    Makie.all_marker_computations!(attr, markersym)
     register_computation!(attr, [:sdf_marker_shape, :marker, :font], [:glyph_data]) do (shape, markers, fonts), changed, last
         shape != 3 && return nothing
         data = get_scatter_data(scene, markers, fonts)
         dict = Dict(:atlas_updates => data)
         return (dict,)
     end
+
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)

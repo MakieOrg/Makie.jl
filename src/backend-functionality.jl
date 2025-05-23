@@ -242,9 +242,9 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
                 if transform_marker
                     d3 = Vec(1, 6, 11)
                     scale = f32c.scale .* model[d3] ./ model_f32c[d3]
-                    return (scale, )
+                    return (Vec3f(scale), )
                 else
-                    return (f32c.scale, )
+                    return (Vec3f(f32c.scale), )
                 end
             else
                 return (Vec3f(1),)

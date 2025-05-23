@@ -514,7 +514,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
         return (Cint(RECTANGLE), Vec4f(0,0,1,1), m)
     elseif m isa Vector{<: Matrix{<: Colorant}} # multiple image markers
         # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-        if changed.marker
+        if changed[3]
             uvs, images = pack_images(m)
             return (Cint(RECTANGLE), uvs, images)
         else
@@ -522,7 +522,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
             return (nothing, nothing, nothing)
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-        if changed.marker || changed.markersize
+        if changed[3] || changed.markersize
             shape = Cint(marker_to_sdf_shape(m)) # expensive for arrays with abstract eltype?
             if shape == 0 && !is_all_equal_scale(scale)
                 shape = Cint(5)
@@ -531,7 +531,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
             shape = last.sdf_marker_shape
         end
 
-        if (shape == Cint(DISTANCEFIELD)) && (changed.marker || changed.font)
+        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
             uv = Makie.primitive_uv_offset_width(atlas, m, f)
         elseif isnothing(last)
             uv = Vec4f(0,0,1,1)
@@ -542,13 +542,13 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
     end
 end
 
-function all_marker_computations!(attr)
+function all_marker_computations!(attr, markername=:marker)
     if !haskey(attr, :atlas)
         register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
             (get_texture_atlas(),)
         end
     end
-    inputs = [:atlas, :uv_offset_width, :marker, :font, :markersize]
+    inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     register_computation!(
         compute_marker_attributes, attr, inputs, outputs
