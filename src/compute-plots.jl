@@ -446,7 +446,7 @@ end
 function add_theme!(plot::T, scene::Scene) where {T}
     plot_attr = MakieCore.plot_attributes(scene, T)
     scene_theme = theme(scene)
-    plot_scene_theme = get(scene_theme, plotsym(plot), (;))
+    plot_scene_theme = get(scene_theme, plotsym(T), (;))
     gattr = plot.attributes
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
