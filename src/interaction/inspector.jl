@@ -521,13 +521,11 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     scene = parent_scene(plot)
 
     if a.enable_indicators[]
-
         # Compat with temp_plots
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
         a.indicator_visible[] = true
-
 
         translation = apply_transform_and_model(plot, plot[1][][idx])
         rotation = to_rotation(_to_rotation(plot.rotation[], idx))
@@ -545,8 +543,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, LineSegments)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     pos = position_on_plot(plot, idx, apply_transform = false)
@@ -602,8 +599,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, LineSegments)
-        indicator[1][] = convert_arguments(LineSegments, bbox)[1]
-        indicator.visible[] = true
+        update!(indicator, arg1 = convert_arguments(LineSegments, bbox)[1], visible = true)
     end
 
     text = if to_value(get(plot, :inspector_label, automatic)) == automatic
@@ -698,29 +694,28 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         if interpolate
             # Cached
             indicator = get_indicator_plot(inspector, scene, Scatter)
-            indicator.arg1 = apply_transform_and_model(plot, pos)
-            indicator.visible[] = true
-            if z isa Real
+            color = if z isa Real
                 if haskey(plot, :calculated_colors)
-                    indicator.color[] = to_color(get(plot.calculated_colors[], z))::RGBAf
+                    to_color(get(plot.calculated_colors[], z))::RGBAf
                 else
-                    indicator.color[] = to_color(:transparent)::RGBAf
+                    to_color(:transparent)::RGBAf
                 end
             else
-                indicator.color[] = to_color(z)::RGBAf
+                to_color(z)::RGBAf
             end
+            update!(indicator; arg1 = apply_transform_and_model(plot, pos), color, visible = true)
         else
             bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
             ps = apply_transform_and_model(plot, convert_arguments(Lines, bbox)[1])
 
             # Cached
             indicator = get_indicator_plot(inspector, scene, Lines)
-            indicator[1][] = ps
-            indicator.visible[] = true
+            update!(indicator, arg1 = ps, visible = true)
         end
     end
 
@@ -824,13 +819,13 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         bbox = plot.plots[1][1][][idx]
         ps = apply_transform_and_model(plot, convert_arguments(Lines, bbox)[1])
 
         indicator = get_indicator_plot(inspector, scene, Lines)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     # We pass the input space position to user defined
@@ -909,6 +904,7 @@ function show_poly(inspector, plot, poly, idx, source)
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         line_collection = copy(convert_arguments(PointBased(), poly[1][][idx].exterior)[1])
         for int in poly[1][][idx].interiors
@@ -921,8 +917,7 @@ function show_poly(inspector, plot, poly, idx, source)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, Lines)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     return idx
@@ -991,14 +986,14 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
 
         # Draw the line
         if a.enable_indicators[]
+            a.indicator_visible[] = true
             if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
             end
 
             # Cached
             indicator = get_indicator_plot(inspector, scene, LineSegments)
-            indicator[1][] = apply_transform_and_model(plot, [P1, P2])
-            indicator.visible[] = true
+            update!(indicator, arg1 = apply_transform_and_model(plot, [P1, P2]), visible = true)
         end
 
         # Update tooltip
