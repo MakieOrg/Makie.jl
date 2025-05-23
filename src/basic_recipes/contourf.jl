@@ -8,7 +8,7 @@ and vertical grid positions `ys`.
 or matrices for curvilinear grids,
 similar to how [`surface`](@ref) works.
 """
-@recipe Contourf begin
+@recipe Contourf (x, y, z) begin
     """
     Can be either
     - an `Int` that produces n equally wide levels or bands
@@ -217,7 +217,7 @@ end
 function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
     graph = c.attributes
 
-    register_contourf_computations!(graph, :_arg3)
+    register_contourf_computations!(graph, :z)
 
     function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         levels = copy(levels)
@@ -232,11 +232,11 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
     end
 
     register_computation!(graph,
-            [:_arg1, :_arg2, :_arg3, :computed_levels, :computed_lowcolor, :computed_highcolor],
+            [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
             [:polys, :computed_colors]
-        ) do (xs, ys, zs, levels, low, high), changed, cached
-        is_extended_low = !isnothing(low)
-        is_extended_high = !isnothing(high)
+        ) do (xs, ys, zs, levels, _low, _high), changed, cached
+        is_extended_low = !isnothing(_low)
+        is_extended_high = !isnothing(_high)
         if isnothing(cached)
             polys = Polygon{2, Float32}[]
             colors = Float64[]

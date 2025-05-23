@@ -20,7 +20,7 @@ end
 
 function data_limits(plot::Plot)
     if haskey(plot, :data_limits)
-        return plot[:data_limits][]
+        return plot.data_limits[]
     end
     isempty(plot.plots) && return Rect3d()
     bb_ref = Base.RefValue(data_limits(plot.plots[1]))
@@ -302,11 +302,11 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             result = ntuple(length(converts)) do i
                 return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
             end
-            return (result,)
+            return (Ref{Any}(result),)
         end
     else
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (args.args,)
+            return (Ref{Any}(args.args),)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
@@ -677,7 +677,8 @@ function calculated_attributes!(::Type{Surface}, plot::Plot)
         xlims = extrema(x)
         ylims = extrema(y)
         zlims = extrema(z)
-        return (Rect3d(Vec3d.(xlims, ylims, zlims)...),)
+        mini, maxi = Vec3d.(xlims, ylims, zlims)
+        return (Rect3d(mini, maxi .- mini),)
     end
 end
 

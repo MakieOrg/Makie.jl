@@ -470,16 +470,15 @@ function construct_indicator_plot(scene, ::Type{<: Scatter}, a)
 end
 
 # update alignment direction
-function update_tooltip_alignment!(inspector, proj_pos)
-    inspector.plot[1][] = proj_pos
-
+function update_tooltip_alignment!(inspector, proj_pos; visible = true, kwargs...)
     wx, wy = widths(viewport(inspector.root)[])
     px, py = proj_pos
 
     placement = py < 0.75wy ? (:above) : (:below)
     px < 0.25wx && (placement = :right)
     px > 0.75wx && (placement = :left)
-    inspector.plot.placement[] = placement
+
+    update!(inspector.plot; arg1 = proj_pos, placement, visible, kwargs...)
 
     return
 end
@@ -495,24 +494,22 @@ end
 # TODO: better 3D scaling
 function show_data(inspector::DataInspector, plot::Scatter, idx)
     a = inspector.attributes
-    tt = inspector.plot
     scene = parent_scene(plot)
 
     pos = position_on_plot(plot, idx, apply_transform = false)
     proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
-    update_tooltip_alignment!(inspector, proj_pos)
 
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(pos)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        position2string(pos)
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+        plot[:inspector_label][](plot, idx, pos)
     end
-    tt.offset[] = ifelse(
+    offset = ifelse(
         a.apply_tooltip_offset[],
         0.5 * maximum(sv_getindex(plot.markersize[], idx)) + 2,
         a.offset[]
     )
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text, offset)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
@@ -521,17 +518,14 @@ end
 
 function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     a = inspector.attributes
-    tt = inspector.plot
     scene = parent_scene(plot)
 
     if a.enable_indicators[]
-
         # Compat with temp_plots
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
         a.indicator_visible[] = true
-
 
         translation = apply_transform_and_model(plot, plot[1][][idx])
         rotation = to_rotation(_to_rotation(plot.rotation[], idx))
@@ -549,20 +543,17 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, LineSegments)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     pos = position_on_plot(plot, idx, apply_transform = false)
     proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
-    update_tooltip_alignment!(inspector, proj_pos)
-
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(pos)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        position2string(pos)
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+        plot[:inspector_label][](plot, idx, pos)
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text)
 
     return true
 end
@@ -570,26 +561,23 @@ end
 
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
     a = inspector.attributes
-    tt = inspector.plot
     scene = parent_scene(plot)
 
     # cast ray from cursor into screen, find closest point to line
     pos = position_on_plot(plot, idx, apply_transform = false)
     proj_pos = shift_project(scene, apply_transform_and_model(plot, pos))
-    update_tooltip_alignment!(inspector, proj_pos)
 
-    tt.offset[] = ifelse(
+    offset = ifelse(
         a.apply_tooltip_offset[],
         sv_getindex(plot.linewidth[], idx) + 2,
         a.offset[]
     )
-
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(eltype(plot[1][])(pos))
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        position2string(eltype(plot[1][])(pos))
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, eltype(plot[1][])(pos))
+        plot[:inspector_label][](plot, idx, eltype(plot[1][])(pos))
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text, offset)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
@@ -598,12 +586,10 @@ end
 
 function show_data(inspector::DataInspector, plot::Mesh, idx)
     a = inspector.attributes
-    tt = inspector.plot
     scene = parent_scene(plot)
 
     bbox = boundingbox(plot)
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
         if inspector.selection != plot
@@ -613,17 +599,15 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, LineSegments)
-        indicator[1][] = convert_arguments(LineSegments, bbox)[1]
-        indicator.visible[] = true
+        update!(indicator, arg1 = convert_arguments(LineSegments, bbox)[1], visible = true)
     end
 
-    tt[1][] = proj_pos
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = bbox2string(bbox)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        bbox2string(bbox)
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, bbox)
+        plot[:inspector_label][](plot, idx, bbox)
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text)
 
     return true
 end
@@ -634,21 +618,18 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     tt = inspector.plot
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
 
     pos = position_on_plot(plot, idx, apply_transform = false)
 
     if !isnan(pos)
-        tt[1][] = proj_pos
-        if to_value(get(plot, :inspector_label, automatic)) == automatic
-            tt.text[] = position2string(pos)
+        text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+            position2string(pos)
         else
-            tt.text[] = plot[:inspector_label][](plot, idx, pos)
+            plot[:inspector_label][](plot, idx, pos)
         end
-        tt.visible[] = true
-        tt.offset[] = 0f0
+        update_tooltip_alignment!(inspector, proj_pos; text, offset = 0)
     else
-        tt.visible[] = false
+        update!(tt, visible = false)
     end
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
@@ -679,7 +660,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
     # Not on image/heatmap
     if isnan(pos)
         a.indicator_visible[] = false
-        tt.visible[] = false
+        update!(tt, visible = false)
         return true
     end
 
@@ -695,51 +676,49 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
     # in case we hover over NaN values
     if isnan(z) && alpha(to_color(to_value(plot.nan_color))) <= 0.0
         a.indicator_visible[] = false
-        tt.visible[] = false
+        update!(tt, visible = false)
         return true
     end
 
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = color2text(name, x, y, z)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        color2text(name, x, y, z)
     else
         ins_p = z isa Colorant ? (pos[1], pos[2], z) : Point3f(pos[1], pos[2], z)
-        tt.text[] = plot[:inspector_label][](plot, (i, j), ins_p)
+        plot[:inspector_label][](plot, (i, j), ins_p)
     end
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
+    update_tooltip_alignment!(inspector, proj_pos; text)
 
     if a.enable_indicators[]
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         if interpolate
             # Cached
             indicator = get_indicator_plot(inspector, scene, Scatter)
-            indicator.arg1 = apply_transform_and_model(plot, pos)
-            indicator.visible[] = true
-            if z isa Real
+            color = if z isa Real
                 if haskey(plot, :calculated_colors)
-                    indicator.color[] = to_color(get(plot.calculated_colors[], z))::RGBAf
+                    to_color(get(plot.calculated_colors[], z))::RGBAf
                 else
-                    indicator.color[] = to_color(:transparent)::RGBAf
+                    to_color(:transparent)::RGBAf
                 end
             else
-                indicator.color[] = to_color(z)::RGBAf
+                to_color(z)::RGBAf
             end
+            update!(indicator; arg1 = apply_transform_and_model(plot, pos), color, visible = true)
         else
             bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
             ps = apply_transform_and_model(plot, convert_arguments(Lines, bbox)[1])
 
             # Cached
             indicator = get_indicator_plot(inspector, scene, Lines)
-            indicator[1][] = ps
-            indicator.visible[] = true
+            update!(indicator, arg1 = ps, visible = true)
         end
     end
 
-    tt.visible[] = true
     return true
 end
 
@@ -832,23 +811,21 @@ end
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.attributes
-    tt = inspector.plot
     scene = parent_scene(plot)
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
 
     if a.enable_indicators[]
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         bbox = plot.plots[1][1][][idx]
         ps = apply_transform_and_model(plot, convert_arguments(Lines, bbox)[1])
 
         indicator = get_indicator_plot(inspector, scene, Lines)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     # We pass the input space position to user defined
@@ -858,12 +835,12 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     if plot.direction[] === :x
         pos = reverse(pos)
     end
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = position2string(pos)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        position2string(pos)
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+        plot[:inspector_label][](plot, idx, pos)
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text)
 
     return true
 end
@@ -874,22 +851,19 @@ end
 
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a = inspector.attributes
-    tt = inspector.plot
     pos = plot[1][][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, mpos)
 
     p = vec2string(pos)
     v = vec2string(plot[2][][idx])
 
-    tt[1][] = mpos
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = "Position:\n  $p\nDirection:\n  $v"
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        "Position:\n  $p\nDirection:\n  $v"
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+        plot[:inspector_label][](plot, idx, pos)
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, mpos; text)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
@@ -898,19 +872,16 @@ end
 # This should work if contourf would place computed levels in colors and let the
 # backend handle picking colors from a colormap
 function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
-    tt = inspector.plot
     idx = show_poly(inspector, plot, plot.plots[1], idx, source)
     level = plot.plots[1].color[][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, mpos)
-    tt[1][] = mpos
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = @sprintf("level = %0.3f", level)
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        @sprintf("level = %0.3f", level)
     else
-        tt.text[] = plot[:inspector_label][](plot, idx, mpos)
+        plot[:inspector_label][](plot, idx, mpos)
     end
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, mpos; text)
 
     return true
 end
@@ -933,6 +904,7 @@ function show_poly(inspector, plot, poly, idx, source)
         if inspector.selection != plot
             clear_temporary_plots!(inspector, plot)
         end
+        a.indicator_visible[] = true
 
         line_collection = copy(convert_arguments(PointBased(), poly[1][][idx].exterior)[1])
         for int in poly[1][][idx].interiors
@@ -945,8 +917,7 @@ function show_poly(inspector, plot, poly, idx, source)
 
         # Cached
         indicator = get_indicator_plot(inspector, scene, Lines)
-        indicator[1][] = ps
-        indicator.visible[] = true
+        update!(indicator, arg1 = ps, visible = true)
     end
 
     return idx
@@ -961,7 +932,7 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     # Not on heatmap
     if isnan(pos)
         a.indicator_visible[] && (a.indicator_visible[] = false)
-        tt.visible[] = false
+        update!(tt, visible = false)
         return true
     end
 
@@ -971,21 +942,18 @@ function show_data(inspector::DataInspector, plot::VolumeSlices, idx, child::Hea
     val = zrange[i, j]
 
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
-    tt[1][] = proj_pos
-
     world_pos = apply_transform_and_model(child, pos)
 
-    if to_value(get(plot, :inspector_label, automatic)) == automatic
-        tt.text[] = @sprintf(
+    text = if to_value(get(plot, :inspector_label, automatic)) == automatic
+        @sprintf(
             "x: %0.6f\ny: %0.6f\nz: %0.6f\n%0.6f0",
             world_pos[1], world_pos[2], world_pos[3], val
         )
     else
-        tt.text[] = plot[:inspector_label][](plot, (i, j), world_pos)
+        plot[:inspector_label][](plot, (i, j), world_pos)
     end
 
-    tt.visible[] = true
+    update_tooltip_alignment!(inspector, proj_pos; text)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
@@ -1018,31 +986,30 @@ function show_data(inspector::DataInspector, plot::Band, idx::Integer, mesh::Mes
 
         # Draw the line
         if a.enable_indicators[]
+            a.indicator_visible[] = true
             if inspector.selection != plot
                 clear_temporary_plots!(inspector, plot)
             end
 
             # Cached
             indicator = get_indicator_plot(inspector, scene, LineSegments)
-            indicator[1][] = apply_transform_and_model(plot, [P1, P2])
-            indicator.visible[] = true
+            update!(indicator, arg1 = apply_transform_and_model(plot, [P1, P2]), visible = true)
         end
 
         # Update tooltip
-        update_tooltip_alignment!(inspector, mouseposition_px(inspector.root))
 
-        if to_value(get(plot, :inspector_label, automatic)) == automatic
+        text = if to_value(get(plot, :inspector_label, automatic)) == automatic
             P1 = apply_transform_and_model(mesh, P1, Point2f)
             P2 = apply_transform_and_model(mesh, P2, Point2f)
-            tt.text[] = @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
+            @sprintf("(%0.3f, %0.3f) .. (%0.3f, %0.3f)", P1[1], P1[2], P2[1], P2[2])
         else
-            tt.text[] = plot[:inspector_label][](plot, right, (P1, P2))
+            plot[:inspector_label][](plot, right, (P1, P2))
         end
-        tt.visible[] = true
+        update_tooltip_alignment!(inspector, mouseposition_px(inspector.root); text)
     else
         # to simplify things we discard any positions outside the band
         # (likely doesn't work with parameter search)
-        tt.visible[] = false
+        update!(tt, visible = false)
         a.indicator_visible[] = false
     end
 
@@ -1056,20 +1023,18 @@ function show_data(inspector::DataInspector, spy::Spy, idx, picked_plot)
         return false
     end
     a = inspector.attributes
-    tt = inspector.plot
     proj_pos = Point2f(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
     idx2d = spy.index_map[][idx]
-    if to_value(get(scatter, :inspector_label, automatic)) == automatic
+    text = if to_value(get(scatter, :inspector_label, automatic)) == automatic
         z = spy.z[][idx2d...]
-        tt.text[] = color2text("S", idx2d..., z)
+        color2text("S", idx2d..., z)
     else
-        tt.text[] = scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
+        scatter.inspector_label[](spy, idx2d, spy.z[][idx2d...])
     end
-    tt.offset[] = ifelse(a.apply_tooltip_offset[],
-                         0.5 * maximum(sv_getindex(scatter.markersize[], idx)) + 2,
-                         a.offset[])
-    tt.visible[] = true
+    offset = ifelse(a.apply_tooltip_offset[],
+        0.5 * maximum(sv_getindex(scatter.markersize[], idx)) + 2,
+        a.offset[])
+    update_tooltip_alignment!(inspector, proj_pos; text, offset)
     a.indicator_visible[] && (a.indicator_visible[] = false)
 
     return true
