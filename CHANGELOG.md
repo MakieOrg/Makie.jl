@@ -3,7 +3,29 @@
 ## [Unreleased]
 
 - Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+
+## [0.22.7] - 2025-05-23
+
+- Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
+
+## [0.22.6] - 2025-05-17
+
+- Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
+- Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).
+- Fixed cycling not being consistent when the same plot function was called with different input types (float32 vs float64 lines, for example) [#4960](https://github.com/MakieOrg/Makie.jl/pull/4960)
+
+## [0.22.5] - 2025-05-12
+
+- Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
+- Moved some of the TextureAtlas logic to JS, speeding up text updates and fixing texture atlas updates [4942](https://github.com/MakieOrg/Makie.jl/pull/4942).
+- Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
 - Fixed issue with UInt8 voxel data not updating correctly when Observable input is updated [#4914](https://github.com/MakieOrg/Makie.jl/pull/4914)
+- Added ticks and minorticks to `PolarAxis`. Ticks and tick labels can now also be mirrored to the other side of a sector style PolarAxis. [#4902](https://github.com/MakieOrg/Makie.jl/pull/4902)
+- Fixed `Axis.panbutton` not working [#4932](https://github.com/MakieOrg/Makie.jl/pull/4932)
+- Fixed issues with anisotropic markersizes (e.g. `(10, 50)`) causing anti-aliasing to become blurry in GLMakie and WGLMakie. [#4918](https://github.com/MakieOrg/Makie.jl/pull/4918)
+- Added `direction = :y` option for vertical `band`s [#4949](https://github.com/MakieOrg/Makie.jl/pull/4949).
+- Fixed line-ordering of `lines(::Rect3)` [#4954](https://github.com/MakieOrg/Makie.jl/pull/4954).
+- Fixed issue with `sprint`ing to SVG using CairoMakie in Julia 1.11 and above [#4971](https://github.com/MakieOrg/Makie.jl/pull/4971).
 
 ## [0.22.4] - 2025-04-11
 
@@ -21,6 +43,7 @@
 - Improved compatibility of marker attributes with float32convert, fixing issues with scatter markers being render too small with `markerspace = :data` in an Axis [#4869](https://github.com/MakieOrg/Makie.jl/pull/4869)
 - Added `font` attribute and fixed faulty selection in `scatter`. Scatter fonts can now be themed with `markerfont`. [#4832](https://github.com/MakieOrg/Makie.jl/pull/4832)
 - Fixed categorical `cgrad` interpolating at small enough steps [#4858](https://github.com/MakieOrg/Makie.jl/pull/4858)
+- Added `textlabel!()` recipe for plotting text with a background [#4879](https://github.com/MakieOrg/Makie.jl/pull/4879)
 - Fixed the computed `colorrange` being out of order with `colorscale = -` or similar colorscale functions that break sorting [#4884](https://github.com/MakieOrg/Makie.jl/pull/4884)
 - Added `transform_marker` to arrows [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
 - Reverted change in `meshscatter` transformation behavior by using `transform_marker = true` as the default [#4871](https://github.com/MakieOrg/Makie.jl/pull/4871)
@@ -786,7 +809,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...HEAD
+[0.22.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...v0.22.7
+[0.22.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6
+[0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
 [0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
 [0.22.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.2...v0.22.3
 [0.22.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.1...v0.22.2

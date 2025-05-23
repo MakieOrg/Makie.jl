@@ -31,11 +31,13 @@ function initialize_block!(box::Box)
         end
     end
 
-    
 
-    poly!(blockscene, path, color = box.color, visible = box.visible,
+
+    plt = poly!(blockscene, path, color = box.color, visible = box.visible,
         strokecolor = strokecolor_with_visibility, strokewidth = box.strokewidth,
         inspectable = false, linestyle = box.linestyle)
+
+    on(z -> translate!(plt, 0, 0, z), plt, box.z, update = true)
 
     # trigger bbox
     box.layoutobservables.suggestedbbox[] = box.layoutobservables.suggestedbbox[]

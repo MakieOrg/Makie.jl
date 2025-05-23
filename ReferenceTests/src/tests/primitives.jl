@@ -868,8 +868,8 @@ end
     fig
 end
 
-@testset "per element uv_transform" begin
-    cow = loadasset("cow.png")
+@reference_test "per element uv_transform" begin
+    cow = load(assetpath("cow.png"))
 
     N = 8; M = 10
     f = Figure(size = (500, 400))
@@ -878,7 +878,7 @@ end
         [Point2f(x, y) for x in 1:M for y in 1:N],
         color = cow,
         uv_transform = [
-            Makie.uv_transform(:rotl90) *
+            Makie.uv_transform(:rotr90) *
             Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
             for x in range(0, 1, length = M+1)[1:M]
             for y in range(0, 1, length = N+1)[1:N]
@@ -891,6 +891,7 @@ end
     ylims!(a, 0.3, N+0.7)
     f
 end
+
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
     row = [(1, :pixel, 20), (2, :data, 0.5)]
@@ -1232,5 +1233,20 @@ end
     scatter!(scene, [(x, y) for x in  0:50  for y in 51:100], markersize=0.4, color = :black, marker = Rect)
     scatter!(scene, [(x, y) for x in 51:100 for y in  0:50 ], markersize=0.7, color = :black, marker = Rect)
     scatter!(scene, [(x, y) for x in 51:100 for y in 51:100], markersize=1.0, color = :black, marker = Rect)
+    scene
+end
+
+@reference_test "Anisotropic markers" begin
+    scene = Scene(size = (250, 250))
+    scatter!(scene,
+        [-0.5, -0.5, -0.5], [-0.5, 0.5, 0],
+        marker = :rect, markersize = [Vec2f(50, 10), Vec2f(10, 50), Vec2f(50)]
+    )
+    scatter!(scene, 0, +0.5, markersize = (50, 10))
+    scatter!(scene, 0, 0.0, markersize = 50)
+    scatter!(scene, 0, -0.5, markersize = (10, 50))
+    scatter!(scene, 0.5, 0.5, marker = 'o', markersize = 50)
+    scatter!(scene, 0.5, 0, marker = 'L', markersize = 50, rotation = Quaternionf(0.3, 0.7, 0.5, 0.2))
+    scatter!(scene, 0.5, -0.5, marker = 'L', markersize = (20, 100), rotation = Quaternionf(0.3, 0.7, 0.5, 0.2), color = :black)
     scene
 end

@@ -187,6 +187,7 @@
     @testset "Axis Translation (pan)" begin
         ax, axbox, lim, e = cleanaxes()
 
+        # Test default
         e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
         e.scroll[] = (0.0, 1.0)
         newlim = ax.finallimits[]
@@ -195,6 +196,32 @@
         e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.press)
         e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
         e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.release)
+
+        panlim = ax.finallimits[]
+        @test ax.panbutton[] == Mouse.right
+        @test panlim.widths == newlim.widths
+        @test (5/4)*panlim.origin ≈ -newlim.origin atol = 1e-6
+
+        # Test new button disables old button
+        ax, axbox, lim, e = cleanaxes()
+
+        ax.panbutton[] = Mouse.middle
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+        e.scroll[] = (0.0, 1.0)
+        newlim = ax.finallimits[]
+
+        e.mouseposition[] = Tuple(axbox.origin)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
+
+        @test ax.finallimits[] == newlim
+
+        # ... and enables new button
+        e.mouseposition[] = Tuple(axbox.origin)
+        e.mousebutton[] = MouseButtonEvent(Mouse.middle, Mouse.press)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+        e.mousebutton[] = MouseButtonEvent(Mouse.middle, Mouse.release)
 
         panlim = ax.finallimits[]
         @test panlim.widths == newlim.widths
