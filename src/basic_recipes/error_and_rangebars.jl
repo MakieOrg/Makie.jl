@@ -126,8 +126,9 @@ end
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
                            low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
     T_out = float_type(float_type(val), T)
+    T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3{T_out}(val, low, high)
+        Vec3{T_out_ref[]}(val, low, high)
     end
     (val_low_high,)
 end
@@ -261,8 +262,9 @@ function plot_to_screen(plot, points::AbstractVector)
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
+    transfunc = transform_func(plot)
     return map(points) do p
-        transformed = apply_transform(transform_func(plot), p)
+        transformed = apply_transform(transfunc, p)
         p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         return Point2f(p4d) / p4d[4]
     end
