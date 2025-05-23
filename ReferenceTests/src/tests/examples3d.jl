@@ -330,7 +330,7 @@ end
         fontsize=20,
         font="helvetica"
     )
-    Makie.update!(psurf, vx .+ 0.5,  (vy .+ 0.5))
+    psurf.arg3 = fff.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
 

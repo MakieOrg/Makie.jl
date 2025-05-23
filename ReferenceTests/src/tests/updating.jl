@@ -275,11 +275,13 @@ end
 
     X.val = -5:0
     Z.val = Z.val[1:6, :]
+    notify(X)
     notify(Z)
     Makie.step!(st)
 
     X.val = -5:5
     Z.val = [0.01 * x*x * y*y for x in X.val, y in Y.val]
+    notify(X)
     notify(Z)
     Makie.step!(st)
 end
