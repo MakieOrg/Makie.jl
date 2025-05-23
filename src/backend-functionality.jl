@@ -264,7 +264,8 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname =
         if needs_update
             if is_pattern
                 # This changes what `automatic` converts to
-                input_uvt = attr.inputs[:uv_transform].value
+                # TODO, uv_transform can be a computed?
+                input_uvt = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : uvt
                 new_uvt = Makie.pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern, target_mat3)
                 return (new_uvt, )
             else
