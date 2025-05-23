@@ -452,7 +452,10 @@ primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
 primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
-primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map(m-> primitive_uv_offset_width(atlas, m, font), x)
+function primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font)
+    puow = primitive_uv_offset_width(atlas, first(x), font)
+    map(m->puow, x)
+end
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
@@ -500,7 +503,9 @@ end
 rescale_marker(atlas, char, font, markersize) = markersize
 
 function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), char, font)
+    msf = marker_scale_factor(atlas, first(char), font)
+    msfs = fill(msf, length(char))
+    return _bcast(markersize) .* msfs
 end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
