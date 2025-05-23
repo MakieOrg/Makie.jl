@@ -165,7 +165,7 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
         # is_rot_free = is_translation_scale_matrix(model)
         if is_identity_transform(f32c) # && is_float_safe(scale, trans)
             m = changed.model ? Mat4f(model) : nothing
-            xys = changed.xy_transformed || changed.f32c ? el32convert(xy) : nothing
+            xys = changed.xy_transformed || changed.f32c ? el32convert(xy) : ((nothing,), (nothing,))
             return (first.(xys), last.(xys), m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
