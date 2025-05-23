@@ -310,8 +310,15 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
-    register_computation!(attr, [:dim_converted], [:converted]) do args, changed, last
-        x = convert_arguments(P, args.dim_converted...)
+    conv_attributes = used_attributes(P, args...)
+    for key in conv_attributes
+        add_input!(attr, key, pop!(user_kw, key, nothing))
+    end
+    register_computation!(attr, Symbol[conv_attributes...], [:convert_kwargs]) do inputs, changed, last
+        return (filter(!isnothing, inputs),)
+    end
+    register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last
+        x = convert_arguments(P, args.dim_converted...; args.convert_kwargs...)
         if x isa Tuple
             return (x,)
         elseif x isa Union{PlotSpec,AbstractVector{PlotSpec}, GridLayoutSpec}
@@ -376,8 +383,7 @@ function default_attribute(user_attributes, (key, value))
     end
 end
 
-function add_attributes!(::Type{T}, attr, kwargs) where {T}
-
+function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     documented_attr = MakieCore.plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
