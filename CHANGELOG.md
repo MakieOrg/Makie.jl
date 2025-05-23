@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.7] - 2025-05-23
+
 - Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
 
 ## [0.22.6] - 2025-05-17
@@ -805,7 +807,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...HEAD
+[0.22.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...v0.22.7
 [0.22.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6
 [0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
 [0.22.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.3...v0.22.4
