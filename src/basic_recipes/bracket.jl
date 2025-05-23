@@ -38,9 +38,11 @@ end
 function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
     return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
 end
+
 function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
     return ([(Point2{float_type(x1, y1)}(x1, y1), Point2{float_type(x2, y2)}(x2, y2))],)
 end
+
 function convert_arguments(::Type{<:Bracket}, x1::AbstractVector{<:Real}, y1::AbstractVector{<:Real}, x2::AbstractVector{<:Real}, y2::AbstractVector{<:Real})
     T1 = float_type(x1, y1); T2 = float_type(x2, y2)
     points = broadcast(x1, y1, x2, y2) do x1, y1, x2, y2
@@ -65,7 +67,7 @@ function plot!(pl::Bracket)
 
     onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
           scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style, pl.text) do points, _, _, _, _, offset, width, orientation, textoff, style, text
+          pl.style, pl.text; update=true) do points, _, _, _, _, offset, width, orientation, textoff, style, text
 
         empty!(bp[])
         empty!(textoffset_vec[])
@@ -96,7 +98,6 @@ function plot!(pl::Bracket)
         notify(text_tuples)
     end
 
-    notify(points)
 
     autorotations = lift(pl, pl.rotation, textoffset_vec) do rot, tv
         rots = Quaternionf[]
