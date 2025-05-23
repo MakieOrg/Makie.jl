@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Refactored `arrows` to solve various issues with conversions, broken color handling, transparency, alignment and sizing. [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
 
 ## [0.22.7] - 2025-05-23
 
