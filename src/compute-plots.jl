@@ -312,9 +312,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
     conv_attributes = used_attributes(P, args...)
     for key in conv_attributes
-        add_input!(attr, key, pop!(user_kw, key, nothing))
+        if !haskey(attr.inputs, key) # can be added from plot attributes
+            add_input!(attr, key, pop!(user_kw, key, nothing))
+        end
     end
     register_computation!(attr, Symbol[conv_attributes...], [:convert_kwargs]) do inputs, changed, last
+        # filter is not defined on empty NamedTuples?!
+        isempty(inputs) && return (inputs,)
         return (filter(!isnothing, inputs),)
     end
     register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last

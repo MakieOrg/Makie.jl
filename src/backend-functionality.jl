@@ -165,7 +165,7 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
         # is_rot_free = is_translation_scale_matrix(model)
         if is_identity_transform(f32c) # && is_float_safe(scale, trans)
             m = changed.model ? Mat4f(model) : nothing
-            xys = changed.xy_transformed || changed.f32c ? el32convert(xy) : nothing
+            xys = changed.xy_transformed || changed.f32c ? el32convert(xy) : ((nothing,), (nothing,))
             return (first.(xys), last.(xys), m)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
@@ -264,7 +264,8 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname =
         if needs_update
             if is_pattern
                 # This changes what `automatic` converts to
-                input_uvt = attr.inputs[:uv_transform].value
+                # TODO, uv_transform can be a computed?
+                input_uvt = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : uvt
                 new_uvt = Makie.pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern, target_mat3)
                 return (new_uvt, )
             else

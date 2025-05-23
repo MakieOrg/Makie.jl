@@ -310,6 +310,23 @@ end
     st
 end
 
+@reference_test "Legend update" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    l = lines!(ax, [0, 1], [1, 1]; color = :blue)
+    s = scatter!(ax, [0], [0]; color = :red)
+    p = poly!(ax, [(0, 0), (0, 1), (0.5, 0.7)])
+    make_legend(pos) = Legend(pos, [[l, s, p], [p, l, s]], [["line", "scatter", "poly"], ["LINE", "SCATTER", "POLY"]], ["Group1", "Group2"])
+    make_legend(fig[1, 2])
+    legend = make_legend(fig[1, 3])
+    reverse!(legend.entrygroups[])
+    for (title, group) in legend.entrygroups[]
+        popfirst!(group)
+    end
+    notify(legend.entrygroups)
+    fig
+end
+
 @reference_test "LaTeXStrings in Axis3 plots" begin
     xs = LinRange(-10, 10, 100)
     ys = LinRange(0, 15, 100)
