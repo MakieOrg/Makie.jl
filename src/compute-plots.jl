@@ -317,6 +317,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         end
     end
     register_computation!(attr, Symbol[conv_attributes...], [:convert_kwargs]) do inputs, changed, last
+        # filter is not defined on empty NamedTuples?!
+        isempty(inputs) && return (inputs,)
         return (filter(!isnothing, inputs),)
     end
     register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last
