@@ -31,7 +31,7 @@ Base.size(sampler::Sampler) = size(sampler.values)
 Like getindex, but accepts values between 0..1 and interpolates those to the full range.
 You can use `norm`, to change the range of 0..1 to whatever you want.
 """
-function interpolated_getindex(cmap::AbstractArray, value::Number, norm::VecTypes)
+function interpolated_getindex(cmap::AbstractArray, value::Real, norm::VecTypes)
     cmin, cmax = norm
     cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
     i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
@@ -64,6 +64,13 @@ end
 function nearest_getindex(cmap::AbstractArray, i01::Real)
     idx = round(Int, i01 * (length(cmap) - 1)) + 1
     return cmap[idx]
+end
+
+function nearest_getindex(cmap::AbstractArray, value::Real, norm::VecTypes{2})
+    cmin, cmax = norm
+    cmin == cmax && error("Can't interpolate in a range where cmin == cmax. This can happen, for example, if a colorrange is set automatically but there's only one unique value present.")
+    i01 = clamp((value - cmin) / (cmax - cmin), zero(value), one(value))
+    return nearest_getindex(cmap, i01)
 end
 
 """
@@ -227,6 +234,11 @@ struct ColorMapping{N,T<:AbstractArray{<:Number,N},T2<:AbstractArray{<:Number,N}
     color_scaled::Observable{T2}
 end
 
+function ColorMapping(args::Union{Observable, Computed}...)
+    obs = map(x -> x isa Computed ? ComputePipeline.get_observable!(x) : x, args)
+    return ColorMapping(obs...)
+end
+
 """
     Categorical(colormaplike)
 
@@ -356,21 +368,28 @@ function ColorMapping(
 
     T = _array_value_type(color)
     color_tight = Observable{T}(color)
+
+    args = map([colors_obs, colormap, colorrange, colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type]) do x
+        x isa Computed ? ComputePipeline.get_observable!(x) : x
+    end
+
     # We need to copy, to check for changes
     # Since users may reuse the array when pushing updates
-    on(colors_obs) do new_colors
+    on(args[1]) do new_colors
         if color_tight[] === new_colors || color_tight[] != new_colors
             color_tight[] = new_colors
         end
     end
-     # color_tight.ignore_equal_values = true
-    _colormapping(color_tight, colors_obs, colormap, colorrange,
-                         colorscale, alpha, lowclip, highclip, nan_color, color_mapping_type)
+    # color_tight.ignore_equal_values = true
+
+    return _colormapping(color_tight, args...)
 end
 
 function assemble_colors(c::AbstractArray{<:Number}, @nospecialize(color), @nospecialize(plot))
-    return ColorMapping(c, color, plot.colormap, plot.colorrange, plot.colorscale, plot.alpha, plot.lowclip,
-                    plot.highclip, plot.nan_color)
+    # CairoMakie uses this with strokecolor as colors too...
+    keys = [:colormap, :colorrange, :colorscale, :alpha, :lowclip, :highclip, :nan_color]
+    obs = ComputePipeline.get_observable!.(getproperty.(Ref(plot), keys))
+    return ColorMapping(c, color, obs...)
 end
 
 function to_color(c::ColorMapping)

@@ -5,7 +5,7 @@ Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visu
 positive and negative components that add up to a net result as a barplot with stacked bars next
 to each other.
 """
-@recipe Waterfall (x, y) begin
+@recipe Waterfall begin
     color = @inherit patchcolor
     dodge=automatic
     n_dodge=automatic
@@ -61,20 +61,9 @@ function Makie.plot!(p::Waterfall)
         )
     end
 
-    bar_attrs = copy(p.attributes)
-    delete!(bar_attrs, :direction_color)
-    delete!(bar_attrs, :marker_pos)
-    delete!(bar_attrs, :final_color)
-    delete!(bar_attrs, :final_dodge_gap)
-    delete!(bar_attrs, :show_direction)
-    delete!(bar_attrs, :final_gap)
-    delete!(bar_attrs, :show_final)
-    delete!(bar_attrs, :marker_neg)
-
     barplot!(
-        p,
+        p, Attributes(p),
         lift(x -> x.xy, p, fromto);
-        bar_attrs...,
         fillto=lift(x -> x.fillto, p, fromto),
         stack=automatic,
     )

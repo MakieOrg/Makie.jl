@@ -17,6 +17,7 @@ uniform vec3 diffuse;
 uniform vec3 specular;
 uniform float shininess;
 
+uniform vec3 ambient;
 uniform float backlight;
 
 in vec3 o_camdir;
@@ -72,7 +73,6 @@ vec3 illuminate(vec3 normal, vec3 base_color);
 
 #ifdef FAST_SHADING
 
-uniform vec3 ambient;
 uniform vec3 light_color;
 uniform vec3 light_direction;
 
@@ -175,13 +175,10 @@ vec3 calc_rect_light(vec3 light_color, int idx, vec3 world_pos, vec3 camdir, vec
 }
 
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
-    vec3 final_color = vec3(0);
+    vec3 final_color = ambient * base_color;
     int idx = 0;
     for (int i = 0; i < min(N_lights, MAX_LIGHTS); i++) {
         switch (light_types[i]) {
-        case Ambient:
-            final_color += light_colors[i] * base_color;
-            break;
         case PointLight:
             final_color += calc_point_light(light_colors[i], idx, world_pos, camdir, normal, base_color);
             idx += 5; // 3 position, 2 attenuation params

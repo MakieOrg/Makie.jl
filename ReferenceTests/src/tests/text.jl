@@ -312,8 +312,8 @@ end
 @reference_test "latex updates" begin
     s = Scene(camera = campixel!)
     st = Stepper(s)
-    textnode = Observable([L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"])
-    posnode = Observable(Point2f[(50, 50), (100, 100)])
+    textnode = [L"\int_0^5x^2+2ab", L"\int_0^5x^2+2ab"]
+    posnode = Point2f[(50, 50), (100, 100)]
 
     t = text!(s,
         textnode,
@@ -323,8 +323,10 @@ end
 
     Makie.step!(st)
     ## change lengths
-    textnode[] = push!(textnode[], L"\int_0^5x^2+2ab")
-    posnode[] = push!(posnode[], Point2f(150, 150))
+    Makie.update!(
+        t, push!(textnode, L"\int_0^5x^2+2ab");
+        position=push!(posnode, Point2f(150, 150))
+    )
     Makie.step!(st)
     st
 end
@@ -398,7 +400,7 @@ end
     p = text!(scene, "test", fontsize = 85)
     st = Stepper(scene)
     Makie.step!(st)
-    p[1][] = "-!ħ█?-" # "!ħ█?" are all new symbols
+    p.arg1[] = "-!ħ█?-" # "!ħ█?" are all new symbols
     Makie.step!(st)
     st
 end
@@ -406,16 +408,16 @@ end
 # test #3315
 @reference_test "text with empty lines" begin
     text(
-        0,0, 
+        0,0,
         text=rich(
-            rich("test", font = :bold), 
+            rich("test", font = :bold),
             """
-            
+
             more
 
             """
-        ); 
-        markerspace = :data, 
+        );
+        markerspace = :data,
         axis = (; aspect = DataAspect())
     )
 end

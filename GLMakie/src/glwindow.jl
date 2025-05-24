@@ -164,6 +164,7 @@ function destroy!(fb::GLFramebuffer)
         for buff in values(fb.buffers)
             GLAbstraction.free(buff)
         end
+        empty!(fb.buffers)
         # Only print error if the context is not alive/active
         id = fb.id
         fb.id = 0
