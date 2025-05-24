@@ -387,7 +387,6 @@ end
 function clear_temporary_plots!(inspector::DataInspector, plot)
     inspector.attributes.indicator_visible[] = false
     foreach(p -> p.visible[] = false, values(inspector.cached_plots))
-    inspector.plot.offset = inspector.attributes.offset[]
 
     if inspector.selection !== plot
         if to_value(get(inspector.selection, :inspector_clear, automatic)) !== automatic
@@ -470,7 +469,7 @@ function construct_indicator_plot(scene, ::Type{<: Scatter}, a)
 end
 
 # update alignment direction
-function update_tooltip_alignment!(inspector, proj_pos; visible = true, kwargs...)
+function update_tooltip_alignment!(inspector, proj_pos; visible = true, offset = inspector.attributes.offset[], kwargs...)
     wx, wy = widths(viewport(inspector.root)[])
     px, py = proj_pos
 
@@ -478,7 +477,7 @@ function update_tooltip_alignment!(inspector, proj_pos; visible = true, kwargs..
     px < 0.25wx && (placement = :right)
     px > 0.75wx && (placement = :left)
 
-    update!(inspector.plot; arg1 = proj_pos, placement, visible, kwargs...)
+    update!(inspector.plot; arg1 = proj_pos, placement, visible, offset, kwargs...)
 
     return
 end
@@ -700,14 +699,18 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
             # Cached
             indicator = get_indicator_plot(inspector, scene, Scatter)
             color = if z isa Real
-                if haskey(plot, :calculated_colors)
-                    to_color(get(plot.calculated_colors[], z))::RGBAf
+                if haskey(plot, :alpha_colormap)
+                    sample_color(
+                        plot.alpha_colormap[], z, plot.scaled_colorrange[],
+                        plot.lowclip_color[], plot.highclip_color[],
+                        plot.nan_color[], interpolate ? Linear : Nearest
+                    )
                 else
-                    to_color(:transparent)::RGBAf
+                    to_color(:transparent)
                 end
             else
-                to_color(z)::RGBAf
-            end
+                to_color(z)
+            end::RGBAf
             update!(indicator; arg1 = apply_transform_and_model(plot, pos), color, visible = true)
         else
             bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
