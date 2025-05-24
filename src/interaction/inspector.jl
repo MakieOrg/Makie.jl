@@ -387,7 +387,6 @@ end
 function clear_temporary_plots!(inspector::DataInspector, plot)
     inspector.attributes.indicator_visible[] = false
     foreach(p -> p.visible[] = false, values(inspector.cached_plots))
-    inspector.plot.offset = inspector.attributes.offset[]
 
     if inspector.selection !== plot
         if to_value(get(inspector.selection, :inspector_clear, automatic)) !== automatic
@@ -470,7 +469,7 @@ function construct_indicator_plot(scene, ::Type{<: Scatter}, a)
 end
 
 # update alignment direction
-function update_tooltip_alignment!(inspector, proj_pos; visible = true, kwargs...)
+function update_tooltip_alignment!(inspector, proj_pos; visible = true, offset = inspector.attributes.offset[], kwargs...)
     wx, wy = widths(viewport(inspector.root)[])
     px, py = proj_pos
 
