@@ -416,7 +416,7 @@ end
 
     @testset "map and on" begin
         g = ComputeGraph()
-        add_input!((k, x) -> Float64.(x), g, :input1, 1)
+        add_input!((k, x) -> Float64.(x), g, :input1, 0)
         add_input!((k, x) -> Float64.(x), g, :input2, 4)
         register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
             return (x-y, y-x)
@@ -432,6 +432,7 @@ end
         @test_throws UndefRefError obs[]
         @test haskey(g.observables, :mult)
         @test length(g.observables) == 1
+        update!(g, input1 = 1)
 
         obs2 = map(x -> 2 .* x, g.out2)
         @test obs2[] == 8.0
@@ -450,7 +451,7 @@ end
             counter[] += 1
             return
         end
-        ComputePipeline.update!(g, input1 = 2, input2 = 5)
+        ComputePipeline.update!(g, input1 = 2, input2 = 8)
         @test counter[] == 4
 
     end
