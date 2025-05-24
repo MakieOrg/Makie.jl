@@ -369,3 +369,89 @@ end
     end
 
 end
+
+@testset "Observables" begin
+    @testset "Synchronization" begin
+        g = ComputeGraph()
+        add_input!((k, x) -> Float32.(x), g, :input1, [0])
+        add_input!((k, x) -> Float32.(x), g, :input2, [1])
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
+            return ([x; y], [y; x])
+        end
+        map!(x -> [x; 1], g, :xy, :out1)
+        map!(x -> [x; 1], g, :yx, :out2)
+        map!((x,y) -> tuple.(x,y), g, [:out1, :out2], :zipped)
+        foreach(key -> ComputePipeline.get_observable!(g, key), keys(g.outputs))
+
+        @testset "Initialization" begin
+            @test haskey(g, :input1)
+            @test haskey(g, :input2)
+            @test haskey(g, :xy)
+            @test haskey(g, :yx)
+            @test haskey(g, :out1)
+            @test haskey(g, :out2)
+            @test haskey(g, :zipped)
+
+            @test g.observables[:input1][] == Float32[0]
+            @test g.observables[:input2][] == Float32[1]
+            @test g.observables[:xy][] == Float32[0, 1]
+            @test g.observables[:yx][] == Float32[1, 0]
+            @test g.observables[:out1][] == Float32[0, 1, 1]
+            @test g.observables[:out2][] == Float32[1, 0, 1]
+            @test g.observables[:zipped][] == [(0f0, 1f0), (1f0, 0f0), (1f0, 1f0)]
+        end
+
+        @testset "Update" begin
+            ComputePipeline.update!(g, input1 = [2, 3], input2 = [6, 7])
+
+            @test g.observables[:input1][] == Float32[2, 3]
+            @test g.observables[:input2][] == Float32[6, 7]
+            @test g.observables[:xy][] == Float32[2, 3, 6, 7]
+            @test g.observables[:yx][] == Float32[6, 7, 2, 3]
+            @test g.observables[:out1][] == Float32[2, 3, 6, 7, 1]
+            @test g.observables[:out2][] == Float32[6, 7, 2, 3, 1]
+            @test g.observables[:zipped][] == tuple.(Float32[2, 3, 6, 7, 1], Float32[6, 7, 2, 3, 1])
+        end
+    end
+
+    @testset "map and on" begin
+        g = ComputeGraph()
+        add_input!((k, x) -> Float64.(x), g, :input1, 1)
+        add_input!((k, x) -> Float64.(x), g, :input2, 4)
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
+            return (x-y, y-x)
+        end
+        map!(x -> x + 1, g, :xy, :out1)
+        map!(x -> x + 1, g, :yx, :out2)
+        map!((x,y) -> x * y, g, [:out1, :out2], :mult)
+
+        @test isempty(g.observables)
+
+        obs = Observable{Any}()
+        on(x -> obs[] = x, g[:mult])
+        @test_throws UndefRefError obs[]
+        @test haskey(g.observables, :mult)
+        @test length(g.observables) == 1
+
+        obs2 = map(x -> 2 .* x, g.out2)
+        @test obs2[] == 8.0
+        @test haskey(g.observables, :out2)
+        @test length(g.observables) == 2
+
+        obs3 = Observable{Any}()
+        map!(*, obs3, g.input1, g.out1)
+        @test obs3[] == -2.0
+        @test haskey(g.observables, :input1)
+        @test haskey(g.observables, :out1)
+        @test length(g.observables) == 4
+
+        counter = Ref(0)
+        onany(obs, obs2, obs3) do args...
+            counter[] += 1
+            return
+        end
+        ComputePipeline.update!(g, input1 = 2, input2 = 5)
+        @test counter[] == 4
+
+    end
+end

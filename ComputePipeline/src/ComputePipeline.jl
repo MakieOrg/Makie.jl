@@ -224,7 +224,7 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
         val = attr.outputs[key]
         result = Observable(val[])
         on(attr.onchange) do changeset
-            if key in changeset
+            if (key in changeset) && (result[] != val[])
                 result[] = val[]
             end
             return Consume(false)
@@ -312,9 +312,9 @@ function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
     return
 end
 
-function mark_dirty!(computed::Computed, obs_to_update::Vector{Observable})
+function mark_dirty!(computed::Computed)
     hasparent(computed) || return
-    return mark_dirty!(computed.parent, obs_to_update)
+    return mark_dirty!(computed.parent)
 end
 
 function resolve!(input::Input)
@@ -347,17 +347,15 @@ function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
     return
 end
 
-function mark_dirty_and_notify!(node::Input)
-    obs_to_update = empty!(node.graph.obs_to_update)
-    mark_dirty!(node, obs_to_update)
-    foreach(notify, obs_to_update)
-    return
-end
+mark_dirty!(x) = mark_dirty!(x, x.graph.obs_to_update)
 
-function mark_dirty_and_notify!(node::Computed)
-    obs_to_update = empty!(node.parent.graph.obs_to_update)
-    mark_dirty!(node, obs_to_update)
+update_observables!(comp::Computed) = update_observables!(comp.parent)
+update_observables!(edge::Input) = update_observables!(edge.graph)
+update_observables!(edge::ComputeEdge) = update_observables!(edge.graph)
+update_observables!(graph::ComputeGraph) = update_observables!(graph.obs_to_update)
+function update_observables!(obs_to_update::Vector{Observable})
     foreach(notify, obs_to_update)
+    empty!(obs_to_update)
     return
 end
 
@@ -366,14 +364,16 @@ function Base.setindex!(computed::Computed, value)
         return setindex!(computed.parent, value)
     else
         computed.value[] = value
-        mark_dirty_and_notify!(computed)
+        mark_dirty!(computed)
+        update_observables!(computed)
         return value
     end
 end
 
 function Base.setindex!(input::Input, value)
     input.value = value
-    mark_dirty_and_notify!(input)
+    mark_dirty!(input)
+    update_observables!(input)
     return value
 end
 
@@ -381,13 +381,16 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
+    # can't notify observables immediately here, because update may call this
+    # multiple times for a synchronized update (would cause desync)
+    mark_dirty!(input)
     input.value = value
-    mark_dirty_and_notify!(input)
     return value
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     _setproperty!(attr, key, value)
+    foreach(notify, attr.obs_to_update)
     return value
 end
 
@@ -418,6 +421,7 @@ function update!(attr::ComputeGraph, dict::Dict{Symbol})
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    update_observables!(attr)
     return attr
 end
 
@@ -429,6 +433,7 @@ function update!(attr::ComputeGraph, pairs...)
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    update_observables!(attr)
     return attr
 end
 

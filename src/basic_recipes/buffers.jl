@@ -15,11 +15,12 @@ function LinesegmentBuffer(
 end
 
 function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
+    attr = lsb.attributes
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
-    append!(lsb[:arg1][], positions)
-    append!(lsb[:color][], colorv)
-    append!(lsb[:linewidth][], thickv)
+    append!(attr.inputs[:arg1].value, positions)
+    append!(attr.inputs[:color].value, colorv)
+    append!(attr.inputs[:linewidth].value, thickv)
     return
 end
 
@@ -28,18 +29,20 @@ function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where
 end
 
 function start!(lsb::LineSegments)
-    resize!(lsb[:arg1][], 0)
-    resize!(lsb[:color][], 0)
-    resize!(lsb[:linewidth][], 0)
+    attr = lsb.attributes
+    resize!(attr.inputs[:arg1].value, 0)
+    resize!(attr.inputs[:color].value, 0)
+    resize!(attr.inputs[:linewidth].value, 0)
     return
 end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    ComputePipeline.mark_dirty_and_notify!(lsb[:arg1])
-    ComputePipeline.mark_dirty_and_notify!(lsb[:color])
-    ComputePipeline.mark_dirty_and_notify!(lsb[:linewidth])
-    notify(lsb.attributes.onchange)
+    attr = lsb.attributes
+    ComputePipeline.mark_dirty!(attr.inputs[:arg1])
+    ComputePipeline.mark_dirty!(attr.inputs[:color])
+    ComputePipeline.mark_dirty!(attr.inputs[:linewidth])
+    ComputePipeline.update_observables!(attr)
     return
 end
 
@@ -73,15 +76,15 @@ function start!(tb::Text)
 end
 
 function finish!(tb::Text)
-    # now update all callbacks
     attr = tb.attributes
+    # now update all callbacks
+    if length(attr.inputs[:arg1].value) != length(attr.inputs[:fontsize].value)
+        error("Inconsistent buffer state for $(attr.inputs[:arg1].value)")
+    end
     for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
-        ComputePipeline.mark_dirty_and_notify!(attr.inputs[key])
+        ComputePipeline.mark_dirty!(attr.inputs[key])
     end
-    if length(tb[1][]) != length(tb.fontsize[])
-        error("Inconsistent buffer state for $(tb[1][])")
-    end
-    notify(attr.onchange)
+    ComputePipeline.update_observables!(attr)
     return
 end
 
