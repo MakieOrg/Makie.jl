@@ -220,12 +220,19 @@ struct ComputeGraph
 end
 
 function get_observable!(attr::ComputeGraph, key::Symbol)
+    # Because we allow output arrays to be reused it can be impossible to tell
+    # if the data has updated. In this case the data is marked as dirty/changed
+    # and added to the `onchange`. If this data is fed into an Observable which
+    # updates the graph it can lead to infinite loops.
+    # To prevent this we have to disambiguate the data and do == checks here.
+    # This requires us to copy data every time we update and we can't use
+    # `copy` because that is not always available (e.g. not for Rect)
     return get!(attr.observables, key) do
         val = attr.outputs[key]
-        result = Observable(val[])
+        result = Observable(deepcopy(val[]))
         on(attr.onchange) do changeset
-            if (key in changeset) && (result[] != val[])
-                result[] = val[]
+            if (key in changeset) && (val[] != result[])
+                result[] = deepcopy(val[])
             end
             return Consume(false)
         end
@@ -496,6 +503,7 @@ function set_result!(edge::TypedEdge, result)
 end
 
 is_same(@nospecialize(a), @nospecialize(b)) = false
+is_same(a::Symbol, b::Symbol) = a == b
 function is_same(a::T, b::T) where T
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`

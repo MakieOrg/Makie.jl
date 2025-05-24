@@ -453,6 +453,89 @@ end
         end
         ComputePipeline.update!(g, input1 = 2, input2 = 8)
         @test counter[] == 4
+    end
 
+    @testset "Infinite loops" begin
+        g = ComputeGraph()
+        add_input!(g, :resample, 1)
+        register_computation!(g, [:resample], [:output]) do (resample,), changed, cached
+            data = isnothing(cached) ? collect(1:10) : cached[1]
+            return (resample > 0 ? shuffle!(data) : data,)
+        end
+        obs = ComputePipeline.get_observable!(g, :output)
+
+        update_counter = Ref(0)
+        on(x -> update_counter[] += 1, obs)
+        @testset "Problem" begin
+            # Updating mutable data to the same value can cause infinite loops
+            # if the Observable also updates (and then loops back into the graph)
+            # We want this to never trigger:
+            prev = deepcopy(g[:output][])
+            @test g[:output][] !== prev # Sanity check
+            @test obs[] !== prev # Sanity check
+            for i in 1:10
+                update!(g, resample = -i) # don't change data
+                @test g[:output][] == prev # Sanity check
+                @test obs[] == prev # Sanity check
+                @test update_counter[] == 0
+            end
+
+            # And updating still works
+            prev = deepcopy(g[:output][])
+            update_counter[] = 0
+            @test g[:output][] !== prev # Sanity check
+            @test obs[] !== prev # Sanity check
+            for i in 1:10
+                prev = deepcopy(g[:output][])
+                update!(g, resample = i) # shuffle data
+                @test g[:output][] != prev # Sanity check
+                @test obs[] != prev # Sanity check
+                @test obs[] == g[:output][]
+                @test update_counter[] == i
+            end
+
+            # Mixed for good measure
+            prev = deepcopy(g[:output][])
+            update_counter[] = 0
+            expected = 0
+            for i in 1:30
+                choice = rand(Int)
+                prev = deepcopy(g[:output][])
+                update!(g, resample = choice) # maybe shuffle data
+                if choice > 0
+                    expected += 1
+                    @test obs[] != prev
+                else
+                    @test obs[] == prev
+                end
+                @test obs[] == g[:output][]
+                @test update_counter[] == expected
+            end
+        end
+
+        @testset "Solution" begin
+            # Keep observable and compute data distinguishable
+            @test obs[] == g[:output][]
+            @test obs[] !== g[:output][]
+
+            for i in 1:10
+                update!(g, resample = -i)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+
+            for i in 1:10
+                update!(g, resample = i)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+
+            for i in 1:30
+                choice = rand(Int)
+                update!(g, resample = choice)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+        end
     end
 end

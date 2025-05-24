@@ -1,5 +1,6 @@
 using ComputePipeline
 using Test
+using Random
 
 using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException
 using ComputePipeline.Observables
