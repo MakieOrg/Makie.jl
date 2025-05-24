@@ -335,6 +335,7 @@ function resolve!(input::Input)
 end
 
 function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
+    push!(input.graph.onchange.val, input.name)
     if !(input.graph.onchange in obs_to_update)
         push!(obs_to_update, input.graph.onchange)
     end
