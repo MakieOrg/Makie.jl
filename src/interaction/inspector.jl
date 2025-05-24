@@ -699,14 +699,18 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
             # Cached
             indicator = get_indicator_plot(inspector, scene, Scatter)
             color = if z isa Real
-                if haskey(plot, :calculated_colors)
-                    to_color(get(plot.calculated_colors[], z))::RGBAf
+                if haskey(plot, :alpha_colormap)
+                    sample_color(
+                        plot.alpha_colormap[], z, plot.scaled_colorrange[],
+                        plot.lowclip_color[], plot.highclip_color[],
+                        plot.nan_color[], interpolate ? Linear : Nearest
+                    )
                 else
-                    to_color(:transparent)::RGBAf
+                    to_color(:transparent)
                 end
             else
-                to_color(z)::RGBAf
-            end
+                to_color(z)
+            end::RGBAf
             update!(indicator; arg1 = apply_transform_and_model(plot, pos), color, visible = true)
         else
             bbox = _pixelated_image_bbox(xrange, yrange, zrange, round(Int, i), round(Int, j), edge_based)
