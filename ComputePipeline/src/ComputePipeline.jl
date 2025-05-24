@@ -213,23 +213,21 @@ graph[:derived_node][]
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
-    onchange::Observable{Set{Symbol}}
     observables::Dict{Symbol,Observable}
     observerfunctions::Vector{Observables.ObserverFunction}
 end
 
 function get_observable!(attr::ComputeGraph, key::Symbol)
-    return get!(attr.observables, key) do
-        val = attr.outputs[key]
-        result = Observable(val[])
-        on(attr.onchange) do changeset
-            if key in changeset
-                result[] = val[]
-            end
-            return Consume(false)
-        end
-        return result
-    end
+    return get!(() -> Observable(deepcopy(attr.outputs[key][])), attr.observables, key)
+    # return get!(attr.observables, key) do
+    #     if is_same(attr.outputs[key][], attr.outputs[key][])
+    #         # we won't get updates if values match
+    #         return Observable(attr.outputs[key][])
+    #     else # copy does not have a default?
+    #         # we do get updates if values match and we have to be careful not to have the same obj (ptr)
+    #         return Observable(copy(attr.outputs[key][]), ignore_equal_values = true)
+    #     end
+    # end
 end
 
 function get_observable!(c::Computed)
@@ -269,7 +267,7 @@ end
 
 function ComputeGraph()
     return ComputeGraph(
-        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable(Set{Symbol}()),
+        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(),
         Dict{Symbol,Observable}(), Observables.ObserverFunction[])
 end
 
@@ -295,12 +293,20 @@ function isdirty(edge::ComputeEdge)
 end
 
 function mark_dirty!(edge::ComputeEdge)
-    edge.got_resolved[] = false
-    for dep in edge.dependents
-        mark_dirty!(dep)
-    end
-    for output in edge.outputs
-        push!(edge.graph.onchange.val, output.name)
+    # Possible states: (dirty means not resolved, child and parent refer to edges)
+    # init: false
+    # after resolve:
+    #   if any child is resolved, all parents must be resolved
+    #   <=> if any parent is dirty, all children must be dirty
+    # after mark_dirty:
+    #   if any parent is dirty, all children must be dirty
+    # thus we don't need to mark dirty if parent is not dirty
+    if edge.got_resolved[]
+        edge.got_resolved[] = false
+        # if parent ^ is marked dirty, all children v will be marked dirty (if they aren't already)
+        for dep in edge.dependents
+            mark_dirty!(dep)
+        end
     end
     return
 end
@@ -312,12 +318,17 @@ end
 
 function resolve!(input::Input)
     input.dirty || return
+
     value = input.f(input.value)
     if isdefined(input.output, :value) && isassigned(input.output.value)
         input.output.value[] = deref(value)
     else
         input.output.value = value isa RefValue ? value : RefValue(value)
     end
+    if haskey(input.graph.observables, input.name)
+        input.graph.observables[input.name][] = value
+    end
+
     input.dirty = false
     input.output.dirty = true
     for edge in input.dependents
@@ -332,37 +343,75 @@ function mark_dirty!(input::Input)
     for edge in input.dependents
         mark_dirty!(edge)
     end
-    push!(input.graph.onchange.val, input.name)
     return
 end
+
+# Triggering observable updates from here would be problematic. Consider an edge
+# (a, b) -> c:
+# - if we don't check dirty, the c observable would get triggered twice (going down from a and b)
+# - if we do check dirty, resolving c from a would resolve b, dropping the observable update of b
+#
+# So we have to update in resolve!() directly.
+# Then we can also check dirty, as every resolved node has been triggered by resolve!()
+function resolve_observables!(edge::ComputeEdge)
+    if !edge.got_resolved[]
+        # both update first and go down first are valid
+        for dep in edge.dependents
+            resolve_observables!(dep)
+        end
+        for output in edge.outputs
+            if haskey(edge.graph.observables, output.name)
+                output[]
+            end
+        end
+    end
+    return
+end
+
+function resolve_observables!(edge::Input)
+
+    for dep in edge.dependents
+        resolve_observables!(dep)
+    end
+    if haskey(edge.graph.observables, edge.output.name)
+        edge.output[]
+    end
+    return
+end
+
+resolve_observables!(c::Computed) = resolve_observables!(c.parent)
 
 function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
         computed.value[] = value
-        return mark_dirty!(computed)
+        mark_dirty!(computed)
+        resolve_observables!(computed)
+        return value
     end
 end
 
 function Base.setindex!(input::Input, value)
     input.value = value
-    return mark_dirty!(input)
+    mark_dirty!(input)
+    resolve_observables!(input)
+    return value
 end
 
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
-    empty!(attr.onchange.val)
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
     input.value = value
     mark_dirty!(input)
-    notify(attr.onchange)
+    # no resolve_observables!() here because we might be marking multiple inputs
     return value
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     _setproperty!(attr, key, value)
+    resolve_observables!(attr.inputs[key])
     return value
 end
 
@@ -393,6 +442,7 @@ function update!(attr::ComputeGraph, dict::Dict{Symbol})
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    foreach(key -> resolve_observables!(attr.inputs[key]), keys(dict))
     return attr
 end
 
@@ -404,6 +454,7 @@ function update!(attr::ComputeGraph, pairs...)
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    foreach(p -> resolve_observables!(attr.inputs[p[1]]), pairs)
     return attr
 end
 
@@ -416,7 +467,6 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
-    key === :onchange && return getfield(attr, :onchange)
     key === :observables && return getfield(attr, :observables)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
     return attr.outputs[key]
@@ -464,7 +514,19 @@ function set_result!(edge::TypedEdge, result)
     return set_result!(edge, rem, 1, next_val)
 end
 
+# needs to run before set_result!
+function set_obs!(observables::Dict, outputs, result)
+    for (output, value) in zip(outputs, result)
+        if !isnothing(value) && haskey(observables, output.name) &&
+                (observables[output.name][] != deref(value))
+            observables[output.name][] = deepcopy(deref(value))
+        end
+    end
+    return
+end
+
 is_same(@nospecialize(a), @nospecialize(b)) = false
+is_same(a::Symbol, b::Symbol) = a == b
 function is_same(a::T, b::T) where T
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`
@@ -480,7 +542,7 @@ end
 
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
-function resolve!(edge::TypedEdge)
+function resolve!(edge::TypedEdge, observables, outputs)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
@@ -495,6 +557,7 @@ function resolve!(edge::TypedEdge)
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end
+            set_obs!(observables, outputs, result) # must run first for == to work
             set_result!(edge, result)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
@@ -530,8 +593,9 @@ function resolve!(edge::ComputeEdge)
         # constructor does first resolve to determine fully typed outputs
         edge.typed_edge[] = TypedEdge(edge)
     else
-        resolve!(edge.typed_edge[])
+        resolve!(edge.typed_edge[], edge.graph.observables, edge.outputs)
     end
+
     edge.got_resolved[] = true
     fill!(edge.inputs_dirty, false)
     for dep in edge.dependents

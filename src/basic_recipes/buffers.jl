@@ -36,10 +36,10 @@ end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    ComputePipeline.mark_dirty!(lsb[:arg1])
-    ComputePipeline.mark_dirty!(lsb[:color])
-    ComputePipeline.mark_dirty!(lsb[:linewidth])
-    notify(lsb.attributes.onchange)
+    attr = lsb.attributes
+    keys = (:arg1, :color, :linewidth)
+    foreach(k -> ComputePipeline.mark_dirty!(attr.inputs[k]), keys)
+    foreach(k -> ComputePipeline.resolve_observables!(attr.inputs[k]), keys)
     return
 end
 
@@ -75,13 +75,12 @@ end
 function finish!(tb::Text)
     # now update all callbacks
     attr = tb.attributes
-    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
-        ComputePipeline.mark_dirty!(attr.inputs[key])
+    if length(attr.inputs[:arg1].value) != length(attr.inputs[:fontsize].value)
+        error("Inconsistent buffer state for $(tb.inputs[:arg1].value)")
     end
-    if length(tb[1][]) != length(tb.fontsize[])
-        error("Inconsistent buffer state for $(tb[1][])")
-    end
-    notify(attr.onchange)
+    keys = (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+    foreach(k -> ComputePipeline.mark_dirty!(attr.inputs[k]), keys)
+    foreach(k -> ComputePipeline.resolve_observables!(attr.inputs[k]), keys)
     return
 end
 
