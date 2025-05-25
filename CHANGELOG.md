@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed contour labels text positions update bug [#5010](https://github.com/MakieOrg/Makie.jl/pull/5010).
+
 ## [0.22.7] - 2025-05-23
 
 - Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
