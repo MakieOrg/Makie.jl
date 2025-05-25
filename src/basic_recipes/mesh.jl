@@ -19,9 +19,9 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
 
         # TODO: Add ambient multiplier
         # attr[:ambient]   = get(material, "ambient", p.attributes[:ambient])
-        for key in [:diffuse, :specular, :shininess]
+        for key in ["diffuse", "specular", "shininess"]
             if haskey(material, key)
-                overwrites[key] = material[string(key)]
+                overwrites[Symbol(key)] = material[key]
             end
         end
 
