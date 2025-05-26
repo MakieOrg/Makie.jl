@@ -667,11 +667,10 @@ end
 
 # Note: called from scene finalizer, must not error
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    if !isempty(plot.plots)
-        # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.collect_atomic_plots(plot)
-            delete!(screen, scene, cplot)
-        end
+    # this plot consists of children, so we flatten it and delete the children instead
+    for cplot in Makie.collect_atomic_plots(plot)
+        cplot === plot && continue # don't delete the plot itself
+        delete!(screen, scene, cplot)
     end
     # I think we can double delete renderobjects, so this may be ok
     # TODO, is it?

@@ -288,7 +288,10 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
 end
 
 # Julia 1.10 compat
-_filter(f, xs::NamedTuple) = xs[filter(k -> f(xs[k]), keys(xs))]
+function _filter(f, xs::NamedTuple)
+    isempty(xs) && return xs
+    return xs[filter(k -> f(xs[k]), keys(xs))]
+end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
