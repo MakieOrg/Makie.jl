@@ -672,25 +672,21 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         for cplot in Makie.collect_atomic_plots(plot)
             delete!(screen, scene, cplot)
         end
-    else
-        # I think we can double delete renderobjects, so this may be ok
-        # TODO, is it?
-        renderobject = get(screen.cache, objectid(plot), nothing)
-        if !isnothing(renderobject)
-            # Switch to context, so we can delete the renderobjects
-            with_context(screen.glscreen) do
-                destroy!(renderobject, plot isa Makie.ComputePlots)
-                filter!(x-> x[3] !== renderobject, screen.renderlist)
-                delete!(screen.cache2plot, renderobject.id)
-            end
-        end
-        delete!(screen.cache, objectid(plot))
-
-        # TODO: cleanup in the future
-        if plot isa Makie.ComputePlots
-            haskey(plot, :gl_renderobject) && delete!(plot.attributes, :gl_renderobject)
+    end
+    # I think we can double delete renderobjects, so this may be ok
+    # TODO, is it?
+    renderobject = get(screen.cache, objectid(plot), nothing)
+    if !isnothing(renderobject)
+        # Switch to context, so we can delete the renderobjects
+        with_context(screen.glscreen) do
+            destroy!(renderobject, plot isa Makie.ComputePlots)
+            filter!(x-> x[3] !== renderobject, screen.renderlist)
+            delete!(screen.cache2plot, renderobject.id)
         end
     end
+    delete!(screen.cache, objectid(plot))
+
+    haskey(plot, :gl_renderobject) && delete!(plot.attributes, :gl_renderobject)
     screen.requires_update = true
     return
 end

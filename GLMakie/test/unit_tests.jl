@@ -22,30 +22,29 @@ end
     # TODO, change from 11 -> 12
     # This comes from having two versions of mesh, with transparency=true/false leading to different shaders for fragment_output
     # Why did this change?
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 11
 
     # No new shaders should be added:
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
+    @test length(cache.program_cache) == 11
     # Same for linesegments
     display(screen, linesegments(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    @test length(cache.program_cache) == 10
-
+    @test length(cache.program_cache) == 11
     # heatmap hasn't been compiled so one new program should be added
     display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
     @test length(cache.shader_cache) == 20
     @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 12
 
     # For second time no new shaders should be added
     display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
     @test length(cache.shader_cache) == 20
     @test length(cache.template_cache) == 20
-    @test length(cache.program_cache) == 11
+    @test length(cache.program_cache) == 12
 end
 
 @testset "unit tests" begin

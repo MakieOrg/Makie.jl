@@ -693,6 +693,7 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
+is_atomic_plot(plot::Text) = true
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
@@ -705,10 +706,10 @@ function collect_atomic_plots(xplot::Plot, plots=AbstractPlot[]; is_atomic_plot=
     if is_atomic_plot(xplot)
         # Atomic plot!
         push!(plots, xplot)
-    else
-        for elem in xplot.plots
-            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
-        end
+    end
+    # e.g. Text which is atomic but has child plots
+    for elem in xplot.plots
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
     end
     return plots
 end

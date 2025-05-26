@@ -564,12 +564,13 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot.palettes = get_scene(parent).theme.palette
 
     handle_transformation!(plot, parent)
+    if plot isa PrimitivePlotTypes
+        register_camera!(scene, plot)
+    end
     calculated_attributes!(Plot{Func}, plot)
 
     plot!(plot)
-    if isempty(plot.plots)
-        register_camera!(scene, plot)
-    end
+
 
     documented_attr = MakieCore.plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw

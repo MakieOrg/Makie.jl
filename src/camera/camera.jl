@@ -331,6 +331,7 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     add_input!(plot_graph, :pixel_space, scene_graph[:pixel_to_clip]::Computed)
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
     for key in [:resolution, :scene_origin]
+        haskey(plot_graph.inputs, key) && continue
         add_input!((k, v) -> Vec2f(v), plot_graph, key, getindex(scene_graph, key)::Computed)
     end
     for key in [:eyeposition, :upvector, :view_direction]

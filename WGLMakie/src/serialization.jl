@@ -226,11 +226,12 @@ end
 function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
     for plot in plots
         # if no plots inserted, this truly is an atomic
-        if isempty(plot.plots)
+        if Makie.is_atomic_plot(plot)
             plot_data = serialize_three(scene, plot)
             plot_data[:uuid] = js_uuid(plot)
             push!(result, plot_data)
-        else
+        end
+        if !isempty(plot.plots)
             serialize_plots(scene, plot.plots, result)
         end
     end

@@ -246,10 +246,11 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, gc, offset = texelems_and_glyph_collection(input_text, args...)
+    tex_elements, gc, offsets = texelems_and_glyph_collection(input_text, args...)
     curr = length(outputs.glyphindices)
     n = length(gc.glyphs)
-
+    push!(outputs.tex_offsets, offsets)
+    push!(outputs.tex_elements, tex_elements)
     push!(outputs.glyphcollections, gc)
     push!(outputs.text_blocks, (curr+1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
@@ -283,6 +284,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokewidth
     ]
     outputs = [
+        :tex_offsets,
+        :tex_elements,
         :glyphcollections,
         :glyphindices,
         :font_per_char,
@@ -298,6 +301,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
     register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         if isnothing(cached)
             _outputs = (
+                tex_offsets = [], # TODO, type?
+                tex_elements = [],
                 glyphcollections = GlyphCollection[],
                 glyphindices = UInt64[],
                 font_per_char = NativeFont[],
@@ -405,6 +410,7 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     register_colormapping!(attr)
     register_text_computations!(attr)
 
+
     # TODO: naming...?
     # markerspace bounding boxes of elements (i.e. each string passed to text)
     register_computation!(attr, [:glyphindices, :text_blocks, :glyph_origins, :text_scales, :glyph_extents, :rotation], [:per_string_bb]) do args, changed, last
@@ -415,6 +421,7 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
         end
         return (result,)
     end
+    tex_linesegments!(plot)
 
     # TODO: There is a :position attribute and a :positions Computed (after dim converts)
     #       This seems quite error prone...
@@ -437,6 +444,49 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
         return (Rect3d(inputs.positions),)
     end
 end
+
+
+function tex_linesegments(offsets, tex_elements, ts, rotation, color, offs)
+    linesegs = Point2f[]
+    linewidths = Float32[]
+    linecolors = RGBAf[]
+    lineindices = Int[]
+    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
+    for (index, (elements, offset)) in enumerate(zip(tex_elements, offsets))
+        for (element, position, _) in elements
+            if element isa MathTeXEngine.HLine
+                h = element
+                x, y = position
+                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x, y) .- offset) .+ Point2f(offs))
+                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x + h.width, y) .- offset) .+ Point2f(offs))
+                push!(linewidths, ts * h.thickness)
+                push!(linewidths, ts * h.thickness)
+                push!(linecolors, color) # TODO how to specify color better?
+                push!(linecolors, color)
+                push!(lineindices, index)
+                push!(lineindices, index)
+            end
+        end
+    end
+    return linesegs, linewidths, linecolors, lineindices
+end
+
+function tex_linesegments!(plot)
+    register_computation!(plot, [:tex_offsets, :tex_elements, :fontsize, :rotation, :color, :offset], [:linesegments, :linewidths, :linecolors, :lineindices]) do args, _, _
+        return tex_linesegments(args...)
+    end
+    register_computation!(plot, [:linesegments, :positions, :projectionview, :viewport, :transform_func, :space, :lineindices], [:linesgments_shifted]) do (args), _, _
+        isempty(args.linesegments) && return (Point2f[],)
+        pos_transf = plot_to_screen(plot, args.positions)
+        linesegs_shifted = map(args.linesegments, args.lineindices) do seg, index
+            return Point2f(seg + attr_broadcast_getindex(pos_transf, index))
+        end
+        return (linesegs_shifted,)
+    end
+
+    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths, color = plot.linecolors, space = :pixel)
+end
+
 
 # TODO: Naming?
 """
@@ -515,7 +565,7 @@ function _tight_character_boundingboxes(plot::Text)
                 bb2 = Rect2f(bb * sc) + Point2f(ori) + Point2f(pos)
                 push!(bbs, bb2)
             end
-            return (bbs, )
+            return (bbs,)
         elseif isnothing(cached)
             return (Rect2f[],)
         else
@@ -524,36 +574,6 @@ function _tight_character_boundingboxes(plot::Text)
     end
 
     return plot.tight_character_boundingboxes[]
-end
-
-
-function _get_glyphcollection_and_linesegments(latexstring::LaTeXString, index, ts, f, fs, al, rot, jus, lh, col, scol, swi, www, offs)
-    tex_elements, glyphcollections, offset = texelems_and_glyph_collection(latexstring, ts,
-                al[1], al[2], rot, col, scol, swi, www)
-
-    linesegs = Point2f[]
-    linewidths = Float32[]
-    linecolors = RGBAf[]
-    lineindices = Int[]
-
-    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
-
-    for (element, position, _) in tex_elements
-        if element isa MathTeXEngine.HLine
-            h = element
-            x, y = position
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x, y) - offset) + offs)
-            push!(linesegs, rotate_2d(rot, ts * Point2f(x + h.width, y) - offset) + offs)
-            push!(linewidths, ts * h.thickness)
-            push!(linewidths, ts * h.thickness)
-            push!(linecolors, col) # TODO how to specify color better?
-            push!(linecolors, col)
-            push!(lineindices, index)
-            push!(lineindices, index)
-        end
-    end
-
-    return glyphcollections, linesegs, linewidths, linecolors, lineindices
 end
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
@@ -690,11 +710,6 @@ left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 export rich, subscript, superscript, subsup, left_subsup
 
 convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
-
-function _get_glyphcollection_and_linesegments(rt::RichText, index, ts, f, fset, al, rot, jus, lh, col, scol, swi, www, offs)
-    gc = layout_text(rt, ts, f, fset, al, rot, jus, lh, col)
-    gc, Point2f[], Float32[], RGBAf[], Int[]
-end
 
 struct GlyphState
     x::Float32
