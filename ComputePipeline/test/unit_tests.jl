@@ -369,3 +369,173 @@ end
     end
 
 end
+
+@testset "Observables" begin
+    @testset "Synchronization" begin
+        g = ComputeGraph()
+        add_input!((k, x) -> Float32.(x), g, :input1, [0])
+        add_input!((k, x) -> Float32.(x), g, :input2, [1])
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
+            return ([x; y], [y; x])
+        end
+        map!(x -> [x; 1], g, :xy, :out1)
+        map!(x -> [x; 1], g, :yx, :out2)
+        map!((x,y) -> tuple.(x,y), g, [:out1, :out2], :zipped)
+        foreach(key -> ComputePipeline.get_observable!(g, key), keys(g.outputs))
+
+        @testset "Initialization" begin
+            @test haskey(g, :input1)
+            @test haskey(g, :input2)
+            @test haskey(g, :xy)
+            @test haskey(g, :yx)
+            @test haskey(g, :out1)
+            @test haskey(g, :out2)
+            @test haskey(g, :zipped)
+
+            @test g.observables[:input1][] == Float32[0]
+            @test g.observables[:input2][] == Float32[1]
+            @test g.observables[:xy][] == Float32[0, 1]
+            @test g.observables[:yx][] == Float32[1, 0]
+            @test g.observables[:out1][] == Float32[0, 1, 1]
+            @test g.observables[:out2][] == Float32[1, 0, 1]
+            @test g.observables[:zipped][] == [(0f0, 1f0), (1f0, 0f0), (1f0, 1f0)]
+        end
+
+        @testset "Update" begin
+            ComputePipeline.update!(g, input1 = [2, 3], input2 = [6, 7])
+
+            @test g.observables[:input1][] == Float32[2, 3]
+            @test g.observables[:input2][] == Float32[6, 7]
+            @test g.observables[:xy][] == Float32[2, 3, 6, 7]
+            @test g.observables[:yx][] == Float32[6, 7, 2, 3]
+            @test g.observables[:out1][] == Float32[2, 3, 6, 7, 1]
+            @test g.observables[:out2][] == Float32[6, 7, 2, 3, 1]
+            @test g.observables[:zipped][] == tuple.(Float32[2, 3, 6, 7, 1], Float32[6, 7, 2, 3, 1])
+        end
+    end
+
+    @testset "map and on" begin
+        g = ComputeGraph()
+        add_input!((k, x) -> Float64.(x), g, :input1, 0)
+        add_input!((k, x) -> Float64.(x), g, :input2, 4)
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
+            return (x-y, y-x)
+        end
+        map!(x -> x + 1, g, :xy, :out1)
+        map!(x -> x + 1, g, :yx, :out2)
+        map!((x,y) -> x * y, g, [:out1, :out2], :mult)
+
+        @test isempty(g.observables)
+
+        obs = Observable{Any}()
+        on(x -> obs[] = x, g[:mult])
+        @test_throws UndefRefError obs[]
+        @test haskey(g.observables, :mult)
+        @test length(g.observables) == 1
+        update!(g, input1 = 1)
+
+        obs2 = map(x -> 2 .* x, g.out2)
+        @test obs2[] == 8.0
+        @test haskey(g.observables, :out2)
+        @test length(g.observables) == 2
+
+        obs3 = Observable{Any}()
+        map!(*, obs3, g.input1, g.out1)
+        @test obs3[] == -2.0
+        @test haskey(g.observables, :input1)
+        @test haskey(g.observables, :out1)
+        @test length(g.observables) == 4
+
+        counter = Ref(0)
+        onany(obs, obs2, obs3) do args...
+            counter[] += 1
+            return
+        end
+        ComputePipeline.update!(g, input1 = 2, input2 = 8)
+        @test counter[] == 4
+    end
+
+    @testset "Infinite loops" begin
+        g = ComputeGraph()
+        add_input!(g, :resample, 1)
+        register_computation!(g, [:resample], [:output]) do (resample,), changed, cached
+            data = isnothing(cached) ? collect(1:10) : cached[1]
+            return (resample > 0 ? shuffle!(data) : data,)
+        end
+        obs = ComputePipeline.get_observable!(g, :output)
+
+        update_counter = Ref(0)
+        on(x -> update_counter[] += 1, obs)
+        @testset "Problem" begin
+            # Updating mutable data to the same value can cause infinite loops
+            # if the Observable also updates (and then loops back into the graph)
+            # We want this to never trigger:
+            prev = deepcopy(g[:output][])
+            @test g[:output][] !== prev # Sanity check
+            @test obs[] !== prev # Sanity check
+            for i in 1:10
+                update!(g, resample = -i) # don't change data
+                @test g[:output][] == prev # Sanity check
+                @test obs[] == prev # Sanity check
+                @test update_counter[] == 0
+            end
+
+            # And updating still works
+            prev = deepcopy(g[:output][])
+            update_counter[] = 0
+            @test g[:output][] !== prev # Sanity check
+            @test obs[] !== prev # Sanity check
+            for i in 1:10
+                prev = deepcopy(g[:output][])
+                update!(g, resample = i) # shuffle data
+                @test g[:output][] != prev # Sanity check
+                @test obs[] != prev # Sanity check
+                @test obs[] == g[:output][]
+                @test update_counter[] == i
+            end
+
+            # Mixed for good measure
+            prev = deepcopy(g[:output][])
+            update_counter[] = 0
+            expected = 0
+            for i in 1:30
+                choice = rand(Int)
+                prev = deepcopy(g[:output][])
+                update!(g, resample = choice) # maybe shuffle data
+                if choice > 0
+                    expected += 1
+                    @test obs[] != prev
+                else
+                    @test obs[] == prev
+                end
+                @test obs[] == g[:output][]
+                @test update_counter[] == expected
+            end
+        end
+
+        @testset "Solution" begin
+            # Keep observable and compute data distinguishable
+            @test obs[] == g[:output][]
+            @test obs[] !== g[:output][]
+
+            for i in 1:10
+                update!(g, resample = -i)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+
+            for i in 1:10
+                update!(g, resample = i)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+
+            for i in 1:30
+                choice = rand(Int)
+                update!(g, resample = choice)
+                @test obs[] == g[:output][]
+                @test obs[] !== g[:output][]
+            end
+        end
+    end
+end

@@ -216,15 +216,23 @@ struct ComputeGraph
     onchange::Observable{Set{Symbol}}
     observables::Dict{Symbol,Observable}
     observerfunctions::Vector{Observables.ObserverFunction}
+    obs_to_update::Vector{Observable}
 end
 
 function get_observable!(attr::ComputeGraph, key::Symbol)
+    # Because we allow output arrays to be reused it can be impossible to tell
+    # if the data has updated. In this case the data is marked as dirty/changed
+    # and added to the `onchange`. If this data is fed into an Observable which
+    # updates the graph it can lead to infinite loops.
+    # To prevent this we have to disambiguate the data and do == checks here.
+    # This requires us to copy data every time we update and we can't use
+    # `copy` because that is not always available (e.g. not for Rect)
     return get!(attr.observables, key) do
         val = attr.outputs[key]
-        result = Observable(val[])
+        result = Observable(deepcopy(val[]))
         on(attr.onchange) do changeset
-            if key in changeset
-                result[] = val[]
+            if (key in changeset) && (val[] != result[])
+                result[] = deepcopy(val[])
             end
             return Consume(false)
         end
@@ -268,9 +276,11 @@ function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
 end
 
 function ComputeGraph()
+    onchange = Observable(Set{Symbol}())
+    on(empty!, onchange, priority = typemin(Int)) # clear changeset after processing observables
     return ComputeGraph(
-        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Observable(Set{Symbol}()),
-        Dict{Symbol,Observable}(), Observables.ObserverFunction[])
+        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), onchange,
+        Dict{Symbol,Observable}(), Observables.ObserverFunction[], Observable[])
 end
 
 _first_arg(args, changed, last) = (args[1],)
@@ -294,13 +304,17 @@ function isdirty(edge::ComputeEdge)
     return any(edge.inputs_dirty)
 end
 
-function mark_dirty!(edge::ComputeEdge)
+function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
+    # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
+    g = edge.graph
+    for output in edge.outputs
+        push!(g.onchange.val, output.name)
+        g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
+    end
+
     edge.got_resolved[] = false
     for dep in edge.dependents
-        mark_dirty!(dep)
-    end
-    for output in edge.outputs
-        push!(edge.graph.onchange.val, output.name)
+        mark_dirty!(dep, obs_to_update)
     end
     return
 end
@@ -327,12 +341,28 @@ function resolve!(input::Input)
     return input.output.value[]
 end
 
-function mark_dirty!(input::Input)
+function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
+    push!(input.graph.onchange.val, input.name)
+    if !(input.graph.onchange in obs_to_update)
+        push!(obs_to_update, input.graph.onchange)
+    end
+
     input.dirty = true
     for edge in input.dependents
-        mark_dirty!(edge)
+        mark_dirty!(edge, obs_to_update)
     end
-    push!(input.graph.onchange.val, input.name)
+    return
+end
+
+mark_dirty!(x) = mark_dirty!(x, x.graph.obs_to_update)
+
+update_observables!(comp::Computed) = update_observables!(comp.parent)
+update_observables!(edge::Input) = update_observables!(edge.graph)
+update_observables!(edge::ComputeEdge) = update_observables!(edge.graph)
+update_observables!(graph::ComputeGraph) = update_observables!(graph.obs_to_update)
+function update_observables!(obs_to_update::Vector{Observable})
+    foreach(notify, obs_to_update)
+    empty!(obs_to_update)
     return
 end
 
@@ -341,28 +371,33 @@ function Base.setindex!(computed::Computed, value)
         return setindex!(computed.parent, value)
     else
         computed.value[] = value
-        return mark_dirty!(computed)
+        mark_dirty!(computed)
+        update_observables!(computed)
+        return value
     end
 end
 
 function Base.setindex!(input::Input, value)
     input.value = value
-    return mark_dirty!(input)
+    mark_dirty!(input)
+    update_observables!(input)
+    return value
 end
 
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
-    empty!(attr.onchange.val)
     input = attr.inputs[key]
     # Skip if the value is the same as before
     is_same(input.value, value) && return value
-    input.value = value
+    # can't notify observables immediately here, because update may call this
+    # multiple times for a synchronized update (would cause desync)
     mark_dirty!(input)
-    notify(attr.onchange)
+    input.value = value
     return value
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
     _setproperty!(attr, key, value)
+    foreach(notify, attr.obs_to_update)
     return value
 end
 
@@ -393,6 +428,7 @@ function update!(attr::ComputeGraph, dict::Dict{Symbol})
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    update_observables!(attr)
     return attr
 end
 
@@ -404,6 +440,7 @@ function update!(attr::ComputeGraph, pairs...)
             error("Attribute $key not found in ComputeGraph")
         end
     end
+    update_observables!(attr)
     return attr
 end
 
@@ -419,6 +456,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :onchange && return getfield(attr, :onchange)
     key === :observables && return getfield(attr, :observables)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
+    key === :obs_to_update && return getfield(attr, :obs_to_update)
     return attr.outputs[key]
 end
 
@@ -465,6 +503,7 @@ function set_result!(edge::TypedEdge, result)
 end
 
 is_same(@nospecialize(a), @nospecialize(b)) = false
+is_same(a::Symbol, b::Symbol) = a == b
 function is_same(a::T, b::T) where T
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`

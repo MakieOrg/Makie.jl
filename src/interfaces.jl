@@ -183,7 +183,7 @@ function handle_transformation!(plot, parent)
     # TODO: Consider removing Transformation() and handling this in compute graph
     # connect updates
     # TODO: These should not be added as inputs. But how do we update them otherwise?
-    if haskey(plot, :model)
+    if haskey(plot, :model) && haskey(plot.attributes.inputs, :model)
         on(model -> update!(plot, model = model), plot, transformationmatrix(plot), update = true)
     else
         add_input!(plot.attributes, :model, transformationmatrix(plot))
