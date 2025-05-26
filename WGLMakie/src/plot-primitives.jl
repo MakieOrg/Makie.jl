@@ -529,7 +529,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
