@@ -30,7 +30,7 @@ Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [compat]
-DocumenterVitepress = "0.1"
+DocumenterVitepress = "0.2"
 
 [sources]
 Makie = { path = ".." }
