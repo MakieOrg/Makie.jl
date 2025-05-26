@@ -5,16 +5,7 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
     if !haskey(metamesh, :material_names) || !haskey(metamesh, :materials)
         @error "The given mesh has no :material_names or :materials. Drawing without material information."
         for (i, m) in enumerate(meshes)
-            attr = Attributes()
-            # Differentiate colors?
-            attr[:color] = i
-            attr[:colorrange] = (1, length(meshes))
-
-            for k in Makie.attribute_names(Makie.Mesh)
-                get!(attr, k, map(identity, p.attributes[k]))
-            end
-
-            mesh!(p, attr, m)
+            mesh!(p, Attributes(p), m, color = i, colorrange = (1, length(meshes)))
         end
 
         return p
@@ -23,14 +14,16 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
     names = metamesh[:material_names]
 
     for (name, m) in zip(names, meshes)
-        attr = Attributes()
+        overwrites = Dict{Symbol, Any}()
         material = metamesh[:materials][name]
 
         # TODO: Add ambient multiplier
         # attr[:ambient]   = get(material, "ambient", p.attributes[:ambient])
-        attr[:diffuse]   = get(material, "diffuse", p.attributes[:diffuse])
-        attr[:specular]  = get(material, "specular", p.attributes[:specular])
-        attr[:shininess] = get(material, "shininess", p.attributes[:shininess])
+        for key in ["diffuse", "specular", "shininess"]
+            if haskey(material, key)
+                overwrites[Symbol(key)] = material[key]
+            end
+        end
 
         if haskey(material, "diffuse map")
             try
@@ -57,14 +50,14 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
                 end
                 repeat = get(x, "clamp", false) ? (:clamp_to_edge) : (:repeat)
 
-                attr[:color] = ShaderAbstractions.Sampler(tex;
+                overwrites[:color] = ShaderAbstractions.Sampler(tex;
                     x_repeat = repeat, mipmap = true,
                     minfilter = :linear_mipmap_linear, magfilter = :linear
                 )
 
                 scale = Vec2f(get(x, "scale", Vec2f(1)))
                 trans = Vec2f(get(x, "offset", Vec2f(0)))
-                attr[:uv_transform] = ((trans, scale), :mesh)
+                overwrites[:uv_transform] = ((trans, scale), :mesh)
             catch e
                 @error "Failed to load texture from material $name: " exception = e
             end
@@ -72,17 +65,12 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
         # What should we do if no texture is given?
         # Should we assume diffuse carries color information if no texture is given?
         elseif haskey(material, "diffuse")
-            attr[:color] = RGBAf(1,1,1,1)
+            overwrites[:color] = RGBAf(1,1,1,1)
         else
             # use Makie default?
         end
 
-        for k in Makie.attribute_names(Makie.Mesh)
-            k in (:transformation, :model) && continue
-            get!(attr, k, map(identity, p.attributes[k]))
-        end
-
-        mesh!(p, attr, m)
+        mesh!(p, Attributes(p), m; overwrites...)
     end
 
     return p

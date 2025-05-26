@@ -176,6 +176,8 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             el32convert(apply_scale(colorscale, color))
         elseif color isa AbstractPattern
             ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat=:repeat)
+        elseif color isa ShaderAbstractions.Sampler
+            color # TODO: Should we skip alpha in this case?
         elseif color isa AbstractArray
             add_alpha.(color, alpha)
         else
