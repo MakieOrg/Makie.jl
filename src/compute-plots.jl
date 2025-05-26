@@ -285,6 +285,9 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
     return
 end
 
+# Julia 1.10 compat
+_filter(f, xs::NamedTuple) = xs[filter(k -> f(xs[k]), keys(xs))]
+
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     args = attr[:args][]
@@ -317,9 +320,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         end
     end
     register_computation!(attr, Symbol[conv_attributes...], [:convert_kwargs]) do inputs, changed, last
-        # filter is not defined on empty NamedTuples?!
-        isempty(inputs) && return (inputs,)
-        return (filter(!isnothing, inputs),)
+        return (_filter(!isnothing, inputs),)
     end
     register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last
         x = convert_arguments(P, args.dim_converted...; args.convert_kwargs...)
