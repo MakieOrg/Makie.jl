@@ -25,17 +25,20 @@ function Base.setindex!(conversions::DimConversions, value::Observable, i::Int)
 end
 
 function Base.setindex!(conversions::DimConversions, value, i::Int)
-    isnothing(value) && return # ignore no conversions
-    conversions[i] === value && return # ignore same conversion
+    isnothing(value) && return nothing # ignore no conversions
+    conversions[i] == value && return nothing # ignore same conversion
     if isnothing(conversions[i])
         # only set new conversion if there is none yet
         conversions.conversions[i][] = value
-        return
+        return nothing
     else
-        throw(ArgumentError("Cannot change dim conversion for dimension $i, since it already is set to a conversion: $(conversions[i])."))
+        throw(
+            ArgumentError(
+                "Cannot change dim conversion for dimension $i to $value, since it already is set to a conversion: $(conversions[i]).",
+            ),
+        )
     end
 end
-
 
 ## Interface to be overloaded for any AbstractDimConversion type
 function convert_dim_value(conversions::DimConversions, dim::Int, value)
@@ -45,14 +48,15 @@ function convert_dim_value(conversions::DimConversions, dim::Int, value)
     return convert_dim_value(conversions[dim], value)
 end
 
-
 function convert_dim_value(axislike::AbstractAxis, dim::Int, value)
     return convert_dim_value(get_conversions(axislike), dim, value)
 end
 
 convert_dim_value(::NoDimConversion, value) = value
 function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
-    error("AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")
+    return error(
+        "AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))"
+    )
 end
 
 using MakieCore: should_dim_convert
@@ -72,7 +76,6 @@ end
 
 # The below is defined in MakieCore, to be accessible by `@recipe`
 # MakieCore.should_dim_convert(eltype) = false
-
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
@@ -99,7 +102,7 @@ function get_conversions(plot::Plot)
 end
 
 # For e.g. Axis attributes
-function get_conversions(attr::Union{Attributes, Dict, NamedTuple})
+function get_conversions(attr::Union{Attributes,Dict,NamedTuple})
     conversions = DimConversions()
     for i in 1:3
         dim_sym = Symbol("dim$(i)_conversion")
@@ -174,7 +177,9 @@ function needs_tick_update_observable(conversion::Observable)
     end
 end
 
-function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
+function try_dim_convert(
+    P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister
+)
     # Only 2 and 3d conversions are supported, and only
     if !(length(args_obs) in (2, 3))
         return args_obs

@@ -33,7 +33,7 @@ For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conver
 ```julia
 date_time = DateTime("2021-10-27T11:11:55.914")
 date_time_range = range(date_time, step=Week(5), length=10)
-# Automatically chose xticks as DateTeimeTicks:
+# Automatically chose xticks as DateTimeTicks:
 scatter(date_time_range, 1:10)
 
 # explicitly chose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
@@ -58,7 +58,6 @@ expand_dimensions(::PointBased, y::AbstractVector{<:Dates.AbstractTime}) = (keys
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
 MakieCore.should_dim_convert(::Type{<:Dates.AbstractTime}) = true
-
 
 function convert_dim_value(conversion::DateTimeConversion, value::Dates.TimeType)
     return date_to_number(conversion.type[], value)
@@ -87,7 +86,6 @@ function convert_dim_observable(conversion::DateTimeConversion, values::Observab
 end
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
-
     if scale != identity
         error("$(scale) scale not supported for DateTimeConversion")
     end
@@ -113,3 +111,5 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin
         return tickvalues, string.(dates)
     end
 end
+
+Base.:(==)(a::DateTimeConversion, b::DateTimeConversion) = a.type[] == b.type[]
