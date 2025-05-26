@@ -4,11 +4,6 @@ import mathjax3 from "markdown-it-mathjax3";
 import footnote from "markdown-it-footnote";
 import path from 'path'
 
-function getBaseRepository(base: string): string {
-  if (!base || base === '/') return '/';
-  const parts = base.split('/').filter(Boolean);
-  return parts.length > 0 ? `/${parts[0]}/` : '/';
-}
 
 const baseTemp = {
   base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',// TODO: replace this in makedocs!
@@ -36,7 +31,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
     ['script', {async:'', defer:'', src:'https://api.makie.org/latest.js'}],
-    ['script', {src: `${getBaseRepository(baseTemp.base)}versions.js`}],
+    ['script', {src: '/versions.js'}],
     ['noscript', {}, '<img alt="" referrerpolicy="no-referrer-when-downgrade" src="https://api.makie.org/noscript.gif"/>'],
     ['script', {src: `${baseTemp.base}siteinfo.js`}],
   ],
