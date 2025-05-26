@@ -286,8 +286,6 @@ end
 _first_arg(args, changed, last) = (args[1],)
 
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
-    haskey(attr.inputs, key) || throw(KeyError(key))
-    haskey(attr.outputs, alias_key) && throw(KeyError(alias_key))
     #TODO more efficient implementation!
     register_computation!(_first_arg, attr, [key], [alias_key])
     return attr

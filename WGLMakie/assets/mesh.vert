@@ -96,7 +96,7 @@ void main(){
     }
     vec4 position_world = model_f32c * vec4(vertex_position, 1);
 
-    render(position_world, get_normal(), view, projection);
+    render(position_world, get_normals(), view, projection);
     frag_uv = apply_uv_transform(get_wgl_uv_transform(), get_uv());
     frag_color = get_color(get_vertex_color(), get_uniform_colorrange(), uniform_colormap);
 

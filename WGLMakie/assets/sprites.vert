@@ -100,7 +100,7 @@ void main(){
     data_point = pview * data_point;
 
     // Compute transform for the offset vectors from the central point
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotation()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_converted_rotation()) * trans;
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
 
     vec4 vclip = data_point + sprite_center;
@@ -153,7 +153,7 @@ void main(){
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
     frag_color = tovec4(get_vertex_color());
-    frag_strokecolor = tovec4(get_strokecolor());
+    frag_strokecolor = tovec4(get_converted_strokecolor());
     frag_uv_offset_width = get_sdf_uv();
     // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
     // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)

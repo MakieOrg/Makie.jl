@@ -646,7 +646,6 @@ function update_plotspecs!(
             empty!(unused_plots)
             merge!(unused_plots, new_plots)
             empty!(new_plots)
-            # finally, notify all changes at once
         end
         return
     end

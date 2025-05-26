@@ -497,10 +497,22 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String},Union{Session,Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
-function Base.delete!(screen::Screen, scene::Scene, plot::Plot)
-    # only queue atomics to actually delete on js
+function Base.delete!(screen::Screen, ::Scene, plot::Plot)
+    # # only queue atomics to actually delete on js
+    atomics = Makie.collect_atomic_plots(plot)
+    session = screen.session
+    for plot in atomics
+        if haskey(plot.attributes.outputs, :wgl_update_obs)
+            # This plot was never rendered, so we don't need to delete it
+            # obs = plot.attributes.outputs[:wgl_update_obs].value[]
+            delete!(plot.attributes, :wgl_update_obs; force=true, recursive=true)
+            # if !isnothing(session)
+            #     Bonito.delete_cached!(session, session, obs.id)
+            # end
+        end
+    end
     if !DISABLE_JS_FINALZING[]
-        plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
+        plot_uuids = map(js_uuid, atomics)
         push!(DELETE_QUEUE, (screen, plot_uuids, nothing))
     end
     return

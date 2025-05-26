@@ -73,7 +73,7 @@ void main(){
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = get_markersize() * to_vec3(get_position());
     vec3 N = get_normal() / get_markersize(); // see issue #3702
-    rotate(get_rotation(), vertex_position, N);
+    rotate(get_converted_rotation(), vertex_position, N);
     vertex_position = get_f32c_scale() * vertex_position;
     N = N / get_f32c_scale();
     vec4 position_world;

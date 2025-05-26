@@ -123,18 +123,12 @@ end
 
 
 function connect_post_init_events(screen, scene)
-    for attempt in 1:10
-        isopen(screen) && break
-        sleep(0.1 * attempt)
-    end
-    @assert isopen(screen) "Window must be initialized first"
-
     e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
 
     # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
-        if isopen(screen)
+        if !Makie.isclosed(screen)
             tick_callback(Makie.RegularRenderTick)
             # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
@@ -147,4 +141,3 @@ function connect_post_init_events(screen, scene)
 
     return
 end
-

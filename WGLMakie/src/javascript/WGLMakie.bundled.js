@@ -23067,8 +23067,6 @@ class Plot {
         this.mesh.material.dispose();
         this.mesh = undefined;
         this.parent = undefined;
-        this.uuid = "";
-        this.name = "";
         this.is_instanced = false;
         this.geometry_needs_recreation = false;
         this.plot_data = {};
@@ -23085,6 +23083,9 @@ class Plot {
     }
     update(data) {
         const { mesh  } = this;
+        if (!mesh) {
+            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+        }
         const { geometry  } = mesh;
         const { attributes , interleaved_attributes  } = geometry;
         const { uniforms  } = mesh.material;
@@ -23162,8 +23163,6 @@ class Plot {
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
-    console.log(attributes.line_color_start);
-    console.log(uniforms.line_color_start);
     const color = attribute_type(attributes.line_color_start) || uniform_type(uniforms.line_color_start);
     if (is_linesegments) {
         return `precision highp float;
@@ -24372,7 +24371,6 @@ class Scatter extends Plot {
                 };
             }
         }
-        console.log(data);
         super(scene, data);
         this.is_instanced = true;
         this.atlas = atlas;

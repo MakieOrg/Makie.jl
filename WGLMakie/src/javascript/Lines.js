@@ -29,8 +29,6 @@ function filter_by_key(dict, keys, default_value = false) {
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
-    console.log(attributes.line_color_start)
-    console.log(uniforms.line_color_start);
     const color =
         attribute_type(attributes.line_color_start) ||
         uniform_type(uniforms.line_color_start);

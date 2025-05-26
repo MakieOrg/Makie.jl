@@ -99,8 +99,8 @@ export class Plot {
         this.mesh.material.dispose();
         this.mesh = undefined;
         this.parent = undefined;
-        this.uuid = "";
-        this.name = "";
+        // this.uuid = "";
+        // this.name = "";
         this.is_instanced = false;
         this.geometry_needs_recreation = false;
         this.plot_data = {};
@@ -119,6 +119,9 @@ export class Plot {
 
     update(data) {
         const { mesh } = this;
+        if (!mesh) {
+            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+        }
         const { geometry } = mesh;
         const { attributes, interleaved_attributes } = geometry;
         const { uniforms } = mesh.material;
@@ -326,7 +329,6 @@ export class Scatter extends Plot {
                 };
             }
         }
-        console.log(data)
         super(scene, data);
         this.is_instanced = true;
         this.atlas = atlas;

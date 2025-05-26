@@ -111,12 +111,20 @@ function create_wgl_renderobject(callback, attr, inputs)
             program = callback(args)
             return (program, Observable{Any}([]))
         else
-            update_values!(last.wgl_update_obs, Bonito.LargeUpdate(plot_updates(args, changed)))
+            updates = plot_updates(args, changed)
+            update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
         end
     end
-    on(attr.onchange) do _
-        attr[:wgl_renderobject][]
+    listener = nothing
+    listener = on(attr.onchange) do _
+        if haskey(attr, :wgl_renderobject)
+            attr[:wgl_renderobject][]
+        else
+            if !isnothing(listener)
+                Observables.off(listener)
+            end
+        end
         return nothing
     end
     return attr[:wgl_renderobject][]
@@ -159,13 +167,7 @@ function assemble_particle_robj!(attr, data)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
-    data[:rotation] = if haskey(attr, :converted_rotation)
-        attr.converted_rotation
-    elseif haskey(attr, :rotation)
-        attr.rotation
-    else
-        attr.text_rotation
-    end
+    data[:converted_rotation] = attr.converted_rotation
     data[:f32c_scale] = attr.f32c_scale
 
     # Uniforms will be set in JavaScript
@@ -176,10 +178,9 @@ function assemble_particle_robj!(attr, data)
 
     data[:depth_shift] = attr.depth_shift
     data[:transform_marker] = attr.transform_marker
-
     per_instance_keys = Set([
-        :positions_transformed_f32c, :rotation, :quad_offset, :quad_scale, :vertex_color,
-        :intensity, :sdf_uv, :strokecolor, :marker_offset, :markersize
+        :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
+        :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize
     ])
 
     per_instance = filter(data) do (k, v)
@@ -193,42 +194,6 @@ function assemble_particle_robj!(attr, data)
     return per_instance, data
 end
 
-const SCATTER_INPUTS = [
-    :positions_transformed_f32c,
-
-    :vertex_color,
-    :uniform_color,
-    :uniform_colormap,
-    :uniform_colorrange,
-    :nan_color,
-    :highclip_color,
-    :lowclip_color,
-    :pattern,
-
-    :converted_rotation,
-    :billboard,
-    :quad_scale,
-    :quad_offset,
-    :sdf_uv,
-    :sdf_marker_shape,
-    :image,
-    :strokewidth,
-    :strokecolor,
-    :glowwidth,
-    :glowcolor,
-    :depth_shift,
-    :atlas,
-    :markerspace,
-
-    :visible,
-    :transform_marker,
-    :f32c_scale,
-    :model_f32c,
-    :marker_offset,
-    :glyph_data,
-    :uniform_clip_planes,
-    :uniform_num_clip_planes
-]
 
 function scatter_program(attr)
     dfield = attr.sdf_marker_shape === Cint(Makie.DISTANCEFIELD)
@@ -238,7 +203,7 @@ function scatter_program(attr)
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => haskey(attr, :converted_rotation) ? attr.billboard : false,
+        :billboard => attr.billboard,
         :distancefield => distancefield,
 
         :marker_offset => attr.marker_offset,
@@ -249,7 +214,7 @@ function scatter_program(attr)
         :sdf_marker_shape => get(attr, :sdf_marker_shape, Vec2f[]),
 
         :strokewidth => attr.strokewidth,
-        :strokecolor => get(()-> attr.text_strokecolor, attr, :strokecolor),
+        :converted_strokecolor => attr.converted_strokecolor,
         :glowwidth => attr.glowwidth,
         :glowcolor => attr.glowcolor,
         :pattern => get(attr, :pattern, false),
@@ -288,10 +253,28 @@ function create_shader(scene::Scene, plot::Scatter)
         return (dict,)
     end
 
+    # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
+    ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr)
-    return create_wgl_renderobject(scatter_program, attr, SCATTER_INPUTS)
+    inputs =  [
+        :positions_transformed_f32c,
+
+        :vertex_color, :uniform_color, :uniform_colormap,
+        :uniform_colorrange, :nan_color, :highclip_color,
+        :lowclip_color, :pattern,
+
+        :converted_rotation, :billboard, :quad_scale,
+        :quad_offset, :sdf_uv, :sdf_marker_shape, :image,
+        :strokewidth, :converted_strokecolor, :glowwidth,
+        :glowcolor, :depth_shift, :atlas,
+        :markerspace, :visible, :transform_marker, :f32c_scale,
+        :model_f32c, :marker_offset, :glyph_data,
+        :uniform_clip_planes, :uniform_num_clip_planes
+    ]
+    return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
 const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
@@ -335,7 +318,6 @@ function register_text_computation!(attr, scene)
     register_computation!(attr, [:glyphindices, :text_blocks, :text_scales], [:glyph_scales]) do (glyphs, text_blocks, fontsize), changed, last
         return (Makie.map_per_glyph(glyphs, text_blocks, Vec2f, Makie.to_2d_scale(fontsize)),)
     end
-
     register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs,fonts,glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
         dict = Dict(
@@ -355,6 +337,11 @@ function create_shader(scene::Scene, plot::Makie.Text)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :text_color)
     register_text_computation!(attr, scene)
+
+    ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
+    ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
+    # TODO shouldn't billboard come from text as well?
+    add_input!(attr, :billboard, true)
     inputs = [
         :positions_transformed_f32c,
 
@@ -362,7 +349,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
         :nan_color, :highclip_color, :lowclip_color, :pattern,
         :strokewidth, :glowwidth, :glowcolor,
 
-        :text_rotation, :text_strokecolor,
+        :converted_rotation, :billboard, :converted_strokecolor,
         :marker_offset, :sdf_marker_shape, :glyph_data,
         # :quad_scale, :quad_offset, :sdf_uv,
         :depth_shift, :atlas, :markerspace,
@@ -415,12 +402,16 @@ function create_shader(scene::Scene, plot::MeshScatter)
     Makie.register_world_normalmatrix!(attr)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     backend_colors!(attr)
+
+    ComputePipeline.alias!(attr, :rotation, :converted_rotation)
+    ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+
     inputs = [
         # Special
         :space,
         :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
         :wgl_uv_transform, :pattern,
-        :positions_transformed_f32c, :markersize, :rotation, :f32c_scale,
+        :positions_transformed_f32c, :markersize, :converted_rotation, :f32c_scale,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
@@ -468,7 +459,7 @@ function mesh_program(attr)
         :shininess => attr.shininess,
         :backlight => attr.backlight,
 
-        :model_f32c => Mat4f(attr.model_f32c),
+        :model_f32c => attr.model_f32c,
         :PICKING_INDEX_FROM_UV => true,
         :wgl_uv_transform => attr.wgl_uv_transform,
         :depth_shift => attr.depth_shift,
@@ -485,9 +476,9 @@ function mesh_program(attr)
     buffers = filter(x-> x[2] isa Buffer, data)
 
     if !isnothing(attr.normals)
-        buffers[:normal] = attr.normals
+        buffers[:normals] = attr.normals
     else
-        uniforms[:normal] = Vec3f(0)
+        uniforms[:normals] = Vec3f(0)
     end
     if !isnothing(attr.texturecoordinates)
         buffers[:uv] = attr.texturecoordinates
