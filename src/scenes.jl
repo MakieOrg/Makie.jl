@@ -703,12 +703,20 @@ Collects all plots in the provided `<: ScenePlot` and returns a vector of all pl
 which satisfy `is_atomic_plot`, which defaults to Makie's definition of `Makie.is_atomic_plot`.
 """
 function collect_atomic_plots(xplot::Plot, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
-    xplot in plots && return plots # avoid infinite recursion
     if is_atomic_plot(xplot)
         # Atomic plot!
         push!(plots, xplot)
+    else
+        for elem in xplot.plots
+            collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
+        end
     end
-    # e.g. Text which is atomic but has child plots
+    return plots
+end
+
+# Text is atomic but contains another atomic (lines for latexstrings)
+function collect_atomic_plots(xplot::Text, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    push!(plots, xplot)
     for elem in xplot.plots
         collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
     end
