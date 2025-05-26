@@ -31,7 +31,7 @@ WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 
 [compat]
-DocumenterVitepress = "0.1"
+DocumenterVitepress = "0.2.4"
 
 [sources]
 Makie = { path = ".." }
