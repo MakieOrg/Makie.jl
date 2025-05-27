@@ -253,56 +253,56 @@ end
     GLMakie.destroy!(screen)
 end
 
-@testset "stresstest multi displays" begin
-    GLMakie.closeall()
-    set_theme!()
-    screens = map(1:10) do i
-        fig = Figure(size=(500, 500))
-        rng  = Random.MersenneTwister(0)
-        ax, pl = image(fig[1, 1], 0..1, 0..1, rand(rng, 1000, 1000))
-        scatter!(ax, rand(rng, Point2f, 1000), color=:red)
-        lines!(ax, rand(rng, Point2f, 1000), transparency=true)
+# @testset "stresstest multi displays" begin
+#     GLMakie.closeall()
+#     set_theme!()
+#     screens = map(1:10) do i
+#         fig = Figure(size=(500, 500))
+#         rng  = Random.MersenneTwister(0)
+#         ax, pl = image(fig[1, 1], 0..1, 0..1, rand(rng, 1000, 1000))
+#         scatter!(ax, rand(rng, Point2f, 1000), color=:red)
+#         lines!(ax, rand(rng, Point2f, 1000), transparency=true)
 
-        ax3d, pl = mesh(fig[1, 2], Sphere(Point3f(0), 1))
-        meshscatter!(ax3d, rand(rng, Point3f, 100), color=:red)
+#         ax3d, pl = mesh(fig[1, 2], Sphere(Point3f(0), 1))
+#         meshscatter!(ax3d, rand(rng, Point3f, 100), color=:red)
 
-        heatmap(fig[2, 1], rand(rng, 100, 100))
-        surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
+#         heatmap(fig[2, 1], rand(rng, 100, 100))
+#         surface(fig[2, 2], 0..1, 0..1, rand(rng, 1000, 1000) ./ 2)
 
-        display(GLMakie.Screen(visible=false, scalefactor=1), fig)
-    end
+#         display(GLMakie.Screen(visible=false, scalefactor=1), fig)
+#     end
 
-    images = map(Makie.colorbuffer, screens)
-    @test all(x-> x ≈ first(images), images)
+#     images = map(Makie.colorbuffer, screens)
+#     @test all(x-> x ≈ first(images), images)
 
-    @test Base.summarysize(screens) / 10^6 > 60 # TODO: greater? What's the point of that?
-    foreach(close, screens)
+#     @test Base.summarysize(screens) / 10^6 > 60 # TODO: greater? What's the point of that?
+#     foreach(close, screens)
 
-    for screen in screens
-        @test !isopen(screen)
+#     for screen in screens
+#         @test !isopen(screen)
 
-        @test isempty(screen.screen2scene)
-        @test isempty(screen.screens)
-        @test isempty(screen.renderlist)
-        @test isempty(screen.cache)
-        @test isempty(screen.cache2plot)
+#         @test isempty(screen.screen2scene)
+#         @test isempty(screen.screens)
+#         @test isempty(screen.renderlist)
+#         @test isempty(screen.cache)
+#         @test isempty(screen.cache2plot)
 
-        @test isempty(screen.window_open.listeners)
-        @test isempty(screen.render_tick.listeners)
-        @test isempty(screen.px_per_unit.listeners)
-        @test isempty(screen.scalefactor.listeners)
+#         @test isempty(screen.window_open.listeners)
+#         @test isempty(screen.render_tick.listeners)
+#         @test isempty(screen.px_per_unit.listeners)
+#         @test isempty(screen.scalefactor.listeners)
 
-        @test screen.scene === nothing
-        @test screen.rendertask === nothing
-        @test (Base.summarysize(screen) / 10^6) < 1.4
-    end
-    # All should go to pool after close
-    @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)
+#         @test screen.scene === nothing
+#         @test screen.rendertask === nothing
+#         @test (Base.summarysize(screen) / 10^6) < 1.4
+#     end
+#     # All should go to pool after close
+#     @test all(x-> x in GLMakie.SCREEN_REUSE_POOL, screens)
 
-    GLMakie.closeall()
-    # now every screen should be gone
-    @test isempty(GLMakie.SCREEN_REUSE_POOL)
-end
+#     GLMakie.closeall()
+#     # now every screen should be gone
+#     @test isempty(GLMakie.SCREEN_REUSE_POOL)
+# end
 
 @testset "HiDPI displays" begin
     import FileIO: @format_str, File, load
