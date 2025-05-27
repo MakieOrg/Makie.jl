@@ -351,7 +351,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     # TODO:
-    # - rotation -> billboard missing
     # - intensity_convert
 
     # To take the human error out of the bookkeeping of two lists

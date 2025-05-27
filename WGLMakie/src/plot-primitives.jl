@@ -203,7 +203,7 @@ function scatter_program(attr)
         :resolution => Vec2f(0),
         :preprojection => Mat4f(I),
         :atlas_texture_size => Float32(size(atlas.data, 2)),
-        :billboard => attr.billboard,
+        :billboard => get(attr, :billboard, false),
         :distancefield => distancefield,
 
         :marker_offset => attr.marker_offset,
@@ -332,6 +332,7 @@ end
 function create_shader(scene::Scene, plot::Makie.Text)
     # TODO: color processing incorrect, processed per-glyphcollection/global
     #       colors instead of per glyph
+    # TODO: billboard is (and was) always false here - do we want to make it settable?
     attr = plot.attributes
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -340,8 +341,6 @@ function create_shader(scene::Scene, plot::Makie.Text)
 
     ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
-    # TODO shouldn't billboard come from text as well?
-    add_input!(attr, :billboard, true)
     inputs = [
         :positions_transformed_f32c,
 
@@ -349,7 +348,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
         :nan_color, :highclip_color, :lowclip_color, :pattern,
         :strokewidth, :glowwidth, :glowcolor,
 
-        :converted_rotation, :billboard, :converted_strokecolor,
+        :converted_rotation, :converted_strokecolor,
         :marker_offset, :sdf_marker_shape, :glyph_data,
         # :quad_scale, :quad_offset, :sdf_uv,
         :depth_shift, :atlas, :markerspace,
