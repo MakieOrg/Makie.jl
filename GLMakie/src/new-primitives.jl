@@ -504,8 +504,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
-    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform)
+    Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
 

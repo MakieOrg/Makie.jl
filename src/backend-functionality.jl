@@ -208,10 +208,11 @@ function add_computation!(attr, scene, ::Val{:uniform_model})
     end
 end
 
-# TODO: Is this reusable?
 # repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
-function add_computation!(attr, scene, ::Val{:uv_transform_packing}, uv_transform_name = :uv_transform)
-    register_computation!(attr, [uv_transform_name], [:packed_uv_transform]) do (uvt,), changed, last
+function add_computation!(attr, scene, ::Val{:uv_transform_packing})
+    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
+
+    register_computation!(attr, [:pattern_uv_transform], [:packed_uv_transform]) do (uvt,), changed, last
         if uvt isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
             output = Vector{Vec2f}(undef, 3 * length(uvt))

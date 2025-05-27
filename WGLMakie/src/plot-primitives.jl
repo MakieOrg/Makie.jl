@@ -363,7 +363,7 @@ end
 
 to_3x3(mat::Mat{3, 3}) = mat
 to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
-to_3x3(xs::AbstractArray) = to_3x3.(xs)
+to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
     instance = args.marker
@@ -394,9 +394,8 @@ end
 
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
-    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
-    Makie.add_computation!(attr, scene, Val(:uv_transform_packing), :pattern_uv_transform) # TODO:
+    Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
+    map!(to_3x3, attr, :packed_uv_transform, :wgl_uv_transform)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
