@@ -404,7 +404,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
     backend_colors!(attr)
 
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
-    ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
 
     inputs = [
         # Special
@@ -471,10 +470,11 @@ function mesh_program(attr)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     data[:picking] = false
     data[:object_id] = UInt32(0)
-
-    uniforms = filter(x-> !(x[2] isa Buffer), data)
-    buffers = filter(x-> x[2] isa Buffer, data)
-
+    is_vertex((_,x)) = begin
+        (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(attr.positions_transformed_f32c))
+    end
+    uniforms = filter(!is_vertex, data)
+    buffers = filter(is_vertex, data)
     if !isnothing(attr.normals)
         buffers[:normals] = attr.normals
     else
