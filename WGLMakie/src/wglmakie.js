@@ -24,6 +24,8 @@ function dispose_screen(screen) {
         return;
     }
     const { renderer, picking_target, root_scene, comm } = screen;
+    // this usually doesn't get through, since the session may already be closed
+    // in that case, window_open gets set from session.on_close
     comm.notify({ window_open: false });
     if (renderer) {
         const canvas = renderer.domElement;
