@@ -446,9 +446,8 @@ export function recreate_geometry(mesh, vertexarrays, faces) {
     mesh.needsUpdate = true;
 }
 
-
 export function create_material(plot) {
-    const is_volume = "volumedata" in plot.deserialized_uniforms;
+    const is_volume = "isovalue" in plot.deserialized_uniforms;
     return new THREE.RawShaderMaterial({
         uniforms: plot.deserialized_uniforms,
         vertexShader: plot.plot_data.vertex_source,

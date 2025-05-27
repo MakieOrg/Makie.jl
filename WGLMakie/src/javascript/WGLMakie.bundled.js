@@ -21809,7 +21809,7 @@ function attach_instanced_geometry(buffer_geometry, instance_attributes) {
     }
 }
 function create_material(plot) {
-    const is_volume = "volumedata" in plot.deserialized_uniforms;
+    const is_volume = "isovalue" in plot.deserialized_uniforms;
     return new mod.RawShaderMaterial({
         uniforms: plot.deserialized_uniforms,
         vertexShader: plot.plot_data.vertex_source,
