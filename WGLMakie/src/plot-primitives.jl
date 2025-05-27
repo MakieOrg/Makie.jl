@@ -432,7 +432,7 @@ import Makie: EndPoints
 
 function add_uv_mesh!(attr)
     if !haskey(attr, :positions)
-        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func], [:faces, :texturecoordinates, :positions]) do (rect, x, y, z, t), changed, last
+        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func], [:faces, :texturecoordinates, :wgl_positions]) do (rect, x, y, z, t), changed, last
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
                 faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
@@ -448,7 +448,11 @@ function add_uv_mesh!(attr)
                 return (faces, uv, grid_ps)
             end
         end
-        Makie.register_position_transforms!(attr)
+        Makie.register_position_transforms!(attr, :wgl_positions)
+    else
+        _rect = Rect2f(0, 0, 1, 1)
+        add_input!(attr, :faces, decompose(GLTriangleFace, _rect))
+        add_input!(attr, :texturecoordinates, decompose_uv(_rect))
     end
     # TODO: Shouldn't these be hidden Compute nodes instead of Inputs?
     # map!(x -> value, attr, Symbol[], name)
