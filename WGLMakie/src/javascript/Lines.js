@@ -1272,8 +1272,8 @@ export function create_line(plot_object) {
         plot_object.is_segments
     );
 
-    material.depthTest = !plot_data.overdraw.value;
-    material.depthWrite = !plot_data.transparency.value;
+    material.depthTest = !plot_data.overdraw;
+    material.depthWrite = !plot_data.transparency;
 
     material.uniforms.is_linesegments = { value: plot_object.is_segments };
     const mesh = new THREE.Mesh(geometry, material);
