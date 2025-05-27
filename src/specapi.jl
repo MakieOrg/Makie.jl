@@ -454,7 +454,7 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
             isnothing(new_value) && continue
             # only update if different
             if is_different(old_attr, new_value)
-                updates[k] = old_attr
+                updates[k] = new_value
             end
         end
     end

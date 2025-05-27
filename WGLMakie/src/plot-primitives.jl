@@ -30,7 +30,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     return mesh
 end
 
-function backend_colors!(attr, color_name=:scaled_color)
+function backend_colors!(attr, color_name=:scaled_color; permute=false)
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
@@ -40,7 +40,7 @@ function backend_colors!(attr, color_name=:scaled_color)
             return (color, is_pattern)
         elseif color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
             # TODO, don't construct a sampler every time
-            return (Sampler(color, minfilter=filter), false)
+            return (Sampler(permute ? permutedims(color) : color, minfilter=filter), false)
         elseif color isa Union{Real, Colorant}
             return (color, false)
         else
@@ -420,31 +420,50 @@ function create_shader(scene::Scene, plot::MeshScatter)
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
 end
 
+# TODO, speed up GeometryBasics
+function fast_uv(nvertices)
+    xrange, yrange = LinRange.((0, 1), (1, 0), nvertices)
+    return [Vec2f(x, y) for y in yrange for x in xrange]
+end
+xy_convert(x::Makie.EndPoints, n) = LinRange(x..., n + 1)
+xy_convert(x::AbstractArray, n) = x
+
+import Makie: EndPoints
 
 function add_uv_mesh!(attr)
     if !haskey(attr, :positions)
-        register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, last
-            return (decompose(Point2f, Rect2f(rect)),)
+        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func], [:faces, :texturecoordinates, :positions]) do (rect, x, y, z, t), changed, last
+            if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
+                init = isnothing(last) # these are constant after init
+                faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
+                uv = init ? decompose_uv(Rect2f(rect)) : nothing
+                return (faces, uv, decompose(Point2f, Rect2f(rect)))
+            else
+                px = WGLMakie.xy_convert(x, size(z, 1))
+                py = WGLMakie.xy_convert(y, size(z, 2))
+                grid_ps = Makie.matrix_grid(px, py, zeros(length(px), length(py)))
+                res = (length(px), length(py))
+                faces = WGLMakie.fast_faces(res)
+                uv = WGLMakie.fast_uv(res)
+                return (faces, uv, grid_ps)
+            end
         end
         Makie.register_position_transforms!(attr)
     end
     # TODO: Shouldn't these be hidden Compute nodes instead of Inputs?
     # map!(x -> value, attr, Symbol[], name)
 
-    # These are constant so we just add them as inputs
-    rect = Rect2f(0, 0, 1, 1)
-    if !haskey(attr, :faces)
-        Makie.add_input!(attr, :faces, decompose(GLTriangleFace, rect))
-        Makie.add_input!(attr, :texturecoordinates, decompose_uv(rect))
+    if !haskey(attr, :normals)
         Makie.add_input!(attr, :normals, nothing)
         for name in [:diffuse, :specular]
             Makie.add_input!(attr, name, Vec3f(0))
         end
-
         Makie.add_input!(attr, :shininess, 0f0)
         Makie.add_input!(attr, :backlight, 0f0)
         Makie.add_input!(attr, :shading, false)
-        haskey(attr, :wgl_uv_transform) || Makie.add_input!(attr, :wgl_uv_transform, Mat3f(I))
+    end
+    if !haskey(attr, :wgl_uv_transform)
+        Makie.add_input!(attr, :wgl_uv_transform, Mat3f(0,1,0, -1,0,0, 1,0,1))
     end
 end
 
@@ -498,7 +517,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         map!(to_3x3, attr, :uv_transform, :wgl_uv_transform)
     end
     add_uv_mesh!(attr)
-    backend_colors!(attr)
+    backend_colors!(attr, permute=plot isa Heatmap)
     Makie.register_world_normalmatrix!(attr)
     inputs = [
         # Special
@@ -564,7 +583,6 @@ function fast_faces(nvertices)
     return faces
 end
 
-
 function surface2mesh_computation!(attr)
     register_computation!(attr, [:x, :y, :z], [:positions]) do (x, y, z), changed, last
         return (Makie.matrix_grid(identity, x, y, z),)
@@ -575,7 +593,8 @@ function surface2mesh_computation!(attr)
         new_size = size(z)
         !isnothing(last) && last_size == new_size && return nothing
         rect = Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), new_size)
-        faces = fast_faces(new_size)
+        faces = decompose(GLTriangleFace, rect)
+        # TODO, why is fast_faces incorrect?
         return (faces, _surface_uvs(new_size...), new_size)
     end
     register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (fs, ps), changed, last
