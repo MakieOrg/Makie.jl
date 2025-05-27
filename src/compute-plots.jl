@@ -654,6 +654,29 @@ function register_mesh_decomposition!(attr)
     end
 end
 
+# optionally converts uv_transform to the one used with patterns (different defaults)
+function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname = :color)
+    register_computation!(attr,
+        [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
+        [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached
+
+        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern || changed.uv_transform
+        if needs_update
+            if is_pattern
+                # This changes what `automatic` converts to
+                input_uvt = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : uvt
+                new_uvt = pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern)
+                return (new_uvt, )
+            else
+                return (uvt,)
+            end
+        else
+            return nothing
+        end
+    end
+    return
+end
+
 
 function calculated_attributes!(::Type{Image}, plot::Plot)
     attr = plot.attributes
@@ -709,6 +732,7 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr)
     register_position_transforms!(attr)
+    register_pattern_uv_transform!(attr)
     register_computation!(attr, [:positions, :marker, :markersize, :rotation],
                           [:data_limits]) do args, changed, last
         return (meshscatter_data_limits(args...),)
@@ -745,6 +769,7 @@ function calculated_attributes!(::Type{Mesh}, plot::Plot)
     register_mesh_decomposition!(attr)
     register_colormapping!(attr, :mesh_color)
     calculated_attributes!(PointBased(), plot)
+    register_pattern_uv_transform!(attr, colorname = :mesh_color)
 end
 
 function calculated_attributes!(::Type{Volume}, plot::Plot)

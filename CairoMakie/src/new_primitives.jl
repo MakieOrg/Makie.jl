@@ -524,7 +524,6 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     vs = cairo_project_to_screen(plot)
     fs = plot.faces[]
     uv = plot.texturecoordinates[]
-    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
     uv_transform = plot.pattern_uv_transform[]
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
@@ -539,7 +538,6 @@ end
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
-    Makie.add_computation!(plot.attributes, scene, Val(:pattern_uv_transform))
     @get_attribute(plot, (clip_planes, ))
     uv_transform = plot.pattern_uv_transform[]
 
@@ -685,6 +683,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     #       Note that surface2mesh may not be compatible with the order used in
     #       GL backends.
     Makie.register_position_transforms!(attr)
+    Makie.register_pattern_uv_transform!(attr)
 
     draw_mesh3D(scene, screen, primitive)
     return nothing
@@ -706,7 +705,6 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
     colors = cairo_colors(primitive)
-    Makie.add_computation!(primitive.attributes, scene, Val(:pattern_uv_transform))
     uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(

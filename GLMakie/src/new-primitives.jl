@@ -1054,7 +1054,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.register_world_normalmatrix!(attr)
-    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
 
     inputs = [
         # Special

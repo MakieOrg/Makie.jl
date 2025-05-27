@@ -210,8 +210,6 @@ end
 
 # repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
 function add_computation!(attr, scene, ::Val{:uv_transform_packing})
-    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-
     register_computation!(attr, [:pattern_uv_transform], [:packed_uv_transform]) do (uvt,), changed, last
         if uvt isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
@@ -258,28 +256,8 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     end
 end
 
-# optionally converts uv_transform to the one used with patterns
-# WGLMakie should call this with target_mat3 = true
-function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; modelname = :model_f32c, colorname = :color, target_mat3 = false)
-    register_computation!(attr,
-        [:uv_transform, :projectionview, :viewport, modelname, colorname, :fetch_pixel],
-        [:pattern_uv_transform]) do (uvt, pv, vp, model, pattern, is_pattern), changed, cached
-
-        needs_update = isnothing(cached) || changed.fetch_pixel || is_pattern || changed.uv_transform
-        if needs_update
-            if is_pattern
-                # This changes what `automatic` converts to
-                # TODO, uv_transform can be a computed?
-                input_uvt = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : uvt
-                new_uvt = Makie.pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern, target_mat3)
-                return (new_uvt, )
-            else
-                return (uvt,)
-            end
-        else
-            return nothing
-        end
-    end
+function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; kwargs...)
+    register_pattern_uv_transform!(attr; kwargs...)
 end
 
 function add_computation!(attr, scene, ::Val{:voxel_uv_transform})

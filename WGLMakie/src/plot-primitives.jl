@@ -538,7 +538,6 @@ end
 function create_shader(scene::Scene, plot::Makie.Mesh)
     attr = plot.attributes
     Makie.register_world_normalmatrix!(attr)
-    Makie.add_computation!(attr, scene, Val(:pattern_uv_transform); colorname = :mesh_color)
     map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
     backend_colors!(attr)
     inputs = [
@@ -585,6 +584,8 @@ function fast_faces(nvertices)
     return faces
 end
 
+# TODO: merge with CairoMakie? (use surface2mesh? optimize it?)
+# TODO: This leaves behind triangles around nan's
 function surface2mesh_computation!(attr)
     register_computation!(attr, [:x, :y, :z], [:positions]) do (x, y, z), changed, last
         return (Makie.matrix_grid(identity, x, y, z),)
@@ -611,7 +612,6 @@ end
 
 function create_shader(scene::Scene, plot::Surface)
     attr = plot.attributes
-    # Makie.add_computation!(attr, scene, Val(:surface_transform))
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
