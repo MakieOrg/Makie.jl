@@ -51,7 +51,7 @@ function backend_colors!(attr, color_name=:scaled_color)
 
     register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
         color isa Real && return (color,)
-        color isa AbstractVector ? (Buffer(color),) : (false,)
+        return color isa AbstractVector ? (color,) : (false,)
     end
 
     register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last

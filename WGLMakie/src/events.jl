@@ -128,7 +128,7 @@ function connect_post_init_events(screen, scene)
 
     # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
-        if !Makie.isclosed(screen)
+        if !Makie.isclosed(scene)
             tick_callback(Makie.RegularRenderTick)
             # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
