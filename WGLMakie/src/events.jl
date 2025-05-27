@@ -56,6 +56,10 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
+            @handle msg.window_open begin
+                @show window_open
+                e.window_open[] = window_open
+            end
             @handle msg.mouseposition begin
                 x, y = Float64.((mouseposition...,))
                 e.mouseposition[] = (x, y)

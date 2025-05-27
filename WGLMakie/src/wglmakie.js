@@ -20,7 +20,11 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 window.THREE = THREE;
 
 function dispose_screen(screen) {
-    const { renderer, picking_target, root_scene } = screen;
+    if (Object.keys(screen).length === 0) {
+        return;
+    }
+    const { renderer, picking_target, root_scene, comm } = screen;
+    comm.notify({ window_open: false });
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -485,6 +489,7 @@ function create_scene(
         px_per_unit,
         scalefactor,
         winscale,
+        comm,
         texture_atlas: undefined,
     };
     add_canvas_events(screen, comm, resize_to);
