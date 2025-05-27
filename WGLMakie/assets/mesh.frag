@@ -7,6 +7,7 @@ in vec4 frag_color;
 in vec3 o_normal;
 in vec3 o_camdir;
 in float o_clip_distance[8];
+flat in uint frag_instance_id;
 
 uniform int uniform_num_clip_planes;
 uniform vec3 light_color;
@@ -55,11 +56,18 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
 }
 
 vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
+vec2 apply_uv_transform(sampler2D transforms, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3 transform;
+    transform[0] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 0, 0), 0).xy, 0);
+    transform[1] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 1, 0), 0).xy, 0);
+    transform[2] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 2, 0), 0).xy, 0);
+    return (transform * vec3(uv, 1)).xy;
+}
+
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     if (get_pattern()) {
-        // TODO: per instance
-        mat3 t = get_wgl_uv_transform();
-        vec2 pos = apply_uv_transform(t, gl_FragCoord.xy);
+        vec2 pos = apply_uv_transform(wgl_uv_transform, gl_FragCoord.xy);
         // vec2 pos = vec2(gl_FragCoord.xy) / vec2(textureSize(color, 0));
         return texture(color, pos);
     } else {
@@ -107,8 +115,6 @@ vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
-
-flat in uint frag_instance_id;
 
 vec2 encode_uint_to_float(uint value) {
     float lower = float(value & 0xFFFFu) / 65535.0;

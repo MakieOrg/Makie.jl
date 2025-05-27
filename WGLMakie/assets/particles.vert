@@ -59,7 +59,14 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
 // TODO: enable
 // vec2 apply_uv_transform(Nothing t1, vec2 uv){ return uv; }
 vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
-// TODO: per element
+vec2 apply_uv_transform(sampler2D transforms, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3 transform;
+    transform[0] = vec3(texelFetch(transforms, ivec2(3 * gl_InstanceID + 0, 0), 0).xy, 0);
+    transform[1] = vec3(texelFetch(transforms, ivec2(3 * gl_InstanceID + 1, 0), 0).xy, 0);
+    transform[2] = vec3(texelFetch(transforms, ivec2(3 * gl_InstanceID + 2, 0), 0).xy, 0);
+    return (transform * vec3(uv, 1)).xy;
+}
 
 flat out uint frag_instance_id;
 
@@ -86,7 +93,7 @@ void main(){
     process_clip_planes(position_world.xyz);
     o_normal = normalize(N);
     frag_color = to_color(get_vertex_color());
-    frag_uv = apply_uv_transform(get_wgl_uv_transform(), get_uv());
+    frag_uv = apply_uv_transform(wgl_uv_transform, get_uv());
     // direction to camera
     o_camdir = position_world.xyz / position_world.w - eyeposition;
     // screen space coordinates of the position

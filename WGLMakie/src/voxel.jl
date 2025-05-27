@@ -31,13 +31,15 @@ function create_shader(scene::Scene, plot::Voxels)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
 
     if haskey(attr, :voxel_colormap)
+        @info "A"
         register_computation!(attr, [:voxel_colormap], [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
             # colormap is synchronized with the 255 values possible
             return (Sampler(inputs[1], minfilter = :nearest), false, false)
         end
-    elseif haskey(attr, :voxel_colors)
+    elseif haskey(attr, :voxel_color)
+        @info "B"
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
-        register_computation!(attr, [:voxel_color, :voxel_uv_transform, :interpolate],
+        register_computation!(attr, [:voxel_color, :packed_uv_transform, :interpolate],
                 [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
             # how interpolate?
             color, uvt, interpolate = inputs
@@ -48,6 +50,8 @@ function create_shader(scene::Scene, plot::Voxels)
                 return (false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter)) # texture map
             end
         end
+    else
+
     end
 
     Makie.register_world_normalmatrix!(attr, :voxel_model)
@@ -108,8 +112,6 @@ function voxel_program(attr)
         :wgl_colormap => attr.wgl_colormap,
         :wgl_uv_transform => attr.wgl_uv_transform,
         :wgl_color => attr.wgl_color,
-        # :uniform_clip_planes => attr.uniform_clip_planes,
-        # :uniform_num_clip_planes => attr.uniform_num_clip_planes,
     )
 
     # TODO: this is a waste, should just be "make N instances with no data"
