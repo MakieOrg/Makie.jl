@@ -948,6 +948,45 @@ function unsafe_delete!(attr::ComputeGraph, edge::Input)
     return attr
 end
 
+"""
+    unsafe_disconnect_parents!(graph)
+
+Removes every reference to this graph from every connected parent graph. This is
+meant to prepare the given graph for garbage collection.
+
+After calling this function, the graph will be in a broken state. Edges
+connecting this graph to parent graphs still exist with references to parent
+graphs, but they can no longer be triggered.
+"""
+function unsafe_disconnect_from_parents!(attr::ComputeGraph)
+    for comp in values(attr.outputs)
+        if hasparent(comp)
+            unsafe_disconnect_parent_graph_nodes!(attr, comp.parent)
+        end
+    end
+end
+
+unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
+function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::ComputeEdge)
+    for input in edge.inputs
+        if !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
+            unsafe_atomic_delete!(edge)
+        end
+    end
+end
+
+function unsafe_atomic_delete!(edge::ComputeEdge)
+    # deregister this edge as a dependency of its parents
+    for computed in edge.inputs
+        if hasparent(computed)
+            parent_edge = computed.parent
+            filter!(e -> e !== edge, parent_edge.dependents)
+        end
+    end
+
+    return
+end
+
 include("io.jl")
 
 export Computed, Computed, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
