@@ -658,6 +658,10 @@ end
 function calculated_attributes!(::Type{Image}, plot::Plot)
     attr = plot.attributes
     calculated_attributes!(Heatmap, plot)
+    register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, cached
+        return (decompose(Point2d, Rect2d(rect)),)
+    end
+    Makie.register_position_transforms!(attr)
     register_position_transforms!(attr)
 end
 
