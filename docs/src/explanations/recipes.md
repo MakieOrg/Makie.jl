@@ -145,7 +145,7 @@ or
 
 ```julia
 Makie.preferred_axis_type(plot::MyPlot) = Makie.LScene # if you need the entire plot object as information
-``` 
+```
 Note that Makie defaults to `Makie.Axis` as the preferred axis.
 
 As the second part of defining `MyPlot`, you should implement the actual
@@ -230,9 +230,9 @@ function Makie.plot!(
     # this is necessary because in Makie we want every recipe to be interactively updateable
     # and therefore need to connect the observable machinery to do so
     linesegs = Observable(Point2f[])
-    bar_froms = Observable(Float32[])
     bar_tos = Observable(Float32[])
     colors = Observable(Bool[])
+    barpos = Observable(Point2f[])
 
     # this helper function will update our observables
     # whenever `times` or `stockvalues` change
@@ -241,15 +241,15 @@ function Makie.plot!(
 
         # clear the vectors inside the observables
         empty!(linesegs[])
-        empty!(bar_froms[])
         empty!(bar_tos[])
+        empty!(barpos[])
         empty!(colors[])
 
         # then refill them with our updated values
         for (t, s) in zip(times, stockvalues)
             push!(linesegs[], Point2f(t, s.low))
             push!(linesegs[], Point2f(t, s.high))
-            push!(bar_froms[], s.open)
+            push!(barpos[], Point2f(t, s.open))
             push!(bar_tos[], s.close)
         end
         append!(colors[], [x.close > x.open for x in stockvalues])
@@ -278,7 +278,7 @@ function Makie.plot!(
     # that our new plot is just made out of two simpler recipes layered on
     # top of each other
     linesegments!(sc, linesegs, color = colors, colormap = colormap)
-    barplot!(sc, times, bar_froms, fillto = bar_tos, color = colors, strokewidth = 0, colormap = colormap)
+    barplot!(sc, barpos, fillto = bar_tos, color = colors, strokewidth = 0, colormap = colormap)
 
     # lastly we return the new StockChart
     sc
