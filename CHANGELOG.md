@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+
 ## [0.22.7] - 2025-05-23
 
 - Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
