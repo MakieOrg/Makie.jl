@@ -711,7 +711,10 @@ Plots polygons, which are defined by
     """
     Depth shift of stroke plot. This is useful to avoid z-fighting between the stroke and the fill.
     """
-    stroke_depth_shift = -1.0f-5
+    stroke_depth_shift = -1.0f-3
+    mesh_fxaa = automatic
+    stroke_fxaa = false
+    stroke_transparency = true
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
 end
