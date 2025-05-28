@@ -299,13 +299,13 @@ end
 
 function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_color)
     register_computation!(attr,
-            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color],
+            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color, :color_mapping_type],
             [:computed_color]
-        ) do (color, colorrange, colormap, nan_color, lowclip, highclip), changed, cached
+        ) do (color, colorrange, colormap, nan_color, lowclip, highclip, interpolation), changed, cached
         # colormapping
         if color isa AbstractArray{<:Real} || color isa Real
             output = map(color) do v
-                return Makie.sample_color(colormap, v, colorrange, lowclip, highclip, nan_color)
+                return Makie.sample_color(colormap, v, colorrange, lowclip, highclip, nan_color, interpolation)
             end
             return (output,)
         else # Raw colors
