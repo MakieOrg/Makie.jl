@@ -83,7 +83,7 @@ function create_shader(scene::Scene, plot::Voxels)
 
         :diffuse, :specular, :shininess, # :backlight,
         :depthsorting, :shading,
-        :uniform_clip_planes, :uniform_num_clip_planes
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
 
     return create_wgl_renderobject(voxel_program, attr, inputs)

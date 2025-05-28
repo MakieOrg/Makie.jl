@@ -413,7 +413,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :transform_marker, :marker, :shading, :depth_shift,
-        :uniform_clip_planes, :uniform_num_clip_planes
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
 end
@@ -530,7 +530,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -627,7 +627,7 @@ function create_shader(scene::Scene, plot::Surface)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -675,7 +675,7 @@ function create_shader(scene::Scene, plot::Volume)
         :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :depth_shift,
         :lowclip_color, :highclip_color, :nan_color,
-        :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes
+        :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes, :visible
     ]
     return create_wgl_renderobject(create_volume_shader, attr, inputs)
 end
