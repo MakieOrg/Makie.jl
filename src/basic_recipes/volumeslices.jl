@@ -25,10 +25,11 @@ function Makie.plot!(plot::VolumeSlices)
     end
 
     axes = :x, :y, :z
+    parent_vis = ComputePipeline.get_observable!(plot.visible)
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
         hmap = heatmap!(
             plot, Attributes(plot), X, Y, zeros(length(X[]), length(Y[])),
-            colorrange = plot.computed_colorrange
+            colorrange = plot.computed_colorrange, visible=parent_vis
         )
         update = i -> begin
             transform!(hmap, (p, r[][i]))
@@ -39,6 +40,7 @@ function Makie.plot!(plot::VolumeSlices)
         end
         update(1) # trigger once to place heatmaps correctly
         add_input!(plot.attributes, Symbol(:update_, p), update)
+        add_input!(plot.attributes, Symbol(:heatmap_, p), hmap)
     end
 
     linesegments!(plot, bbox, color = plot.bbox_color, visible = plot.bbox_visible, inspectable = false)
