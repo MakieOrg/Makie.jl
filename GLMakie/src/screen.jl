@@ -1046,9 +1046,9 @@ end
 # const time_record = sizehint!(Float64[], 100_000)
 function poll_updates(screen)
     Base.invokelatest() do
-        for plot in values(screen.cache2plot)
-            # poll object for updates
-            if plot isa Makie.ComputePlots
+        with_context(screen.glscreen) do
+            for plot in values(screen.cache2plot)
+                # poll object for updates
                 try
                     plot.attributes[:gl_renderobject][]
                 catch e
@@ -1068,19 +1068,19 @@ function on_demand_renderloop(screen::Screen)
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
-        pollevents(screen, tick_state) # GLFW poll
-        poll_updates(screen)
-        if !screen.config.pause_renderloop && requires_update(screen)
-            tick_state = Makie.RegularRenderTick
-            render_frame(screen)
-            GLFW.SwapBuffers(to_native(screen))
-        else
-            tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+        with_context(screen.glscreen) do
+            pollevents(screen, tick_state) # GLFW poll
+            poll_updates(screen)
+            if !screen.config.pause_renderloop && requires_update(screen)
+                tick_state = Makie.RegularRenderTick
+                render_frame(screen)
+                GLFW.SwapBuffers(to_native(screen))
+            else
+                tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+            end
+            GC.safepoint()
+            sleep(screen.timer)
         end
-
-        GC.safepoint()
-        sleep(screen.timer)
-
         # t = time_ns()
         # push!(time_record, 1e-9 * (t - last_time))
         # last_time = t

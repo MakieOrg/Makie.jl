@@ -20,6 +20,7 @@ import Base: merge, resize!, similar, length, getindex, setindex!
 
 # Debug tools
 const GLMAKIE_DEBUG = Ref(false)
+const CONTEXT_LOCK = ReentrantLock()
 
 # implemented in GLMakie/glwindow.jl
 function require_context_no_error(args...) end
@@ -31,19 +32,21 @@ function require_context(ctx, current = ShaderAbstractions.current_context())
 end
 
 function with_context(f, context)
-    if !ShaderAbstractions.context_alive(context)
-        error("Context ist not alive anymore!")
-    end
-    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
-    old_ctx = isassigned(CTX) ? CTX[] : nothing
-    GLAbstraction.switch_context!(context)
-    try
-        f()
-    finally
-        if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)
-            GLAbstraction.switch_context!()
-        else
-            GLAbstraction.switch_context!(old_ctx)
+    lock(CONTEXT_LOCK) do
+        if !ShaderAbstractions.context_alive(context)
+            error("Context ist not alive anymore!")
+        end
+        CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+        old_ctx = isassigned(CTX) ? CTX[] : nothing
+        GLAbstraction.switch_context!(context)
+        try
+            f()
+        finally
+            if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)
+                GLAbstraction.switch_context!()
+            else
+                GLAbstraction.switch_context!(old_ctx)
+            end
         end
     end
 end

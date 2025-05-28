@@ -360,11 +360,6 @@ function RenderObject(
     switch_context!(context)
     require_context(context)
 
-    # This is a lazy workaround for disabling updates of `requires_update` when
-    # not rendering on demand. A cleaner implementation should probably go
-    # through @gen_defaults! and adjust constructors instead.
-    track_updates = to_value(pop!(data, :track_updates, true))
-
     # Explicit conversion targets for gl_convert
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
