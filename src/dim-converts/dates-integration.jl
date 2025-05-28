@@ -68,24 +68,6 @@ function convert_dim_value(conversion::DateTimeConversion, value::AbstractArray)
     return date_to_number.(conversion.type[], value)
 end
 
-function convert_dim_observable(conversion::DateTimeConversion, values::Observable, deregister)
-    T = conversion.type[]
-    eltype = MakieCore.get_element_type(values[])
-    if T <: Automatic
-        new_type = eltype
-        conversion.type[] = new_type
-    elseif T != eltype
-        if !(T <: Time && eltype <: Unitful.Quantity)
-            error("Plotting unit $(eltype) into axis with type $(T) not supported.")
-        end
-    end
-    result = map(values, conversion.type) do vals, T
-        return date_to_number.(T, vals)
-    end
-    append!(deregister, result.inputs)
-    return result
-end
-
 function convert_dim_value(conversion::DateTimeConversion, attr, values, previous_values)
     T = conversion.type[]
     eltype = MakieCore.get_element_type(values)

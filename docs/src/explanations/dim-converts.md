@@ -115,18 +115,11 @@ function Makie.convert_dim_value(::MyDimConversion, values)
     return [v.value for v in values]
 end
 
-function Makie.convert_dim_observable(conversion::MyDimConversion, values_obs::Observable, deregister)
+function Makie.convert_dim_value(conversion::MyDimConversion, attr, values, prev_values)
     # Do the actual conversion here
-    # Most complex dim conversions need to operate on the observable (e.g. to create a Dict of all used categories), so `convert_dim_value` alone is not enough.
-    result = Observable(Float64[])
-    f = on(values_obs; update=true) do values
-        result[] = Makie.convert_dim_value(conversion, values)
-    end
-
-    # any observable operation like `on` or `map` should be pushed to `deregister`, to clean up state properly if e.g. the plot gets destroyed.
-    # for `result = map(func, values_obs)` one can use `append!(deregister, result.inputs)`
-    push!(deregister, f)
-    return result
+    # The `attr` can be used to identify the conversion, e.g. if you want to cache results.
+    # Take a look at categorical-integration.jl for an example of how to use it.
+    return Makie.convert_dim_value(conversion, values)
 end
 
 function Makie.get_ticks(::MyDimConversion, user_set_ticks, user_dim_scale, user_formatter, limits_min, limits_max)
