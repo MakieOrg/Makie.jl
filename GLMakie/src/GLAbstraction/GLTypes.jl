@@ -201,7 +201,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     # get the size of the first array, to assert later, that all have the same size
     indexes = -1
     len = -1
-    ShaderAbstractions.switch_context!(program.context)
+    gl_switch_context!(program.context)
     id = glGenVertexArrays()
     glBindVertexArray(id)
     lenbuffer = 0
@@ -257,7 +257,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
 end
 using ShaderAbstractions: Buffer
 function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
-    ShaderAbstractions.switch_context!(program.context)
+    gl_switch_context!(program.context)
     # get the size of the first array, to assert later, that all have the same size
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -357,7 +357,7 @@ function RenderObject(
         pre::Pre, post,
         context
     ) where Pre
-    switch_context!(context)
+    gl_switch_context!(context)
     require_context(context)
 
     # Explicit conversion targets for gl_convert

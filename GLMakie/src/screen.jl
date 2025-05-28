@@ -304,7 +304,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
-    ShaderAbstractions.switch_context!(window)
+    gl_switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
     fb = GLFramebuffer(window, initial_resolution)
     postprocessors = [
@@ -402,7 +402,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     glw = screen.glscreen
 
     if screen.owns_glscreen
-        ShaderAbstractions.switch_context!(glw)
+        gl_switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
         GLFW.SetWindowTitle(glw, config.title)
@@ -542,7 +542,7 @@ Makie.@noconstprop function Screen(scene::Scene, config::ScreenConfig, ::Makie.I
 end
 
 function pollevents(screen::Screen, frame_state::Makie.TickState)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     GLFW.PollEvents()
     screen.render_tick[] = frame_state
     return
@@ -573,7 +573,7 @@ function add_scene!(screen::Screen, scene::Scene)
 end
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
@@ -831,7 +831,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
-        ShaderAbstractions.switch_context!(window)
+        gl_switch_context!(window)
         winw, winh = window_size(screen, w, h)
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
@@ -871,7 +871,7 @@ heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
     source = screen.framebuffer.buffers[:depth]
@@ -886,7 +886,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if !isopen(screen)
         error("Screen not open!")
     end
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
@@ -1092,7 +1092,7 @@ end
 function renderloop(screen)
     isopen(screen) || error("Screen most be open to run renderloop!")
     # Context needs to be current for GLFW.SwapInterval
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     try
         if screen.config.render_on_demand
             GLFW.SwapInterval(0)

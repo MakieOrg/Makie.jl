@@ -476,9 +476,7 @@ function update_tooltip_alignment!(inspector, proj_pos; visible = true, offset =
     placement = py < 0.75wy ? (:above) : (:below)
     px < 0.25wx && (placement = :right)
     px > 0.75wx && (placement = :left)
-
     update!(inspector.plot; arg1 = proj_pos, placement, visible, offset, kwargs...)
-
     return
 end
 

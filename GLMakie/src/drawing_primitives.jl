@@ -6,7 +6,7 @@ using Makie: apply_transform_and_f32_conversion, f32_conversion_obs
 Makie.el32convert(x::GLAbstraction.Texture) = x
 
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
     if isempty(x.plots) # if no plots inserted, this truly is an atomic

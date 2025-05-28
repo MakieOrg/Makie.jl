@@ -87,7 +87,7 @@ function check_framebuffer()
 end
 
 Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
-    ShaderAbstractions.switch_context!(context)
+    gl_switch_context!(context)
     require_context(context)
 
     # Create framebuffer
@@ -178,7 +178,7 @@ end
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
     isempty(fb.buffers) && return # or error?
-    ShaderAbstractions.switch_context!(first(values(fb.buffers)).context)
+    gl_switch_context!(first(values(fb.buffers)).context)
     for (name, buffer) in fb.buffers
         resize_nocopy!(buffer, (w, h))
     end
@@ -249,7 +249,7 @@ function destroy!(nw::GLFW.Window)
         GLFW.DestroyWindow(nw)
         nw.handle = C_NULL
     end
-    was_current && ShaderAbstractions.switch_context!()
+    was_current && gl_switch_context!()
 end
 
 function window_size(nw::GLFW.Window)

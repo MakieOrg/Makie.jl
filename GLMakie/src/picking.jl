@@ -5,7 +5,7 @@
 
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
@@ -26,7 +26,7 @@ end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
@@ -77,7 +77,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     buff = fb.buffers[:objectid]
@@ -118,7 +118,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     buff = fb.buffers[:objectid]

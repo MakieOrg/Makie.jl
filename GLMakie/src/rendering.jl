@@ -30,7 +30,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     isnothing(screen.scene) && return
 
     nw = to_native(screen)
-    ShaderAbstractions.switch_context!(nw)
+    gl_switch_context!(nw)
     GLAbstraction.require_context(nw)
 
     function sortby(x)
