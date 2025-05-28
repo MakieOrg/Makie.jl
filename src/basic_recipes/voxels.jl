@@ -55,7 +55,7 @@ function register_voxel_conversions!(attr)
         # propagate updates though
         chunk isa Array{UInt8, 3} && return (chunk, )
 
-        chunk_u8 = isnothing(last) ? Array{UInt8, 3}(undef, size(chunk)) : cached.chunk_u8
+        chunk_u8 = isnothing(last) ? Array{UInt8, 3}(undef, size(chunk)) : last.chunk_u8
 
         mini, maxi = apply_scale(scale, lims)
         maxi = max(mini + 10eps(float(mini)), maxi)
