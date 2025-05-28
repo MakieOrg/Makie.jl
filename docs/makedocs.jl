@@ -19,11 +19,6 @@ using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
 using Markdown
 
-# remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
-# is called somewhere, it's reactivated and slows down CI needlessly
-function GLMakie.renderloop(screen)
-    return
-end
 
 include("figure_block.jl")
 include("attrdocs_block.jl")

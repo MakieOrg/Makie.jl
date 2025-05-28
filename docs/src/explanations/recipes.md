@@ -318,6 +318,7 @@ As a last example, lets pretend our stock data is coming in dynamically, and we 
 This is easy if we use observables as input arguments which we then update frame by frame:
 
 ```@example stocks
+GLMakie.activate!() # hide
 timestamps = Observable(collect(1:100))
 stocknode = Observable(stockvalues)
 
@@ -340,7 +341,7 @@ record(fig, "stockchart_animation.mp4", 101:200,
     # now both timestamps and stocknode are synchronized
     # again and we can trigger one of them by assigning it to itself
     # to update the whole stockcharts plot for the new frame
-    stocknode[] = stocknode[]
+    update!(sc, timestamps[], stocknode[])
     # let's also update the axis limits because the plot will grow
     # to the right
     autolimits!(ax)
