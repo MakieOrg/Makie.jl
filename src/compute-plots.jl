@@ -424,7 +424,11 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                     palettes = attr.palettes[]
                     value isa Cycled && return get_cycle_attribute(palettes, key, value.i, plotcycle)
                     if !isnothing(value)
-                        return convert_attribute(value, Key{key}(), Key{name}())
+                        if is_primitive
+                            return convert_attribute(value, Key{key}(), Key{name}())
+                        else
+                            return value
+                        end
                     end
                     pos = attr.plot_position[]
                     cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
