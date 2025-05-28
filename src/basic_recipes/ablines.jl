@@ -30,7 +30,7 @@ function Makie.plot!(p::ABLines)
         notify(points)
     end
 
-    notify(p[1])
+    notify(limits)
 
     linesegments!(p, p.attributes, points)
     p
