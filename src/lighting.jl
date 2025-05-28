@@ -239,7 +239,7 @@ function add_light_computation!(graph, scene, lights)
         local idx
         idx = findfirst(light -> light isa DirectionalLight, lights)
         if idx === nothing && cached === nothing
-            return (RGBf(0,0,0), Vec3f(0), true, Vec3f(0))
+            return (RGBf(0,0,0), Vec3f(0), true)
         else
             light = lights[idx]::DirectionalLight
             color = light.color

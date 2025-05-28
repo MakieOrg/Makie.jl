@@ -67,7 +67,7 @@ The different light sources control the `light_direction` and may further adjust
 ```
 ```
 
-```@figure
+```@figure backend=GLMakie
 
 fig = Figure(size = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [],))
@@ -135,7 +135,7 @@ fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = lights,))
 ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
 meshscatter!(ax, ps, color = :white, markersize = 0.75)
-scatter!(ax, map(l -> l.position[], lights), color = map(l -> l.color[], lights), strokewidth = 1, strokecolor = :black)
+scatter!(ax, map(l -> l.position, lights), color = map(l -> l.color, lights), strokewidth = 1, strokecolor = :black)
 fig
 ```
 
@@ -182,7 +182,7 @@ fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = lights,))
 ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
 meshscatter!(ax, ps, color = :white, markersize = 0.75)
-scatter!(ax, map(l -> l.position[], lights), color = map(l -> l.color[], lights), strokewidth = 1, strokecolor = :black)
+scatter!(ax, map(l -> l.position, lights), color = map(l -> l.color, lights), strokewidth = 1, strokecolor = :black)
 fig
 ```
 
@@ -196,9 +196,9 @@ using FileIO, GeometryBasics, LinearAlgebra
 
 # Create mesh from RectLight parameters
 function to_mesh(l::RectLight)
-    n = -normalize(cross(l.u1[], l.u2[]))
-    p = l.position[] - 0.5 * l.u1[] - 0.5 * l.u2[]
-    positions = [p, p + l.u1[], p + l.u2[], p + l.u1[] + l.u2[]]
+    n = -normalize(cross(l.u1, l.u2))
+    p = l.position - 0.5 * l.u1 - 0.5 * l.u2
+    positions = [p, p + l.u1, p + l.u2, p + l.u1 + l.u2]
     faces = GLTriangleFace[(1,2,3), (2,3,4)]
     normals = [n,n,n,n]
     return GeometryBasics.Mesh(positions, faces, normal = normals)
@@ -215,17 +215,18 @@ lights = Makie.AbstractLight[
     RectLight(RGBf(0.9, 1, 0.8), Rect2f( 0.1, -1.9, 1.8, 1.8)),
 ]
 
-for l in lights
+lights = map(lights) do l
     if l isa RectLight
         angle = pi/4
-        p = l.position[]
-        Makie.rotate!(l, Vec3f(0, 1, 0), angle)
+        p = l.position
+        l = Makie.rotate(l, Vec3f(0, 1, 0), angle)
 
         p = 3 * Vec3f(1+sin(angle), 0, cos(angle)) +
-            p[1] * normalize(l.u1[]) +
-            p[2] * normalize(l.u2[])
-        translate!(l, p)
+            p[1] * normalize(l.u1) +
+            p[2] * normalize(l.u2)
+        l = Makie.translate(l, p)
     end
+    return l
 end
 
 # Set scene
