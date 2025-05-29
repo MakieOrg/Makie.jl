@@ -12,16 +12,16 @@
     ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
 
-    i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
-    s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
+    i = image!(scene, 80..140, 20..50, to_color.([:red :blue; :green :orange; :black :lightblue]), interpolate = false)
+    s = surface!(scene, 80..140, 80..110, [1 2; 3 4; 5 6], interpolate = false)
     hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 4; 2 5; 3 6])
     # mesh coloring should match triangle placements
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
     vx = voxels!(scene, (65, 155), (245, 305), (-1, 1), reshape([1,2,3,4,5,6], (3,2,1)), shading = NoShading)
-    vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
+    vol = volume!(scene, 80..110, 320..350, -1..1, reshape(1:8, 2,2,2))
 
     # reversed axis
-    i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
+    i2 = image!(scene, 210..180, 20..50, to_color.([:red :green; :blue :orange]))
     s2 = surface!(scene, 210..180, 80..110, [1 2; 3 4], interpolate = false)
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
