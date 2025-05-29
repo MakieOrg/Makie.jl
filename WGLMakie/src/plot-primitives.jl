@@ -602,12 +602,10 @@ function create_shader(scene::Scene, plot::Surface)
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    map!(attr, [:pattern_uv_transform, :scaled_color], :wgl_uv_transform) do uvt, tex
-        # rescale and shift uvs so that edge vertices map to pixel centers in the texture
-        # If the texture size and grid size match (i.e. no explicit `color = tex`) this
-        # maps every surface vertex to a pixel center (rather than them sliding from
-        # the left/bottom edge to the right/top)
-        s = size(tex)
+    map!(attr, [:pattern_uv_transform, :z], :wgl_uv_transform) do uvt, zs
+        # Rescale and shift uvs so that vertices map to pixel centers in the texture
+        # if the texture size and grid size match (i.e. no explicit `color = tex`)
+        s = size(zs)
         scale = Vec2f((s .- 1) ./ s)
         trans = Vec2f(0.5 ./ s)
         # order matters, e.g. for :rotr90
