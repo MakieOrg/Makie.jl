@@ -8,7 +8,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     # We may also want a cheap version that only considers forward
     # transformations (i.e. drops textsize etc when markerspace is not part of
     # the plot.space -> target_space conversion chain)
-    if target_space == :data
+    if Makie.is_data_space(target_space)
         # This also transforms string boundingboxes if space == markerspace
         return apply_transform_and_model(plot, data_limits(plot))
     elseif target_space == plot.markerspace[]
@@ -42,7 +42,7 @@ function string_boundingbox(x::Text{<:Tuple{<:GlyphCollection}})
         pos = to_ndim(Point3d, x.position[], 0)
     else
         cam = parent_scene(x).camera
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        transformed = apply_transform_and_model(x, x.position[])
         pos = Makie.project(cam, x.space[], x.markerspace[], transformed)
     end
     return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))
@@ -53,7 +53,7 @@ function string_boundingbox(x::Text{<:Tuple{<:AbstractArray{<:GlyphCollection}}}
         pos = to_ndim.(Point3d, x.position[], 0)
     else
         cam = (parent_scene(x).camera,)
-        transformed = apply_transform(x.transformation.transform_func[], x.position[])
+        transformed = apply_transform_and_model(x, x.position[])
         pos = Makie.project.(cam, x.space[], x.markerspace[], transformed) # TODO: vectorized project
     end
     return string_boundingbox(x[1][], pos, to_rotation(x.rotation[]))

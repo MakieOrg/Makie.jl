@@ -296,7 +296,7 @@ end
 
 function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
-    if event.type !== MouseEventTypes.rightdrag
+    if event.type !== to_drag_event(ax.panbutton[])
         return Consume(false)
     end
 
@@ -399,7 +399,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
     else
 
         #=
-        # Faster but less acurate (dependent on aspect ratio)
+        # Faster but less accurate (dependent on aspect ratio)
         scene_area = viewport(ax.scene)[]
         relative_delta = (event.px - event.prev_px) ./ widths(scene_area)
 
@@ -414,7 +414,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
         # Slower but more accurate
         model = ax.scene.transformation.model[]
         world_center = to_ndim(Point3f, model * to_ndim(Point4d, mini .+ 0.5 * ws, 1), NaN)
-        # make plane_normal perpendicular to the allowed trnaslation directions
+        # make plane_normal perpendicular to the allowed translation directions
         # allow_normal = xyz_translate == (true, true, true) ? (1, 1, 1) : (1 .- xyz_translate)
         # plane = Plane3f(world_center, allow_normal .* ax.scene.camera.view_direction[])
         plane = Plane3f(world_center, ax.scene.camera.view_direction[])
@@ -531,7 +531,7 @@ function process_interaction(focus::FocusOnCursor, ::Union{MouseEvent, KeyEvent}
     if ispressed(ax, ax.cursorfocuskey[]) && is_mouseinside(ax.scene) && (time() > focus.last_time + focus.timeout)
         xy = events(ax.scene).mouseposition[]
         plot, idx = pick(ax.scene, xy)
-        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || (plot.space[] != :data) ||
+        if isnothing(plot) || (parent_scene(plot) !== ax.scene) || is_data_space(plot) ||
                 (findfirst(p -> p === plot, ax.scene.plots) <= focus.skip) # is axis decoration
             return Consume(false)
         end

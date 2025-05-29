@@ -195,6 +195,7 @@ excludes = Set([
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
     "Mesh with 3d volume texture", # Not implemented yet
     "Volume absorption",
+    "DataInspector", "DataInspector 2", # No DataInspector without pick/interactivity
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -315,4 +316,13 @@ end
     ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
     @test length(ps) == length(data) # this should never clip!
 
+end
+
+@testset "issue 4970 (invalid io use during finalization)" begin
+    @testset "$mime" for mime in CairoMakie.SUPPORTED_MIMES
+        @test_nowarn begin
+            sprint(io -> show(io, mime, Scene()))
+            GC.gc()
+        end
+    end
 end

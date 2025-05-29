@@ -23,6 +23,7 @@ using Makie: volume
         include("isolated/observables.jl")
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
+        include("isolated/texture_atlas.jl")
     end
 
     @testset "Plots" begin
@@ -62,6 +63,7 @@ using Makie: volume
         include("interactivity/camera_controls.jl")
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
+        include("interactivity/DataInspector.jl")
     end
 
     include("boundingboxes.jl")

@@ -168,10 +168,18 @@ end
     X = cumsum(RNG.randn(n, m), dims=2)
     X = X .- X[:, 1]
     μ = vec(mean(X, dims=1)) # mean
-    lines(t, μ)              # plot mean line
+    f, ax, _ = lines(t, μ)              # plot mean line
     σ = vec(std(X, dims=1))  # stddev
-    band!(t, μ + σ, μ - σ)   # plot stddev band
-    current_figure()
+    band!(ax, t, μ + σ, μ - σ)   # plot stddev band
+
+    # vertical version
+    ax2, _ = lines(f[1, 2], μ, t)
+    band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
+
+    # array colors
+    band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
+    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues)
+    f
 end
 
 @reference_test "Band with NaN" begin
@@ -685,14 +693,97 @@ end
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
-            yminorticksvisible = true, yminorgridvisible = true,
-            xminorticksvisible = true, xminorgridvisible = true,
-            yminortickwidth = 4.0, xminortickwidth = 4.0,
-            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticksvisible = i != 6, yminorgridvisible = true,
+            xminorticksvisible = i != 6, xminorgridvisible = true,
+            yminortickwidth = 3.0, xminortickwidth = 3.0,
+            yminorticksize = 8.0, xminorticksize = 8.0,
+            yminorgridwidth = 3.0, xminorgridwidth = 3.0,
+            yminortickcolor = :red, xminortickcolor = :red,
+            yminorgridcolor = :lightgreen, xminorgridcolor = :lightgreen,
             yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
     end
+    f
+end
+
+@reference_test "textlabel" begin
+    f = Figure(size = (500, 500))
+    ax = Axis(f[1, 1])
+    textlabel!(ax,
+        [1, 2, 3], [1, 1, 1], ["Label $i" for i in 1:3],
+        background_color = :white, text_align = (:left, :bottom)
+    )
+    textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
+    textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
+        background_color = :orange,
+        text_rotation = pi/8,
+        word_wrap_width = 8,
+        cornerradius = 10,
+        cornervertices = 2,
+        justification = :center,
+        text_align = (:center, :center)
+    )
+    textlabel!(ax, Point2f(1.5, 0), text=rich("A ", rich("title", color = :red, font = :bold_italic)), fontsize=20,)
+    textlabel!(ax, Point2f(2.5, 0), text= L"\sum_a^b{xy} + \mathscr{L}", fontsize=10,)
+
+    textlabel!(
+        ax, (1, -1), "Circle",
+        shape = Circle(Point2f(0.5), 0.5),
+        padding = Vec4f(5),
+        keep_aspect = true
+    )
+
+    textlabel!(
+        ax, 2, -1, text = "~ ~ ~ ~ ~ ~\nStylized Label\n~ ~ ~ ~ ~ ~",
+        background_color = RGBf(0.7, 0.8, 1),
+        strokecolor = RGBf(0, 0.1, 0.4),
+        strokewidth = 3,
+        linestyle = :dash,
+        joinstyle = :round,
+        stroke_alpha = 0.8,
+        alpha = 0.5,
+        text_color = RGBf(1, 0.2, 0),
+        font = "Noto Sans",
+        text_strokecolor = RGBf(0.7, 0, 0.1),
+        text_strokewidth = 2,
+        text_glowcolor = RGBAf(0.8, 1, 0.3),
+        text_glowwidth = 2,
+        text_align = (:center, :center),
+        fontsize = 20,
+        justification = :center,
+        lineheight = 0.7,
+        offset = (0.0, -10.0),
+        text_alpha = 0.8,
+
+        shape = Circle(Point2f(0), 1),
+        shape_limits = Rect2f(-1, -1, 2, 2),
+        padding = Vec4f(10),
+    )
+
+    textlabel!(
+        ax, (3, -1), "Below",
+        cornerradius = 10, fontsize = 20, text_align = (:center, :center),
+        draw_on_top = false
+    )
+
+    p = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
+    translate!(p, 0, 0, 10)
+
+    xlims!(ax, 0.8, 3.4)
+    ylims!(ax, -1.6, 1.4)
+
+    ax = Axis3(f[2, 1])
+    m = load(assetpath("brain.stl"))
+    mesh!(ax, m, color = [RGBf(abs.(n)...) for n in normals(m)])
+    textlabel!(ax, Point3f(0), text = "Brain", background_color = :white)
+
+    textlabel!(ax,
+        ["-x -x", "+z\n+z", "-y -y"], position = [(-65, 0, 0), (0, 0, 45), (0, -90, 0)],
+        background_color = :lightgray, text_align = (:center, :center),
+        draw_on_top = false
+    )
+
     f
 end
 
@@ -843,6 +934,23 @@ end
     f
 end
 
+@reference_test "tricontourf alpha transparency" begin
+    dxy = 1.0;
+    x = [0.0, dxy, 0.0, -dxy, 0.0, dxy/2, -dxy/2, dxy/2, -dxy/2];
+    y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
+    @. f1(x,y) = x^2 + y^2;
+    z = f1(x,y);
+
+    f = Figure()
+    ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
+    ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
+    hlines!(ax1, [-0.5, 0.0, 0.5])
+    hlines!(ax2, [-0.5, 0.0, 0.5])
+    tricontourf!(ax1, x, y, z, levels = 3)
+    tricontourf!(ax2, x, y, z, levels = 3, alpha=0.5)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
@@ -981,8 +1089,6 @@ end
     f
 end
 
-
-
 @reference_test "hexbin two cellsizes" begin
     f = Figure(size = (800, 800))
 
@@ -995,7 +1101,6 @@ end
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
-
     f
 end
 
@@ -1018,8 +1123,8 @@ end
 @reference_test "hexbin threshold" begin
     f = Figure(size = (800, 800))
 
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
@@ -1029,8 +1134,8 @@ end
 end
 
 @reference_test "hexbin scale" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
@@ -1042,10 +1147,10 @@ end
 
 # Scatter needs working highclip/lowclip first
 @reference_test "hexbin colorrange highclip lowclip" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
-    f, ax, pl = hexbin(x, y,
+    hexbin(x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
         colorrange = (10, 300),
@@ -1054,6 +1159,14 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
+end
+
+@reference_test "hexbin logscale" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/4895
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000) .|> exp
+
+    hexbin(x, y; axis = (; yscale=log10))
 end
 
 @reference_test "bracket scalar" begin

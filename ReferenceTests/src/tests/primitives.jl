@@ -868,8 +868,8 @@ end
     fig
 end
 
-@testset "per element uv_transform" begin
-    cow = loadasset("cow.png")
+@reference_test "per element uv_transform" begin
+    cow = load(assetpath("cow.png"))
 
     N = 8; M = 10
     f = Figure(size = (500, 400))
@@ -878,7 +878,7 @@ end
         [Point2f(x, y) for x in 1:M for y in 1:N],
         color = cow,
         uv_transform = [
-            Makie.uv_transform(:rotl90) *
+            Makie.uv_transform(:rotr90) *
             Makie.uv_transform(Vec2f(x, y+1/N), Vec2f(1/M, -1/N))
             for x in range(0, 1, length = M+1)[1:M]
             for y in range(0, 1, length = N+1)[1:N]
@@ -891,6 +891,7 @@ end
     ylims!(a, 0.3, N+0.7)
     f
 end
+
 @reference_test "Scatter with FastPixel" begin
     f = Figure()
     row = [(1, :pixel, 20), (2, :data, 0.5)]
@@ -945,16 +946,18 @@ end
     f
 end
 
-@reference_test "meshscatter marker conversions" begin
-    fig = Figure(size = (400, 500))
+@reference_test "meshscatter + scatter marker conversions" begin
+    fig = Figure(size = (600, 500))
     Label(fig[0, 1], tellwidth = false, "meshscatter")
     Label(fig[0, 2], tellwidth = false, "mesh")
+    Label(fig[0, 3], tellwidth = false, "scatter-like")
     Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
     Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
     Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
 
     kwargs = (markersize = 1, transform_marker = false, shading = NoShading)
     kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+    kwargs3 = (markerspace = :data, transform_marker = false)
 
     # no special transformations, must match
     limits = (0.8, 3.2, 0.8, 3.2)
@@ -962,6 +965,10 @@ end
     meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); kwargs...)
     ax = Axis(fig[1, 2], limits = limits)
     mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
+    ax = Axis(fig[1, 3], limits = limits)
+    scatter!(ax, [Point2f(1.5)], marker = Circle; markersize = 0.5, kwargs3...)
+    scatter!(ax, [Point2f(2.5)], marker = FastPixel(), markersize = 0.5; kwargs3...)
+    text!(ax, [Point2f(2)], text = "Test", fontsize = 0.4, align = (:center, :center); kwargs3...)
 
     # log10 transform, center must match (meshscatter does not transform vertices
     # because that would destroy performance)
@@ -971,6 +978,10 @@ end
     meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); kwargs...)
     ax = Axis(fig[2, 2]; axis_kwargs...)
     mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+    ax = Axis(fig[2, 3]; axis_kwargs...)
+    scatter!(ax, [Point2f(10^-0.4)], marker = Circle; markersize = 0.3, kwargs3...)
+    scatter!(ax, [Point2f(10^0.4)], marker = FastPixel(), markersize = 0.3; kwargs3...)
+    text!(ax, [Point2f(1)], text = "Test", fontsize = 0.3, align = (:center, :center); kwargs3...)
 
     # f32c can be applied
     ticks = (1e12 .+ (-1f6:1f6:1f6), string.(-1:1) .* ("f6",))
@@ -979,20 +990,28 @@ end
     meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); kwargs...)
     ax2 = Axis(fig[3, 2]; axis_kwargs...)
     mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
+    ax = Axis(fig[3, 3]; axis_kwargs...)
+    scatter!(ax, [Makie.Point2d(1e12 - 1e6)], marker = Circle; markersize = 3e5, kwargs3...)
+    scatter!(ax, [Makie.Point2d(1e12 + 1e6)], marker = FastPixel(), markersize = 3e5; kwargs3...)
+    text!(ax, [Makie.Point2d(1e12)], text = "Test", fontsize = 3e5, align = (:center, :center); kwargs3...)
     fig
 end
 
-@reference_test "meshscatter marker conversions with model" begin
-    fig = Figure(size = (600, 500))
+@reference_test "meshscatter + scatter marker conversions with model" begin
+    fig = Figure(size = (1000, 500))
     Label(fig[0, 1], tellwidth = false, "meshscatter")
     Label(fig[0, 2], tellwidth = false, "mesh")
     Label(fig[0, 3], tellwidth = false, "meshscatter\ntransformable")
+    Label(fig[0, 4], tellwidth = false, "scatter-like")
+    Label(fig[0, 5], tellwidth = false, "scatter-like\ntransformable")
     Label(fig[1, 0], tellheight = false, rotation = pi/2, "simple")
     Label(fig[2, 0], tellheight = false, rotation = pi/2, "log10")
     Label(fig[3, 0], tellheight = false, rotation = pi/2, "float32convert")
 
     kwargs = (markersize = 1, shading = NoShading)
     kwargs2 = (color = Makie.wong_colors()[1], shading = NoShading)
+    kwargs3 = (markerspace = :data, transform_marker = false)
+
     function transform!(p, x, rotate = true)
         scale!(p, 0.5, 0.5, 0.5)
         if rotate
@@ -1011,29 +1030,56 @@ end
     p2 = mesh!(ax, Circle(Point2f(2), 1f0); kwargs2...)
     ax = Axis(fig[1, 3], limits = limits)
     p3 = meshscatter!(ax, [Point2f(2)], marker = Circle(Point2f(0), 1f0); transform_marker = true, kwargs...)
-    transform!.((p1, p2, p3), 2)
+    ax = Axis(fig[1, 4], limits = limits)
+    p4 = scatter!(ax, [Point2f(1)], marker = Circle;      transform_marker = false, markersize = 0.5, kwargs3...)
+    p5 = scatter!(ax, [Point2f(3)], marker = FastPixel(), transform_marker = false, markersize = 0.5; kwargs3...)
+    p6 = text!(ax, [Point2f(2)],    text = "Test",        transform_marker = false, fontsize = 0.4, align = (:center, :center); kwargs3...)
+    ax = Axis(fig[1, 5], limits = limits)
+    p7 = scatter!(ax, [Point2f(1)], marker = Circle;      transform_marker = true, markersize = 0.5, kwargs3...)
+    p8 = scatter!(ax, [Point2f(3)], marker = FastPixel(), transform_marker = true, markersize = 0.5; kwargs3...)
+    p9 = text!(ax, [Point2f(2)],    text = "Test",        transform_marker = true, fontsize = 0.4, align = (:center, :center); kwargs3...)
+
+    transform!.((p1, p2, p3, p4, p5, p6, p7, p8, p9), 2)
 
     # center must match, left 2x bigger than right
     ticks = (10.0 .^ (-0.4:0.4:0.4), [rich("10", superscript(string(x))) for x in -0.4:0.4:0.4])
     axis_kwargs = (xscale = log10, yscale = log10, xticks = ticks, yticks = ticks, limits = (0.25, 4, 0.25, 4))
     ax = Axis(fig[2, 1]; axis_kwargs...)
-    p4 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = false, kwargs...)
+    p1 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = false, kwargs...)
     ax = Axis(fig[2, 2]; axis_kwargs...)
-    p5 = mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
+    p2 = mesh!(ax, Circle(Point2f(1), 0.5f0); kwargs2...)
     ax = Axis(fig[2, 3]; axis_kwargs...)
-    p6 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = true, kwargs...)
-    transform!.((p4, p5, p6), 0)
+    p3 = meshscatter!(ax, [Point2f(1)], marker = Circle(Point2f(0), 0.5f0); transform_marker = true, kwargs...)
+    ax = Axis(fig[2, 4]; axis_kwargs...)
+    p4 = scatter!(ax, [Point2f(10^-0.8)], marker = Circle;      transform_marker = false, markersize = 0.3, kwargs3...)
+    p5 = scatter!(ax, [Point2f(10^0.8)], marker = FastPixel(),  transform_marker = false, markersize = 0.3; kwargs3...)
+    p6 = text!(ax, [Point2f(1)],    text = "Test",              transform_marker = false, fontsize = 0.3, align = (:center, :center); kwargs3...)
+    ax = Axis(fig[2, 5]; axis_kwargs...)
+    p7 = scatter!(ax, [Point2f(10^-0.8)], marker = Circle;      transform_marker = true, markersize = 0.3, kwargs3...)
+    p8 = scatter!(ax, [Point2f(10^0.8)], marker = FastPixel(),  transform_marker = true, markersize = 0.3; kwargs3...)
+    p9 = text!(ax, [Point2f(1)],    text = "Test",              transform_marker = true, fontsize = 0.3, align = (:center, :center); kwargs3...)
+
+    transform!.((p1, p2, p3, p4, p5, p6, p7, p8, p9), 0)
 
     # center must match, left 2x bigger than rest
     ticks = (1e12 .+ (-10f5:5f5:10f5), string.(-10:5:10) .* ("f5",))
     axis_kwargs = (xticks = ticks, yticks = ticks, limits = 1e12 .+ (-1.2e6, 1.2e6, -1.2e6, 1.2e6))
     ax1 = Axis(fig[3, 1]; axis_kwargs...)
-    p7 = meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = false, kwargs...)
+    p1 = meshscatter!(ax1, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = false, kwargs...)
     ax2 = Axis(fig[3, 2]; axis_kwargs...)
-    p8 = mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
+    p2 = mesh!(ax2, Circle(Makie.Point2d(1e12), 1e6); kwargs2...)
     ax3 = Axis(fig[3, 3]; axis_kwargs...)
-    p9 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
-    transform!.((p7, p8, p9), 5e11, false)
+    p3 = meshscatter!(ax3, [Point2f(1e12)], marker = Circle(Point2f(0), 1f6); transform_marker = true, kwargs...)
+    ax = Axis(fig[3, 4]; axis_kwargs...)
+    p4 = scatter!(ax, [Point2f(1e12 - 1e6)], marker = Circle;      transform_marker = false, markersize = 6e5, kwargs3...)
+    p5 = scatter!(ax, [Point2f(1e12 + 1e6)], marker = FastPixel(), transform_marker = false, markersize = 6e5; kwargs3...)
+    p6 = text!(ax, [Point2f(1e12)],    text = "Test",              transform_marker = false, fontsize   = 6e5, align = (:center, :center); kwargs3...)
+    ax = Axis(fig[3, 5]; axis_kwargs...)
+    p7 = scatter!(ax, [Point2f(1e12 - 1e6)], marker = Circle;      transform_marker = true, markersize = 6e5, kwargs3...)
+    p8 = scatter!(ax, [Point2f(1e12 + 1e6)], marker = FastPixel(), transform_marker = true, markersize = 6e5; kwargs3...)
+    p9 = text!(ax, [Point2f(1e12)],    text = "Test",              transform_marker = true, fontsize   = 6e5, align = (:center, :center); kwargs3...)
+
+    transform!.((p1, p2, p3, p4, p5, p6, p7, p8, p9), 5e11, false)
 
     fig
 end
@@ -1178,5 +1224,29 @@ end
     scatter!(scene, (110, 110), marker=Rect, font = "Fira Mono", markersize=45, color = :green, strokecolor = :red, strokewidth = 1)
     text!(scene,    (110, 110), text = "◇",  font = "Fira Mono", fontsize = 45, align = (:center, :center), color = :white)
 
+    scene
+end
+
+@reference_test "Subpixel Scatter" begin
+    scene = Scene(size = (100, 100), camera = campixel!)
+    scatter!(scene, [(x, y) for x in  0:50  for y in  0:50 ], markersize=0.0, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in  0:50  for y in 51:100], markersize=0.4, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in 51:100 for y in  0:50 ], markersize=0.7, color = :black, marker = Rect)
+    scatter!(scene, [(x, y) for x in 51:100 for y in 51:100], markersize=1.0, color = :black, marker = Rect)
+    scene
+end
+
+@reference_test "Anisotropic markers" begin
+    scene = Scene(size = (250, 250))
+    scatter!(scene,
+        [-0.5, -0.5, -0.5], [-0.5, 0.5, 0],
+        marker = :rect, markersize = [Vec2f(50, 10), Vec2f(10, 50), Vec2f(50)]
+    )
+    scatter!(scene, 0, +0.5, markersize = (50, 10))
+    scatter!(scene, 0, 0.0, markersize = 50)
+    scatter!(scene, 0, -0.5, markersize = (10, 50))
+    scatter!(scene, 0.5, 0.5, marker = 'o', markersize = 50)
+    scatter!(scene, 0.5, 0, marker = 'L', markersize = 50, rotation = Quaternionf(0.3, 0.7, 0.5, 0.2))
+    scatter!(scene, 0.5, -0.5, marker = 'L', markersize = (20, 100), rotation = Quaternionf(0.3, 0.7, 0.5, 0.2), color = :black)
     scene
 end

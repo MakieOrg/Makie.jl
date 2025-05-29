@@ -324,8 +324,11 @@ end
 
 # TODO: lines overwrites this
 function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
-    program = create_shader(scene, plot)
+    program, additional = create_shader(scene, plot)
     mesh = serialize_three(plot, program)
+    if additional !== nothing
+        merge!(mesh, additional)
+    end
     mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
@@ -461,7 +464,7 @@ function serialize_three(scene::Scene, @nospecialize(plot::AbstractPlot))
     end
 
     uniforms[:num_clip_planes] = serialize_three(
-        Makie.is_data_space(plot.space[]) ? length(clip_planes[]) : 0
+        Makie.is_data_space(plot) ? length(clip_planes[]) : 0
     )
     onany(plot, plot.clip_planes, plot.space) do planes, space
         N = Makie.is_data_space(space) ? length(planes) : 0

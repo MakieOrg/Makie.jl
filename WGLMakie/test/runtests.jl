@@ -31,6 +31,8 @@ excludes = Set([
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
+    "per element uv_transform", # not implemented yet
+    # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
 ])
 
 Makie.inline!(Makie.automatic)
@@ -44,6 +46,37 @@ edisplay = Bonito.use_electron_display(devtools=true)
         missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
         ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
+
+    @testset "js texture atlas" begin
+        atlas = Makie.get_texture_atlas()
+        marker = collect(keys(atlas.mapping))
+
+        positions = map(enumerate(marker)) do (i, m)
+            Point2f((i % 19) * 50, (i ÷ 19) * 50)
+        end
+        msize = map(marker) do m
+            uv = atlas.uv_rectangles[atlas.mapping[m]]
+            reverse(Vec2f((uv[Vec(3, 4)] .- uv[Vec(1, 2)]) .* 2048))
+        end
+        # Make sure all sdfs inside texture atlas are send to JS!
+        s = Scene()
+        cam2d!(s)
+        scatter!(s, positions, marker=marker, markersize=msize, markerspace=:data)
+        center!(s)
+        img = colorbuffer(s)
+
+        js_tex_atlas = evaljs_value(s.current_screens[1].session, js"WGL.get_texture_atlas().data")
+        js_atlas_data = reshape(Bonito.decode_extension_and_addbits(js_tex_atlas), (2048, 2048))
+        # Code to look at the atlas (reference test?)
+        # f, ax, pl = contour(js_atlas_data, color=:red, levels=[0.0, 15.0], alpha=0.5)
+        # hidedecorations!(ax)
+        # pl = contour!(ax, atlas.data, color=:black, levels=[0.0, 15.0], alpha=1.0)
+        # ax3, pl = image(f[1, 2], img, uv_transform=Mat{2,3,Float32}(0, 1, 1, 0, 0, 0))
+        # hidedecorations!(ax3)
+        # f
+        @test atlas.data  ≈ js_atlas_data
+    end
+
 
     @testset "window open/closed" begin
         f, a, p = scatter(rand(10));
@@ -203,8 +236,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         session_size = Base.summarysize(session) / 10^6
         texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
 
-        @test length(WGLMakie.TEXTURE_ATLAS.listeners) == 1 # Only one from permanent Retain
-        @test length(session.session_objects) == 1 # Also texture atlas because of Retain
+        @test length(session.session_objects) == 0
         @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
             @test isempty(getfield(session, field))
         end
@@ -214,8 +246,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
         @test length(server.routes.table) == 2
         @test server.routes.table[1][1] == "/browser-display"
         @test server.routes.table[2][2] isa HTTPAssetServer
-        @show typeof.(last.(WGLMakie.TEXTURE_ATLAS.listeners))
-        @show length(WGLMakie.TEXTURE_ATLAS.listeners)
         @show session_size texture_atlas_size
 
         # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
@@ -229,7 +259,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
         # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
         # we used Retain for global_obs, so it should stay as long as root session is open
-        @test keys(js_objects) == Set([WGLMakie.TEXTURE_ATLAS.id])
     end
 
 end
