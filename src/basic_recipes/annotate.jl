@@ -1,6 +1,9 @@
-module Ann
+baremodule Ann # bare for cleanest tab-completion behavior
 
-    module Paths
+    using Base
+    baremodule Paths
+
+        using Base
 
         struct Line end
         struct Corner end
@@ -10,7 +13,9 @@ module Ann
 
     end
 
-    module Arrows
+    baremodule Arrows
+
+        using Base
 
         using ...Makie
 
@@ -67,7 +72,9 @@ module Ann
 
     end
 
-    module Styles
+    baremodule Styles
+
+        using Base
 
         using ..Arrows: Arrows
 
@@ -463,7 +470,7 @@ function startpoint(::Ann.Paths.Corner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotate) = Rect3f(Rect2f(Vec2f.(p[1][])))
+Makie.data_limits(p::Annotate) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
 Makie.boundingbox(p::Annotate, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
@@ -918,3 +925,48 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
 end
+
+function attribute_examples(::Type{Annotate})
+    Dict(
+        :shrink => [
+            Example(
+                code = raw"""
+                    fig = Figure()
+                    ax = Axis(fig[1, 1])
+                    shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
+                    for (i, shrink) in enumerate(shrinks)
+                        annotate!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
+                        scatter!(ax, 0, i)
+                    end
+                    fig
+                    """
+            )
+        ],
+        :style => [
+            Example(
+                code = raw"""
+                    fig = Figure()
+                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3))
+                    annotate!(-200, 0, 0, 0, style = Ann.Styles.Line())
+                    annotate!(-200, 0, 0, 1, style = Ann.Styles.LineArrow())
+                    annotate!(-200, 0, 0, 2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
+                    annotate!(-200, 0, 0, 3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line()))
+                    fig
+                    """
+            )
+        ],
+        :path => [
+            Example(
+                code = raw"""
+                    fig = Figure()
+                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3))
+                    annotate!(-200, 0, 0, 0, path = Ann.Paths.Line())
+                    annotate!(-200, 0, 0, 1, path = Ann.Paths.Arc(0.1))
+                    annotate!(-200, 0, 0, 2, path = Ann.Paths.Arc(0.3))
+                    annotate!(-200, -30, 0, 3, path = Ann.Paths.Corner())
+                    fig
+                    """
+            )
+        ],
+    )
+end 
