@@ -89,9 +89,12 @@ using .Ann
     annotate(points_target)
     annotate(points_label, points_target)
 
-Create an annotation plot that labels one or more points with text.
-If no text positions are given, they will be determined automatically such
-that overlaps between labels and data points are reduced.
+Annotate one or more target points with a combination of optional text labels and
+connections between labels and targets, typically in the form of an arrow.
+
+If no label positions are given, they will be determined automatically such
+that overlaps between labels and data points are reduced. In this mode, the labels should
+be very close to their associated data points so connection plots are typically not visible.
 """
 @recipe Annotate begin
     """
@@ -137,7 +140,9 @@ that overlaps between labels and data points are reduced.
     maxiter = 200
     """
     The space in which the label positions are given. Can be `:screen_offset` (the positions are given in
-    screen space relative to the target data positions) or `:data`.
+    screen space relative to the target data positions) or `:data`. If a text label should be positioned
+    somewhere close to the labeled point, `:screen_offset` is usually easier to get a consistent visual result.
+    If an arrow is supposed to point from one data point to another, `:data` is the appropriate choice.
     """
     labelspace = :screen_offset
     linewidth = 1.0
