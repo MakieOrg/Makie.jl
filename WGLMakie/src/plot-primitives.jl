@@ -253,12 +253,20 @@ function create_shader(scene::Scene, plot::Scatter)
         return (dict,)
     end
 
+    register_computation!(attr, [:marker, :color], [:scatter_color]) do (marker, color), changed, last
+        if marker isa AbstractMatrix
+            return (to_color(marker),)
+        else
+            return (color,)
+        end
+    end
+
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
 
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
-    backend_colors!(attr)
+    backend_colors!(attr, :scatter_color)
     inputs =  [
         :positions_transformed_f32c,
 
