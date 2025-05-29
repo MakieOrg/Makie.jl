@@ -807,3 +807,21 @@ or other array-like output.
     "Controls whether marker attributes get transformed by the model matrix."
     transform_marker = automatic
 end
+
+
+"""
+    shadertoy(rect::Rect2f, shader::String)
+
+Creates a fragment shader object that can be used to render a shader mirroring the shadertoy API.
+Only works for GLMakie for now.
+"""
+@recipe ShaderToy (rect::Rect2f, shader::String) begin
+    """Defines code that replaces the specified keys in shaders.
+    E.g. `{{my_code}}` will be replaced by `shader_injections["my_code"]`.
+    These code injections happen before compile time and require
+    `GLMakie.closeall()` to be overwritten.
+    """
+    uniforms = Dict{Symbol,Any}()
+    mixin_generic_plot_attributes()...
+    fxaa = false
+end
