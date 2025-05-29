@@ -260,6 +260,8 @@ function create_shader(scene::Scene, plot::Scatter)
             return (color,)
         end
     end
+    # For image markers (should this be a plot attribute?)
+    Makie.add_input!(attr, :interpolate, true)
 
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
