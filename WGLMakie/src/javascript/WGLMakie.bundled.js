@@ -24266,8 +24266,8 @@ function create_line(plot_object) {
     const { plot_data  } = plot_object;
     create_line_buffers(geometry, buffers, add_line_attributes(plot_object, plot_data.attributes), plot_object.is_segments);
     const material = create_line_material(add_line_attributes(plot_object, plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
-    material.depthTest = !plot_data.overdraw.value;
-    material.depthWrite = !plot_data.transparency.value;
+    material.depthTest = !plot_data.overdraw;
+    material.depthWrite = !plot_data.transparency;
     material.uniforms.is_linesegments = {
         value: plot_object.is_segments
     };
@@ -24446,7 +24446,13 @@ const mod1 = {
 };
 window.THREE = mod;
 function dispose_screen(screen) {
-    const { renderer , picking_target , root_scene  } = screen;
+    if (Object.keys(screen).length === 0) {
+        return;
+    }
+    const { renderer , picking_target , root_scene , comm  } = screen;
+    comm.notify({
+        window_open: false
+    });
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -24789,6 +24795,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit,
         scalefactor,
         winscale,
+        comm,
         texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);

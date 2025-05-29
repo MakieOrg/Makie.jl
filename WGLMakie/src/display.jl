@@ -57,11 +57,7 @@ mutable struct Screen <: Makie.MakieScreen
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
         screen = new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
-
-        finalizer(screen) do screen
-            close(screen.tick_clock)
-        end
-
+        finalizer(close, screen)
         return screen
     end
 end
@@ -107,6 +103,12 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             else
                 # Will be an error from WGLMakie.js
                 put!(screen.plot_initialized, initialized)
+            end
+            return
+        end
+        on(session, session.on_close) do closed
+            if closed == true
+                close(screen)
             end
             return
         end
