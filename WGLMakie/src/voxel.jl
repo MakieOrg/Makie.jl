@@ -60,11 +60,12 @@ function create_shader(scene::Scene, plot::Voxels)
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
         if isnothing(cached)
-            return (Vector{Float32}(undef, N_instances),) # or smaller type?
+            return (zeros(Float32, N_instances),) # or smaller type?
         else
             dummy_data = cached[1]::Vector{Float32}
             if N_instances != length(dummy_data)
                 resize!(dummy_data, N_instances)
+                dummy_data .= 0
                 return (dummy_data,)
             else
                 return nothing
