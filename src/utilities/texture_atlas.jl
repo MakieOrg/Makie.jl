@@ -453,8 +453,12 @@ primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_w
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
 primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
 function primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font)
-    puow = primitive_uv_offset_width(atlas, first(x), font)
-    map(m->puow, x)
+    dct = Dict{eltype(x), Vec4f}()
+    map(x) do b
+        get!(dct, b) do
+            primitive_uv_offset_width(atlas, b, font)
+        end
+    end
 end
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
@@ -496,16 +500,24 @@ function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, marke
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), pathmarker)
+    dct = Dict{eltype(pathmarker), Vec2f}()
+    msf(pathmarker) =
+        get!(dct, pathmarker) do
+            marker_scale_factor(atlas, pathmarker)
+        end
+    return _bcast(markersize) .* msf.(pathmarker)
 end
 
 # Rect / Circle dont need no rescaling
 rescale_marker(atlas, char, font, markersize) = markersize
 
 function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
-    msf = marker_scale_factor(atlas, first(char), font)
-    msfs = fill(msf, length(char))
-    return _bcast(markersize) .* msfs
+    dct = Dict{eltype(char), Vec2f}()
+    msf(char) =
+        get!(dct, char) do
+            marker_scale_factor(atlas, char, font)
+        end
+    return _bcast(markersize) .* msf.(char)
 end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
