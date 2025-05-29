@@ -147,7 +147,6 @@ be very close to their associated data points so connection plots are typically 
     labelspace = :screen_offset
     linewidth = 1.0
     arrowsize = 8
-    step_simulation = 0 # this allows to take steps in the solving animation manually, for recordings
 end
 
 function closest_point_on_rectangle(r::Rect2, p)
@@ -225,7 +224,9 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         notify(txt.offset)
     end
 
-    on(p.step_simulation) do step_simulation
+    p.__advance_optimization = 0
+
+    on(p.__advance_optimization) do advance_optimization
         calculate_best_offsets!(
             txt.offset[],
             screenpoints_target[],
@@ -234,8 +235,8 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
             Rect2d((0, 0),
             scene.viewport[].widths);
             labelspace = p.labelspace[],
-            maxiter = step_simulation,
-            reset = false, # don't reset on step_simulation so we can advance the same one frame by frame
+            maxiter = advance_optimization,
+            reset = false, # don't reset on advance_optimization so we can advance the same one frame by frame
         )
         notify(txt.offset)
     end
@@ -275,6 +276,12 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
 
     plotlist!(p, plotspecs)
     return p
+end
+
+function advance_optimization!(p::Annotate, n::Int = 1)
+    @assert n > 0
+    p.__advance_optimization = n
+    return
 end
 
 function distance_point_outside_rect(p::Point2, rect::Rect2)
