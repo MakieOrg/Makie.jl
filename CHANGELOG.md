@@ -50,6 +50,7 @@
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
 - Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
 - Switched to Julia 1.10 for GLMakie CI due to issues with OpenGL on ubuntu-latest. This may cause GLMakie compatibility with the Julia 1.6 to degrade in the future. [#4913](https://github.com/MakieOrg/Makie.jl/pull/4913)
+- Added support for logarithmic units [#4853](https://github.com/MakieOrg/Makie.jl/pull/4853)
 
 ## [0.22.2] - 2025-02-26
 
