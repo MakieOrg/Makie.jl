@@ -523,6 +523,7 @@ function arc_center_radius(p1::Point2, p2::Point2, x::Real)
 end
 
 function connection_path(ca::Ann.Paths.Arc, p1, p2)
+    abs(ca.height) < 1e-4 && return connection_path(Ann.Paths.Line(), p1, p2)
     radius, center = arc_center_radius(p1, p2, ca.height)
     BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
 end
