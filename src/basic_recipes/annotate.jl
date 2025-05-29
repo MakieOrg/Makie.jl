@@ -139,12 +139,12 @@ be very close to their associated data points so connection plots are typically 
     """
     maxiter = 200
     """
-    The space in which the label positions are given. Can be `:screen_offset` (the positions are given in
+    The space in which the label positions are given. Can be `:relative_pixel` (the positions are given in
     screen space relative to the target data positions) or `:data`. If a text label should be positioned
-    somewhere close to the labeled point, `:screen_offset` is usually easier to get a consistent visual result.
+    somewhere close to the labeled point, `:relative_pixel` is usually easier to get a consistent visual result.
     If an arrow is supposed to point from one data point to another, `:data` is the appropriate choice.
     """
-    labelspace = :screen_offset
+    labelspace = :relative_pixel
     linewidth = 1.0
     arrowsize = 8
 end
@@ -201,10 +201,10 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
             Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2)))
-        elseif labelspace === :screen_offset
+        elseif labelspace === :relative_pixel
             points .+ Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2))
         else
-            error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:screen_offset` and `:data`.")
+            error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:relative_pixel` and `:data`.")
         end
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
