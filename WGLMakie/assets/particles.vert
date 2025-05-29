@@ -19,7 +19,7 @@ vec3 qmul(vec4 q, vec3 v){
 
 void rotate(vec4 q, inout vec3 V, inout vec3 N){
     V = qmul(q, V);
-    N = normalize(qmul(q, N));
+    N = qmul(q, N);
 }
 
 vec4 to_vec4(vec3 v3){return vec4(v3, 1.0);}
@@ -99,7 +99,7 @@ void main(){
         position_world = model * to_vec4(to_vec3(get_offset())) + vec4(vertex_position, 0);
 
     process_clip_planes(position_world.xyz);
-    o_normal = normalize(N);
+    o_normal = N;
     frag_color = vertex_color(get_color(), get_colorrange(), colormap);
     frag_uv = apply_uv_transform(get_uv_transform(), get_uv());
     // direction to camera

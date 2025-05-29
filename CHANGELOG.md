@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Refactored `arrows` to solve various issues with conversions, broken color handling, transparency, alignment and sizing. [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
 
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
 

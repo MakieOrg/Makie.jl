@@ -493,3 +493,22 @@ function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol
     transformed = output_f32c * output_from_clip * clip_from_input * input_f32c * p4d
     return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
 end
+
+function transform_and_project(
+        scenelike::SceneLike, input_space::Symbol, output_space::Symbol,
+        pos::Vector{<: VecTypes{N, T1}}, target_type = Point{N, promote_type(Float32, T1)}
+    ) where {N, T1}
+
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    transformed = apply_transform_and_model(scenelike, pos)
+    transformed_f32 = to_ndim.(Point3{T}, f32_convert(scenelike, transformed), 0)
+
+    input_space === output_space && return to_ndim.(target_type, transformed_f32, 1)
+
+    cam = camera(scenelike)
+    projection_matrix = clip_to_space(cam, output_space) * space_to_clip(cam, input_space)
+    return map(transformed_f32) do point
+        p4d = projection_matrix * to_ndim(Point4{T}, point, 1)
+        return target_type(p4d[Vec(1,2,3)] / p4d[4])
+    end
+end
