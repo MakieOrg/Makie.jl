@@ -84,10 +84,10 @@ end
 using .Ann
 
 """
-    annotate(x, y)
-    annotate(x, y, x_label, y_label)
-    annotate(points)
-    annotate(points, points_label)
+    annotate(x_target, y_target)
+    annotate(x_label, y_label, x_target, y_target)
+    annotate(points_target)
+    annotate(points_label, points_target)
 
 Create an annotation plot that labels one or more points with text.
 If no text positions are given, they will be determined automatically such
@@ -168,7 +168,7 @@ function closest_point_on_rectangle(r::Rect2, p)
 end
 
 function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real)
-    return ([Vec4d(x, y, NaN, NaN)],)
+    return ([Vec4d(NaN, NaN, x, y)],)
 end
 
 function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real, x2::Real, y2::Real)
@@ -176,23 +176,17 @@ function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real, x2::Real,
 end
 
 function Makie.convert_arguments(::Type{<:Annotate}, v::AbstractVector{<:VecTypes{2}})
-    return (Vec4d.(getindex.(v, 1), getindex.(v, 2), NaN, NaN),)
+    return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
 end
 
 function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     scene = Makie.get_scene(p)
 
     textpositions = lift(p[1]) do vecs
-        Point2d.(getindex.(vecs, 1), getindex.(vecs, 2))
+        Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
     end
 
     txt = text!(p, textpositions; text = p.text, align = p.align, offset = zeros(Vec2d, length(textpositions[])), color = p.textcolor)
-
-    # points = lift(p, scene.camera.projectionview, p.model, Makie.transform_func(p),
-    #       scene.viewport, p[1], p[2]) do _, _, _, _, p1, p2
-
-    #     return Makie.project.(Ref(scene), (Point2d(p1), Point2d(p2)))
-    # end
 
     screenpoints_target = Ref{Vector{Point2f}}()
     screenpoints_label = Ref{Vector{Point2f}}()
@@ -202,9 +196,9 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         points = Makie.project.(Ref(scene), textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
-            Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4)))
+            Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2)))
         elseif labelspace === :screen_offset
-            points .+ Point2d.(getindex.(p[1][], 3), getindex.(p[1][], 4))
+            points .+ Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2))
         else
             error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:screen_offset` and `:data`.")
         end
