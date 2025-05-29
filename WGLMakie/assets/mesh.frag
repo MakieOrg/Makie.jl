@@ -133,7 +133,7 @@ vec4 pack_int(uint id, uint index) {
 uint picking_index_from_uv(sampler2D img, vec2 uv) {
     ivec2 size = textureSize(img, 0);
     ivec2 jl_idx = clamp(ivec2(uv * vec2(size)), ivec2(0), size-1);
-    uint idx = uint(jl_idx.y + jl_idx.x * size.y);
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
     return idx;
 }
 

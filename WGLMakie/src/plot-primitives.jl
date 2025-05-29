@@ -30,7 +30,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
     return mesh
 end
 
-function backend_colors!(attr, color_name=:scaled_color; permute=false)
+function backend_colors!(attr, color_name=:scaled_color)
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
@@ -40,7 +40,7 @@ function backend_colors!(attr, color_name=:scaled_color; permute=false)
             return (color, is_pattern)
         elseif color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
             # TODO, don't construct a sampler every time
-            return (Sampler(permute ? permutedims(color) : color, minfilter=filter), false)
+            return (Sampler(color, minfilter=filter), false)
         elseif color isa Union{Real, Colorant}
             return (color, false)
         else
@@ -456,16 +456,14 @@ function add_uv_mesh!(attr)
     # map!(x -> value, attr, Symbol[], name)
 
     if !haskey(attr, :normals)
-        Makie.add_input!(attr, :normals, nothing)
-        for name in [:diffuse, :specular]
-            Makie.add_input!(attr, name, Vec3f(0))
+        Makie.register_computation!(attr, Symbol[],
+            [:normals, :diffuse, :specular, :shininess, :backlight, :shading]
+        ) do inputs, changed, cached
+            return (nothing, Vec3f(0), Vec3f(0), 0f0, 0f0, false)
         end
-        Makie.add_input!(attr, :shininess, 0f0)
-        Makie.add_input!(attr, :backlight, 0f0)
-        Makie.add_input!(attr, :shading, false)
     end
     if !haskey(attr, :wgl_uv_transform)
-        Makie.add_input!(attr, :wgl_uv_transform, Mat3f(0,1,0, -1,0,0, 1,0,1))
+        map!(() -> Makie.uv_transform(:flip_y), attr, Symbol[], :wgl_uv_transform)
     end
 end
 
@@ -512,13 +510,12 @@ function mesh_program(attr)
 end
 
 function create_shader(::Scene, plot::Union{Heatmap, Image})
-    # TODO: uv_transform?
     attr = plot.attributes
     if plot isa Image
         map!(to_3x3, attr, :uv_transform, :wgl_uv_transform)
     end
     add_uv_mesh!(attr)
-    backend_colors!(attr, permute=plot isa Heatmap)
+    backend_colors!(attr)
     Makie.register_world_normalmatrix!(attr)
     inputs = [
         # Special
@@ -553,17 +550,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
 
-# This adjusts uvs (compared to decompose_uv) so texture sampling starts at
-# the center of a texture pixel rather than the edge, fixing
-# https://github.com/MakieOrg/Makie.jl/pull/2598#discussion_r1152552196
-function _surface_uvs(nx, ny)
-    if (nx, ny) == (2, 2)
-        return Vec2f[(0,1), (1,1), (1,0), (0,0)]
-    else
-        f = Vec2f(1 / nx, 1 / ny)
-        return [f .* Vec2f(0.5 + i, 0.5 + j) for j in ny-1:-1:0 for i in 0:nx-1]
-    end
-end
+
 # TODO, speed up GeometryBasics
 function fast_faces(nvertices)
     w, h = nvertices
@@ -596,8 +583,9 @@ function surface2mesh_computation!(attr)
         !isnothing(last) && last_size == new_size && return nothing
         rect = Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), new_size)
         faces = decompose(GLTriangleFace, rect)
+        uvs = decompose_uv(Vec2f, rect)
         # TODO, why is fast_faces incorrect?
-        return (faces, _surface_uvs(new_size...), new_size)
+        return (faces, uvs, new_size)
     end
     register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (fs, ps), changed, last
         return (filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs),)
@@ -614,7 +602,17 @@ function create_shader(scene::Scene, plot::Surface)
     surface2mesh_computation!(attr)
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    map!(to_3x3, attr, :pattern_uv_transform, :wgl_uv_transform)
+    map!(attr, [:pattern_uv_transform, :scaled_color], :wgl_uv_transform) do uvt, tex
+        # rescale and shift uvs so that edge vertices map to pixel centers in the texture
+        # If the texture size and grid size match (i.e. no explicit `color = tex`) this
+        # maps every surface vertex to a pixel center (rather than them sliding from
+        # the left/bottom edge to the right/top)
+        s = size(tex)
+        scale = Vec2f((s .- 1) ./ s)
+        trans = Vec2f(0.5 ./ s)
+        # order matters, e.g. for :rotr90
+        return to_3x3(uvt) * Makie.uv_transform(trans, scale)
+    end
     backend_colors!(attr)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     inputs = [
