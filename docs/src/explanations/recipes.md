@@ -318,6 +318,7 @@ As a last example, lets pretend our stock data is coming in dynamically, and we 
 This is easy if we use observables as input arguments which we then update frame by frame:
 
 ```@example stocks
+using GLMakie
 GLMakie.activate!() # hide
 timestamps = Observable(collect(1:100))
 stocknode = Observable(stockvalues)

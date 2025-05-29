@@ -470,7 +470,6 @@ function add_uv_mesh!(attr)
 end
 
 function mesh_program(attr)
-    i = Vec(1, 2, 3)
     shading = attr.shading isa Bool ? attr.shading : attr.shading != NoShading
     data = Dict(
         :shading => shading,
