@@ -395,7 +395,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         return (fast_bb(points, f),)
     end
 
-    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), _, _
+    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
         Aggregation.aggregate!(canvas, points; point_transform=f, method=method)
         if crange isa Automatic
             cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
@@ -407,7 +407,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     image!(p, p.canvas_with_aggregation, p.operation, p.local_operation;
         interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
-        MakieCore.colormap_attributes(p)...)
+        MakieCore.colormap_attributes(p)...
+    )
     return p
 end
 

@@ -30,26 +30,25 @@ end
     )
 
     # data conversion pipeline
-    @test p.args[1][] === data
-    @test p.converted[1][] == (-3.0, 3.0)
-    @test p.converted[2][] == (-2.5, 2.5)
-    @test p.converted[3][] == (-2.0, 2.0)
+    @test p.args[][4] === data
+    @test p.converted[][1] == (-3.0, 3.0)
+    @test p.converted[][2] == (-2.5, 2.5)
+    @test p.converted[][3] == (-2.0, 2.0)
 
     @test p.colorrange[] == Makie.automatic # otherwise no auto _limits
-    @test all(p._limits[] .≈ (0.3, 1.8)) # controls conversion to voxel ids
+    @test all(p.value_limits[] .≈ (0.3, 1.8)) # controls conversion to voxel ids
     ids = map(data) do val
         trunc(UInt8, clamp(2 + 253 * (val - 0.3) / (1.8 - 0.3), 2, 254))
     end
-    @test p.converted[4][] == ids
+    @test p.converted[][4] == ids
 
     # colormap
-    cc = p.calculated_colors[]
-    @test length(cc.colormap[]) == 255
-    @test cc.colormap[][1] == RGBAf(1,0,1,1)
-    @test cc.colormap[][2] == RGBAf(0,0,0,1)
-    @test cc.colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
-    @test cc.colormap[][end-1] == RGBAf(1,1,1,1)
-    @test cc.colormap[][end] == RGBAf(0,1,0,1)
+    @test length(p.colormap[]) == 255
+    @test p.colormap[][1] == RGBAf(1,0,1,1)
+    @test p.colormap[][2] == RGBAf(0,0,0,1)
+    @test p.colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
+    @test p.colormap[][end-1] == RGBAf(1,1,1,1)
+    @test p.colormap[][end] == RGBAf(0,1,0,1)
 
     # voxels-as-meshscatter helpers
     @test Makie.voxel_size(p) ≈ Vec3f(0.9)
@@ -60,13 +59,13 @@ end
     # raw UInt8 input updates, issue #4912
     data = Observable(zeros(UInt8, 4,5,6))
     f, a, p = voxels(data)
-    @test p.converted[1][] == Vec2f(-2, 2)
-    @test p.converted[2][] == Vec2f(-2.5, 2.5)
-    @test p.converted[3][] == Vec2f(-3, 3)
-    @test p.converted[4][] == p.args[end][]
+    @test p.converted[][1] == Vec2f(-2, 2)
+    @test p.converted[][2] == Vec2f(-2.5, 2.5)
+    @test p.converted[][3] == Vec2f(-3, 3)
+    @test p.converted[][4] == p.args[end][]
     data[] = ones(UInt8, 4,5,6)
-    @test p.args[end][] == data[]
-    @test p.converted[end][] == data[]
+    @test p.args[][end] == data[]
+    @test p.converted[][end] == data[]
 end
 
 # TODO, test all primitives and argument conversions
@@ -107,18 +106,18 @@ end
     l = sl.plots[1]::Lines
     sc = sl.plots[2]::Scatter
     @test l.color[] == 3
-    @test l.colorrange[] == colorrange
+    @test l.colorrange[] == Vec2f(colorrange)
     @test l.colormap[] == colormap
     @test sc.color[] == 3
-    @test sc.colorrange[] == colorrange
+    @test sc.colorrange[] == Vec2f(colorrange)
     @test sc.colormap[] == colormap
     sl.markercolor = 4
     sl.markercolormap = :jet
     sl.markercolorrange = (2, 7)
     @test l.color[] == 3
-    @test l.colorrange[] == colorrange
+    @test l.colorrange[] == Vec2f(colorrange)
     @test l.colormap[] == colormap
     @test sc.color[] == 4
-    @test sc.colorrange[] == (2, 7)
+    @test sc.colorrange[] == Vec2f(2, 7)
     @test sc.colormap[] == :jet
 end
