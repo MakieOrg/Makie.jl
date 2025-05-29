@@ -57,7 +57,6 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     on(comm) do msg
         @async try
             @handle msg.window_open begin
-                @show window_open
                 e.window_open[] = window_open
             end
             @handle msg.mouseposition begin
