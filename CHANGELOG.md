@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
+
 ## [0.22.7] - 2025-05-23
 
 - Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
