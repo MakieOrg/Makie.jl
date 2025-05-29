@@ -253,7 +253,7 @@ function create_shader(scene::Scene, plot::Scatter)
         return (dict,)
     end
 
-    register_computation!(attr, [:marker, :color], [:scatter_color]) do (marker, color), changed, last
+    register_computation!(attr, [:marker, :scaled_color], [:scatter_color]) do (marker, color), changed, last
         if marker isa AbstractMatrix
             return (to_color(marker),)
         else
