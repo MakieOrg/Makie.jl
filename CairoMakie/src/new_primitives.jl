@@ -586,10 +586,6 @@ function draw_mesh3D(
         align_pattern(per_face_col, scene, f32c_model)
     end
 
-    if !isnothing(meshnormals) && to_value(get(plot, :invert_normals, false))
-        meshnormals .= -meshnormals
-    end
-
     faceculling = to_value(get(plot, :faceculling, -10))
 
     draw_mesh3D(
@@ -666,23 +662,8 @@ end
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
     attr = primitive.attributes::Makie.ComputeGraph
 
-    # Generate mesh from surface data and add its data to the compute graph.
-    # Use that to draw surface as a mesh
-    Makie.register_computation!(attr,
-            [:x, :y, :z], [:positions, :faces, :texturecoordinates, :normals]
-        ) do (x, y, z), changed, cached
+    Makie.add_computation!(attr, Val(:surface_as_mesh))
 
-        # (x, y, z) are generated after convert_arguments and dim_converts,
-        # before apply_transform and
-        m = Makie.surface2mesh(x, y, z)
-        return coordinates(m), decompose(GLTriangleFace, m), texturecoordinates(m), normals(m)
-    end
-
-    # TODO: Should we always have this registered for positions derived from x, y, z?
-    #       That can coexist with range/vector path in GL backends...
-    #       Note that surface2mesh may not be compatible with the order used in
-    #       GL backends.
-    Makie.register_position_transforms!(attr)
     Makie.register_pattern_uv_transform!(attr)
 
     draw_mesh3D(scene, screen, primitive)

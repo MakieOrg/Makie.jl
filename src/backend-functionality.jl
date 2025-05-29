@@ -372,3 +372,26 @@ function add_computation!(attr, ::Val{:uniform_clip_planes}, target_space::Symbo
     end
     return
 end
+
+# TODO: maybe try optimizing this?
+# We only need to update faces (and texture coordinates?) when the xy grid resizes
+# We don't need the mesh either, if that's significant
+function add_computation!(attr, ::Val{:surface_as_mesh})
+    # Generate mesh from surface data and add its data to the compute graph.
+    # Use that to draw surface as a mesh
+    register_computation!(attr,
+            [:x, :y, :z, :invert_normals], [:positions, :faces, :texturecoordinates, :normals]
+        ) do (x, y, z, invert_normals), changed, cached
+
+        # (x, y, z) are generated after convert_arguments and dim_converts,
+        # before apply_transform and f32c
+        m = surface2mesh(x, y, z)
+        ns = normals(m)
+        return coordinates(m), decompose(GLTriangleFace, m), texturecoordinates(m),
+            invert_normals && !isnothing(ns) ? -ns : ns
+    end
+
+    # Get positions_transformed_f32c
+    register_position_transforms!(attr)
+end
+

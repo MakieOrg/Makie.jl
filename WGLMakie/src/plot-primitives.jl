@@ -570,36 +570,9 @@ function fast_faces(nvertices)
     return faces
 end
 
-# TODO: merge with CairoMakie? (use surface2mesh? optimize it?)
-# TODO: This leaves behind triangles around nan's
-function surface2mesh_computation!(attr)
-    register_computation!(attr, [:x, :y, :z], [:positions]) do (x, y, z), changed, last
-        return (Makie.matrix_grid(identity, x, y, z),)
-    end
-    Makie.register_position_transforms!(attr)
-    register_computation!(attr, [:z], [:_faces, :texturecoordinates, :z_size]) do (z,), changed, last
-        last_size = isnothing(last) ? size(z) : last.z_size
-        new_size = size(z)
-        !isnothing(last) && last_size == new_size && return nothing
-        rect = Tessellation(Rect2(0f0, 0f0, 1f0, 1f0), new_size)
-        faces = decompose(GLTriangleFace, rect)
-        uvs = decompose_uv(Vec2f, rect)
-        # TODO, why is fast_faces incorrect?
-        return (faces, uvs, new_size)
-    end
-    register_computation!(attr, [:_faces, :positions_transformed_f32c], [:faces]) do (fs, ps), changed, last
-        return (filter(f -> !any(i -> (i > length(ps)) || isnan(ps[i]), f), fs),)
-    end
-    register_computation!(attr, [:positions_transformed_f32c, :faces, :invert_normals], [:normals]) do (ps, fs, invert_normals), changed, last
-        # TODO only recalculate normals if changed
-        ns = Makie.nan_aware_normals(ps, fs)
-        return (invert_normals ? -ns : ns,)
-    end
-end
-
 function create_shader(scene::Scene, plot::Surface)
     attr = plot.attributes
-    surface2mesh_computation!(attr)
+    Makie.add_computation!(attr, Val(:surface_as_mesh))
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
     map!(attr, [:pattern_uv_transform, :z], :wgl_uv_transform) do uvt, zs
@@ -726,6 +699,8 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
+    # TODO: This always sets a pattern, so we are rendering solid lines as a
+    # gapless pattern... We probably shouldn't so we don't require lastlength
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 
