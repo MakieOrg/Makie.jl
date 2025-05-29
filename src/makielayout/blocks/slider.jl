@@ -208,3 +208,154 @@ function set_close_to!(slider::Slider, value)
     slider.selected_index = closest
     slider.range[][closest]
 end
+
+function initialize_block!(sl::Slider2)
+    topscene = sl.blockscene
+
+    xrange, yrange = sl.xrange[], sl.yrange[]
+
+    selected_indices = Observable((1, 1))
+    setfield!(sl, :selected_indices, selected_indices)
+
+    dragging = Observable(false)
+    displayed_fraction = Observable((0.0, 0.0))
+
+    sliderfraction = lift(topscene, selected_indices, sl.xrange, sl.yrange) do (ix, iy), xr, yr
+        fx = (ix - 1) / (length(xr) - 1)
+        fy = (iy - 1) / (length(yr) - 1)
+        (fx, fy)
+    end
+
+    on(topscene, sliderfraction) do frac
+        if !dragging[]
+            displayed_fraction[] = frac
+        end
+    end
+
+    on(topscene, sl.xrange) do xr
+        selected_indices[] = (closest_index(xr, sl.value[][1]), selected_indices[][2])
+    end
+    on(topscene, sl.yrange) do yr
+        selected_indices[] = (selected_indices[][1], closest_index(yr, sl.value[][2]))
+    end
+
+    onany(topscene, selected_indices, dragging) do (ix, iy), dragging
+        new_val = (get(sl.xrange[], ix, nothing), get(sl.yrange[], iy, nothing))
+        has_changed = sl.value[] != new_val
+        drag_updates = sl.update_while_dragging[] || !dragging[]
+        if !isnothing(new_val[1]) && !isnothing(new_val[2]) && has_changed && drag_updates
+            sl.value[] = new_val
+        end
+    end
+
+    sl.value[] = (xrange[selected_indices[][1]], yrange[selected_indices[][2]])
+    selected_indices[] = (closest_index(xrange, sl.startvalue[][1]),
+                          closest_index(yrange, sl.startvalue[][2]))
+
+    bbox = lift(identity, topscene, sl.layoutobservables.computedbbox)
+    trackpoint = lift(topscene, bbox, displayed_fraction) do bb, (fx, fy)
+        x = left(bb) + fx * width(bb)
+        y = bottom(bb) + fy * height(bb)
+        Point2f(x, y)
+    end
+
+    background = lift(topscene, bbox) do bb
+        #full bounding rectangle
+        [
+            Point2f(left(bb), bottom(bb)),
+            Point2f(left(bb), top(bb)),
+            Point2f(right(bb), top(bb)),
+            Point2f(right(bb), bottom(bb))
+        ]
+    end
+    poly!(topscene, background, color = sl.color_inactive)
+
+    #crosshairs
+    cross = lift(topscene, bbox, trackpoint) do bb, p
+        [
+            Point2f(left(bb), p[2]), Point2f(right(bb), p[2]),
+            Point2f(p[1], bottom(bb)), Point2f(p[1], top(bb))
+        ]
+    end
+    linesegments!(topscene, cross, color = sl.color_active_dimmed, linewidth = 2)
+
+    hovered = Observable(false)
+    scatter!(
+        topscene, lift(p -> [p], trackpoint),
+        color = sl.color_active,
+        markersize = lift(hovered) do h
+            h ? 16.0 : 12.0
+        end,
+    )
+
+    mouseevents = addmouseevents!(topscene, sl.layoutobservables.computedbbox)
+
+    onmouseleftdrag(mouseevents) do event
+        dragging[] = true
+        bb = bbox[]
+        fx = clamp((event.px[1] - left(bb)) / width(bb), 0, 1)
+        fy = clamp((event.px[2] - bottom(bb)) / height(bb), 0, 1)
+
+        newx = closest_fractionindex(sl.xrange[], fx)
+        newy = closest_fractionindex(sl.yrange[], fy)
+        if sl.snap[]
+            fx = (newx - 1) / (length(sl.xrange[]) - 1)
+            fy = (newy - 1) / (length(sl.yrange[]) - 1)
+        end
+        displayed_fraction[] = (fx, fy)
+
+        if selected_indices[] != (newx, newy)
+            selected_indices[] = (newx, newy)
+        end
+
+        return Consume(true)
+    end
+
+    onmouseleftdragstop(mouseevents) do event
+        dragging[] = false
+        sliderfraction[] = sliderfraction[]
+        return Consume(true)
+    end
+
+    onmouseleftdoubleclick(mouseevents) do event
+        selected_indices[] = (closest_index(sl.xrange[], sl.startvalue[][1]),
+                              closest_index(sl.yrange[], sl.startvalue[][2]))
+        return Consume(true)
+    end
+
+    onmouseleftclick(mouseevents) do event
+        bb = bbox[]
+        fx = clamp((event.px[1] - left(bb)) / width(bb), 0, 1)
+        fy = clamp((event.px[2] - bottom(bb)) / height(bb), 0, 1)
+
+        newx = closest_fractionindex(sl.xrange[], fx)
+        newy = closest_fractionindex(sl.yrange[], fy)
+
+        if sl.snap[]
+            fx = (newx - 1) / (length(sl.xrange[]) - 1)
+            fy = (newy - 1) / (length(sl.yrange[]) - 1)
+        end
+
+        displayed_fraction[] = (fx, fy)
+
+        if selected_indices[] != (newx, newy)
+            selected_indices[] = (newx, newy)
+        end
+
+        return Consume(true)
+    end
+
+
+    onmouseover(mouseevents) do event
+        hovered[] = true
+        return Consume(false)
+    end
+
+    onmouseout(mouseevents) do event
+        hovered[] = false
+        return Consume(false)
+    end
+
+    sl
+end
+

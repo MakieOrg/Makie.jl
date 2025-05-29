@@ -39,6 +39,7 @@ export Axis
 export Axis3
 export PolarAxis
 export Slider
+export Slider2
 export SliderGrid
 export IntervalSlider
 export Button
