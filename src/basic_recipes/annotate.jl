@@ -4,8 +4,8 @@ module Ann
 
         struct Line end
         struct Corner end
-        struct Arc
-            height::Float64 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
+        Base.@kwdef struct Arc
+            height::Float64 = 0.5 # positive numbers are arcs going up then down, negative down then up, 1 is half circle
         end
 
     end
