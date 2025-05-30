@@ -431,7 +431,7 @@ end
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
     Record(fig, range(5, stop=40, length=3); framerate=1) do i
-        surf[3][] = surf_func(i)
+        surf[3] = surf_func(i)
     end
 end
 
