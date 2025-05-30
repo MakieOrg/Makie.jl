@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
+- Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
 
 ## [0.22.7] - 2025-05-23
 

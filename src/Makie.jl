@@ -225,6 +225,7 @@ include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
 include("stats/hexbin.jl")
+include("stats/dendrogram.jl")
 
 
 # Interactiveness
