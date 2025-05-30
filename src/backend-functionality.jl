@@ -285,12 +285,12 @@ end
 function sample_color(
         colormap::Vector{RGBAf}, value::Real, colorrange::VecTypes{2},
         lowclip::RGBAf = first(colormap), highclip::RGBAf = last(colormap),
-        nan_color::RGBAf = RGBAf(0,0,0,0), interpolation = Makie.Linear
+        nan_color::RGBAf = RGBAf(0,0,0,0), interpolation = Makie.continuous
     )
     isnan(value) && return nan_color
     value < colorrange[1] && return lowclip
     value > colorrange[2] && return highclip
-    if interpolation == Makie.Linear
+    if interpolation === Makie.continuous
         return Makie.interpolated_getindex(colormap, value, colorrange)
     else
         return Makie.nearest_getindex(colormap, value, colorrange)
@@ -301,11 +301,13 @@ function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_col
     register_computation!(attr,
             [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color, :color_mapping_type],
             [:computed_color]
-        ) do (color, colorrange, colormap, nan_color, lowclip, highclip, interpolation), changed, cached
+        ) do (color, colorrange, colormap, nan_color, lowclip, highclip, cmapping_type), changed, cached
         # colormapping
         if color isa AbstractArray{<:Real} || color isa Real
             output = map(color) do v
-                return Makie.sample_color(colormap, v, colorrange, lowclip, highclip, nan_color, interpolation)
+                # using linear interpolation - plot.interpolation refers to how pixels are sampled when rendering to a canvas
+                # While sample_color's interpolate refers to how colors are sampled from the colormap
+                return Makie.sample_color(colormap, v, colorrange, lowclip, highclip, nan_color, cmapping_type)
             end
             return (output,)
         else # Raw colors

@@ -379,6 +379,7 @@ function image_grid(@nospecialize(primitive::Heatmap))
     ys = regularly_spaced_array_to_range(primitive.y_transformed_f32c[])
     return xs, ys
 end
+
 function image_grid(@nospecialize(primitive::Image))
     # Rect vertices
     (x0, y0), _, (x1, y1), _ = primitive.positions_transformed_f32c[]

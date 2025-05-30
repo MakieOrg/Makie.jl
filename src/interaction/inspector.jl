@@ -701,7 +701,7 @@ function show_imagelike(inspector, plot, name, idx, edge_based, interpolate = pl
                     sample_color(
                         plot.alpha_colormap[], z, plot.scaled_colorrange[],
                         plot.lowclip_color[], plot.highclip_color[],
-                        plot.nan_color[], interpolate ? Linear : Nearest
+                        plot.nan_color[]
                     )
                 else
                     to_color(:transparent)
