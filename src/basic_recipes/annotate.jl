@@ -968,5 +968,31 @@ function attribute_examples(::Type{Annotate})
                     """
             )
         ],
+        :labelspace => [
+            Example(
+                code = raw"""
+                    g(x) = cos(6x) * exp(x)
+                    xs = 0:0.01:4
+                    ys = g.(xs)
+
+                    f, ax, _ = lines(xs, ys; axis = (; xgridvisible = false, ygridvisible = false))
+
+                    annotate!(ax, 1, 20, 2.1, g(2.1),
+                        text = "(1, 20)\nlabelspace = :data",
+                        path = Ann.Paths.Arc(0.3),
+                        style = Ann.Styles.LineArrow(),
+                        labelspace = :data
+                    )
+
+                    annotate!(ax, -100, -100, 2.65, g(2.65),
+                        text = "(-100, -100)\nlabelspace = :relative_pixel",
+                        path = Ann.Paths.Arc(-0.3),
+                        style = Ann.Styles.LineArrow()
+                    )
+
+                    f
+                    """
+            )
+        ],
     )
 end 
