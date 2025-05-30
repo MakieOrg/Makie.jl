@@ -835,17 +835,19 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     return
 end
 
+struct MapFunctionWrapper{FT} <: Function
+    user_func::FT
+end
+(x::MapFunctionWrapper)(inputs, changed, cached) = (x.user_func(values(inputs)...),)
+
+
 function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
-    register_computation!(attr, [input], [output]) do inputs, changed, cached
-        return (f(inputs[1]),)
-    end
+    register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     return attr
 end
 
 function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
-    register_computation!(attr, inputs, [output]) do inputs, changed, cached
-        return (f(inputs...),)
-    end
+    register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 

@@ -27,6 +27,7 @@ end
 
 edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
 edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
+edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "(::MapFunctionWrapper($(nameof(f.user_func))))$call"
 edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
 
 
@@ -62,8 +63,8 @@ end
 
 # ComputeEdge with InputFunctionWrapper which drops changed and cached
 # from add_input!(f, key, ::Computed)
-function get_callback_info(f::InputFunctionWrapper, args::Tuple{<: Any, <: Any, <: Any})
-    return f.user_func, (Symbol, typeof(args[1][1]))
+function get_callback_info(f::InputFunctionWrapper, inputs, outputs)
+    return f.user_func, (Symbol, typeof(inputs1[1]))
 end
 
 # Input with InputFunctionWrapper adding Symbol to the callback
@@ -72,12 +73,19 @@ function get_callback_info(f::InputFunctionWrapper, arg)
     return f.user_func, (Symbol, typeof(arg))
 end
 
+# map!(f, attr, ...) call which drops changed, cached and NamedTuple
+# for add_input!(f, key, value)
+function get_callback_info(f::MapFunctionWrapper, inputs, outputs)
+    return f.user_func, typeof.(values(inputs))
+end
+
+
 # add_input!(key, value)
 get_callback_info(f::typeof(identity), arg) = f, (typeof(arg),)
 
 
 # Generate a string pointing to the location of the callback function in edge.
-# This skips over InputFunctionWrapper to give more relevant locations
+# This skips over InputFunctionWrapper and MapFunctionWrapper to give more relevant locations
 function edge_callback_location(edge)
     f, arg_types = get_callback_info(edge)
     return edge_callback_location(f, arg_types)
@@ -92,7 +100,7 @@ function edge_callback_location(f, arg_types::Tuple)
 end
 
 # Generate a string with the edges callback function signature and location.
-# This skips over InputFunctionWrapper to give more relevant locations
+# This skips over InputFunctionWrapper and MapFunctionWrapper to give more relevant locations
 function edge_callback_to_string(edge)
     f, arg_types = get_callback_info(edge)
     return edge_callback_to_string(f, arg_types)
