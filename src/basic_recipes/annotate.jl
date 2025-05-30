@@ -134,6 +134,7 @@ be very close to their associated data points so connection plots are typically 
     linewidth = 1.0
     """
     The algorithm used to automatically place labels with reduced overlaps.
+    The positioning of the labels with a given input may change between non-breaking versions.
     """
     algorithm = automatic
     visible = true
