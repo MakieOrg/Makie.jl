@@ -19,57 +19,19 @@ baremodule Ann # bare for cleanest tab-completion behavior
 
         using ...Makie
 
-        auto(x::Makie.Automatic, default) = default
-        auto(x, default) = x
         Base.@kwdef struct Line
-            length = Makie.automatic
+            length::Float64 = 8.0
             angle::Float64 = deg2rad(60)
             color = Makie.automatic
             linewidth::Union{Makie.Automatic,Float64} = Makie.automatic
         end
 
         Base.@kwdef struct Head
-            length = Makie.automatic
+            length::Float64 = 8.0
             angle::Float64 = deg2rad(60)
             color = Makie.automatic
             notch::Float64 = 0 # 0 to 1
         end
-
-        shrinksize(::Nothing; arrowsize) = 0
-        shrinksize(l::Line; arrowsize) = 0
-        function shrinksize(l::Head; arrowsize)
-            s = auto(l.length, arrowsize)
-            s * (1 - l.notch)
-        end
-
-        function plotspecs(l::Line, pos; rotation, arrowsize, color, linewidth)
-            color = auto(l.color, color)
-            linewidth = auto(l.linewidth, linewidth)
-            len = auto(l.length, arrowsize)
-            sidelen = len / cos(l.angle/2)
-            dir1 = Point2(-cos(l.angle/2 + rotation), -sin(l.angle/2 + rotation))
-            dir2 = Point2(-cos(-l.angle/2 + rotation), -sin(-l.angle/2 + rotation))
-            p1 = pos + dir1 * sidelen
-            p2 = pos + dir2 * sidelen
-            [
-                Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth)
-            ]
-        end
-
-        function plotspecs(h::Head, pos; rotation, arrowsize, color, linewidth)
-            color = auto(h.color, color)
-            len = auto(h.length, arrowsize)
-            L = 1 / cos(h.angle/2)
-            p1 = L * Point2(-cos(h.angle/2), -sin(h.angle/2))
-            p2 = Point2(-(1 - h.notch), 0)
-            p3 = L * Point2(-cos(-h.angle/2), -sin(-h.angle/2))
-
-            marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
-            [
-                Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len)
-            ]
-        end
-
     end
 
     baremodule Styles
@@ -109,13 +71,33 @@ be very close to their associated data points so connection plots are typically 
     """
     textcolor = :black
     """
-    The color of the connection object.
+    The basic color of the connection object. For more fine-grained adjustments, modify the `style` object directly.
     """
     color = :black
     """
     One object or an array of objects that determine the textual content of the labels.
     """
     text = ""
+    """
+    Sets the font. Can be a `Symbol` which will be looked up in the `fonts` dictionary or a `String` specifying the (partial) name of a font or the file path of a font file.
+    """
+    font = @inherit font
+    """
+    Used as a dictionary to look up fonts specified by `Symbol`, for example `:regular`, `:bold` or `:italic`.
+    """
+    fonts = @inherit fonts
+    """
+    The alignment of text relative to the label anchor position.
+    """
+    align = (:center, :center)
+    """
+    Sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`.
+    """
+    justification = automatic
+    """
+    The lineheight multiplier.
+    """
+    lineheight = 1.0
     """
     One path type or an array of path types that determine how to connect each label to its point.
     Suitable objects can be found in the module `Makie.Ann.Paths`.
@@ -138,10 +120,6 @@ be very close to their associated data points so connection plots are typically 
     """
     clipstart = automatic
     """
-    The alignment of text relative to the label anchor position.
-    """
-    align = (:center, :center)
-    """
     The maximum number of iterations that the label placement algorithm is allowed to run.
     """
     maxiter = automatic
@@ -152,12 +130,13 @@ be very close to their associated data points so connection plots are typically 
     If an arrow is supposed to point from one data point to another, `:data` is the appropriate choice.
     """
     labelspace = :relative_pixel
+    "The default line width for connection styles that have lines"
     linewidth = 1.0
-    arrowsize = 8
     """
     The algorithm used to automatically place labels with reduced overlaps.
     """
     algorithm = automatic
+    visible = true
 end
 
 function closest_point_on_rectangle(r::Rect2, p)
@@ -205,7 +184,19 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
     end
 
-    txt = text!(p, textpositions; text = p.text, align = p.align, offset = zeros(Vec2d, length(textpositions[])), color = p.textcolor)
+    txt = text!(
+        p,
+        textpositions;
+        text = p.text,
+        align = p.align,
+        offset = zeros(Vec2d, length(textpositions[])),
+        color = p.textcolor,
+        font = p.font,
+        fonts = p.fonts,
+        justification = p.justification,
+        lineheight = p.lineheight,
+        visible = p.visible,
+    )
 
     screenpoints_target = Ref{Vector{Point2f}}()
     screenpoints_label = Ref{Vector{Point2f}}()
@@ -267,8 +258,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
             p.style,
             p.color,
             p.linewidth,
-            p.arrowsize,
-        ) do text_bbs, pth, clipstart, shrink, style, color, linewidth, arrowsize
+        ) do text_bbs, pth, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]
         broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
@@ -286,12 +276,16 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
 
             shrunk_path = shrink_path(clipped_path, shrink)
 
-            append!(specs, annotation_style_plotspecs(style, shrunk_path, p1, p2; color, linewidth, arrowsize))
+            append!(specs, annotation_style_plotspecs(style, shrunk_path, p1, p2; color, linewidth))
         end
         return specs
     end
 
-    plotlist!(p, plotspecs)
+    plotlist!(
+        p,
+        plotspecs;
+        visible = p.visible[], # TODO: currently the observable doesn't seem to work here
+    )
     return p
 end
 
@@ -921,7 +915,7 @@ end
 
 annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
-function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth, arrowsize)
+function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth)
     length(path.commands) < 2 && return PlotSpec[]
     p_head = endpoint(path.commands[end])
 
@@ -929,8 +923,8 @@ function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p
 
     p_tail = _startpoint(path.commands[1])
 
-    shrink_for_head = Ann.Arrows.shrinksize(l.head; arrowsize)
-    shrink_for_tail = Ann.Arrows.shrinksize(l.tail; arrowsize)
+    shrink_for_head = shrinksize(l.head)
+    shrink_for_tail = shrinksize(l.tail)
 
     shortened_path = shrink_path(path, (shrink_for_tail, shrink_for_head))
     length(shortened_path.commands) < 2 && return PlotSpec[]
@@ -945,17 +939,53 @@ function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p
         PlotSpec(:Lines, shortened_path; color, space = :pixel, linewidth);
     ]
     if l.head !== nothing
-        append!(specs, Ann.Arrows.plotspecs(l.head, p_head; rotation = head_rotation, arrowsize, color, linewidth))
+        append!(specs, plotspecs(l.head, p_head; rotation = head_rotation, color, linewidth))
     end
     if l.tail !== nothing
-        append!(specs, Ann.Arrows.plotspecs(l.tail, p_tail; rotation = tail_rotation, arrowsize, color, linewidth))
+        append!(specs, plotspecs(l.tail, p_tail; rotation = tail_rotation, color, linewidth))
     end
     return specs
 end
 
-function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth, arrowsize)
+function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth)
     [
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
+    ]
+end
+
+_auto(x::Makie.Automatic, default) = default
+_auto(x, default) = x
+
+shrinksize(other) = 0.0
+
+function shrinksize(l::Ann.Arrows.Head)
+    l.length * (1 - l.notch)
+end
+
+function plotspecs(l::Ann.Arrows.Line, pos; rotation, color, linewidth)
+    color = _auto(l.color, color)
+    linewidth = _auto(l.linewidth, linewidth)
+    sidelen = l.length / cos(l.angle/2)
+    dir1 = Point2(-cos(l.angle/2 + rotation), -sin(l.angle/2 + rotation))
+    dir2 = Point2(-cos(-l.angle/2 + rotation), -sin(-l.angle/2 + rotation))
+    p1 = pos + dir1 * sidelen
+    p2 = pos + dir2 * sidelen
+    [
+        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth)
+    ]
+end
+
+function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
+    color = _auto(h.color, color)
+    len = h.length
+    L = 1 / cos(h.angle/2)
+    p1 = L * Point2(-cos(h.angle/2), -sin(h.angle/2))
+    p2 = Point2(-(1 - h.notch), 0)
+    p3 = L * Point2(-cos(-h.angle/2), -sin(-h.angle/2))
+
+    marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
+    [
+        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len)
     ]
 end
 
