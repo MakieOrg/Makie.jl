@@ -1,7 +1,4 @@
-function cairo_colors(@nospecialize(plot), color_name = :scaled_color)
-    Makie.add_computation!(plot.attributes, Val(:computed_color), color_name)
-    return plot.computed_color[]
-end
+
 
 function cairo_project_to_screen_impl(projectionview, resolution, model, pos, output_type = Point2f, yflip = true)
     # the existing methods include f32convert matrices which are already
@@ -91,7 +88,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::PT) where {PT <: Union{
 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
-    color = cairo_colors(plot, ifelse(PT <: Lines, :scaled_color, :synched_color))
+    color = compute_colors(plot, ifelse(PT <: Lines, :scaled_color, :synched_color))
 
     # Lines need to be handled more carefully with perspective projections to
     # avoid them inverting.
@@ -202,7 +199,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(p::Scatter))
     size_model = Mat3d(f32c_scale[1], 0, 0, 0, f32c_scale[2], 0, 0, 0, f32c_scale[3]) * size_model
 
     font = p.font[]
-    colors = cairo_colors(p)
+    colors = compute_colors(p)
 
     return draw_atomic_scatter(
         scene, ctx, markerspace_pos, indices, colors, markersize, strokecolor, strokewidth,
@@ -445,7 +442,7 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, @nospecialize(primitive::
     # probably shouldn't really be part of the interface
     use_fast_path = can_use_fast_path && to_value(get(primitive, :fast_path, true))::Bool
 
-    color_image = cairo_colors(primitive)
+    color_image = compute_colors(primitive)
 
     if use_fast_path
         s = to_cairo_image(color_image)
@@ -528,7 +525,7 @@ function draw_mesh2D(scene, screen, @nospecialize(plot::Makie.Mesh))
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
-    color = cairo_colors(plot)
+    color = compute_colors(plot)
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     if cols isa Cairo.CairoPattern
         align_pattern(cols, scene, plot.model[])
@@ -553,7 +550,7 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
     end
     meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
 
-    color = cairo_colors(plot)
+    color = compute_colors(plot)
 
     draw_mesh3D(
         scene, screen, plot,
@@ -685,7 +682,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
-    colors = cairo_colors(primitive)
+    colors = compute_colors(primitive)
     uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(

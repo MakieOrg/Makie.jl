@@ -67,19 +67,17 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalLight, scene)
     directionallight = RPR.DirectionalLight(context)
-    map(light.direction) do dir
-        if light.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            dir = normalize(T * dir)
-        else
-            dir = normalize(dir)
-        end
-        quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
-        transform!(directionallight, Makie.rotationmatrix4(quart))
+    dir = light.direction
+    if light.camera_relative
+        T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+        dir = normalize(T * dir)
+    else
+        dir = normalize(dir)
     end
-    map(light.color) do c
-        setradiantpower!(directionallight, red(c), green(c), blue(c))
-    end
+    quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
+    transform!(directionallight, Makie.rotationmatrix4(quart))
+    c = light.color
+    setradiantpower!(directionallight, red(c), green(c), blue(c))
     return directionallight
 end
 
@@ -154,12 +152,13 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     set!(context, scene)
     # Only set background image if it isn't set by env light, since
     # background image takes precedence
-    if !any(x-> x isa Makie.EnvironmentLight, mscene.lights)
+    lights = mscene.compute.lights[]
+    if !any(x-> x isa Makie.EnvironmentLight, lights)
         env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
         img = RPR.Image(context, env_img)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
-    for light in mscene.lights
+    for light in lights
         rpr_light = to_rpr_light(context, scene, light, mscene)
         push!(scene, rpr_light)
     end
